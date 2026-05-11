@@ -3,14 +3,12 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import React, { useMemo } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { radii, space } from "../../../theme/tokens";
+import { colors, radii, space } from "../../../theme/tokens";
 import { useAuth } from "../../auth/context/AuthContext";
 import type { MenuStackParamList, ShellSurfaceRouteId } from "../../../navigation/types";
 import { dashboardRoutesForRoles, type DashboardRouteId, type DashboardRouteMeta } from "../config/dashboardRoutes";
 import { shellSurfacesForRoles, type ShellSurfaceMeta } from "../config/shellSurfaces";
 import { AccountType } from "../../../constants/accountType";
-
-const NAVY = "#000080";
 
 function featureIcon(id: DashboardRouteId): keyof typeof Ionicons.glyphMap {
   switch (id) {
@@ -57,7 +55,7 @@ function MenuRow({
       onPress={onPress}
     >
       <View style={styles.menuIconBox}>
-        <Ionicons name={icon} size={20} color={NAVY} />
+        <Ionicons name={icon} size={20} color={colors.brandNavy} />
       </View>
       <Text style={styles.menuLabel}>{label}</Text>
       <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
@@ -171,7 +169,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: NAVY,
+    backgroundColor: colors.brandNavy,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -186,7 +184,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     marginTop: 4,
   },
-  roleText: { fontSize: 11, fontWeight: "700", color: NAVY },
+  roleText: { fontSize: 11, fontWeight: "700", color: colors.brandNavy },
   settingsBtn: { padding: 6 },
 
   sectionCard: {

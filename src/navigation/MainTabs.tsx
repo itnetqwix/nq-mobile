@@ -1,4 +1,5 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { DrawerToggleButton } from "@react-navigation/drawer";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { ChatsScreen } from "../features/chats/screens/ChatsScreen";
@@ -12,8 +13,6 @@ import { AccountType } from "../constants/accountType";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-const NAVY = "#000080";
-
 export function MainTabs() {
   const { accountType } = useAuth();
   const isTrainer = accountType === AccountType.TRAINER;
@@ -26,24 +25,25 @@ export function MainTabs() {
     <Tab.Navigator
       screenOptions={{
         headerTitleAlign: "center",
-        tabBarActiveTintColor: NAVY,
+        tabBarActiveTintColor: colors.brandNavy,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
-          borderTopColor: "#e5e7eb",
-          backgroundColor: "#fff",
+          borderTopColor: colors.tabBarBorder,
+          backgroundColor: colors.background,
         },
         headerStyle: {
-          backgroundColor: "#fff",
-          borderBottomColor: "#e5e7eb",
+          backgroundColor: colors.background,
+          borderBottomColor: colors.border,
           borderBottomWidth: 1,
           elevation: 0,
           shadowOpacity: 0,
         },
         headerTitleStyle: {
           fontWeight: "700",
-          color: NAVY,
+          color: colors.brandNavy,
           fontSize: 17,
         },
+        headerLeft: () => <DrawerToggleButton tintColor={colors.brandNavy} />,
       }}
     >
       <Tab.Screen
@@ -51,7 +51,7 @@ export function MainTabs() {
         component={DashboardHomeScreen}
         options={{
           title: "My Locker",
-          headerShown: false,
+          headerShown: true,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" color={color} size={size} />
           ),

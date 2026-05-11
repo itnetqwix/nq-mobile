@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useLayoutEffect } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -29,7 +29,6 @@ import type { MainTabScreenProps } from "../../../navigation/types";
 import type { DashboardRouteId } from "../config/dashboardRoutes";
 import type { ShellSurfaceRouteId } from "../../../navigation/types";
 
-const NAVY = "#000080";
 const FALLBACK_AVATAR = require("../../../../assets/icon.png");
 
 function Avatar({ uri, name, size = 56 }: { uri?: string; name?: string; size?: number }) {
@@ -174,7 +173,7 @@ function QuickActionButton({
       style={({ pressed }) => [styles.quickBtn, pressed && styles.quickBtnPressed]}
       onPress={onPress}
     >
-      <Ionicons name={icon} size={26} color={NAVY} />
+      <Ionicons name={icon} size={26} color={colors.brandNavy} />
       <Text style={styles.quickBtnText}>{label}</Text>
     </Pressable>
   );
@@ -245,6 +244,25 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
     navigation.navigate("Menu", { screen: "ShellSurface", params: { surfaceId: id } });
   };
 
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <Pressable
+          onPress={() =>
+            navigation.navigate("Menu", {
+              screen: "ShellSurface",
+              params: { surfaceId: "notifications" },
+            })
+          }
+          hitSlop={12}
+          style={{ marginRight: 10, padding: 4 }}
+        >
+          <Ionicons name="notifications-outline" size={24} color={colors.brandNavy} />
+        </Pressable>
+      ),
+    });
+  }, [navigation]);
+
   const handleAccept = useCallback(async (requestId: string) => {
     await postAcceptFriendRequest(requestId);
     queryClient.invalidateQueries({ queryKey: ["friendRequests"] });
@@ -266,19 +284,16 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
         <RefreshControl
           refreshing={isRefreshing}
           onRefresh={onRefresh}
-          tintColor={NAVY}
+          tintColor={colors.brandNavy}
         />
       }
     >
-      {/* Header */}
+      {/* Header — greeting row (app bar = native header + drawer) */}
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Hello, {name}</Text>
           <Text style={styles.roleTag}>{accountType ?? "Member"}</Text>
         </View>
-        <Pressable onPress={() => openShell("notifications")}>
-          <Ionicons name="notifications-outline" size={26} color={NAVY} />
-        </Pressable>
       </View>
 
       {/* Quick Actions — mirrors website sidebar icons */}
@@ -329,7 +344,7 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
           <SectionHeader title="Coaches Online Now" />
           {loadingCoaches ? (
             <View style={styles.loadingRow}>
-              <ActivityIndicator color={NAVY} />
+              <ActivityIndicator color={colors.brandNavy} />
             </View>
           ) : (
             <FlatList
@@ -355,7 +370,7 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
           <SectionHeader title="Active Sessions" />
           {loadingSessions ? (
             <View style={styles.loadingRow}>
-              <ActivityIndicator color={NAVY} />
+              <ActivityIndicator color={colors.brandNavy} />
             </View>
           ) : (
             nowSessions.map((session: any) => (
@@ -386,7 +401,7 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
               onPress={() => openFeature("upcoming-sessions")}
             >
               <Text style={styles.seeAllText}>See all {sessions.length} sessions</Text>
-              <Ionicons name="chevron-forward" size={16} color={NAVY} />
+              <Ionicons name="chevron-forward" size={16} color={colors.brandNavy} />
             </Pressable>
           )}
         </View>
@@ -443,36 +458,36 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
               style={styles.moreItem}
               onPress={() => openFeature("students")}
             >
-              <Ionicons name="people-outline" size={20} color={NAVY} />
+              <Ionicons name="people-outline" size={20} color={colors.brandNavy} />
               <Text style={styles.moreItemText}>Students</Text>
             </Pressable>
           )}
           <Pressable style={styles.moreItem} onPress={() => openFeature("my-community")}>
-            <Ionicons name="globe-outline" size={20} color={NAVY} />
+            <Ionicons name="globe-outline" size={20} color={colors.brandNavy} />
             <Text style={styles.moreItemText}>Community</Text>
           </Pressable>
           <Pressable style={styles.moreItem} onPress={() => openFeature("friends")}>
-            <Ionicons name="person-add-outline" size={20} color={NAVY} />
+            <Ionicons name="person-add-outline" size={20} color={colors.brandNavy} />
             <Text style={styles.moreItemText}>Friends</Text>
           </Pressable>
           <Pressable style={styles.moreItem} onPress={() => openShell("transactions")}>
-            <Ionicons name="wallet-outline" size={20} color={NAVY} />
+            <Ionicons name="wallet-outline" size={20} color={colors.brandNavy} />
             <Text style={styles.moreItemText}>Transactions</Text>
           </Pressable>
           <Pressable style={styles.moreItem} onPress={() => openFeature("meeting-room")}>
-            <Ionicons name="videocam-outline" size={20} color={NAVY} />
+            <Ionicons name="videocam-outline" size={20} color={colors.brandNavy} />
             <Text style={styles.moreItemText}>Meeting Room</Text>
           </Pressable>
           <Pressable style={styles.moreItem} onPress={() => openShell("settings")}>
-            <Ionicons name="settings-outline" size={20} color={NAVY} />
+            <Ionicons name="settings-outline" size={20} color={colors.brandNavy} />
             <Text style={styles.moreItemText}>Settings</Text>
           </Pressable>
           <Pressable style={styles.moreItem} onPress={() => openFeature("contact-us")}>
-            <Ionicons name="mail-outline" size={20} color={NAVY} />
+            <Ionicons name="mail-outline" size={20} color={colors.brandNavy} />
             <Text style={styles.moreItemText}>Contact Us</Text>
           </Pressable>
           <Pressable style={styles.moreItem} onPress={() => openFeature("about-us")}>
-            <Ionicons name="information-circle-outline" size={20} color={NAVY} />
+            <Ionicons name="information-circle-outline" size={20} color={colors.brandNavy} />
             <Text style={styles.moreItemText}>About Us</Text>
           </Pressable>
         </View>
@@ -544,7 +559,7 @@ const styles = StyleSheet.create({
   sectionHeader: {
     fontSize: 16,
     fontWeight: "700",
-    color: NAVY,
+    color: colors.brandNavy,
     paddingHorizontal: space.md,
     marginBottom: space.sm,
   },
@@ -564,7 +579,7 @@ const styles = StyleSheet.create({
   coachCat: { fontSize: 11, color: "#6b7280", textAlign: "center", marginTop: 2 },
   bookBtn: {
     marginTop: space.sm,
-    backgroundColor: NAVY,
+    backgroundColor: colors.brandNavy,
     borderRadius: radii.sm,
     paddingHorizontal: space.sm,
     paddingVertical: 5,
@@ -609,7 +624,7 @@ const styles = StyleSheet.create({
 
   // Avatar fallback
   avatarFallback: {
-    backgroundColor: NAVY,
+    backgroundColor: colors.brandNavy,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -623,7 +638,7 @@ const styles = StyleSheet.create({
     paddingVertical: space.sm,
     gap: 4,
   },
-  seeAllText: { fontSize: 14, color: NAVY, fontWeight: "600" },
+  seeAllText: { fontSize: 14, color: colors.brandNavy, fontWeight: "600" },
 
   // More grid
   moreGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: space.sm },

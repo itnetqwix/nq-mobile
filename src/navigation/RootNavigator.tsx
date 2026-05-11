@@ -5,7 +5,7 @@ import { useAuth } from "../features/auth/context/AuthContext";
 import { InstantLessonTrainerModal } from "../features/instant-lesson/InstantLessonTrainerModal";
 import { MeetingScreen } from "../features/meeting/screens/MeetingScreen";
 import { AuthNavigator } from "./AuthNavigator";
-import { MainTabs } from "./MainTabs";
+import { DashboardDrawerShell } from "./DashboardDrawerShell";
 import type { RootStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -30,7 +30,7 @@ export function RootNavigator() {
         screenOptions={{ headerShown: false }}
       >
         <Stack.Screen name="Auth" component={AuthNavigator} />
-        <Stack.Screen name="Main" component={MainTabs} />
+        <Stack.Screen name="Main" component={DashboardDrawerShell} />
         <Stack.Screen
           name="Meeting"
           component={MeetingScreen}

@@ -1,4 +1,5 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { DrawerToggleButton } from "@react-navigation/drawer";
 import React from "react";
 import { colors } from "../theme/tokens";
 import { dashboardRouteById } from "../features/dashboard/config/dashboardRoutes";
@@ -14,8 +15,9 @@ export function MenuNavigator() {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerTintColor: colors.primary,
-        headerTitleStyle: { fontWeight: "600" },
+        headerTintColor: colors.brandNavy,
+        headerTitleStyle: { fontWeight: "600", color: colors.brandNavy },
+        headerLeft: () => <DrawerToggleButton tintColor={colors.brandNavy} />,
         contentStyle: { backgroundColor: colors.background },
       }}
     >

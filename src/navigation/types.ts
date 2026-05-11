@@ -25,6 +25,11 @@ export type MainTabParamList = {
   Menu: NavigatorScreenParams<MenuStackParamList>;
 };
 
+/** Drawer wraps the bottom-tab shell — mirrors web `DashboardLayout` + left rail. */
+export type DashboardDrawerParamList = {
+  Tabs: NavigatorScreenParams<MainTabParamList> | undefined;
+};
+
 export type RootStackParamList = {
   Auth: undefined;
   Main: undefined;
