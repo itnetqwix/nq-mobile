@@ -7,35 +7,66 @@ import { ScheduleScreen } from "../features/schedule/screens/ScheduleScreen";
 import { colors } from "../theme/tokens";
 import { MenuNavigator } from "./MenuNavigator";
 import type { MainTabParamList } from "./types";
+import { useAuth } from "../features/auth/context/AuthContext";
+import { AccountType } from "../constants/accountType";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
+const NAVY = "#000080";
+
 export function MainTabs() {
+  const { accountType } = useAuth();
+  const isTrainer = accountType === AccountType.TRAINER;
+
+  // Schedule tab shows "Schedule" for trainers, "Sessions" for trainees — mirrors website sidebar
+  const scheduleTabLabel = isTrainer ? "Schedule" : "Sessions";
+  const scheduleTabIcon = isTrainer ? "calendar-outline" : "time-outline";
+
   return (
     <Tab.Navigator
       screenOptions={{
         headerTitleAlign: "center",
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: NAVY,
         tabBarInactiveTintColor: colors.textMuted,
+        tabBarStyle: {
+          borderTopColor: "#e5e7eb",
+          backgroundColor: "#fff",
+        },
+        headerStyle: {
+          backgroundColor: "#fff",
+          borderBottomColor: "#e5e7eb",
+          borderBottomWidth: 1,
+          elevation: 0,
+          shadowOpacity: 0,
+        },
+        headerTitleStyle: {
+          fontWeight: "700",
+          color: NAVY,
+          fontSize: 17,
+        },
       }}
     >
       <Tab.Screen
         name="Home"
         component={DashboardHomeScreen}
         options={{
-          title: "Home",
+          title: "My Locker",
           headerShown: false,
-          tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home-outline" color={color} size={size} />
+          ),
         }}
       />
       <Tab.Screen
         name="Schedule"
         component={ScheduleScreen}
         options={{
-          title: "Schedule",
+          title: scheduleTabLabel,
+          headerTitle: scheduleTabLabel,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar-outline" color={color} size={size} />
+            <Ionicons name={scheduleTabIcon as any} color={color} size={size} />
           ),
+          tabBarLabel: scheduleTabLabel,
         }}
       />
       <Tab.Screen
@@ -52,9 +83,12 @@ export function MainTabs() {
         name="Menu"
         component={MenuNavigator}
         options={{
-          title: "Menu",
+          title: "More",
           headerShown: false,
-          tabBarIcon: ({ color, size }) => <Ionicons name="menu-outline" color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="menu-outline" color={color} size={size} />
+          ),
+          tabBarLabel: "More",
         }}
       />
     </Tab.Navigator>

@@ -1,19 +1,74 @@
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import React, { useMemo } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Button } from "../../../components/ui/Button";
-import { Screen } from "../../../components/ui/Screen";
-import { colors, radii, space } from "../../../theme/tokens";
+import { radii, space } from "../../../theme/tokens";
 import { useAuth } from "../../auth/context/AuthContext";
 import type { MenuStackParamList, ShellSurfaceRouteId } from "../../../navigation/types";
-import { dashboardRoutesForRoles, type DashboardRouteMeta } from "../config/dashboardRoutes";
+import { dashboardRoutesForRoles, type DashboardRouteId, type DashboardRouteMeta } from "../config/dashboardRoutes";
 import { shellSurfacesForRoles, type ShellSurfaceMeta } from "../config/shellSurfaces";
+import { AccountType } from "../../../constants/accountType";
+
+const NAVY = "#000080";
+
+function featureIcon(id: DashboardRouteId): keyof typeof Ionicons.glyphMap {
+  switch (id) {
+    case "instant-booking": return "flash-outline";
+    case "schedule": return "calendar-outline";
+    case "book-lesson": return "book-outline";
+    case "chats": return "chatbubbles-outline";
+    case "upcoming-sessions": return "time-outline";
+    case "my-community": return "people-outline";
+    case "contact-us": return "mail-outline";
+    case "about-us": return "information-circle-outline";
+    case "friends": return "person-add-outline";
+    case "students": return "school-outline";
+    case "meeting-room": return "videocam-outline";
+    case "practice-session": return "fitness-outline";
+    default: return "ellipse-outline";
+  }
+}
+
+function shellIcon(id: ShellSurfaceMeta["id"]): keyof typeof Ionicons.glyphMap {
+  switch (id) {
+    case "uploads": return "cloud-upload-outline";
+    case "notifications": return "notifications-outline";
+    case "settings": return "settings-outline";
+    case "transactions": return "wallet-outline";
+    case "meeting": return "videocam-outline";
+    case "messenger": return "chatbubble-ellipses-outline";
+    default: return "ellipse-outline";
+  }
+}
+
+function MenuRow({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.menuRow, pressed && styles.menuRowPressed]}
+      onPress={onPress}
+    >
+      <View style={styles.menuIconBox}>
+        <Ionicons name={icon} size={20} color={NAVY} />
+      </View>
+      <Text style={styles.menuLabel}>{label}</Text>
+      <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
+    </Pressable>
+  );
+}
 
 export function MenuHomeScreen() {
   const { user, accountType, signOut } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<MenuStackParamList>>();
+  const isTrainer = accountType === AccountType.TRAINER;
 
   const name =
     (user?.fullname as string) ||
@@ -25,172 +80,163 @@ export function MenuHomeScreen() {
   const dashboardPages = useMemo(() => dashboardRoutesForRoles(accountType), [accountType]);
   const shellItems = useMemo(() => shellSurfacesForRoles(accountType), [accountType]);
 
-  const onOpenDashboard = (r: DashboardRouteMeta) => {
-    navigation.navigate("DashboardFeature", { featureId: r.id });
+  const openDashboard = (id: DashboardRouteId) => {
+    navigation.navigate("DashboardFeature", { featureId: id });
   };
 
-  const onOpenShell = (surfaceId: ShellSurfaceRouteId) => {
-    navigation.navigate("ShellSurface", { surfaceId });
+  const openShell = (id: ShellSurfaceRouteId) => {
+    navigation.navigate("ShellSurface", { surfaceId: id });
   };
 
-  const onLogout = () => {
-    Alert.alert("Sign out?", undefined, [
+  const handleLogout = () => {
+    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
       { text: "Cancel", style: "cancel" },
-      { text: "Sign out", style: "destructive", onPress: () => void signOut() },
+      { text: "Sign Out", style: "destructive", onPress: () => void signOut() },
     ]);
   };
 
   return (
-    <Screen scroll>
-      <View style={styles.hero}>
-        <Text style={styles.heroLabel}>Signed in</Text>
-        <Text style={styles.heroName}>{name}</Text>
-        <Text style={styles.heroMeta}>{accountType ?? "Member"}</Text>
-      </View>
-
-      <Text style={styles.section}>Toolbar</Text>
-      <Text style={styles.sectionHint}>
-        Same entries as the website left sidebar after “My Locker” (uploads, alerts, settings,
-        wallet, meeting, messenger).
-      </Text>
-
-      {shellItems.map((s) => (
-        <ShellRow key={s.id} meta={s} onPress={() => onOpenShell(s.id)} />
-      ))}
-
-      <Text style={[styles.section, styles.sectionSpaced]}>Dashboard pages</Text>
-      <Text style={styles.sectionHint}>
-        Same URLs as `pages/dashboard/*` in nq-frontend-main — native implementations follow.
-      </Text>
-
-      {dashboardPages.map((r) => (
-        <Pressable
-          key={r.id}
-          onPress={() => onOpenDashboard(r)}
-          style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-        >
-          <View style={styles.rowText}>
-            <Text style={styles.rowTitle}>{r.title}</Text>
-            <Text style={styles.rowSub} numberOfLines={2}>
-              {r.subtitle}
-            </Text>
+    <ScrollView style={styles.root} contentContainerStyle={styles.content}>
+      {/* Profile header */}
+      <View style={styles.profileCard}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{(name[0] ?? "?").toUpperCase()}</Text>
+        </View>
+        <View style={styles.profileInfo}>
+          <Text style={styles.profileName}>{name}</Text>
+          <View style={styles.roleBadge}>
+            <Text style={styles.roleText}>{accountType ?? "Member"}</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+        </View>
+        <Pressable onPress={() => openShell("settings")} style={styles.settingsBtn}>
+          <Ionicons name="settings-outline" size={22} color="#6b7280" />
         </Pressable>
-      ))}
-
-      <View style={styles.footer}>
-        <Button title="Sign out" variant="ghost" onPress={onLogout} />
       </View>
-    </Screen>
-  );
-}
 
-function ShellRow({ meta, onPress }: { meta: ShellSurfaceMeta; onPress: () => void }) {
-  const icon = shellIcon(meta.id);
-  return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
-      <Ionicons name={icon} size={22} color={colors.primary} style={styles.shellIcon} />
-      <View style={styles.rowText}>
-        <Text style={styles.rowTitle}>{meta.title}</Text>
-        <Text style={styles.rowSub} numberOfLines={2}>
-          {meta.subtitle}
-        </Text>
+      {/* Dashboard features — matches website sidebar + top-nav items */}
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionLabel}>Dashboard</Text>
+        {dashboardPages.map((r) => (
+          <MenuRow
+            key={r.id}
+            icon={featureIcon(r.id)}
+            label={r.title}
+            onPress={() => openDashboard(r.id)}
+          />
+        ))}
       </View>
-      <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-    </Pressable>
-  );
-}
 
-function shellIcon(id: ShellSurfaceMeta["id"]): keyof typeof Ionicons.glyphMap {
-  switch (id) {
-    case "uploads":
-      return "cloud-upload-outline";
-    case "notifications":
-      return "notifications-outline";
-    case "settings":
-      return "settings-outline";
-    case "transactions":
-      return "wallet-outline";
-    case "meeting":
-      return "videocam-outline";
-    case "messenger":
-      return "chatbubble-ellipses-outline";
-    default:
-      return "ellipse-outline";
-  }
+      {/* Sidebar tools — My Uploads, Notifications, Settings, Transactions */}
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionLabel}>Tools</Text>
+        {shellItems
+          .filter((s) => s.id !== "meeting" && s.id !== "messenger")
+          .map((s) => (
+            <MenuRow
+              key={s.id}
+              icon={shellIcon(s.id)}
+              label={s.title}
+              onPress={() => openShell(s.id)}
+            />
+          ))}
+      </View>
+
+      {/* Sign out */}
+      <Pressable
+        style={({ pressed }) => [styles.logoutBtn, pressed && { opacity: 0.8 }]}
+        onPress={handleLogout}
+      >
+        <Ionicons name="log-out-outline" size={20} color="#dc2626" />
+        <Text style={styles.logoutText}>Sign Out</Text>
+      </Pressable>
+    </ScrollView>
+  );
 }
 
 const styles = StyleSheet.create({
-  hero: {
-    marginBottom: space.lg,
-    padding: space.lg,
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-  },
-  heroLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.textMuted,
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-  },
-  heroName: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: colors.text,
-    marginTop: space.xs,
-  },
-  heroMeta: {
-    fontSize: 15,
-    color: colors.textMuted,
-    marginTop: space.xs,
-  },
-  section: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: colors.text,
-    marginBottom: space.xs,
-  },
-  sectionSpaced: {
-    marginTop: space.lg,
-  },
-  sectionHint: {
-    fontSize: 14,
-    color: colors.textMuted,
-    marginBottom: space.md,
-    lineHeight: 20,
-  },
-  shellIcon: {
-    marginRight: space.md,
-  },
-  row: {
+  root: { flex: 1, backgroundColor: "#f6f7fb" },
+  content: { padding: space.md, gap: space.md, paddingBottom: space.xl },
+
+  profileCard: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: space.md,
-    paddingHorizontal: space.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    backgroundColor: "#fff",
+    borderRadius: radii.md,
+    padding: space.md,
+    gap: space.md,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
   },
-  rowPressed: {
-    backgroundColor: colors.surface,
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: NAVY,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  rowText: {
-    flex: 1,
+  avatarText: { fontSize: 20, fontWeight: "700", color: "#fff" },
+  profileInfo: { flex: 1 },
+  profileName: { fontSize: 17, fontWeight: "700", color: "#111827" },
+  roleBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "#dbeafe",
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginTop: 4,
   },
-  rowTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text,
+  roleText: { fontSize: 11, fontWeight: "700", color: NAVY },
+  settingsBtn: { padding: 6 },
+
+  sectionCard: {
+    backgroundColor: "#fff",
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    overflow: "hidden",
   },
-  rowSub: {
-    fontSize: 13,
-    color: colors.textMuted,
-    marginTop: 2,
-    lineHeight: 18,
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#6b7280",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    paddingHorizontal: space.md,
+    paddingTop: space.md,
+    paddingBottom: space.sm,
   },
-  footer: {
-    marginTop: space.xl,
-    marginBottom: space.lg,
+
+  menuRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: space.md,
+    paddingVertical: 13,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#f3f4f6",
+    gap: space.md,
   },
+  menuRowPressed: { backgroundColor: "#f9fafb" },
+  menuIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: "#f0f4ff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  menuLabel: { flex: 1, fontSize: 15, fontWeight: "600", color: "#111827" },
+
+  logoutBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+    borderRadius: radii.md,
+    paddingVertical: 14,
+    gap: space.sm,
+    borderWidth: 1,
+    borderColor: "#fee2e2",
+  },
+  logoutText: { fontSize: 15, fontWeight: "700", color: "#dc2626" },
 });
