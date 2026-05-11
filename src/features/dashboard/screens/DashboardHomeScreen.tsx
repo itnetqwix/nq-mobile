@@ -28,6 +28,13 @@ import {
 import type { MainTabScreenProps } from "../../../navigation/types";
 import type { DashboardRouteId } from "../config/dashboardRoutes";
 import type { ShellSurfaceRouteId } from "../../../navigation/types";
+import {
+  HomeMainCont,
+  HomeUploadInviteRow,
+  RecentUsersGrid,
+  TrainerBoxCard,
+  webHomeStyles,
+} from "../components/webHome";
 
 const FALLBACK_AVATAR = require("../../../../assets/icon.png");
 
@@ -66,7 +73,7 @@ function CoachCard({
   const name = trainer?.fullname || trainer?.fullName || "Coach";
   const cats = trainer?.categories?.slice(0, 2).join(", ") ?? "";
   return (
-    <View style={styles.coachCard}>
+    <TrainerBoxCard style={{ width: 132, flexShrink: 0 }}>
       <Avatar uri={trainer?.profile_picture} name={name} size={70} />
       <Text style={styles.coachName} numberOfLines={1}>{name}</Text>
       {!!cats && <Text style={styles.coachCat} numberOfLines={1}>{cats}</Text>}
@@ -76,7 +83,7 @@ function CoachCard({
       >
         <Text style={styles.bookBtnText}>Book Now</Text>
       </Pressable>
-    </View>
+    </TrainerBoxCard>
   );
 }
 
@@ -124,7 +131,8 @@ function RecentUserChip({ user, label }: { user: any; label?: string }) {
   );
 }
 
-function FriendRequestCard({
+/** Web `NavHomePage` friend request tiles — column card with navy border */
+function FriendRequestWebTile({
   request,
   onAccept,
   onReject,
@@ -136,24 +144,24 @@ function FriendRequestCard({
   const sender = request?.senderId;
   const name = sender?.fullname || sender?.fullName || "User";
   return (
-    <View style={styles.friendCard}>
-      <Avatar uri={sender?.profile_picture} name={name} size={48} />
-      <View style={{ flex: 1, marginLeft: space.sm }}>
-        <Text style={styles.friendName}>{name}</Text>
-        <View style={styles.friendActions}>
-          <Pressable
-            style={[styles.friendBtn, { backgroundColor: "#16a34a" }]}
-            onPress={() => onAccept(request._id)}
-          >
-            <Text style={styles.friendBtnText}>Accept</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.friendBtn, { backgroundColor: "#dc2626" }]}
-            onPress={() => onReject(request._id)}
-          >
-            <Text style={styles.friendBtnText}>Reject</Text>
-          </Pressable>
-        </View>
+    <View style={webHomeStyles.friendRequestTile}>
+      <Avatar uri={sender?.profile_picture} name={name} size={72} />
+      <Text style={[styles.friendName, { marginTop: 10, textAlign: "center" }]} numberOfLines={2}>
+        {name}
+      </Text>
+      <View style={[styles.friendActions, { justifyContent: "center" }]}>
+        <Pressable
+          style={[styles.friendBtn, { backgroundColor: "#16a34a" }]}
+          onPress={() => onAccept(request._id)}
+        >
+          <Text style={styles.friendBtnText}>Accept</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.friendBtn, { backgroundColor: "#dc2626" }]}
+          onPress={() => onReject(request._id)}
+        >
+          <Text style={styles.friendBtnText}>Reject</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -338,116 +346,165 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
         />
       </View>
 
-      {/* Coaches Online Now — trainee only */}
-      {isTrainee && (loadingCoaches || coaches.length > 0) && (
-        <View style={styles.section}>
-          <SectionHeader title="Coaches Online Now" />
-          {loadingCoaches ? (
-            <View style={styles.loadingRow}>
-              <ActivityIndicator color={colors.brandNavy} />
+      <View style={{ paddingHorizontal: space.md, paddingTop: space.md }}>
+        {/* Web: trainer `UserInfoCard` inside `Home-main-Cont` above recent students */}
+        {isTrainer && (
+          <HomeMainCont
+            title="Your profile"
+            testID="card trainer-profile-card Home-main-Cont trainer-profile-summary"
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+              <Avatar
+                uri={(user as any)?.profile_picture}
+                name={name}
+                size={64}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 17, fontWeight: "700", color: "#111827" }}>{name}</Text>
+                <Text style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>{accountType}</Text>
+                <Pressable
+                  style={{ marginTop: 10, alignSelf: "flex-start" }}
+                  onPress={() => openShell("settings")}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: colors.sidebarActive }}>
+                    Account & settings →
+                  </Text>
+                </Pressable>
+              </View>
             </View>
-          ) : (
-            <FlatList
-              horizontal
-              data={coaches}
-              keyExtractor={(item, i) => item?._id ?? String(i)}
-              renderItem={({ item }) => (
-                <CoachCard
-                  trainer={item}
-                  onBook={() => openFeature("book-lesson")}
-                />
-              )}
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: space.md, gap: space.sm }}
-            />
-          )}
-        </View>
-      )}
+          </HomeMainCont>
+        )}
 
-      {/* Active Sessions */}
-      {(loadingSessions || nowSessions.length > 0) && (
-        <View style={styles.section}>
-          <SectionHeader title="Active Sessions" />
-          {loadingSessions ? (
-            <View style={styles.loadingRow}>
-              <ActivityIndicator color={colors.brandNavy} />
+        {/* Web `NavHomePage` — Recent Friend Requests card */}
+        {friendRequests.length > 0 && (
+          <HomeMainCont
+            title="Recent Friend Requests"
+            testID="card trainer-profile-card Home-main-Cont friend-requests"
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 10,
+                justifyContent: "center",
+              }}
+            >
+              {friendRequests.map((req: any) => (
+                <FriendRequestWebTile
+                  key={req._id}
+                  request={req}
+                  onAccept={handleAccept}
+                  onReject={handleReject}
+                />
+              ))}
             </View>
-          ) : (
-            nowSessions.map((session: any) => (
+          </HomeMainCont>
+        )}
+
+        {/* Coaches Online Now — trainee; tiles use `Trainer-box-1` */}
+        {isTrainee && (loadingCoaches || coaches.length > 0) && (
+          <HomeMainCont title="Coaches Online Now" testID="card trainer-profile-card Home-main-Cont coaches-online">
+            {loadingCoaches ? (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator color={colors.brandNavy} />
+              </View>
+            ) : (
+              <FlatList
+                horizontal
+                nestedScrollEnabled
+                data={coaches}
+                keyExtractor={(item, i) => item?._id ?? String(i)}
+                renderItem={({ item }) => (
+                  <CoachCard
+                    trainer={item}
+                    onBook={() => openFeature("book-lesson")}
+                  />
+                )}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: space.sm, paddingVertical: 4 }}
+              />
+            )}
+          </HomeMainCont>
+        )}
+
+        {/* Active Sessions */}
+        {(loadingSessions || nowSessions.length > 0) && (
+          <HomeMainCont title="Active Sessions" testID="card trainer-profile-card Home-main-Cont active-sessions">
+            {loadingSessions ? (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator color={colors.brandNavy} />
+              </View>
+            ) : (
+              nowSessions.map((session: any) => (
+                <SessionCard
+                  key={session._id}
+                  session={session}
+                  accountType={accountType}
+                />
+              ))
+            )}
+          </HomeMainCont>
+        )}
+
+        {/* Upcoming Sessions (next 3) */}
+        {sessions.length > 0 && nowSessions.length === 0 && (
+          <HomeMainCont title="Upcoming Sessions" testID="card trainer-profile-card Home-main-Cont upcoming-sessions">
+            {sessions.slice(0, 3).map((session: any) => (
               <SessionCard
                 key={session._id}
                 session={session}
                 accountType={accountType}
               />
-            ))
-          )}
-        </View>
-      )}
+            ))}
+            {sessions.length > 3 && (
+              <Pressable
+                style={styles.seeAllBtn}
+                onPress={() => openFeature("upcoming-sessions")}
+              >
+                <Text style={styles.seeAllText}>See all {sessions.length} sessions</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.brandNavy} />
+              </Pressable>
+            )}
+          </HomeMainCont>
+        )}
 
-      {/* Upcoming Sessions (next 3) */}
-      {sessions.length > 0 && nowSessions.length === 0 && (
-        <View style={styles.section}>
-          <SectionHeader title="Upcoming Sessions" />
-          {sessions.slice(0, 3).map((session: any) => (
-            <SessionCard
-              key={session._id}
-              session={session}
-              accountType={accountType}
-            />
-          ))}
-          {sessions.length > 3 && (
-            <Pressable
-              style={styles.seeAllBtn}
-              onPress={() => openFeature("upcoming-sessions")}
-            >
-              <Text style={styles.seeAllText}>See all {sessions.length} sessions</Text>
-              <Ionicons name="chevron-forward" size={16} color={colors.brandNavy} />
-            </Pressable>
-          )}
-        </View>
-      )}
-
-      {/* Friend Requests */}
-      {friendRequests.length > 0 && (
-        <View style={styles.section}>
-          <SectionHeader title="Friend Requests" />
-          {friendRequests.map((req: any) => (
-            <FriendRequestCard
-              key={req._id}
-              request={req}
-              onAccept={handleAccept}
-              onReject={handleReject}
-            />
-          ))}
-        </View>
-      )}
-
-      {/* Recent Users */}
-      {isTrainer && recentTrainees.length > 0 && (
-        <View style={styles.section}>
-          <SectionHeader title="Recent Students" />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.recentRow}>
+        {/* Recent Users — `recent-users-grid` / `trainer-students-grid` vs `single-row-experts` */}
+        {isTrainer && recentTrainees.length > 0 && (
+          <HomeMainCont
+            title="Recent Students"
+            testID="card rounded trainer-profile-card Select Recent Student"
+          >
+            <RecentUsersGrid accountIsTrainer>
               {recentTrainees.map((u: any, i: number) => (
-                <RecentUserChip key={u._id ?? i} user={u} />
+                <View key={u._id ?? i} style={webHomeStyles.recentUsersGridItemTrainer}>
+                  <RecentUserChip user={u} />
+                </View>
               ))}
-            </View>
-          </ScrollView>
-        </View>
-      )}
+            </RecentUsersGrid>
+          </HomeMainCont>
+        )}
 
-      {isTrainee && recentTrainers.length > 0 && (
-        <View style={styles.section}>
-          <SectionHeader title="Recent Trainers" />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.recentRow}>
+        {isTrainee && recentTrainers.length > 0 && (
+          <HomeMainCont
+            title="Recent Trainers"
+            testID="card rounded trainer-profile-card Select Recent Student"
+          >
+            <RecentUsersGrid accountIsTrainer={false}>
               {recentTrainers.map((u: any, i: number) => (
                 <RecentUserChip key={u._id ?? i} user={u} />
               ))}
-            </View>
-          </ScrollView>
-        </View>
-      )}
+            </RecentUsersGrid>
+          </HomeMainCont>
+        )}
+
+        {/* Web: `UploadClipCard` + `InviteFriendsCard` row */}
+        <HomeMainCont title="Locker" testID="card trainer-profile-card Home-main-Cont locker-promos">
+          <HomeUploadInviteRow
+            onUploads={() => openShell("uploads")}
+            onInvite={() => openFeature("friends")}
+          />
+        </HomeMainCont>
+      </View>
 
       {/* More shortcuts */}
       <View style={styles.section}>
@@ -565,16 +622,6 @@ const styles = StyleSheet.create({
   },
   loadingRow: { alignItems: "center", paddingVertical: space.lg },
 
-  // Coach cards
-  coachCard: {
-    width: 130,
-    alignItems: "center",
-    backgroundColor: "#f0f4ff",
-    borderRadius: radii.md,
-    padding: space.sm,
-    borderWidth: 1,
-    borderColor: "#dbeafe",
-  },
   coachName: { fontSize: 13, fontWeight: "700", color: "#111827", marginTop: space.xs, textAlign: "center" },
   coachCat: { fontSize: 11, color: "#6b7280", textAlign: "center", marginTop: 2 },
   bookBtn: {
@@ -603,20 +650,9 @@ const styles = StyleSheet.create({
   badge: { alignSelf: "flex-start", borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginTop: 4 },
   badgeText: { fontSize: 11, fontWeight: "600", color: "#374151", textTransform: "capitalize" },
 
-  // Recent users
-  recentRow: { flexDirection: "row", paddingHorizontal: space.md, gap: space.md },
   recentChip: { alignItems: "center", width: 68 },
   recentName: { fontSize: 11, color: "#111827", marginTop: 4, textAlign: "center", fontWeight: "500" },
 
-  // Friend requests
-  friendCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: space.md,
-    paddingVertical: space.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#e5e7eb",
-  },
   friendName: { fontSize: 14, fontWeight: "600", color: "#111827" },
   friendActions: { flexDirection: "row", gap: space.sm, marginTop: 6 },
   friendBtn: { borderRadius: radii.sm, paddingHorizontal: space.md, paddingVertical: 5 },
