@@ -6,11 +6,15 @@ export async function fetchOnlineUsers(): Promise<any[]> {
   return res.data?.result ?? res.data ?? [];
 }
 
+/** Backend returns `{ data: Session[], page, limit, hasMore, ... }` for scheduled-meetings. */
 export async function fetchScheduledMeetings(status = "upcoming"): Promise<any[]> {
   const res = await apiClient.get(API_ROUTES.user.scheduledMeetings, {
     params: { status },
   });
-  return res.data?.result ?? res.data ?? [];
+  const body = res.data?.result ?? res.data;
+  if (Array.isArray(body)) return body;
+  if (body && Array.isArray(body.data)) return body.data;
+  return [];
 }
 
 export async function fetchFriendRequests(): Promise<any[]> {

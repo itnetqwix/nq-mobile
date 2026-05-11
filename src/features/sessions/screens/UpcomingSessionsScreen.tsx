@@ -11,11 +11,14 @@ import {
 } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
 import { colors, radii, space } from "../../../theme/tokens";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { fetchScheduledMeetings } from "../../home/api/homeApi";
+import type { RootStackParamList } from "../../../navigation/types";
 
 const NAVY = "#000080";
 
@@ -77,14 +80,19 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
   const isTrainer = accountType === AccountType.TRAINER;
   const other = isTrainer ? session.trainee_info : session.trainer_info;
   const name = other?.fullname || other?.fullName || "Unknown";
-  const myRole = isTrainer ? "Trainer" : "Trainee";
   const theirRole = isTrainer ? "Student" : "Trainer";
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const date = session.booked_date ?? "";
   const time =
     session.start_time && session.end_time
       ? `${session.start_time} – ${session.end_time}`
       : "";
+
+  const handleJoin = () => {
+    const lessonId = session._id ?? session.id;
+    if (lessonId) navigation.navigate("Meeting", { lessonId });
+  };
 
   return (
     <View style={styles.card}>
@@ -116,9 +124,12 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
         </View>
       )}
 
-      {session.status === "upcoming" || session.status === "confirmed" ? (
+      {(session.status === "upcoming" || session.status === "confirmed") ? (
         <View style={styles.cardFooter}>
-          <Pressable style={styles.joinBtn}>
+          <Pressable
+            style={({ pressed }) => [styles.joinBtn, pressed && { opacity: 0.8 }]}
+            onPress={handleJoin}
+          >
             <Ionicons name="videocam-outline" size={16} color="#fff" />
             <Text style={styles.joinBtnText}>Join Session</Text>
           </Pressable>

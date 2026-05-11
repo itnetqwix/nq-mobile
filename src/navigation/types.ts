@@ -28,6 +28,7 @@ export type MainTabParamList = {
 export type RootStackParamList = {
   Auth: undefined;
   Main: undefined;
+  Meeting: { lessonId: string };
 };
 
 export type AuthScreenProps<T extends keyof AuthStackParamList> = NativeStackScreenProps<
