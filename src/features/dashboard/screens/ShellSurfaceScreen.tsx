@@ -5,9 +5,12 @@ import { NotificationsScreen } from "../../notifications/screens/NotificationsSc
 import { InviteFriendsScreen } from "./InviteFriendsScreen";
 import { TransactionsScreen } from "./TransactionsScreen";
 import { ClipsScreen } from "./ClipsScreen";
+import { EditProfileScreen } from "./EditProfileScreen";
 import { GamePlansScreen } from "./GamePlansScreen";
+import { ReportIssueScreen } from "./ReportIssueScreen";
 import { SavedLessonsScreen } from "./SavedLessonsScreen";
 import { SettingsScreen } from "./SettingsScreen";
+import { TrainerScheduleScreen } from "./TrainerScheduleScreen";
 
 export type ShellSurfaceScreenProps = NativeStackScreenProps<MenuStackParamList, "ShellSurface">;
 
@@ -29,6 +32,12 @@ export function ShellSurfaceScreen({ route }: ShellSurfaceScreenProps) {
       return <InviteFriendsScreen />;
     case "settings":
       return <SettingsScreen />;
+    case "trainerSchedule":
+      return <TrainerScheduleScreen />;
+    case "editProfile":
+      return <EditProfileScreen />;
+    case "reportIssue":
+      return <ReportIssueScreen />;
     default:
       return null;
   }

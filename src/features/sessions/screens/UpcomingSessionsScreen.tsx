@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -19,6 +19,26 @@ import { colors, radii, space } from "../../../theme/tokens";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { fetchScheduledMeetings } from "../../home/api/homeApi";
 import type { RootStackParamList } from "../../../navigation/types";
+
+/**
+ * Instant lessons must be joined within 1 hour of being booked. After that we hide them
+ * from the Upcoming / Confirmed tabs and the trainee can't join (web parity for the
+ * "lesson is no longer available" auto-expiry). Scheduled sessions are unaffected.
+ */
+const INSTANT_LESSON_JOIN_WINDOW_MS = 60 * 60 * 1000;
+
+function isInstantLesson(session: any): boolean {
+  if (typeof session?.is_instant === "boolean") return session.is_instant;
+  /** Defensive heuristic for legacy rows that pre-date the `is_instant` field. */
+  return !session?.time_zone && !session?.start_time && !session?.end_time;
+}
+
+function isInstantLessonExpired(session: any, nowMs: number): boolean {
+  if (!isInstantLesson(session)) return false;
+  const bookedAt = session?.booked_date ? new Date(session.booked_date).getTime() : NaN;
+  if (!Number.isFinite(bookedAt)) return false;
+  return nowMs - bookedAt > INSTANT_LESSON_JOIN_WINDOW_MS;
+}
 
 const NAVY = "#000080";
 
@@ -81,13 +101,16 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
   const other = isTrainer ? session.trainee_info : session.trainer_info;
   const name = other?.fullname || other?.fullName || "Unknown";
   const theirRole = isTrainer ? "Student" : "Trainer";
+  const instant = isInstantLesson(session);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const date = session.booked_date ?? "";
   const time =
     session.start_time && session.end_time
       ? `${session.start_time} – ${session.end_time}`
-      : "";
+      : instant && session.session_start_time && session.session_end_time
+        ? `${session.session_start_time} – ${session.session_end_time}`
+        : "";
 
   const handleJoin = () => {
     const lessonId = session._id ?? session.id;
@@ -117,10 +140,24 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
         <StatusBadge status={session.status} />
       </View>
 
-      {session.category && (
+      {(session.category || instant) && (
         <View style={styles.categoryRow}>
-          <Ionicons name="bookmark-outline" size={13} color="#6b7280" />
-          <Text style={styles.categoryText}>{session.category}</Text>
+          {instant ? (
+            <>
+              <Ionicons name="flash" size={13} color="#1d4ed8" />
+              <Text style={[styles.categoryText, { color: "#1d4ed8", fontWeight: "700" }]}>
+                Instant lesson
+              </Text>
+              {!!session.category && (
+                <Text style={styles.categoryText}>· {session.category}</Text>
+              )}
+            </>
+          ) : (
+            <>
+              <Ionicons name="bookmark-outline" size={13} color="#6b7280" />
+              <Text style={styles.categoryText}>{session.category}</Text>
+            </>
+          )}
         </View>
       )}
 
@@ -144,11 +181,35 @@ export function UpcomingSessionsScreen() {
   const [activeTab, setActiveTab] = useState<StatusTab>("upcoming");
   const queryClient = useQueryClient();
 
-  const { data: sessions = [], isLoading, isRefetching, refetch } = useQuery({
+  const { data: rawSessions = [], isLoading, isRefetching, refetch } = useQuery({
     queryKey: ["sessions", activeTab],
     queryFn: () => fetchScheduledMeetings(activeTab),
     staleTime: 60_000,
   });
+
+  /**
+   * Tick every 30 s while the screen is mounted so any instant lesson that crosses the
+   * 1-hour join window disappears without needing a manual refresh.
+   */
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const sessions = useMemo(() => {
+    const nowMs = Date.now();
+    /** Hide expired instant lessons from Upcoming + Confirmed; keep Completed/historical as-is. */
+    if (activeTab === "completed") return rawSessions;
+    return rawSessions.filter((s: any) => !isInstantLessonExpired(s, nowMs));
+  }, [rawSessions, activeTab]);
+
+  /** Silently refresh the cache when expired rows are filtered, so the count is honest after refresh. */
+  useEffect(() => {
+    if (rawSessions.length !== sessions.length) {
+      queryClient.invalidateQueries({ queryKey: ["sessions", activeTab] });
+    }
+  }, [rawSessions.length, sessions.length, queryClient, activeTab]);
 
   return (
     <View style={styles.root}>

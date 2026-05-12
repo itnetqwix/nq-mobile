@@ -50,6 +50,9 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
   const [categorySel, setCategorySel] = useState("");
   const [thumbBusy, setThumbBusy] = useState(false);
   const [uploadBusy, setUploadBusy] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
+  const [thumbProgress, setThumbProgress] = useState(0);
+  const [uploadPhase, setUploadPhase] = useState<"idle" | "video" | "thumb" | "finalize">("idle");
 
   const { data: categories = [], isLoading: catLoading } = useQuery<string[]>({
     queryKey: ["sportCategories"],
@@ -66,6 +69,9 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
       setCategorySel("");
       setThumbBusy(false);
       setUploadBusy(false);
+      setVideoProgress(0);
+      setThumbProgress(0);
+      setUploadPhase("idle");
     }
   }, [visible]);
 
@@ -131,6 +137,9 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
   const submit = async () => {
     if (!videoAsset || !thumbUri || !canSubmit) return;
     setUploadBusy(true);
+    setVideoProgress(0);
+    setThumbProgress(0);
+    setUploadPhase("finalize");
     try {
       const data = await postClipUploadSignUrls({
         clips: [
@@ -148,8 +157,15 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
       if (!row?.url || !row.thumbnailURL) {
         throw new Error(data.message ?? "Server did not return upload URLs.");
       }
-      await putFileToPresignedUrl(row.url, videoAsset.uri, videoMime);
-      await putFileToPresignedUrl(row.thumbnailURL, thumbUri, "image/jpeg");
+      setUploadPhase("video");
+      await putFileToPresignedUrl(row.url, videoAsset.uri, videoMime, ({ percent }) => {
+        setVideoProgress(percent);
+      });
+      setUploadPhase("thumb");
+      await putFileToPresignedUrl(row.thumbnailURL, thumbUri, "image/jpeg", ({ percent }) => {
+        setThumbProgress(percent);
+      });
+      setUploadPhase("finalize");
       Alert.alert("Uploaded", "Your clip is in your locker. It may take a moment to appear in the list.");
       onUploaded();
       onClose();
@@ -157,6 +173,7 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
       Alert.alert("Upload failed", getApiErrorMessage(e));
     } finally {
       setUploadBusy(false);
+      setUploadPhase("idle");
     }
   };
 
@@ -249,6 +266,46 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
                 </View>
               )}
             </>
+          )}
+
+          {uploadBusy && (
+            <View style={styles.progressBlock}>
+              <View style={styles.progressRow}>
+                <Text style={styles.progressLabel}>
+                  {uploadPhase === "video"
+                    ? "Uploading video…"
+                    : uploadPhase === "thumb"
+                    ? "Uploading thumbnail…"
+                    : "Preparing upload…"}
+                </Text>
+                <Text style={styles.progressPercent}>
+                  {uploadPhase === "video"
+                    ? `${videoProgress}%`
+                    : uploadPhase === "thumb"
+                    ? `${thumbProgress}%`
+                    : ""}
+                </Text>
+              </View>
+              <View style={styles.progressTrack}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      width: `${
+                        uploadPhase === "video"
+                          ? videoProgress
+                          : uploadPhase === "thumb"
+                          ? thumbProgress
+                          : 4
+                      }%`,
+                    },
+                  ]}
+                />
+              </View>
+              <Text style={styles.progressHint}>
+                Keep the app open until the upload completes.
+              </Text>
+            </View>
           )}
 
           <Pressable
@@ -347,4 +404,24 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
   },
   submitText: { fontSize: 16, fontWeight: "700", color: "#fff" },
+  progressBlock: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    padding: space.md,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  progressRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  progressLabel: { fontSize: 13, fontWeight: "600", color: colors.text },
+  progressPercent: { fontSize: 13, fontWeight: "700", color: colors.brandNavy, minWidth: 44, textAlign: "right" },
+  progressTrack: {
+    width: "100%",
+    height: 8,
+    backgroundColor: "#e5e7eb",
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  progressFill: { height: "100%", backgroundColor: colors.brandNavy, borderRadius: 4 },
+  progressHint: { fontSize: 11, color: colors.textMuted, fontStyle: "italic" },
 });

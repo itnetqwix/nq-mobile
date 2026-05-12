@@ -2,6 +2,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React from "react";
 import { BrandedSessionLoader } from "../components/brand/BrandedSessionLoader";
 import { useAuth } from "../features/auth/context/AuthContext";
+import { InstantLessonStatusBanner } from "../features/instant-lesson/InstantLessonStatusBanner";
 import { InstantLessonTraineeModal } from "../features/instant-lesson/InstantLessonTraineeModal";
 import { InstantLessonTrainerModal } from "../features/instant-lesson/InstantLessonTrainerModal";
 import { MeetingScreen } from "../features/meeting/screens/MeetingScreen";
@@ -27,6 +28,7 @@ export function RootNavigator() {
         <>
           <InstantLessonTrainerModal />
           <InstantLessonTraineeModal />
+          <InstantLessonStatusBanner />
         </>
       )}
 

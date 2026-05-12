@@ -11,12 +11,18 @@ type Props = {
   onGoBack: () => void;
 };
 
-export function WizardHeader({ step, stepNum, totalSteps, onGoBack }: Props) {
+export function WizardHeader({ step: _step, stepNum, totalSteps, onGoBack }: Props) {
+  /** On the first step, "back" dismisses the wizard, so show Close instead of Back. */
+  const isFirstStep = stepNum <= 1;
   return (
     <View style={styles.headerRow}>
       <Pressable onPress={onGoBack} style={styles.headerBtn} hitSlop={12}>
-        <Ionicons name={step === "intro" ? "close" : "chevron-back"} size={22} color={colors.brandNavy} />
-        <Text style={styles.headerBtnText}>{step === "intro" ? "Close" : "Back"}</Text>
+        <Ionicons
+          name={isFirstStep ? "close" : "chevron-back"}
+          size={22}
+          color={colors.brandNavy}
+        />
+        <Text style={styles.headerBtnText}>{isFirstStep ? "Close" : "Back"}</Text>
       </Pressable>
       <Text style={styles.stepPill}>
         Step {stepNum} of {totalSteps}

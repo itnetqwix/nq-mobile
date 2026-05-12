@@ -127,6 +127,66 @@ export async function postAccountPrivacy(isPrivate: boolean): Promise<void> {
   await apiClient.post(API_ROUTES.user.updateAccountPrivacy, { isPrivate });
 }
 
+export type ProfileUpdate = Partial<{
+  fullname: string;
+  bio: string;
+  time_zone: string;
+  category: string;
+  hourly_rate: string;
+}>;
+
+/**
+ * Web parity: trainer profile updates go through `PUT /trainer/profile`; trainee profile
+ * updates go through `PUT /trainee/profile`. Both routes spread the body into the user doc.
+ */
+export async function putProfile(accountType: "Trainer" | "Trainee", body: ProfileUpdate): Promise<void> {
+  const url = accountType === "Trainer" ? API_ROUTES.trainer.profile : API_ROUTES.trainee.profile;
+  await apiClient.put(url, body);
+}
+
+/** Mobile number changes use the dedicated route `POST /user/update-mobile-number` (same as web). */
+export async function postUpdateMobileNumber(mobile_no: string): Promise<void> {
+  await apiClient.post(API_ROUTES.user.updateMobileNumber, { mobile_no });
+}
+
+/**
+ * Web parity Contact Us / Write Us submission. Backend reads `description` (not `message`)
+ * and accepts optional sender identity fields.
+ */
+export type WriteUsPayload = {
+  name?: string;
+  email?: string;
+  phone_number?: string;
+  subject: string;
+  description: string;
+};
+
+export async function postWriteUs(payload: WriteUsPayload): Promise<void> {
+  await apiClient.post(API_ROUTES.user.writeUs, payload);
+}
+
+/**
+ * Web parity "Raise concern" — used for both "Report a technical issue" and "Request a refund".
+ * Tied to a specific booking via `booking_id`.
+ */
+export type RaiseConcernReason = "Technical issue" | "Request for Refund";
+
+export type RaiseConcernPayload = {
+  name?: string;
+  email?: string;
+  phone_number?: string;
+  reason: RaiseConcernReason;
+  subject: string;
+  description: string;
+  /** `"Yes"` / `"No"` — only meaningful when reason is "Technical issue". */
+  is_releted_to_refund?: "Yes" | "No";
+  booking_id: string;
+};
+
+export async function postRaiseConcern(payload: RaiseConcernPayload): Promise<void> {
+  await apiClient.post(API_ROUTES.user.raiseConcern, payload);
+}
+
 export async function fetchTrainersWithSlots(params?: { search?: string }): Promise<any[]> {
   const res = await apiClient.get(API_ROUTES.trainee.getTrainersWithSlots, { params });
   const body = res.data as Record<string, unknown>;
@@ -136,14 +196,22 @@ export async function fetchTrainersWithSlots(params?: { search?: string }): Prom
   return [];
 }
 
-export async function fetchTrainerSlots(): Promise<
-  { day: string; slots: { start_time?: string; end_time?: string }[] }[]
-> {
+export type TrainerScheduleDay = {
+  day: string;
+  slots: { start_time: string; end_time: string }[];
+};
+
+export async function fetchTrainerSlots(): Promise<TrainerScheduleDay[]> {
   const res = await apiClient.get(API_ROUTES.trainer.getSlots);
   const root = (res.data as any)?.data ?? (res.data as any)?.result ?? res.data;
   const avail = root?.available_slots;
-  if (Array.isArray(avail)) return avail;
+  if (Array.isArray(avail)) return avail as TrainerScheduleDay[];
   return [];
+}
+
+/** POST `/trainer/update-slots` — same payload as web `updateSchedulingSlots`. */
+export async function postTrainerSlots(payload: TrainerScheduleDay[]): Promise<void> {
+  await apiClient.post(API_ROUTES.trainer.updateSlots, { available_slots: payload });
 }
 
 /** POST `/common/get-clips` — returns clips grouped by category (`_id` = category name). */

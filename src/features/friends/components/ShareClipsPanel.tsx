@@ -66,7 +66,7 @@ export function ShareClipsPanel() {
       await postShareClipsToEmail(email, selectedClips);
       setEmail("");
       setSelected({});
-      Alert.alert("Sent", "Clips were shared by email (same as the website).");
+      Alert.alert("Sent", "Clips were shared by email.");
     } catch (e: any) {
       Alert.alert("Share failed", e?.message ?? "Could not share clips.");
     } finally {

@@ -43,6 +43,9 @@ function shellIcon(id: ShellSurfaceMeta["id"]): keyof typeof Ionicons.glyphMap {
     case "transactions": return "wallet-outline";
     case "meeting": return "videocam-outline";
     case "messenger": return "chatbubble-ellipses-outline";
+    case "trainerSchedule": return "calendar-outline";
+    case "editProfile": return "person-outline";
+    case "reportIssue": return "alert-circle-outline";
     default: return "ellipse-outline";
   }
 }

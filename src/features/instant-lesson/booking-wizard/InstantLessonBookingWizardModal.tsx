@@ -9,11 +9,10 @@ import { WizardTitleBlock } from "./WizardTitleBlock";
 import { WizardStepClips } from "./steps/WizardStepClips";
 import { WizardStepConfirm } from "./steps/WizardStepConfirm";
 import { WizardStepDuration } from "./steps/WizardStepDuration";
-import { WizardStepIntro } from "./steps/WizardStepIntro";
 
 /**
- * Trainee instant-lesson booking: multi-step flow (intro → duration → clips → confirm).
- * Orchestrates `useInstantLessonBookingWizard` + small step components under `steps/`.
+ * Trainee instant-lesson booking: multi-step flow (duration → clips → confirm).
+ * Mirrors the website which opens directly on the time / duration step (no intro page).
  */
 export function InstantLessonBookingWizardModal({ visible, trainer, onDismiss }: InstantLessonBookingWizardModalProps) {
   const insets = useSafeAreaInsets();
@@ -32,8 +31,6 @@ export function InstantLessonBookingWizardModal({ visible, trainer, onDismiss }:
           keyboardShouldPersistTaps="handled"
         >
           <WizardTitleBlock trainerName={w.trainerName} />
-
-          {w.step === "intro" && <WizardStepIntro onContinue={w.goNext} />}
 
           {w.step === "duration" && (
             <WizardStepDuration

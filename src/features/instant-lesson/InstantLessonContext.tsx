@@ -27,6 +27,11 @@ export type TraineeBooking = {
   traineeId: string;
   trainerName: string;
   step: "waiting" | "accepted" | "declined" | "expired";
+  /**
+   * When true, the full-screen waiting modal is hidden and only a small floating
+   * pill remains so the trainee can keep using the app while waiting.
+   */
+  minimized?: boolean;
 };
 
 type InstantLessonContextValue = {
@@ -37,6 +42,9 @@ type InstantLessonContextValue = {
   startBooking: (booking: Omit<TraineeBooking, "step"> & { durationMinutes?: number }) => void;
   cancelBooking: () => void;
   clearTraineeBooking: () => void;
+  minimizeBooking: () => void;
+  restoreBooking: () => void;
+  joinAcceptedLesson: () => void;
 };
 
 const InstantLessonContext = createContext<InstantLessonContextValue>({
@@ -47,6 +55,9 @@ const InstantLessonContext = createContext<InstantLessonContextValue>({
   startBooking: (_booking: Omit<TraineeBooking, "step"> & { durationMinutes?: number }) => {},
   cancelBooking: () => {},
   clearTraineeBooking: () => {},
+  minimizeBooking: () => {},
+  restoreBooking: () => {},
+  joinAcceptedLesson: () => {},
 });
 
 export function InstantLessonProvider({
@@ -91,19 +102,16 @@ export function InstantLessonProvider({
     socket.emit(EVENTS.REQUEST, payload);
   }, [socket]);
 
-  /** When the coach accepts, enter the same live meeting as the trainer (web parity — no extra “Join” tap). */
+  /**
+   * When the coach accepts, surface an in-app "Confirmed — tap to join" banner instead of
+   * auto-navigating. The trainee can be elsewhere in the app (because the waiting modal is
+   * dismissible now), so we keep the booking in `accepted` state until they tap Join.
+   */
   useEffect(() => {
     if (!traineeBooking) {
       traineeAutoMeetingLessonRef.current = null;
-      return;
     }
-    if (traineeBooking.step !== "accepted") return;
-    const lid = String(traineeBooking.lessonId);
-    if (traineeAutoMeetingLessonRef.current === lid) return;
-    traineeAutoMeetingLessonRef.current = lid;
-    onNavigateToMeeting(lid);
-    setTraineeBooking(null);
-  }, [traineeBooking, onNavigateToMeeting]);
+  }, [traineeBooking]);
 
   useEffect(() => {
     if (!socket) return;
@@ -267,6 +275,23 @@ export function InstantLessonProvider({
     setTraineeBooking(null);
   }, []);
 
+  const minimizeBooking = useCallback(() => {
+    setTraineeBooking((prev) => (prev ? { ...prev, minimized: true } : prev));
+  }, []);
+
+  const restoreBooking = useCallback(() => {
+    setTraineeBooking((prev) => (prev ? { ...prev, minimized: false } : prev));
+  }, []);
+
+  const joinAcceptedLesson = useCallback(() => {
+    if (!traineeBooking || traineeBooking.step !== "accepted") return;
+    const lid = String(traineeBooking.lessonId);
+    if (traineeAutoMeetingLessonRef.current === lid) return;
+    traineeAutoMeetingLessonRef.current = lid;
+    onNavigateToMeeting(lid);
+    setTraineeBooking(null);
+  }, [traineeBooking, onNavigateToMeeting]);
+
   const value = useMemo(
     () => ({
       trainerIncoming,
@@ -276,8 +301,22 @@ export function InstantLessonProvider({
       startBooking,
       cancelBooking,
       clearTraineeBooking,
+      minimizeBooking,
+      restoreBooking,
+      joinAcceptedLesson,
     }),
-    [trainerIncoming, traineeBooking, acceptRequest, declineRequest, startBooking, cancelBooking, clearTraineeBooking]
+    [
+      trainerIncoming,
+      traineeBooking,
+      acceptRequest,
+      declineRequest,
+      startBooking,
+      cancelBooking,
+      clearTraineeBooking,
+      minimizeBooking,
+      restoreBooking,
+      joinAcceptedLesson,
+    ]
   );
 
   return <InstantLessonContext.Provider value={value}>{children}</InstantLessonContext.Provider>;

@@ -34,7 +34,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
   const { user } = useAuth();
   const { startBooking } = useInstantLesson();
 
-  const [step, setStep] = useState<WizardStep>("intro");
+  const [step, setStep] = useState<WizardStep>("duration");
   const [durationMinutes, setDurationMinutes] = useState(30);
   const [couponCode, setCouponCode] = useState("");
   const [couponError, setCouponError] = useState("");
@@ -44,7 +44,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
   const tname = trainerNameOf(trainer);
 
   const resetWizard = useCallback(() => {
-    setStep("intro");
+    setStep("duration");
     setDurationMinutes(30);
     setCouponCode("");
     setCouponError("");

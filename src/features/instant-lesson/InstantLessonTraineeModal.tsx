@@ -21,8 +21,8 @@ import {
   addTraineeClipsToBookedSession,
   fetchMyClipsGrouped,
   flattenGroupedClips,
-  type ClipRow,
 } from "./instantLessonClipsApi";
+import { ClipPickerRow } from "./components/ClipPickerRow";
 
 const MAX_CLIPS = 2;
 
@@ -34,10 +34,23 @@ const MAX_CLIPS = 2;
 export function InstantLessonTraineeModal() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const queryClient = useQueryClient();
-  const { traineeBooking, cancelBooking, clearTraineeBooking } = useInstantLesson();
+  const {
+    traineeBooking,
+    cancelBooking,
+    clearTraineeBooking,
+    minimizeBooking,
+  } = useInstantLesson();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  const visible = !!traineeBooking;
+  /**
+   * Show the full-screen modal only when the trainee hasn't minimized it AND the step
+   * isn't `accepted` (the accepted state is surfaced via a separate banner so it can
+   * appear anywhere in the app).
+   */
+  const visible =
+    !!traineeBooking &&
+    !traineeBooking.minimized &&
+    traineeBooking.step !== "accepted";
   const lessonId = traineeBooking?.lessonId ?? "";
 
   const openUploadsShell = () => {
@@ -109,7 +122,7 @@ export function InstantLessonTraineeModal() {
     ]);
   };
 
-  if (!traineeBooking) return null;
+  if (!traineeBooking || !visible) return null;
 
   const { step, trainerName } = traineeBooking;
 
@@ -139,26 +152,14 @@ export function InstantLessonTraineeModal() {
               <RefreshControl refreshing={clipsRefetching} onRefresh={() => refetchClips()} tintColor={colors.brandNavy} />
             }
           >
-            {flatClips.map((clip: ClipRow) => {
-              const on = selectedIds.includes(clip._id);
-              const label = clip.title || clip.name || "Untitled clip";
-              return (
-                <Pressable
-                  key={clip._id}
-                  style={[styles.clipRow, on && styles.clipRowOn]}
-                  onPress={() => toggleClip(clip._id)}
-                >
-                  <Ionicons
-                    name={on ? "checkbox" : "square-outline"}
-                    size={22}
-                    color={on ? colors.brandNavy : "#9ca3af"}
-                  />
-                  <Text style={styles.clipLabel} numberOfLines={2}>
-                    {label}
-                  </Text>
-                </Pressable>
-              );
-            })}
+            {flatClips.map((clip) => (
+              <ClipPickerRow
+                key={clip._id}
+                clip={clip}
+                selected={selectedIds.includes(clip._id)}
+                onToggle={toggleClip}
+              />
+            ))}
           </ScrollView>
         )}
 
@@ -185,24 +186,33 @@ export function InstantLessonTraineeModal() {
     );
 
   return (
-    <Modal visible transparent animationType="fade" statusBarTranslucent>
+    <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={minimizeBooking}>
       <View style={styles.backdrop}>
         <View style={styles.card}>
           {step === "waiting" && (
             <>
+              <Pressable style={styles.closeBtn} onPress={minimizeBooking} hitSlop={12}>
+                <Ionicons name="chevron-down" size={22} color="#6b7280" />
+              </Pressable>
               <ActivityIndicator size="large" color={colors.brandNavy} />
               <Text style={styles.title}>Instant lesson</Text>
               <Text style={styles.sub}>
                 Waiting for <Text style={{ fontWeight: "700" }}>{trainerName}</Text> to accept…
               </Text>
               <Text style={styles.hint}>
-                When the coach accepts, you and the coach both enter the live session (same as the website).
-                You can add clips while you wait (optional).
+                Tap the down-arrow to keep browsing the app while you wait. You'll get a notification
+                when the coach confirms.
               </Text>
               {clipPicker}
-              <Pressable style={styles.secondaryBtn} onPress={handleCancel}>
-                <Text style={styles.secondaryBtnText}>Cancel request</Text>
-              </Pressable>
+              <View style={styles.waitingActions}>
+                <Pressable style={styles.minimizeBtn} onPress={minimizeBooking}>
+                  <Ionicons name="contract-outline" size={16} color={colors.brandNavy} />
+                  <Text style={styles.minimizeBtnText}>Wait in background</Text>
+                </Pressable>
+                <Pressable style={styles.secondaryBtn} onPress={handleCancel}>
+                  <Text style={styles.secondaryBtnText}>Cancel request</Text>
+                </Pressable>
+              </View>
             </>
           )}
 
@@ -260,20 +270,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   uploadLinkText: { fontSize: 14, fontWeight: "600", color: colors.sidebarActive },
-  clipList: { maxHeight: 160 },
-  clipRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 6,
-  },
-  clipRowOn: { borderColor: colors.brandNavy, backgroundColor: "#f0f4ff" },
-  clipLabel: { flex: 1, fontSize: 14, color: "#111827" },
+  clipList: { maxHeight: 220 },
   emptyClips: { fontSize: 13, color: "#9ca3af", fontStyle: "italic" },
   selectedCount: { fontSize: 12, color: "#6b7280" },
   attachBtn: {
@@ -292,4 +289,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   secondaryBtnText: { fontSize: 15, fontWeight: "600", color: "#374151" },
+  closeBtn: { position: "absolute", top: space.sm, right: space.sm, padding: 4, zIndex: 1 },
+  waitingActions: { gap: space.xs },
+  minimizeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#f0f4ff",
+    borderRadius: radii.md,
+    paddingVertical: 12,
+  },
+  minimizeBtnText: { fontSize: 14, fontWeight: "700", color: colors.brandNavy },
 });

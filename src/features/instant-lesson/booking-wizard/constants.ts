@@ -10,7 +10,11 @@ export const INSTANT_LESSON_DURATIONS = [
 
 export const MAX_CLIPS = 2;
 
-export const WIZARD_STEPS: readonly WizardStep[] = ["intro", "duration", "clips", "confirm"];
+/**
+ * Web parity: the website goes straight to the time / duration step (no separate intro page).
+ * `"intro"` is still in `WizardStep` for type-compat but not part of the active flow.
+ */
+export const WIZARD_STEPS: readonly WizardStep[] = ["duration", "clips", "confirm"];
 
 export function wizardStepIndex(step: WizardStep): number {
   return WIZARD_STEPS.indexOf(step);

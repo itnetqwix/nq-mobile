@@ -10,10 +10,11 @@ import {
   Text,
   View,
 } from "react-native";
-import { colors, radii, space } from "../../../../theme/tokens";
+import { colors, space } from "../../../../theme/tokens";
 import type { ClipGroup, ClipRow } from "../../instantLessonClipsApi";
 import { MAX_CLIPS } from "../constants";
 import { sharedStepStyles } from "../sharedStepStyles";
+import { ClipPickerRow } from "../../components/ClipPickerRow";
 
 type Props = {
   clipsQuery: UseQueryResult<ClipGroup[], Error>;
@@ -55,26 +56,14 @@ export function WizardStepClips({
             />
           }
         >
-          {flatClips.map((clip) => {
-            const on = selectedClipIds.includes(clip._id);
-            const label = clip.title || clip.name || "Untitled clip";
-            return (
-              <Pressable
-                key={clip._id}
-                style={[styles.clipRow, on && styles.clipRowOn]}
-                onPress={() => onToggleClip(clip._id)}
-              >
-                <Ionicons
-                  name={on ? "checkbox" : "square-outline"}
-                  size={22}
-                  color={on ? colors.brandNavy : "#9ca3af"}
-                />
-                <Text style={styles.clipLabel} numberOfLines={2}>
-                  {label}
-                </Text>
-              </Pressable>
-            );
-          })}
+          {flatClips.map((clip) => (
+            <ClipPickerRow
+              key={clip._id}
+              clip={clip}
+              selected={selectedClipIds.includes(clip._id)}
+              onToggle={onToggleClip}
+            />
+          ))}
         </ScrollView>
       )}
       <Text style={sharedStepStyles.mutedSmall}>
@@ -95,18 +84,5 @@ export function WizardStepClips({
 }
 
 const styles = StyleSheet.create({
-  clipScroll: { maxHeight: 220, marginTop: space.sm },
-  clipRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 8,
-  },
-  clipRowOn: { borderColor: colors.brandNavy, backgroundColor: colors.sidebarActiveBg },
-  clipLabel: { flex: 1, fontSize: 14, color: colors.text },
+  clipScroll: { maxHeight: 260, marginTop: space.sm },
 });

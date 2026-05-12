@@ -194,25 +194,68 @@ export function SettingsScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account</Text>
         <View style={styles.sectionCard}>
-          {accountRows.map((row, ri) => (
+          {accountRows.map((row, ri) => {
+            const isEditable = row.label === "Name";
+            return (
+              <Pressable
+                key={row.label}
+                style={({ pressed }) => [
+                  styles.row,
+                  ri < accountRows.length - 1 && styles.rowBorder,
+                  pressed && isEditable && { backgroundColor: "#f9fafb" },
+                ]}
+                onPress={isEditable ? () => openShell("editProfile") : undefined}
+                disabled={!isEditable}
+              >
+                <View style={styles.rowIcon}>
+                  <Ionicons name={row.icon} size={18} color={NAVY} />
+                </View>
+                <Text style={styles.rowLabel}>{row.label}</Text>
+                <View style={styles.rowRight}>
+                  <Text style={styles.rowValue} numberOfLines={1}>
+                    {row.value}
+                  </Text>
+                  {isEditable && (
+                    <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
+                  )}
+                </View>
+              </Pressable>
+            );
+          })}
+          <Pressable
+            style={({ pressed }) => [
+              styles.row,
+              { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#f3f4f6" },
+              pressed && { backgroundColor: "#f9fafb" },
+            ]}
+            onPress={() => openShell("editProfile")}
+          >
+            <View style={styles.rowIcon}>
+              <Ionicons name="create-outline" size={18} color={NAVY} />
+            </View>
+            <Text style={styles.rowLabel}>Edit profile</Text>
+            <View style={styles.rowRight}>
+              <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
+            </View>
+          </Pressable>
+          {isTrainer && (
             <Pressable
-              key={row.label}
               style={({ pressed }) => [
                 styles.row,
-                ri < accountRows.length - 1 && styles.rowBorder,
+                { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#f3f4f6" },
                 pressed && { backgroundColor: "#f9fafb" },
               ]}
-              disabled
+              onPress={() => openShell("trainerSchedule")}
             >
               <View style={styles.rowIcon}>
-                <Ionicons name={row.icon} size={18} color={NAVY} />
+                <Ionicons name="calendar-outline" size={18} color={NAVY} />
               </View>
-              <Text style={styles.rowLabel}>{row.label}</Text>
+              <Text style={styles.rowLabel}>My schedule</Text>
               <View style={styles.rowRight}>
-                <Text style={styles.rowValue} numberOfLines={1}>{row.value}</Text>
+                <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
               </View>
             </Pressable>
-          ))}
+          )}
         </View>
       </View>
 

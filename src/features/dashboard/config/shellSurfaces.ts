@@ -14,6 +14,9 @@ export const UTILITY_SURFACE_IDS = [
   "notifications",
   "settings",
   "transactions",
+  "trainerSchedule",
+  "editProfile",
+  "reportIssue",
 ] as const;
 export type UtilitySurfaceId = (typeof UTILITY_SURFACE_IDS)[number];
 
@@ -73,6 +76,28 @@ export const SHELL_SURFACES: readonly ShellSurfaceMeta[] = [
     title: "Transactions",
     subtitle: "Payments and wallet activity.",
     webContext: "Left sidebar → Transactions (`ToggleTab(\"transaction\")`).",
+    allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
+  },
+  {
+    id: "trainerSchedule",
+    title: "My schedule",
+    subtitle: "Weekly availability — same as the website schedule.",
+    webContext: "Left sidebar → Schedule Inventory (`POST /trainer/update-slots`).",
+    allowedRoles: [AccountType.TRAINER],
+  },
+  {
+    id: "editProfile",
+    title: "Edit profile",
+    subtitle: "Update your name, mobile, and other personal details.",
+    webContext: "Web profile editor (`/trainee/profile` / `/trainer/profile`).",
+    allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
+  },
+  {
+    id: "reportIssue",
+    title: "Report an issue",
+    subtitle:
+      "Pick a session and report a technical issue or request a refund — same as the website.",
+    webContext: "Web Contact Us → Report Technical / Refund (`POST /user/raise-concern`).",
     allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
   },
   {
