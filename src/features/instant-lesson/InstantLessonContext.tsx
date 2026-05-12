@@ -9,6 +9,11 @@ import React, {
 } from "react";
 import { useSocket } from "../socket/SocketContext";
 import { useAuth } from "../auth/context/AuthContext";
+import {
+  NOTIFICATION_TITLES,
+  NOTIFICATION_TYPES,
+  useNotifications,
+} from "../notifications/NotificationContext";
 import { INSTANT_LESSON_SOCKET as EVENTS } from "./instantLessonSocketEvents";
 
 export type TrainerIncoming = {
@@ -69,6 +74,7 @@ export function InstantLessonProvider({
 }) {
   const { socket } = useSocket();
   const { user, status: authStatus } = useAuth();
+  const { emitNotification } = useNotifications();
   const [trainerIncoming, setTrainerIncoming] = useState<TrainerIncoming | null>(null);
   const [traineeBooking, setTraineeBooking] = useState<TraineeBooking | null>(null);
   const expiryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -198,11 +204,37 @@ export function InstantLessonProvider({
       coachId: trainerIncoming.coachId,
       traineeId: trainerIncoming.traineeId,
     });
+
+    /**
+     * Persistent inbox entry for the trainee — same `Session Confirmation` title the web
+     * uses (`TrainerRenderBooking.jsx`). The trainee also sees the floating banner from
+     * `InstantLessonStatusBanner`, but this guarantees an audit trail in their inbox.
+     */
+    const trainerName = String(
+      (user as Record<string, unknown>)?.fullname ??
+        (user as Record<string, unknown>)?.fullName ??
+        "Your coach"
+    );
+    emitNotification({
+      title: NOTIFICATION_TITLES.sessionConfirmation,
+      description: `${trainerName} accepted your instant lesson. Tap Join to enter the session.`,
+      receiverId: trainerIncoming.traineeId,
+      type: NOTIFICATION_TYPES.TRANSCATIONAL,
+      bookingInfo: { lessonId: trainerIncoming.lessonId, isInstant: true },
+    });
+
     clearExpiryTimer();
     const lessonId = trainerIncoming.lessonId;
     setTrainerIncoming(null);
     onNavigateToMeeting(lessonId);
-  }, [trainerIncoming, socket, clearExpiryTimer, onNavigateToMeeting]);
+  }, [
+    trainerIncoming,
+    socket,
+    clearExpiryTimer,
+    onNavigateToMeeting,
+    emitNotification,
+    user,
+  ]);
 
   const declineRequest = useCallback(() => {
     if (!trainerIncoming || !socket) return;

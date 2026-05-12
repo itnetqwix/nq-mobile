@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Pressable,
   RefreshControl,
@@ -41,15 +42,42 @@ export function GamePlansScreen() {
   }, [reportsQ.data]);
 
   const openPlan = (item: any) => {
+    /**
+     * Game plans can come back in two shapes from `POST /report/get-all`:
+     *   • `reportData[0].imageUrl`  — image-based plans authored on web.
+     *   • `session.report`          — PDF file key stored on `booked_sessions.report`.
+     * The session can also carry a `sessionRecordingUrl` (video) when the trainer
+     * recorded the lesson. Surface the best available artifact in that order.
+     */
     const img = item?.reportData?.[0]?.imageUrl;
     const title = item?.reportData?.[0]?.title ?? "Game plan";
     const pdfName = item?.session?.report;
+    const recording = item?.session?.sessionRecordingUrl ?? item?.sessionRecordingUrl;
+
     const fromImg = img ? getS3ImageUrl(img) : "";
     const fromPdf = pdfName ? getS3ImageUrl(pdfName) : "";
-    const uri = fromImg || fromPdf;
-    if (!uri) return;
-    const mode: LockerViewerMode =
-      isLikelyPdf(uri) || isLikelyPdf(pdfName) ? "pdf" : fromImg ? "image" : "pdf";
+    const fromRec =
+      typeof recording === "string" && recording.length > 0
+        ? getS3ImageUrl(recording)
+        : "";
+
+    const uri = fromImg || fromPdf || fromRec;
+    if (!uri) {
+      Alert.alert(
+        "Nothing to preview",
+        "This game plan doesn't have an attached image, PDF, or recording yet."
+      );
+      return;
+    }
+
+    let mode: LockerViewerMode;
+    if (fromImg && !isLikelyPdf(fromImg)) {
+      mode = "image";
+    } else if (fromPdf || isLikelyPdf(uri)) {
+      mode = "pdf";
+    } else {
+      mode = "video";
+    }
     setViewer({ uri, title, mode });
   };
 

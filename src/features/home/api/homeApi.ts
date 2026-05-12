@@ -286,7 +286,28 @@ export async function fetchFriends(): Promise<any[]> {
   return res.data?.friends ?? res.data ?? [];
 }
 
-export async function fetchAllUsers(): Promise<any[]> {
-  const res = await apiClient.get(API_ROUTES.user.getAllUsers);
+export async function fetchAllUsers(search?: string): Promise<any[]> {
+  /**
+   * Backend (`/user/get-all-users`) supports an optional `search` regex on `fullname` + `email`.
+   * Used by mobile share-clips to enforce "recipients must be on NetQwix".
+   */
+  const res = await apiClient.get(API_ROUTES.user.getAllUsers, {
+    params: search ? { search } : undefined,
+  });
   return res.data?.result ?? res.data ?? [];
+}
+
+/**
+ * Check whether an email belongs to a NetQwix user. Returns the matching user record
+ * (or `null` if not found). The backend regex matches case-insensitively, so we filter
+ * client-side for an exact email match before accepting it as a recipient.
+ */
+export async function findNetqwixUserByEmail(email: string): Promise<any | null> {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return null;
+  const users = await fetchAllUsers(normalized);
+  const match = users.find(
+    (u: any) => typeof u?.email === "string" && u.email.toLowerCase() === normalized
+  );
+  return match ?? null;
 }

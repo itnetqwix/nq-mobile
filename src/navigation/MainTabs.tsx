@@ -10,11 +10,13 @@ import { MenuNavigator } from "./MenuNavigator";
 import type { MainTabParamList } from "./types";
 import { useAuth } from "../features/auth/context/AuthContext";
 import { AccountType } from "../constants/accountType";
+import { useNotifications } from "../features/notifications/NotificationContext";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export function MainTabs() {
   const { accountType } = useAuth();
+  const { unreadCount } = useNotifications();
   const isTrainer = accountType === AccountType.TRAINER;
 
   // Schedule tab shows "Schedule" for trainers, "Sessions" for trainees — mirrors website sidebar
@@ -89,6 +91,9 @@ export function MainTabs() {
             <Ionicons name="menu-outline" color={color} size={size} />
           ),
           tabBarLabel: "More",
+          /** Web parity badge: surface the inbox count on the bottom-tab "More" entry. */
+          tabBarBadge: unreadCount > 0 ? (unreadCount > 99 ? "99+" : unreadCount) : undefined,
+          tabBarBadgeStyle: { backgroundColor: "#dc2626", color: "#fff", fontWeight: "700" },
         }}
       />
     </Tab.Navigator>

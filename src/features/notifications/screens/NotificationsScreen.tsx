@@ -1,5 +1,5 @@
 import { useFocusEffect } from "@react-navigation/native";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback } from "react";
 import {
@@ -11,10 +11,8 @@ import {
   View,
 } from "react-native";
 import { radii, space } from "../../../theme/tokens";
-import {
-  fetchNotifications,
-  patchNotificationsMarkRead,
-} from "../../home/api/homeApi";
+import { fetchNotifications } from "../../home/api/homeApi";
+import { useNotifications } from "../NotificationContext";
 
 const NAVY = "#000080";
 
@@ -75,7 +73,7 @@ function NotificationItem({ item }: { item: any }) {
 }
 
 export function NotificationsScreen() {
-  const queryClient = useQueryClient();
+  const { markFirstPageRead, refreshInbox } = useNotifications();
 
   const { data: notifications = [], isLoading, isRefetching, refetch } = useQuery({
     queryKey: ["notifications"],
@@ -88,10 +86,8 @@ export function NotificationsScreen() {
       let cancelled = false;
       (async () => {
         try {
-          await patchNotificationsMarkRead(1);
-          if (!cancelled) {
-            queryClient.invalidateQueries({ queryKey: ["notifications"] });
-          }
+          await markFirstPageRead();
+          if (!cancelled) await refreshInbox();
         } catch {
           /* non-blocking */
         }
@@ -99,7 +95,7 @@ export function NotificationsScreen() {
       return () => {
         cancelled = true;
       };
-    }, [queryClient])
+    }, [markFirstPageRead, refreshInbox])
   );
 
   if (isLoading) {

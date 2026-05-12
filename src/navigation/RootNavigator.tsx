@@ -6,6 +6,7 @@ import { InstantLessonStatusBanner } from "../features/instant-lesson/InstantLes
 import { InstantLessonTraineeModal } from "../features/instant-lesson/InstantLessonTraineeModal";
 import { InstantLessonTrainerModal } from "../features/instant-lesson/InstantLessonTrainerModal";
 import { MeetingScreen } from "../features/meeting/screens/MeetingScreen";
+import { NotificationToast } from "../features/notifications/NotificationToast";
 import { AuthNavigator } from "./AuthNavigator";
 import { DashboardDrawerShell } from "./DashboardDrawerShell";
 import type { RootStackParamList } from "./types";
@@ -29,6 +30,10 @@ export function RootNavigator() {
           <InstantLessonTrainerModal />
           <InstantLessonTraineeModal />
           <InstantLessonStatusBanner />
+          {/* Live notification banner — uses the navigation context so it can deep-link
+              into the inbox; lives inside NavigationContainer scope by virtue of being
+              rendered from RootNavigator. */}
+          <NotificationToast />
         </>
       )}
 

@@ -1,4 +1,4 @@
-import { NavigationContainer, createNavigationContainerRef } from "@react-navigation/native";
+import { NavigationContainer } from "@react-navigation/native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useMemo } from "react";
@@ -8,10 +8,9 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider } from "../features/auth/context/AuthContext";
 import { SocketProvider } from "../features/socket/SocketContext";
 import { InstantLessonProvider } from "../features/instant-lesson/InstantLessonContext";
+import { NotificationProvider } from "../features/notifications/NotificationContext";
 import { RootNavigator } from "../navigation/RootNavigator";
-import type { RootStackParamList } from "../navigation/types";
-
-const navigationRef = createNavigationContainerRef<RootStackParamList>();
+import { navigationRef } from "../navigation/navigationRef";
 
 export function AppRoot() {
   const queryClient = useMemo(
@@ -46,12 +45,14 @@ export function AppRoot() {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <SocketProvider>
-              <InstantLessonProvider onNavigateToMeeting={navigateToMeeting}>
-                <NavigationContainer ref={navigationRef}>
-                  <StatusBar style="dark" />
-                  <RootNavigator />
-                </NavigationContainer>
-              </InstantLessonProvider>
+              <NotificationProvider>
+                <InstantLessonProvider onNavigateToMeeting={navigateToMeeting}>
+                  <NavigationContainer ref={navigationRef}>
+                    <StatusBar style="dark" />
+                    <RootNavigator />
+                  </NavigationContainer>
+                </InstantLessonProvider>
+              </NotificationProvider>
             </SocketProvider>
           </AuthProvider>
         </QueryClientProvider>

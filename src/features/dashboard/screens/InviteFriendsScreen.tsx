@@ -11,28 +11,45 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { radii, space } from "../../../theme/tokens";
+import { useAuth } from "../../auth/context/AuthContext";
 import { postInviteFriendEmail } from "../../home/api/homeApi";
+import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 
 const NAVY = "#000080";
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function InviteFriendsScreen() {
+  const { user } = useAuth();
   const [text, setText] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
+  const [lastSent, setLastSent] = useState<string[]>([]);
+
+  /**
+   * The backend sends the invite email **only** when the inviter's
+   * `notifications.promotional.email` toggle is true (see
+   * `nq-backend-main/src/modules/user/userService.ts#inviteFriend`). If it's off, the row
+   * is still inserted into `ReferredUser` but no mail goes out — the user sees nothing
+   * delivered, which is the usual cause of "invite friends isn't working". Surface that
+   * gotcha right on the screen.
+   */
+  const notifications = (user?.notifications as any) ?? {};
+  const promoEmailEnabled = notifications?.promotional?.email !== false;
 
   const { validEmails, invalidEmails, parsedCount } = useMemo(() => {
     const parsed = text
-      .split(",")
-      .map((e) => e.trim())
+      .split(/[,;\s]+/)
+      .map((e) => e.trim().toLowerCase())
       .filter(Boolean);
-    const valid = parsed.filter((e) => emailRegex.test(e));
-    const invalid = parsed.filter((e) => e && !emailRegex.test(e));
-    return { validEmails: valid, invalidEmails: invalid, parsedCount: parsed.length };
+    const dedup = Array.from(new Set(parsed));
+    const valid = dedup.filter((e) => emailRegex.test(e));
+    const invalid = dedup.filter((e) => e && !emailRegex.test(e));
+    return { validEmails: valid, invalidEmails: invalid, parsedCount: dedup.length };
   }, [text]);
 
   const sendInvites = useCallback(async () => {
     setErr("");
+    setLastSent([]);
     if (validEmails.length === 0) {
       setErr("Enter at least one valid email address.");
       return;
@@ -43,26 +60,49 @@ export function InviteFriendsScreen() {
     }
 
     setLoading(true);
-    const failed: string[] = [];
-    await Promise.all(
-      validEmails.map(async (email) => {
-        try {
-          await postInviteFriendEmail(email);
-        } catch {
-          failed.push(email);
-        }
-      })
-    );
+    /**
+     * Sequential sends avoid rate-limit / SMTP flooding (web does serial-ish bursts too).
+     * Track per-address failures so we can show partial success instead of all-or-nothing.
+     */
+    const ok: string[] = [];
+    const failed: { email: string; reason: string }[] = [];
+    for (const email of validEmails) {
+      try {
+        await postInviteFriendEmail(email);
+        ok.push(email);
+      } catch (e) {
+        failed.push({ email, reason: getApiErrorMessage(e, "Send failed") });
+      }
+    }
     setLoading(false);
 
-    if (failed.length) {
-      setErr(`Failed for: ${failed.join(", ")}`);
+    setLastSent(ok);
+    if (failed.length && ok.length) {
+      Alert.alert(
+        "Some invites failed",
+        `Sent: ${ok.length}\nFailed: ${failed
+          .map((f) => `${f.email} (${f.reason})`)
+          .join(", ")}`
+      );
+      setText(failed.map((f) => f.email).join(", "));
+    } else if (failed.length) {
+      setErr(
+        `Failed for: ${failed.map((f) => f.email).join(", ")}. ` +
+          (promoEmailEnabled
+            ? ""
+            : "Promotional email is off in your account — turn it on in Settings → Notifications.")
+      );
     } else {
       setText("");
       setErr("");
-      Alert.alert("Invitations sent", "Your friends should receive an email shortly.");
+      Alert.alert(
+        "Invitations sent",
+        promoEmailEnabled
+          ? `Sent ${ok.length} invitation${ok.length === 1 ? "" : "s"}. Your friends should receive an email shortly.`
+          : `Sent ${ok.length} ${ok.length === 1 ? "invitation" : "invitations"}, but promotional email is OFF on your account, so delivery may be skipped server-side. Enable it in Settings → Notifications.`
+      );
     }
-  }, [validEmails]);
+  }, [validEmails, promoEmailEnabled]);
 
   return (
     <ScrollView
@@ -73,9 +113,17 @@ export function InviteFriendsScreen() {
       <View style={styles.card}>
         <Text style={styles.title}>Invite friends</Text>
         <Text style={styles.sub}>
-          Same flow as the website: we email each address using your account (promotional email
-          must stay enabled in settings for delivery).
+          Same flow as the website: we email each address from your account.
         </Text>
+
+        {!promoEmailEnabled && (
+          <View style={styles.warnBox}>
+            <Text style={styles.warnText}>
+              Heads up: promotional email is currently OFF for your account, so the backend
+              skips sending invites. Enable it in Settings → Notifications to deliver.
+            </Text>
+          </View>
+        )}
 
         <Text style={styles.label}>Email addresses</Text>
         <TextInput
@@ -124,9 +172,21 @@ export function InviteFriendsScreen() {
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.btnText}>Send invites</Text>
+            <Text style={styles.btnText}>
+              Send {validEmails.length > 0 ? `${validEmails.length} ` : ""}invite
+              {validEmails.length === 1 ? "" : "s"}
+            </Text>
           )}
         </Pressable>
+
+        {lastSent.length > 0 && (
+          <View style={styles.okBox}>
+            <Ionicons name="mail-open-outline" size={18} color="#15803d" />
+            <Text style={styles.okText}>
+              Last sent to: {lastSent.join(", ")}
+            </Text>
+          </View>
+        )}
       </View>
     </ScrollView>
   );
@@ -182,6 +242,17 @@ const styles = StyleSheet.create({
     padding: space.sm,
   },
   errText: { flex: 1, fontSize: 13, color: "#b91c1c", lineHeight: 18 },
+
+  okBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#dcfce7",
+    borderRadius: radii.sm,
+    padding: space.sm,
+    marginTop: space.sm,
+  },
+  okText: { flex: 1, fontSize: 12, color: "#15803d", lineHeight: 17 },
 
   btn: {
     marginTop: space.sm,

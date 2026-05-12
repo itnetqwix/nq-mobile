@@ -4,6 +4,11 @@ import { Alert } from "react-native";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { useAuth } from "../../auth/context/AuthContext";
+import {
+  NOTIFICATION_TITLES,
+  NOTIFICATION_TYPES,
+  useNotifications,
+} from "../../notifications/NotificationContext";
 import { useInstantLesson } from "../InstantLessonContext";
 import {
   addTraineeClipsToBookedSession,
@@ -33,6 +38,7 @@ type UseWizardArgs = {
 export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: UseWizardArgs) {
   const { user } = useAuth();
   const { startBooking } = useInstantLesson();
+  const { emitNotification } = useNotifications();
 
   const [step, setStep] = useState<WizardStep>("duration");
   const [durationMinutes, setDurationMinutes] = useState(30);
@@ -124,6 +130,24 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
         traineeId,
         trainerName: tname,
         durationMinutes,
+      });
+
+      /**
+       * Web parity: emit a "New Booking Request" notification to the trainer over the same
+       * `'send'` socket channel the website uses. The backend persists it and re-emits
+       * `'receive'` to the trainer — landing it in their inbox + toast.
+       */
+      const traineeName = String(
+        (user as Record<string, unknown>)?.fullname ??
+          (user as Record<string, unknown>)?.fullName ??
+          "A trainee"
+      );
+      emitNotification({
+        title: NOTIFICATION_TITLES.newBookingRequest,
+        description: `${traineeName} just requested an instant lesson (${durationMinutes} min). Open the app to accept.`,
+        receiverId: tid,
+        type: NOTIFICATION_TYPES.TRANSCATIONAL,
+        bookingInfo: { lessonId, durationMinutes, isInstant: true },
       });
     },
     onSuccess: () => {
