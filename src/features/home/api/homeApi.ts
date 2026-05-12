@@ -1,9 +1,43 @@
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 
+/**
+ * `/user/all-online-user` returns `ResponseBuilder` JSON; `data` may be an aggregate row
+ * `{ trainer_info: { _id, fullName, … } }` per `userService.getAllLatestOnlineUser`.
+ * Normalize to flat trainer objects for UI (matches web `onlineUsers` usage).
+ */
+function normalizeOnlineTrainerRows(raw: unknown): any[] {
+  const rows = Array.isArray(raw) ? raw : [];
+  const out: any[] = [];
+  for (const row of rows) {
+    const t = (row as any)?.trainer_info ?? row;
+    const id = t?._id ?? (row as any)?.trainer_id;
+    if (!id) continue;
+    out.push({
+      _id: String(id),
+      id: String(id),
+      fullname: t.fullname ?? t.fullName,
+      fullName: t.fullName ?? t.fullname,
+      profile_picture: t.profile_picture,
+      category: t.category,
+      account_type: "Trainer",
+    });
+  }
+  return out;
+}
+
 export async function fetchOnlineUsers(): Promise<any[]> {
   const res = await apiClient.get(API_ROUTES.user.allOnlineUser);
-  return res.data?.result ?? res.data ?? [];
+  const body = res.data as Record<string, unknown>;
+  const raw =
+    body?.result ??
+    body?.data ??
+    (Array.isArray(body) ? body : null);
+  if (Array.isArray(raw)) return normalizeOnlineTrainerRows(raw);
+  if (raw && typeof raw === "object" && Array.isArray((raw as any).data)) {
+    return normalizeOnlineTrainerRows((raw as any).data);
+  }
+  return [];
 }
 
 /** Backend returns `{ data: Session[], page, limit, hasMore, ... }` for scheduled-meetings. */

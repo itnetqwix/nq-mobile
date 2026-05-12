@@ -10,6 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { extractLoginTokens, summarizeLoginPayloadKeys } from "../../../lib/http/parseLoginResponse";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { getCurrentUser, postLogin } from "../api/authApi";
+import { fetchMasterRow } from "../api/masterApi";
 import { clearSession, getAccessToken, getAccountType, saveSession } from "../session/tokenStorage";
 
 export type AuthUser = Record<string, unknown> | null;
@@ -99,6 +100,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAccountType(tokens.account_type);
         setStatus("signedIn");
         queryClient.invalidateQueries();
+        void queryClient.prefetchQuery({
+          queryKey: ["masterRow"],
+          queryFn: fetchMasterRow,
+        });
       } catch (e) {
         await clearSession();
         throw new Error(

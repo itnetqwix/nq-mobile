@@ -4,7 +4,6 @@ import {
   Alert,
   FlatList,
   Image,
-  Modal,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -13,8 +12,6 @@ import {
 } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { radii, space } from "../../../theme/tokens";
 import { fetchOnlineUsers } from "../../home/api/homeApi";
 import { useAuth } from "../../auth/context/AuthContext";
@@ -22,7 +19,22 @@ import { useInstantLesson } from "../../instant-lesson/InstantLessonContext";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
-import type { RootStackParamList } from "../../../navigation/types";
+
+/** Matches web + `nq-backend-main` `bookInstantMeeting` response: `{ status, data: { bookingId, booking } }`. */
+function parseInstantBookingLessonId(res: any): string | undefined {
+  const d = res?.data?.data ?? res?.data;
+  if (!d || typeof d !== "object") return undefined;
+  const bid = d.bookingId;
+  if (bid != null) {
+    const id = typeof bid === "object" && bid !== null ? (bid as any)._id ?? (bid as any).id : bid;
+    if (id != null && id !== "") return String(id);
+  }
+  const booking = d.booking ?? d.result;
+  const fromBooking = booking?._id ?? booking?.id;
+  if (fromBooking != null && fromBooking !== "") return String(fromBooking);
+  if (d._id) return String(d._id);
+  return undefined;
+}
 
 const NAVY = "#000080";
 
@@ -49,8 +61,7 @@ function Avatar({ uri, name, size = 56 }: { uri?: string; name?: string; size?: 
 
 export function InstantBookingScreen() {
   const { user } = useAuth();
-  const { traineeBooking, startBooking, cancelBooking, clearTraineeBooking } = useInstantLesson();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { startBooking } = useInstantLesson();
   const [bookingLoading, setBookingLoading] = useState<string | null>(null);
 
   const { data: onlineUsers = [], isLoading, isRefetching, refetch } = useQuery({
@@ -72,19 +83,24 @@ export function InstantBookingScreen() {
     if (!trainerId) return;
     setBookingLoading(trainerId);
     try {
+      /** Same contract as `nq-backend` `bookInstantMeetingModal`: `trainer_id` + ISO `booked_date`. */
       const res = await apiClient.post(API_ROUTES.trainee.bookInstantMeeting, {
-        coachId: trainerId,
-        duration: 30,
+        trainer_id: trainerId,
+        booked_date: new Date().toISOString(),
       });
-      const lessonId =
-        res.data?.result?._id ?? res.data?._id ?? res.data?.lessonId;
-      if (!lessonId) throw new Error("No lesson ID returned");
+      const lessonId = parseInstantBookingLessonId(res);
+      if (!lessonId) {
+        throw new Error(
+          "Server did not return a booking id. Ensure the API returns `data.bookingId` after booking."
+        );
+      }
       const traineeId = String((user as any)?._id ?? (user as any)?.id ?? "");
       startBooking({
         lessonId,
         coachId: trainerId,
         traineeId,
         trainerName: trainer?.fullname ?? trainer?.fullName ?? "Trainer",
+        durationMinutes: 30,
       });
     } catch (err: any) {
       Alert.alert(
@@ -94,20 +110,6 @@ export function InstantBookingScreen() {
     } finally {
       setBookingLoading(null);
     }
-  };
-
-  const handleJoinLesson = () => {
-    if (!traineeBooking?.lessonId) return;
-    const lessonId = traineeBooking.lessonId;
-    clearTraineeBooking();
-    navigation.navigate("Meeting", { lessonId });
-  };
-
-  const handleCancelBooking = () => {
-    Alert.alert("Cancel Request", "Cancel this lesson request?", [
-      { text: "Keep Waiting", style: "cancel" },
-      { text: "Cancel", style: "destructive", onPress: cancelBooking },
-    ]);
   };
 
   return (
@@ -177,61 +179,6 @@ export function InstantBookingScreen() {
           }
         />
       )}
-
-      {/* Trainee booking state modal */}
-      {!!traineeBooking && (
-        <Modal visible transparent animationType="fade" statusBarTranslucent>
-          <View style={styles.modalBackdrop}>
-            <View style={styles.modalCard}>
-              {traineeBooking.step === "waiting" && (
-                <>
-                  <ActivityIndicator size="large" color={NAVY} style={{ marginBottom: 12 }} />
-                  <Text style={styles.modalTitle}>Waiting for Response</Text>
-                  <Text style={styles.modalSubtitle}>
-                    Requesting{" "}
-                    <Text style={{ fontWeight: "700" }}>{traineeBooking.trainerName}</Text>…
-                  </Text>
-                  <Text style={styles.modalHint}>The trainer has 60 seconds to accept.</Text>
-                  <Pressable style={styles.cancelBtn} onPress={handleCancelBooking}>
-                    <Text style={styles.cancelBtnText}>Cancel Request</Text>
-                  </Pressable>
-                </>
-              )}
-
-              {traineeBooking.step === "accepted" && (
-                <>
-                  <Ionicons name="checkmark-circle" size={56} color="#16a34a" />
-                  <Text style={styles.modalTitle}>Lesson Accepted!</Text>
-                  <Text style={styles.modalSubtitle}>
-                    {traineeBooking.trainerName} accepted your request.
-                  </Text>
-                  <Pressable style={styles.joinBtn} onPress={handleJoinLesson}>
-                    <Ionicons name="videocam" size={18} color="#fff" />
-                    <Text style={styles.joinBtnText}>Join Lesson Now</Text>
-                  </Pressable>
-                </>
-              )}
-
-              {(traineeBooking.step === "declined" || traineeBooking.step === "expired") && (
-                <>
-                  <Ionicons name="close-circle" size={56} color="#dc2626" />
-                  <Text style={styles.modalTitle}>
-                    {traineeBooking.step === "declined" ? "Request Declined" : "Request Expired"}
-                  </Text>
-                  <Text style={styles.modalSubtitle}>
-                    {traineeBooking.step === "declined"
-                      ? "The trainer is unavailable right now."
-                      : "No response was received in time."}
-                  </Text>
-                  <Pressable style={styles.cancelBtn} onPress={clearTraineeBooking}>
-                    <Text style={styles.cancelBtnText}>OK, Got It</Text>
-                  </Pressable>
-                </>
-              )}
-            </View>
-          </View>
-        </Modal>
-      )}
     </View>
   );
 }
@@ -283,47 +230,4 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     paddingHorizontal: space.lg,
   },
-
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: space.md,
-  },
-  modalCard: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: space.lg,
-    width: "100%",
-    maxWidth: 320,
-    alignItems: "center",
-    gap: 12,
-  },
-  modalTitle: { fontSize: 20, fontWeight: "700", color: "#111827" },
-  modalSubtitle: { fontSize: 14, color: "#6b7280", textAlign: "center" },
-  modalHint: { fontSize: 12, color: "#9ca3af", textAlign: "center" },
-  cancelBtn: {
-    marginTop: 4,
-    backgroundColor: "#f3f4f6",
-    borderRadius: 10,
-    paddingVertical: 11,
-    paddingHorizontal: 24,
-    width: "100%",
-    alignItems: "center",
-  },
-  cancelBtnText: { fontSize: 15, fontWeight: "600", color: "#374151" },
-  joinBtn: {
-    marginTop: 4,
-    backgroundColor: "#16a34a",
-    borderRadius: 12,
-    paddingVertical: 13,
-    paddingHorizontal: 24,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    width: "100%",
-    justifyContent: "center",
-  },
-  joinBtnText: { fontSize: 15, fontWeight: "700", color: "#fff" },
 });

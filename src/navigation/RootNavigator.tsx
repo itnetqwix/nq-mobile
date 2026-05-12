@@ -2,6 +2,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React from "react";
 import { BrandedSessionLoader } from "../components/brand/BrandedSessionLoader";
 import { useAuth } from "../features/auth/context/AuthContext";
+import { InstantLessonTraineeModal } from "../features/instant-lesson/InstantLessonTraineeModal";
 import { InstantLessonTrainerModal } from "../features/instant-lesson/InstantLessonTrainerModal";
 import { MeetingScreen } from "../features/meeting/screens/MeetingScreen";
 import { AuthNavigator } from "./AuthNavigator";
@@ -21,8 +22,13 @@ export function RootNavigator() {
 
   return (
     <>
-      {/* Global trainer modal — renders on top of any screen when a request arrives */}
-      {signedIn && <InstantLessonTrainerModal />}
+      {/* Global instant-lesson modals — survive navigation away from Instant Booking */}
+      {signedIn && (
+        <>
+          <InstantLessonTrainerModal />
+          <InstantLessonTraineeModal />
+        </>
+      )}
 
       <Stack.Navigator
         key={signedIn ? "signedIn" : "signedOut"}

@@ -9,14 +9,7 @@ import React, {
 } from "react";
 import { useSocket } from "../socket/SocketContext";
 import { useAuth } from "../auth/context/AuthContext";
-
-const EVENTS = {
-  REQUEST: "INSTANT_LESSON_REQUEST",
-  ACCEPT: "INSTANT_LESSON_ACCEPT",
-  DECLINE: "INSTANT_LESSON_DECLINE",
-  EXPIRE: "INSTANT_LESSON_EXPIRE",
-  TRAINEE_CANCELLED: "INSTANT_LESSON_TRAINEE_CANCELLED",
-} as const;
+import { INSTANT_LESSON_SOCKET as EVENTS } from "./instantLessonSocketEvents";
 
 export type TrainerIncoming = {
   lessonId: string;
@@ -41,7 +34,7 @@ type InstantLessonContextValue = {
   traineeBooking: TraineeBooking | null;
   acceptRequest: () => void;
   declineRequest: () => void;
-  startBooking: (booking: Omit<TraineeBooking, "step">) => void;
+  startBooking: (booking: Omit<TraineeBooking, "step"> & { durationMinutes?: number }) => void;
   cancelBooking: () => void;
   clearTraineeBooking: () => void;
 };
@@ -51,7 +44,7 @@ const InstantLessonContext = createContext<InstantLessonContextValue>({
   traineeBooking: null,
   acceptRequest: () => {},
   declineRequest: () => {},
-  startBooking: () => {},
+  startBooking: (_booking: Omit<TraineeBooking, "step"> & { durationMinutes?: number }) => {},
   cancelBooking: () => {},
   clearTraineeBooking: () => {},
 });
@@ -84,34 +77,60 @@ export function InstantLessonProvider({
     const handleRequest = (payload: any) => {
       const { lessonId, coachId, traineeId, traineeInfo, expiresAt, duration, lessonType } = payload;
       clearExpiryTimer();
-      setTrainerIncoming({ lessonId, coachId, traineeId, traineeInfo, expiresAt, duration, lessonType });
-      const msUntilExpiry = Math.max(0, (expiresAt || Date.now() + 60000) - Date.now());
+      const expiresMs =
+        typeof expiresAt === "string"
+          ? new Date(expiresAt).getTime()
+          : typeof expiresAt === "number"
+            ? expiresAt
+            : Date.now() + 120_000;
+      setTrainerIncoming({
+        lessonId,
+        coachId,
+        traineeId,
+        traineeInfo,
+        expiresAt: expiresMs,
+        duration,
+        lessonType,
+      });
+      const msUntilExpiry = Math.max(0, expiresMs - Date.now());
       expiryTimerRef.current = setTimeout(() => setTrainerIncoming(null), msUntilExpiry);
     };
 
     const handleAccept = (payload: any) => {
-      const { lessonId } = payload;
+      const { lessonId } = payload || {};
       setTraineeBooking((prev) => {
-        if (!prev || prev.lessonId !== lessonId) return prev;
+        if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
         return { ...prev, step: "accepted" as const };
       });
     };
 
     const handleDecline = (payload: any) => {
-      const { lessonId } = payload;
+      const { lessonId } = payload || {};
       setTraineeBooking((prev) => {
-        if (!prev || prev.lessonId !== lessonId) return prev;
+        if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
         return { ...prev, step: "declined" as const };
       });
     };
 
     const handleExpire = (payload: any) => {
-      const { lessonId } = payload;
+      const { lessonId } = payload || {};
       clearExpiryTimer();
-      setTrainerIncoming(null);
+      setTrainerIncoming((prev) => {
+        if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
+        return null;
+      });
       setTraineeBooking((prev) => {
-        if (!prev || prev.lessonId !== lessonId) return prev;
+        if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
         return { ...prev, step: "expired" as const };
+      });
+    };
+
+    const handleTraineeCancelled = (payload: any) => {
+      const { lessonId } = payload || {};
+      clearExpiryTimer();
+      setTrainerIncoming((prev) => {
+        if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
+        return null;
       });
     };
 
@@ -119,12 +138,14 @@ export function InstantLessonProvider({
     socket.on(EVENTS.ACCEPT, handleAccept);
     socket.on(EVENTS.DECLINE, handleDecline);
     socket.on(EVENTS.EXPIRE, handleExpire);
+    socket.on(EVENTS.TRAINEE_CANCELLED, handleTraineeCancelled);
 
     return () => {
       socket.off(EVENTS.REQUEST, handleRequest);
       socket.off(EVENTS.ACCEPT, handleAccept);
       socket.off(EVENTS.DECLINE, handleDecline);
       socket.off(EVENTS.EXPIRE, handleExpire);
+      socket.off(EVENTS.TRAINEE_CANCELLED, handleTraineeCancelled);
     };
   }, [socket, clearExpiryTimer]);
 
@@ -153,9 +174,12 @@ export function InstantLessonProvider({
   }, [trainerIncoming, socket, clearExpiryTimer]);
 
   const startBooking = useCallback(
-    (booking: Omit<TraineeBooking, "step">) => {
+    (booking: Omit<TraineeBooking, "step"> & { durationMinutes?: number }) => {
+      const durationMin = booking.durationMinutes ?? 30;
       setTraineeBooking({ ...booking, step: "waiting" });
       if (!socket) return;
+      /** Align with web `InstantLessonTimeLine` socket emit (ISO `expiresAt`, minutes, `lessonType`). */
+      const expiresAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
       socket.emit(EVENTS.REQUEST, {
         lessonId: booking.lessonId,
         coachId: booking.coachId,
@@ -165,8 +189,9 @@ export function InstantLessonProvider({
           fullname: (user as any)?.fullname ?? (user as any)?.fullName ?? "Trainee",
           profile_picture: (user as any)?.profile_picture,
         },
-        expiresAt: Date.now() + 60000,
-        duration: 30 * 60,
+        expiresAt,
+        duration: durationMin,
+        lessonType: `Instant Lesson - ${durationMin} min`,
       });
     },
     [socket, userId, user]

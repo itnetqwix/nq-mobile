@@ -9,13 +9,13 @@ const NAVY = "#000080";
 
 export function InstantLessonTrainerModal() {
   const { trainerIncoming, acceptRequest, declineRequest } = useInstantLesson();
-  const [secondsLeft, setSecondsLeft] = useState(60);
+  const [secondsLeft, setSecondsLeft] = useState(120);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pulseRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
     if (!trainerIncoming) {
-      setSecondsLeft(60);
+      setSecondsLeft(120);
       pulseRef.current?.stop();
       return;
     }

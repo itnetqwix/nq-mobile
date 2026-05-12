@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { io, type Socket } from "socket.io-client";
 import { useAuth } from "../auth/context/AuthContext";
 import { API_BASE_URL } from "../../config/env";
@@ -13,6 +14,7 @@ const SocketContext = createContext<SocketContextValue>({ socket: null, isConnec
 
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const { status } = useAuth();
+  const queryClient = useQueryClient();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
@@ -33,8 +35,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       const token = await getAccessToken();
       if (!token || cancelled) return;
 
+      /**
+       * Must match web `app/components/socket/index.jsx`: JWT in **query** `authorization`.
+       * `nq-backend` `socket/init.ts` reads `socket.handshake.query.authorization` only.
+       */
       createdSocket = io(API_BASE_URL, {
-        auth: { authorization: token },
+        query: { authorization: token },
         transports: ["websocket", "polling"],
         reconnection: true,
         reconnectionAttempts: 10,
@@ -51,15 +57,25 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       createdSocket.on("connect", () => {
         if (!cancelled) setIsConnected(true);
       });
-      createdSocket.on("disconnect", () => {
-        if (!cancelled) setIsConnected(false);
-      });
 
+      /** Same cadence as web `portrait-calling` heartbeat (10s). */
       const heartbeatId = setInterval(() => {
         if (createdSocket?.connected) createdSocket.emit("HEARTBEAT");
-      }, 15000);
+      }, 10_000);
 
-      createdSocket.on("disconnect", () => clearInterval(heartbeatId));
+      const bumpOnlineUsers = () => {
+        queryClient.invalidateQueries({ queryKey: ["onlineUsers"] });
+      };
+      createdSocket.on("userStatus", bumpOnlineUsers);
+      createdSocket.on("onlineUser", bumpOnlineUsers);
+
+      const onDisconnect = () => {
+        if (!cancelled) setIsConnected(false);
+        clearInterval(heartbeatId);
+        createdSocket?.off("userStatus", bumpOnlineUsers);
+        createdSocket?.off("onlineUser", bumpOnlineUsers);
+      };
+      createdSocket.on("disconnect", onDisconnect);
     })();
 
     return () => {
@@ -68,7 +84,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       setSocket(null);
       setIsConnected(false);
     };
-  }, [status]);
+  }, [status, queryClient]);
 
   const value = useMemo(() => ({ socket, isConnected }), [socket, isConnected]);
 
