@@ -57,10 +57,14 @@ export function InstantLessonProvider({
   onNavigateToMeeting: (lessonId: string) => void;
 }) {
   const { socket } = useSocket();
-  const { user } = useAuth();
+  const { user, status: authStatus } = useAuth();
   const [trainerIncoming, setTrainerIncoming] = useState<TrainerIncoming | null>(null);
   const [traineeBooking, setTraineeBooking] = useState<TraineeBooking | null>(null);
   const expiryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** If the trainee books before the socket exists, emit REQUEST once the connection is ready. */
+  const pendingInstantRequestRef = useRef<Record<string, unknown> | null>(null);
+  /** Avoid double navigation to Meeting when the coach accepts (Strict Mode / duplicate events). */
+  const traineeAutoMeetingLessonRef = useRef<string | null>(null);
 
   const userId = user ? String((user as any)?._id ?? (user as any)?.id ?? "") : "";
 
@@ -70,6 +74,36 @@ export function InstantLessonProvider({
       expiryTimerRef.current = null;
     }
   }, []);
+
+  useEffect(() => {
+    if (authStatus === "signedIn") return;
+    clearExpiryTimer();
+    pendingInstantRequestRef.current = null;
+    traineeAutoMeetingLessonRef.current = null;
+    setTrainerIncoming(null);
+    setTraineeBooking(null);
+  }, [authStatus, clearExpiryTimer]);
+
+  useEffect(() => {
+    if (!socket || !pendingInstantRequestRef.current) return;
+    const payload = pendingInstantRequestRef.current;
+    pendingInstantRequestRef.current = null;
+    socket.emit(EVENTS.REQUEST, payload);
+  }, [socket]);
+
+  /** When the coach accepts, enter the same live meeting as the trainer (web parity — no extra “Join” tap). */
+  useEffect(() => {
+    if (!traineeBooking) {
+      traineeAutoMeetingLessonRef.current = null;
+      return;
+    }
+    if (traineeBooking.step !== "accepted") return;
+    const lid = String(traineeBooking.lessonId);
+    if (traineeAutoMeetingLessonRef.current === lid) return;
+    traineeAutoMeetingLessonRef.current = lid;
+    onNavigateToMeeting(lid);
+    setTraineeBooking(null);
+  }, [traineeBooking, onNavigateToMeeting]);
 
   useEffect(() => {
     if (!socket) return;
@@ -176,14 +210,24 @@ export function InstantLessonProvider({
   const startBooking = useCallback(
     (booking: Omit<TraineeBooking, "step"> & { durationMinutes?: number }) => {
       const durationMin = booking.durationMinutes ?? 30;
-      setTraineeBooking({ ...booking, step: "waiting" });
-      if (!socket) return;
+      const lessonId = String(booking.lessonId);
+      const coachId = String(booking.coachId);
+      const traineeId = String(booking.traineeId || userId);
+
+      setTraineeBooking({
+        ...booking,
+        lessonId,
+        coachId,
+        traineeId,
+        step: "waiting",
+      });
+
       /** Align with web `InstantLessonTimeLine` socket emit (ISO `expiresAt`, minutes, `lessonType`). */
       const expiresAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
-      socket.emit(EVENTS.REQUEST, {
-        lessonId: booking.lessonId,
-        coachId: booking.coachId,
-        traineeId: booking.traineeId || userId,
+      const payload = {
+        lessonId,
+        coachId,
+        traineeId,
         traineeInfo: {
           _id: userId,
           fullname: (user as any)?.fullname ?? (user as any)?.fullName ?? "Trainee",
@@ -192,18 +236,30 @@ export function InstantLessonProvider({
         expiresAt,
         duration: durationMin,
         lessonType: `Instant Lesson - ${durationMin} min`,
-      });
+      };
+
+      if (socket) {
+        socket.emit(EVENTS.REQUEST, payload);
+      } else {
+        pendingInstantRequestRef.current = payload;
+      }
     },
     [socket, userId, user]
   );
 
   const cancelBooking = useCallback(() => {
-    if (!traineeBooking || !socket) return;
-    socket.emit(EVENTS.TRAINEE_CANCELLED, {
-      lessonId: traineeBooking.lessonId,
-      coachId: traineeBooking.coachId,
-      traineeId: traineeBooking.traineeId,
-    });
+    if (!traineeBooking) return;
+    const pending = pendingInstantRequestRef.current;
+    if (pending && String((pending as any).lessonId) === String(traineeBooking.lessonId)) {
+      pendingInstantRequestRef.current = null;
+    }
+    if (socket) {
+      socket.emit(EVENTS.TRAINEE_CANCELLED, {
+        lessonId: traineeBooking.lessonId,
+        coachId: traineeBooking.coachId,
+        traineeId: traineeBooking.traineeId,
+      });
+    }
     setTraineeBooking(null);
   }, [traineeBooking, socket]);
 

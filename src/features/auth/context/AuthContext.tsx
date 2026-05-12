@@ -115,11 +115,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signOut = useCallback(async () => {
-    await clearSession();
-    setUser(null);
-    setAccountType(null);
-    setStatus("signedOut");
-    queryClient.clear();
+    try {
+      await clearSession();
+    } catch {
+      /** Still leave the app in a signed-out state so the user can sign in again. */
+    } finally {
+      setUser(null);
+      setAccountType(null);
+      setStatus("signedOut");
+      queryClient.clear();
+    }
   }, [queryClient]);
 
   const value = useMemo(

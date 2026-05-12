@@ -15,6 +15,8 @@ export async function saveSession(accessToken: string, accountType: string): Pro
 }
 
 export async function clearSession(): Promise<void> {
-  await SecureStore.deleteItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
-  await SecureStore.deleteItemAsync(STORAGE_KEYS.ACC_TYPE);
+  await Promise.allSettled([
+    SecureStore.deleteItemAsync(STORAGE_KEYS.ACCESS_TOKEN),
+    SecureStore.deleteItemAsync(STORAGE_KEYS.ACC_TYPE),
+  ]);
 }

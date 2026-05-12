@@ -28,9 +28,16 @@ export function AppRoot() {
   );
 
   const navigateToMeeting = useCallback((lessonId: string) => {
-    if (navigationRef.isReady()) {
+    const go = () => {
+      if (!navigationRef.isReady()) return false;
       navigationRef.navigate("Meeting", { lessonId });
-    }
+      return true;
+    };
+    if (go()) return;
+    /** First accept can arrive before the container finishes mounting — mirror web “both join” reliability. */
+    setTimeout(() => {
+      go();
+    }, 400);
   }, []);
 
   return (

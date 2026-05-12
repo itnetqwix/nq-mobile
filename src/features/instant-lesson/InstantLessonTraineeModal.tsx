@@ -27,9 +27,9 @@ import {
 const MAX_CLIPS = 2;
 
 /**
- * Trainee instant-lesson flow aligned with web `InstantLessonTraineeModal`:
- * wait for coach → optionally pick up to 2 existing clips → attach to booking → join when accepted.
- * "New upload" deep-links to the same Uploads shell as the web locker file panel.
+ * Trainee instant-lesson flow aligned with web:
+ * wait for coach → optionally pick clips while waiting → when coach accepts, app opens the live
+ * meeting for both roles (same as web). "New upload" deep-links to the Uploads shell.
  */
 export function InstantLessonTraineeModal() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -39,6 +39,22 @@ export function InstantLessonTraineeModal() {
 
   const visible = !!traineeBooking;
   const lessonId = traineeBooking?.lessonId ?? "";
+
+  const openUploadsShell = () => {
+    navigation.navigate(
+      "Main",
+      {
+        screen: "Tabs",
+        params: {
+          screen: "Menu",
+          params: {
+            screen: "ShellSurface",
+            params: { surfaceId: "uploads" },
+          },
+        },
+      } as never
+    );
+  };
 
   const {
     data: clipGroups = [],
@@ -86,29 +102,6 @@ export function InstantLessonTraineeModal() {
     },
   });
 
-  const openUploadsShell = () => {
-    navigation.navigate(
-      "Main",
-      {
-        screen: "Tabs",
-        params: {
-          screen: "Menu",
-          params: {
-            screen: "ShellSurface",
-            params: { surfaceId: "uploads" },
-          },
-        },
-      } as never
-    );
-  };
-
-  const handleJoinLesson = () => {
-    if (!traineeBooking?.lessonId) return;
-    const id = traineeBooking.lessonId;
-    clearTraineeBooking();
-    navigation.navigate("Meeting", { lessonId: id });
-  };
-
   const handleCancel = () => {
     Alert.alert("Cancel request", "Stop waiting and cancel this instant lesson?", [
       { text: "Keep waiting", style: "cancel" },
@@ -121,7 +114,7 @@ export function InstantLessonTraineeModal() {
   const { step, trainerName } = traineeBooking;
 
   const clipPicker =
-    (step === "waiting" || step === "accepted") && (
+    step === "waiting" && (
       <View style={styles.clipSection}>
         <Text style={styles.clipSectionTitle}>Videos (optional)</Text>
         <Text style={styles.clipHint}>
@@ -202,23 +195,13 @@ export function InstantLessonTraineeModal() {
               <Text style={styles.sub}>
                 Waiting for <Text style={{ fontWeight: "700" }}>{trainerName}</Text> to accept…
               </Text>
-              <Text style={styles.hint}>The trainer has about two minutes to respond. You can add clips while you wait (optional).</Text>
+              <Text style={styles.hint}>
+                When the coach accepts, you and the coach both enter the live session (same as the website).
+                You can add clips while you wait (optional).
+              </Text>
               {clipPicker}
               <Pressable style={styles.secondaryBtn} onPress={handleCancel}>
                 <Text style={styles.secondaryBtnText}>Cancel request</Text>
-              </Pressable>
-            </>
-          )}
-
-          {step === "accepted" && (
-            <>
-              <Ionicons name="checkmark-circle" size={52} color="#16a34a" />
-              <Text style={styles.title}>Coach accepted</Text>
-              <Text style={styles.sub}>{trainerName} is ready. Add clips if you want, then join.</Text>
-              {clipPicker}
-              <Pressable style={styles.primaryBtn} onPress={handleJoinLesson}>
-                <Ionicons name="videocam" size={18} color="#fff" />
-                <Text style={styles.primaryBtnText}>Join lesson</Text>
               </Pressable>
             </>
           )}
@@ -301,17 +284,6 @@ const styles = StyleSheet.create({
   },
   attachBtnDisabled: { backgroundColor: "#9ca3af" },
   attachBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  primaryBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#16a34a",
-    borderRadius: radii.md,
-    paddingVertical: 14,
-    marginTop: space.sm,
-  },
-  primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
   secondaryBtn: {
     marginTop: space.xs,
     backgroundColor: "#f3f4f6",

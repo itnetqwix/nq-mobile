@@ -30,22 +30,31 @@ export function RootNavigator() {
         </>
       )}
 
+      {/**
+       * Auth vs app stacks must not register the same routes at once — otherwise the native
+       * stack can keep "Main" active after `status` flips to `signedOut`. Pattern:
+       * https://reactnavigation.org/docs/auth-flow
+       */}
       <Stack.Navigator
         key={signedIn ? "signedIn" : "signedOut"}
-        initialRouteName={signedIn ? "Main" : "Auth"}
         screenOptions={{ headerShown: false }}
       >
-        <Stack.Screen name="Auth" component={AuthNavigator} />
-        <Stack.Screen name="Main" component={DashboardDrawerShell} />
-        <Stack.Screen
-          name="Meeting"
-          component={MeetingScreen}
-          options={{
-            headerShown: false,
-            presentation: "fullScreenModal",
-            animation: "slide_from_bottom",
-          }}
-        />
+        {signedIn ? (
+          <>
+            <Stack.Screen name="Main" component={DashboardDrawerShell} />
+            <Stack.Screen
+              name="Meeting"
+              component={MeetingScreen}
+              options={{
+                headerShown: false,
+                presentation: "fullScreenModal",
+                animation: "slide_from_bottom",
+              }}
+            />
+          </>
+        ) : (
+          <Stack.Screen name="Auth" component={AuthNavigator} />
+        )}
       </Stack.Navigator>
     </>
   );
