@@ -15,13 +15,13 @@ import { InstantBookingScreen } from "./InstantBookingScreen";
 export type DashboardFeatureScreenProps = NativeStackScreenProps<MenuStackParamList, "DashboardFeature">;
 
 export function DashboardFeatureScreen({ route }: DashboardFeatureScreenProps) {
-  const { featureId } = route.params;
+  const { featureId, bookLessonTrainerId } = route.params;
 
   switch (featureId) {
     case "upcoming-sessions":
       return <UpcomingSessionsScreen />;
     case "book-lesson":
-      return <BookExpertScreen />;
+      return <BookExpertScreen bookLessonTrainerId={bookLessonTrainerId} />;
     case "students":
       return <StudentsScreen />;
     case "friends":

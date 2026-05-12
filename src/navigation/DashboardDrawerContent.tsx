@@ -64,8 +64,14 @@ function featureIcon(id: DashboardRouteId): keyof typeof Ionicons.glyphMap {
 
 function shellIcon(id: ShellSurfaceMeta["id"]): keyof typeof Ionicons.glyphMap {
   switch (id) {
-    case "uploads":
-      return "cloud-upload-outline";
+    case "clips":
+      return "film-outline";
+    case "gamePlans":
+      return "clipboard-outline";
+    case "savedLessons":
+      return "bookmark-outline";
+    case "invite":
+      return "mail-outline";
     case "notifications":
       return "notifications-outline";
     case "settings":

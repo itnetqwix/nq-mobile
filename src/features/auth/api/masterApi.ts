@@ -9,3 +9,14 @@ export async function fetchMasterRow(): Promise<MasterRow | null> {
   const row = body?.data?.[0];
   return row ?? null;
 }
+
+/** Sport list from master row — same labels as web category dropdown. */
+export async function fetchSportCategories(): Promise<string[]> {
+  const row = await fetchMasterRow();
+  const raw = row?.category;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((c): c is string => typeof c === "string")
+    .map((c) => c.trim())
+    .filter((c) => c.length > 0 && c !== "Choose Category");
+}

@@ -4,7 +4,9 @@ import type { MenuStackParamList } from "../../../navigation/types";
 import { NotificationsScreen } from "../../notifications/screens/NotificationsScreen";
 import { InviteFriendsScreen } from "./InviteFriendsScreen";
 import { TransactionsScreen } from "./TransactionsScreen";
-import { UploadsScreen } from "./UploadsScreen";
+import { ClipsScreen } from "./ClipsScreen";
+import { GamePlansScreen } from "./GamePlansScreen";
+import { SavedLessonsScreen } from "./SavedLessonsScreen";
 import { SettingsScreen } from "./SettingsScreen";
 
 export type ShellSurfaceScreenProps = NativeStackScreenProps<MenuStackParamList, "ShellSurface">;
@@ -17,8 +19,12 @@ export function ShellSurfaceScreen({ route }: ShellSurfaceScreenProps) {
       return <NotificationsScreen />;
     case "transactions":
       return <TransactionsScreen />;
-    case "uploads":
-      return <UploadsScreen />;
+    case "clips":
+      return <ClipsScreen />;
+    case "gamePlans":
+      return <GamePlansScreen />;
+    case "savedLessons":
+      return <SavedLessonsScreen />;
     case "invite":
       return <InviteFriendsScreen />;
     case "settings":

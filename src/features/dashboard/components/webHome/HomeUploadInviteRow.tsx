@@ -5,15 +5,15 @@ import { webHomeStyles } from "./webHomeStyles";
 import { colors } from "../../../../theme/tokens";
 
 type Props = {
-  onUploads: () => void;
+  onClips: () => void;
   onInvite: () => void;
 };
 
 /**
- * Web locker home pairs `UploadClipCard` (`upload-clip-container`) and
+ * Web locker home pairs clip access (`upload-clip-container`) and
  * `InviteFriendsCard` (`invite-card-container`) in the right column (`NavHomePage`).
  */
-export function HomeUploadInviteRow({ onUploads, onInvite }: Props) {
+export function HomeUploadInviteRow({ onClips, onInvite }: Props) {
   return (
     <View style={webHomeStyles.homePromoRow}>
       <Pressable
@@ -21,16 +21,16 @@ export function HomeUploadInviteRow({ onUploads, onInvite }: Props) {
           webHomeStyles.homePromoHalf,
           pressed && { opacity: 0.9 },
         ]}
-        onPress={onUploads}
+        onPress={onClips}
         testID="upload-clip-container"
       >
-        <Ionicons name="cloud-upload-outline" size={26} color={colors.brandNavy} />
-        <Text style={webHomeStyles.homePromoTitle}>Upload clips</Text>
+        <Ionicons name="film-outline" size={26} color={colors.brandNavy} />
+        <Text style={webHomeStyles.homePromoTitle}>Clips</Text>
         <Text style={webHomeStyles.homePromoSub}>
-          Same locker flow as the web “My Uploads” panel.
+          Watch locker videos in the app — same data as the web My clips tab.
         </Text>
         <Text style={{ fontSize: 12, fontWeight: "700", color: colors.sidebarActive }}>
-          Open uploads →
+          Open clips →
         </Text>
       </Pressable>
       <Pressable

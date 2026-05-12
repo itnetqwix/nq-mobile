@@ -244,8 +244,11 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
     queryClient.invalidateQueries({ queryKey: ["recentTrainers"] });
   }, [queryClient]);
 
-  const openFeature = (id: DashboardRouteId) => {
-    navigation.navigate("Menu", { screen: "DashboardFeature", params: { featureId: id } });
+  const openFeature = (id: DashboardRouteId, extra?: Partial<{ bookLessonTrainerId: string }>) => {
+    navigation.navigate("Menu", {
+      screen: "DashboardFeature",
+      params: { featureId: id, ...extra },
+    });
   };
 
   const openShell = (id: ShellSurfaceRouteId) => {
@@ -340,9 +343,9 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
           onPress={() => navigation.navigate("Chats")}
         />
         <QuickActionButton
-          icon="cloud-upload-outline"
-          label="Uploads"
-          onPress={() => openShell("uploads")}
+          icon="film-outline"
+          label="Clips"
+          onPress={() => openShell("clips")}
         />
       </View>
 
@@ -417,7 +420,11 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
                 renderItem={({ item }) => (
                   <CoachCard
                     trainer={item}
-                    onBook={() => openFeature("book-lesson")}
+                    onBook={(t) =>
+                      t?._id != null
+                        ? openFeature("book-lesson", { bookLessonTrainerId: String(t._id) })
+                        : openFeature("book-lesson")
+                    }
                   />
                 )}
                 showsHorizontalScrollIndicator={false}
@@ -500,7 +507,7 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
         {/* Web: `UploadClipCard` + `InviteFriendsCard` row */}
         <HomeMainCont title="Locker" testID="card trainer-profile-card Home-main-Cont locker-promos">
           <HomeUploadInviteRow
-            onUploads={() => openShell("uploads")}
+            onClips={() => openShell("clips")}
             onInvite={() => openShell("invite")}
           />
         </HomeMainCont>

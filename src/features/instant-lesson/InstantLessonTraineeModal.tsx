@@ -29,7 +29,7 @@ const MAX_CLIPS = 2;
 /**
  * Trainee instant-lesson flow aligned with web:
  * wait for coach → optionally pick clips while waiting → when coach accepts, app opens the live
- * meeting for both roles (same as web). "New upload" deep-links to the Uploads shell.
+ * meeting for both roles (same as web). "Upload or manage videos" opens the Clips shell.
  */
 export function InstantLessonTraineeModal() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -49,7 +49,7 @@ export function InstantLessonTraineeModal() {
           screen: "Menu",
           params: {
             screen: "ShellSurface",
-            params: { surfaceId: "uploads" },
+            params: { surfaceId: "clips" },
           },
         },
       } as never

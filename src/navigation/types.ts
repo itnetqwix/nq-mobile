@@ -14,7 +14,7 @@ export type ShellSurfaceRouteId = ShellSurfaceMeta["id"];
 
 export type MenuStackParamList = {
   MenuHome: undefined;
-  DashboardFeature: { featureId: DashboardRouteId };
+  DashboardFeature: { featureId: DashboardRouteId; bookLessonTrainerId?: string };
   ShellSurface: { surfaceId: ShellSurfaceRouteId };
 };
 

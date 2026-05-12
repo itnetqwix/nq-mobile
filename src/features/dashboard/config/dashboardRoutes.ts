@@ -3,7 +3,7 @@ import { AccountType, type AccountTypeValue } from "../../../constants/accountTy
 /**
  * Mirrors `nq-frontend-main/app/config/routes.config.js` → `ROUTES.DASHBOARD` children
  * (`pages/dashboard/*.jsx` + `routingPaths.dashboard*` in `app/common/constants.js`).
- * Shell-only flows (uploads, notifications, settings, …) live in `shellSurfaces.ts`.
+ * Shell-only flows (clips, game plans, saved lessons, notifications, settings, …) live in `shellSurfaces.ts`.
  * Mobile maps each entry to `MenuNavigator` → `DashboardFeatureScreen`.
  */
 export const DASHBOARD_ROUTE_IDS = [

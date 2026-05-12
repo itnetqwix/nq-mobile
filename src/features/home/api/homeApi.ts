@@ -129,7 +129,11 @@ export async function postAccountPrivacy(isPrivate: boolean): Promise<void> {
 
 export async function fetchTrainersWithSlots(params?: { search?: string }): Promise<any[]> {
   const res = await apiClient.get(API_ROUTES.trainee.getTrainersWithSlots, { params });
-  return res.data?.result ?? res.data ?? [];
+  const body = res.data as Record<string, unknown>;
+  /** Backend: `{ status, data: Trainer[] }` — see `traineeController.getSlotsOfAllTrainers`. */
+  const rows = body?.data ?? body?.result;
+  if (Array.isArray(rows)) return rows;
+  return [];
 }
 
 export async function fetchTrainerSlots(): Promise<
@@ -170,6 +174,36 @@ export async function postReportsGetAll(params?: { trainee_id?: string }): Promi
   if (Array.isArray(d?.result)) return d.result;
   if (Array.isArray(d?.data)) return d.data;
   return [];
+}
+
+/** Web `videoupload.api.js` → `POST /common/video-upload-url` (bulk clips + presigned PUT URLs). */
+export type ClipUploadSignClip = {
+  filename?: string;
+  fileType: string;
+  thumbnail: string;
+  title: string;
+  category: string;
+};
+
+export type ClipUploadSignPayload = {
+  clips: ClipUploadSignClip[];
+  shareOptions: {
+    type: string;
+    friends?: unknown;
+    emails?: unknown;
+  };
+};
+
+export type ClipUploadSignRow = {
+  url: string;
+  thumbnailURL: string;
+};
+
+export async function postClipUploadSignUrls(
+  payload: ClipUploadSignPayload
+): Promise<{ success?: number; results?: ClipUploadSignRow[]; message?: string }> {
+  const res = await apiClient.post(API_ROUTES.common.videoUploadUrl, payload);
+  return (res.data ?? {}) as { success?: number; results?: ClipUploadSignRow[]; message?: string };
 }
 
 export async function postShareClipsToEmail(userEmail: string, clips: any[]): Promise<void> {

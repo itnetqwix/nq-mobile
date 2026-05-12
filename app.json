@@ -40,7 +40,14 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "NetQwix needs access to your photo library so you can upload training video clips to your locker.",
+          "cameraPermission": "NetQwix can use the camera if you record a clip to upload."
+        }
+      ]
     ]
   }
 }

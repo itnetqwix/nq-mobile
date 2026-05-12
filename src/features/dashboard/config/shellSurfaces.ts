@@ -2,12 +2,14 @@ import { AccountType, type AccountTypeValue } from "../../../constants/accountTy
 import { WebRoutes } from "../../../constants/webRoutes";
 
 /**
- * Surfaces driven from the web **left sidebar** (`containers/leftSidebar/index.jsx`):
- * uploads, invite friends, notifications, settings, transactions — plus `/meeting` and `/messenger`.
- * These are not separate `pages/dashboard/*` routes but the same product flows on mobile.
+ * Surfaces driven from the web **left sidebar** plus locker sub-areas:
+ * clips, game plans, saved lessons, invite friends, notifications, settings, transactions —
+ * plus `/meeting` and `/messenger`.
  */
 export const UTILITY_SURFACE_IDS = [
-  "uploads",
+  "clips",
+  "gamePlans",
+  "savedLessons",
   "invite",
   "notifications",
   "settings",
@@ -25,10 +27,24 @@ export type ShellSurfaceMeta = {
 
 export const SHELL_SURFACES: readonly ShellSurfaceMeta[] = [
   {
-    id: "uploads",
-    title: "My uploads",
-    subtitle: "Clips and files from the web “My Uploads” / locker file panel.",
-    webContext: "Left sidebar → My Uploads (`ToggleTab(\"file\")` → `FileSection`).",
+    id: "clips",
+    title: "Clips",
+    subtitle: "Locker videos grouped by category (and trainee clips for trainers).",
+    webContext: "Left sidebar → My Uploads → My clips / Enthusiasts (`FileSection`).",
+    allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
+  },
+  {
+    id: "gamePlans",
+    title: "Game plans",
+    subtitle: "Session reports and game plan PDFs from your locker.",
+    webContext: "Locker library → Game plans (`POST /report/get-all`).",
+    allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
+  },
+  {
+    id: "savedLessons",
+    title: "Saved lessons",
+    subtitle: "Recordings saved to your locker from the website.",
+    webContext: "Locker library → Saved lessons (`POST /common/get-all-saved-sessions`).",
     allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
   },
   {

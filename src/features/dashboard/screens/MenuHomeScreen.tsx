@@ -30,8 +30,14 @@ function featureIcon(id: DashboardRouteId): keyof typeof Ionicons.glyphMap {
 
 function shellIcon(id: ShellSurfaceMeta["id"]): keyof typeof Ionicons.glyphMap {
   switch (id) {
-    case "uploads": return "cloud-upload-outline";
-    case "invite": return "mail-outline";
+    case "clips":
+      return "film-outline";
+    case "gamePlans":
+      return "clipboard-outline";
+    case "savedLessons":
+      return "bookmark-outline";
+    case "invite":
+      return "mail-outline";
     case "notifications": return "notifications-outline";
     case "settings": return "settings-outline";
     case "transactions": return "wallet-outline";
@@ -125,7 +131,7 @@ export function MenuHomeScreen() {
         ))}
       </View>
 
-      {/* Sidebar tools — My Uploads, Notifications, Settings, Transactions */}
+      {/* Sidebar tools — Clips, game plans, saved lessons, notifications, … */}
       <View style={styles.sectionCard}>
         <Text style={styles.sectionLabel}>Tools</Text>
         {shellItems
