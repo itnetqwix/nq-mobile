@@ -1,0 +1,49 @@
+import { Ionicons } from "@expo/vector-icons";
+import React from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { colors, space } from "../../../theme/tokens";
+import type { WizardStep } from "./types";
+
+type Props = {
+  step: WizardStep;
+  stepNum: number;
+  totalSteps: number;
+  onGoBack: () => void;
+};
+
+export function WizardHeader({ step, stepNum, totalSteps, onGoBack }: Props) {
+  return (
+    <View style={styles.headerRow}>
+      <Pressable onPress={onGoBack} style={styles.headerBtn} hitSlop={12}>
+        <Ionicons name={step === "intro" ? "close" : "chevron-back"} size={22} color={colors.brandNavy} />
+        <Text style={styles.headerBtnText}>{step === "intro" ? "Close" : "Back"}</Text>
+      </Pressable>
+      <Text style={styles.stepPill}>
+        Step {stepNum} of {totalSteps}
+      </Text>
+      <View style={{ width: 72 }} />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: space.md,
+    marginBottom: space.sm,
+  },
+  headerBtn: { flexDirection: "row", alignItems: "center", gap: 4, width: 88 },
+  headerBtnText: { fontSize: 15, fontWeight: "600", color: colors.brandNavy },
+  stepPill: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.textMuted,
+    backgroundColor: colors.background,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    overflow: "hidden",
+  },
+});

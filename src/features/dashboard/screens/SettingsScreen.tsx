@@ -1,6 +1,11 @@
-import React from "react";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { Ionicons } from "@expo/vector-icons";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -8,11 +13,33 @@ import {
   Text,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { radii, space } from "../../../theme/tokens";
+import { WEB_APP_ORIGIN } from "../../../config/env";
+import { WebRoutes } from "../../../constants/webRoutes";
+import { AccountType } from "../../../constants/accountType";
+import type { MenuStackParamList, ShellSurfaceRouteId } from "../../../navigation/types";
 import { useAuth } from "../../auth/context/AuthContext";
+import {
+  patchUserNotificationSettings,
+  postAccountPrivacy,
+  type UserNotificationPrefs,
+} from "../../home/api/homeApi";
 
 const NAVY = "#000080";
+
+function readNotificationPrefs(user: Record<string, unknown> | null): UserNotificationPrefs {
+  const n = (user?.notifications ?? {}) as Partial<UserNotificationPrefs>;
+  return {
+    promotional: {
+      email: n.promotional?.email !== false,
+      sms: n.promotional?.sms !== false,
+    },
+    transactional: {
+      email: n.transactional?.email !== false,
+      sms: n.transactional?.sms !== false,
+    },
+  };
+}
 
 type SettingRow = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -23,9 +50,81 @@ type SettingRow = {
 };
 
 export function SettingsScreen() {
-  const { user, accountType, signOut } = useAuth();
+  const navigation = useNavigation<NativeStackNavigationProp<MenuStackParamList>>();
+
+  const openShell = useCallback(
+    (id: ShellSurfaceRouteId) => {
+      navigation.navigate("ShellSurface", { surfaceId: id });
+    },
+    [navigation]
+  );
+
+  const openDashboard = useCallback(
+    (featureId: "contact-us" | "about-us") => {
+      navigation.navigate("DashboardFeature", { featureId });
+    },
+    [navigation]
+  );
+
+  const { user, accountType, signOut, refreshUser } = useAuth();
   const name = (user?.fullname as string) || (user?.fullName as string) || "User";
   const email = (user?.email as string) ?? "";
+  const isTrainer = accountType === AccountType.TRAINER;
+
+  const [isPrivate, setIsPrivate] = useState(Boolean(user?.isPrivate));
+  const [notif, setNotif] = useState<UserNotificationPrefs>(() => readNotificationPrefs(user));
+  const [privacyBusy, setPrivacyBusy] = useState(false);
+  const [notifBusy, setNotifBusy] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsPrivate(Boolean(user?.isPrivate));
+    setNotif(readNotificationPrefs(user));
+  }, [user]);
+
+  const openWeb = useCallback(async (path: string) => {
+    const url = `${WEB_APP_ORIGIN.replace(/\/$/, "")}${path}`;
+    const supported = await Linking.canOpenURL(url);
+    if (supported) await Linking.openURL(url);
+    else Alert.alert("Unable to open link", url);
+  }, []);
+
+  const handlePrivacy = async (next: boolean) => {
+    setIsPrivate(next);
+    setPrivacyBusy(true);
+    try {
+      await postAccountPrivacy(next);
+      await refreshUser();
+    } catch (e: any) {
+      setIsPrivate(!next);
+      Alert.alert("Privacy", e?.message ?? "Could not update private account setting.");
+    } finally {
+      setPrivacyBusy(false);
+    }
+  };
+
+  const handleNotifToggle = async (
+    category: keyof UserNotificationPrefs,
+    channel: "email" | "sms",
+    value: boolean
+  ) => {
+    const key = `${category}.${channel}`;
+    const prev = notif;
+    const updated: UserNotificationPrefs = {
+      ...notif,
+      [category]: { ...notif[category], [channel]: value },
+    };
+    setNotif(updated);
+    setNotifBusy(key);
+    try {
+      await patchUserNotificationSettings(updated);
+      await refreshUser();
+    } catch (e: any) {
+      setNotif(prev);
+      Alert.alert("Notifications", e?.message ?? "Could not save notification preferences.");
+    } finally {
+      setNotifBusy(null);
+    }
+  };
 
   const handleSignOut = () => {
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
@@ -38,46 +137,47 @@ export function SettingsScreen() {
     ]);
   };
 
-  const sections: Array<{ title: string; rows: SettingRow[] }> = [
-    {
-      title: "Account",
-      rows: [
-        { icon: "person-outline", label: "Name", value: name },
-        { icon: "mail-outline", label: "Email", value: email },
-        { icon: "shield-outline", label: "Account Type", value: accountType ?? "" },
-      ],
-    },
-    {
-      title: "Notifications",
-      rows: [
-        { icon: "notifications-outline", label: "Push Notifications", value: "Enabled" },
-        { icon: "mail-outline", label: "Email Alerts", value: "Enabled" },
-      ],
-    },
-    {
-      title: "Support",
-      rows: [
-        { icon: "help-circle-outline", label: "Help Center" },
-        { icon: "document-text-outline", label: "Terms of Service" },
-        { icon: "lock-closed-outline", label: "Privacy Policy" },
-      ],
-    },
-    {
-      title: "",
-      rows: [
-        {
-          icon: "log-out-outline",
-          label: "Sign Out",
-          danger: true,
-          action: handleSignOut,
-        },
-      ],
-    },
+  const accountRows: SettingRow[] = [
+    { icon: "person-outline", label: "Name", value: name },
+    { icon: "mail-outline", label: "Email", value: email },
+    { icon: "shield-outline", label: "Account Type", value: accountType ?? "" },
   ];
+
+  const supportRows: SettingRow[] = useMemo(() => {
+    const rows: SettingRow[] = [
+      {
+        icon: "mail-outline",
+        label: "Contact us",
+        action: () => openDashboard("contact-us"),
+      },
+      {
+        icon: "information-circle-outline",
+        label: "About (website)",
+        action: () => void openWeb(WebRoutes.dashboardAboutUs),
+      },
+      {
+        icon: "document-text-outline",
+        label: "Help & policies (website)",
+        action: () => void openWeb(WebRoutes.dashboardContactUs),
+      },
+    ];
+    if (isTrainer) {
+      rows.push({
+        icon: "card-outline",
+        label: "Trainer profile & billing (website)",
+        action: () => void openWeb(WebRoutes.dashboardHome),
+      });
+    }
+    rows.push({
+      icon: "person-add-outline",
+      label: "Invite friends",
+      action: () => openShell("invite"),
+    });
+    return rows;
+  }, [isTrainer, openWeb, openDashboard, openShell]);
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
-      {/* Profile card */}
       <View style={styles.profileCard}>
         <View style={styles.profileAvatar}>
           <Text style={styles.profileInitial}>{(name[0] ?? "?").toUpperCase()}</Text>
@@ -91,46 +191,142 @@ export function SettingsScreen() {
         </View>
       </View>
 
-      {sections.map((section, si) => (
-        <View key={si} style={styles.section}>
-          {!!section.title && (
-            <Text style={styles.sectionTitle}>{section.title}</Text>
-          )}
-          <View style={styles.sectionCard}>
-            {section.rows.map((row, ri) => (
-              <Pressable
-                key={ri}
-                style={({ pressed }) => [
-                  styles.row,
-                  ri < section.rows.length - 1 && styles.rowBorder,
-                  pressed && { backgroundColor: "#f9fafb" },
-                ]}
-                onPress={row.action}
-                disabled={!row.action}
-              >
-                <View style={[styles.rowIcon, row.danger && styles.rowIconDanger]}>
-                  <Ionicons
-                    name={row.icon}
-                    size={18}
-                    color={row.danger ? "#dc2626" : NAVY}
-                  />
-                </View>
-                <Text style={[styles.rowLabel, row.danger && styles.rowLabelDanger]}>
-                  {row.label}
-                </Text>
-                <View style={styles.rowRight}>
-                  {!!row.value && (
-                    <Text style={styles.rowValue} numberOfLines={1}>{row.value}</Text>
-                  )}
-                  {!row.value && row.action && (
-                    <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
-                  )}
-                </View>
-              </Pressable>
-            ))}
-          </View>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Account</Text>
+        <View style={styles.sectionCard}>
+          {accountRows.map((row, ri) => (
+            <Pressable
+              key={row.label}
+              style={({ pressed }) => [
+                styles.row,
+                ri < accountRows.length - 1 && styles.rowBorder,
+                pressed && { backgroundColor: "#f9fafb" },
+              ]}
+              disabled
+            >
+              <View style={styles.rowIcon}>
+                <Ionicons name={row.icon} size={18} color={NAVY} />
+              </View>
+              <Text style={styles.rowLabel}>{row.label}</Text>
+              <View style={styles.rowRight}>
+                <Text style={styles.rowValue} numberOfLines={1}>{row.value}</Text>
+              </View>
+            </Pressable>
+          ))}
         </View>
-      ))}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Privacy</Text>
+        <View style={styles.sectionCard}>
+          <View style={styles.row}>
+            <View style={styles.rowIcon}>
+              <Ionicons name="eye-off-outline" size={18} color={NAVY} />
+            </View>
+            <Text style={styles.rowLabel}>Private account</Text>
+            <View style={styles.rowRight}>
+              {privacyBusy ? (
+                <ActivityIndicator size="small" color={NAVY} />
+              ) : (
+                <Switch
+                  value={isPrivate}
+                  onValueChange={handlePrivacy}
+                  trackColor={{ false: "#e5e7eb", true: "#bfdbfe" }}
+                  thumbColor={isPrivate ? NAVY : "#f4f4f5"}
+                />
+              )}
+            </View>
+          </View>
+          <Text style={styles.hint}>
+            Matches the website settings toggle (POST `/user/update-account-privacy`).
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Email & SMS preferences</Text>
+        <View style={styles.sectionCard}>
+          {(
+            [
+              ["promotional", "email", "Promotional email"],
+              ["promotional", "sms", "Promotional SMS"],
+              ["transactional", "email", "Transactional email"],
+              ["transactional", "sms", "Transactional SMS"],
+            ] as const
+          ).map(([cat, ch, label], i) => {
+            const busy = notifBusy === `${cat}.${ch}`;
+            const on = notif[cat][ch];
+            return (
+              <View
+                key={`${cat}-${ch}`}
+                style={[styles.row, i < 3 && styles.rowBorder]}
+              >
+                <View style={styles.rowIcon}>
+                  <Ionicons name="notifications-outline" size={18} color={NAVY} />
+                </View>
+                <Text style={styles.rowLabel}>{label}</Text>
+                <View style={styles.rowRight}>
+                  {busy ? (
+                    <ActivityIndicator size="small" color={NAVY} />
+                  ) : (
+                    <Switch
+                      value={on}
+                      onValueChange={(v) => void handleNotifToggle(cat, ch, v)}
+                      trackColor={{ false: "#e5e7eb", true: "#bfdbfe" }}
+                      thumbColor={on ? NAVY : "#f4f4f5"}
+                    />
+                  )}
+                </View>
+              </View>
+            );
+          })}
+          <Text style={styles.hint}>
+            Same payload as the website (`PATCH /user/update-notifications-settings` with a full
+            `notifications` object).
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Support & invites</Text>
+        <View style={styles.sectionCard}>
+          {supportRows.map((row, ri) => (
+            <Pressable
+              key={row.label}
+              style={({ pressed }) => [
+                styles.row,
+                ri < supportRows.length - 1 && styles.rowBorder,
+                pressed && { backgroundColor: "#f9fafb" },
+              ]}
+              onPress={row.action}
+            >
+              <View style={styles.rowIcon}>
+                <Ionicons name={row.icon} size={18} color={NAVY} />
+              </View>
+              <Text style={styles.rowLabel}>{row.label}</Text>
+              <View style={styles.rowRight}>
+                <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle} />
+        <View style={styles.sectionCard}>
+          <Pressable
+            style={({ pressed }) => [styles.row, pressed && { backgroundColor: "#f9fafb" }]}
+            onPress={handleSignOut}
+          >
+            <View style={[styles.rowIcon, styles.rowIconDanger]}>
+              <Ionicons name="log-out-outline" size={18} color="#dc2626" />
+            </View>
+            <Text style={[styles.rowLabel, styles.rowLabelDanger]}>Sign Out</Text>
+            <View style={styles.rowRight} />
+          </Pressable>
+        </View>
+      </View>
 
       <Text style={styles.version}>NetQwix Mobile · v1.0.0</Text>
     </ScrollView>
@@ -188,6 +384,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e5e7eb",
     overflow: "hidden",
+    paddingBottom: 4,
+  },
+  hint: {
+    fontSize: 12,
+    color: "#9ca3af",
+    paddingHorizontal: space.md,
+    paddingBottom: space.sm,
+    lineHeight: 16,
   },
   row: {
     flexDirection: "row",
@@ -211,7 +415,14 @@ const styles = StyleSheet.create({
   rowIconDanger: { backgroundColor: "#fee2e2" },
   rowLabel: { flex: 1, fontSize: 15, fontWeight: "500", color: "#111827" },
   rowLabelDanger: { color: "#dc2626" },
-  rowRight: { flexDirection: "row", alignItems: "center", gap: 4, maxWidth: "40%" },
+  rowRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    maxWidth: "42%",
+    minWidth: 44,
+    justifyContent: "flex-end",
+  },
   rowValue: { fontSize: 13, color: "#9ca3af", textAlign: "right" },
 
   version: { textAlign: "center", fontSize: 12, color: "#9ca3af", paddingVertical: space.sm },

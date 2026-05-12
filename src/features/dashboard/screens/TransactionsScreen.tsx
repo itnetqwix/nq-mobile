@@ -1,3 +1,5 @@
+import { Ionicons } from "@expo/vector-icons";
+import { useQuery } from "@tanstack/react-query";
 import React from "react";
 import {
   ActivityIndicator,
@@ -7,63 +9,60 @@ import {
   Text,
   View,
 } from "react-native";
-import { useQuery } from "@tanstack/react-query";
-import { Ionicons } from "@expo/vector-icons";
-import { radii, space } from "../../../theme/tokens";
-import { apiClient } from "../../../api/client";
-import { API_ROUTES } from "../../../config/apiRoutes";
+import { space } from "../../../theme/tokens";
+import { AccountType } from "../../../constants/accountType";
+import { useAuth } from "../../auth/context/AuthContext";
+import { fetchBookingTransactions } from "../../home/api/homeApi";
 
 const NAVY = "#000080";
 
-async function fetchTransactions(): Promise<any[]> {
+function formatBookedDate(d?: string): string {
+  if (!d) return "";
   try {
-    const res = await apiClient.get(API_ROUTES.transaction.getPaymentIntent);
-    return res.data?.result ?? res.data ?? [];
+    const dt = new Date(d);
+    if (!Number.isNaN(dt.getTime())) {
+      return dt.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+    }
   } catch {
-    return [];
+    /* fall through */
   }
+  return String(d);
 }
 
-function timeLabel(dateStr?: string): string {
-  if (!dateStr) return "";
-  try {
-    return new Date(dateStr).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return dateStr;
-  }
+function bookingAmountDisplay(booking: any, isTrainer: boolean): string {
+  const amount = Number(booking?.amount ?? 0);
+  const fee = Number(booking?.application_fee_amount ?? 0);
+  const usd = isTrainer ? amount - fee : amount;
+  return `${usd.toFixed(2)} USD`;
 }
 
-function TransactionRow({ item }: { item: any }) {
-  const amount = item?.amount ?? item?.amount_total ?? 0;
-  const currency = (item?.currency ?? "usd").toUpperCase();
-  const status = item?.status ?? "unknown";
-  const date = timeLabel(item?.created_at ?? item?.createdAt);
-  const desc = item?.description ?? item?.metadata?.description ?? "Session payment";
-  const isCredit = item?.type === "credit" || item?.amount > 0;
+function TransactionRow({ booking, isTrainer }: { booking: any; isTrainer: boolean }) {
+  const other = isTrainer ? booking?.trainee_info : booking?.trainer_info;
+  const name = other?.fullName ?? other?.fullname ?? "Session";
+  const status = booking?.refund_status ?? booking?.status ?? "—";
+  const dateLabel = formatBookedDate(booking?.booked_date);
+  const timeRange =
+    booking?.session_start_time && booking?.session_end_time
+      ? `${booking.session_start_time} – ${booking.session_end_time}`
+      : "";
 
   return (
     <View style={styles.row}>
-      <View style={[styles.iconBox, isCredit ? styles.iconCredit : styles.iconDebit]}>
-        <Ionicons
-          name={isCredit ? "arrow-down-outline" : "arrow-up-outline"}
-          size={18}
-          color={isCredit ? "#15803d" : "#b91c1c"}
-        />
+      <View style={styles.iconBox}>
+        <Ionicons name="receipt-outline" size={18} color={NAVY} />
       </View>
       <View style={styles.rowInfo}>
-        <Text style={styles.rowDesc} numberOfLines={1}>{desc}</Text>
-        <Text style={styles.rowDate}>{date}</Text>
+        <Text style={styles.rowDesc} numberOfLines={2}>
+          Session with {name}
+        </Text>
+        <Text style={styles.rowDate}>
+          {[dateLabel, timeRange].filter(Boolean).join(" · ")}
+        </Text>
       </View>
       <View style={styles.rowRight}>
-        <Text style={[styles.rowAmount, isCredit ? styles.amountCredit : styles.amountDebit]}>
-          {isCredit ? "+" : "-"}{currency} {(amount / 100).toFixed(2)}
-        </Text>
+        <Text style={styles.rowAmount}>{bookingAmountDisplay(booking, isTrainer)}</Text>
         <View style={[styles.statusBadge, getStatusStyle(status)]}>
-          <Text style={styles.statusText}>{status}</Text>
+          <Text style={styles.statusText}>{String(status)}</Text>
         </View>
       </View>
     </View>
@@ -71,18 +70,26 @@ function TransactionRow({ item }: { item: any }) {
 }
 
 function getStatusStyle(status: string) {
-  switch (status) {
-    case "succeeded": return { backgroundColor: "#dcfce7" };
-    case "pending": return { backgroundColor: "#fef3c7" };
-    case "failed": return { backgroundColor: "#fee2e2" };
-    default: return { backgroundColor: "#f3f4f6" };
+  const s = String(status).toLowerCase();
+  if (s.includes("success") || s.includes("confirm") || s.includes("paid")) {
+    return { backgroundColor: "#dcfce7" };
   }
+  if (s.includes("pending") || s.includes("process")) {
+    return { backgroundColor: "#fef3c7" };
+  }
+  if (s.includes("fail") || s.includes("cancel") || s.includes("refund")) {
+    return { backgroundColor: "#fee2e2" };
+  }
+  return { backgroundColor: "#f3f4f6" };
 }
 
 export function TransactionsScreen() {
-  const { data: transactions = [], isLoading, isRefetching, refetch } = useQuery({
-    queryKey: ["transactions"],
-    queryFn: fetchTransactions,
+  const { accountType } = useAuth();
+  const isTrainer = accountType === AccountType.TRAINER;
+
+  const { data: rows = [], isLoading, isRefetching, refetch } = useQuery({
+    queryKey: ["transactions", "booking-list-by-id"],
+    queryFn: () => fetchBookingTransactions({ page: 1, limit: 500 }),
     staleTime: 60_000,
   });
 
@@ -96,9 +103,9 @@ export function TransactionsScreen() {
 
   return (
     <FlatList
-      data={transactions}
-      keyExtractor={(item, i) => item?._id ?? item?.id ?? String(i)}
-      renderItem={({ item }) => <TransactionRow item={item} />}
+      data={rows}
+      keyExtractor={(item, i) => item?._id ?? String(i)}
+      renderItem={({ item }) => <TransactionRow booking={item} isTrainer={isTrainer} />}
       contentContainerStyle={styles.list}
       refreshControl={
         <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={NAVY} />
@@ -106,9 +113,10 @@ export function TransactionsScreen() {
       ListEmptyComponent={
         <View style={styles.empty}>
           <Ionicons name="wallet-outline" size={48} color="#d1d5db" />
-          <Text style={styles.emptyTitle}>No transactions yet</Text>
+          <Text style={styles.emptyTitle}>No bookings in this window</Text>
           <Text style={styles.emptyBody}>
-            Your payment history will appear here after you complete session bookings.
+            Same data as the website transactions panel: sessions from the last few days onward
+            with amounts and status (your booking list API).
           </Text>
         </View>
       }
@@ -134,18 +142,15 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+    backgroundColor: "#f0f4ff",
     alignItems: "center",
     justifyContent: "center",
   },
-  iconCredit: { backgroundColor: "#dcfce7" },
-  iconDebit: { backgroundColor: "#fee2e2" },
   rowInfo: { flex: 1 },
   rowDesc: { fontSize: 14, fontWeight: "600", color: "#111827" },
   rowDate: { fontSize: 12, color: "#9ca3af", marginTop: 2 },
   rowRight: { alignItems: "flex-end", gap: 4 },
-  rowAmount: { fontSize: 15, fontWeight: "700" },
-  amountCredit: { color: "#15803d" },
-  amountDebit: { color: "#b91c1c" },
+  rowAmount: { fontSize: 14, fontWeight: "700", color: "#111827" },
   statusBadge: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
   statusText: { fontSize: 11, fontWeight: "600", color: "#374151", textTransform: "capitalize" },
 

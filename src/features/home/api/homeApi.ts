@@ -77,8 +77,54 @@ export async function postRejectFriendRequest(requestId: string): Promise<any> {
 }
 
 export async function fetchNotifications(page = 1, limit = 20): Promise<any[]> {
-  const res = await apiClient.get(`${API_ROUTES.notifications.list}?page=${page}&limit=${limit}`);
-  return res.data?.result ?? res.data?.notifications ?? res.data ?? [];
+  const res = await apiClient.get(API_ROUTES.notifications.list, {
+    params: { page, limit },
+  });
+  const body = res.data as Record<string, unknown>;
+  /** Backend: `{ status, data: Notification[] }` — see `notificationsController.getNotifications`. */
+  const list = body?.data ?? body?.result ?? body?.notifications;
+  if (Array.isArray(list)) return list;
+  return [];
+}
+
+/** Mark first page of unread inbox items read — same contract as web `PATCH /notifications/update` + `{ page }`. */
+export async function patchNotificationsMarkRead(page = 1): Promise<void> {
+  await apiClient.patch(API_ROUTES.notifications.update, { page });
+}
+
+/** Web `transaction.api.js` uses `GET /user/booking-list-by-id` for the transactions sidebar table. */
+export async function fetchBookingTransactions(params?: {
+  page?: number;
+  limit?: number;
+}): Promise<any[]> {
+  const res = await apiClient.get(API_ROUTES.user.bookingListById, {
+    params: { page: params?.page ?? 1, limit: params?.limit ?? 500 },
+  });
+  const inner = (res.data as any)?.data;
+  const rows = inner?.result ?? inner?.data ?? res.data?.result;
+  if (Array.isArray(rows)) return rows;
+  return [];
+}
+
+export async function postInviteFriendEmail(userEmail: string): Promise<void> {
+  await apiClient.post(API_ROUTES.user.inviteFriend, {
+    user_email: userEmail.toLowerCase().trim(),
+  });
+}
+
+export type UserNotificationPrefs = {
+  promotional: { email: boolean; sms: boolean };
+  transactional: { email: boolean; sms: boolean };
+};
+
+export async function patchUserNotificationSettings(
+  notifications: UserNotificationPrefs
+): Promise<void> {
+  await apiClient.patch(API_ROUTES.user.updateNotificationsSettings, { notifications });
+}
+
+export async function postAccountPrivacy(isPrivate: boolean): Promise<void> {
+  await apiClient.post(API_ROUTES.user.updateAccountPrivacy, { isPrivate });
 }
 
 export async function fetchTrainersWithSlots(params?: { search?: string }): Promise<any[]> {
@@ -86,9 +132,51 @@ export async function fetchTrainersWithSlots(params?: { search?: string }): Prom
   return res.data?.result ?? res.data ?? [];
 }
 
-export async function fetchTrainerSlots(): Promise<any[]> {
+export async function fetchTrainerSlots(): Promise<
+  { day: string; slots: { start_time?: string; end_time?: string }[] }[]
+> {
   const res = await apiClient.get(API_ROUTES.trainer.getSlots);
-  return res.data?.result ?? res.data ?? [];
+  const root = (res.data as any)?.data ?? (res.data as any)?.result ?? res.data;
+  const avail = root?.available_slots;
+  if (Array.isArray(avail)) return avail;
+  return [];
+}
+
+/** POST `/common/get-clips` — returns clips grouped by category (`_id` = category name). */
+export async function postMyClipsGrouped(params?: {
+  trainee_id?: string;
+}): Promise<{ _id: string; clips: any[] }[]> {
+  const res = await apiClient.post(API_ROUTES.common.getClips, params ?? {});
+  const data = (res.data as any)?.data;
+  return Array.isArray(data) ? data : [];
+}
+
+/** POST `/common/trainee-clips` — trainer: clips attached to bookings, grouped by trainee user. */
+export async function postTraineeClipsGrouped(): Promise<{ _id: any; clips: any[] }[]> {
+  const res = await apiClient.post(API_ROUTES.common.traineeClips, {});
+  const data = (res.data as any)?.data;
+  return Array.isArray(data) ? data : [];
+}
+
+export async function postGetAllSavedSessions(): Promise<any[]> {
+  const res = await apiClient.post(API_ROUTES.common.getAllSavedSessions, {});
+  const data = (res.data as any)?.data;
+  return Array.isArray(data) ? data : [];
+}
+
+export async function postReportsGetAll(params?: { trainee_id?: string }): Promise<any[]> {
+  const res = await apiClient.post(API_ROUTES.report.getAll, params ?? {});
+  const d = res.data as Record<string, any>;
+  if (Array.isArray(d?.result)) return d.result;
+  if (Array.isArray(d?.data)) return d.data;
+  return [];
+}
+
+export async function postShareClipsToEmail(userEmail: string, clips: any[]): Promise<void> {
+  await apiClient.post(API_ROUTES.user.shareClips, {
+    user_email: userEmail.trim().toLowerCase(),
+    clips,
+  });
 }
 
 export async function fetchFriends(): Promise<any[]> {

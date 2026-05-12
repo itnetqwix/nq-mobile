@@ -3,10 +3,16 @@ import { WebRoutes } from "../../../constants/webRoutes";
 
 /**
  * Surfaces driven from the web **left sidebar** (`containers/leftSidebar/index.jsx`):
- * notifications, settings, file uploads, transactions — plus top-level `/meeting` and `/messenger`.
+ * uploads, invite friends, notifications, settings, transactions — plus `/meeting` and `/messenger`.
  * These are not separate `pages/dashboard/*` routes but the same product flows on mobile.
  */
-export const UTILITY_SURFACE_IDS = ["uploads", "notifications", "settings", "transactions"] as const;
+export const UTILITY_SURFACE_IDS = [
+  "uploads",
+  "invite",
+  "notifications",
+  "settings",
+  "transactions",
+] as const;
 export type UtilitySurfaceId = (typeof UTILITY_SURFACE_IDS)[number];
 
 export type ShellSurfaceMeta = {
@@ -23,6 +29,13 @@ export const SHELL_SURFACES: readonly ShellSurfaceMeta[] = [
     title: "My uploads",
     subtitle: "Clips and files from the web “My Uploads” / locker file panel.",
     webContext: "Left sidebar → My Uploads (`ToggleTab(\"file\")` → `FileSection`).",
+    allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
+  },
+  {
+    id: "invite",
+    title: "Invite friends",
+    subtitle: "Email invitations — same `/user/invite-friend` flow as the web dashboard card.",
+    webContext: "Dashboard home → Invite friends (`InviteFriendsCard`).",
     allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
   },
   {

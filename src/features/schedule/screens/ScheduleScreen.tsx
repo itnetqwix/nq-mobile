@@ -1,101 +1,140 @@
-import React from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { useQuery } from "@tanstack/react-query";
+import React, { useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
-  FlatList,
+  Linking,
   Pressable,
   RefreshControl,
+  SectionList,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { useQuery } from "@tanstack/react-query";
-import { Ionicons } from "@expo/vector-icons";
-import { useAuth } from "../../auth/context/AuthContext";
+import { WEB_APP_ORIGIN } from "../../../config/env";
+import { WebRoutes } from "../../../constants/webRoutes";
 import { AccountType } from "../../../constants/accountType";
 import { radii, space } from "../../../theme/tokens";
-import { fetchTrainerSlots, fetchScheduledMeetings } from "../../home/api/homeApi";
+import { useAuth } from "../../auth/context/AuthContext";
+import { fetchScheduledMeetings, fetchTrainerSlots } from "../../home/api/homeApi";
 import { UpcomingSessionsScreen } from "../../sessions/screens/UpcomingSessionsScreen";
 import type { MainTabScreenProps } from "../../../navigation/types";
 
 const NAVY = "#000080";
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEK_ORDER = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+] as const;
 
-function SlotCard({ slot }: { slot: any }) {
-  const day = slot?.day_of_week != null ? DAYS[slot.day_of_week] ?? slot.day_of_week : slot?.day ?? "";
-  const start = slot?.start_time ?? slot?.startTime ?? "";
-  const end = slot?.end_time ?? slot?.endTime ?? "";
-  const isAvailable = slot?.is_available ?? slot?.isAvailable ?? true;
-
-  return (
-    <View style={[styles.slotCard, !isAvailable && styles.slotCardUnavailable]}>
-      <View style={styles.slotLeft}>
-        <Text style={styles.slotDay}>{day}</Text>
-        <Text style={styles.slotTime}>
-          {start} – {end}
-        </Text>
-      </View>
-      <View style={[styles.slotBadge, isAvailable ? styles.slotAvail : styles.slotBooked]}>
-        <Text style={[styles.slotBadgeText, isAvailable ? styles.slotAvailText : styles.slotBookedText]}>
-          {isAvailable ? "Available" : "Booked"}
-        </Text>
-      </View>
-    </View>
-  );
+function normDay(d: string): string {
+  return String(d || "")
+    .trim()
+    .toLowerCase();
 }
 
+function titleDay(day: string): string {
+  const n = normDay(day);
+  return n ? n.charAt(0).toUpperCase() + n.slice(1) : "Day";
+}
+
+type DaySection = {
+  title: string;
+  data: { start_time?: string; end_time?: string }[];
+};
+
 function TrainerSchedule() {
-  const { data: slots = [], isLoading, isRefetching, refetch } = useQuery({
+  const { data: inventory = [], isLoading, isRefetching, refetch } = useQuery({
     queryKey: ["trainerSlots"],
     queryFn: fetchTrainerSlots,
     staleTime: 60_000,
   });
 
+  const sections: DaySection[] = useMemo(() => {
+    const avail = Array.isArray(inventory) ? inventory : [];
+    return WEEK_ORDER.map((day) => {
+      const row = avail.find((d: any) => normDay(d?.day) === day);
+      const slots = Array.isArray(row?.slots) ? row!.slots : [];
+      return { title: titleDay(day), data: slots };
+    }).filter((s) => s.data.length > 0);
+  }, [inventory]);
+
+  const openWebSchedule = useCallback(async () => {
+    const url = `${WEB_APP_ORIGIN.replace(/\/$/, "")}${WebRoutes.dashboardSchedule}`;
+    if (await Linking.canOpenURL(url)) void Linking.openURL(url);
+  }, []);
+
+  if (isLoading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={NAVY} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.root}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Schedule</Text>
-        <Pressable style={styles.addBtn}>
-          <Ionicons name="add" size={20} color="#fff" />
-          <Text style={styles.addBtnText}>Add Slot</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>My schedule</Text>
+          <Text style={styles.headerSub}>
+            Weekly hours from `GET /trainer/get-slots` (`available_slots`), same source as the web
+            schedule page.
+          </Text>
+        </View>
+        <Pressable style={styles.manageBtn} onPress={openWebSchedule}>
+          <Ionicons name="open-outline" size={18} color="#fff" />
+          <Text style={styles.manageBtnText}>Edit on web</Text>
         </Pressable>
       </View>
 
-      {isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={NAVY} />
-        </View>
-      ) : (
-        <FlatList
-          data={slots}
-          keyExtractor={(item, i) => item?._id ?? String(i)}
-          renderItem={({ item }) => <SlotCard slot={item} />}
-          contentContainerStyle={styles.list}
-          refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={NAVY} />
-          }
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              <Ionicons name="calendar-outline" size={48} color="#d1d5db" />
-              <Text style={styles.emptyTitle}>No schedule set up yet</Text>
-              <Text style={styles.emptyBody}>
-                Add your available time slots so trainees can book sessions with you.
-              </Text>
-              <Pressable style={styles.addBtnLarge}>
-                <Ionicons name="add-circle-outline" size={20} color="#fff" />
-                <Text style={styles.addBtnText}>Add Your First Slot</Text>
-              </Pressable>
+      <SectionList
+        sections={sections}
+        keyExtractor={(item, index) => `${item.start_time}-${item.end_time}-${index}`}
+        refreshControl={
+          <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={NAVY} />
+        }
+        contentContainerStyle={
+          sections.length === 0 ? styles.listEmptyGrow : styles.listContent
+        }
+        renderSectionHeader={({ section: { title } }) => (
+          <Text style={styles.sectionTitle}>{title}</Text>
+        )}
+        renderItem={({ item }) => (
+          <View style={styles.slotCard}>
+            <Ionicons name="time-outline" size={20} color={NAVY} />
+            <Text style={styles.slotTime}>
+              {item.start_time ?? "—"} – {item.end_time ?? "—"}
+            </Text>
+            <View style={styles.availPill}>
+              <Text style={styles.availPillText}>Available</Text>
             </View>
-          }
-        />
-      )}
+          </View>
+        )}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Ionicons name="calendar-outline" size={48} color="#d1d5db" />
+            <Text style={styles.emptyTitle}>No weekly slots yet</Text>
+            <Text style={styles.emptyBody}>
+              Set your availability on the website schedule screen, then pull to refresh here.
+            </Text>
+            <Pressable style={styles.cta} onPress={openWebSchedule}>
+              <Text style={styles.ctaText}>Open schedule on web</Text>
+            </Pressable>
+          </View>
+        }
+      />
     </View>
   );
 }
 
 export function ScheduleScreen(_props: MainTabScreenProps<"Schedule">) {
   const { accountType } = useAuth();
-  // Trainers manage their own slots; trainees see upcoming sessions
   if (accountType === AccountType.TRAINER) {
     return <TrainerSchedule />;
   }
@@ -108,8 +147,8 @@ const styles = StyleSheet.create({
 
   header: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: space.sm,
     backgroundColor: "#fff",
     paddingHorizontal: space.md,
     paddingVertical: space.md,
@@ -117,57 +156,57 @@ const styles = StyleSheet.create({
     borderBottomColor: "#e5e7eb",
   },
   headerTitle: { fontSize: 18, fontWeight: "700", color: NAVY },
-  addBtn: {
+  headerSub: { fontSize: 12, color: "#6b7280", marginTop: 4, lineHeight: 16 },
+  manageBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
     backgroundColor: NAVY,
     borderRadius: radii.sm,
-    paddingHorizontal: space.md,
+    paddingHorizontal: 10,
     paddingVertical: 8,
   },
-  addBtnLarge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: NAVY,
-    borderRadius: radii.sm,
-    paddingHorizontal: space.lg,
-    paddingVertical: 12,
-    marginTop: space.md,
+  manageBtnText: { fontSize: 12, color: "#fff", fontWeight: "600" },
+
+  listContent: { padding: space.md, paddingBottom: space.xl },
+  listEmptyGrow: { flexGrow: 1, padding: space.md },
+
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#111827",
+    marginBottom: 8,
+    marginTop: 4,
   },
-  addBtnText: { fontSize: 13, color: "#fff", fontWeight: "600" },
-
-  list: { padding: space.md, gap: space.sm, paddingBottom: space.xl },
-
   slotCard: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: space.sm,
     backgroundColor: "#fff",
     borderRadius: radii.md,
     padding: space.md,
+    marginBottom: space.sm,
     borderWidth: 1,
     borderColor: "#e5e7eb",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
   },
-  slotCardUnavailable: { opacity: 0.65 },
-  slotLeft: { gap: 2 },
-  slotDay: { fontSize: 15, fontWeight: "700", color: "#111827" },
-  slotTime: { fontSize: 13, color: "#6b7280" },
+  slotTime: { flex: 1, fontSize: 15, fontWeight: "600", color: "#374151" },
+  availPill: {
+    backgroundColor: "#dcfce7",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  availPillText: { fontSize: 11, fontWeight: "700", color: "#15803d" },
 
-  slotBadge: { borderRadius: 4, paddingHorizontal: 10, paddingVertical: 4 },
-  slotAvail: { backgroundColor: "#dcfce7" },
-  slotBooked: { backgroundColor: "#dbeafe" },
-  slotBadgeText: { fontSize: 12, fontWeight: "700" },
-  slotAvailText: { color: "#15803d" },
-  slotBookedText: { color: "#1d4ed8" },
-
-  empty: { alignItems: "center", paddingVertical: space.xl * 2, gap: space.sm },
+  empty: { alignItems: "center", paddingVertical: space.xl * 2, gap: space.sm, paddingHorizontal: space.lg },
   emptyTitle: { fontSize: 16, fontWeight: "700", color: "#374151" },
-  emptyBody: { fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20, paddingHorizontal: space.lg },
+  emptyBody: { fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20 },
+  cta: {
+    marginTop: space.md,
+    backgroundColor: NAVY,
+    borderRadius: radii.md,
+    paddingHorizontal: space.lg,
+    paddingVertical: 12,
+  },
+  ctaText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 });

@@ -20,11 +20,14 @@ import {
   postRejectFriendRequest,
 } from "../../home/api/homeApi";
 
+import { ShareClipsPanel } from "../components/ShareClipsPanel";
+
 const NAVY = "#000080";
 
 const TABS = [
   { key: "friends", label: "Friends" },
   { key: "requests", label: "Requests" },
+  { key: "share", label: "Share clips" },
 ] as const;
 type Tab = (typeof TABS)[number]["key"];
 
@@ -115,7 +118,6 @@ export function FriendsScreen() {
     queryKey: ["friendRequests"],
     queryFn: fetchFriendRequests,
     staleTime: 60_000,
-    enabled: tab === "requests",
   });
 
   const handleAccept = async (requestId: string) => {
@@ -129,10 +131,11 @@ export function FriendsScreen() {
     queryClient.invalidateQueries({ queryKey: ["friendRequests"] });
   };
 
-  const isLoading = tab === "friends" ? loadingFriends : loadingReqs;
-  const isRefetching = tab === "friends" ? refreshingFriends : refreshingReqs;
-  const refetch = tab === "friends" ? refetchFriends : refetchReqs;
-  const data = tab === "friends" ? friends : requests;
+  const isLoading = tab === "friends" ? loadingFriends : tab === "requests" ? loadingReqs : false;
+  const isRefetching =
+    tab === "friends" ? refreshingFriends : tab === "requests" ? refreshingReqs : false;
+  const refetch = tab === "friends" ? refetchFriends : tab === "requests" ? refetchReqs : () => {};
+  const data = tab === "friends" ? friends : tab === "requests" ? requests : [];
 
   return (
     <View style={styles.root}>
@@ -157,6 +160,8 @@ export function FriendsScreen() {
         <View style={styles.center}>
           <ActivityIndicator size="large" color={NAVY} />
         </View>
+      ) : tab === "share" ? (
+        <ShareClipsPanel />
       ) : (
         <FlatList
           data={data}
@@ -217,7 +222,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "transparent",
   },
   tabBtnActive: { borderBottomColor: NAVY },
-  tabText: { fontSize: 14, fontWeight: "600", color: "#6b7280" },
+  tabText: { fontSize: 12, fontWeight: "600", color: "#6b7280" },
   tabTextActive: { color: NAVY },
   badge: { fontSize: 12, color: "#dc2626", fontWeight: "700" },
 

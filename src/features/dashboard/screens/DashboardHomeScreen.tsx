@@ -501,7 +501,7 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
         <HomeMainCont title="Locker" testID="card trainer-profile-card Home-main-Cont locker-promos">
           <HomeUploadInviteRow
             onUploads={() => openShell("uploads")}
-            onInvite={() => openFeature("friends")}
+            onInvite={() => openShell("invite")}
           />
         </HomeMainCont>
       </View>

@@ -1,17 +1,20 @@
-import React from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Ionicons } from "@expo/vector-icons";
+import React, { useCallback } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { useQuery } from "@tanstack/react-query";
-import { Ionicons } from "@expo/vector-icons";
 import { radii, space } from "../../../theme/tokens";
-import { fetchNotifications } from "../../home/api/homeApi";
+import {
+  fetchNotifications,
+  patchNotificationsMarkRead,
+} from "../../home/api/homeApi";
 
 const NAVY = "#000080";
 
@@ -44,6 +47,7 @@ function timeAgo(dateStr?: string): string {
 function NotificationItem({ item }: { item: any }) {
   const icon = getNotificationIcon(item?.title);
   const isRead = item?.isRead ?? item?.is_read ?? false;
+  const bodyText = item?.body ?? item?.description ?? "";
 
   return (
     <View style={[styles.item, !isRead && styles.itemUnread]}>
@@ -56,9 +60,9 @@ function NotificationItem({ item }: { item: any }) {
             {item.title}
           </Text>
         )}
-        {!!item?.body && (
-          <Text style={styles.itemBody} numberOfLines={2}>
-            {item.body}
+        {!!bodyText && (
+          <Text style={styles.itemBody} numberOfLines={3}>
+            {bodyText}
           </Text>
         )}
         {!!item?.createdAt && (
@@ -71,11 +75,32 @@ function NotificationItem({ item }: { item: any }) {
 }
 
 export function NotificationsScreen() {
+  const queryClient = useQueryClient();
+
   const { data: notifications = [], isLoading, isRefetching, refetch } = useQuery({
     queryKey: ["notifications"],
     queryFn: () => fetchNotifications(1, 50),
     staleTime: 30_000,
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        try {
+          await patchNotificationsMarkRead(1);
+          if (!cancelled) {
+            queryClient.invalidateQueries({ queryKey: ["notifications"] });
+          }
+        } catch {
+          /* non-blocking */
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [queryClient])
+  );
 
   if (isLoading) {
     return (
@@ -140,5 +165,11 @@ const styles = StyleSheet.create({
 
   empty: { alignItems: "center", paddingVertical: space.xl * 2, gap: space.sm },
   emptyTitle: { fontSize: 16, fontWeight: "700", color: "#374151" },
-  emptyBody: { fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20, paddingHorizontal: space.lg },
+  emptyBody: {
+    fontSize: 14,
+    color: "#6b7280",
+    textAlign: "center",
+    lineHeight: 20,
+    paddingHorizontal: space.lg,
+  },
 });

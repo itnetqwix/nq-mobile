@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Image,
   Pressable,
@@ -14,27 +13,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { radii, space } from "../../../theme/tokens";
 import { fetchOnlineUsers } from "../../home/api/homeApi";
-import { useAuth } from "../../auth/context/AuthContext";
-import { useInstantLesson } from "../../instant-lesson/InstantLessonContext";
-import { apiClient } from "../../../api/client";
-import { API_ROUTES } from "../../../config/apiRoutes";
+import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
-
-/** Matches web + `nq-backend-main` `bookInstantMeeting` response: `{ status, data: { bookingId, booking } }`. */
-function parseInstantBookingLessonId(res: any): string | undefined {
-  const d = res?.data?.data ?? res?.data;
-  if (!d || typeof d !== "object") return undefined;
-  const bid = d.bookingId;
-  if (bid != null) {
-    const id = typeof bid === "object" && bid !== null ? (bid as any)._id ?? (bid as any).id : bid;
-    if (id != null && id !== "") return String(id);
-  }
-  const booking = d.booking ?? d.result;
-  const fromBooking = booking?._id ?? booking?.id;
-  if (fromBooking != null && fromBooking !== "") return String(fromBooking);
-  if (d._id) return String(d._id);
-  return undefined;
-}
 
 const NAVY = "#000080";
 
@@ -60,9 +40,7 @@ function Avatar({ uri, name, size = 56 }: { uri?: string; name?: string; size?: 
 }
 
 export function InstantBookingScreen() {
-  const { user } = useAuth();
-  const { startBooking } = useInstantLesson();
-  const [bookingLoading, setBookingLoading] = useState<string | null>(null);
+  const [wizardTrainer, setWizardTrainer] = useState<Record<string, unknown> | null>(null);
 
   const { data: onlineUsers = [], isLoading, isRefetching, refetch } = useQuery({
     queryKey: ["onlineUsers"],
@@ -78,42 +56,14 @@ export function InstantBookingScreen() {
       })
     : [];
 
-  const handleBookInstant = async (trainer: any) => {
-    const trainerId = trainer?._id ?? trainer?.id;
-    if (!trainerId) return;
-    setBookingLoading(trainerId);
-    try {
-      /** Same contract as `nq-backend` `bookInstantMeetingModal`: `trainer_id` + ISO `booked_date`. */
-      const res = await apiClient.post(API_ROUTES.trainee.bookInstantMeeting, {
-        trainer_id: trainerId,
-        booked_date: new Date().toISOString(),
-      });
-      const lessonId = parseInstantBookingLessonId(res);
-      if (!lessonId) {
-        throw new Error(
-          "Server did not return a booking id. Ensure the API returns `data.bookingId` after booking."
-        );
-      }
-      const traineeId = String((user as any)?._id ?? (user as any)?.id ?? "");
-      startBooking({
-        lessonId,
-        coachId: trainerId,
-        traineeId,
-        trainerName: trainer?.fullname ?? trainer?.fullName ?? "Trainer",
-        durationMinutes: 30,
-      });
-    } catch (err: any) {
-      Alert.alert(
-        "Booking Failed",
-        err?.response?.data?.message ?? err?.message ?? "Could not book the instant lesson."
-      );
-    } finally {
-      setBookingLoading(null);
-    }
-  };
-
   return (
     <View style={styles.root}>
+      <InstantLessonBookingWizardModal
+        visible={!!wizardTrainer}
+        trainer={wizardTrainer}
+        onDismiss={() => setWizardTrainer(null)}
+      />
+
       {isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={NAVY} />
@@ -125,7 +75,6 @@ export function InstantBookingScreen() {
           keyExtractor={(item, i) => item?._id ?? String(i)}
           renderItem={({ item }) => {
             const name = item?.fullname ?? item?.fullName ?? "Trainer";
-            const isBooking = bookingLoading === (item?._id ?? item?.id);
             return (
               <View style={styles.trainerCard}>
                 <Avatar uri={item?.profile_picture} name={name} size={56} />
@@ -141,17 +90,10 @@ export function InstantBookingScreen() {
                 </View>
                 <Pressable
                   style={({ pressed }) => [styles.bookBtn, pressed && { opacity: 0.75 }]}
-                  onPress={() => handleBookInstant(item)}
-                  disabled={isBooking}
+                  onPress={() => setWizardTrainer(item)}
                 >
-                  {isBooking ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <>
-                      <Ionicons name="flash" size={15} color="#fff" />
-                      <Text style={styles.bookBtnText}>Book Now</Text>
-                    </>
-                  )}
+                  <Ionicons name="flash" size={15} color="#fff" />
+                  <Text style={styles.bookBtnText}>Book Now</Text>
                 </Pressable>
               </View>
             );
