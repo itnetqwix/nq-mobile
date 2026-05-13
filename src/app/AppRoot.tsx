@@ -9,8 +9,10 @@ import { AuthProvider } from "../features/auth/context/AuthContext";
 import { SocketProvider } from "../features/socket/SocketContext";
 import { InstantLessonProvider } from "../features/instant-lesson/InstantLessonContext";
 import { NotificationProvider } from "../features/notifications/NotificationContext";
+import { PushNotificationBridge } from "../features/notifications/PushNotificationBridge";
 import { RootNavigator } from "../navigation/RootNavigator";
 import { navigationRef } from "../navigation/navigationRef";
+import { ThemeProvider } from "../theme/ThemeContext";
 
 export function AppRoot() {
   const queryClient = useMemo(
@@ -42,20 +44,25 @@ export function AppRoot() {
   return (
     <GestureHandlerRootView style={styles.flex}>
       <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <SocketProvider>
-              <NotificationProvider>
-                <InstantLessonProvider onNavigateToMeeting={navigateToMeeting}>
-                  <NavigationContainer ref={navigationRef}>
-                    <StatusBar style="dark" />
-                    <RootNavigator />
-                  </NavigationContainer>
-                </InstantLessonProvider>
-              </NotificationProvider>
-            </SocketProvider>
-          </AuthProvider>
-        </QueryClientProvider>
+        <ThemeProvider>
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <SocketProvider>
+                <NotificationProvider>
+                  <InstantLessonProvider onNavigateToMeeting={navigateToMeeting}>
+                    {/** Push token registration + tap routing. Lives inside the
+                     *  auth provider so it can react to sign-in/out. */}
+                    <PushNotificationBridge />
+                    <NavigationContainer ref={navigationRef}>
+                      <StatusBar style="dark" />
+                      <RootNavigator />
+                    </NavigationContainer>
+                  </InstantLessonProvider>
+                </NotificationProvider>
+              </SocketProvider>
+            </AuthProvider>
+          </QueryClientProvider>
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

@@ -10,7 +10,8 @@ import {
 } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radii, space } from "../../../theme/tokens";
+import { EmptyState, Skeleton } from "../../../components/ui";
+import { colors, radii, space, typography } from "../../../theme";
 import { getClipPlaybackUrl, isLikelyPdf } from "../../../lib/clipMediaUrl";
 import { postGetAllSavedSessions } from "../../home/api/homeApi";
 import { LockerViewerModal, type LockerViewerMode } from "../components/locker/LockerViewerModal";
@@ -54,8 +55,12 @@ export function SavedLessonsScreen() {
       </View>
 
       {savedQ.isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.brandNavy} />
+        <View style={styles.scroll}>
+          {[0, 1, 2].map((i) => (
+            <View key={i} style={{ marginBottom: space.md }}>
+              <Skeleton width="100%" height={92} radius={radii.md} />
+            </View>
+          ))}
         </View>
       ) : (
         <ScrollView
@@ -69,13 +74,11 @@ export function SavedLessonsScreen() {
           }
         >
           {(savedQ.data ?? []).length === 0 ? (
-            <View style={styles.empty}>
-              <Ionicons name="bookmark-outline" size={52} color="#d1d5db" />
-              <Text style={styles.emptyTitle}>No saved lessons</Text>
-              <Text style={styles.emptyBody}>
-                When you save a session recording on the website, it will show up here.
-              </Text>
-            </View>
+            <EmptyState
+              icon="bookmark-outline"
+              title="No saved lessons"
+              description="When you save a session recording on the website, it will show up here."
+            />
           ) : (
             (savedQ.data ?? []).map((s: any) => {
               const playable = !!getClipPlaybackUrl(s);
@@ -135,8 +138,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  heroTitle: { fontSize: 22, fontWeight: "800", color: colors.brandNavy, letterSpacing: -0.3 },
-  heroSub: { fontSize: 13, color: colors.textMuted, marginTop: 6, lineHeight: 18 },
+  heroTitle: { ...typography.titleLg, color: colors.brandNavy },
+  heroSub: { ...typography.bodySm, color: colors.textMuted, marginTop: 6 },
   scroll: { padding: space.md, paddingBottom: space.xl * 2, gap: space.md },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   card: {
@@ -159,11 +162,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cardBody: { flex: 1 },
-  cardTitle: { fontSize: 16, fontWeight: "700", color: colors.text },
-  cardDesc: { fontSize: 13, color: colors.textMuted, marginTop: 6, lineHeight: 18 },
-  cardMeta: { fontSize: 12, color: colors.textMuted, marginTop: 8 },
-  unavailable: { fontSize: 12, color: "#b45309", marginTop: 6, fontWeight: "600" },
-  empty: { alignItems: "center", paddingVertical: space.xl * 2, paddingHorizontal: space.lg, gap: space.sm },
-  emptyTitle: { fontSize: 17, fontWeight: "700", color: colors.text },
-  emptyBody: { fontSize: 14, color: colors.textMuted, textAlign: "center", lineHeight: 21 },
+  cardTitle: { ...typography.titleSm, color: colors.text },
+  cardDesc: { ...typography.bodySm, color: colors.textMuted, marginTop: 6 },
+  cardMeta: { ...typography.caption, color: colors.textMuted, marginTop: 8 },
+  unavailable: { ...typography.caption, color: colors.warning, marginTop: 6, fontWeight: "600" },
 });

@@ -14,13 +14,12 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radii, space } from "../../../theme/tokens";
+import { Button, EmptyState, Skeleton } from "../../../components/ui";
+import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { fetchOnlineUsers, fetchTrainersWithSlots } from "../../home/api/homeApi";
 import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
 import type { MenuStackParamList } from "../../../navigation/types";
-
-const NAVY = "#000080";
 
 function Avatar({ uri, name, size = 64 }: { uri?: string; name?: string; size?: number }) {
   const [failed, setFailed] = React.useState(false);
@@ -64,7 +63,7 @@ function TrainerCard({ trainer, onBook }: { trainer: any; onBook: (t: any) => vo
           )}
           {rating != null && (
             <View style={styles.ratingRow}>
-              <Ionicons name="star" size={13} color="#f59e0b" />
+              <Ionicons name="star" size={13} color={colors.warning} />
               <Text style={styles.ratingText}>{Number(rating).toFixed(1)}</Text>
             </View>
           )}
@@ -76,13 +75,13 @@ function TrainerCard({ trainer, onBook }: { trainer: any; onBook: (t: any) => vo
         </View>
       </View>
       <View style={styles.cardFooter}>
-        <Pressable
-          style={({ pressed }) => [styles.bookBtn, pressed && styles.bookBtnPressed]}
+        <Button
+          label="Book session"
+          leftIcon="flash"
+          size="sm"
+          fullWidth={false}
           onPress={() => onBook(trainer)}
-        >
-          <Ionicons name="flash" size={15} color="#fff" style={{ marginRight: 4 }} />
-          <Text style={styles.bookBtnText}>Book session</Text>
-        </Pressable>
+        />
         {trainer?.is_online && (
           <View style={styles.onlineBadge}>
             <View style={styles.onlineDot} />
@@ -188,19 +187,19 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
       </View>
 
       <View style={styles.searchBar}>
-        <Ionicons name="search-outline" size={18} color="#9ca3af" />
+        <Ionicons name="search-outline" size={18} color={colors.textMuted} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search trainers…"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor={colors.textMuted}
           value={search}
           onChangeText={setSearch}
           returnKeyType="search"
           autoCorrect={false}
         />
         {!!search && (
-          <Pressable onPress={() => setSearch("")}>
-            <Ionicons name="close-circle" size={18} color="#9ca3af" />
+          <Pressable onPress={() => setSearch("")} accessibilityLabel="Clear search">
+            <Ionicons name="close-circle" size={18} color={colors.textMuted} />
           </Pressable>
         )}
       </View>
@@ -210,9 +209,12 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
       )}
 
       {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={NAVY} />
-          <Text style={styles.loadingText}>Loading trainers…</Text>
+        <View style={styles.list}>
+          {[0, 1, 2, 3].map((i) => (
+            <View key={i} style={{ marginBottom: space.md }}>
+              <Skeleton width="100%" height={132} radius={radii.md} />
+            </View>
+          ))}
         </View>
       ) : (
         <FlatList
@@ -221,33 +223,31 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
           renderItem={({ item }) => <TrainerCard trainer={item} onBook={handleBook} />}
           contentContainerStyle={styles.list}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={NAVY} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brandNavy} />
           }
           ListHeaderComponent={
             !searchOk ? (
               <View style={styles.listBanner}>
-                <Ionicons name="radio-button-on" size={16} color="#16a34a" />
+                <Ionicons name="radio-button-on" size={16} color={colors.success} />
                 <Text style={styles.listBannerText}>Online now — tap Book session to start</Text>
               </View>
             ) : (
               <View style={styles.listBanner}>
-                <Ionicons name="funnel-outline" size={16} color={NAVY} />
+                <Ionicons name="funnel-outline" size={16} color={colors.brandNavy} />
                 <Text style={styles.listBannerText}>Results for &quot;{trimmed}&quot;</Text>
               </View>
             )
           }
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <Ionicons name="people-outline" size={48} color="#d1d5db" />
-              <Text style={styles.emptyTitle}>
-                {searchOk ? "No trainers match that search" : "No coaches online right now"}
-              </Text>
-              <Text style={styles.emptyBody}>
-                {searchOk
+            <EmptyState
+              icon="people-outline"
+              title={searchOk ? "No trainers match that search" : "No coaches online right now"}
+              description={
+                searchOk
                   ? "Try another name or category, or pull to refresh."
-                  : "Try a search (2+ letters), check back soon, or use Instant booking from the home hub."}
-              </Text>
-            </View>
+                  : "Try a search (2+ letters), check back soon, or use Instant booking from the home hub."
+              }
+            />
           }
         />
       )}
@@ -256,41 +256,41 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#f6f7fb" },
+  root: { flex: 1, backgroundColor: colors.surface },
   hero: {
     paddingHorizontal: space.md,
     paddingTop: space.md,
     paddingBottom: space.sm,
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: colors.border,
   },
-  heroTitle: { fontSize: 20, fontWeight: "800", color: colors.brandNavy },
-  heroSub: { fontSize: 13, color: colors.textMuted, marginTop: 6, lineHeight: 18 },
+  heroTitle: { ...typography.titleMd, color: colors.brandNavy },
+  heroSub: { ...typography.bodySm, color: colors.textMuted, marginTop: 6 },
   searchHint: {
-    fontSize: 12,
-    color: "#92400e",
+    ...typography.caption,
+    color: colors.text,
     paddingHorizontal: space.md,
     paddingVertical: 6,
-    backgroundColor: "#fffbeb",
+    backgroundColor: colors.warningSubtle,
   },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: space.sm },
-  loadingText: { fontSize: 14, color: "#6b7280" },
+  loadingText: { ...typography.bodyMd, color: colors.textMuted },
 
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     paddingHorizontal: space.md,
     paddingVertical: 10,
     gap: space.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: colors.border,
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
-    color: "#111827",
+    ...typography.bodyMd,
+    color: colors.text,
     paddingVertical: 0,
   },
 
@@ -302,14 +302,14 @@ const styles = StyleSheet.create({
     marginBottom: space.sm,
     paddingVertical: 8,
   },
-  listBannerText: { fontSize: 13, fontWeight: "600", color: "#374151", flex: 1 },
+  listBannerText: { ...typography.bodySm, fontWeight: "600", color: colors.textSecondary, flex: 1 },
 
   card: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     padding: space.md,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
@@ -318,11 +318,11 @@ const styles = StyleSheet.create({
   },
   cardRow: { flexDirection: "row", gap: space.md, alignItems: "flex-start" },
   cardInfo: { flex: 1 },
-  trainerName: { fontSize: 16, fontWeight: "700", color: "#111827" },
-  trainerCat: { fontSize: 13, color: "#6b7280", marginTop: 3, lineHeight: 18 },
+  trainerName: { ...typography.titleSm, color: colors.text },
+  trainerCat: { ...typography.bodySm, color: colors.textMuted, marginTop: 3 },
   ratingRow: { flexDirection: "row", alignItems: "center", gap: 3, marginTop: 4 },
-  ratingText: { fontSize: 13, fontWeight: "600", color: "#374151" },
-  slotsText: { fontSize: 12, color: "#16a34a", marginTop: 3, fontWeight: "500" },
+  ratingText: { ...typography.bodySm, fontWeight: "600", color: colors.textSecondary },
+  slotsText: { ...typography.caption, color: colors.success, marginTop: 3, fontWeight: "500" },
 
   cardFooter: {
     flexDirection: "row",
@@ -331,33 +331,13 @@ const styles = StyleSheet.create({
     marginTop: space.md,
     paddingTop: space.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#f3f4f6",
+    borderTopColor: colors.borderSubtle,
   },
-  bookBtn: {
-    backgroundColor: NAVY,
-    borderRadius: radii.sm,
-    paddingHorizontal: space.md,
-    paddingVertical: 9,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  bookBtnPressed: { opacity: 0.75 },
-  bookBtnText: { fontSize: 14, color: "#fff", fontWeight: "600" },
 
   onlineBadge: { flexDirection: "row", alignItems: "center", gap: 5 },
-  onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#16a34a" },
-  onlineText: { fontSize: 12, color: "#16a34a", fontWeight: "600" },
+  onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success },
+  onlineText: { ...typography.caption, color: colors.success, fontWeight: "600" },
 
-  avatarFallback: { backgroundColor: NAVY, alignItems: "center", justifyContent: "center" },
-  avatarInitial: { color: "#fff", fontWeight: "700" },
-
-  empty: { alignItems: "center", paddingVertical: space.xl * 2, gap: space.sm },
-  emptyTitle: { fontSize: 16, fontWeight: "700", color: "#374151" },
-  emptyBody: {
-    fontSize: 14,
-    color: "#6b7280",
-    textAlign: "center",
-    lineHeight: 20,
-    paddingHorizontal: space.lg,
-  },
+  avatarFallback: { backgroundColor: colors.brandNavy, alignItems: "center", justifyContent: "center" },
+  avatarInitial: { color: colors.brandTextOn, fontWeight: "700" },
 });

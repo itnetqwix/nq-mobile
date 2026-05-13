@@ -1,24 +1,30 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
-  Image,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radii, space } from "../../../theme/tokens";
+import { EmptyState, ImageWithSkeleton, Skeleton } from "../../../components/ui";
+import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { isLikelyPdf } from "../../../lib/clipMediaUrl";
 import { postReportsGetAll } from "../../home/api/homeApi";
 import { LockerViewerModal, type LockerViewerMode } from "../components/locker/LockerViewerModal";
 
 export function GamePlansScreen() {
+  const { width: windowWidth } = useWindowDimensions();
+  const planThumbWidth = Math.max(
+    160,
+    windowWidth - space.md * 4 - space.sm * 2
+  );
+
   const reportsQ = useQuery({
     queryKey: ["locker", "reports"],
     queryFn: () => postReportsGetAll({}),
@@ -95,8 +101,12 @@ export function GamePlansScreen() {
       </View>
 
       {reportsQ.isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.brandNavy} />
+        <View style={styles.scroll}>
+          {[0, 1, 2].map((i) => (
+            <View key={i} style={{ marginBottom: space.md }}>
+              <Skeleton width="100%" height={80} radius={radii.md} />
+            </View>
+          ))}
         </View>
       ) : (
         <ScrollView
@@ -110,13 +120,11 @@ export function GamePlansScreen() {
           }
         >
           {reportSections.length === 0 ? (
-            <View style={styles.empty}>
-              <Ionicons name="document-text-outline" size={52} color="#d1d5db" />
-              <Text style={styles.emptyTitle}>No game plans yet</Text>
-              <Text style={styles.emptyBody}>
-                After sessions, reports you save on the web appear here grouped by date.
-              </Text>
-            </View>
+            <EmptyState
+              icon="document-text-outline"
+              title="No game plans yet"
+              description="After sessions, reports you save on the web appear here grouped by date."
+            />
           ) : (
             reportSections.map((section, si) => (
               <View key={`${section.title}-${si}`} style={styles.section}>
@@ -135,9 +143,16 @@ export function GamePlansScreen() {
                       onPress={() => openPlan(item)}
                     >
                       {uri ? (
-                        <Image source={{ uri }} style={styles.planImg} resizeMode="cover" />
+                        <ImageWithSkeleton
+                          uri={uri}
+                          width={planThumbWidth}
+                          height={140}
+                          borderRadius={radii.sm}
+                          resizeMode="cover"
+                          accessibilityLabel={title}
+                        />
                       ) : (
-                        <View style={[styles.planImg, styles.planPh]}>
+                        <View style={[styles.planImg, styles.planPh, { width: planThumbWidth }]}>
                           <Ionicons name="document-outline" size={36} color={colors.sidebarActive} />
                         </View>
                       )}
@@ -175,8 +190,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  heroTitle: { fontSize: 22, fontWeight: "800", color: colors.brandNavy, letterSpacing: -0.3 },
-  heroSub: { fontSize: 13, color: colors.textMuted, marginTop: 6, lineHeight: 18 },
+  heroTitle: { ...typography.titleLg, color: colors.brandNavy },
+  heroSub: { ...typography.bodySm, color: colors.textMuted, marginTop: 6 },
   scroll: { padding: space.md, paddingBottom: space.xl * 2, gap: space.lg },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   section: {
@@ -188,7 +203,7 @@ const styles = StyleSheet.create({
     gap: space.sm,
   },
   sectionHead: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
-  sectionTitle: { fontSize: 15, fontWeight: "700", color: colors.brandNavy },
+  sectionTitle: { ...typography.subtitle, color: colors.brandNavy },
   planCard: {
     borderRadius: radii.md,
     borderWidth: 1,
@@ -202,10 +217,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm,
     backgroundColor: colors.surface,
   },
-  planPh: { alignItems: "center", justifyContent: "center", backgroundColor: "#eef2ff" },
-  planTitle: { fontSize: 14, fontWeight: "600", color: colors.text, marginTop: 8, lineHeight: 19 },
-  planHint: { fontSize: 11, color: colors.textMuted, marginTop: 4 },
-  empty: { alignItems: "center", paddingVertical: space.xl * 2, paddingHorizontal: space.lg, gap: space.sm },
-  emptyTitle: { fontSize: 17, fontWeight: "700", color: colors.text },
-  emptyBody: { fontSize: 14, color: colors.textMuted, textAlign: "center", lineHeight: 21 },
+  planPh: { alignItems: "center", justifyContent: "center", backgroundColor: colors.brandSubtle },
+  planTitle: { ...typography.bodyMd, fontWeight: "600", color: colors.text, marginTop: 8 },
+  planHint: { ...typography.caption, color: colors.textMuted, marginTop: 4 },
 });

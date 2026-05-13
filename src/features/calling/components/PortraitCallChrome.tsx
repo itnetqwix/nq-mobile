@@ -1,13 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Image,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ImageWithSkeleton } from "../../../components/ui";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import type { CallParticipant } from "../types";
 
@@ -55,6 +55,11 @@ export function PortraitCallChrome({
   const insets = useSafeAreaInsets();
   const name = peer.fullname || peer.fullName || "Coach";
   const avatar = getS3ImageUrl(peer.profile_picture);
+  const [avatarFailed, setAvatarFailed] = useState(false);
+
+  useEffect(() => {
+    setAvatarFailed(false);
+  }, [avatar]);
 
   return (
     <View style={styles.root}>
@@ -68,8 +73,17 @@ export function PortraitCallChrome({
           <View style={styles.iconBtnPlaceholder} />
         )}
         <View style={styles.peerInfo}>
-          {avatar ? (
-            <Image source={{ uri: avatar }} style={styles.avatar} />
+          {avatar && !avatarFailed ? (
+            <ImageWithSkeleton
+              uri={avatar}
+              width={36}
+              height={36}
+              borderRadius={18}
+              resizeMode="cover"
+              style={styles.avatar}
+              onLoadError={() => setAvatarFailed(true)}
+              accessibilityLabel={`${name} photo`}
+            />
           ) : (
             <View style={[styles.avatar, styles.avatarFallback]}>
               <Text style={styles.avatarInitial}>{name[0]?.toUpperCase() ?? "?"}</Text>

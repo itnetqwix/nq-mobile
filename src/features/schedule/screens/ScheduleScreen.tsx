@@ -14,13 +14,12 @@ import {
 import { WEB_APP_ORIGIN } from "../../../config/env";
 import { WebRoutes } from "../../../constants/webRoutes";
 import { AccountType } from "../../../constants/accountType";
-import { radii, space } from "../../../theme/tokens";
+import { Button, EmptyState, Pill } from "../../../components/ui";
+import { colors, radii, space, typography } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
 import { fetchScheduledMeetings, fetchTrainerSlots } from "../../home/api/homeApi";
 import { UpcomingSessionsScreen } from "../../sessions/screens/UpcomingSessionsScreen";
 import type { MainTabScreenProps } from "../../../navigation/types";
-
-const NAVY = "#000080";
 
 const WEEK_ORDER = [
   "monday",
@@ -72,7 +71,7 @@ function TrainerSchedule() {
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={NAVY} />
+        <ActivityIndicator size="large" color={colors.brandNavy} />
       </View>
     );
   }
@@ -83,21 +82,24 @@ function TrainerSchedule() {
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>My schedule</Text>
           <Text style={styles.headerSub}>
-            Weekly hours from `GET /trainer/get-slots` (`available_slots`), same source as the web
+            Weekly hours from GET /trainer/get-slots (available_slots), same source as the web
             schedule page.
           </Text>
         </View>
-        <Pressable style={styles.manageBtn} onPress={openWebSchedule}>
-          <Ionicons name="open-outline" size={18} color="#fff" />
-          <Text style={styles.manageBtnText}>Edit on web</Text>
-        </Pressable>
+        <Button
+          label="Edit on web"
+          leftIcon="open-outline"
+          onPress={openWebSchedule}
+          size="sm"
+          fullWidth={false}
+        />
       </View>
 
       <SectionList
         sections={sections}
         keyExtractor={(item, index) => `${item.start_time}-${item.end_time}-${index}`}
         refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={NAVY} />
+          <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brandNavy} />
         }
         contentContainerStyle={
           sections.length === 0 ? styles.listEmptyGrow : styles.listContent
@@ -107,26 +109,21 @@ function TrainerSchedule() {
         )}
         renderItem={({ item }) => (
           <View style={styles.slotCard}>
-            <Ionicons name="time-outline" size={20} color={NAVY} />
+            <Ionicons name="time-outline" size={20} color={colors.brandNavy} />
             <Text style={styles.slotTime}>
               {item.start_time ?? "—"} – {item.end_time ?? "—"}
             </Text>
-            <View style={styles.availPill}>
-              <Text style={styles.availPillText}>Available</Text>
-            </View>
+            <Pill label="Available" tone="success" />
           </View>
         )}
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Ionicons name="calendar-outline" size={48} color="#d1d5db" />
-            <Text style={styles.emptyTitle}>No weekly slots yet</Text>
-            <Text style={styles.emptyBody}>
-              Set your availability on the website schedule screen, then pull to refresh here.
-            </Text>
-            <Pressable style={styles.cta} onPress={openWebSchedule}>
-              <Text style={styles.ctaText}>Open schedule on web</Text>
-            </Pressable>
-          </View>
+          <EmptyState
+            icon="calendar-outline"
+            title="No weekly slots yet"
+            description="Set your availability on the website schedule screen, then pull to refresh here."
+            actionLabel="Open schedule on web"
+            onAction={openWebSchedule}
+          />
         }
       />
     </View>
@@ -142,39 +139,28 @@ export function ScheduleScreen(_props: MainTabScreenProps<"Schedule">) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#f6f7fb" },
+  root: { flex: 1, backgroundColor: colors.surface },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
 
   header: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: space.sm,
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     paddingHorizontal: space.md,
     paddingVertical: space.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: colors.border,
   },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: NAVY },
-  headerSub: { fontSize: 12, color: "#6b7280", marginTop: 4, lineHeight: 16 },
-  manageBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: NAVY,
-    borderRadius: radii.sm,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  manageBtnText: { fontSize: 12, color: "#fff", fontWeight: "600" },
+  headerTitle: { ...typography.titleSm, color: colors.brandNavy, fontSize: 18 },
+  headerSub: { ...typography.caption, color: colors.textMuted, marginTop: 4 },
 
   listContent: { padding: space.md, paddingBottom: space.xl },
   listEmptyGrow: { flexGrow: 1, padding: space.md },
 
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#111827",
+    ...typography.subtitle,
+    color: colors.text,
     marginBottom: 8,
     marginTop: 4,
   },
@@ -182,31 +168,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: space.sm,
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     padding: space.md,
     marginBottom: space.sm,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
   },
-  slotTime: { flex: 1, fontSize: 15, fontWeight: "600", color: "#374151" },
-  availPill: {
-    backgroundColor: "#dcfce7",
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  availPillText: { fontSize: 11, fontWeight: "700", color: "#15803d" },
-
-  empty: { alignItems: "center", paddingVertical: space.xl * 2, gap: space.sm, paddingHorizontal: space.lg },
-  emptyTitle: { fontSize: 16, fontWeight: "700", color: "#374151" },
-  emptyBody: { fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20 },
-  cta: {
-    marginTop: space.md,
-    backgroundColor: NAVY,
-    borderRadius: radii.md,
-    paddingHorizontal: space.lg,
-    paddingVertical: 12,
-  },
-  ctaText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  slotTime: { flex: 1, ...typography.subtitle, color: colors.textSecondary },
 });

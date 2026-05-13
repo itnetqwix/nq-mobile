@@ -1,17 +1,25 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useInstantLesson } from "./InstantLessonContext";
 import { getS3ImageUrl } from "../../lib/imageUtils";
-import { space } from "../../theme/tokens";
-
-const NAVY = "#000080";
+import { Button, ImageWithSkeleton } from "../../components/ui";
+import { colors, radii, space, typography } from "../../theme";
 
 export function InstantLessonTrainerModal() {
   const { trainerIncoming, acceptRequest, declineRequest } = useInstantLesson();
   const [secondsLeft, setSecondsLeft] = useState(120);
+  const [avatarFailed, setAvatarFailed] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pulseRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  const avatarUrl = trainerIncoming
+    ? getS3ImageUrl(trainerIncoming.traineeInfo?.profile_picture)
+    : "";
+
+  useEffect(() => {
+    setAvatarFailed(false);
+  }, [avatarUrl]);
 
   useEffect(() => {
     if (!trainerIncoming) {
@@ -48,7 +56,6 @@ export function InstantLessonTrainerModal() {
 
   const trainee = trainerIncoming.traineeInfo;
   const traineeName = trainee?.fullname || "Trainee";
-  const avatarUrl = getS3ImageUrl(trainee?.profile_picture);
   const urgency = secondsLeft <= 10;
 
   return (
@@ -56,13 +63,22 @@ export function InstantLessonTrainerModal() {
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <View style={styles.header}>
-            <Ionicons name="flash" size={22} color={NAVY} />
+            <Ionicons name="flash" size={22} color={colors.brandNavy} />
             <Text style={styles.headerTitle}>Instant Lesson Request</Text>
           </View>
 
           <Animated.View style={[styles.avatarWrap, { transform: [{ scale: pulseAnim }] }]}>
-            {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+            {avatarUrl && !avatarFailed ? (
+              <ImageWithSkeleton
+                uri={avatarUrl}
+                width={88}
+                height={88}
+                borderRadius={44}
+                resizeMode="cover"
+                style={styles.avatarRing}
+                onLoadError={() => setAvatarFailed(true)}
+                accessibilityLabel={`${traineeName} profile photo`}
+              />
             ) : (
               <View style={styles.avatarFallback}>
                 <Text style={styles.avatarInitial}>{traineeName[0]?.toUpperCase()}</Text>
@@ -84,20 +100,21 @@ export function InstantLessonTrainerModal() {
           </View>
 
           <View style={styles.btnRow}>
-            <Pressable
-              style={({ pressed }) => [styles.declineBtn, pressed && { opacity: 0.75 }]}
+            <Button
+              label="Decline"
+              leftIcon="close"
+              variant="danger"
               onPress={declineRequest}
-            >
-              <Ionicons name="close" size={20} color="#dc2626" />
-              <Text style={styles.declineBtnText}>Decline</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [styles.acceptBtn, pressed && { opacity: 0.85 }]}
+              size="lg"
+              style={styles.flex1}
+            />
+            <Button
+              label="Accept"
+              leftIcon="checkmark"
               onPress={acceptRequest}
-            >
-              <Ionicons name="checkmark" size={20} color="#fff" />
-              <Text style={styles.acceptBtnText}>Accept</Text>
-            </Pressable>
+              size="lg"
+              style={styles.flex1}
+            />
           </View>
         </View>
       </View>
@@ -108,14 +125,14 @@ export function InstantLessonTrainerModal() {
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.65)",
+    backgroundColor: colors.overlay,
     alignItems: "center",
     justifyContent: "center",
     padding: space.md,
   },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: radii.xl,
     padding: space.lg,
     width: "100%",
     maxWidth: 340,
@@ -123,40 +140,46 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   header: { flexDirection: "row", alignItems: "center", gap: 8 },
-  headerTitle: { fontSize: 17, fontWeight: "700", color: NAVY },
+  headerTitle: { ...typography.titleSm, color: colors.brandNavy },
   avatarWrap: { position: "relative", marginTop: 4 },
-  avatar: { width: 88, height: 88, borderRadius: 44, borderWidth: 3, borderColor: NAVY },
+  avatarRing: { width: 88, height: 88, borderRadius: 44, borderWidth: 3, borderColor: colors.brandNavy },
   avatarFallback: {
-    width: 88, height: 88, borderRadius: 44,
-    backgroundColor: NAVY, alignItems: "center", justifyContent: "center",
-    borderWidth: 3, borderColor: "#7b91e0",
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: colors.brandNavy,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 3,
+    borderColor: colors.brandSubtle,
   },
-  avatarInitial: { fontSize: 34, fontWeight: "700", color: "#fff" },
+  avatarInitial: { fontSize: 34, fontWeight: "700", color: colors.brandTextOn },
   onlineDot: {
-    position: "absolute", bottom: 4, right: 4,
-    width: 18, height: 18, borderRadius: 9,
-    backgroundColor: "#16a34a", borderWidth: 2, borderColor: "#fff",
+    position: "absolute",
+    bottom: 4,
+    right: 4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.success,
+    borderWidth: 2,
+    borderColor: colors.surfaceElevated,
   },
-  traineeName: { fontSize: 20, fontWeight: "700", color: "#111827" },
-  subtitle: { fontSize: 14, color: "#6b7280" },
+  traineeName: { ...typography.titleMd, color: colors.text },
+  subtitle: { ...typography.bodyMd, color: colors.textMuted },
   countdownBox: {
-    backgroundColor: "#f0f4ff", borderRadius: 12,
-    paddingHorizontal: 24, paddingVertical: 12, alignItems: "center", width: "100%",
+    backgroundColor: colors.brandSubtle,
+    borderRadius: radii.md,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    alignItems: "center",
+    width: "100%",
   },
-  countdownUrgent: { backgroundColor: "#fef2f2" },
-  countdownNum: { fontSize: 40, fontWeight: "800", color: NAVY },
-  countdownNumUrgent: { color: "#dc2626" },
-  countdownLabel: { fontSize: 13, color: "#6b7280", marginTop: 2 },
-  countdownLabelUrgent: { color: "#dc2626" },
+  countdownUrgent: { backgroundColor: colors.dangerSubtle },
+  countdownNum: { fontSize: 40, fontWeight: "800", color: colors.brandNavy },
+  countdownNumUrgent: { color: colors.danger },
+  countdownLabel: { ...typography.bodySm, color: colors.textMuted, marginTop: 2 },
+  countdownLabelUrgent: { color: colors.danger },
   btnRow: { flexDirection: "row", gap: 12, width: "100%", marginTop: 4 },
-  declineBtn: {
-    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 6, backgroundColor: "#fee2e2", borderRadius: 12, paddingVertical: 13,
-  },
-  declineBtnText: { fontSize: 15, fontWeight: "700", color: "#dc2626" },
-  acceptBtn: {
-    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 6, backgroundColor: NAVY, borderRadius: 12, paddingVertical: 13,
-  },
-  acceptBtnText: { fontSize: 15, fontWeight: "700", color: "#fff" },
+  flex1: { flex: 1 },
 });

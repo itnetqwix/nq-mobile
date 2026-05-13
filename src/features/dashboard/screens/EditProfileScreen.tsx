@@ -1,29 +1,24 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import React, { useEffect, useMemo, useState } from "react";
+import { Alert, StyleSheet, Text, View } from "react-native";
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { colors, radii, space } from "../../../theme/tokens";
-import type { MenuStackParamList } from "../../../navigation/types";
-import { useAuth } from "../../auth/context/AuthContext";
+  Button,
+  Card,
+  FormField,
+  ScreenContainer,
+  SectionHeader,
+} from "../../../components/ui";
 import { AccountType } from "../../../constants/accountType";
+import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
+import type { MenuStackParamList } from "../../../navigation/types";
+import { colors, space, typography } from "../../../theme";
+import { useAuth } from "../../auth/context/AuthContext";
 import {
   postUpdateMobileNumber,
   putProfile,
   type ProfileUpdate,
 } from "../../home/api/homeApi";
-import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 
 /** Mirrors the website "Trainer profile" / "Edit profile" page — name + mobile + timezone + bio. */
 export function EditProfileScreen() {
@@ -98,174 +93,88 @@ export function EditProfileScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.lead}>
-          Updates go to the same endpoints as the website:{" "}
-          {isTrainer ? "PUT /trainer/profile" : "PUT /trainee/profile"} and
-          POST /user/update-mobile-number.
-        </Text>
+    <ScreenContainer scroll padding="md" background={colors.surface}>
+      <Text style={styles.lead}>
+        Updates go to the same endpoints as the website:{" "}
+        {isTrainer ? "PUT /trainer/profile" : "PUT /trainee/profile"} and POST
+        /user/update-mobile-number.
+      </Text>
 
-        <Section title="Identity">
-          <Field
+      <SectionHeader label="Identity" />
+      <Card variant="outlined" padding="md" style={styles.sectionCard}>
+        <View style={styles.fieldStack}>
+          <FormField
             label="Full name"
             value={fullname}
             onChangeText={setFullname}
             placeholder="Your full name"
+            required
           />
-          <Field
+          <FormField
             label="Mobile number"
             value={mobile}
             onChangeText={setMobile}
             placeholder="Phone number"
             keyboardType="phone-pad"
           />
-        </Section>
+        </View>
+      </Card>
 
-        <Section title="Preferences">
-          <Field
-            label="Timezone"
-            value={timeZone}
-            onChangeText={setTimeZone}
-            placeholder="e.g. America/New_York"
-            autoCapitalize="none"
-          />
-        </Section>
+      <SectionHeader label="Preferences" />
+      <Card variant="outlined" padding="md" style={styles.sectionCard}>
+        <FormField
+          label="Timezone"
+          value={timeZone}
+          onChangeText={setTimeZone}
+          placeholder="e.g. America/New_York"
+          autoCapitalize="none"
+          hint="IANA timezone identifier"
+        />
+      </Card>
 
-        {isTrainer && (
-          <Section title="Trainer profile">
-            <Field
-              label="Hourly rate"
-              value={hourlyRate}
-              onChangeText={setHourlyRate}
-              placeholder="e.g. 20"
-              keyboardType="numeric"
-            />
-            <Field
-              label="Bio"
-              value={bio}
-              onChangeText={setBio}
-              placeholder="Tell trainees about yourself"
-              multiline
-            />
-          </Section>
-        )}
+      {isTrainer && (
+        <>
+          <SectionHeader label="Trainer profile" />
+          <Card variant="outlined" padding="md" style={styles.sectionCard}>
+            <View style={styles.fieldStack}>
+              <FormField
+                label="Hourly rate"
+                value={hourlyRate}
+                onChangeText={setHourlyRate}
+                placeholder="e.g. 20"
+                keyboardType="numeric"
+              />
+              <FormField
+                label="Bio"
+                value={bio}
+                onChangeText={setBio}
+                placeholder="Tell trainees about yourself"
+                multiline
+                inputStyle={{ minHeight: 110, textAlignVertical: "top" }}
+              />
+            </View>
+          </Card>
+        </>
+      )}
 
-        <Pressable
-          style={({ pressed }) => [
-            styles.saveBtn,
-            (!dirty || busy || pressed) && { opacity: !dirty ? 0.5 : 0.9 },
-          ]}
-          disabled={!dirty || busy}
-          onPress={save}
-        >
-          {busy ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Ionicons name="checkmark" size={18} color="#fff" />
-              <Text style={styles.saveBtnText}>Save changes</Text>
-            </>
-          )}
-        </Pressable>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.sectionCard}>{children}</View>
-    </View>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  multiline,
-  keyboardType,
-  autoCapitalize,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (s: string) => void;
-  placeholder?: string;
-  multiline?: boolean;
-  keyboardType?: "default" | "phone-pad" | "numeric";
-  autoCapitalize?: "none" | "sentences";
-}) {
-  return (
-    <View style={styles.fieldRow}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        style={[styles.input, multiline && styles.inputMultiline]}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textMuted}
-        multiline={!!multiline}
-        keyboardType={keyboardType ?? "default"}
-        autoCapitalize={autoCapitalize ?? "sentences"}
+      <Button
+        label="Save changes"
+        leftIcon="checkmark"
+        loading={busy}
+        disabled={!dirty}
+        onPress={save}
+        size="lg"
       />
-    </View>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#f6f7fb" },
-  content: { padding: space.md, gap: space.md, paddingBottom: space.xl * 2 },
-  lead: { fontSize: 12, color: colors.textMuted, lineHeight: 18 },
-
-  section: {},
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: "700",
+  lead: {
+    ...typography.caption,
     color: colors.textMuted,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: 8,
-    paddingHorizontal: 2,
+    marginBottom: space.sm,
   },
-  sectionCard: {
-    backgroundColor: "#fff",
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: space.md,
-    gap: space.md,
-  },
-
-  fieldRow: { gap: 6 },
-  label: { fontSize: 13, fontWeight: "600", color: colors.text },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.sm,
-    paddingHorizontal: space.md,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: colors.text,
-    backgroundColor: "#fff",
-  },
-  inputMultiline: { height: 110, textAlignVertical: "top" },
-
-  saveBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: colors.brandNavy,
-    borderRadius: radii.md,
-    paddingVertical: 14,
-    marginTop: space.sm,
-  },
-  saveBtnText: { fontSize: 15, fontWeight: "700", color: "#fff" },
+  sectionCard: { marginBottom: space.sm },
+  fieldStack: { gap: space.md },
 });

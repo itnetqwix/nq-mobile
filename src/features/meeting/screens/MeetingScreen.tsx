@@ -98,15 +98,36 @@ export function MeetingScreen({ navigation, route }: Props) {
       session?.extended_session_end_time || session?.session_end_time,
   });
 
-  const meetingUrl = `${WEB_ORIGIN}/meeting?lessonId=${lessonId}`;
+  /**
+   * Web parity: `MeetingPage` reads `router.query.id` (see
+   * `nq-frontend-main/app/features/meeting/MeetingPage.jsx:126`). It does NOT read
+   * `lessonId`. Sending `?lessonId=...` left the embedded page stuck on
+   * "Loading your profile..." because `getScheduledMeetingDetailsAsync({ id })` never
+   * fired and `accountType` never got set, so the trainer/trainee never reached the
+   * portrait-calling stack that emits `ON_CALL_JOIN` to the peer.
+   */
+  const meetingUrl = `${WEB_ORIGIN}/meeting?id=${lessonId}`;
 
-  /** Push the stored auth blob into the embedded site's localStorage so the website
-   *  meeting page authenticates as the same user. Matches the legacy injection. */
+  /**
+   * Push the stored auth blob into the embedded site's localStorage so the website
+   * meeting page authenticates as the same user.
+   *
+   * Hardening: the web reducer treats `""` as falsy and silently falls back to
+   * `localStorage.getItem("acc_type")`. If we inject an empty string we just blank
+   * out whatever was there. So:
+   *   1. Always inject token (when present).
+   *   2. Only overwrite acc_type when the device actually has a known role —
+   *      otherwise leave whatever's already in the embedded localStorage alone.
+   */
   const injectedJS = token
     ? `
       try {
         localStorage.setItem('token', ${JSON.stringify(token)});
-        localStorage.setItem('acc_type', ${JSON.stringify(accountType ?? "")});
+        ${
+          accountType
+            ? `localStorage.setItem('acc_type', ${JSON.stringify(accountType)});`
+            : `/* skip acc_type override — would otherwise wipe existing value */`
+        }
       } catch(e) {}
       true;
     `
@@ -151,8 +172,11 @@ export function MeetingScreen({ navigation, route }: Props) {
         javaScriptEnabled
         domStorageEnabled
         allowsFullscreenVideo
+        /** Required for the embedded portrait-calling stack to grab camera + mic
+         *  without re-prompting. iOS uses the WebKit grant type; Android relies on
+         *  `onPermissionRequest` to auto-approve the WebRTC permission dialog. */
         mediaCapturePermissionGrantType={
-          Platform.OS === "ios" ? "grantIfSameHostElsePrompt" : undefined
+          Platform.OS === "ios" ? "grant" : undefined
         }
         onError={(e) => console.warn("[Meeting] WebView error", e.nativeEvent)}
       />

@@ -24,7 +24,7 @@ import { useAuth } from "../../../auth/context/AuthContext";
 import { postClipUploadSignUrls } from "../../../home/api/homeApi";
 import { getApiErrorMessage } from "../../../../lib/http/getApiErrorMessage";
 import { putFileToPresignedUrl } from "../../../../lib/presignedPut";
-import { colors, radii, space } from "../../../../theme/tokens";
+import { colors, radii, space } from "../../../../theme";
 
 const SHARE_MY_CLIPS = "My Clips";
 
@@ -317,10 +317,10 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
             disabled={!canSubmit}
           >
             {uploadBusy ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.brandTextOn} />
             ) : (
               <>
-                <Ionicons name="cloud-upload-outline" size={20} color="#fff" />
+                <Ionicons name="cloud-upload-outline" size={20} color={colors.brandTextOn} />
                 <Text style={styles.submitText}>Upload to locker</Text>
               </>
             )}
@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: radii.md,
   },
-  submitText: { fontSize: 16, fontWeight: "700", color: "#fff" },
+  submitText: { fontSize: 16, fontWeight: "700", color: colors.brandTextOn },
   progressBlock: {
     backgroundColor: colors.surface,
     borderRadius: radii.md,
@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
   progressTrack: {
     width: "100%",
     height: 8,
-    backgroundColor: "#e5e7eb",
+    backgroundColor: colors.border,
     borderRadius: 4,
     overflow: "hidden",
   },

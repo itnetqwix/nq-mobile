@@ -1,12 +1,10 @@
 import { useMutation } from "@tanstack/react-query";
 import React, { useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Text } from "react-native";
+import { Alert, StyleSheet, Text, View } from "react-native";
 import { NetqwixLogo } from "../../../components/brand/NetqwixLogo";
-import { Button } from "../../../components/ui/Button";
-import { Screen } from "../../../components/ui/Screen";
-import { TextField } from "../../../components/ui/TextField";
+import { Button, FormField, ScreenContainer, Stack } from "../../../components/ui";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
-import { colors, space } from "../../../theme/tokens";
+import { colors, space, typography } from "../../../theme";
 import { postForgotPassword } from "../api/authApi";
 import type { AuthScreenProps } from "../../../navigation/types";
 
@@ -26,40 +24,38 @@ export function ForgotPasswordScreen({ navigation }: AuthScreenProps<"ForgotPass
   });
 
   return (
-    <Screen scroll>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <ScreenContainer scroll applyTopInset padding="lg" background={colors.background}>
+      <View style={styles.brand}>
         <NetqwixLogo maxWidth={220} />
-        <Text style={styles.headline}>Reset password</Text>
-        <Text style={styles.sub}>We will email a link if this address is registered.</Text>
-        <TextField
+      </View>
+      <Text style={[typography.titleLg, { color: colors.text, marginTop: space.md }]}>
+        Reset password
+      </Text>
+      <Text style={[typography.bodyMd, { color: colors.textMuted, marginBottom: space.lg }]}>
+        We will email a link if this address is registered.
+      </Text>
+
+      <Stack gap="md">
+        <FormField
           label="Email"
           autoCapitalize="none"
           keyboardType="email-address"
           value={email}
           onChangeText={setEmail}
+          required
         />
         <Button
-          title="Send reset link"
+          label="Send reset link"
           loading={mutation.isPending}
           disabled={!email.trim()}
           onPress={() => mutation.mutate()}
+          size="lg"
         />
-      </KeyboardAvoidingView>
-    </Screen>
+      </Stack>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  headline: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: colors.text,
-    marginTop: space.md,
-    marginBottom: space.sm,
-  },
-  sub: {
-    fontSize: 15,
-    color: colors.textMuted,
-    marginBottom: space.lg,
-  },
+  brand: { alignItems: "center", marginTop: space.lg },
 });

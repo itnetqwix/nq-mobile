@@ -13,7 +13,8 @@ import {
   Text,
   View,
 } from "react-native";
-import { colors, radii, space } from "../../../theme/tokens";
+import { Button } from "../../../components/ui";
+import { colors, radii, space, typography } from "../../../theme";
 import {
   fetchTrainerSlots,
   postTrainerSlots,
@@ -357,8 +358,9 @@ export function TrainerScheduleScreen() {
                     style={styles.removeBtn}
                     onPress={() => removeSlot(dayIdx, slotIdx)}
                     hitSlop={8}
+                    accessibilityLabel="Remove slot"
                   >
-                    <Ionicons name="close-circle" size={20} color="#dc2626" />
+                    <Ionicons name="close-circle" size={20} color={colors.danger} />
                   </Pressable>
                 </View>
               ))
@@ -366,27 +368,14 @@ export function TrainerScheduleScreen() {
           </View>
         ))}
 
-        <Pressable
-          style={({ pressed }) => [
-            styles.saveBtn,
-            (!dirty || saveMutation.isPending || pressed) && {
-              opacity: !dirty ? 0.5 : 0.9,
-            },
-          ]}
+        <Button
+          label={dirty ? "Save schedule" : "Up to date"}
+          leftIcon="save-outline"
+          loading={saveMutation.isPending}
           disabled={!dirty || saveMutation.isPending}
           onPress={() => saveMutation.mutate()}
-        >
-          {saveMutation.isPending ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Ionicons name="save-outline" size={18} color="#fff" />
-              <Text style={styles.saveBtnText}>
-                {dirty ? "Save schedule" : "Up to date"}
-              </Text>
-            </>
-          )}
-        </Pressable>
+          style={{ marginTop: space.sm }}
+        />
       </ScrollView>
 
       {editing && (
@@ -408,66 +397,53 @@ export function TrainerScheduleScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#f6f7fb" },
+  root: { flex: 1, backgroundColor: colors.surface },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   content: { padding: space.md, gap: space.md, paddingBottom: space.xl * 2 },
-  lead: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
+  lead: { ...typography.bodySm, color: colors.textMuted },
 
   dayCard: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     padding: space.md,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
     gap: 8,
   },
   dayHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   dayTitle: {
-    fontSize: 16,
-    fontWeight: "700",
+    ...typography.titleSm,
     color: colors.brandNavy,
     textTransform: "capitalize",
   },
   addBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4 },
-  addBtnText: { fontSize: 13, fontWeight: "700", color: colors.brandNavy },
-  dayEmpty: { fontSize: 13, fontStyle: "italic", color: colors.textMuted, paddingVertical: 6 },
+  addBtnText: { ...typography.bodySm, fontWeight: "700", color: colors.brandNavy },
+  dayEmpty: { ...typography.bodySm, fontStyle: "italic", color: colors.textMuted, paddingVertical: 6 },
 
   slotRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   timeChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#f0f4ff",
-    borderRadius: 6,
+    backgroundColor: colors.brandSubtle,
+    borderRadius: radii.sm,
     paddingHorizontal: 10,
     paddingVertical: 8,
     flex: 1,
   },
-  timeChipText: { fontSize: 13, fontWeight: "600", color: colors.brandNavy },
-  toLabel: { fontSize: 12, color: colors.textMuted, paddingHorizontal: 2 },
+  timeChipText: { ...typography.bodySm, fontWeight: "600", color: colors.brandNavy },
+  toLabel: { ...typography.caption, color: colors.textMuted, paddingHorizontal: 2 },
   removeBtn: { padding: 2 },
-
-  saveBtn: {
-    backgroundColor: colors.brandNavy,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    borderRadius: radii.md,
-    paddingVertical: 14,
-    marginTop: space.sm,
-  },
-  saveBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
 
   pickerBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
+    backgroundColor: colors.overlay,
     alignItems: "center",
     justifyContent: "center",
     padding: space.md,
   },
   pickerCard: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     padding: space.md,
     width: "100%",
@@ -475,37 +451,37 @@ const styles = StyleSheet.create({
     gap: space.sm,
     ...(Platform.OS === "android" ? { elevation: 6 } : null),
   },
-  pickerTitle: { fontSize: 16, fontWeight: "700", color: "#111827", textAlign: "center" },
+  pickerTitle: { ...typography.titleSm, color: colors.text, textAlign: "center" },
   pickerRow: { flexDirection: "row", gap: 12 },
   pickerCol: { flex: 1 },
   pickerColTitle: {
-    fontSize: 12,
+    ...typography.caption,
     fontWeight: "700",
     color: colors.textMuted,
     textAlign: "center",
     marginBottom: 4,
   },
-  pickerScroll: { maxHeight: 220, borderRadius: 6, backgroundColor: "#f9fafb" },
+  pickerScroll: { maxHeight: 220, borderRadius: radii.sm, backgroundColor: colors.surface },
   pickerItem: { paddingVertical: 10, alignItems: "center" },
-  pickerItemOn: { backgroundColor: "#dbeafe" },
-  pickerItemText: { fontSize: 14, color: "#111827" },
+  pickerItemOn: { backgroundColor: colors.brandAccentSubtle },
+  pickerItemText: { ...typography.bodyMd, color: colors.text },
   pickerItemTextOn: { color: colors.brandNavy, fontWeight: "700" },
 
   pickerBtnRow: { flexDirection: "row", gap: 12, marginTop: 8 },
   pickerCancel: {
     flex: 1,
-    backgroundColor: "#f3f4f6",
-    borderRadius: 8,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radii.sm,
     paddingVertical: 12,
     alignItems: "center",
   },
-  pickerCancelText: { fontSize: 14, fontWeight: "700", color: "#374151" },
+  pickerCancelText: { ...typography.bodyMd, fontWeight: "700", color: colors.textSecondary },
   pickerConfirm: {
     flex: 1,
     backgroundColor: colors.brandNavy,
-    borderRadius: 8,
+    borderRadius: radii.sm,
     paddingVertical: 12,
     alignItems: "center",
   },
-  pickerConfirmText: { fontSize: 14, fontWeight: "700", color: "#fff" },
+  pickerConfirmText: { ...typography.bodyMd, fontWeight: "700", color: colors.brandTextOn },
 });

@@ -9,12 +9,11 @@ import {
   Text,
   View,
 } from "react-native";
-import { space } from "../../../theme/tokens";
+import { EmptyState, Pill, Skeleton } from "../../../components/ui";
+import { colors, space, typography } from "../../../theme";
 import { AccountType } from "../../../constants/accountType";
 import { useAuth } from "../../auth/context/AuthContext";
 import { fetchBookingTransactions } from "../../home/api/homeApi";
-
-const NAVY = "#000080";
 
 function formatBookedDate(d?: string): string {
   if (!d) return "";
@@ -49,7 +48,7 @@ function TransactionRow({ booking, isTrainer }: { booking: any; isTrainer: boole
   return (
     <View style={styles.row}>
       <View style={styles.iconBox}>
-        <Ionicons name="receipt-outline" size={18} color={NAVY} />
+        <Ionicons name="receipt-outline" size={18} color={colors.brandNavy} />
       </View>
       <View style={styles.rowInfo}>
         <Text style={styles.rowDesc} numberOfLines={2}>
@@ -61,26 +60,18 @@ function TransactionRow({ booking, isTrainer }: { booking: any; isTrainer: boole
       </View>
       <View style={styles.rowRight}>
         <Text style={styles.rowAmount}>{bookingAmountDisplay(booking, isTrainer)}</Text>
-        <View style={[styles.statusBadge, getStatusStyle(status)]}>
-          <Text style={styles.statusText}>{String(status)}</Text>
-        </View>
+        <Pill label={String(status)} tone={getStatusTone(status)} />
       </View>
     </View>
   );
 }
 
-function getStatusStyle(status: string) {
+function getStatusTone(status: string): React.ComponentProps<typeof Pill>["tone"] {
   const s = String(status).toLowerCase();
-  if (s.includes("success") || s.includes("confirm") || s.includes("paid")) {
-    return { backgroundColor: "#dcfce7" };
-  }
-  if (s.includes("pending") || s.includes("process")) {
-    return { backgroundColor: "#fef3c7" };
-  }
-  if (s.includes("fail") || s.includes("cancel") || s.includes("refund")) {
-    return { backgroundColor: "#fee2e2" };
-  }
-  return { backgroundColor: "#f3f4f6" };
+  if (s.includes("success") || s.includes("confirm") || s.includes("paid")) return "success";
+  if (s.includes("pending") || s.includes("process")) return "warning";
+  if (s.includes("fail") || s.includes("cancel") || s.includes("refund")) return "danger";
+  return "neutral";
 }
 
 export function TransactionsScreen() {
@@ -95,8 +86,12 @@ export function TransactionsScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={NAVY} />
+      <View style={{ padding: space.md }}>
+        {[0, 1, 2, 3].map((i) => (
+          <View key={i} style={{ marginBottom: space.sm }}>
+            <Skeleton width="100%" height={64} />
+          </View>
+        ))}
       </View>
     );
   }
@@ -108,17 +103,14 @@ export function TransactionsScreen() {
       renderItem={({ item }) => <TransactionRow booking={item} isTrainer={isTrainer} />}
       contentContainerStyle={styles.list}
       refreshControl={
-        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={NAVY} />
+        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brandNavy} />
       }
       ListEmptyComponent={
-        <View style={styles.empty}>
-          <Ionicons name="wallet-outline" size={48} color="#d1d5db" />
-          <Text style={styles.emptyTitle}>No bookings in this window</Text>
-          <Text style={styles.emptyBody}>
-            Same data as the website transactions panel: sessions from the last few days onward
-            with amounts and status (your booking list API).
-          </Text>
-        </View>
+        <EmptyState
+          icon="wallet-outline"
+          title="No bookings in this window"
+          description="Sessions with amounts and status will appear here."
+        />
       }
     />
   );
@@ -134,27 +126,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.md,
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#f3f4f6",
-    backgroundColor: "#fff",
+    borderBottomColor: colors.borderSubtle,
+    backgroundColor: colors.surfaceElevated,
     gap: space.sm,
   },
   iconBox: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#f0f4ff",
+    backgroundColor: colors.brandSubtle,
     alignItems: "center",
     justifyContent: "center",
   },
   rowInfo: { flex: 1 },
-  rowDesc: { fontSize: 14, fontWeight: "600", color: "#111827" },
-  rowDate: { fontSize: 12, color: "#9ca3af", marginTop: 2 },
+  rowDesc: { ...typography.bodyMd, fontWeight: "600", color: colors.text },
+  rowDate: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
   rowRight: { alignItems: "flex-end", gap: 4 },
-  rowAmount: { fontSize: 14, fontWeight: "700", color: "#111827" },
-  statusBadge: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
-  statusText: { fontSize: 11, fontWeight: "600", color: "#374151", textTransform: "capitalize" },
-
-  empty: { alignItems: "center", paddingVertical: space.xl * 2, gap: space.sm, paddingHorizontal: space.lg },
-  emptyTitle: { fontSize: 16, fontWeight: "700", color: "#374151" },
-  emptyBody: { fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20 },
+  rowAmount: { ...typography.bodyMd, fontWeight: "700", color: colors.text },
 });

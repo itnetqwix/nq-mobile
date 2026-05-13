@@ -1,7 +1,7 @@
 import React from "react";
 import { Modal, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, space } from "../../../theme/tokens";
+import { colors, space } from "../../../theme";
 import type { InstantLessonBookingWizardModalProps } from "./types";
 import { useInstantLessonBookingWizard } from "./useInstantLessonBookingWizard";
 import { WizardHeader } from "./WizardHeader";

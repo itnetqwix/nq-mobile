@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { ActivityIndicator, Animated, Easing, Image, StyleSheet, View } from "react-native";
 import { brandImages } from "../../constants/images";
-import { colors, space } from "../../theme/tokens";
+import { colors, space } from "../../theme";
 
 /**
  * First screen while the app restores the session (reads SecureStore + calls `/user/me`).

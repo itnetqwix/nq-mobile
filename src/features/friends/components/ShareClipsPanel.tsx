@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -13,9 +12,10 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { ImageWithSkeleton, Skeleton } from "../../../components/ui";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
-import { radii, space } from "../../../theme/tokens";
+import { colors, radii, space, typography } from "../../../theme";
 import {
   fetchAllUsers,
   fetchFriends,
@@ -23,8 +23,12 @@ import {
   postMyClipsGrouped,
   postShareClipsToEmail,
 } from "../../home/api/homeApi";
+import {
+  NOTIFICATION_TITLES,
+  NOTIFICATION_TYPES,
+  useNotifications,
+} from "../../notifications/NotificationContext";
 
-const NAVY = "#000080";
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function flattenClips(groups: { _id: string; clips: any[] }[]): any[] {
@@ -46,6 +50,7 @@ type Recipient = {
 };
 
 export function ShareClipsPanel() {
+  const { emitNotification } = useNotifications();
   const [query, setQuery] = useState("");
   const [recipient, setRecipient] = useState<Recipient | null>(null);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -139,6 +144,24 @@ export function ShareClipsPanel() {
     setBusy(true);
     try {
       await postShareClipsToEmail(target.email, selectedClips);
+      /**
+       * Persist an inbox entry on the recipient side. The backend already
+       * emails them; this gets a matching in-app row so they see "Clip
+       * Shared" without waiting for the next inbox refresh.
+       */
+      try {
+        emitNotification({
+          title: NOTIFICATION_TITLES.clipShared,
+          description: `${target.fullname ?? "A NetQwix member"} shared ${
+            selectedClips.length
+          } clip${selectedClips.length === 1 ? "" : "s"} with you.`,
+          receiverId: target._id,
+          type: NOTIFICATION_TYPES.TRANSCATIONAL,
+          bookingInfo: { clipIds: selectedClips },
+        });
+      } catch {
+        /** Notification failure must not block the share UX. */
+      }
       setSelected({});
       setRecipient(null);
       setQuery("");
@@ -151,7 +174,7 @@ export function ShareClipsPanel() {
     } finally {
       setBusy(false);
     }
-  }, [recipient, query, selectedClips]);
+  }, [recipient, query, selectedClips, emitNotification]);
 
   const friendSuggestions: Recipient[] = useMemo(() => {
     const friends: any[] = friendsQ.data ?? [];
@@ -198,7 +221,7 @@ export function ShareClipsPanel() {
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={NAVY} />
+        <ActivityIndicator size="large" color={colors.brandNavy} />
       </View>
     );
   }
@@ -209,13 +232,13 @@ export function ShareClipsPanel() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
       refreshControl={
-        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={NAVY} />
+        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brandNavy} />
       }
     >
       <Text style={styles.intro}>
         Share clips with anyone on NetQwix. Type a friend's name or email — only verified
         NetQwix accounts are allowed. Use{" "}
-        <Text style={{ fontWeight: "700", color: NAVY }}>Invite Friends</Text> to bring new
+        <Text style={{ fontWeight: "700", color: colors.brandNavy }}>Invite Friends</Text> to bring new
         people to the platform.
       </Text>
 
@@ -223,10 +246,7 @@ export function ShareClipsPanel() {
       {recipient ? (
         <View style={styles.recipientChip}>
           {recipient.profile_picture ? (
-            <Image
-              source={{ uri: getS3ImageUrl(recipient.profile_picture) }}
-              style={styles.recipientAvatar}
-            />
+            <RecipientAvatar uri={recipient.profile_picture} name={recipient.fullname ?? recipient.email ?? ""} />
           ) : (
             <View style={[styles.recipientAvatar, styles.recipientAvatarFb]}>
               <Text style={styles.recipientAvatarInitial}>
@@ -249,7 +269,7 @@ export function ShareClipsPanel() {
               setQuery("");
             }}
           >
-            <Ionicons name="close-circle" size={22} color="#9ca3af" />
+            <Ionicons name="close-circle" size={22} color={colors.textMuted} />
           </Pressable>
         </View>
       ) : (
@@ -257,7 +277,7 @@ export function ShareClipsPanel() {
           <TextInput
             style={styles.input}
             placeholder="Search NetQwix members by name or email"
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor={colors.textMuted}
             autoCapitalize="none"
             keyboardType="email-address"
             value={query}
@@ -277,7 +297,7 @@ export function ShareClipsPanel() {
               )}
               {usersQ.isFetching && (
                 <View style={styles.searchSpin}>
-                  <ActivityIndicator size="small" color={NAVY} />
+                  <ActivityIndicator size="small" color={colors.brandNavy} />
                 </View>
               )}
               {userResults.map((u) => (
@@ -320,14 +340,14 @@ export function ShareClipsPanel() {
             >
               <View style={styles.thumbWrap}>
                 {thumb ? (
-                  <Image source={{ uri: thumb }} style={styles.thumb} />
+                  <ClipGridThumb uri={thumb} />
                 ) : (
                   <View style={styles.thumbPh}>
-                    <Ionicons name="videocam" size={28} color={NAVY} />
+                    <Ionicons name="videocam" size={28} color={colors.brandNavy} />
                   </View>
                 )}
                 <View style={[styles.check, on && styles.checkOn]}>
-                  <Ionicons name={on ? "checkmark" : "ellipse-outline"} size={16} color="#fff" />
+                  <Ionicons name={on ? "checkmark" : "ellipse-outline"} size={16} color={colors.brandTextOn} />
                 </View>
               </View>
               <Text style={styles.tileTitle} numberOfLines={2}>
@@ -345,7 +365,7 @@ export function ShareClipsPanel() {
 
       {clips.length === 0 && (
         <View style={styles.empty}>
-          <Ionicons name="film-outline" size={40} color="#d1d5db" />
+          <Ionicons name="film-outline" size={40} color={colors.borderStrong} />
           <Text style={styles.emptyText}>No clips in your locker yet.</Text>
         </View>
       )}
@@ -356,7 +376,7 @@ export function ShareClipsPanel() {
         disabled={busy || validating}
       >
         {busy || validating ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={colors.brandTextOn} />
         ) : (
           <Text style={styles.shareBtnText}>
             {recipient ? `Send to ${recipient.fullname ?? recipient.email}` : "Send by email"}
@@ -364,6 +384,87 @@ export function ShareClipsPanel() {
         )}
       </Pressable>
     </ScrollView>
+  );
+}
+
+function ClipGridThumb({ uri }: { uri: string }) {
+  const [side, setSide] = useState(0);
+  return (
+    <View
+      style={{ width: "100%", alignSelf: "stretch" }}
+      onLayout={(e) => {
+        const w = Math.round(e.nativeEvent.layout.width);
+        if (w > 0 && w !== side) setSide(w);
+      }}
+    >
+      {side > 0 ? (
+        <ImageWithSkeleton
+          uri={uri}
+          width={side}
+          height={side}
+          borderRadius={radii.sm}
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={[styles.thumbPh, { minHeight: 120 }]}>
+          <Skeleton width="100%" height={120} radius={radii.sm} />
+        </View>
+      )}
+    </View>
+  );
+}
+
+function RecipientAvatar({ uri, name }: { uri: string; name: string }) {
+  const [failed, setFailed] = useState(false);
+  const url = getS3ImageUrl(uri);
+  useEffect(() => {
+    setFailed(false);
+  }, [uri]);
+  if (!url || failed) {
+    return (
+      <View style={[styles.recipientAvatar, styles.recipientAvatarFb]}>
+        <Text style={styles.recipientAvatarInitial}>{(name ?? "?")[0]?.toUpperCase()}</Text>
+      </View>
+    );
+  }
+  return (
+    <ImageWithSkeleton
+      uri={url}
+      width={36}
+      height={36}
+      borderRadius={18}
+      resizeMode="cover"
+      style={styles.recipientAvatar}
+      onLoadError={() => setFailed(true)}
+      accessibilityLabel={name ? `Photo of ${name}` : "Recipient photo"}
+    />
+  );
+}
+
+function UserRowAvatar({ uri, name }: { uri: string; name: string }) {
+  const [failed, setFailed] = useState(false);
+  const url = getS3ImageUrl(uri);
+  useEffect(() => {
+    setFailed(false);
+  }, [uri]);
+  if (!url || failed) {
+    return (
+      <View style={[styles.userAvatar, styles.recipientAvatarFb]}>
+        <Text style={styles.recipientAvatarInitial}>{(name ?? "?")[0]?.toUpperCase()}</Text>
+      </View>
+    );
+  }
+  return (
+    <ImageWithSkeleton
+      uri={url}
+      width={36}
+      height={36}
+      borderRadius={18}
+      resizeMode="cover"
+      style={styles.userAvatar}
+      onLoadError={() => setFailed(true)}
+      accessibilityLabel={name ? `Photo of ${name}` : "User photo"}
+    />
   );
 }
 
@@ -377,10 +478,7 @@ function UserRow({
   return (
     <Pressable style={styles.userRow} onPress={() => onPick(user)}>
       {user.profile_picture ? (
-        <Image
-          source={{ uri: getS3ImageUrl(user.profile_picture) }}
-          style={styles.userAvatar}
-        />
+        <UserRowAvatar uri={user.profile_picture} name={user.fullname ?? user.email ?? ""} />
       ) : (
         <View style={[styles.userAvatar, styles.recipientAvatarFb]}>
           <Text style={styles.recipientAvatarInitial}>
@@ -404,43 +502,40 @@ function UserRow({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#f6f7fb" },
+  root: { flex: 1, backgroundColor: colors.surface },
   content: { padding: space.md, paddingBottom: space.xl * 2, gap: space.sm },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: space.xl },
-  intro: { fontSize: 13, color: "#6b7280", lineHeight: 18 },
-  label: { fontSize: 13, fontWeight: "700", color: "#374151", marginTop: space.sm },
+  intro: { ...typography.bodySm, color: colors.textMuted },
+  label: { ...typography.label, color: colors.textSecondary, marginTop: space.sm },
   input: {
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
     borderRadius: radii.sm,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: 15,
-    backgroundColor: "#fff",
+    ...typography.bodyMd,
+    backgroundColor: colors.surfaceElevated,
   },
 
   pickList: {
     marginTop: 8,
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
     overflow: "hidden",
   },
   pickHeader: {
     paddingHorizontal: space.sm,
     paddingTop: space.sm,
     paddingBottom: 4,
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#6b7280",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
+    ...typography.overline,
+    color: colors.textMuted,
   },
   pickEmpty: {
     padding: space.sm,
-    fontSize: 12,
-    color: "#9ca3af",
+    ...typography.caption,
+    color: colors.textMuted,
     fontStyle: "italic",
   },
   searchSpin: { padding: space.sm, alignItems: "center" },
@@ -452,19 +547,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.sm,
     paddingVertical: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#f3f4f6",
+    borderTopColor: colors.borderSubtle,
   },
-  userAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: "#eef2ff" },
-  userName: { fontSize: 14, fontWeight: "700", color: "#111827" },
-  userEmail: { fontSize: 12, color: "#6b7280", marginTop: 1 },
+  userAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.brandSubtle },
+  userName: { ...typography.bodyMd, fontWeight: "700", color: colors.text },
+  userEmail: { ...typography.caption, color: colors.textMuted, marginTop: 1 },
   userRole: {
     fontSize: 10,
     fontWeight: "700",
-    color: NAVY,
-    backgroundColor: "#eef2ff",
+    color: colors.brandNavy,
+    backgroundColor: colors.brandSubtle,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 999,
+    borderRadius: radii.pill,
     textTransform: "uppercase",
   },
 
@@ -472,40 +567,40 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#eef2ff",
+    backgroundColor: colors.brandSubtle,
     padding: 10,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: "#c7d2fe",
   },
-  recipientAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: "#fff" },
+  recipientAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceElevated },
   recipientAvatarFb: { alignItems: "center", justifyContent: "center" },
-  recipientAvatarInitial: { color: NAVY, fontWeight: "800", fontSize: 15 },
-  recipientName: { fontSize: 14, fontWeight: "700", color: "#111827" },
-  recipientEmail: { fontSize: 12, color: "#6b7280", marginTop: 1 },
+  recipientAvatarInitial: { color: colors.brandNavy, fontWeight: "800", fontSize: 15 },
+  recipientName: { ...typography.bodyMd, fontWeight: "700", color: colors.text },
+  recipientEmail: { ...typography.caption, color: colors.textMuted, marginTop: 1 },
 
   toolbar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  clipCount: { fontSize: 12, color: "#6b7280" },
-  link: { fontSize: 13, fontWeight: "600", color: NAVY },
+  clipCount: { ...typography.caption, color: colors.textMuted },
+  link: { ...typography.bodySm, fontWeight: "600", color: colors.brandNavy },
 
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: space.sm },
   tile: {
     width: "47%",
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
     padding: 8,
     gap: 4,
   },
-  tileOn: { borderColor: NAVY, backgroundColor: "#eff6ff" },
+  tileOn: { borderColor: colors.brandNavy, backgroundColor: colors.brandSubtle },
   thumbWrap: { position: "relative" },
-  thumb: { width: "100%", aspectRatio: 1, borderRadius: radii.sm, backgroundColor: "#f3f4f6" },
+  thumb: { width: "100%", aspectRatio: 1, borderRadius: radii.sm, backgroundColor: colors.surfaceMuted },
   thumbPh: {
     width: "100%",
     aspectRatio: 1,
     borderRadius: radii.sm,
-    backgroundColor: "#f0f4ff",
+    backgroundColor: colors.brandSubtle,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -520,19 +615,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  checkOn: { backgroundColor: NAVY },
-  tileTitle: { fontSize: 12, fontWeight: "600", color: "#111827" },
-  tileCat: { fontSize: 11, color: "#6b7280" },
+  checkOn: { backgroundColor: colors.brandNavy },
+  tileTitle: { ...typography.caption, fontWeight: "600", color: colors.text },
+  tileCat: { ...typography.caption, color: colors.textMuted, fontSize: 11 },
 
   empty: { alignItems: "center", paddingVertical: space.lg, gap: 8 },
-  emptyText: { fontSize: 14, color: "#9ca3af" },
+  emptyText: { ...typography.bodyMd, color: colors.textMuted },
 
   shareBtn: {
     marginTop: space.lg,
-    backgroundColor: NAVY,
+    backgroundColor: colors.brandNavy,
     borderRadius: radii.md,
     paddingVertical: 14,
     alignItems: "center",
   },
-  shareBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  shareBtnText: { ...typography.button, color: colors.brandTextOn, fontSize: 16 },
 });

@@ -1,13 +1,12 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { radii, space } from "../../../theme/tokens";
+import { Button, EmptyState } from "../../../components/ui";
+import { colors, radii, space, typography } from "../../../theme";
 import { useQuery } from "@tanstack/react-query";
 import { fetchScheduledMeetings } from "../../home/api/homeApi";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
-
-const NAVY = "#000080";
 
 function isSessionLiveNow(session: any): boolean {
   if (!session?.booked_date || !session?.start_time || !session?.end_time) return false;
@@ -27,7 +26,6 @@ function isSessionLiveNow(session: any): boolean {
 
 export function MeetingRoomScreen() {
   const { accountType } = useAuth();
-  const isTrainer = accountType === AccountType.TRAINER;
 
   const { data: sessions = [], isLoading } = useQuery({
     queryKey: ["sessions", "upcoming"],
@@ -40,7 +38,7 @@ export function MeetingRoomScreen() {
   return (
     <View style={styles.root}>
       <View style={styles.heroCard}>
-        <Ionicons name="videocam-outline" size={40} color={NAVY} />
+        <Ionicons name="videocam-outline" size={40} color={colors.brandNavy} />
         <Text style={styles.heroTitle}>Meeting Room</Text>
         <Text style={styles.heroSub}>
           Join your live session below. Make sure you have a stable internet connection.
@@ -66,24 +64,22 @@ export function MeetingRoomScreen() {
                     {session.start_time} – {session.end_time}
                   </Text>
                 </View>
-                <Pressable
-                  style={({ pressed }) => [styles.joinBtn, pressed && { opacity: 0.8 }]}
-                >
-                  <Ionicons name="videocam-outline" size={16} color="#fff" />
-                  <Text style={styles.joinBtnText}>Join</Text>
-                </Pressable>
+                <Button
+                  label="Join"
+                  leftIcon="videocam-outline"
+                  size="sm"
+                  fullWidth={false}
+                />
               </View>
             );
           })}
         </View>
       ) : (
-        <View style={styles.noSessionCard}>
-          <Ionicons name="calendar-outline" size={40} color="#d1d5db" />
-          <Text style={styles.noSessionTitle}>No active sessions</Text>
-          <Text style={styles.noSessionSub}>
-            Your live sessions will appear here when they are scheduled to start.
-          </Text>
-        </View>
+        <EmptyState
+          icon="calendar-outline"
+          title="No active sessions"
+          description="Your live sessions will appear here when they are scheduled to start."
+        />
       )}
 
       <View style={styles.tipsCard}>
@@ -95,7 +91,7 @@ export function MeetingRoomScreen() {
           "Have your training materials ready",
         ].map((tip) => (
           <View key={tip} style={styles.tipRow}>
-            <Ionicons name="checkmark-circle-outline" size={16} color="#16a34a" />
+            <Ionicons name="checkmark-circle-outline" size={16} color={colors.success} />
             <Text style={styles.tipText}>{tip}</Text>
           </View>
         ))}
@@ -105,81 +101,59 @@ export function MeetingRoomScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#f6f7fb", padding: space.md, gap: space.md },
+  root: { flex: 1, backgroundColor: colors.surface, padding: space.md, gap: space.md },
 
   heroCard: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     padding: space.lg,
     alignItems: "center",
     gap: space.sm,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
   },
-  heroTitle: { fontSize: 20, fontWeight: "700", color: NAVY },
-  heroSub: { fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20 },
+  heroTitle: { ...typography.titleMd, color: colors.brandNavy },
+  heroSub: { ...typography.bodyMd, color: colors.textMuted, textAlign: "center" },
 
   loadingCard: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     padding: space.lg,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
   },
-  loadingText: { fontSize: 14, color: "#6b7280" },
+  loadingText: { ...typography.bodyMd, color: colors.textMuted },
 
   sessionsList: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     padding: space.md,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
     gap: space.sm,
   },
-  sectionTitle: { fontSize: 15, fontWeight: "700", color: "#111827" },
+  sectionTitle: { ...typography.subtitle, color: colors.text },
   sessionCard: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: space.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#f3f4f6",
+    borderTopColor: colors.borderSubtle,
   },
   sessionInfo: { flex: 1 },
-  sessionName: { fontSize: 14, fontWeight: "700", color: "#111827" },
-  sessionTime: { fontSize: 12, color: "#6b7280", marginTop: 2 },
-  joinBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: NAVY,
-    borderRadius: radii.sm,
-    paddingHorizontal: space.md,
-    paddingVertical: 8,
-  },
-  joinBtnText: { fontSize: 13, color: "#fff", fontWeight: "600" },
-
-  noSessionCard: {
-    backgroundColor: "#fff",
-    borderRadius: radii.md,
-    padding: space.xl,
-    alignItems: "center",
-    gap: space.sm,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-  },
-  noSessionTitle: { fontSize: 16, fontWeight: "700", color: "#374151" },
-  noSessionSub: { fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20 },
+  sessionName: { ...typography.bodyMd, fontWeight: "700", color: colors.text },
+  sessionTime: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
 
   tipsCard: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     padding: space.md,
     gap: space.sm,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
   },
-  tipsTitle: { fontSize: 14, fontWeight: "700", color: "#111827", marginBottom: 4 },
+  tipsTitle: { ...typography.bodyMd, fontWeight: "700", color: colors.text, marginBottom: 4 },
   tipRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
-  tipText: { fontSize: 13, color: "#374151", flex: 1, lineHeight: 18 },
+  tipText: { ...typography.bodySm, color: colors.textSecondary, flex: 1 },
 });

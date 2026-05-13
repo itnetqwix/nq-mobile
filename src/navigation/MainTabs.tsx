@@ -2,10 +2,11 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { DrawerToggleButton } from "@react-navigation/drawer";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChatsScreen } from "../features/chats/screens/ChatsScreen";
 import { DashboardHomeScreen } from "../features/dashboard/screens/DashboardHomeScreen";
 import { ScheduleScreen } from "../features/schedule/screens/ScheduleScreen";
-import { colors } from "../theme/tokens";
+import { colors } from "../theme";
 import { MenuNavigator } from "./MenuNavigator";
 import type { MainTabParamList } from "./types";
 import { useAuth } from "../features/auth/context/AuthContext";
@@ -18,6 +19,10 @@ export function MainTabs() {
   const { accountType } = useAuth();
   const { unreadCount } = useNotifications();
   const isTrainer = accountType === AccountType.TRAINER;
+  const insets = useSafeAreaInsets();
+  const tabPadBottom = Math.max(insets.bottom, 6);
+  const tabPadTop = 6;
+  const tabMinHeight = 52 + tabPadTop + tabPadBottom;
 
   // Schedule tab shows "Schedule" for trainers, "Sessions" for trainees — mirrors website sidebar
   const scheduleTabLabel = isTrainer ? "Schedule" : "Sessions";
@@ -32,7 +37,20 @@ export function MainTabs() {
         tabBarStyle: {
           borderTopColor: colors.tabBarBorder,
           backgroundColor: colors.background,
+          paddingTop: tabPadTop,
+          paddingBottom: tabPadBottom,
+          paddingLeft: Math.max(insets.left, 4),
+          paddingRight: Math.max(insets.right, 4),
+          minHeight: tabMinHeight,
+          height: undefined,
         },
+        tabBarLabelStyle: {
+          fontWeight: "600",
+          fontSize: 11,
+        },
+        /** Hide the bar while the keyboard is open so chat / form screens
+         *  don't render two competing chrome rows on small phones. */
+        tabBarHideOnKeyboard: true,
         headerStyle: {
           backgroundColor: colors.background,
           borderBottomColor: colors.border,
@@ -93,7 +111,11 @@ export function MainTabs() {
           tabBarLabel: "More",
           /** Web parity badge: surface the inbox count on the bottom-tab "More" entry. */
           tabBarBadge: unreadCount > 0 ? (unreadCount > 99 ? "99+" : unreadCount) : undefined,
-          tabBarBadgeStyle: { backgroundColor: "#dc2626", color: "#fff", fontWeight: "700" },
+          tabBarBadgeStyle: {
+            backgroundColor: colors.danger,
+            color: colors.background,
+            fontWeight: "700",
+          },
         }}
       />
     </Tab.Navigator>

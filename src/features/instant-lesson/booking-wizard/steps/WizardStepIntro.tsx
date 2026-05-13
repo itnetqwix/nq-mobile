@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, Text, View } from "react-native";
+import { colors } from "../../../../theme";
 import { sharedStepStyles } from "../sharedStepStyles";
 
 type Props = {
@@ -19,7 +20,7 @@ export function WizardStepIntro({ onContinue }: Props) {
       </Text>
       <Pressable style={sharedStepStyles.primaryBtn} onPress={onContinue}>
         <Text style={sharedStepStyles.primaryBtnText}>Continue</Text>
-        <Ionicons name="arrow-forward" size={18} color="#fff" />
+        <Ionicons name="arrow-forward" size={18} color={colors.brandTextOn} />
       </Pressable>
     </View>
   );

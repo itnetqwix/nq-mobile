@@ -11,7 +11,8 @@ import {
 } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { radii, space } from "../../../theme/tokens";
+import { Button, EmptyState, Skeleton } from "../../../components/ui";
+import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import {
   fetchFriends,
@@ -21,8 +22,6 @@ import {
 } from "../../home/api/homeApi";
 
 import { ShareClipsPanel } from "../components/ShareClipsPanel";
-
-const NAVY = "#000080";
 
 const TABS = [
   { key: "friends", label: "Friends" },
@@ -86,18 +85,19 @@ function RequestCard({
         <Text style={styles.rowSub}>Sent you a friend request</Text>
       </View>
       <View style={styles.reqActions}>
-        <Pressable
-          style={[styles.reqBtn, { backgroundColor: NAVY }]}
+        <Button
+          label="Accept"
+          size="sm"
+          fullWidth={false}
           onPress={() => onAccept(request._id)}
-        >
-          <Text style={styles.reqBtnText}>Accept</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.reqBtn, { backgroundColor: "#dc2626" }]}
+        />
+        <Button
+          label="Reject"
+          size="sm"
+          variant="danger"
+          fullWidth={false}
           onPress={() => onReject(request._id)}
-        >
-          <Text style={styles.reqBtnText}>Reject</Text>
-        </Pressable>
+        />
       </View>
     </View>
   );
@@ -157,8 +157,12 @@ export function FriendsScreen() {
       </View>
 
       {isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={NAVY} />
+        <View style={styles.list}>
+          {[0, 1, 2].map((i) => (
+            <View key={i} style={{ marginBottom: space.md }}>
+              <Skeleton width="100%" height={68} radius={radii.md} />
+            </View>
+          ))}
         </View>
       ) : tab === "share" ? (
         <ShareClipsPanel />
@@ -179,24 +183,18 @@ export function FriendsScreen() {
           }
           contentContainerStyle={styles.list}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={NAVY} />
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brandNavy} />
           }
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <Ionicons
-                name={tab === "friends" ? "people-outline" : "person-add-outline"}
-                size={48}
-                color="#d1d5db"
-              />
-              <Text style={styles.emptyTitle}>
-                {tab === "friends" ? "No friends yet" : "No pending requests"}
-              </Text>
-              <Text style={styles.emptyBody}>
-                {tab === "friends"
+            <EmptyState
+              icon={tab === "friends" ? "people-outline" : "person-add-outline"}
+              title={tab === "friends" ? "No friends yet" : "No pending requests"}
+              description={
+                tab === "friends"
                   ? "Connect with trainers and trainees to build your network."
-                  : "Friend requests you receive will appear here."}
-              </Text>
-            </View>
+                  : "Friend requests you receive will appear here."
+              }
+            />
           }
         />
       )}
@@ -205,14 +203,14 @@ export function FriendsScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#f6f7fb" },
+  root: { flex: 1, backgroundColor: colors.surface },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
 
   tabs: {
     flexDirection: "row",
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: colors.border,
   },
   tabBtn: {
     flex: 1,
@@ -221,36 +219,30 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: "transparent",
   },
-  tabBtnActive: { borderBottomColor: NAVY },
-  tabText: { fontSize: 12, fontWeight: "600", color: "#6b7280" },
-  tabTextActive: { color: NAVY },
-  badge: { fontSize: 12, color: "#dc2626", fontWeight: "700" },
+  tabBtnActive: { borderBottomColor: colors.brandNavy },
+  tabText: { ...typography.label, color: colors.textMuted, fontSize: 12 },
+  tabTextActive: { color: colors.brandNavy },
+  badge: { fontSize: 12, color: colors.danger, fontWeight: "700" },
 
   list: { padding: space.md, gap: space.sm, paddingBottom: space.xl },
 
   row: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     padding: space.md,
     gap: space.md,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
   },
   rowInfo: { flex: 1 },
-  rowName: { fontSize: 15, fontWeight: "700", color: "#111827" },
-  rowSub: { fontSize: 12, color: "#6b7280", marginTop: 2 },
-  onlineDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#16a34a" },
+  rowName: { ...typography.subtitle, color: colors.text },
+  rowSub: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+  onlineDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.success },
 
   reqActions: { flexDirection: "column", gap: 6 },
-  reqBtn: { borderRadius: 6, paddingHorizontal: 12, paddingVertical: 6, alignItems: "center" },
-  reqBtnText: { fontSize: 12, color: "#fff", fontWeight: "600" },
 
-  avatarFallback: { backgroundColor: NAVY, alignItems: "center", justifyContent: "center" },
-  avatarInitial: { color: "#fff", fontWeight: "700" },
-
-  empty: { alignItems: "center", paddingVertical: space.xl * 2, gap: space.sm },
-  emptyTitle: { fontSize: 16, fontWeight: "700", color: "#374151" },
-  emptyBody: { fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20, paddingHorizontal: space.lg },
+  avatarFallback: { backgroundColor: colors.brandNavy, alignItems: "center", justifyContent: "center" },
+  avatarInitial: { color: colors.brandTextOn, fontWeight: "700" },
 });

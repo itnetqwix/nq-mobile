@@ -9,83 +9,28 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, radii, space } from "../theme/tokens";
+import { colors, radii, space, typography } from "../theme";
 import { useAuth } from "../features/auth/context/AuthContext";
-import {
-  dashboardRoutesForRoles,
-  type DashboardRouteId,
-  type DashboardRouteMeta,
-} from "../features/dashboard/config/dashboardRoutes";
-import {
-  shellSurfacesForRoles,
-  UTILITY_SURFACE_IDS,
-  type ShellSurfaceMeta,
-} from "../features/dashboard/config/shellSurfaces";
 import { AccountType } from "../constants/accountType";
 import type { MainTabParamList } from "./types";
 import type { NavigatorScreenParams } from "@react-navigation/native";
+import { navMatrixFor, type NavMatrixEntry } from "./navMatrix";
+
+/**
+ * Enterprise sidebar driven by `navMatrix.ts`. Three sections:
+ *   1. Main — bottom-tab destinations (Home, Schedule/Sessions, Chats).
+ *   2. Pages — dashboard surfaces (instant booking, students, friends, …).
+ *   3. Tools — locker + utility surfaces (clips, transactions, …).
+ *
+ * Every entry has exactly one canonical target — no more "instant booking"
+ * pointing two different places.
+ */
 
 const TAB_PRIMARY: { tab: keyof MainTabParamList; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { tab: "Home", label: "My Locker", icon: "home-outline" },
   { tab: "Schedule", label: "Schedule", icon: "calendar-outline" },
   { tab: "Chats", label: "Chats", icon: "chatbubbles-outline" },
 ];
-
-function featureIcon(id: DashboardRouteId): keyof typeof Ionicons.glyphMap {
-  switch (id) {
-    case "instant-booking":
-      return "flash-outline";
-    case "schedule":
-      return "calendar-outline";
-    case "book-lesson":
-      return "book-outline";
-    case "chats":
-      return "chatbubbles-outline";
-    case "upcoming-sessions":
-      return "time-outline";
-    case "my-community":
-      return "people-outline";
-    case "contact-us":
-      return "mail-outline";
-    case "about-us":
-      return "information-circle-outline";
-    case "friends":
-      return "person-add-outline";
-    case "students":
-      return "school-outline";
-    case "meeting-room":
-      return "videocam-outline";
-    case "practice-session":
-      return "fitness-outline";
-    default:
-      return "ellipse-outline";
-  }
-}
-
-function shellIcon(id: ShellSurfaceMeta["id"]): keyof typeof Ionicons.glyphMap {
-  switch (id) {
-    case "clips":
-      return "film-outline";
-    case "gamePlans":
-      return "clipboard-outline";
-    case "savedLessons":
-      return "bookmark-outline";
-    case "invite":
-      return "mail-outline";
-    case "notifications":
-      return "notifications-outline";
-    case "settings":
-      return "settings-outline";
-    case "transactions":
-      return "wallet-outline";
-    case "meeting":
-      return "videocam-outline";
-    case "messenger":
-      return "chatbubble-ellipses-outline";
-    default:
-      return "ellipse-outline";
-  }
-}
 
 function getFocusedTabName(drawerState: DrawerContentComponentProps["state"]): keyof MainTabParamList | null {
   const tabsRoute = drawerState.routes.find((r) => r.name === "Tabs");
@@ -112,50 +57,55 @@ export function DashboardDrawerContent(props: DrawerContentComponentProps) {
     [scheduleLabel]
   );
 
-  const dashboardPages = useMemo(() => dashboardRoutesForRoles(accountType), [accountType]);
-  const secondaryRoutes = useMemo(
-    () =>
-      dashboardPages.filter(
-        (r) => r.id !== "schedule" && r.id !== "chats"
-      ),
-    [dashboardPages]
+  const dashboardEntries = useMemo(
+    () => navMatrixFor("drawer", accountType, "dashboard"),
+    [accountType]
+  );
+  const toolEntries = useMemo(
+    () => navMatrixFor("drawer", accountType, "tools"),
+    [accountType]
   );
 
-  const shellUtilities = useMemo(() => {
-    const all = shellSurfacesForRoles(accountType);
-    return all.filter((s) =>
-      (UTILITY_SURFACE_IDS as readonly string[]).includes(s.id)
-    );
-  }, [accountType]);
-
   const focusedTab = getFocusedTabName(props.state);
-
   const close = () => props.navigation.closeDrawer();
 
   const goTab = (tab: keyof MainTabParamList) => {
-    props.navigation.navigate("Tabs", { screen: tab } as NavigatorScreenParams<MainTabParamList>);
-    close();
-  };
-
-  const goFeature = (id: DashboardRouteId) => {
     props.navigation.navigate(
       "Tabs",
-      {
-        screen: "Menu",
-        params: { screen: "DashboardFeature", params: { featureId: id } },
-      } as NavigatorScreenParams<MainTabParamList>
+      { screen: tab } as NavigatorScreenParams<MainTabParamList>
     );
     close();
   };
 
-  const goShell = (id: ShellSurfaceMeta["id"]) => {
-    props.navigation.navigate(
-      "Tabs",
-      {
-        screen: "Menu",
-        params: { screen: "ShellSurface", params: { surfaceId: id } },
-      } as NavigatorScreenParams<MainTabParamList>
-    );
+  const goEntry = (entry: NavMatrixEntry) => {
+    const { target } = entry;
+    if (target.kind === "tab") {
+      goTab(target.tab);
+      return;
+    }
+    if (target.kind === "feature") {
+      props.navigation.navigate(
+        "Tabs",
+        {
+          screen: "Menu",
+          params: {
+            screen: "DashboardFeature",
+            params: { featureId: target.featureId },
+          },
+        } as NavigatorScreenParams<MainTabParamList>
+      );
+    } else if (target.kind === "shell") {
+      props.navigation.navigate(
+        "Tabs",
+        {
+          screen: "Menu",
+          params: {
+            screen: "ShellSurface",
+            params: { surfaceId: target.surfaceId },
+          },
+        } as NavigatorScreenParams<MainTabParamList>
+      );
+    }
     close();
   };
 
@@ -221,49 +171,41 @@ export function DashboardDrawerContent(props: DrawerContentComponentProps) {
         );
       })}
 
-      <Text style={styles.sectionTitle}>Pages</Text>
-      {secondaryRoutes.map((r: DashboardRouteMeta) => {
-        if (r.id === "instant-booking") {
-          return (
+      {dashboardEntries.length > 0 && (
+        <>
+          <Text style={styles.sectionTitle}>Pages</Text>
+          {dashboardEntries.map((entry) => (
             <Pressable
-              key={r.id}
+              key={entry.id}
               style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-              onPress={() => goTab("Home")}
+              onPress={() => goEntry(entry)}
             >
               <View style={styles.iconWrap}>
-                <Ionicons name={featureIcon(r.id)} size={22} color={colors.textSecondary} />
+                <Ionicons name={entry.icon} size={22} color={colors.textSecondary} />
               </View>
-              <Text style={styles.rowLabel}>{r.title}</Text>
+              <Text style={styles.rowLabel}>{entry.label}</Text>
             </Pressable>
-          );
-        }
-        return (
-          <Pressable
-            key={r.id}
-            style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-            onPress={() => goFeature(r.id)}
-          >
-            <View style={styles.iconWrap}>
-              <Ionicons name={featureIcon(r.id)} size={22} color={colors.textSecondary} />
-            </View>
-            <Text style={styles.rowLabel}>{r.title}</Text>
-          </Pressable>
-        );
-      })}
+          ))}
+        </>
+      )}
 
-      <Text style={styles.sectionTitle}>Tools</Text>
-      {shellUtilities.map((s) => (
-        <Pressable
-          key={s.id}
-          style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-          onPress={() => goShell(s.id)}
-        >
-          <View style={styles.iconWrap}>
-            <Ionicons name={shellIcon(s.id)} size={22} color={colors.textSecondary} />
-          </View>
-          <Text style={styles.rowLabel}>{s.title}</Text>
-        </Pressable>
-      ))}
+      {toolEntries.length > 0 && (
+        <>
+          <Text style={styles.sectionTitle}>Tools</Text>
+          {toolEntries.map((entry) => (
+            <Pressable
+              key={entry.id}
+              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+              onPress={() => goEntry(entry)}
+            >
+              <View style={styles.iconWrap}>
+                <Ionicons name={entry.icon} size={22} color={colors.textSecondary} />
+              </View>
+              <Text style={styles.rowLabel}>{entry.label}</Text>
+            </Pressable>
+          ))}
+        </>
+      )}
 
       <View style={styles.spacer} />
 
@@ -296,22 +238,17 @@ const styles = StyleSheet.create({
     marginBottom: space.sm,
   },
   brandTitle: {
-    fontSize: 22,
-    fontWeight: "800",
+    ...typography.titleLg,
     color: colors.brandNavy,
-    letterSpacing: -0.5,
   },
-  brandSub: { fontSize: 12, color: colors.textMuted, marginTop: 2, fontWeight: "600" },
-  userLine: { fontSize: 13, color: colors.textSecondary, marginTop: space.sm },
+  brandSub: { ...typography.caption, color: colors.textMuted, marginTop: 2, fontWeight: "600" },
+  userLine: { ...typography.bodySm, color: colors.textSecondary, marginTop: space.sm },
   sectionTitle: {
+    ...typography.overline,
     marginTop: space.md,
     marginBottom: space.xs,
     marginHorizontal: space.md,
-    fontSize: 11,
-    fontWeight: "700",
     color: colors.textMuted,
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
   },
   row: {
     flexDirection: "row",
@@ -332,7 +269,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   iconWrapActive: { backgroundColor: colors.sidebarActiveBg },
-  rowLabel: { flex: 1, fontSize: 15, color: colors.text, fontWeight: "500" },
+  rowLabel: { flex: 1, ...typography.subtitle, color: colors.text },
   rowLabelActive: { color: colors.sidebarActive, fontWeight: "700" },
   spacer: { flexGrow: 1, minHeight: space.md },
   footer: {

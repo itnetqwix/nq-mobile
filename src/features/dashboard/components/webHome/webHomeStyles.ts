@@ -4,7 +4,7 @@
  * - `public/assets/scss/custom/custom.scss` (`.trainer-profile-card`)
  */
 import { Platform, StyleSheet } from "react-native";
-import { colors, radii, space } from "../../../../theme/tokens";
+import { colors, radii, space } from "../../../../theme";
 
 const cardShadow = Platform.select({
   ios: {

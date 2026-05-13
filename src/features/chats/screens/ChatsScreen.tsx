@@ -13,12 +13,11 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { apiClient } from "../../../api/client";
+import { EmptyState, Skeleton } from "../../../components/ui";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
-import { radii, space } from "../../../theme/tokens";
+import { colors, radii, space, typography } from "../../../theme";
 import type { MainTabScreenProps } from "../../../navigation/types";
-
-const NAVY = "#000080";
 
 async function fetchConversations(): Promise<any[]> {
   try {
@@ -121,26 +120,34 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
 
   return (
     <View style={styles.root}>
-      {/* Search */}
       <View style={styles.searchBar}>
-        <Ionicons name="search-outline" size={18} color="#9ca3af" />
+        <Ionicons name="search-outline" size={18} color={colors.textMuted} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search conversations..."
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor={colors.textMuted}
           value={search}
           onChangeText={setSearch}
+          accessibilityLabel="Search conversations"
         />
         {!!search && (
-          <Pressable onPress={() => setSearch("")}>
-            <Ionicons name="close-circle" size={18} color="#9ca3af" />
+          <Pressable onPress={() => setSearch("")} accessibilityLabel="Clear search">
+            <Ionicons name="close-circle" size={18} color={colors.textMuted} />
           </Pressable>
         )}
       </View>
 
       {isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={NAVY} />
+        <View style={{ padding: space.md }}>
+          {[0, 1, 2, 3].map((i) => (
+            <View key={i} style={{ marginBottom: space.sm, flexDirection: "row", gap: space.sm, alignItems: "center" }}>
+              <Skeleton width={44} height={44} radius={22} />
+              <View style={{ flex: 1, gap: 6 }}>
+                <Skeleton width="60%" height={12} />
+                <Skeleton width="80%" height={10} />
+              </View>
+            </View>
+          ))}
         </View>
       ) : (
         <FlatList
@@ -148,20 +155,18 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
           keyExtractor={(item, i) => item?._id ?? String(i)}
           renderItem={({ item }) => <ConversationRow item={item} />}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={NAVY} />
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brand} />
           }
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <Ionicons name="chatbubbles-outline" size={48} color="#d1d5db" />
-              <Text style={styles.emptyTitle}>
-                {search ? "No matching conversations" : "No chats yet"}
-              </Text>
-              <Text style={styles.emptyBody}>
-                {search
+            <EmptyState
+              icon="chatbubbles-outline"
+              title={search ? "No matching conversations" : "No chats yet"}
+              description={
+                search
                   ? "Try a different search term."
-                  : "Your conversations with trainers and trainees will appear here."}
-              </Text>
-            </View>
+                  : "Your conversations with trainers and trainees will appear here."
+              }
+            />
           }
         />
       )}
@@ -170,20 +175,20 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#fff" },
+  root: { flex: 1, backgroundColor: colors.surfaceElevated },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
 
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f3f4f6",
+    backgroundColor: colors.surfaceMuted,
     margin: space.md,
     borderRadius: radii.md,
     paddingHorizontal: space.sm,
     paddingVertical: 9,
     gap: space.sm,
   },
-  searchInput: { flex: 1, fontSize: 14, color: "#111827" },
+  searchInput: { flex: 1, ...typography.bodyMd, color: colors.text },
 
   row: {
     flexDirection: "row",
@@ -192,7 +197,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: space.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#f3f4f6",
+    borderBottomColor: colors.border,
   },
   avatarWrap: { position: "relative" },
   onlineDot: {
@@ -202,18 +207,18 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: "#16a34a",
+    backgroundColor: colors.success,
     borderWidth: 2,
-    borderColor: "#fff",
+    borderColor: colors.surfaceElevated,
   },
   rowContent: { flex: 1 },
   rowTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  rowName: { fontSize: 15, fontWeight: "700", color: "#111827", flex: 1, marginRight: 8 },
-  rowTime: { fontSize: 12, color: "#9ca3af" },
+  rowName: { ...typography.subtitle, color: colors.text, flex: 1, marginRight: 8 },
+  rowTime: { ...typography.caption, color: colors.textMuted },
   rowBottom: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 3 },
-  rowPreview: { fontSize: 13, color: "#6b7280", flex: 1, marginRight: 8 },
+  rowPreview: { ...typography.bodySm, color: colors.textMuted, flex: 1, marginRight: 8 },
   unreadBadge: {
-    backgroundColor: NAVY,
+    backgroundColor: colors.brandNavy,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -221,12 +226,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 5,
   },
-  unreadText: { fontSize: 11, color: "#fff", fontWeight: "700" },
+  unreadText: { fontSize: 11, color: colors.brandTextOn, fontWeight: "700" },
 
-  avatarFallback: { backgroundColor: NAVY, alignItems: "center", justifyContent: "center" },
-  avatarInitial: { color: "#fff", fontWeight: "700" },
-
-  empty: { alignItems: "center", paddingVertical: space.xl * 2, gap: space.sm, paddingHorizontal: space.lg },
-  emptyTitle: { fontSize: 16, fontWeight: "700", color: "#374151" },
-  emptyBody: { fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20 },
+  avatarFallback: {
+    backgroundColor: colors.brandNavy,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarInitial: { color: colors.brandTextOn, fontWeight: "700" },
 });

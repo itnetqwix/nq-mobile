@@ -1,6 +1,6 @@
 import { createDrawerNavigator } from "@react-navigation/drawer";
 import React from "react";
-import { colors, layout } from "../theme/tokens";
+import { colors, layout } from "../theme";
 import { DashboardDrawerContent } from "./DashboardDrawerContent";
 import { MainTabs } from "./MainTabs";
 import type { DashboardDrawerParamList } from "./types";
@@ -18,7 +18,7 @@ export function DashboardDrawerShell() {
           width: layout.drawerWidth,
           backgroundColor: colors.background,
         },
-        overlayColor: "rgba(15, 23, 42, 0.4)",
+        overlayColor: colors.scrim,
       }}
     >
       <Drawer.Screen

@@ -1,7 +1,7 @@
 import React from "react";
 import { ScrollView, StyleSheet, View, type ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors, space } from "../../theme/tokens";
+import { colors, space } from "../../theme";
 
 type Props = {
   children: React.ReactNode;
@@ -12,7 +12,7 @@ type Props = {
 export function Screen({ children, scroll, contentStyle }: Props) {
   if (scroll) {
     return (
-      <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+      <SafeAreaView style={styles.safe} edges={["top", "right", "bottom", "left"]}>
         <ScrollView
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={[styles.scrollContent, contentStyle]}
@@ -24,7 +24,7 @@ export function Screen({ children, scroll, contentStyle }: Props) {
     );
   }
   return (
-    <SafeAreaView style={[styles.safe, contentStyle]} edges={["top", "bottom"]}>
+    <SafeAreaView style={[styles.safe, contentStyle]} edges={["top", "right", "bottom", "left"]}>
       <View style={styles.fill}>{children}</View>
     </SafeAreaView>
   );

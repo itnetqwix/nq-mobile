@@ -40,6 +40,14 @@ export const NOTIFICATION_TITLES = {
   feedbackReceived: "Feedback Received",
   friendRequestReceived: "Received Friend Request",
   gamePlanReport: "Game Plan Report",
+  /** New: lifecycle coverage for the in-call experience + locker activity. */
+  peerJoinedCall: "User Joined",
+  peerLeftCall: "User Left",
+  fiveMinutesRemaining: "5 Minutes Left",
+  oneMinuteRemaining: "1 Minute Left",
+  sessionEnded: "Session Ended",
+  clipShared: "Clip Shared",
+  bookingReminder: "Session Reminder",
 } as const;
 
 export const NOTIFICATION_TYPES = {
@@ -68,6 +76,24 @@ export type IncomingNotification = {
   /** Optional metadata that helps the receiver render a CTA / refetch a slice. */
   bookingInfo?: any;
   type?: NotificationType;
+  /** True for client-only toasts that never hit the backend (peer joined,
+   *  timer warning, etc.). They show in the toast stack but are not persisted
+   *  to the REST inbox. */
+  isLocalOnly?: boolean;
+};
+
+/** Lightweight payload accepted by `pushLocalToast`. */
+export type LocalToastPayload = {
+  title: string;
+  description?: string;
+  /** Optional sender block — purely for the toast avatar / inbox row UI. */
+  sender?: IncomingNotification["sender"];
+  bookingInfo?: any;
+  type?: NotificationType;
+  /** When true, the toast is also prepended to the in-memory inbox cache so it
+   *  surfaces in the NotificationsScreen list until the next REST refresh
+   *  replaces it. Default: false (toast-only). */
+  persistInInbox?: boolean;
 };
 
 export type EmitNotificationPayload = {
@@ -84,15 +110,26 @@ export type EmitNotificationPayload = {
 type NotificationContextValue = {
   /** Unread count derived from the REST cache. */
   unreadCount: number;
-  /** The newest in-memory push received this session. Used by `NotificationToast`. */
+  /** Up to 3 most recent notifications waiting to be shown by the toast stack. */
+  toastQueue: IncomingNotification[];
+  /** Backwards-compatible alias for the head of the toast queue. */
   latestToast: IncomingNotification | null;
-  /** Dismiss the floating toast (does NOT mark anything read server-side). */
-  dismissToast: () => void;
+  /** Dismiss a single toast by id (or the head when no id is supplied). */
+  dismissToast: (id?: string) => void;
+  /** Clear every queued toast at once (e.g. when the user enters a meeting). */
+  clearToasts: () => void;
   /**
    * Web-parity helper: emit `'send'` on the socket with the same payload shape the
    * website uses, so the backend persists + re-emits to the receiver.
    */
   emitNotification: (payload: EmitNotificationPayload) => boolean;
+  /**
+   * Client-only notification — show a toast (and optionally persist it in the
+   * in-memory inbox cache) without round-tripping through the backend. Used for
+   * lifecycle moments that never need a sender (peer joined the call, lesson
+   * timer warning, …).
+   */
+  pushLocalToast: (payload: LocalToastPayload) => void;
   /** Force a refetch of the inbox + refresh the unread badge. */
   refreshInbox: () => Promise<void>;
   /**
@@ -116,8 +153,31 @@ export function NotificationProvider({
   const { user, status } = useAuth();
   const { socket } = useSocket();
 
-  const [latestToast, setLatestToast] = useState<IncomingNotification | null>(null);
+  const [toastQueue, setToastQueue] = useState<IncomingNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  const TOAST_STACK_LIMIT = 3;
+
+  /** Generate a stable id for client-only toasts (which never come back with
+   *  a server `_id`). Used as the React key + dismiss handle. */
+  const localToastSeqRef = useRef(0);
+  const mintLocalToastId = useCallback(() => {
+    localToastSeqRef.current += 1;
+    return `local-${Date.now()}-${localToastSeqRef.current}`;
+  }, []);
+
+  const pushToQueue = useCallback((next: IncomingNotification) => {
+    setToastQueue((prev) => {
+      /** Drop earlier toasts that share the same _id to prevent flicker
+       *  duplicates from a reconnecting socket. */
+      const without = next._id
+        ? prev.filter((t) => t._id !== next._id)
+        : prev;
+      const merged = [...without, next];
+      /** Trim to the configured max so the stack never runs off-screen. */
+      return merged.slice(-TOAST_STACK_LIMIT);
+    });
+  }, []);
 
   /** Keep the auth user id in a ref so socket callbacks always see the latest value. */
   const userIdRef = useRef<string | null>(null);
@@ -149,7 +209,7 @@ export function NotificationProvider({
   useEffect(() => {
     if (status !== "signedIn") {
       setUnreadCount(0);
-      setLatestToast(null);
+      setToastQueue([]);
       return;
     }
     void refreshInbox();
@@ -178,7 +238,7 @@ export function NotificationProvider({
       );
 
       setUnreadCount((c) => c + 1);
-      setLatestToast({ ...payload, isRead: false });
+      pushToQueue({ ...payload, isRead: false });
 
       /**
        * Side-effects driven by the notification *title* — same approach as web
@@ -232,22 +292,71 @@ export function NotificationProvider({
     [socket]
   );
 
-  const dismissToast = useCallback(() => setLatestToast(null), []);
+  const dismissToast = useCallback((id?: string) => {
+    setToastQueue((prev) => {
+      if (prev.length === 0) return prev;
+      if (!id) return prev.slice(1);
+      return prev.filter((t) => t._id !== id);
+    });
+  }, []);
+
+  const clearToasts = useCallback(() => setToastQueue([]), []);
+
+  const pushLocalToast = useCallback(
+    (payload: LocalToastPayload) => {
+      const senderId = userIdRef.current ?? undefined;
+      const localId = mintLocalToastId();
+      const next: IncomingNotification = {
+        _id: localId,
+        title: payload.title,
+        description: payload.description,
+        createdAt: new Date().toISOString(),
+        isRead: false,
+        sender: payload.sender,
+        bookingInfo: payload.bookingInfo,
+        type: payload.type ?? NOTIFICATION_TYPES.DEFAULT,
+        isLocalOnly: true,
+      };
+      pushToQueue(next);
+      if (payload.persistInInbox) {
+        queryClient.setQueryData<IncomingNotification[]>(
+          ["notifications"],
+          (prev) => {
+            const list = prev ?? [];
+            return [next, ...list];
+          }
+        );
+        setUnreadCount((c) => c + 1);
+      }
+      if (__DEV__ && !senderId) {
+        // no-op — local toasts are valid even without a signed-in user
+      }
+    },
+    [pushToQueue, queryClient, mintLocalToastId]
+  );
+
+  const latestToast = toastQueue.length > 0 ? toastQueue[toastQueue.length - 1] : null;
 
   const value = useMemo<NotificationContextValue>(
     () => ({
       unreadCount,
+      toastQueue,
       latestToast,
       dismissToast,
+      clearToasts,
       emitNotification,
+      pushLocalToast,
       refreshInbox,
       markFirstPageRead,
     }),
     [
       unreadCount,
+      toastQueue,
       latestToast,
       dismissToast,
+      clearToasts,
       emitNotification,
+      pushLocalToast,
       refreshInbox,
       markFirstPageRead,
     ]

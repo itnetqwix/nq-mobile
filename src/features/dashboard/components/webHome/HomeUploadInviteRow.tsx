@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { webHomeStyles } from "./webHomeStyles";
-import { colors } from "../../../../theme/tokens";
+import { colors } from "../../../../theme";
 
 type Props = {
   onClips: () => void;

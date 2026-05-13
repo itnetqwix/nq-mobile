@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, radii } from "../../../theme/tokens";
+import React from "react";
+import { ImageWithSkeleton } from "../../../components/ui";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { colors, radii, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import type { ClipRow } from "../instantLessonClipsApi";
 
@@ -20,7 +21,6 @@ type Props = {
  * shows the locker thumbnail + title + category, with a checkbox indicator.
  */
 export function ClipPickerRow({ clip, selected, onToggle }: Props) {
-  const [imgFailed, setImgFailed] = useState(false);
   const thumb = getS3ImageUrl(clip.thumbnail) || "";
   const label = clip.title || clip.name || "Untitled clip";
 
@@ -30,20 +30,22 @@ export function ClipPickerRow({ clip, selected, onToggle }: Props) {
       onPress={() => onToggle(clip._id)}
     >
       <View style={styles.thumbBox}>
-        {thumb && !imgFailed ? (
-          <Image
-            source={{ uri: thumb }}
-            style={styles.thumbImg}
+        {thumb ? (
+          <ImageWithSkeleton
+            uri={thumb}
+            width={THUMB}
+            height={THUMB}
+            borderRadius={radii.sm}
             resizeMode="cover"
-            onError={() => setImgFailed(true)}
+            accessibilityLabel={label}
           />
         ) : (
           <View style={[styles.thumbImg, styles.thumbFallback]}>
-            <Ionicons name="film-outline" size={22} color="#9ca3af" />
+            <Ionicons name="film-outline" size={22} color={colors.textMuted} />
           </View>
         )}
         <View style={styles.playBadge}>
-          <Ionicons name="play" size={11} color="#fff" />
+          <Ionicons name="play" size={11} color={colors.brandTextOn} />
         </View>
       </View>
 
@@ -61,7 +63,7 @@ export function ClipPickerRow({ clip, selected, onToggle }: Props) {
       <Ionicons
         name={selected ? "checkbox" : "square-outline"}
         size={22}
-        color={selected ? colors.brandNavy : "#9ca3af"}
+        color={selected ? colors.brandNavy : colors.textMuted}
       />
     </Pressable>
   );
@@ -80,16 +82,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: 8,
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
   },
-  rowOn: { borderColor: colors.brandNavy, backgroundColor: "#f0f4ff" },
+  rowOn: { borderColor: colors.brandNavy, backgroundColor: colors.brandSubtle },
   thumbBox: {
     width: THUMB,
     height: THUMB,
-    borderRadius: 8,
+    borderRadius: radii.sm,
     overflow: "hidden",
     position: "relative",
-    backgroundColor: "#e5e7eb",
+    backgroundColor: colors.border,
   },
   thumbImg: { width: "100%", height: "100%" },
   thumbFallback: { alignItems: "center", justifyContent: "center" },
@@ -105,6 +107,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   meta: { flex: 1, gap: 2 },
-  title: { fontSize: 14, fontWeight: "600", color: colors.text },
-  category: { fontSize: 12, color: colors.textMuted },
+  title: { ...typography.bodyMd, fontWeight: "600", color: colors.text },
+  category: { ...typography.caption, color: colors.textMuted },
 });

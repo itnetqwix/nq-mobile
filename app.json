@@ -24,8 +24,18 @@
               "NSExceptionAllowsInsecureHTTPLoads": true
             }
           }
-        }
-      }
+        },
+        "NSCameraUsageDescription": "NetQwix needs camera access so you can join lessons over video.",
+        "NSMicrophoneUsageDescription": "NetQwix needs microphone access so you can talk to your coach or trainee during a lesson.",
+        "NSBluetoothPeripheralUsageDescription": "NetQwix uses Bluetooth so you can answer calls on connected headphones.",
+        "UIBackgroundModes": [
+          "audio",
+          "voip",
+          "remote-notification"
+        ]
+      },
+      "bitcode": false,
+      "bundleIdentifier": "com.anonymous.nqmobile"
     },
     "android": {
       "usesCleartextTraffic": true,
@@ -34,18 +44,57 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.WAKE_LOCK",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.INTERNET",
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ],
+      "package": "com.anonymous.nqmobile"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-secure-store",
+      "expo-dev-client",
       [
         "expo-image-picker",
         {
           "photosPermission": "NetQwix needs access to your photo library so you can upload training video clips to your locker.",
           "cameraPermission": "NetQwix can use the camera if you record a clip to upload."
+        }
+      ],
+      [
+        "@config-plugins/react-native-webrtc",
+        {
+          "cameraPermission": "NetQwix needs camera access so you can join lessons over video.",
+          "microphonePermission": "NetQwix needs microphone access so you can talk to your coach or trainee during a lesson."
+        }
+      ],
+      [
+        "react-native-permissions",
+        {
+          "iosPermissions": [
+            "Camera",
+            "Microphone"
+          ]
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#000080",
+          "defaultChannel": "default"
         }
       ]
     ]

@@ -1,8 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,12 +8,11 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { radii, space } from "../../../theme/tokens";
+import { Banner, Button } from "../../../components/ui";
+import { colors, radii, space, typography } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
 import { postInviteFriendEmail } from "../../home/api/homeApi";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
-
-const NAVY = "#000080";
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function InviteFriendsScreen() {
@@ -117,12 +114,11 @@ export function InviteFriendsScreen() {
         </Text>
 
         {!promoEmailEnabled && (
-          <View style={styles.warnBox}>
-            <Text style={styles.warnText}>
-              Heads up: promotional email is currently OFF for your account, so the backend
-              skips sending invites. Enable it in Settings → Notifications to deliver.
-            </Text>
-          </View>
+          <Banner
+            tone="warning"
+            title="Promotional email is off"
+            description="The backend skips sending invites unless this is on. Enable it in Settings → Notifications."
+          />
         )}
 
         <Text style={styles.label}>Email addresses</Text>
@@ -131,11 +127,12 @@ export function InviteFriendsScreen() {
           multiline
           numberOfLines={4}
           placeholder="e.g. friend@example.com, coach@example.com"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor={colors.textMuted}
           value={text}
           onChangeText={setText}
           autoCapitalize="none"
           autoCorrect={false}
+          accessibilityLabel="Email addresses"
         />
 
         <View style={styles.metaRow}>
@@ -146,45 +143,31 @@ export function InviteFriendsScreen() {
         </View>
 
         {invalidEmails.length > 0 && (
-          <View style={styles.warnBox}>
-            <Text style={styles.warnText}>
-              These look invalid and are skipped: {invalidEmails.join(", ")}
-            </Text>
-          </View>
+          <Banner
+            tone="warning"
+            title="Invalid addresses skipped"
+            description={invalidEmails.join(", ")}
+          />
         )}
 
         {!!err && (
-          <View style={styles.errBox}>
-            <Ionicons name="alert-circle-outline" size={18} color="#b91c1c" />
-            <Text style={styles.errText}>{err}</Text>
-          </View>
+          <Banner tone="danger" title="Invites failed" description={err} />
         )}
 
-        <Pressable
-          style={({ pressed }) => [
-            styles.btn,
-            (loading || validEmails.length === 0) && styles.btnDisabled,
-            pressed && styles.btnPressed,
-          ]}
+        <Button
+          label={`Send ${
+            validEmails.length > 0 ? `${validEmails.length} ` : ""
+          }invite${validEmails.length === 1 ? "" : "s"}`}
           onPress={sendInvites}
           disabled={loading || validEmails.length === 0}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.btnText}>
-              Send {validEmails.length > 0 ? `${validEmails.length} ` : ""}invite
-              {validEmails.length === 1 ? "" : "s"}
-            </Text>
-          )}
-        </Pressable>
+          loading={loading}
+          size="lg"
+        />
 
         {lastSent.length > 0 && (
           <View style={styles.okBox}>
-            <Ionicons name="mail-open-outline" size={18} color="#15803d" />
-            <Text style={styles.okText}>
-              Last sent to: {lastSent.join(", ")}
-            </Text>
+            <Ionicons name="mail-open-outline" size={18} color={colors.success} />
+            <Text style={styles.okText}>Last sent to: {lastSent.join(", ")}</Text>
           </View>
         )}
       </View>
@@ -193,28 +176,28 @@ export function InviteFriendsScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#f6f7fb" },
+  root: { flex: 1, backgroundColor: colors.surface },
   content: { padding: space.md, paddingBottom: space.xl },
 
   card: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
     padding: space.md,
     gap: space.sm,
   },
-  title: { fontSize: 20, fontWeight: "700", color: NAVY },
-  sub: { fontSize: 14, color: "#6b7280", lineHeight: 20 },
-  label: { fontSize: 13, fontWeight: "700", color: "#374151", marginTop: space.sm },
+  title: { ...typography.titleMd, color: colors.brandNavy },
+  sub: { ...typography.bodyMd, color: colors.textMuted },
+  label: { ...typography.label, color: colors.textSecondary, marginTop: space.sm },
   input: {
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
     borderRadius: radii.sm,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: 15,
-    color: "#111827",
+    ...typography.bodyMd,
+    color: colors.text,
     minHeight: 96,
     textAlignVertical: "top",
   },
@@ -223,46 +206,17 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  meta: { fontSize: 12, color: "#6b7280" },
-  metaMuted: { fontSize: 12, color: "#9ca3af" },
-
-  warnBox: {
-    backgroundColor: "#fff7ed",
-    borderRadius: radii.sm,
-    padding: space.sm,
-  },
-  warnText: { fontSize: 12, color: "#9a3412", lineHeight: 17 },
-
-  errBox: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    backgroundColor: "#fef2f2",
-    borderRadius: radii.sm,
-    padding: space.sm,
-  },
-  errText: { flex: 1, fontSize: 13, color: "#b91c1c", lineHeight: 18 },
+  meta: { ...typography.caption, color: colors.textMuted },
+  metaMuted: { ...typography.caption, color: colors.textMuted },
 
   okBox: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#dcfce7",
+    backgroundColor: colors.successSubtle,
     borderRadius: radii.sm,
     padding: space.sm,
     marginTop: space.sm,
   },
-  okText: { flex: 1, fontSize: 12, color: "#15803d", lineHeight: 17 },
-
-  btn: {
-    marginTop: space.sm,
-    backgroundColor: NAVY,
-    borderRadius: radii.md,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  btnDisabled: { opacity: 0.45 },
-  btnPressed: { opacity: 0.9 },
-  btnText: { fontSize: 16, fontWeight: "700", color: "#fff" },
+  okText: { flex: 1, ...typography.caption, color: colors.success },
 });

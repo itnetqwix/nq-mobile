@@ -1,7 +1,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { DrawerToggleButton } from "@react-navigation/drawer";
 import React from "react";
-import { colors } from "../theme/tokens";
+import { colors } from "../theme";
 import { dashboardRouteById } from "../features/dashboard/config/dashboardRoutes";
 import { shellSurfaceById } from "../features/dashboard/config/shellSurfaces";
 import { DashboardFeatureScreen } from "../features/dashboard/screens/DashboardFeatureScreen";
@@ -19,6 +19,11 @@ export function MenuNavigator() {
         headerTitleStyle: { fontWeight: "600", color: colors.brandNavy },
         headerLeft: () => <DrawerToggleButton tintColor={colors.brandNavy} />,
         contentStyle: { backgroundColor: colors.background },
+        /** Allow swipe-back gesture on Android too — same right-to-left arc
+         *  for every screen pushed inside the More tab. */
+        gestureEnabled: true,
+        gestureDirection: "horizontal",
+        animation: "slide_from_right",
       }}
     >
       <Stack.Screen name="MenuHome" component={MenuHomeScreen} options={{ title: "Menu" }} />

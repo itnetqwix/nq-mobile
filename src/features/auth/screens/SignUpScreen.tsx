@@ -2,8 +2,6 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import React, { useMemo, useState } from "react";
 import {
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   StyleSheet,
   Switch,
@@ -11,12 +9,15 @@ import {
   View,
 } from "react-native";
 import { NetqwixLogo } from "../../../components/brand/NetqwixLogo";
-import { Button } from "../../../components/ui/Button";
-import { Screen } from "../../../components/ui/Screen";
-import { TextField } from "../../../components/ui/TextField";
+import {
+  Button,
+  FormField,
+  ScreenContainer,
+  Stack,
+} from "../../../components/ui";
 import { AccountType } from "../../../constants/accountType";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
-import { colors, radii, space } from "../../../theme/tokens";
+import { colors, radii, space, typography } from "../../../theme";
 import { postSignUp } from "../api/authApi";
 import { fetchMasterRow } from "../api/masterApi";
 import type { SignUpPayload } from "../api/types";
@@ -91,68 +92,81 @@ export function SignUpScreen({ navigation }: AuthScreenProps<"SignUp">) {
   };
 
   return (
-    <Screen scroll>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <ScreenContainer scroll applyTopInset padding="lg" background={colors.background}>
+      <View style={styles.brand}>
         <NetqwixLogo maxWidth={220} />
-        <Text style={styles.headline}>Create account</Text>
-        <Text style={styles.sub}>Same details as the NetQwix website.</Text>
+      </View>
+      <Text style={[typography.titleLg, { color: colors.text, marginTop: space.md }]}>
+        Create account
+      </Text>
+      <Text style={[typography.bodyMd, { color: colors.textMuted, marginBottom: space.lg }]}>
+        Same details as the NetQwix website.
+      </Text>
 
-        <TextField label="Full name" value={fullname} onChangeText={setFullname} autoCapitalize="words" />
-        <TextField
+      <Stack gap="md">
+        <FormField
+          label="Full name"
+          value={fullname}
+          onChangeText={setFullname}
+          autoCapitalize="words"
+          required
+        />
+        <FormField
           label="Email"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
+          required
         />
-        <TextField label="Password" value={password} onChangeText={setPassword} secureTextEntry />
-        <TextField label="Phone" value={mobile} onChangeText={setMobile} keyboardType="phone-pad" />
+        <FormField label="Password" value={password} onChangeText={setPassword} secureTextEntry required />
+        <FormField label="Phone" value={mobile} onChangeText={setMobile} keyboardType="phone-pad" required />
+      </Stack>
 
-        <Text style={styles.sectionLabel}>Account type</Text>
-        <View style={styles.row}>
-          <TypeChip
-            label="Trainee"
-            selected={accountType === AccountType.TRAINEE}
-            onPress={() => {
-              setAccountType(AccountType.TRAINEE);
-              setCategory(null);
-            }}
-          />
-          <TypeChip
-            label="Trainer"
-            selected={accountType === AccountType.TRAINER}
-            onPress={() => setAccountType(AccountType.TRAINER)}
-          />
-        </View>
+      <Text style={styles.sectionLabel}>Account type</Text>
+      <View style={styles.row}>
+        <TypeChip
+          label="Trainee"
+          selected={accountType === AccountType.TRAINEE}
+          onPress={() => {
+            setAccountType(AccountType.TRAINEE);
+            setCategory(null);
+          }}
+        />
+        <TypeChip
+          label="Trainer"
+          selected={accountType === AccountType.TRAINER}
+          onPress={() => setAccountType(AccountType.TRAINER)}
+        />
+      </View>
 
-        {accountType === AccountType.TRAINER ? (
-          <>
-            <Text style={styles.sectionLabel}>Category</Text>
-            {masterQuery.isLoading ? (
-              <Text style={styles.muted}>Loading categories…</Text>
-            ) : (
-              <View style={styles.wrapChips}>
-                {categories.map((c) => (
-                  <TypeChip key={c} label={c} selected={category === c} onPress={() => setCategory(c)} />
-                ))}
-              </View>
-            )}
-          </>
-        ) : null}
+      {accountType === AccountType.TRAINER ? (
+        <>
+          <Text style={styles.sectionLabel}>Category</Text>
+          {masterQuery.isLoading ? (
+            <Text style={styles.muted}>Loading categories…</Text>
+          ) : (
+            <View style={styles.wrapChips}>
+              {categories.map((c) => (
+                <TypeChip key={c} label={c} selected={category === c} onPress={() => setCategory(c)} />
+              ))}
+            </View>
+          )}
+        </>
+      ) : null}
 
-        <View style={styles.tcpaRow}>
-          <Switch value={tcpa} onValueChange={setTcpa} />
-          <Text style={styles.tcpaText}>
-            I agree to receive SMS and emails from NetQwix for alerts and notifications.
-          </Text>
-        </View>
+      <View style={styles.tcpaRow}>
+        <Switch value={tcpa} onValueChange={setTcpa} />
+        <Text style={styles.tcpaText}>
+          I agree to receive SMS and emails from NetQwix for alerts and notifications.
+        </Text>
+      </View>
 
-        <Button title="Create account" loading={mutation.isPending} onPress={onSubmit} />
-        <Pressable onPress={() => navigation.navigate("Login")} style={styles.back}>
-          <Text style={styles.link}>Already have an account? Sign in</Text>
-        </Pressable>
-      </KeyboardAvoidingView>
-    </Screen>
+      <Button label="Create account" loading={mutation.isPending} onPress={onSubmit} size="lg" />
+      <Pressable onPress={() => navigation.navigate("Login")} style={styles.back}>
+        <Text style={styles.link}>Already have an account? Sign in</Text>
+      </Pressable>
+    </ScreenContainer>
   );
 }
 
@@ -173,18 +187,7 @@ function TypeChip({
 }
 
 const styles = StyleSheet.create({
-  headline: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: colors.text,
-    marginTop: space.md,
-    marginBottom: space.sm,
-  },
-  sub: {
-    fontSize: 15,
-    color: colors.textMuted,
-    marginBottom: space.lg,
-  },
+  brand: { alignItems: "center", marginTop: space.lg },
   sectionLabel: {
     fontSize: 14,
     fontWeight: "600",
@@ -209,18 +212,18 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceElevated,
   },
   chipSelected: {
-    borderColor: colors.primary,
-    backgroundColor: "#eff6ff",
+    borderColor: colors.brandAccent,
+    backgroundColor: colors.brandAccentSubtle,
   },
   chipText: {
     color: colors.text,
     fontWeight: "600",
   },
   chipTextSelected: {
-    color: colors.primary,
+    color: colors.brandAccent,
   },
   muted: {
     color: colors.textMuted,
@@ -243,7 +246,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   link: {
-    color: colors.primary,
+    color: colors.brandAccent,
     fontWeight: "600",
   },
 });

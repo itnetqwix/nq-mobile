@@ -1,64 +1,79 @@
 # Mobile portrait-calling
 
-This folder mirrors the web's `app/components/portrait-calling` ecosystem and is the foundation
-for a fully-native RN call experience.
+Two parallel call paths now live side by side and can be toggled at runtime
+via `featureFlag.ts → shouldUseNativeMeeting()`:
 
-## What ships today
+1. **Native** (default `false` today) — pure `react-native-webrtc` stack
+   orchestrated by `screens/NativeMeetingScreen.tsx`. Mobile ↔ mobile works
+   end-to-end with no WebView. Mobile ↔ web does **not** work directly because
+   the web client speaks PeerJS; for mixed calls keep the WebView path
+   enabled.
+2. **WebView fallback** — `nq-mobile/src/features/meeting/screens/MeetingScreen.tsx`
+   loads the production web meeting page inside a `<WebView />`, which
+   continues to talk PeerJS to the web peers. After the Phase 0 fix this path
+   correctly drives `?id=<lessonId>` + non-empty `acc_type` injection.
 
-The active call path is still the `WebView` embedded inside `MeetingScreen.tsx` (the website's
-`/meeting?lessonId=…` page handles the real WebRTC). The native chrome on top of it — peer
-avatar, live countdown, leave button — is provided by `components/PortraitCallOverlay.tsx`.
+`MeetingRouter.tsx` is the navigator-level switch that picks one or the
+other.
 
-This delivers immediate UX parity with the web portrait-calling visuals (`time-remaining` and
-`action-buttons`) without requiring a native build.
-
-## Files
+## Native stack components
 
 | File | Purpose |
 |------|---------|
-| `types.ts` | Shared TypeScript contracts for the call state machine. |
-| `callEvents.ts` | Backend socket event names (matches `nq-backend src/config/constance.ts → EVENTS.VIDEO_CALL`). |
+| `NativeCallEngine.ts` | RTCPeerConnection + getUserMedia + offer/answer/ICE over the same socket event names the backend already uses (`nq-backend-main/src/config/constance.ts → EVENTS.VIDEO_CALL`). |
+| `CallContext.tsx` | React provider that surfaces local/remote streams, peer info, mute/camera state, and peer-joined events. |
+| `permissions.ts` | Wraps `react-native-permissions` so callers can `await ensureCallPermissions()` and forget about iOS / Android specifics. |
+| `useCallSignaling.ts` | Pure socket-event hook (used by the engine and by tests). Now emits with the correct web-parity `{ userInfo }` envelope. |
+| `useLessonTimer.ts` | RN port of `app/components/video/hooks/useLessonTimer.js`. Listens to `LESSON_*` events from the backend. |
+| `useLessonCountdown.ts` | Tiny "remaining label" hook used by the WebView overlay. |
+| `useClipSync.ts` | Trainer/trainee clip selection + play/pause/seek synchronisation over `ON_VIDEO_SELECT`, `ON_VIDEO_PLAY_PAUSE`, `ON_VIDEO_TIME`. |
+| `clipEvents.ts` | Shared clip socket event names (matches `helpers/events.ts`). |
+| `featureFlag.ts` | `shouldUseNativeMeeting()` runtime flag — flip via `globalThis.NETQWIX_NATIVE_CALLS = true` for QA. |
+| `postSessionApi.ts` | REST wrappers for ratings, extend-session, saved-lessons upload URL, game-plan report (web parity). |
 | `iceServers.ts` | Same ICE config builder as web `callEngine.js → buildIceConfig`. |
-| `useCallSignaling.ts` | Re-usable hook that wires socket.io listeners + emitters for the call lifecycle. |
-| `useLessonCountdown.ts` | RN port of `useLessonTimer` (display only, no pause/extend). |
-| `components/PortraitCallOverlay.tsx` | Active **top overlay** on the WebView. |
-| `components/PortraitCallChrome.tsx` | Full chrome (top + bottom action bar) for the future native transport. |
+| `screens/NativeMeetingScreen.tsx` | Orchestrator — mirrors the web `VideoCallUI` block. |
+| `screens/MeetingRouter.tsx` | Navigator-level switch (native vs WebView). |
+| `components/UserBox.tsx` | `RTCView` tile for the remote stream plus a draggable mini for the local preview. |
+| `components/ActionButtons.tsx` | Bottom control bar: mute, camera, flip, clip picker, screenshot, end call. |
+| `components/TimeRemaining.tsx` | RN port of the web `time-remaining.jsx` pill with coach controls and 5-min / 30-s warnings. |
+| `components/PeerJoinedModal.tsx` | Native modal triggered when `CallContext.peerJoined` fires (web parity with `showPartnerJoinedPrompt`). |
+| `components/ClipPickerModal.tsx` | Trainer-only clip picker backed by `/common/get-clips` + `/common/trainee-clips`. |
+| `components/ClipPlayer.tsx` | `expo-av` Video wrapper synced via `useClipSync`. |
+| `components/DrawingOverlay.tsx` | Skia-based annotation overlay on top of the clip pane. |
+| `components/RecordingBar.tsx` | "REC" chip shown during instant lessons. |
+| `components/RatingsModal.tsx` | Post-session rating modal mirroring `bookings/ratings/index.jsx`. |
+| `components/PortraitCallOverlay.tsx` | Slim native overlay placed on top of the WebView when running the fallback. |
+| `components/PortraitCallChrome.tsx` | Older scaffold for full chrome (kept for compatibility). |
 
-## Migrating to native `react-native-webrtc`
+## Required project setup
 
-When the team is ready to remove the WebView dependency:
+This stack will **not** run inside Expo Go. The repo now ships native code
+generated by `expo prebuild --clean`. To run locally:
 
-1. **Install** the native peer + media stack and pre-build the dev client:
+```bash
+# iOS
+npx expo run:ios
+# Android
+npx expo run:android
+```
 
-   ```bash
-   npx expo install react-native-webrtc
-   npx expo prebuild --clean   # required: react-native-webrtc has native iOS/Android modules
-   ```
+For TestFlight / Play Store delivery use EAS Build.
 
-   For Expo / EAS builds, add the relevant config plugin entry; see
-   <https://github.com/react-native-webrtc/react-native-webrtc>.
+### Permissions
 
-2. **Implement a `NativeCallEngine`** that mirrors the web `CallEngine`:
-   - Use `RTCPeerConnection`, `mediaDevices.getUserMedia({ video: true, audio: true })`,
-     and the `MediaStream` from `react-native-webrtc`.
-   - Pass the local stream to `<RTCView streamURL={localStream.toURL()} />`.
-   - For signaling, consume `useCallSignaling` and emit / handle `offer` / `answer` /
-     `ice-candidate` exactly like the web (the socket events here intentionally match).
-   - Re-use `buildIceConfig` from `iceServers.ts` against the `iceServers` array the
-     backend returns in `bookings.startMeeting`.
+These are declared in `app.json` and surfaced at runtime via the
+`@config-plugins/react-native-webrtc` plugin:
 
-3. **Swap the WebView for `RTCView`** in `MeetingScreen.tsx` and replace `PortraitCallOverlay`
-   with the full `PortraitCallChrome` (which already exposes `onToggleMic`, `onToggleCamera`,
-   `onSwitchCamera`).
+- iOS: `NSCameraUsageDescription`, `NSMicrophoneUsageDescription`,
+  `NSBluetoothPeripheralUsageDescription`, `UIBackgroundModes: audio, voip`.
+- Android: `CAMERA`, `RECORD_AUDIO`, `MODIFY_AUDIO_SETTINGS`,
+  `BLUETOOTH_CONNECT`, `FOREGROUND_SERVICE`,
+  `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `WAKE_LOCK`.
 
-4. **Permissions**: declare `NSCameraUsageDescription`, `NSMicrophoneUsageDescription` (iOS)
-   and `android.permission.CAMERA`, `android.permission.RECORD_AUDIO`, and
-   `android.permission.MODIFY_AUDIO_SETTINGS` (Android).
+## Mobile <→ Web interop note
 
-## Why not ship native today?
-
-`react-native-webrtc` requires a custom dev client (it is NOT supported in Expo Go), and the
-full feature set of the web `portrait-calling/index.jsx` (3.9k LOC: drawing overlay, clip
-modes, screen recording, ratings) is multi-week work. The WebView path provides the FULL
-feature set on day 1; the native chrome makes the experience feel native; the foundation
-files in this folder give the team a clear, audited path to remove the WebView later.
+The web client uses PeerJS (which has its own SDP envelope). Until we ship a
+PeerJS-compatible shim (or migrate the web side to plain libwebrtc), the
+**native** path is only safe for mobile <→ mobile sessions. For mixed
+sessions keep `shouldUseNativeMeeting()` returning `false` and the WebView
+fallback will continue to talk PeerJS as before.

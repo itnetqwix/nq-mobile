@@ -10,7 +10,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { colors, space } from "../../../../theme/tokens";
+import { colors, space } from "../../../../theme";
 import type { ClipGroup, ClipRow } from "../../instantLessonClipsApi";
 import { MAX_CLIPS } from "../constants";
 import { sharedStepStyles } from "../sharedStepStyles";
@@ -76,7 +76,7 @@ export function WizardStepClips({
         </Pressable>
         <Pressable style={sharedStepStyles.primaryBtn} onPress={onNext}>
           <Text style={sharedStepStyles.primaryBtnText}>Next: review</Text>
-          <Ionicons name="arrow-forward" size={18} color="#fff" />
+          <Ionicons name="arrow-forward" size={18} color={colors.brandTextOn} />
         </Pressable>
       </View>
     </View>

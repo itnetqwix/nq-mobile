@@ -2,7 +2,6 @@ import React, { useCallback, useLayoutEffect } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -14,8 +13,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
-import { colors, radii, space } from "../../../theme/tokens";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Pill, Skeleton, ImageWithSkeleton } from "../../../components/ui";
+import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
+import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
 import {
   fetchOnlineUsers,
   fetchScheduledMeetings,
@@ -36,11 +38,13 @@ import {
   webHomeStyles,
 } from "../components/webHome";
 
-const FALLBACK_AVATAR = require("../../../../assets/icon.png");
-
 function Avatar({ uri, name, size = 56 }: { uri?: string; name?: string; size?: number }) {
   const [failed, setFailed] = React.useState(false);
   const url = getS3ImageUrl(uri);
+
+  React.useEffect(() => {
+    setFailed(false);
+  }, [uri]);
   if (!url || failed) {
     return (
       <View style={[styles.avatarFallback, { width: size, height: size, borderRadius: size / 2 }]}>
@@ -51,10 +55,14 @@ function Avatar({ uri, name, size = 56 }: { uri?: string; name?: string; size?: 
     );
   }
   return (
-    <Image
-      source={{ uri: url }}
-      style={{ width: size, height: size, borderRadius: size / 2 }}
-      onError={() => setFailed(true)}
+    <ImageWithSkeleton
+      uri={url}
+      width={size}
+      height={size}
+      borderRadius={size / 2}
+      resizeMode="cover"
+      onLoadError={() => setFailed(true)}
+      accessibilityLabel={name ? `Photo of ${name}` : "Profile photo"}
     />
   );
 }
@@ -80,6 +88,8 @@ function CoachCard({
       <Pressable
         style={({ pressed }) => [styles.bookBtn, pressed && styles.bookBtnPressed]}
         onPress={() => onBook(trainer)}
+        accessibilityRole="button"
+        accessibilityLabel={`Book session with ${trainer?.fullname ?? "trainer"}`}
       >
         <Text style={styles.bookBtnText}>Book Now</Text>
       </Pressable>
@@ -103,21 +113,27 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
         <Text style={styles.sessionName}>{name}</Text>
         {!!date && <Text style={styles.sessionMeta}>{date}</Text>}
         {!!time && <Text style={styles.sessionMeta}>{time}</Text>}
-        <View style={[styles.badge, getStatusColor(session.status)]}>
-          <Text style={styles.badgeText}>{session.status ?? "upcoming"}</Text>
-        </View>
+        <Pill
+          label={session.status ?? "upcoming"}
+          tone={getStatusTone(session.status)}
+          style={{ marginTop: 4 }}
+        />
       </View>
       <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
     </View>
   );
 }
 
-function getStatusColor(status?: string) {
+function getStatusTone(status?: string): React.ComponentProps<typeof Pill>["tone"] {
   switch (status) {
-    case "confirmed": return { backgroundColor: "#dcfce7" };
-    case "completed": return { backgroundColor: "#f3f4f6" };
-    case "cancelled": return { backgroundColor: "#fee2e2" };
-    default: return { backgroundColor: "#dbeafe" };
+    case "confirmed":
+      return "success";
+    case "completed":
+      return "neutral";
+    case "cancelled":
+      return "danger";
+    default:
+      return "info";
   }
 }
 
@@ -151,14 +167,18 @@ function FriendRequestWebTile({
       </Text>
       <View style={[styles.friendActions, { justifyContent: "center" }]}>
         <Pressable
-          style={[styles.friendBtn, { backgroundColor: "#16a34a" }]}
+          style={[styles.friendBtn, { backgroundColor: colors.success }]}
           onPress={() => onAccept(request._id)}
+          accessibilityRole="button"
+          accessibilityLabel={`Accept friend request from ${name}`}
         >
           <Text style={styles.friendBtnText}>Accept</Text>
         </Pressable>
         <Pressable
-          style={[styles.friendBtn, { backgroundColor: "#dc2626" }]}
+          style={[styles.friendBtn, { backgroundColor: colors.danger }]}
           onPress={() => onReject(request._id)}
+          accessibilityRole="button"
+          accessibilityLabel={`Reject friend request from ${name}`}
         >
           <Text style={styles.friendBtnText}>Reject</Text>
         </Pressable>
@@ -180,6 +200,8 @@ function QuickActionButton({
     <Pressable
       style={({ pressed }) => [styles.quickBtn, pressed && styles.quickBtnPressed]}
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
     >
       <Ionicons name={icon} size={26} color={colors.brandNavy} />
       <Text style={styles.quickBtnText}>{label}</Text>
@@ -190,6 +212,8 @@ function QuickActionButton({
 export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) {
   const { user, accountType } = useAuth();
   const queryClient = useQueryClient();
+  const insets = useSafeAreaInsets();
+  const gutter = useHorizontalGutter("md");
   const isTrainee = accountType === AccountType.TRAINEE;
   const isTrainer = accountType === AccountType.TRAINER;
 
@@ -290,7 +314,7 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
   return (
     <ScrollView
       style={styles.root}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: space.xl * 2 + insets.bottom }]}
       refreshControl={
         <RefreshControl
           refreshing={isRefreshing}
@@ -300,7 +324,7 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
       }
     >
       {/* Header — greeting row (app bar = native header + drawer) */}
-      <View style={styles.header}>
+      <View style={[styles.header, gutter]}>
         <View>
           <Text style={styles.greeting}>Hello, {name}</Text>
           <Text style={styles.roleTag}>{accountType ?? "Member"}</Text>
@@ -308,7 +332,7 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
       </View>
 
       {/* Quick Actions — mirrors website sidebar icons */}
-      <View style={styles.quickRow}>
+      <View style={[styles.quickRow, gutter]}>
         {isTrainee && (
           <>
             <QuickActionButton
@@ -349,7 +373,7 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
         />
       </View>
 
-      <View style={{ paddingHorizontal: space.md, paddingTop: space.md }}>
+      <View style={[{ paddingTop: space.md }, gutter]}>
         {/* Web: trainer `UserInfoCard` inside `Home-main-Cont` above recent students */}
         {isTrainer && (
           <HomeMainCont
@@ -363,13 +387,15 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
                 size={64}
               />
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 17, fontWeight: "700", color: "#111827" }}>{name}</Text>
-                <Text style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>{accountType}</Text>
+                <Text style={{ ...typography.titleSm, color: colors.text }}>{name}</Text>
+                <Text style={{ ...typography.bodySm, color: colors.textMuted, marginTop: 4 }}>
+                  {accountType}
+                </Text>
                 <Pressable
                   style={{ marginTop: 10, alignSelf: "flex-start" }}
                   onPress={() => openShell("settings")}
                 >
-                  <Text style={{ fontSize: 14, fontWeight: "600", color: colors.sidebarActive }}>
+                  <Text style={{ ...typography.bodyMd, fontWeight: "600", color: colors.sidebarActive }}>
                     Account & settings →
                   </Text>
                 </Pressable>
@@ -408,8 +434,10 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
         {isTrainee && (loadingCoaches || coaches.length > 0) && (
           <HomeMainCont title="Coaches Online Now" testID="card trainer-profile-card Home-main-Cont coaches-online">
             {loadingCoaches ? (
-              <View style={styles.loadingRow}>
-                <ActivityIndicator color={colors.brandNavy} />
+              <View style={[styles.loadingRow, { flexDirection: "row", gap: space.sm }]}>
+                {[0, 1, 2].map((i) => (
+                  <Skeleton key={i} width={160} height={180} radius={radii.md} />
+                ))}
               </View>
             ) : (
               <FlatList
@@ -438,8 +466,10 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
         {(loadingSessions || nowSessions.length > 0) && (
           <HomeMainCont title="Active Sessions" testID="card trainer-profile-card Home-main-Cont active-sessions">
             {loadingSessions ? (
-              <View style={styles.loadingRow}>
-                <ActivityIndicator color={colors.brandNavy} />
+              <View style={[styles.loadingRow, { gap: space.sm }]}>
+                {[0, 1].map((i) => (
+                  <Skeleton key={i} width="100%" height={80} radius={radii.md} />
+                ))}
               </View>
             ) : (
               nowSessions.map((session: any) => (
@@ -521,24 +551,46 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
             <Pressable
               style={styles.moreItem}
               onPress={() => openFeature("students")}
+              accessibilityRole="button"
+              accessibilityLabel="Open students"
             >
               <Ionicons name="people-outline" size={20} color={colors.brandNavy} />
               <Text style={styles.moreItemText}>Students</Text>
             </Pressable>
           )}
-          <Pressable style={styles.moreItem} onPress={() => openFeature("my-community")}>
+          <Pressable
+            style={styles.moreItem}
+            onPress={() => openFeature("my-community")}
+            accessibilityRole="button"
+            accessibilityLabel="Open community"
+          >
             <Ionicons name="globe-outline" size={20} color={colors.brandNavy} />
             <Text style={styles.moreItemText}>Community</Text>
           </Pressable>
-          <Pressable style={styles.moreItem} onPress={() => openFeature("friends")}>
+          <Pressable
+            style={styles.moreItem}
+            onPress={() => openFeature("friends")}
+            accessibilityRole="button"
+            accessibilityLabel="Open friends"
+          >
             <Ionicons name="person-add-outline" size={20} color={colors.brandNavy} />
             <Text style={styles.moreItemText}>Friends</Text>
           </Pressable>
-          <Pressable style={styles.moreItem} onPress={() => openShell("transactions")}>
+          <Pressable
+            style={styles.moreItem}
+            onPress={() => openShell("transactions")}
+            accessibilityRole="button"
+            accessibilityLabel="Open transactions"
+          >
             <Ionicons name="wallet-outline" size={20} color={colors.brandNavy} />
             <Text style={styles.moreItemText}>Transactions</Text>
           </Pressable>
-          <Pressable style={styles.moreItem} onPress={() => openFeature("meeting-room")}>
+          <Pressable
+            style={styles.moreItem}
+            onPress={() => openFeature("meeting-room")}
+            accessibilityRole="button"
+            accessibilityLabel="Open meeting room"
+          >
             <Ionicons name="videocam-outline" size={20} color={colors.brandNavy} />
             <Text style={styles.moreItemText}>Meeting Room</Text>
           </Pressable>
@@ -580,31 +632,29 @@ function isSessionLiveNow(session: any): boolean {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#f6f7fb" },
-  content: { paddingBottom: space.xl * 2 },
+  root: { flex: 1, backgroundColor: colors.surface },
+  content: {},
 
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: space.md,
     paddingTop: space.lg,
     paddingBottom: space.md,
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: colors.border,
   },
-  greeting: { fontSize: 20, fontWeight: "700", color: "#111827" },
-  roleTag: { fontSize: 13, color: "#6b7280", marginTop: 2 },
+  greeting: { ...typography.titleMd, color: colors.text },
+  roleTag: { ...typography.bodySm, color: colors.textMuted, marginTop: 2 },
 
   quickRow: {
     flexDirection: "row",
-    paddingHorizontal: space.md,
     paddingVertical: space.md,
     gap: space.sm,
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: colors.border,
     flexWrap: "wrap",
   },
   quickBtn: {
@@ -612,25 +662,29 @@ const styles = StyleSheet.create({
     minWidth: 72,
     alignItems: "center",
     paddingVertical: space.md,
-    backgroundColor: "#f0f4ff",
+    backgroundColor: colors.brandSubtle,
     borderRadius: radii.md,
     gap: space.xs,
   },
   quickBtnPressed: { opacity: 0.8 },
-  quickBtnText: { fontSize: 11, fontWeight: "600", color: "#111827", textAlign: "center" },
+  quickBtnText: { ...typography.label, color: colors.text, textAlign: "center", fontSize: 11 },
 
-  section: { marginTop: space.md, backgroundColor: "#fff", paddingVertical: space.md },
+  section: { marginTop: space.md, backgroundColor: colors.surfaceElevated, paddingVertical: space.md },
   sectionHeader: {
-    fontSize: 16,
-    fontWeight: "700",
+    ...typography.titleSm,
     color: colors.brandNavy,
     paddingHorizontal: space.md,
     marginBottom: space.sm,
   },
   loadingRow: { alignItems: "center", paddingVertical: space.lg },
 
-  coachName: { fontSize: 13, fontWeight: "700", color: "#111827", marginTop: space.xs, textAlign: "center" },
-  coachCat: { fontSize: 11, color: "#6b7280", textAlign: "center", marginTop: 2 },
+  coachName: {
+    ...typography.label,
+    color: colors.text,
+    marginTop: space.xs,
+    textAlign: "center",
+  },
+  coachCat: { ...typography.caption, color: colors.textMuted, textAlign: "center", marginTop: 2 },
   bookBtn: {
     marginTop: space.sm,
     backgroundColor: colors.brandNavy,
@@ -639,41 +693,42 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   bookBtnPressed: { opacity: 0.75 },
-  bookBtnText: { fontSize: 12, color: "#fff", fontWeight: "600" },
+  bookBtnText: { fontSize: 12, color: colors.brandTextOn, fontWeight: "600" },
 
-  // Session cards
   sessionCard: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: space.md,
     paddingVertical: space.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: colors.border,
     gap: space.sm,
   },
   sessionInfo: { flex: 1 },
-  sessionName: { fontSize: 15, fontWeight: "600", color: "#111827" },
-  sessionMeta: { fontSize: 13, color: "#6b7280", marginTop: 2 },
-  badge: { alignSelf: "flex-start", borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginTop: 4 },
-  badgeText: { fontSize: 11, fontWeight: "600", color: "#374151", textTransform: "capitalize" },
+  sessionName: { ...typography.subtitle, color: colors.text },
+  sessionMeta: { ...typography.bodySm, color: colors.textMuted, marginTop: 2 },
 
   recentChip: { alignItems: "center", width: 68 },
-  recentName: { fontSize: 11, color: "#111827", marginTop: 4, textAlign: "center", fontWeight: "500" },
+  recentName: {
+    fontSize: 11,
+    color: colors.text,
+    marginTop: 4,
+    textAlign: "center",
+    fontWeight: "500",
+  },
 
-  friendName: { fontSize: 14, fontWeight: "600", color: "#111827" },
+  friendName: { ...typography.label, color: colors.text, fontSize: 14 },
   friendActions: { flexDirection: "row", gap: space.sm, marginTop: 6 },
   friendBtn: { borderRadius: radii.sm, paddingHorizontal: space.md, paddingVertical: 5 },
-  friendBtnText: { fontSize: 12, color: "#fff", fontWeight: "600" },
+  friendBtnText: { fontSize: 12, color: colors.brandTextOn, fontWeight: "600" },
 
-  // Avatar fallback
   avatarFallback: {
     backgroundColor: colors.brandNavy,
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarInitial: { color: "#fff", fontWeight: "700" },
+  avatarInitial: { color: colors.brandTextOn, fontWeight: "700" },
 
-  // See all
   seeAllBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -683,7 +738,6 @@ const styles = StyleSheet.create({
   },
   seeAllText: { fontSize: 14, color: colors.brandNavy, fontWeight: "600" },
 
-  // More grid
   moreGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: space.sm },
   moreItem: {
     width: "25%",
@@ -691,5 +745,5 @@ const styles = StyleSheet.create({
     paddingVertical: space.md,
     gap: 6,
   },
-  moreItemText: { fontSize: 11, color: "#111827", fontWeight: "500", textAlign: "center" },
+  moreItemText: { fontSize: 11, color: colors.text, fontWeight: "500", textAlign: "center" },
 });

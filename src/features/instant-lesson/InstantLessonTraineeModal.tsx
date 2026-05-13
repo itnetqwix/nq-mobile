@@ -14,7 +14,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { colors, radii, space } from "../../theme/tokens";
+import { colors, radii, space, typography } from "../../theme";
 import type { RootStackParamList } from "../../navigation/types";
 import { useInstantLesson } from "./InstantLessonContext";
 import {
@@ -39,18 +39,17 @@ export function InstantLessonTraineeModal() {
     cancelBooking,
     clearTraineeBooking,
     minimizeBooking,
+    joinAcceptedLesson,
   } = useInstantLesson();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   /**
-   * Show the full-screen modal only when the trainee hasn't minimized it AND the step
-   * isn't `accepted` (the accepted state is surfaced via a separate banner so it can
-   * appear anywhere in the app).
+   * Modal is visible for every non-minimized booking step. We render a
+   * dedicated success view for "accepted" (instead of hiding it like before)
+   * so the trainee gets clear confirmation + a primary "Join now" CTA. The
+   * `InstantLessonStatusBanner` still handles the minimized variants.
    */
-  const visible =
-    !!traineeBooking &&
-    !traineeBooking.minimized &&
-    traineeBooking.step !== "accepted";
+  const visible = !!traineeBooking && !traineeBooking.minimized;
   const lessonId = traineeBooking?.lessonId ?? "";
 
   const openUploadsShell = () => {
@@ -177,7 +176,7 @@ export function InstantLessonTraineeModal() {
           onPress={() => attachMutation.mutate()}
         >
           {attachMutation.isPending ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.brandTextOn} />
           ) : (
             <Text style={styles.attachBtnText}>Attach clips to this lesson</Text>
           )}
@@ -192,7 +191,7 @@ export function InstantLessonTraineeModal() {
           {step === "waiting" && (
             <>
               <Pressable style={styles.closeBtn} onPress={minimizeBooking} hitSlop={12}>
-                <Ionicons name="chevron-down" size={22} color="#6b7280" />
+                <Ionicons name="chevron-down" size={22} color={colors.textMuted} />
               </Pressable>
               <ActivityIndicator size="large" color={colors.brandNavy} />
               <Text style={styles.title}>Instant lesson</Text>
@@ -216,13 +215,41 @@ export function InstantLessonTraineeModal() {
             </>
           )}
 
+          {step === "accepted" && (
+            <>
+              <View style={styles.successBadge}>
+                <Ionicons name="checkmark-circle" size={64} color={colors.success} />
+              </View>
+              <Text style={styles.title}>Session confirmed!</Text>
+              <Text style={styles.sub}>
+                <Text style={{ fontWeight: "700" }}>{trainerName}</Text> is ready. Tap below to enter
+                the live lesson now.
+              </Text>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.joinNowBtn,
+                  pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] },
+                ]}
+                onPress={joinAcceptedLesson}
+                accessibilityRole="button"
+                accessibilityLabel="Join the lesson now"
+              >
+                <Ionicons name="videocam" size={18} color={colors.brandTextOn} />
+                <Text style={styles.joinNowBtnText}>Join now</Text>
+              </Pressable>
+              <Pressable style={styles.secondaryBtn} onPress={minimizeBooking}>
+                <Text style={styles.secondaryBtnText}>Join later</Text>
+              </Pressable>
+            </>
+          )}
+
           {(step === "declined" || step === "expired") && (
             <>
-              <Ionicons name="close-circle" size={52} color="#dc2626" />
+              <Ionicons name="close-circle" size={52} color={colors.danger} />
               <Text style={styles.title}>{step === "declined" ? "Request declined" : "Request expired"}</Text>
               <Text style={styles.sub}>
                 {step === "declined"
-                  ? "The trainer could not take this lesson right now."
+                  ? "The trainer could not take this lesson right now. Try picking another coach."
                   : "No response in time. Try again later."}
               </Text>
               <Pressable style={styles.secondaryBtn} onPress={clearTraineeBooking}>
@@ -239,20 +266,20 @@ export function InstantLessonTraineeModal() {
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: colors.overlay,
     justifyContent: "center",
     padding: space.md,
   },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: radii.xl,
     padding: space.lg,
     maxHeight: "88%",
     gap: space.sm,
   },
-  title: { fontSize: 20, fontWeight: "700", color: "#111827", textAlign: "center" },
-  sub: { fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20 },
-  hint: { fontSize: 12, color: "#9ca3af", textAlign: "center" },
+  title: { ...typography.titleMd, color: colors.text, textAlign: "center" },
+  sub: { ...typography.bodyMd, color: colors.textMuted, textAlign: "center" },
+  hint: { ...typography.caption, color: colors.textMuted, textAlign: "center" },
   clipSection: {
     marginTop: space.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -260,8 +287,8 @@ const styles = StyleSheet.create({
     paddingTop: space.md,
     gap: space.sm,
   },
-  clipSectionTitle: { fontSize: 15, fontWeight: "700", color: colors.brandNavy },
-  clipHint: { fontSize: 12, color: "#6b7280", lineHeight: 18 },
+  clipSectionTitle: { ...typography.subtitle, color: colors.brandNavy },
+  clipHint: { ...typography.caption, color: colors.textMuted },
   uploadLink: {
     flexDirection: "row",
     alignItems: "center",
@@ -269,36 +296,51 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     paddingVertical: 6,
   },
-  uploadLinkText: { fontSize: 14, fontWeight: "600", color: colors.sidebarActive },
+  uploadLinkText: { ...typography.bodyMd, fontWeight: "600", color: colors.sidebarActive },
   clipList: { maxHeight: 220 },
-  emptyClips: { fontSize: 13, color: "#9ca3af", fontStyle: "italic" },
-  selectedCount: { fontSize: 12, color: "#6b7280" },
+  emptyClips: { ...typography.bodySm, color: colors.textMuted, fontStyle: "italic" },
+  selectedCount: { ...typography.caption, color: colors.textMuted },
   attachBtn: {
     backgroundColor: colors.brandNavy,
     borderRadius: radii.md,
     paddingVertical: 12,
     alignItems: "center",
   },
-  attachBtnDisabled: { backgroundColor: "#9ca3af" },
-  attachBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  attachBtnDisabled: { backgroundColor: colors.borderStrong },
+  attachBtnText: { ...typography.button, color: colors.brandTextOn },
   secondaryBtn: {
     marginTop: space.xs,
-    backgroundColor: "#f3f4f6",
+    backgroundColor: colors.surfaceMuted,
     borderRadius: radii.md,
     paddingVertical: 12,
     alignItems: "center",
   },
-  secondaryBtnText: { fontSize: 15, fontWeight: "600", color: "#374151" },
+  secondaryBtnText: { ...typography.button, color: colors.textSecondary },
   closeBtn: { position: "absolute", top: space.sm, right: space.sm, padding: 4, zIndex: 1 },
   waitingActions: { gap: space.xs },
+  successBadge: {
+    alignSelf: "center",
+    paddingVertical: space.xs,
+  },
+  joinNowBtn: {
+    marginTop: space.sm,
+    backgroundColor: colors.success,
+    borderRadius: radii.md,
+    paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  joinNowBtnText: { ...typography.button, color: colors.brandTextOn, fontSize: 16 },
   minimizeBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#f0f4ff",
+    backgroundColor: colors.brandSubtle,
     borderRadius: radii.md,
     paddingVertical: 12,
   },
-  minimizeBtnText: { fontSize: 14, fontWeight: "700", color: colors.brandNavy },
+  minimizeBtnText: { ...typography.bodyMd, fontWeight: "700", color: colors.brandNavy },
 });

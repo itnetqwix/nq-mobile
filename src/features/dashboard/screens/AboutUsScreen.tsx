@@ -1,9 +1,7 @@
 import React from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { radii, space } from "../../../theme/tokens";
-
-const NAVY = "#000080";
+import { colors, radii, space, typography } from "../../../theme";
 
 const FEATURES = [
   { icon: "videocam-outline" as const, title: "Live Video Sessions", desc: "HD video calls with screen sharing for immersive coaching experiences." },
@@ -34,7 +32,7 @@ export function AboutUsScreen() {
         {FEATURES.map((feature) => (
           <View key={feature.title} style={styles.featureRow}>
             <View style={styles.featureIcon}>
-              <Ionicons name={feature.icon} size={22} color={NAVY} />
+              <Ionicons name={feature.icon} size={22} color={colors.brandNavy} />
             </View>
             <View style={styles.featureText}>
               <Text style={styles.featureTitle}>{feature.title}</Text>
@@ -62,72 +60,72 @@ export function AboutUsScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#f6f7fb" },
+  root: { flex: 1, backgroundColor: colors.surface },
   content: { padding: space.md, gap: space.md, paddingBottom: space.xl },
 
   hero: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     padding: space.lg,
     alignItems: "center",
     gap: space.sm,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
   },
   logoBox: {
-    backgroundColor: NAVY,
+    backgroundColor: colors.brandNavy,
     borderRadius: radii.sm,
     paddingHorizontal: space.lg,
     paddingVertical: space.sm,
     marginBottom: space.xs,
   },
-  logoText: { fontSize: 22, fontWeight: "800", color: "#fff", letterSpacing: 1 },
-  tagline: { fontSize: 16, fontWeight: "700", color: NAVY, textAlign: "center" },
-  description: { fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 22 },
+  logoText: { fontSize: 22, fontWeight: "800", color: colors.brandTextOn, letterSpacing: 1 },
+  tagline: { ...typography.titleSm, color: colors.brandNavy, textAlign: "center" },
+  description: { ...typography.bodyMd, color: colors.textMuted, textAlign: "center" },
 
   section: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     padding: space.md,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
   },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#111827", marginBottom: space.md },
+  sectionTitle: { ...typography.titleSm, color: colors.text, marginBottom: space.md },
   featureRow: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: space.md,
     paddingVertical: space.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#f3f4f6",
+    borderBottomColor: colors.border,
   },
   featureIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#f0f4ff",
+    backgroundColor: colors.brandSubtle,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
   featureText: { flex: 1 },
-  featureTitle: { fontSize: 14, fontWeight: "700", color: "#111827" },
-  featureDesc: { fontSize: 13, color: "#6b7280", marginTop: 2, lineHeight: 18 },
+  featureTitle: { ...typography.subtitle, color: colors.text },
+  featureDesc: { ...typography.bodySm, color: colors.textMuted, marginTop: 2 },
 
   missionCard: {
-    backgroundColor: NAVY,
+    backgroundColor: colors.brandNavy,
     borderRadius: radii.md,
     padding: space.lg,
     gap: space.sm,
   },
-  missionTitle: { fontSize: 16, fontWeight: "700", color: "#fff" },
-  missionText: { fontSize: 14, color: "#bfdbfe", lineHeight: 22 },
+  missionTitle: { ...typography.titleSm, color: colors.brandTextOn },
+  missionText: { ...typography.bodyMd, color: colors.brandSubtle },
 
   versionCard: {
     alignItems: "center",
     paddingVertical: space.md,
     gap: 4,
   },
-  versionText: { fontSize: 13, color: "#6b7280" },
-  versionSub: { fontSize: 12, color: "#9ca3af" },
+  versionText: { ...typography.bodySm, color: colors.textMuted },
+  versionSub: { ...typography.caption, color: colors.textMuted },
 });

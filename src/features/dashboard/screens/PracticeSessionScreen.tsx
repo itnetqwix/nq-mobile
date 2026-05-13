@@ -1,15 +1,13 @@
 import React from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { radii, space } from "../../../theme/tokens";
-
-const NAVY = "#000080";
+import { colors, radii, space, typography } from "../../../theme";
 
 export function PracticeSessionScreen() {
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
       <View style={styles.heroCard}>
-        <Ionicons name="fitness-outline" size={40} color={NAVY} />
+        <Ionicons name="fitness-outline" size={40} color={colors.brandNavy} />
         <Text style={styles.heroTitle}>Practice Sessions</Text>
         <Text style={styles.heroSub}>
           Solo practice drills and self-review tools to sharpen your skills between coaching sessions.
@@ -28,7 +26,7 @@ export function PracticeSessionScreen() {
           "Share highlights directly with your trainer",
         ].map((item) => (
           <View key={item} style={styles.bulletRow}>
-            <Ionicons name="checkmark-circle-outline" size={16} color="#16a34a" />
+            <Ionicons name="checkmark-circle-outline" size={16} color={colors.success} />
             <Text style={styles.bulletText}>{item}</Text>
           </View>
         ))}
@@ -38,31 +36,31 @@ export function PracticeSessionScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#f6f7fb" },
+  root: { flex: 1, backgroundColor: colors.surface },
   content: { padding: space.md, gap: space.md, paddingBottom: space.xl },
 
   heroCard: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     padding: space.lg,
     alignItems: "center",
     gap: space.sm,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
   },
-  heroTitle: { fontSize: 20, fontWeight: "700", color: NAVY },
-  heroSub: { fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20 },
+  heroTitle: { ...typography.titleMd, color: colors.brandNavy },
+  heroSub: { ...typography.bodyMd, color: colors.textMuted, textAlign: "center" },
 
   section: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     padding: space.md,
     gap: space.sm,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
   },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#111827" },
-  sectionBody: { fontSize: 14, color: "#6b7280", lineHeight: 20 },
+  sectionTitle: { ...typography.titleSm, color: colors.text },
+  sectionBody: { ...typography.bodyMd, color: colors.textMuted },
   bulletRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
-  bulletText: { fontSize: 14, color: "#374151", flex: 1, lineHeight: 20 },
+  bulletText: { ...typography.bodyMd, color: colors.textSecondary, flex: 1 },
 });

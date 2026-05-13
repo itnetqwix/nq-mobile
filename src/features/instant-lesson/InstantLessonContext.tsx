@@ -7,6 +7,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { Vibration } from "react-native";
 import { useSocket } from "../socket/SocketContext";
 import { useAuth } from "../auth/context/AuthContext";
 import {
@@ -15,6 +16,10 @@ import {
   useNotifications,
 } from "../notifications/NotificationContext";
 import { INSTANT_LESSON_SOCKET as EVENTS } from "./instantLessonSocketEvents";
+
+/** Short "session confirmed" haptic — two quick taps. Vibration is the
+ *  cross-platform built-in; we'll layer expo-haptics on top in Phase 4b. */
+const ACCEPT_HAPTIC_PATTERN: number[] = [0, 40, 80, 40];
 
 export type TrainerIncoming = {
   lessonId: string;
@@ -148,7 +153,14 @@ export function InstantLessonProvider({
       const { lessonId } = payload || {};
       setTraineeBooking((prev) => {
         if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
-        return { ...prev, step: "accepted" as const };
+        /** Restore from minimized — the user explicitly needs to see the
+         *  success state and tap "Join now", so flip the modal back open. */
+        try {
+          Vibration.vibrate(ACCEPT_HAPTIC_PATTERN);
+        } catch {
+          /** Vibration may be unavailable (simulator); ignore. */
+        }
+        return { ...prev, step: "accepted" as const, minimized: false };
       });
     };
 
@@ -156,7 +168,7 @@ export function InstantLessonProvider({
       const { lessonId } = payload || {};
       setTraineeBooking((prev) => {
         if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
-        return { ...prev, step: "declined" as const };
+        return { ...prev, step: "declined" as const, minimized: false };
       });
     };
 
@@ -243,9 +255,27 @@ export function InstantLessonProvider({
       coachId: trainerIncoming.coachId,
       traineeId: trainerIncoming.traineeId,
     });
+    /** Persist an inbox entry on the trainee side — without this, declined
+     *  requests vanish silently once the trainee dismisses the modal. */
+    const trainerName = String(
+      (user as Record<string, unknown>)?.fullname ??
+        (user as Record<string, unknown>)?.fullName ??
+        "Your coach"
+    );
+    emitNotification({
+      title: NOTIFICATION_TITLES.sessionCancellation,
+      description: `${trainerName} cannot take this lesson right now. Tap to pick another coach.`,
+      receiverId: trainerIncoming.traineeId,
+      type: NOTIFICATION_TYPES.TRANSCATIONAL,
+      bookingInfo: {
+        lessonId: trainerIncoming.lessonId,
+        isInstant: true,
+        outcome: "declined",
+      },
+    });
     clearExpiryTimer();
     setTrainerIncoming(null);
-  }, [trainerIncoming, socket, clearExpiryTimer]);
+  }, [trainerIncoming, socket, clearExpiryTimer, emitNotification, user]);
 
   const startBooking = useCallback(
     (booking: Omit<TraineeBooking, "step"> & { durationMinutes?: number }) => {

@@ -15,7 +15,8 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
-import { colors, radii, space } from "../../../theme/tokens";
+import { Button, Card, EmptyState, Pill, Skeleton, Stack } from "../../../components/ui";
+import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { fetchScheduledMeetings } from "../../home/api/homeApi";
 import type { RootStackParamList } from "../../../navigation/types";
@@ -39,8 +40,6 @@ function isInstantLessonExpired(session: any, nowMs: number): boolean {
   if (!Number.isFinite(bookedAt)) return false;
   return nowMs - bookedAt > INSTANT_LESSON_JOIN_WINDOW_MS;
 }
-
-const NAVY = "#000080";
 
 const STATUS_TABS = [
   { key: "upcoming", label: "Upcoming" },
@@ -77,22 +76,20 @@ function Avatar({ uri, name, size = 52 }: { uri?: string; name?: string; size?: 
 }
 
 function StatusBadge({ status }: { status?: string }) {
-  const colors = getBadgeColors(status);
-  return (
-    <View style={[styles.badge, { backgroundColor: colors.bg }]}>
-      <Text style={[styles.badgeText, { color: colors.text }]}>
-        {(status ?? "upcoming").charAt(0).toUpperCase() + (status ?? "upcoming").slice(1)}
-      </Text>
-    </View>
-  );
+  const label = (status ?? "upcoming").charAt(0).toUpperCase() + (status ?? "upcoming").slice(1);
+  return <Pill label={label} tone={getBadgeTone(status)} />;
 }
 
-function getBadgeColors(status?: string) {
+function getBadgeTone(status?: string): React.ComponentProps<typeof Pill>["tone"] {
   switch (status) {
-    case "confirmed": return { bg: "#dcfce7", text: "#15803d" };
-    case "completed": return { bg: "#f3f4f6", text: "#374151" };
-    case "cancelled": return { bg: "#fee2e2", text: "#b91c1c" };
-    default: return { bg: "#dbeafe", text: "#1d4ed8" };
+    case "confirmed":
+      return "success";
+    case "completed":
+      return "neutral";
+    case "cancelled":
+      return "danger";
+    default:
+      return "info";
   }
 }
 
@@ -126,13 +123,13 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
           <Text style={styles.cardRole}>{theirRole}</Text>
           {!!date && (
             <View style={styles.metaRow}>
-              <Ionicons name="calendar-outline" size={13} color="#6b7280" />
+              <Ionicons name="calendar-outline" size={13} color={colors.textMuted} />
               <Text style={styles.metaText}>{date}</Text>
             </View>
           )}
           {!!time && (
             <View style={styles.metaRow}>
-              <Ionicons name="time-outline" size={13} color="#6b7280" />
+              <Ionicons name="time-outline" size={13} color={colors.textMuted} />
               <Text style={styles.metaText}>{time}</Text>
             </View>
           )}
@@ -144,8 +141,8 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
         <View style={styles.categoryRow}>
           {instant ? (
             <>
-              <Ionicons name="flash" size={13} color="#1d4ed8" />
-              <Text style={[styles.categoryText, { color: "#1d4ed8", fontWeight: "700" }]}>
+              <Ionicons name="flash" size={13} color={colors.brandAccent} />
+              <Text style={[styles.categoryText, { color: colors.brandAccent, fontWeight: "700" }]}>
                 Instant lesson
               </Text>
               {!!session.category && (
@@ -154,7 +151,7 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
             </>
           ) : (
             <>
-              <Ionicons name="bookmark-outline" size={13} color="#6b7280" />
+              <Ionicons name="bookmark-outline" size={13} color={colors.textMuted} />
               <Text style={styles.categoryText}>{session.category}</Text>
             </>
           )}
@@ -163,13 +160,13 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
 
       {(session.status === "upcoming" || session.status === "confirmed") ? (
         <View style={styles.cardFooter}>
-          <Pressable
-            style={({ pressed }) => [styles.joinBtn, pressed && { opacity: 0.8 }]}
+          <Button
+            label="Join Session"
+            leftIcon="videocam-outline"
             onPress={handleJoin}
-          >
-            <Ionicons name="videocam-outline" size={16} color="#fff" />
-            <Text style={styles.joinBtnText}>Join Session</Text>
-          </Pressable>
+            size="md"
+            fullWidth={false}
+          />
         </View>
       ) : null}
     </View>
@@ -231,9 +228,18 @@ export function UpcomingSessionsScreen() {
       </View>
 
       {isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={NAVY} />
-        </View>
+        <Stack gap="sm" style={styles.list}>
+          {[0, 1, 2].map((i) => (
+            <Card key={i} variant="outlined" padding="md">
+              <Stack gap="xs">
+                <Skeleton width="60%" height={14} />
+                <Skeleton width="40%" height={12} />
+                <Skeleton width="80%" height={12} />
+                <Skeleton width="30%" height={32} radius={radii.sm} />
+              </Stack>
+            </Card>
+          ))}
+        </Stack>
       ) : (
         <ScrollView
           contentContainerStyle={styles.list}
@@ -241,20 +247,20 @@ export function UpcomingSessionsScreen() {
             <RefreshControl
               refreshing={isRefetching}
               onRefresh={refetch}
-              tintColor={NAVY}
+              tintColor={colors.brand}
             />
           }
         >
           {sessions.length === 0 ? (
-            <View style={styles.empty}>
-              <Ionicons name="calendar-outline" size={48} color="#d1d5db" />
-              <Text style={styles.emptyTitle}>No {activeTab} sessions</Text>
-              <Text style={styles.emptyBody}>
-                {activeTab === "upcoming"
+            <EmptyState
+              icon="calendar-outline"
+              title={`No ${activeTab} sessions`}
+              description={
+                activeTab === "upcoming"
                   ? "Your booked sessions will appear here."
-                  : `No ${activeTab} sessions found.`}
-              </Text>
-            </View>
+                  : `No ${activeTab} sessions found.`
+              }
+            />
           ) : (
             sessions.map((session: any) => (
               <SessionCard
@@ -271,14 +277,14 @@ export function UpcomingSessionsScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#f6f7fb" },
+  root: { flex: 1, backgroundColor: colors.surface },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
 
   tabs: {
     flexDirection: "row",
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: colors.border,
   },
   tab: {
     flex: 1,
@@ -287,18 +293,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: "transparent",
   },
-  tabActive: { borderBottomColor: NAVY },
-  tabText: { fontSize: 13, fontWeight: "600", color: "#6b7280" },
-  tabTextActive: { color: NAVY },
+  tabActive: { borderBottomColor: colors.brandNavy },
+  tabText: { ...typography.label, color: colors.textMuted },
+  tabTextActive: { color: colors.brandNavy },
 
   list: { padding: space.md, gap: space.sm, paddingBottom: space.xl },
 
   card: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     padding: space.md,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
@@ -307,10 +313,10 @@ const styles = StyleSheet.create({
   },
   cardTop: { flexDirection: "row", alignItems: "flex-start", gap: space.sm },
   cardInfo: { flex: 1 },
-  cardName: { fontSize: 15, fontWeight: "700", color: "#111827" },
-  cardRole: { fontSize: 12, color: "#6b7280", marginTop: 2, marginBottom: space.xs },
+  cardName: { ...typography.subtitle, color: colors.text },
+  cardRole: { ...typography.caption, color: colors.textMuted, marginTop: 2, marginBottom: space.xs },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
-  metaText: { fontSize: 13, color: "#6b7280" },
+  metaText: { ...typography.bodySm, color: colors.textMuted },
 
   categoryRow: {
     flexDirection: "row",
@@ -319,48 +325,22 @@ const styles = StyleSheet.create({
     marginTop: space.sm,
     paddingTop: space.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#f3f4f6",
+    borderTopColor: colors.border,
   },
-  categoryText: { fontSize: 12, color: "#6b7280" },
-
-  badge: {
-    alignSelf: "flex-start",
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  badgeText: { fontSize: 11, fontWeight: "700", textTransform: "capitalize" },
+  categoryText: { ...typography.caption, color: colors.textMuted },
 
   cardFooter: {
     marginTop: space.sm,
     paddingTop: space.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#f3f4f6",
+    borderTopColor: colors.border,
     alignItems: "flex-end",
   },
-  joinBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: NAVY,
-    borderRadius: radii.sm,
-    paddingHorizontal: space.md,
-    paddingVertical: 8,
-  },
-  joinBtnText: { fontSize: 13, color: "#fff", fontWeight: "600" },
 
   avatarFallback: {
-    backgroundColor: NAVY,
+    backgroundColor: colors.brandNavy,
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarInitial: { color: "#fff", fontWeight: "700" },
-
-  empty: {
-    alignItems: "center",
-    paddingVertical: space.xl * 2,
-    gap: space.sm,
-  },
-  emptyTitle: { fontSize: 16, fontWeight: "700", color: "#374151" },
-  emptyBody: { fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20 },
+  avatarInitial: { color: colors.brandTextOn, fontWeight: "700" },
 });

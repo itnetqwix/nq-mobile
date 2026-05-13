@@ -1,10 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,9 +15,10 @@ import {
   View,
 } from "react-native";
 import { AccountType } from "../../../constants/accountType";
+import { Button, EmptyState, FormField, ImageWithSkeleton } from "../../../components/ui";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
-import { radii, space } from "../../../theme/tokens";
+import { colors, radii, space, typography } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
 import {
   fetchScheduledMeetings,
@@ -26,7 +26,6 @@ import {
   type RaiseConcernReason,
 } from "../../home/api/homeApi";
 
-const NAVY = "#000080";
 const REASONS: RaiseConcernReason[] = ["Technical issue", "Request for Refund"];
 
 /**
@@ -151,21 +150,19 @@ export function ReportIssueScreen() {
   if (doneFor) {
     return (
       <View style={styles.successWrap}>
-        <Ionicons name="checkmark-circle" size={64} color="#16a34a" />
+        <Ionicons name="checkmark-circle" size={64} color={colors.success} />
         <Text style={styles.successTitle}>Report submitted</Text>
         <Text style={styles.successBody}>
           Our team has received your report. You'll hear back at{" "}
           {presetEmail || "your account email"} once it's reviewed.
         </Text>
-        <Pressable
-          style={styles.primaryBtn}
+        <Button
+          label="Report another session"
           onPress={() => {
             setDoneFor(null);
             setSelected(null);
           }}
-        >
-          <Text style={styles.primaryBtnText}>Report another session</Text>
-        </Pressable>
+        />
       </View>
     );
   }
@@ -183,7 +180,7 @@ export function ReportIssueScreen() {
 
         {loadingList ? (
           <View style={styles.center}>
-            <ActivityIndicator size="large" color={NAVY} />
+            <ActivityIndicator size="large" color={colors.brandNavy} />
           </View>
         ) : (
           <ScrollView
@@ -192,18 +189,16 @@ export function ReportIssueScreen() {
               <RefreshControl
                 refreshing={refreshingList}
                 onRefresh={onRefreshSessions}
-                tintColor={NAVY}
+                tintColor={colors.brandNavy}
               />
             }
           >
             {sessions.length === 0 ? (
-              <View style={styles.emptyBlock}>
-                <Ionicons name="calendar-outline" size={48} color="#d1d5db" />
-                <Text style={styles.emptyTitle}>No sessions found</Text>
-                <Text style={styles.emptyBody}>
-                  Once you've booked or completed a session, you can report issues on it here.
-                </Text>
-              </View>
+              <EmptyState
+                icon="calendar-outline"
+                title="No sessions found"
+                description="Once you've booked or completed a session, you can report issues on it here."
+              />
             ) : (
               sessions.map((s: any) => (
                 <SessionCard
@@ -227,12 +222,12 @@ export function ReportIssueScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: "#f6f7fb" }}
+      style={{ flex: 1, backgroundColor: colors.surface }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Pressable style={styles.backRow} onPress={() => setSelected(null)} hitSlop={10}>
-          <Ionicons name="chevron-back" size={20} color={NAVY} />
+          <Ionicons name="chevron-back" size={20} color={colors.brandNavy} />
           <Text style={styles.backLabel}>Choose a different session</Text>
         </Pressable>
 
@@ -279,37 +274,29 @@ export function ReportIssueScreen() {
             </View>
           )}
 
-          <Text style={styles.label}>Subject</Text>
-          <TextInput
-            style={styles.input}
+          <FormField
+            label="Subject"
             placeholder="One-line summary of the problem"
-            placeholderTextColor="#9ca3af"
             value={subject}
             onChangeText={setSubject}
           />
 
-          <Text style={styles.label}>Description</Text>
-          <TextInput
-            style={[styles.input, styles.textarea]}
+          <FormField
+            label="Description"
             placeholder="Tell us exactly what happened — the more detail, the faster we can help."
-            placeholderTextColor="#9ca3af"
             value={description}
             onChangeText={setDescription}
             multiline
-            textAlignVertical="top"
+            inputStyle={styles.textarea}
           />
 
-          <Pressable
-            style={[styles.primaryBtn, submitting && { opacity: 0.7 }]}
+          <Button
+            label="Submit report"
             onPress={submit}
             disabled={submitting}
-          >
-            {submitting ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.primaryBtnText}>Submit report</Text>
-            )}
-          </Pressable>
+            loading={submitting}
+            style={{ marginTop: space.sm }}
+          />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -328,11 +315,25 @@ function SessionCard({
   const peer = isTrainer ? session.trainee_id : session.trainer_id;
   const peerName = peer?.fullname ?? peer?.email ?? "—";
   const avatar = getS3ImageUrl(peer?.profile_picture);
+  const [avatarFailed, setAvatarFailed] = useState(false);
+
+  useEffect(() => {
+    setAvatarFailed(false);
+  }, [avatar]);
+
   const label = formatSessionLabel(session);
   return (
     <Pressable style={styles.sessionCard} onPress={onPress}>
-      {avatar ? (
-        <Image source={{ uri: avatar }} style={styles.sessionAvatar} />
+      {avatar && !avatarFailed ? (
+        <ImageWithSkeleton
+          uri={avatar}
+          width={44}
+          height={44}
+          borderRadius={22}
+          resizeMode="cover"
+          onLoadError={() => setAvatarFailed(true)}
+          accessibilityLabel={`${peerName} photo`}
+        />
       ) : (
         <View style={[styles.sessionAvatar, styles.sessionAvatarFallback]}>
           <Text style={styles.sessionAvatarInitial}>
@@ -348,7 +349,7 @@ function SessionCard({
           {label}
         </Text>
       </View>
-      <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+      <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
     </Pressable>
   );
 }
@@ -372,110 +373,82 @@ function formatSessionLabel(session: any): string {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#f6f7fb" },
+  root: { flex: 1, backgroundColor: colors.surface },
   hero: {
     padding: space.md,
     paddingBottom: space.sm,
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: colors.border,
   },
-  heroTitle: { fontSize: 22, fontWeight: "800", color: NAVY, letterSpacing: -0.3 },
-  heroSub: { fontSize: 13, color: "#6b7280", marginTop: 6, lineHeight: 18 },
+  heroTitle: { ...typography.titleLg, color: colors.brandNavy },
+  heroSub: { ...typography.bodySm, color: colors.textMuted, marginTop: 6 },
 
   list: { padding: space.md, gap: space.sm, paddingBottom: space.xl * 2 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
-
-  emptyBlock: {
-    alignItems: "center",
-    paddingVertical: space.xl * 2,
-    paddingHorizontal: space.lg,
-    gap: space.sm,
-  },
-  emptyTitle: { fontSize: 16, fontWeight: "700", color: "#374151" },
-  emptyBody: { fontSize: 13, color: "#6b7280", textAlign: "center", lineHeight: 19 },
 
   sessionCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: space.sm,
     padding: space.md,
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
   },
-  sessionAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#eef2ff" },
+  sessionAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.brandSubtle },
   sessionAvatarFallback: { alignItems: "center", justifyContent: "center" },
-  sessionAvatarInitial: { color: NAVY, fontWeight: "800", fontSize: 18 },
-  sessionPeer: { fontSize: 15, fontWeight: "700", color: "#111827" },
-  sessionMeta: { fontSize: 12, color: "#6b7280", marginTop: 2, lineHeight: 17 },
+  sessionAvatarInitial: { color: colors.brandNavy, fontWeight: "800", fontSize: 18 },
+  sessionPeer: { ...typography.subtitle, color: colors.text },
+  sessionMeta: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
 
   content: { padding: space.md, gap: space.md, paddingBottom: space.xl * 2 },
   backRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  backLabel: { color: NAVY, fontWeight: "700", fontSize: 14 },
+  backLabel: { ...typography.label, color: colors.brandNavy },
 
   card: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     padding: space.md,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
     gap: space.sm,
   },
-  cardLabel: { fontSize: 11, color: "#6b7280", textTransform: "uppercase", fontWeight: "700" },
-  cardSession: { fontSize: 15, fontWeight: "700", color: "#111827" },
-  cardPeer: { fontSize: 13, color: "#374151" },
+  cardLabel: { ...typography.overline, color: colors.textMuted },
+  cardSession: { ...typography.subtitle, color: colors.text },
+  cardPeer: { ...typography.bodySm, color: colors.textSecondary },
 
-  label: { fontSize: 13, fontWeight: "700", color: "#374151" },
+  label: { ...typography.label, color: colors.textSecondary },
 
   reasonRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 999,
+    borderRadius: radii.pill,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
-    backgroundColor: "#f9fafb",
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  chipOn: { backgroundColor: NAVY, borderColor: NAVY },
-  chipText: { fontSize: 13, color: "#374151", fontWeight: "600" },
-  chipTextOn: { color: "#fff" },
+  chipOn: { backgroundColor: colors.brandNavy, borderColor: colors.brandNavy },
+  chipText: { ...typography.bodySm, color: colors.textSecondary, fontWeight: "600" },
+  chipTextOn: { color: colors.brandTextOn },
 
-  input: {
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    borderRadius: radii.sm,
-    padding: space.sm,
-    fontSize: 14,
-    color: "#111827",
-    backgroundColor: "#f9fafb",
-  },
   textarea: { minHeight: 130 },
-
-  primaryBtn: {
-    marginTop: space.sm,
-    backgroundColor: NAVY,
-    borderRadius: radii.md,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 
   successWrap: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: space.lg,
-    backgroundColor: "#f6f7fb",
+    backgroundColor: colors.surface,
     gap: space.sm,
   },
-  successTitle: { fontSize: 22, fontWeight: "800", color: "#16a34a" },
+  successTitle: { ...typography.titleLg, color: colors.success },
   successBody: {
-    fontSize: 14,
-    color: "#374151",
+    ...typography.bodyMd,
+    color: colors.textSecondary,
     textAlign: "center",
-    lineHeight: 21,
     marginBottom: space.md,
   },
 });

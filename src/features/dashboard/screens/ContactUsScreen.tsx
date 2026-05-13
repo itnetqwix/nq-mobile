@@ -10,16 +10,14 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
-import { radii, space } from "../../../theme/tokens";
+import { Button, FormField } from "../../../components/ui";
+import { colors, radii, space, typography } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
 import { postWriteUs } from "../../home/api/homeApi";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import type { MenuStackParamList } from "../../../navigation/types";
-
-const NAVY = "#000080";
 
 /**
  * Web parity: this is the trainee/trainer "Contact Us" hub. It has TWO entries (same as
@@ -77,15 +75,13 @@ export function ContactUsScreen() {
     >
       <ScrollView style={styles.root} contentContainerStyle={styles.content}>
         <View style={styles.heroCard}>
-          <Ionicons name="mail-outline" size={36} color={NAVY} />
+          <Ionicons name="mail-outline" size={36} color={colors.brandNavy} />
           <Text style={styles.heroTitle}>Contact NetQwix</Text>
           <Text style={styles.heroSub}>
             Have a question or issue? Send us a message and we'll respond as soon as possible.
           </Text>
         </View>
 
-        {/* Web parity: trainees can also report a technical issue or request a refund
-            tied to a specific session — opens a dedicated picker + form shell. */}
         <Pressable
           style={({ pressed }) => [styles.altCard, pressed && { opacity: 0.85 }]}
           onPress={() =>
@@ -93,7 +89,7 @@ export function ContactUsScreen() {
           }
         >
           <View style={styles.altIcon}>
-            <Ionicons name="alert-circle-outline" size={24} color="#b45309" />
+            <Ionicons name="alert-circle-outline" size={24} color={colors.warning} />
           </View>
           <View style={styles.altText}>
             <Text style={styles.altTitle}>Report a Technical issue / Request a refund</Text>
@@ -101,85 +97,61 @@ export function ContactUsScreen() {
               Pick a session and tell us what went wrong — same flow as the website.
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
         </Pressable>
 
         <View style={styles.form}>
           <Text style={styles.formTitle}>Write us</Text>
 
-          <Text style={styles.label}>Name</Text>
-          <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={setName}
-            placeholder="Your name"
-            placeholderTextColor="#9ca3af"
-          />
-
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
+          <FormField label="Name" value={name} onChangeText={setName} placeholder="Your name" />
+          <FormField
+            label="Email"
             value={email}
             onChangeText={setEmail}
             placeholder="you@example.com"
-            placeholderTextColor="#9ca3af"
             autoCapitalize="none"
             keyboardType="email-address"
           />
-
-          <Text style={styles.label}>Phone (optional)</Text>
-          <TextInput
-            style={styles.input}
+          <FormField
+            label="Phone (optional)"
             value={phone}
             onChangeText={setPhone}
             placeholder="+1 555 0100"
-            placeholderTextColor="#9ca3af"
             keyboardType="phone-pad"
           />
-
-          <Text style={styles.label}>Subject</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="What is this about?"
-            placeholderTextColor="#9ca3af"
+          <FormField
+            label="Subject"
             value={subject}
             onChangeText={setSubject}
+            placeholder="What is this about?"
             returnKeyType="next"
           />
-
-          <Text style={styles.label}>Description</Text>
-          <TextInput
-            style={[styles.input, styles.textarea]}
-            placeholder="Describe your question or issue in detail..."
-            placeholderTextColor="#9ca3af"
+          <FormField
+            label="Description"
             value={description}
             onChangeText={setDescription}
+            placeholder="Describe your question or issue in detail..."
             multiline
             numberOfLines={6}
-            textAlignVertical="top"
+            inputStyle={styles.textarea}
           />
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.submitBtn,
-              (pressed || loading) && styles.submitBtnPressed,
-            ]}
+          <Button
+            label={loading ? "Sending..." : "Send Message"}
             onPress={handleSubmit}
             disabled={loading}
-          >
-            <Text style={styles.submitBtnText}>
-              {loading ? "Sending..." : "Send Message"}
-            </Text>
-          </Pressable>
+            loading={loading}
+            style={{ marginTop: space.sm }}
+          />
         </View>
 
         <View style={styles.infoSection}>
           <View style={styles.infoRow}>
-            <Ionicons name="mail-outline" size={18} color={NAVY} />
+            <Ionicons name="mail-outline" size={18} color={colors.brandNavy} />
             <Text style={styles.infoText}>support@netqwix.com</Text>
           </View>
           <View style={styles.infoRow}>
-            <Ionicons name="globe-outline" size={18} color={NAVY} />
+            <Ionicons name="globe-outline" size={18} color={colors.brandNavy} />
             <Text style={styles.infoText}>www.netqwix.com</Text>
           </View>
         </View>
@@ -189,82 +161,62 @@ export function ContactUsScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#f6f7fb" },
+  root: { flex: 1, backgroundColor: colors.surface },
   content: { padding: space.md, gap: space.md, paddingBottom: space.xl },
 
   heroCard: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     padding: space.lg,
     alignItems: "center",
     gap: space.sm,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
   },
-  heroTitle: { fontSize: 20, fontWeight: "700", color: NAVY },
-  heroSub: { fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20 },
+  heroTitle: { ...typography.titleMd, color: colors.brandNavy },
+  heroSub: { ...typography.bodyMd, color: colors.textMuted, textAlign: "center" },
 
   altCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: space.md,
-    backgroundColor: "#fffbeb",
+    backgroundColor: colors.warningSubtle,
     borderRadius: radii.md,
     padding: space.md,
     borderWidth: 1,
-    borderColor: "#fde68a",
+    borderColor: colors.warning,
   },
   altIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#fef3c7",
+    backgroundColor: colors.warningSubtle,
     alignItems: "center",
     justifyContent: "center",
   },
   altText: { flex: 1 },
-  altTitle: { fontSize: 14, fontWeight: "700", color: "#92400e" },
-  altSub: { fontSize: 12, color: "#a16207", marginTop: 2, lineHeight: 17 },
+  altTitle: { ...typography.bodyMd, fontWeight: "700", color: colors.text },
+  altSub: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
 
   form: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     padding: space.md,
     gap: space.sm,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
   },
-  formTitle: { fontSize: 16, fontWeight: "700", color: NAVY, marginBottom: 4 },
-  label: { fontSize: 13, fontWeight: "700", color: "#374151" },
-  input: {
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    borderRadius: radii.sm,
-    padding: space.sm,
-    fontSize: 14,
-    color: "#111827",
-    backgroundColor: "#f9fafb",
-  },
+  formTitle: { ...typography.titleSm, color: colors.brandNavy, marginBottom: 4 },
   textarea: { minHeight: 120 },
 
-  submitBtn: {
-    backgroundColor: NAVY,
-    borderRadius: radii.sm,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginTop: space.sm,
-  },
-  submitBtnPressed: { opacity: 0.75 },
-  submitBtnText: { fontSize: 15, color: "#fff", fontWeight: "700" },
-
   infoSection: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     padding: space.md,
     gap: space.sm,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
   },
   infoRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
-  infoText: { fontSize: 14, color: "#374151" },
+  infoText: { ...typography.bodyMd, color: colors.textSecondary },
 });

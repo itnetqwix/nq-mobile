@@ -1,12 +1,15 @@
 import { useMutation } from "@tanstack/react-query";
 import React, { useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { NetqwixLogo } from "../../../components/brand/NetqwixLogo";
-import { Button } from "../../../components/ui/Button";
-import { Screen } from "../../../components/ui/Screen";
-import { TextField } from "../../../components/ui/TextField";
+import {
+  Button,
+  FormField,
+  ScreenContainer,
+  Stack,
+} from "../../../components/ui";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
-import { colors, space } from "../../../theme/tokens";
+import { colors, space, typography } from "../../../theme";
 import { useAuth } from "../context/AuthContext";
 import type { AuthScreenProps } from "../../../navigation/types";
 
@@ -23,61 +26,61 @@ export function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
   });
 
   return (
-    <Screen scroll>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <ScreenContainer scroll applyTopInset padding="lg" background={colors.background}>
+      <View style={styles.brand}>
         <NetqwixLogo maxWidth={240} />
-        <Text style={styles.headline}>Welcome back</Text>
-        <Text style={styles.sub}>Sign in to continue to NetQwix.</Text>
-        <TextField
+      </View>
+      <Text style={[typography.titleLg, { color: colors.text, marginTop: space.md }]}>
+        Welcome back
+      </Text>
+      <Text style={[typography.bodyMd, { color: colors.textMuted, marginBottom: space.lg }]}>
+        Sign in to continue to NetQwix.
+      </Text>
+
+      <Stack gap="md">
+        <FormField
           label="Email"
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="email-address"
           value={email}
           onChangeText={setEmail}
+          required
         />
-        <TextField
+        <FormField
           label="Password"
           secureTextEntry
           value={password}
           onChangeText={setPassword}
+          required
         />
         <Button
-          title="Sign in"
+          label="Sign in"
           loading={mutation.isPending}
           onPress={() => mutation.mutate()}
           disabled={!email.trim() || !password}
+          size="lg"
         />
-        <Pressable onPress={() => navigation.navigate("ForgotPassword")} style={styles.linkWrap}>
-          <Text style={styles.link}>Forgot password?</Text>
-        </Pressable>
-        <Pressable onPress={() => navigation.navigate("SignUp")} style={styles.linkWrap}>
-          <Text style={styles.link}>Create an account</Text>
-        </Pressable>
-      </KeyboardAvoidingView>
-    </Screen>
+      </Stack>
+
+      <Pressable onPress={() => navigation.navigate("ForgotPassword")} style={styles.linkWrap}>
+        <Text style={styles.link}>Forgot password?</Text>
+      </Pressable>
+      <Pressable onPress={() => navigation.navigate("SignUp")} style={styles.linkWrap}>
+        <Text style={styles.link}>Create an account</Text>
+      </Pressable>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  headline: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: colors.text,
-    marginTop: space.md,
-    marginBottom: space.sm,
-  },
-  sub: {
-    fontSize: 15,
-    color: colors.textMuted,
-    marginBottom: space.lg,
-  },
+  brand: { alignItems: "center", marginTop: space.lg },
   linkWrap: {
     marginTop: space.md,
     alignItems: "center",
   },
   link: {
-    color: colors.primary,
+    color: colors.brandAccent,
     fontSize: 15,
     fontWeight: "600",
   },

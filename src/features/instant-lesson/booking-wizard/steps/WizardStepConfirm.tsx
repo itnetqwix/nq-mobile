@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, radii, space } from "../../../../theme/tokens";
+import { colors, radii, space } from "../../../../theme";
 import { INSTANT_LESSON_DURATIONS } from "../constants";
 import { sharedStepStyles } from "../sharedStepStyles";
 
@@ -61,10 +61,10 @@ export function WizardStepConfirm({
         onPress={onSubmit}
       >
         {isSubmitting ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={colors.brandTextOn} />
         ) : (
           <>
-            <Ionicons name="flash" size={18} color="#fff" />
+            <Ionicons name="flash" size={18} color={colors.brandTextOn} />
             <Text style={sharedStepStyles.primaryBtnText}>Send request to coach</Text>
           </>
         )}

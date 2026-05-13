@@ -5,7 +5,7 @@ import { useAuth } from "../features/auth/context/AuthContext";
 import { InstantLessonStatusBanner } from "../features/instant-lesson/InstantLessonStatusBanner";
 import { InstantLessonTraineeModal } from "../features/instant-lesson/InstantLessonTraineeModal";
 import { InstantLessonTrainerModal } from "../features/instant-lesson/InstantLessonTrainerModal";
-import { MeetingScreen } from "../features/meeting/screens/MeetingScreen";
+import { MeetingRouter } from "../features/calling/screens/MeetingRouter";
 import { NotificationToast } from "../features/notifications/NotificationToast";
 import { AuthNavigator } from "./AuthNavigator";
 import { DashboardDrawerShell } from "./DashboardDrawerShell";
@@ -44,18 +44,29 @@ export function RootNavigator() {
        */}
       <Stack.Navigator
         key={signedIn ? "signedIn" : "signedOut"}
-        screenOptions={{ headerShown: false }}
+        screenOptions={{
+          headerShown: false,
+          /** Global iOS swipe-back gesture + Android horizontal slide for parity.
+           *  Individual screens (Meeting) override this where appropriate. */
+          gestureEnabled: true,
+          gestureDirection: "horizontal",
+          animation: "slide_from_right",
+        }}
       >
         {signedIn ? (
           <>
             <Stack.Screen name="Main" component={DashboardDrawerShell} />
             <Stack.Screen
               name="Meeting"
-              component={MeetingScreen}
+              component={MeetingRouter}
               options={{
                 headerShown: false,
                 presentation: "fullScreenModal",
                 animation: "slide_from_bottom",
+                /** Lock the swipe-back gesture inside an active call — a stray
+                 *  edge swipe must never drop the user out. They leave via the
+                 *  explicit "End" action in ActionButtons. */
+                gestureEnabled: false,
               }}
             />
           </>

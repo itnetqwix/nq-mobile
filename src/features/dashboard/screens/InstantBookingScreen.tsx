@@ -11,12 +11,11 @@ import {
 } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { radii, space } from "../../../theme/tokens";
+import { Button, EmptyState, Skeleton } from "../../../components/ui";
+import { colors, radii, space, typography } from "../../../theme";
 import { fetchOnlineUsers } from "../../home/api/homeApi";
 import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
-
-const NAVY = "#000080";
 
 function Avatar({ uri, name, size = 56 }: { uri?: string; name?: string; size?: number }) {
   const [failed, setFailed] = React.useState(false);
@@ -24,7 +23,7 @@ function Avatar({ uri, name, size = 56 }: { uri?: string; name?: string; size?: 
   if (!url || failed) {
     return (
       <View style={[styles.avatarFallback, { width: size, height: size, borderRadius: size / 2 }]}>
-        <Text style={{ fontSize: size * 0.38, fontWeight: "700", color: "#fff" }}>
+        <Text style={{ fontSize: size * 0.38, fontWeight: "700", color: colors.brandTextOn }}>
           {(name ?? "?")[0]?.toUpperCase()}
         </Text>
       </View>
@@ -65,9 +64,12 @@ export function InstantBookingScreen() {
       />
 
       {isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={NAVY} />
-          <Text style={styles.loadingText}>Finding online trainers…</Text>
+        <View style={styles.list}>
+          {[0, 1, 2, 3].map((i) => (
+            <View key={i} style={{ marginBottom: space.md }}>
+              <Skeleton width="100%" height={84} radius={radii.md} />
+            </View>
+          ))}
         </View>
       ) : (
         <FlatList
@@ -88,36 +90,34 @@ export function InstantBookingScreen() {
                     <Text style={styles.trainerCat} numberOfLines={1}>{item.category}</Text>
                   )}
                 </View>
-                <Pressable
-                  style={({ pressed }) => [styles.bookBtn, pressed && { opacity: 0.75 }]}
+                <Button
+                  label="Book Now"
+                  leftIcon="flash"
+                  size="sm"
+                  fullWidth={false}
                   onPress={() => setWizardTrainer(item)}
-                >
-                  <Ionicons name="flash" size={15} color="#fff" />
-                  <Text style={styles.bookBtnText}>Book Now</Text>
-                </Pressable>
+                />
               </View>
             );
           }}
           contentContainerStyle={styles.list}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={NAVY} />
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brandNavy} />
           }
           ListHeaderComponent={
             <View style={styles.listHeader}>
-              <Ionicons name="people" size={18} color={NAVY} />
+              <Ionicons name="people" size={18} color={colors.brandNavy} />
               <Text style={styles.listHeaderText}>
                 {onlineTrainers.length} trainer{onlineTrainers.length !== 1 ? "s" : ""} online
               </Text>
             </View>
           }
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <Ionicons name="wifi-outline" size={48} color="#d1d5db" />
-              <Text style={styles.emptyTitle}>No trainers online</Text>
-              <Text style={styles.emptyBody}>
-                Check back soon or book a scheduled session instead.
-              </Text>
-            </View>
+            <EmptyState
+              icon="wifi-outline"
+              title="No trainers online"
+              description="Check back soon or book a scheduled session instead."
+            />
           }
         />
       )}
@@ -126,50 +126,28 @@ export function InstantBookingScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#f6f7fb" },
+  root: { flex: 1, backgroundColor: colors.surface },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: space.sm },
-  loadingText: { fontSize: 14, color: "#6b7280" },
+  loadingText: { ...typography.bodyMd, color: colors.textMuted },
   list: { padding: space.md, gap: space.sm, paddingBottom: space.xl },
   listHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 },
-  listHeaderText: { fontSize: 13, fontWeight: "700", color: NAVY },
+  listHeaderText: { ...typography.bodySm, fontWeight: "700", color: colors.brandNavy },
 
   trainerCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     padding: space.md,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
     gap: space.md,
   },
-  avatarFallback: { backgroundColor: NAVY, alignItems: "center", justifyContent: "center" },
+  avatarFallback: { backgroundColor: colors.brandNavy, alignItems: "center", justifyContent: "center" },
   trainerInfo: { flex: 1 },
-  trainerName: { fontSize: 15, fontWeight: "700", color: "#111827" },
+  trainerName: { ...typography.subtitle, color: colors.text },
   onlineRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
-  onlineDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: "#16a34a" },
-  onlineText: { fontSize: 12, color: "#16a34a", fontWeight: "600" },
-  trainerCat: { fontSize: 12, color: "#9ca3af", marginTop: 2 },
-  bookBtn: {
-    backgroundColor: NAVY,
-    borderRadius: radii.sm,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    minWidth: 84,
-    justifyContent: "center",
-  },
-  bookBtnText: { fontSize: 13, fontWeight: "600", color: "#fff" },
-
-  empty: { alignItems: "center", paddingVertical: space.xl * 2, gap: space.sm },
-  emptyTitle: { fontSize: 16, fontWeight: "700", color: "#374151" },
-  emptyBody: {
-    fontSize: 14,
-    color: "#6b7280",
-    textAlign: "center",
-    lineHeight: 20,
-    paddingHorizontal: space.lg,
-  },
+  onlineDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: colors.success },
+  onlineText: { ...typography.caption, color: colors.success, fontWeight: "600" },
+  trainerCat: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
 });

@@ -1,8 +1,6 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
-  ActivityIndicator,
   FlatList,
-  Image,
   RefreshControl,
   StyleSheet,
   Text,
@@ -10,13 +8,14 @@ import {
 } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { radii, space } from "../../../theme/tokens";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { EmptyState, ImageWithSkeleton, Skeleton } from "../../../components/ui";
+import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
+import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
 import { fetchRecentTrainees } from "../../home/api/homeApi";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
-
-const NAVY = "#000080";
 
 async function fetchStudents(): Promise<any[]> {
   try {
@@ -30,6 +29,11 @@ async function fetchStudents(): Promise<any[]> {
 function Avatar({ uri, name, size = 52 }: { uri?: string; name?: string; size?: number }) {
   const [failed, setFailed] = React.useState(false);
   const url = getS3ImageUrl(uri);
+
+  React.useEffect(() => {
+    setFailed(false);
+  }, [uri]);
+
   if (!url || failed) {
     return (
       <View style={[styles.avatarFallback, { width: size, height: size, borderRadius: size / 2 }]}>
@@ -40,10 +44,14 @@ function Avatar({ uri, name, size = 52 }: { uri?: string; name?: string; size?: 
     );
   }
   return (
-    <Image
-      source={{ uri: url }}
-      style={{ width: size, height: size, borderRadius: size / 2 }}
-      onError={() => setFailed(true)}
+    <ImageWithSkeleton
+      uri={url}
+      width={size}
+      height={size}
+      borderRadius={size / 2}
+      resizeMode="cover"
+      onLoadError={() => setFailed(true)}
+      accessibilityLabel={name ? `Photo of ${name}` : "Profile photo"}
     />
   );
 }
@@ -63,7 +71,7 @@ function StudentCard({ student }: { student: any }) {
         {!!email && <Text style={styles.studentEmail}>{email}</Text>}
         {!!joined && (
           <View style={styles.metaRow}>
-            <Ionicons name="calendar-outline" size={12} color="#9ca3af" />
+            <Ionicons name="calendar-outline" size={12} color={colors.textMuted} />
             <Text style={styles.metaText}>Joined {joined}</Text>
           </View>
         )}
@@ -76,6 +84,18 @@ function StudentCard({ student }: { student: any }) {
 }
 
 export function StudentsScreen() {
+  const insets = useSafeAreaInsets();
+  const gutter = useHorizontalGutter("md");
+  const listPad = useMemo(
+    () => ({
+      ...gutter,
+      paddingTop: space.md,
+      paddingBottom: space.xl + insets.bottom,
+      gap: space.sm,
+    }),
+    [gutter, insets.bottom]
+  );
+
   const { data: students = [], isLoading, isRefetching, refetch } = useQuery({
     queryKey: ["students"],
     queryFn: fetchStudents,
@@ -84,8 +104,19 @@ export function StudentsScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={NAVY} />
+      <View style={listPad}>
+        {[0, 1, 2, 3].map((i) => (
+          <View
+            key={i}
+            style={{ marginBottom: space.sm, flexDirection: "row", gap: space.sm, alignItems: "center" }}
+          >
+            <Skeleton width={44} height={44} radius={22} />
+            <View style={{ flex: 1, gap: 6 }}>
+              <Skeleton width="50%" height={12} />
+              <Skeleton width="80%" height={10} />
+            </View>
+          </View>
+        ))}
       </View>
     );
   }
@@ -95,18 +126,16 @@ export function StudentsScreen() {
       data={students}
       keyExtractor={(item, i) => item?._id ?? String(i)}
       renderItem={({ item }) => <StudentCard student={item} />}
-      contentContainerStyle={styles.list}
+      contentContainerStyle={listPad}
       refreshControl={
-        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={NAVY} />
+        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brandNavy} />
       }
       ListEmptyComponent={
-        <View style={styles.empty}>
-          <Ionicons name="people-outline" size={48} color="#d1d5db" />
-          <Text style={styles.emptyTitle}>No students yet</Text>
-          <Text style={styles.emptyBody}>
-            Students who book sessions with you will appear here.
-          </Text>
-        </View>
+        <EmptyState
+          icon="people-outline"
+          title="No students yet"
+          description="Students who book sessions with you will appear here."
+        />
       }
     />
   );
@@ -114,17 +143,16 @@ export function StudentsScreen() {
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  list: { padding: space.md, gap: space.sm, paddingBottom: space.xl },
 
   card: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     padding: space.md,
     gap: space.md,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: colors.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -132,16 +160,12 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   cardInfo: { flex: 1 },
-  studentName: { fontSize: 15, fontWeight: "700", color: "#111827" },
-  studentEmail: { fontSize: 13, color: "#6b7280", marginTop: 2 },
+  studentName: { ...typography.subtitle, color: colors.text },
+  studentEmail: { ...typography.bodySm, color: colors.textMuted, marginTop: 2 },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
-  metaText: { fontSize: 12, color: "#9ca3af" },
-  onlineDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#16a34a" },
+  metaText: { ...typography.caption, color: colors.textMuted },
+  onlineDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.success },
 
-  avatarFallback: { backgroundColor: NAVY, alignItems: "center", justifyContent: "center" },
-  avatarInitial: { color: "#fff", fontWeight: "700" },
-
-  empty: { alignItems: "center", paddingVertical: space.xl * 2, gap: space.sm },
-  emptyTitle: { fontSize: 16, fontWeight: "700", color: "#374151" },
-  emptyBody: { fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20, paddingHorizontal: space.lg },
+  avatarFallback: { backgroundColor: colors.brandNavy, alignItems: "center", justifyContent: "center" },
+  avatarInitial: { color: colors.brandTextOn, fontWeight: "700" },
 });

@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, space } from "../../../theme/tokens";
+import { colors, radii, space, typography } from "../../../theme";
 import type { WizardStep } from "./types";
 
 type Props = {
@@ -41,15 +41,15 @@ const styles = StyleSheet.create({
     marginBottom: space.sm,
   },
   headerBtn: { flexDirection: "row", alignItems: "center", gap: 4, width: 88 },
-  headerBtnText: { fontSize: 15, fontWeight: "600", color: colors.brandNavy },
+  headerBtnText: { ...typography.bodyMd, fontWeight: "600", color: colors.brandNavy },
   stepPill: {
-    fontSize: 12,
+    ...typography.caption,
     fontWeight: "700",
     color: colors.textMuted,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surfaceMuted,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: radii.pill,
     overflow: "hidden",
   },
 });

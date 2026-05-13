@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
-import { colors, space } from "../../../../theme/tokens";
+import { colors, space } from "../../../../theme";
 import { isLikelyPdf } from "../../../../lib/clipMediaUrl";
 
 export type LockerViewerMode = "video" | "pdf" | "image";

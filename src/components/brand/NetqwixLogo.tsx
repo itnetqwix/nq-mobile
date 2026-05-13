@@ -1,7 +1,7 @@
 import React from "react";
 import { Image, type ImageStyle, type StyleProp, StyleSheet, View } from "react-native";
 import { brandImages } from "../../constants/images";
-import { space } from "../../theme/tokens";
+import { space } from "../../theme";
 
 type Props = {
   /** Max width; height scales with aspect ratio. */

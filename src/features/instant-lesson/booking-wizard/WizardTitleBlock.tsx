@@ -1,6 +1,6 @@
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
-import { colors, space } from "../../../theme/tokens";
+import { StyleSheet, Text } from "react-native";
+import { colors, space, typography } from "../../../theme";
 
 type Props = {
   trainerName: string;
@@ -19,11 +19,10 @@ export function WizardTitleBlock({ trainerName }: Props) {
 
 const styles = StyleSheet.create({
   screenTitle: {
-    fontSize: 22,
-    fontWeight: "700",
+    ...typography.titleLg,
     color: colors.brandNavy,
     textAlign: "center",
   },
-  trainerLine: { fontSize: 15, color: colors.textMuted, textAlign: "center", marginBottom: space.md },
+  trainerLine: { ...typography.subtitle, color: colors.textMuted, textAlign: "center", marginBottom: space.md },
   trainerName: { fontWeight: "700", color: colors.text },
 });

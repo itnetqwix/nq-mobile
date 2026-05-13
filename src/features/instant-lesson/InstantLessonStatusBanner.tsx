@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "../../theme/tokens";
+import { colors, radii, typography } from "../../theme";
 import { useInstantLesson } from "./InstantLessonContext";
 
 /**
@@ -29,9 +29,12 @@ export function InstantLessonStatusBanner() {
   const slide = useRef(new Animated.Value(-32)).current;
   const pulse = useRef(new Animated.Value(1)).current;
 
-  const accepted = traineeBooking?.step === "accepted";
-  const waitingMinimized =
-    traineeBooking?.step === "waiting" && !!traineeBooking?.minimized;
+  /** Show the floating accepted banner only when the user explicitly tapped
+   *  "Join later" / minimized — otherwise the InstantLessonTraineeModal owns
+   *  the success surface. Same gating for the waiting state. */
+  const minimized = !!traineeBooking?.minimized;
+  const accepted = traineeBooking?.step === "accepted" && minimized;
+  const waitingMinimized = traineeBooking?.step === "waiting" && minimized;
 
   const visible = accepted || waitingMinimized;
 
@@ -81,7 +84,7 @@ export function InstantLessonStatusBanner() {
       {accepted ? (
         <Animated.View style={[styles.acceptedBanner, { transform: [{ scale: pulse }] }]}>
           <View style={styles.acceptedIcon}>
-            <Ionicons name="checkmark" size={18} color="#fff" />
+            <Ionicons name="checkmark" size={18} color={colors.brandTextOn} />
           </View>
           <View style={styles.acceptedText}>
             <Text style={styles.acceptedTitle}>
@@ -95,7 +98,7 @@ export function InstantLessonStatusBanner() {
             <Text style={styles.joinBtnText}>Join</Text>
           </Pressable>
           <Pressable hitSlop={8} onPress={clearTraineeBooking} style={styles.closeIcon}>
-            <Ionicons name="close" size={16} color="#fff" />
+            <Ionicons name="close" size={16} color={colors.brandTextOn} />
           </Pressable>
         </Animated.View>
       ) : (
@@ -123,8 +126,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#fff",
-    borderRadius: 999,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: radii.pill,
     paddingHorizontal: 14,
     paddingVertical: 8,
     shadowColor: "#000",
@@ -136,14 +139,14 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     maxWidth: "100%",
   },
-  pillText: { fontSize: 13, fontWeight: "700", color: colors.brandNavy, maxWidth: 220 },
+  pillText: { ...typography.bodySm, fontWeight: "700", color: colors.brandNavy, maxWidth: 220 },
 
   acceptedBanner: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#0f9d58",
-    borderRadius: 14,
+    backgroundColor: colors.success,
+    borderRadius: radii.md,
     paddingHorizontal: 12,
     paddingVertical: 10,
     width: "100%",
@@ -162,14 +165,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   acceptedText: { flex: 1 },
-  acceptedTitle: { fontSize: 14, fontWeight: "800", color: "#fff" },
-  acceptedSub: { fontSize: 12, color: "rgba(255,255,255,0.92)", marginTop: 1 },
+  acceptedTitle: { ...typography.bodyMd, fontWeight: "800", color: colors.brandTextOn },
+  acceptedSub: { ...typography.caption, color: "rgba(255,255,255,0.92)", marginTop: 1 },
   joinBtn: {
-    backgroundColor: "#fff",
-    borderRadius: 8,
+    backgroundColor: colors.brandTextOn,
+    borderRadius: radii.sm,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  joinBtnText: { fontSize: 13, fontWeight: "800", color: "#0f9d58" },
+  joinBtnText: { ...typography.bodySm, fontWeight: "800", color: colors.success },
   closeIcon: { padding: 4 },
 });

@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { colors, radii, space } from "../../../../theme/tokens";
+import { colors, radii, space } from "../../../../theme";
 import { INSTANT_LESSON_DURATIONS } from "../constants";
 import { sharedStepStyles } from "../sharedStepStyles";
 
@@ -64,7 +64,7 @@ export function WizardStepDuration({
 
       <Pressable style={sharedStepStyles.primaryBtn} onPress={onNext}>
         <Text style={sharedStepStyles.primaryBtnText}>Next: clips</Text>
-        <Ionicons name="arrow-forward" size={18} color="#fff" />
+        <Ionicons name="arrow-forward" size={18} color={colors.brandTextOn} />
       </Pressable>
     </View>
   );
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
   },
   durationTileOn: {
     borderColor: colors.success,
-    backgroundColor: "#f0fdf4",
+    backgroundColor: colors.successSubtle,
   },
   durationLabel: { fontSize: 15, fontWeight: "700", color: colors.brandNavy },
   durationLabelOn: { color: colors.success },

@@ -143,5 +143,10 @@ export const API_ROUTES = {
     getPublicKey: "/notifications/get-public-key",
     subscription: "/notifications/subscription",
     update: "/notifications/update",
+    /** Mobile-only: register/unregister device push tokens. The backend will
+     *  add these endpoints; until they exist the client logs and falls back. */
+    registerPushToken: "/notifications/register-push-token",
+    unregisterPushToken: (deviceId: string) =>
+      `/notifications/unregister-push-token/${encodeURIComponent(deviceId)}` as const,
   },
 } as const;
