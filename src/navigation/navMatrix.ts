@@ -58,7 +58,29 @@ export type NavMatrixEntry = {
  *     and only reachable through the booking flow, never as a menu item).
  */
 export const NAV_MATRIX: readonly NavMatrixEntry[] = [
-  /** Dashboard group — primary user journeys. */
+  {
+    id: "my-locker",
+    label: "My Locker",
+    icon: "home-outline",
+    target: { kind: "tab", tab: "Home" },
+    surfaces: ["drawer"],
+  },
+  {
+    id: "sessions-trainee",
+    label: "Sessions",
+    icon: "time-outline",
+    target: { kind: "tab", tab: "Schedule" },
+    surfaces: ["drawer"],
+    roles: [AccountType.TRAINEE],
+  },
+  {
+    id: "schedule-trainer",
+    label: "Schedule",
+    icon: "calendar-outline",
+    target: { kind: "tab", tab: "Schedule" },
+    surfaces: ["drawer"],
+    roles: [AccountType.TRAINER],
+  },
   {
     id: "instant-booking",
     label: "Instant booking",
@@ -77,14 +99,6 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
     roles: [AccountType.TRAINEE],
   },
   {
-    id: "upcoming-sessions",
-    label: "Upcoming sessions",
-    icon: "time-outline",
-    target: { kind: "feature", featureId: "upcoming-sessions" },
-    surfaces: ["drawer", "more"],
-    group: "dashboard",
-  },
-  {
     id: "students",
     label: "Students",
     icon: "school-outline",
@@ -92,6 +106,14 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
     surfaces: ["drawer", "more"],
     group: "dashboard",
     roles: [AccountType.TRAINER],
+  },
+  {
+    id: "upcoming-sessions",
+    label: "Upcoming sessions",
+    icon: "time-outline",
+    target: { kind: "feature", featureId: "upcoming-sessions" },
+    surfaces: ["drawer", "more"],
+    group: "dashboard",
   },
   {
     id: "friends",
@@ -110,16 +132,6 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
     group: "dashboard",
   },
   {
-    id: "practice-session",
-    label: "Practice session",
-    icon: "fitness-outline",
-    target: { kind: "feature", featureId: "practice-session" },
-    surfaces: ["drawer", "more"],
-    group: "dashboard",
-  },
-
-  /** Tools group — locker / utility surfaces. */
-  {
     id: "clips",
     label: "Clips",
     icon: "film-outline",
@@ -132,14 +144,6 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
     label: "Game plans",
     icon: "clipboard-outline",
     target: { kind: "shell", surfaceId: "gamePlans" },
-    surfaces: ["drawer", "more"],
-    group: "tools",
-  },
-  {
-    id: "savedLessons",
-    label: "Saved lessons",
-    icon: "bookmark-outline",
-    target: { kind: "shell", surfaceId: "savedLessons" },
     surfaces: ["drawer", "more"],
     group: "tools",
   },
@@ -158,15 +162,6 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
     target: { kind: "shell", surfaceId: "transactions" },
     surfaces: ["drawer", "more"],
     group: "tools",
-  },
-  {
-    id: "trainerSchedule",
-    label: "Manage availability",
-    icon: "calendar-outline",
-    target: { kind: "shell", surfaceId: "trainerSchedule" },
-    surfaces: ["drawer", "more"],
-    group: "tools",
-    roles: [AccountType.TRAINER],
   },
   {
     id: "invite",
@@ -200,22 +195,41 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
     surfaces: ["drawer", "more"],
     group: "tools",
   },
-
-  /**
-   * Settings — single canonical entry point. Only rendered in the More header
-   * gear icon (not in either menu list). Stays here so any other surface that
-   * wants to deep-link to settings (Toast tap, etc.) has the same target.
-   */
   {
     id: "settings",
     label: "Settings",
     icon: "settings-outline",
     target: { kind: "shell", surfaceId: "settings" },
-    surfaces: [],
+    surfaces: ["drawer"],
     group: "tools",
   },
-  /** Edit profile is reached through Settings → Edit profile, never directly
-   *  from the menus. Listed for completeness so deep links can resolve. */
+
+  /** Items below are only reachable via the More menu or deep links. */
+  {
+    id: "practice-session",
+    label: "Practice session",
+    icon: "fitness-outline",
+    target: { kind: "feature", featureId: "practice-session" },
+    surfaces: ["more"],
+    group: "dashboard",
+  },
+  {
+    id: "savedLessons",
+    label: "Saved lessons",
+    icon: "bookmark-outline",
+    target: { kind: "shell", surfaceId: "savedLessons" },
+    surfaces: ["more"],
+    group: "tools",
+  },
+  {
+    id: "trainerSchedule",
+    label: "Manage availability",
+    icon: "calendar-outline",
+    target: { kind: "shell", surfaceId: "trainerSchedule" },
+    surfaces: ["more"],
+    group: "tools",
+    roles: [AccountType.TRAINER],
+  },
   {
     id: "editProfile",
     label: "Edit profile",

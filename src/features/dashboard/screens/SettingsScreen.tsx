@@ -140,19 +140,19 @@ export function SettingsScreen() {
       { icon: "mail-outline", label: "Contact us", onPress: () => openDashboard("contact-us") },
       {
         icon: "information-circle-outline",
-        label: "About (website)",
+        label: "About",
         onPress: () => void openWeb(WebRoutes.dashboardAboutUs),
       },
       {
         icon: "document-text-outline",
-        label: "Help & policies (website)",
+        label: "Help & policies",
         onPress: () => void openWeb(WebRoutes.dashboardContactUs),
       },
     ];
     if (isTrainer) {
       rows.push({
         icon: "card-outline",
-        label: "Trainer profile & billing (website)",
+        label: "Trainer profile & billing",
         onPress: () => void openWeb(WebRoutes.dashboardHome),
       });
     }
@@ -264,9 +264,9 @@ export function SettingsScreen() {
             )
           }
         />
-        <Text style={styles.hint}>
-          Matches the website settings toggle (POST `/user/update-account-privacy`).
-        </Text>
+        {/* <Text style={styles.hint}>
+          Matches the settings toggle.
+        </Text> */}
       </Card>
 
       <SectionHeader label="Email & SMS preferences" />
@@ -303,10 +303,10 @@ export function SettingsScreen() {
             </React.Fragment>
           );
         })}
-        <Text style={styles.hint}>
+        {/* <Text style={styles.hint}>
           Same payload as the website (PATCH /user/update-notifications-settings with a full
           notifications object).
-        </Text>
+        </Text>  */}
       </Card>
 
       <SectionHeader label="Support & invites" />

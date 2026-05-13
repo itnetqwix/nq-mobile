@@ -319,10 +319,10 @@ export function TrainerScheduleScreen() {
           />
         }
       >
-        <Text style={styles.lead}>
+        {/* <Text style={styles.lead}>
           Same shape as the website schedule (`POST /trainer/update-slots`). Add as many
           time ranges as you want per day. Tap a time to change it.
-        </Text>
+        </Text> */}
 
         {days.map((d, dayIdx) => (
           <View key={d.day} style={styles.dayCard}>

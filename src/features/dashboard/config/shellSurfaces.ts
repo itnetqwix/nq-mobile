@@ -46,7 +46,7 @@ export const SHELL_SURFACES: readonly ShellSurfaceMeta[] = [
   {
     id: "savedLessons",
     title: "Saved lessons",
-    subtitle: "Recordings saved to your locker from the website.",
+    subtitle: "Recordings saved to your locker.",
     webContext: "Locker library → Saved lessons (`POST /common/get-all-saved-sessions`).",
     allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
   },
@@ -81,7 +81,7 @@ export const SHELL_SURFACES: readonly ShellSurfaceMeta[] = [
   {
     id: "trainerSchedule",
     title: "My schedule",
-    subtitle: "Weekly availability — same as the website schedule.",
+    subtitle: "Weekly availability",
     webContext: "Left sidebar → Schedule Inventory (`POST /trainer/update-slots`).",
     allowedRoles: [AccountType.TRAINER],
   },
@@ -96,7 +96,7 @@ export const SHELL_SURFACES: readonly ShellSurfaceMeta[] = [
     id: "reportIssue",
     title: "Report an issue",
     subtitle:
-      "Pick a session and report a technical issue or request a refund — same as the website.",
+      "Pick a session and report a technical issue or request a refund",
     webContext: "Web Contact Us → Report Technical / Refund (`POST /user/raise-concern`).",
     allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
   },

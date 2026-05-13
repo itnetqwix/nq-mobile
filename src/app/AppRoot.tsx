@@ -1,10 +1,12 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { StripeProvider } from "@stripe/stripe-react-native";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useMemo } from "react";
 import { StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { STRIPE_PUBLISHABLE_KEY } from "../config/env";
 import { AuthProvider } from "../features/auth/context/AuthContext";
 import { SocketProvider } from "../features/socket/SocketContext";
 import { InstantLessonProvider } from "../features/instant-lesson/InstantLessonContext";
@@ -44,25 +46,25 @@ export function AppRoot() {
   return (
     <GestureHandlerRootView style={styles.flex}>
       <SafeAreaProvider>
-        <ThemeProvider>
-          <QueryClientProvider client={queryClient}>
-            <AuthProvider>
-              <SocketProvider>
-                <NotificationProvider>
-                  <InstantLessonProvider onNavigateToMeeting={navigateToMeeting}>
-                    {/** Push token registration + tap routing. Lives inside the
-                     *  auth provider so it can react to sign-in/out. */}
-                    <PushNotificationBridge />
-                    <NavigationContainer ref={navigationRef}>
-                      <StatusBar style="dark" />
-                      <RootNavigator />
-                    </NavigationContainer>
-                  </InstantLessonProvider>
-                </NotificationProvider>
-              </SocketProvider>
-            </AuthProvider>
-          </QueryClientProvider>
-        </ThemeProvider>
+        <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
+          <ThemeProvider>
+            <QueryClientProvider client={queryClient}>
+              <AuthProvider>
+                <SocketProvider>
+                  <NotificationProvider>
+                    <InstantLessonProvider onNavigateToMeeting={navigateToMeeting}>
+                      <PushNotificationBridge />
+                      <NavigationContainer ref={navigationRef}>
+                        <StatusBar style="dark" />
+                        <RootNavigator />
+                      </NavigationContainer>
+                    </InstantLessonProvider>
+                  </NotificationProvider>
+                </SocketProvider>
+              </AuthProvider>
+            </QueryClientProvider>
+          </ThemeProvider>
+        </StripeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

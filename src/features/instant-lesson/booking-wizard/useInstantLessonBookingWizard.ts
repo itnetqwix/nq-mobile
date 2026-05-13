@@ -45,9 +45,22 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
   const [couponCode, setCouponCode] = useState("");
   const [couponError, setCouponError] = useState("");
   const [selectedClipIds, setSelectedClipIds] = useState<string[]>([]);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [chargingPrice, setChargingPrice] = useState(0);
 
   const tid = trainerIdOf(trainer);
   const tname = trainerNameOf(trainer);
+  const userStripeId = String(
+    (user as Record<string, unknown>)?.stripe_account_id ?? ""
+  );
+
+  const handlePaymentComplete = useCallback(
+    (intentId: string | null, price: number) => {
+      setPaymentIntentId(intentId);
+      setChargingPrice(price);
+    },
+    []
+  );
 
   const resetWizard = useCallback(() => {
     setStep("duration");
@@ -55,6 +68,8 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     setCouponCode("");
     setCouponError("");
     setSelectedClipIds([]);
+    setPaymentIntentId(null);
+    setChargingPrice(0);
   }, []);
 
   useEffect(() => {
@@ -108,10 +123,14 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
   const submitMutation = useMutation({
     mutationFn: async () => {
       if (!tid) throw new Error("Missing trainer.");
-      const res = await apiClient.post(API_ROUTES.trainee.bookInstantMeeting, {
+      const bookingPayload: Record<string, unknown> = {
         trainer_id: tid,
         booked_date: new Date().toISOString(),
-      });
+        duration: durationMinutes,
+      };
+      if (paymentIntentId) bookingPayload.payment_intent_id = paymentIntentId;
+      if (chargingPrice > 0) bookingPayload.charging_price = chargingPrice;
+      const res = await apiClient.post(API_ROUTES.trainee.bookInstantMeeting, bookingPayload);
       const lessonId = parseInstantBookingLessonId(res);
       if (!lessonId) throw new Error("Server did not return a booking id.");
       if (selectedClipIds.length > 0) {
@@ -175,6 +194,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     step,
     stepNum,
     totalSteps,
+    trainer,
     trainerName: tname,
     durationMinutes,
     setDurationMinutes,
@@ -190,5 +210,9 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     goBack,
     handleSendRequest,
     submitIsPending: submitMutation.isPending,
+    userStripeId,
+    handlePaymentComplete,
+    paymentIntentId,
+    chargingPrice,
   };
 }

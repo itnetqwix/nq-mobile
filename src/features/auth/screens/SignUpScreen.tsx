@@ -99,9 +99,9 @@ export function SignUpScreen({ navigation }: AuthScreenProps<"SignUp">) {
       <Text style={[typography.titleLg, { color: colors.text, marginTop: space.md }]}>
         Create account
       </Text>
-      <Text style={[typography.bodyMd, { color: colors.textMuted, marginBottom: space.lg }]}>
+      {/* <Text style={[typography.bodyMd, { color: colors.textMuted, marginBottom: space.lg }]}>
         Same details as the NetQwix website.
-      </Text>
+      </Text> */}
 
       <Stack gap="md">
         <FormField

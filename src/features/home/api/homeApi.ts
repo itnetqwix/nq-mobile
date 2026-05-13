@@ -76,6 +76,21 @@ export async function postRejectFriendRequest(requestId: string): Promise<any> {
   return res.data;
 }
 
+export async function postSendFriendRequest(receiverId: string): Promise<any> {
+  const res = await apiClient.post(API_ROUTES.user.sendFriendRequest, { receiverId });
+  return res.data;
+}
+
+export async function postCancelFriendRequest(receiverId: string): Promise<any> {
+  const res = await apiClient.post(API_ROUTES.user.cancelFriendRequest, { receiverId });
+  return res.data;
+}
+
+export async function postRemoveFriend(friendId: string): Promise<any> {
+  const res = await apiClient.post(API_ROUTES.user.removeFriend, { friendId });
+  return res.data;
+}
+
 export async function fetchNotifications(page = 1, limit = 20): Promise<any[]> {
   const res = await apiClient.get(API_ROUTES.notifications.list, {
     params: { page, limit },

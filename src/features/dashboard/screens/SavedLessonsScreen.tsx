@@ -77,7 +77,7 @@ export function SavedLessonsScreen() {
             <EmptyState
               icon="bookmark-outline"
               title="No saved lessons"
-              description="When you save a session recording on the website, it will show up here."
+              description="When you save a session recording, it will show up here."
             />
           ) : (
             (savedQ.data ?? []).map((s: any) => {

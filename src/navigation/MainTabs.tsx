@@ -11,13 +11,10 @@ import { MenuNavigator } from "./MenuNavigator";
 import type { MainTabParamList } from "./types";
 import { useAuth } from "../features/auth/context/AuthContext";
 import { AccountType } from "../constants/accountType";
-import { useNotifications } from "../features/notifications/NotificationContext";
-
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export function MainTabs() {
   const { accountType } = useAuth();
-  const { unreadCount } = useNotifications();
   const isTrainer = accountType === AccountType.TRAINER;
   const insets = useSafeAreaInsets();
   const tabPadBottom = Math.max(insets.bottom, 6);
@@ -103,19 +100,12 @@ export function MainTabs() {
         name="Menu"
         component={MenuNavigator}
         options={{
-          title: "More",
+          title: "Settings",
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="menu-outline" color={color} size={size} />
+            <Ionicons name="settings-outline" color={color} size={size} />
           ),
-          tabBarLabel: "More",
-          /** Web parity badge: surface the inbox count on the bottom-tab "More" entry. */
-          tabBarBadge: unreadCount > 0 ? (unreadCount > 99 ? "99+" : unreadCount) : undefined,
-          tabBarBadgeStyle: {
-            backgroundColor: colors.danger,
-            color: colors.background,
-            fontWeight: "700",
-          },
+          tabBarLabel: "Settings",
         }}
       />
     </Tab.Navigator>

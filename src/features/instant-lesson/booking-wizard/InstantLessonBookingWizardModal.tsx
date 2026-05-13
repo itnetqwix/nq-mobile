@@ -9,6 +9,7 @@ import { WizardTitleBlock } from "./WizardTitleBlock";
 import { WizardStepClips } from "./steps/WizardStepClips";
 import { WizardStepConfirm } from "./steps/WizardStepConfirm";
 import { WizardStepDuration } from "./steps/WizardStepDuration";
+import { WizardStepPayment } from "./steps/WizardStepPayment";
 
 /**
  * Trainee instant-lesson booking: multi-step flow (duration → clips → confirm).
@@ -55,12 +56,24 @@ export function InstantLessonBookingWizardModal({ visible, trainer, onDismiss }:
             />
           )}
 
+          {w.step === "payment" && (
+            <WizardStepPayment
+              trainer={w.trainer}
+              durationMinutes={w.durationMinutes}
+              couponCode={w.couponCode}
+              userStripeId={w.userStripeId}
+              onPaymentComplete={w.handlePaymentComplete}
+              onNext={w.goNext}
+            />
+          )}
+
           {w.step === "confirm" && (
             <WizardStepConfirm
               trainerName={w.trainerName}
               durationMinutes={w.durationMinutes}
               selectedClipIds={w.selectedClipIds}
               couponCode={w.couponCode}
+              chargingPrice={w.chargingPrice}
               isSubmitting={w.submitIsPending}
               onSubmit={w.handleSendRequest}
             />

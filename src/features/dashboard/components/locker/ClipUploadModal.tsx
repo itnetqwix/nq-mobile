@@ -21,12 +21,18 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AccountType } from "../../../../constants/accountType";
 import { fetchSportCategories } from "../../../auth/api/masterApi";
 import { useAuth } from "../../../auth/context/AuthContext";
-import { postClipUploadSignUrls } from "../../../home/api/homeApi";
+import {
+  fetchFriends,
+  postClipUploadSignUrls,
+} from "../../../home/api/homeApi";
 import { getApiErrorMessage } from "../../../../lib/http/getApiErrorMessage";
 import { putFileToPresignedUrl } from "../../../../lib/presignedPut";
 import { colors, radii, space } from "../../../../theme";
 
 const SHARE_MY_CLIPS = "My Clips";
+const SHARE_FRIENDS = "Friends";
+
+type ShareTarget = typeof SHARE_MY_CLIPS | typeof SHARE_FRIENDS;
 
 type Props = {
   visible: boolean;
@@ -53,12 +59,21 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
   const [videoProgress, setVideoProgress] = useState(0);
   const [thumbProgress, setThumbProgress] = useState(0);
   const [uploadPhase, setUploadPhase] = useState<"idle" | "video" | "thumb" | "finalize">("idle");
+  const [shareTarget, setShareTarget] = useState<ShareTarget>(SHARE_MY_CLIPS);
+  const [selectedFriendEmails, setSelectedFriendEmails] = useState<string[]>([]);
 
   const { data: categories = [], isLoading: catLoading } = useQuery<string[]>({
     queryKey: ["sportCategories"],
     queryFn: fetchSportCategories,
     enabled: visible,
     staleTime: 300_000,
+  });
+
+  const { data: friendsList = [] } = useQuery<any[]>({
+    queryKey: ["friends", "forClipShare"],
+    queryFn: fetchFriends,
+    enabled: visible && shareTarget === SHARE_FRIENDS,
+    staleTime: 60_000,
   });
 
   useEffect(() => {
@@ -72,6 +87,8 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
       setVideoProgress(0);
       setThumbProgress(0);
       setUploadPhase("idle");
+      setShareTarget(SHARE_MY_CLIPS);
+      setSelectedFriendEmails([]);
     }
   }, [visible]);
 
@@ -126,13 +143,20 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
     }
   };
 
+  const toggleFriend = (email: string) => {
+    setSelectedFriendEmails((prev) =>
+      prev.includes(email) ? prev.filter((e) => e !== email) : [...prev, email]
+    );
+  };
+
   const canSubmit =
     !!videoAsset &&
     !!thumbUri &&
     title.trim().length > 0 &&
     effectiveCategory.length > 0 &&
     !thumbBusy &&
-    !uploadBusy;
+    !uploadBusy &&
+    (shareTarget === SHARE_MY_CLIPS || selectedFriendEmails.length > 0);
 
   const submit = async () => {
     if (!videoAsset || !thumbUri || !canSubmit) return;
@@ -151,7 +175,10 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
             category: effectiveCategory,
           },
         ],
-        shareOptions: { type: SHARE_MY_CLIPS },
+        shareOptions:
+          shareTarget === SHARE_FRIENDS
+            ? { type: SHARE_FRIENDS, emails: selectedFriendEmails }
+            : { type: SHARE_MY_CLIPS },
       });
       const row = data.results?.[0];
       if (!row?.url || !row.thumbnailURL) {
@@ -195,7 +222,7 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
 
         <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
           <Text style={styles.lead}>
-            Same flow as the website: pick a video from your device, add a title and sport, then we upload the file and
+            Pick a video from your device, add a title and sport, then we upload the file and
             a thumbnail to your locker.
           </Text>
 
@@ -266,6 +293,57 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
                 </View>
               )}
             </>
+          )}
+
+          <Text style={styles.label}>Share to</Text>
+          <View style={styles.shareTargetRow}>
+            <Pressable
+              style={[styles.shareTargetBtn, shareTarget === SHARE_MY_CLIPS && styles.shareTargetBtnOn]}
+              onPress={() => setShareTarget(SHARE_MY_CLIPS)}
+              disabled={uploadBusy}
+            >
+              <Ionicons name="folder-outline" size={16} color={shareTarget === SHARE_MY_CLIPS ? colors.brandNavy : colors.textMuted} />
+              <Text style={[styles.shareTargetText, shareTarget === SHARE_MY_CLIPS && styles.shareTargetTextOn]}>My Clips</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.shareTargetBtn, shareTarget === SHARE_FRIENDS && styles.shareTargetBtnOn]}
+              onPress={() => setShareTarget(SHARE_FRIENDS)}
+              disabled={uploadBusy}
+            >
+              <Ionicons name="people-outline" size={16} color={shareTarget === SHARE_FRIENDS ? colors.brandNavy : colors.textMuted} />
+              <Text style={[styles.shareTargetText, shareTarget === SHARE_FRIENDS && styles.shareTargetTextOn]}>Friends</Text>
+            </Pressable>
+          </View>
+
+          {shareTarget === SHARE_FRIENDS && (
+            <View style={styles.friendPickerBox}>
+              <Text style={styles.label}>Select friends to share with</Text>
+              {friendsList.length === 0 ? (
+                <Text style={styles.muted}>No friends found. Add friends from My Community.</Text>
+              ) : (
+                <View style={styles.friendChips}>
+                  {friendsList.map((f: any) => {
+                    const email = f?.email ?? f?.receiverId?.email ?? "";
+                    const name = f?.fullname ?? f?.receiverId?.fullname ?? f?.fullName ?? email;
+                    if (!email) return null;
+                    const on = selectedFriendEmails.includes(email);
+                    return (
+                      <Pressable
+                        key={email}
+                        style={[styles.chip, on && styles.chipOn]}
+                        onPress={() => toggleFriend(email)}
+                        disabled={uploadBusy}
+                      >
+                        <Text style={[styles.chipText, on && styles.chipTextOn]} numberOfLines={1}>{name}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+              {selectedFriendEmails.length > 0 && (
+                <Text style={styles.muted}>{selectedFriendEmails.length} friend{selectedFriendEmails.length === 1 ? "" : "s"} selected</Text>
+              )}
+            </View>
           )}
 
           {uploadBusy && (
@@ -424,4 +502,25 @@ const styles = StyleSheet.create({
   },
   progressFill: { height: "100%", backgroundColor: colors.brandNavy, borderRadius: 4 },
   progressHint: { fontSize: 11, color: colors.textMuted, fontStyle: "italic" },
+  shareTargetRow: { flexDirection: "row", gap: 10 },
+  shareTargetBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  shareTargetBtnOn: {
+    borderColor: colors.brandNavy,
+    backgroundColor: colors.sidebarActiveBg,
+  },
+  shareTargetText: { fontSize: 14, fontWeight: "600", color: colors.textMuted },
+  shareTargetTextOn: { color: colors.brandNavy },
+  friendPickerBox: { gap: space.sm },
+  friendChips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
 });

@@ -1,6 +1,5 @@
-import React from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   Image,
   Pressable,
@@ -17,13 +16,15 @@ import { EmptyState, Skeleton } from "../../../components/ui";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { colors, radii, space, typography } from "../../../theme";
+import { useAuth } from "../../auth/context/AuthContext";
 import type { MainTabScreenProps } from "../../../navigation/types";
+import { ChatRoomScreen } from "./ChatRoomScreen";
 
 async function fetchConversations(): Promise<any[]> {
   try {
-    // Use the booking list as a proxy for conversations (each booking = a trainer-trainee pair)
-    const res = await apiClient.get(API_ROUTES.user.bookingList);
-    return res.data?.result ?? res.data ?? [];
+    const res = await apiClient.get(API_ROUTES.chat.conversations);
+    const body = (res as any)?.data ?? res;
+    return body?.data ?? body?.result ?? [];
   } catch {
     return [];
   }
@@ -65,45 +66,20 @@ function Avatar({ uri, name, size = 48 }: { uri?: string; name?: string; size?: 
   );
 }
 
-function ConversationRow({ item }: { item: any }) {
-  // Derive a "conversation partner" from the booking
-  const trainer = item?.trainer_info;
-  const trainee = item?.trainee_info;
-  // Show whichever is not the current user — use both for now
-  const partner = trainer ?? trainee;
-  const name = partner?.fullname || partner?.fullName || "User";
-  const lastMsg = item?.last_message?.content ?? item?.lastMessage ?? "";
-  const unread = item?.unread_count ?? item?.unreadCount ?? 0;
-  const time = timeAgo(item?.updatedAt ?? item?.last_message?.createdAt);
-
-  return (
-    <Pressable style={({ pressed }) => [styles.row, pressed && { opacity: 0.8 }]}>
-      <View style={styles.avatarWrap}>
-        <Avatar uri={partner?.profile_picture} name={name} />
-        {partner?.is_online && <View style={styles.onlineDot} />}
-      </View>
-      <View style={styles.rowContent}>
-        <View style={styles.rowTop}>
-          <Text style={styles.rowName} numberOfLines={1}>{name}</Text>
-          {!!time && <Text style={styles.rowTime}>{time}</Text>}
-        </View>
-        <View style={styles.rowBottom}>
-          <Text style={styles.rowPreview} numberOfLines={1}>
-            {lastMsg || "Tap to start chatting"}
-          </Text>
-          {unread > 0 && (
-            <View style={styles.unreadBadge}>
-              <Text style={styles.unreadText}>{unread > 99 ? "99+" : unread}</Text>
-            </View>
-          )}
-        </View>
-      </View>
-    </Pressable>
-  );
-}
+type ChatPartner = {
+  _id: string;
+  fullname?: string;
+  profile_picture?: string;
+};
 
 export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
-  const [search, setSearch] = React.useState("");
+  const { user } = useAuth();
+  const currentUserId = String((user as any)?._id ?? (user as any)?.id ?? "");
+  const [search, setSearch] = useState("");
+  const [activeChat, setActiveChat] = useState<{
+    conversationId: string;
+    partner: ChatPartner;
+  } | null>(null);
 
   const { data: conversations = [], isLoading, isRefetching, refetch } = useQuery({
     queryKey: ["conversations"],
@@ -111,12 +87,52 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
     staleTime: 30_000,
   });
 
-  const filtered = search.trim()
-    ? conversations.filter((c: any) => {
-        const t = c?.trainer_info?.fullname ?? c?.trainee_info?.fullname ?? "";
-        return t.toLowerCase().includes(search.toLowerCase());
-      })
-    : conversations;
+  const getPartner = useCallback(
+    (conv: any): ChatPartner => {
+      const participants: any[] = conv?.participants ?? [];
+      const other = participants.find(
+        (p: any) => String(p?._id) !== currentUserId
+      );
+      if (other) {
+        return {
+          _id: String(other._id),
+          fullname: other.fullname ?? other.fullName,
+          profile_picture: other.profile_picture,
+        };
+      }
+      const trainer = conv?.trainer_info;
+      const trainee = conv?.trainee_info;
+      const p = trainer ?? trainee;
+      return {
+        _id: String(p?._id ?? ""),
+        fullname: p?.fullname ?? p?.fullName ?? "User",
+        profile_picture: p?.profile_picture,
+      };
+    },
+    [currentUserId]
+  );
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return conversations;
+    const q = search.toLowerCase();
+    return conversations.filter((c: any) => {
+      const p = getPartner(c);
+      return (p.fullname ?? "").toLowerCase().includes(q);
+    });
+  }, [conversations, search, getPartner]);
+
+  if (activeChat) {
+    return (
+      <ChatRoomScreen
+        conversationId={activeChat.conversationId}
+        partner={activeChat.partner}
+        onGoBack={() => {
+          setActiveChat(null);
+          refetch();
+        }}
+      />
+    );
+  }
 
   return (
     <View style={styles.root}>
@@ -128,10 +144,9 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
           placeholderTextColor={colors.textMuted}
           value={search}
           onChangeText={setSearch}
-          accessibilityLabel="Search conversations"
         />
         {!!search && (
-          <Pressable onPress={() => setSearch("")} accessibilityLabel="Clear search">
+          <Pressable onPress={() => setSearch("")}>
             <Ionicons name="close-circle" size={18} color={colors.textMuted} />
           </Pressable>
         )}
@@ -153,9 +168,50 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
         <FlatList
           data={filtered}
           keyExtractor={(item, i) => item?._id ?? String(i)}
-          renderItem={({ item }) => <ConversationRow item={item} />}
+          renderItem={({ item }) => {
+            const partner = getPartner(item);
+            const lastMsg = item.lastMessage ?? item.last_message ?? "";
+            const unread = item.unreadCount ?? 0;
+            const time = timeAgo(item.lastMessageAt ?? item.updatedAt);
+
+            return (
+              <Pressable
+                style={({ pressed }) => [styles.row, pressed && { opacity: 0.8 }]}
+                onPress={() =>
+                  setActiveChat({
+                    conversationId: item._id,
+                    partner,
+                  })
+                }
+              >
+                <View style={styles.avatarWrap}>
+                  <Avatar uri={partner.profile_picture} name={partner.fullname} />
+                </View>
+                <View style={styles.rowContent}>
+                  <View style={styles.rowTop}>
+                    <Text style={styles.rowName} numberOfLines={1}>
+                      {partner.fullname ?? "User"}
+                    </Text>
+                    {!!time && <Text style={styles.rowTime}>{time}</Text>}
+                  </View>
+                  <View style={styles.rowBottom}>
+                    <Text style={styles.rowPreview} numberOfLines={1}>
+                      {lastMsg || "Tap to start chatting"}
+                    </Text>
+                    {unread > 0 && (
+                      <View style={styles.unreadBadge}>
+                        <Text style={styles.unreadText}>
+                          {unread > 99 ? "99+" : unread}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              </Pressable>
+            );
+          }}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brand} />
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brandNavy} />
           }
           ListEmptyComponent={
             <EmptyState
@@ -164,7 +220,7 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
               description={
                 search
                   ? "Try a different search term."
-                  : "Your conversations with trainers and trainees will appear here."
+                  : "Start chatting with your friends from the Community page."
               }
             />
           }
@@ -176,8 +232,6 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceElevated },
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -189,7 +243,6 @@ const styles = StyleSheet.create({
     gap: space.sm,
   },
   searchInput: { flex: 1, ...typography.bodyMd, color: colors.text },
-
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -200,17 +253,6 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   avatarWrap: { position: "relative" },
-  onlineDot: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: colors.success,
-    borderWidth: 2,
-    borderColor: colors.surfaceElevated,
-  },
   rowContent: { flex: 1 },
   rowTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   rowName: { ...typography.subtitle, color: colors.text, flex: 1, marginRight: 8 },
@@ -227,7 +269,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   unreadText: { fontSize: 11, color: colors.brandTextOn, fontWeight: "700" },
-
   avatarFallback: {
     backgroundColor: colors.brandNavy,
     alignItems: "center",

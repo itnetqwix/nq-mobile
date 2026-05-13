@@ -133,6 +133,10 @@ export function MeetingScreen({ navigation, route }: Props) {
     `
     : "true;";
 
+  const goHome = () => {
+    navigation.reset({ index: 0, routes: [{ name: "Main" }] });
+  };
+
   const confirmLeave = () => {
     Alert.alert(
       "Leave session?",
@@ -142,7 +146,7 @@ export function MeetingScreen({ navigation, route }: Props) {
         {
           text: "Leave",
           style: "destructive",
-          onPress: () => navigation.goBack(),
+          onPress: goHome,
         },
       ]
     );
@@ -187,7 +191,7 @@ export function MeetingScreen({ navigation, route }: Props) {
         countdownLabel={remainingLabel}
         countdownExpired={expired}
         onLeavePress={confirmLeave}
-        onMinimize={() => navigation.goBack()}
+        onMinimize={goHome}
       />
 
       {loading && (

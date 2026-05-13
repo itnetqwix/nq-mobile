@@ -120,7 +120,7 @@ function TrainerSchedule() {
           <EmptyState
             icon="calendar-outline"
             title="No weekly slots yet"
-            description="Set your availability on the website schedule screen, then pull to refresh here."
+            description="Set your availability on the schedule, then pull to refresh here."
             actionLabel="Open schedule on web"
             onAction={openWebSchedule}
           />

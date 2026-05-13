@@ -19,6 +19,7 @@ import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { fetchOnlineUsers, fetchTrainersWithSlots } from "../../home/api/homeApi";
 import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
+import { ScheduledBookingModal } from "../../bookings/screens/ScheduledBookingModal";
 import type { MenuStackParamList } from "../../../navigation/types";
 
 function Avatar({ uri, name, size = 64 }: { uri?: string; name?: string; size?: number }) {
@@ -42,7 +43,15 @@ function Avatar({ uri, name, size = 64 }: { uri?: string; name?: string; size?: 
   );
 }
 
-function TrainerCard({ trainer, onBook }: { trainer: any; onBook: (t: any) => void }) {
+function TrainerCard({
+  trainer,
+  onBook,
+  onSchedule,
+}: {
+  trainer: any;
+  onBook: (t: any) => void;
+  onSchedule: (t: any) => void;
+}) {
   const name = trainer?.fullname || trainer?.fullName || "Trainer";
   const cats = Array.isArray(trainer?.categories)
     ? trainer.categories.slice(0, 3).join(" • ")
@@ -75,13 +84,22 @@ function TrainerCard({ trainer, onBook }: { trainer: any; onBook: (t: any) => vo
         </View>
       </View>
       <View style={styles.cardFooter}>
-        <Button
-          label="Book session"
-          leftIcon="flash"
-          size="sm"
-          fullWidth={false}
-          onPress={() => onBook(trainer)}
-        />
+        <View style={styles.btnRow}>
+          <Button
+            label="Instant"
+            leftIcon="flash"
+            size="sm"
+            fullWidth={false}
+            onPress={() => onBook(trainer)}
+          />
+          <Button
+            label="Schedule"
+            leftIcon="calendar-outline"
+            size="sm"
+            fullWidth={false}
+            onPress={() => onSchedule(trainer)}
+          />
+        </View>
         {trainer?.is_online && (
           <View style={styles.onlineBadge}>
             <View style={styles.onlineDot} />
@@ -98,6 +116,7 @@ type Props = { bookLessonTrainerId?: string };
 export function BookExpertScreen({ bookLessonTrainerId }: Props) {
   const [search, setSearch] = useState("");
   const [wizardTrainer, setWizardTrainer] = useState<Record<string, unknown> | null>(null);
+  const [scheduleTrainer, setScheduleTrainer] = useState<Record<string, unknown> | null>(null);
   const navigation = useNavigation<NativeStackNavigationProp<MenuStackParamList>>();
 
   const trimmed = search.trim();
@@ -177,6 +196,11 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
         trainer={wizardTrainer}
         onDismiss={() => setWizardTrainer(null)}
       />
+      <ScheduledBookingModal
+        visible={!!scheduleTrainer}
+        trainer={scheduleTrainer}
+        onDismiss={() => setScheduleTrainer(null)}
+      />
 
       <View style={styles.hero}>
         <Text style={styles.heroTitle}>Book a coach</Text>
@@ -220,7 +244,13 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
         <FlatList
           data={mergedRows}
           keyExtractor={(item, i) => item?._id ?? String(i)}
-          renderItem={({ item }) => <TrainerCard trainer={item} onBook={handleBook} />}
+          renderItem={({ item }) => (
+            <TrainerCard
+              trainer={item}
+              onBook={handleBook}
+              onSchedule={(t) => setScheduleTrainer(t)}
+            />
+          )}
           contentContainerStyle={styles.list}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brandNavy} />
@@ -333,6 +363,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.borderSubtle,
   },
+  btnRow: { flexDirection: "row", gap: 8 },
 
   onlineBadge: { flexDirection: "row", alignItems: "center", gap: 5 },
   onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success },

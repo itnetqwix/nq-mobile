@@ -10,28 +10,15 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Banner, Button } from "../../../components/ui";
 import { colors, radii, space, typography } from "../../../theme";
-import { useAuth } from "../../auth/context/AuthContext";
 import { postInviteFriendEmail } from "../../home/api/homeApi";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function InviteFriendsScreen() {
-  const { user } = useAuth();
   const [text, setText] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
   const [lastSent, setLastSent] = useState<string[]>([]);
-
-  /**
-   * The backend sends the invite email **only** when the inviter's
-   * `notifications.promotional.email` toggle is true (see
-   * `nq-backend-main/src/modules/user/userService.ts#inviteFriend`). If it's off, the row
-   * is still inserted into `ReferredUser` but no mail goes out — the user sees nothing
-   * delivered, which is the usual cause of "invite friends isn't working". Surface that
-   * gotcha right on the screen.
-   */
-  const notifications = (user?.notifications as any) ?? {};
-  const promoEmailEnabled = notifications?.promotional?.email !== false;
 
   const { validEmails, invalidEmails, parsedCount } = useMemo(() => {
     const parsed = text
@@ -84,22 +71,17 @@ export function InviteFriendsScreen() {
       setText(failed.map((f) => f.email).join(", "));
     } else if (failed.length) {
       setErr(
-        `Failed for: ${failed.map((f) => f.email).join(", ")}. ` +
-          (promoEmailEnabled
-            ? ""
-            : "Promotional email is off in your account — turn it on in Settings → Notifications.")
+        `Failed for: ${failed.map((f) => f.email).join(", ")}.`
       );
     } else {
       setText("");
       setErr("");
       Alert.alert(
         "Invitations sent",
-        promoEmailEnabled
-          ? `Sent ${ok.length} invitation${ok.length === 1 ? "" : "s"}. Your friends should receive an email shortly.`
-          : `Sent ${ok.length} ${ok.length === 1 ? "invitation" : "invitations"}, but promotional email is OFF on your account, so delivery may be skipped server-side. Enable it in Settings → Notifications.`
+        `Sent ${ok.length} invitation${ok.length === 1 ? "" : "s"}. Your friends should receive an email shortly.`
       );
     }
-  }, [validEmails, promoEmailEnabled]);
+  }, [validEmails]);
 
   return (
     <ScrollView
@@ -110,16 +92,8 @@ export function InviteFriendsScreen() {
       <View style={styles.card}>
         <Text style={styles.title}>Invite friends</Text>
         <Text style={styles.sub}>
-          Same flow as the website: we email each address from your account.
+          We email each address from your account.
         </Text>
-
-        {!promoEmailEnabled && (
-          <Banner
-            tone="warning"
-            title="Promotional email is off"
-            description="The backend skips sending invites unless this is on. Enable it in Settings → Notifications."
-          />
-        )}
 
         <Text style={styles.label}>Email addresses</Text>
         <TextInput

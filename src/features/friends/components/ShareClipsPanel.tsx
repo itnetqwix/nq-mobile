@@ -211,9 +211,18 @@ export function ShareClipsPanel() {
       .slice(0, 8);
   }, [usersQ.data, friendSuggestions, query]);
 
-  /** Clear the picked recipient if the user starts editing the search again. */
+  const pickRecipient = useCallback((u: Recipient) => {
+    setRecipient(u);
+    setQuery(u.email);
+  }, []);
+
+  /** Clear the picked recipient only when the user manually edits the query. */
   useEffect(() => {
-    if (recipient && query.trim().toLowerCase() !== recipient.email.toLowerCase()) {
+    if (
+      recipient &&
+      query.trim().toLowerCase() !== recipient.email.toLowerCase() &&
+      query.trim().toLowerCase() !== (recipient.fullname ?? "").toLowerCase()
+    ) {
       setRecipient(null);
     }
   }, [query, recipient]);
@@ -289,7 +298,7 @@ export function ShareClipsPanel() {
                 <Text style={styles.pickHeader}>Friends</Text>
               )}
               {friendSuggestions.map((u) => (
-                <UserRow key={`friend-${u._id}`} user={u} onPick={setRecipient} />
+                <UserRow key={`friend-${u._id}`} user={u} onPick={pickRecipient} />
               ))}
 
               {query.trim().length >= 2 && (
@@ -301,7 +310,7 @@ export function ShareClipsPanel() {
                 </View>
               )}
               {userResults.map((u) => (
-                <UserRow key={`user-${u._id}`} user={u} onPick={setRecipient} />
+                <UserRow key={`user-${u._id}`} user={u} onPick={pickRecipient} />
               ))}
 
               {query.trim().length >= 2 &&

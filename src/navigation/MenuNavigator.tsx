@@ -14,13 +14,12 @@ const Stack = createNativeStackNavigator<MenuStackParamList>();
 export function MenuNavigator() {
   return (
     <Stack.Navigator
+      initialRouteName="ShellSurface"
       screenOptions={{
         headerTintColor: colors.brandNavy,
         headerTitleStyle: { fontWeight: "600", color: colors.brandNavy },
         headerLeft: () => <DrawerToggleButton tintColor={colors.brandNavy} />,
         contentStyle: { backgroundColor: colors.background },
-        /** Allow swipe-back gesture on Android too — same right-to-left arc
-         *  for every screen pushed inside the More tab. */
         gestureEnabled: true,
         gestureDirection: "horizontal",
         animation: "slide_from_right",
@@ -37,6 +36,7 @@ export function MenuNavigator() {
       <Stack.Screen
         name="ShellSurface"
         component={ShellSurfaceScreen}
+        initialParams={{ surfaceId: "settings" }}
         options={({ route }) => ({
           title: shellSurfaceById(route.params.surfaceId)?.title ?? "NetQwix",
         })}

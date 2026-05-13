@@ -39,6 +39,10 @@ export const WEB_APP_ORIGIN = normalizeEnvUrl(
   DEFAULT_WEB_APP_ORIGIN
 );
 
+/** Stripe publishable key for mobile payment sheet. */
+export const STRIPE_PUBLISHABLE_KEY =
+  (process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "").trim() || "";
+
 if (__DEV__) {
   // eslint-disable-next-line no-console
   console.log("[nq-mobile] API_BASE_URL =", API_BASE_URL, "| WEB_APP_ORIGIN =", WEB_APP_ORIGIN);

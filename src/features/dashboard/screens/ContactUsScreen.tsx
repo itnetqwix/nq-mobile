@@ -94,7 +94,7 @@ export function ContactUsScreen() {
           <View style={styles.altText}>
             <Text style={styles.altTitle}>Report a Technical issue / Request a refund</Text>
             <Text style={styles.altSub}>
-              Pick a session and tell us what went wrong — same flow as the website.
+              Pick a session and tell us what went wrong.
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />

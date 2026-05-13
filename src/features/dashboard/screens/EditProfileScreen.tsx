@@ -94,11 +94,11 @@ export function EditProfileScreen() {
 
   return (
     <ScreenContainer scroll padding="md" background={colors.surface}>
-      <Text style={styles.lead}>
+      {/* <Text style={styles.lead}>
         Updates go to the same endpoints as the website:{" "}
         {isTrainer ? "PUT /trainer/profile" : "PUT /trainee/profile"} and POST
         /user/update-mobile-number.
-      </Text>
+      </Text> */}
 
       <SectionHeader label="Identity" />
       <Card variant="outlined" padding="md" style={styles.sectionCard}>

@@ -180,13 +180,17 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
   const peerDisplayName =
     peer?.fullname ?? peer?.fullName ?? "Your partner";
 
+  const goHome = useCallback(() => {
+    navigation.reset({ index: 0, routes: [{ name: "Main" }] });
+  }, [navigation]);
+
   return (
     <CallProvider
       sessionId={lessonId}
       fromUser={me}
       toUser={peer}
       role={role}
-      onEnded={() => navigation.goBack()}
+      onEnded={goHome}
       onPeerJoined={() => {
         pushLocalToast({
           title: NOTIFICATION_TITLES.peerJoinedCall,
@@ -199,7 +203,6 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
           title: NOTIFICATION_TITLES.peerLeftCall,
           description: `${peerDisplayName} left the lesson.`,
           type: NOTIFICATION_TYPES.TRANSCATIONAL,
-          /** Keep this one in the inbox so users can see "ended early" history. */
           persistInInbox: true,
         });
       }}
@@ -209,7 +212,7 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
         session={session}
         isTrainer={role === "Trainer"}
         accountType={accountType}
-        onExit={() => navigation.goBack()}
+        onExit={goHome}
         myId={me._id}
         peerId={peer._id}
         peerDisplayName={peerDisplayName}

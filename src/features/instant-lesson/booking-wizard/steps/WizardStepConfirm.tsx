@@ -10,6 +10,7 @@ type Props = {
   durationMinutes: number;
   selectedClipIds: string[];
   couponCode: string;
+  chargingPrice: number;
   isSubmitting: boolean;
   onSubmit: () => void;
 };
@@ -19,6 +20,7 @@ export function WizardStepConfirm({
   durationMinutes,
   selectedClipIds,
   couponCode,
+  chargingPrice,
   isSubmitting,
   onSubmit,
 }: Props) {
@@ -41,6 +43,12 @@ export function WizardStepConfirm({
           <Text style={styles.summaryKey}>Clips</Text>
           <Text style={styles.summaryValue}>
             {selectedClipIds.length === 0 ? "None" : `${selectedClipIds.length} selected`}
+          </Text>
+        </View>
+        <View style={styles.summaryLine}>
+          <Text style={styles.summaryKey}>Price</Text>
+          <Text style={styles.summaryValue}>
+            {chargingPrice > 0 ? `$${chargingPrice.toFixed(2)}` : "Free"}
           </Text>
         </View>
         {couponCode.trim() ? (

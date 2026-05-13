@@ -173,7 +173,7 @@ export function ReportIssueScreen() {
         <View style={styles.hero}>
           <Text style={styles.heroTitle}>Report an issue</Text>
           <Text style={styles.heroSub}>
-            Same flow as the website. Choose the session you want to report on — we'll then ask
+            Choose the session you want to report on — we'll then ask
             for details and email our support team.
           </Text>
         </View>
