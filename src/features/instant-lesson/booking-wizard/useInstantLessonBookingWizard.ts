@@ -182,10 +182,25 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     },
   });
 
+  const trainerHourlyRate = Number(
+    (trainer as Record<string, unknown>)?.extraInfo
+      ? ((trainer as any).extraInfo as Record<string, unknown>)?.hourly_rate
+      : (trainer as any)?.userInfo?.extraInfo?.hourly_rate ?? 0
+  );
+  const expectedPrice = Number(((trainerHourlyRate / 60) * durationMinutes).toFixed(2));
+  const requiresPayment = trainerHourlyRate > 0 && expectedPrice > 0;
+
   const handleSendRequest = useCallback(() => {
     if (!validateCoupon()) return;
+    if (requiresPayment && !paymentIntentId) {
+      Alert.alert(
+        "Payment required",
+        `This trainer charges $${trainerHourlyRate}/hr. Please complete payment before booking.`
+      );
+      return;
+    }
     submitMutation.mutate();
-  }, [validateCoupon, submitMutation]);
+  }, [validateCoupon, submitMutation, requiresPayment, paymentIntentId, trainerHourlyRate]);
 
   const stepNum = wizardStepIndex(step) + 1;
   const totalSteps = WIZARD_STEPS.length;

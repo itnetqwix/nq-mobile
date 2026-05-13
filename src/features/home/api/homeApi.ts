@@ -21,6 +21,9 @@ function normalizeOnlineTrainerRows(raw: unknown): any[] {
       profile_picture: t.profile_picture,
       category: t.category,
       account_type: "Trainer",
+      extraInfo: t.extraInfo,
+      stripe_account_id: t.stripe_account_id,
+      commission: t.commission,
     });
   }
   return out;
