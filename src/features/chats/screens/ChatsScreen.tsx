@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { apiClient } from "../../../api/client";
@@ -77,6 +78,7 @@ type ChatPartner = {
 };
 
 export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const currentUserId = String((user as any)?._id ?? (user as any)?.id ?? "");
@@ -269,6 +271,9 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
 
   return (
     <View style={styles.root}>
+      <View style={[styles.listHeader, { paddingTop: insets.top + 4 }]}>
+        <Text style={styles.listTitle}>Chats</Text>
+      </View>
       <View style={styles.searchBar}>
         <Ionicons name="search-outline" size={18} color={colors.textMuted} />
         <TextInput
@@ -508,6 +513,18 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surfaceElevated },
+  listHeader: {
+    paddingHorizontal: space.md,
+    paddingBottom: 8,
+    backgroundColor: colors.surfaceElevated,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  listTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: colors.brandNavy,
+  },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",

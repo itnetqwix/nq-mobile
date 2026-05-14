@@ -40,6 +40,8 @@ export const API_ROUTES = {
     sentFriendRequests: "/user/sent-friend-requests",
     friends: "/user/friends",
     removeFriend: "/user/remove-friend",
+    blockUser: "/user/block-user",
+    reportUser: "/user/report-user",
     updateAccountPrivacy: "/user/update-account-privacy",
     getAllTrainee: "/user/get-all-trainee",
     getAllUsers: "/user/get-all-users",
@@ -159,5 +161,7 @@ export const API_ROUTES = {
     conversation: "/common/chat-conversation",
     mediaUploadUrl: "/common/chat-media-upload-url",
     createGroup: "/common/chat-create-group",
+    policy: (otherUserId: string) =>
+      `/common/chat-policy?otherUserId=${encodeURIComponent(otherUserId)}` as const,
   },
 } as const;

@@ -163,9 +163,12 @@ export async function registerDevicePushToken(): Promise<RegisterTokenPayload | 
 export async function unregisterDevicePushToken(): Promise<void> {
   const deviceId = getDeviceId();
   try {
+    const SecureStore = require("expo-secure-store");
+    const token = await SecureStore.getItemAsync("nq.auth-token").catch(() => null);
+    if (!token) return;
     await apiClient.delete(API_ROUTES.notifications.unregisterPushToken(deviceId));
   } catch (err: any) {
-    if (__DEV__ && err?.response?.status !== 404) {
+    if (__DEV__ && err?.response?.status !== 404 && err?.response?.status !== 401) {
       console.warn("[pushTokens] unregister failed", err?.message);
     }
   }

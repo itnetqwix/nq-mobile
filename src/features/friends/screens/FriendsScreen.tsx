@@ -1,9 +1,11 @@
 import React, { useCallback, useState } from "react";
 import {
+  ActionSheetIOS,
   ActivityIndicator,
   Alert,
   FlatList,
   Image,
+  Platform,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -57,17 +59,56 @@ function Avatar({ uri, name, size = 48 }: { uri?: string; name?: string; size?: 
   );
 }
 
+const REPORT_REASONS = [
+  "Harassment or bullying",
+  "Spam or scam",
+  "Inappropriate content",
+  "Fake account",
+  "Other",
+];
+
 function FriendCard({
   friend,
   onMessage,
   messageBusy,
+  onRemove,
+  onBlock,
+  onReport,
 }: {
   friend: any;
   onMessage: (userId: string, name: string, picture?: string) => void;
   messageBusy: boolean;
+  onRemove: (userId: string, name: string) => void;
+  onBlock: (userId: string, name: string) => void;
+  onReport: (userId: string, name: string) => void;
 }) {
   const user = friend?.receiverId ?? friend?.senderId ?? friend;
   const name = user?.fullname || user?.fullName || "Friend";
+  const userId = String(user?._id ?? "");
+
+  const showActions = () => {
+    const options = ["Remove Friend", "Block User", "Report User", "Cancel"];
+    const destructiveIndex = [0, 1];
+
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options, destructiveButtonIndex: 1, cancelButtonIndex: 3, title: name },
+        (idx) => {
+          if (idx === 0) onRemove(userId, name);
+          else if (idx === 1) onBlock(userId, name);
+          else if (idx === 2) onReport(userId, name);
+        }
+      );
+    } else {
+      Alert.alert(name, "Choose an action", [
+        { text: "Remove Friend", onPress: () => onRemove(userId, name), style: "destructive" },
+        { text: "Block User", onPress: () => onBlock(userId, name), style: "destructive" },
+        { text: "Report User", onPress: () => onReport(userId, name) },
+        { text: "Cancel", style: "cancel" },
+      ]);
+    }
+  };
+
   return (
     <View style={styles.row}>
       <Avatar uri={user?.profile_picture} name={name} />
@@ -77,18 +118,23 @@ function FriendCard({
       </View>
       <View style={styles.friendActions}>
         {user?.is_online && <View style={styles.onlineDot} />}
-        <Pressable
-          style={styles.msgBtn}
-          onPress={() => onMessage(String(user._id), name, user?.profile_picture)}
-          disabled={messageBusy}
-        >
-          {messageBusy ? (
-            <ActivityIndicator size={14} color={colors.brandTextOn} />
-          ) : (
-            <Ionicons name="chatbubble-outline" size={14} color={colors.brandTextOn} />
-          )}
-          <Text style={styles.msgBtnText}>Message</Text>
-        </Pressable>
+        <View style={styles.friendBtns}>
+          <Pressable
+            style={styles.msgBtn}
+            onPress={() => onMessage(userId, name, user?.profile_picture)}
+            disabled={messageBusy}
+          >
+            {messageBusy ? (
+              <ActivityIndicator size={14} color={colors.brandTextOn} />
+            ) : (
+              <Ionicons name="chatbubble-outline" size={14} color={colors.brandTextOn} />
+            )}
+            <Text style={styles.msgBtnText}>Message</Text>
+          </Pressable>
+          <Pressable onPress={showActions} hitSlop={8} style={styles.moreBtn}>
+            <Ionicons name="ellipsis-vertical" size={18} color={colors.textMuted} />
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -224,6 +270,75 @@ export function FriendsScreen() {
     }
   };
 
+  const handleRemoveFriend = useCallback(async (friendId: string, name: string) => {
+    Alert.alert("Remove Friend", `Remove ${name} from your friends?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove", style: "destructive",
+        onPress: async () => {
+          try {
+            await apiClient.post(API_ROUTES.user.removeFriend, { friendId });
+            queryClient.invalidateQueries({ queryKey: ["friends"] });
+            Alert.alert("Done", `${name} has been removed.`);
+          } catch (e: any) {
+            Alert.alert("Error", e?.response?.data?.error ?? "Could not remove friend.");
+          }
+        },
+      },
+    ]);
+  }, [queryClient]);
+
+  const handleBlockUser = useCallback(async (userId: string, name: string) => {
+    Alert.alert("Block User", `Block ${name}? They will be removed from your friends and won't be able to contact you.`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Block", style: "destructive",
+        onPress: async () => {
+          try {
+            await apiClient.post(API_ROUTES.user.blockUser, { userId });
+            queryClient.invalidateQueries({ queryKey: ["friends"] });
+            queryClient.invalidateQueries({ queryKey: ["conversations"] });
+            Alert.alert("Done", `${name} has been blocked.`);
+          } catch (e: any) {
+            Alert.alert("Error", e?.response?.data?.error ?? "Could not block user.");
+          }
+        },
+      },
+    ]);
+  }, [queryClient]);
+
+  const handleReportUser = useCallback((userId: string, name: string) => {
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: [...REPORT_REASONS, "Cancel"], cancelButtonIndex: REPORT_REASONS.length, title: `Report ${name}` },
+        async (idx) => {
+          if (idx >= REPORT_REASONS.length) return;
+          try {
+            await apiClient.post(API_ROUTES.user.reportUser, { userId, reason: REPORT_REASONS[idx] });
+            Alert.alert("Report Submitted", "Thank you. We will review your report.");
+          } catch (e: any) {
+            Alert.alert("Error", e?.response?.data?.error ?? "Could not submit report.");
+          }
+        }
+      );
+    } else {
+      Alert.alert(`Report ${name}`, "Select a reason", [
+        ...REPORT_REASONS.map((r) => ({
+          text: r,
+          onPress: async () => {
+            try {
+              await apiClient.post(API_ROUTES.user.reportUser, { userId, reason: r });
+              Alert.alert("Report Submitted", "Thank you. We will review your report.");
+            } catch (e: any) {
+              Alert.alert("Error", e?.response?.data?.error ?? "Could not submit report.");
+            }
+          },
+        })),
+        { text: "Cancel", style: "cancel" as const },
+      ]);
+    }
+  }, []);
+
   const handleMessage = useCallback(
     async (userId: string, name: string, picture?: string) => {
       setMessageBusy(true);
@@ -327,6 +442,9 @@ export function FriendsScreen() {
                 friend={item}
                 onMessage={handleMessage}
                 messageBusy={messageBusy}
+                onRemove={handleRemoveFriend}
+                onBlock={handleBlockUser}
+                onReport={handleReportUser}
               />
             ) : tab === "sent" ? (
               <SentRequestCard
@@ -414,6 +532,8 @@ const styles = StyleSheet.create({
 
   reqActions: { flexDirection: "column", gap: 6 },
   friendActions: { alignItems: "flex-end", gap: 6 },
+  friendBtns: { flexDirection: "row", alignItems: "center", gap: 8 },
+  moreBtn: { padding: 4 },
   msgBtn: {
     flexDirection: "row",
     alignItems: "center",
