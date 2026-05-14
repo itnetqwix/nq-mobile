@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   Pressable,
@@ -14,6 +15,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { Button, EmptyState, Skeleton } from "../../../components/ui";
 import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
+import { apiClient } from "../../../api/client";
+import { API_ROUTES } from "../../../config/apiRoutes";
 import {
   fetchFriends,
   fetchFriendRequests,
@@ -22,6 +25,7 @@ import {
 } from "../../home/api/homeApi";
 
 import { ShareClipsPanel } from "../components/ShareClipsPanel";
+import { ChatRoomScreen } from "../../chats/screens/ChatRoomScreen";
 
 const TABS = [
   { key: "friends", label: "Friends" },
@@ -51,7 +55,15 @@ function Avatar({ uri, name, size = 48 }: { uri?: string; name?: string; size?: 
   );
 }
 
-function FriendCard({ friend }: { friend: any }) {
+function FriendCard({
+  friend,
+  onMessage,
+  messageBusy,
+}: {
+  friend: any;
+  onMessage: (userId: string, name: string, picture?: string) => void;
+  messageBusy: boolean;
+}) {
   const user = friend?.receiverId ?? friend?.senderId ?? friend;
   const name = user?.fullname || user?.fullName || "Friend";
   return (
@@ -61,7 +73,21 @@ function FriendCard({ friend }: { friend: any }) {
         <Text style={styles.rowName}>{name}</Text>
         {!!user?.email && <Text style={styles.rowSub}>{user.email}</Text>}
       </View>
-      {user?.is_online && <View style={styles.onlineDot} />}
+      <View style={styles.friendActions}>
+        {user?.is_online && <View style={styles.onlineDot} />}
+        <Pressable
+          style={styles.msgBtn}
+          onPress={() => onMessage(String(user._id), name, user?.profile_picture)}
+          disabled={messageBusy}
+        >
+          {messageBusy ? (
+            <ActivityIndicator size={14} color={colors.brandTextOn} />
+          ) : (
+            <Ionicons name="chatbubble-outline" size={14} color={colors.brandTextOn} />
+          )}
+          <Text style={styles.msgBtnText}>Message</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -105,6 +131,11 @@ function RequestCard({
 
 export function FriendsScreen() {
   const [tab, setTab] = useState<Tab>("friends");
+  const [messageBusy, setMessageBusy] = useState(false);
+  const [activeChat, setActiveChat] = useState<{
+    conversationId: string;
+    partner: { _id: string; fullname?: string; profile_picture?: string };
+  } | null>(null);
   const queryClient = useQueryClient();
 
   const { data: friends = [], isLoading: loadingFriends, isRefetching: refreshingFriends, refetch: refetchFriends } = useQuery({
@@ -131,11 +162,51 @@ export function FriendsScreen() {
     queryClient.invalidateQueries({ queryKey: ["friendRequests"] });
   };
 
+  const handleMessage = useCallback(
+    async (userId: string, name: string, picture?: string) => {
+      setMessageBusy(true);
+      try {
+        const res = await apiClient.post(API_ROUTES.chat.conversation, {
+          otherUserId: userId,
+          participantId: userId,
+        });
+        const body = (res as any)?.data ?? res;
+        const conversation = body?.data ?? body?.result ?? body;
+        const convId = conversation?._id ?? conversation?.conversationId;
+        if (convId) {
+          queryClient.invalidateQueries({ queryKey: ["conversations"] });
+          setActiveChat({
+            conversationId: convId,
+            partner: { _id: userId, fullname: name, profile_picture: picture },
+          });
+        }
+      } catch (e: any) {
+        Alert.alert("Error", e?.response?.data?.message ?? "Could not open chat.");
+      } finally {
+        setMessageBusy(false);
+      }
+    },
+    [queryClient]
+  );
+
   const isLoading = tab === "friends" ? loadingFriends : tab === "requests" ? loadingReqs : false;
   const isRefetching =
     tab === "friends" ? refreshingFriends : tab === "requests" ? refreshingReqs : false;
   const refetch = tab === "friends" ? refetchFriends : tab === "requests" ? refetchReqs : () => {};
   const data = tab === "friends" ? friends : tab === "requests" ? requests : [];
+
+  if (activeChat) {
+    return (
+      <ChatRoomScreen
+        conversationId={activeChat.conversationId}
+        partner={activeChat.partner}
+        onGoBack={() => {
+          setActiveChat(null);
+          queryClient.invalidateQueries({ queryKey: ["conversations"] });
+        }}
+      />
+    );
+  }
 
   return (
     <View style={styles.root}>
@@ -172,7 +243,11 @@ export function FriendsScreen() {
           keyExtractor={(item, i) => item?._id ?? String(i)}
           renderItem={({ item }) =>
             tab === "friends" ? (
-              <FriendCard friend={item} />
+              <FriendCard
+                friend={item}
+                onMessage={handleMessage}
+                messageBusy={messageBusy}
+              />
             ) : (
               <RequestCard
                 request={item}
@@ -242,6 +317,17 @@ const styles = StyleSheet.create({
   onlineDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.success },
 
   reqActions: { flexDirection: "column", gap: 6 },
+  friendActions: { alignItems: "flex-end", gap: 6 },
+  msgBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.brandNavy,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radii.pill,
+  },
+  msgBtnText: { fontSize: 12, fontWeight: "700", color: colors.brandTextOn },
 
   avatarFallback: { backgroundColor: colors.brandNavy, alignItems: "center", justifyContent: "center" },
   avatarInitial: { color: colors.brandTextOn, fontWeight: "700" },

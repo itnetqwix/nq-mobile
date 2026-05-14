@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import {
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -68,8 +69,16 @@ export function FormField({
             onBlur?.(e);
           }}
           style={[
-            typography.bodyMd,
-            { color: colors.text, flex: 1, paddingVertical: space.sm },
+            {
+              fontSize: typography.bodyMd.fontSize,
+              fontWeight: typography.bodyMd.fontWeight,
+              fontFamily: typography.bodyMd.fontFamily,
+              letterSpacing: typography.bodyMd.letterSpacing,
+              color: colors.text,
+              flex: 1,
+              paddingVertical: space.sm,
+            },
+            Platform.OS === "android" && !rest.multiline && { textAlignVertical: "center" },
             inputStyle,
           ]}
         />

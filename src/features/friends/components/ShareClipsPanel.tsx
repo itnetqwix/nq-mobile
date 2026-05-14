@@ -522,8 +522,12 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    ...typography.bodyMd,
+    fontSize: typography.bodyMd.fontSize,
+    fontWeight: typography.bodyMd.fontWeight,
+    fontFamily: typography.bodyMd.fontFamily,
+    letterSpacing: typography.bodyMd.letterSpacing,
     backgroundColor: colors.surfaceElevated,
+    textAlignVertical: "center",
   },
 
   pickList: {

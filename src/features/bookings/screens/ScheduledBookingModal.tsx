@@ -101,6 +101,19 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
     const raw = slotsQuery.data ?? [];
     const map = new Map<string, Slot[]>();
     for (const entry of raw) {
+      const st = entry?.start_time ? new Date(entry.start_time) : null;
+      const et = entry?.end_time ? new Date(entry.end_time) : null;
+
+      if (st && et && !isNaN(st.getTime()) && !isNaN(et.getTime())) {
+        const dateKey = st.toISOString().split("T")[0];
+        const start = `${st.getHours()}:${String(st.getMinutes()).padStart(2, "0")}`;
+        const end = `${et.getHours()}:${String(et.getMinutes()).padStart(2, "0")}`;
+        const dayName = st.toLocaleDateString("en-US", { weekday: "long" });
+        if (!map.has(dateKey)) map.set(dateKey, []);
+        map.get(dateKey)!.push({ start, end, day: dayName, date: dateKey });
+        continue;
+      }
+
       const slots: any[] = entry?.slots ?? [entry];
       for (const s of slots) {
         const day = s?.day ?? entry?.day ?? "";
@@ -113,11 +126,15 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
         map.get(key)!.push({ start, end, day, date });
       }
     }
-    return Array.from(map.entries()).map(([key, slots]) => ({
-      key,
-      label: key,
-      slots,
-    }));
+
+    const sorted = Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+    return sorted.map(([key, slots]) => {
+      const d = new Date(key + "T00:00:00");
+      const label = !isNaN(d.getTime())
+        ? d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+        : key;
+      return { key, label, slots };
+    });
   }, [slotsQuery.data]);
 
   const computePrice = useCallback(
@@ -178,7 +195,7 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
       } catch (e: any) {
         Alert.alert(
           "Payment error",
-          e?.response?.data?.message ?? e?.message ?? "Payment failed."
+          e?.response?.data?.message ?? e?.response?.data?.error ?? e?.message ?? "Payment failed."
         );
         setPaymentLoading(false);
         return;
@@ -217,7 +234,7 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
     } catch (e: any) {
       Alert.alert(
         "Booking failed",
-        e?.response?.data?.message ?? e?.message ?? "Could not book the session."
+        e?.response?.data?.message ?? e?.response?.data?.error ?? e?.message ?? "Could not book the session."
       );
     } finally {
       setBookingLoading(false);

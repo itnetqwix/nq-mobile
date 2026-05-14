@@ -261,8 +261,40 @@ export function NotificationProvider({
     };
 
     socket.on(SOCKET_EVENT_RECEIVE, onReceive);
+
+    const onBookingCreated = () => {
+      queryClient.invalidateQueries({ queryKey: ["scheduledMeetings"] });
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["trainerAvailability"] });
+    };
+    const onBookingStatusUpdated = (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["scheduledMeetings"] });
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["trainerAvailability"] });
+
+      const status = data?.status ?? data?.booking?.status;
+      if (status === "confirmed") {
+        pushToQueue({
+          title: "Session Confirmed",
+          description: "Your booking has been confirmed by the trainer.",
+          isRead: false,
+        } as IncomingNotification);
+      } else if (status === "canceled") {
+        pushToQueue({
+          title: "Session Cancelled",
+          description: "A booking has been cancelled.",
+          isRead: false,
+        } as IncomingNotification);
+      }
+    };
+
+    socket.on("BOOKING_CREATED", onBookingCreated);
+    socket.on("BOOKING_STATUS_UPDATED", onBookingStatusUpdated);
+
     return () => {
       socket.off(SOCKET_EVENT_RECEIVE, onReceive);
+      socket.off("BOOKING_CREATED", onBookingCreated);
+      socket.off("BOOKING_STATUS_UPDATED", onBookingStatusUpdated);
     };
   }, [socket, queryClient]);
 

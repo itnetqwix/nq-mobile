@@ -96,7 +96,7 @@ export function WizardStepPayment({
       setPaymentReady(true);
     } catch (e: any) {
       const msg =
-        e?.response?.data?.message ?? e?.message ?? "Could not set up payment.";
+        e?.response?.data?.message ?? e?.response?.data?.error ?? e?.message ?? "Could not set up payment.";
       Alert.alert("Payment error", msg);
     } finally {
       setLoading(false);

@@ -1,7 +1,9 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Image,
+  Modal,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -9,7 +11,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { apiClient } from "../../../api/client";
 import { EmptyState, Skeleton } from "../../../components/ui";
@@ -17,6 +19,7 @@ import { API_ROUTES } from "../../../config/apiRoutes";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { colors, radii, space, typography } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
+import { fetchFriends } from "../../home/api/homeApi";
 import type { MainTabScreenProps } from "../../../navigation/types";
 import { ChatRoomScreen } from "./ChatRoomScreen";
 
@@ -74,17 +77,28 @@ type ChatPartner = {
 
 export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const currentUserId = String((user as any)?._id ?? (user as any)?.id ?? "");
   const [search, setSearch] = useState("");
   const [activeChat, setActiveChat] = useState<{
     conversationId: string;
     partner: ChatPartner;
   } | null>(null);
+  const [showNewChat, setShowNewChat] = useState(false);
+  const [friendSearch, setFriendSearch] = useState("");
+  const [creatingChat, setCreatingChat] = useState(false);
 
   const { data: conversations = [], isLoading, isRefetching, refetch } = useQuery({
     queryKey: ["conversations"],
     queryFn: fetchConversations,
     staleTime: 30_000,
+  });
+
+  const { data: friends = [], isLoading: loadingFriends } = useQuery({
+    queryKey: ["friends"],
+    queryFn: fetchFriends,
+    staleTime: 120_000,
+    enabled: showNewChat,
   });
 
   const getPartner = useCallback(
@@ -120,6 +134,52 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
       return (p.fullname ?? "").toLowerCase().includes(q);
     });
   }, [conversations, search, getPartner]);
+
+  const friendsList = useMemo(() => {
+    const items: ChatPartner[] = [];
+    for (const f of friends) {
+      const receiver = f?.receiverId;
+      const sender = f?.senderId;
+      const other = receiver && String(receiver._id ?? receiver) !== currentUserId
+        ? receiver
+        : sender && String(sender._id ?? sender) !== currentUserId
+        ? sender
+        : null;
+      if (other && other._id) {
+        items.push({
+          _id: String(other._id),
+          fullname: other.fullname ?? other.fullName ?? "Friend",
+          profile_picture: other.profile_picture,
+        });
+      }
+    }
+    if (!friendSearch.trim()) return items;
+    const q = friendSearch.toLowerCase();
+    return items.filter((f) => (f.fullname ?? "").toLowerCase().includes(q));
+  }, [friends, currentUserId, friendSearch]);
+
+  const openChatWithFriend = useCallback(async (friend: ChatPartner) => {
+    setCreatingChat(true);
+    try {
+      const res = await apiClient.post(API_ROUTES.chat.conversation, {
+        otherUserId: friend._id,
+        participantId: friend._id,
+      });
+      const body = (res as any)?.data ?? res;
+      const conversation = body?.data ?? body?.result ?? body;
+      const convId = conversation?._id ?? conversation?.conversationId;
+      if (convId) {
+        setShowNewChat(false);
+        setFriendSearch("");
+        queryClient.invalidateQueries({ queryKey: ["conversations"] });
+        setActiveChat({ conversationId: convId, partner: friend });
+      }
+    } catch {
+      // silently handle — the conversation list will refresh
+    } finally {
+      setCreatingChat(false);
+    }
+  }, [queryClient]);
 
   if (activeChat) {
     return (
@@ -220,12 +280,102 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
               description={
                 search
                   ? "Try a different search term."
-                  : "Start chatting with your friends from the Community page."
+                  : "Tap the + button to start chatting with your friends."
               }
             />
           }
         />
       )}
+
+      {/* New Chat FAB */}
+      <Pressable
+        style={({ pressed }) => [styles.fab, pressed && { transform: [{ scale: 0.92 }] }]}
+        onPress={() => setShowNewChat(true)}
+      >
+        <Ionicons name="create-outline" size={24} color={colors.brandTextOn} />
+      </Pressable>
+
+      {/* New Chat Modal — Friend Picker */}
+      <Modal
+        visible={showNewChat}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => { setShowNewChat(false); setFriendSearch(""); }}
+      >
+        <View style={styles.modalRoot}>
+          <View style={styles.modalHeader}>
+            <Pressable onPress={() => { setShowNewChat(false); setFriendSearch(""); }} hitSlop={12}>
+              <Ionicons name="close" size={24} color={colors.text} />
+            </Pressable>
+            <Text style={styles.modalTitle}>New Chat</Text>
+            <View style={{ width: 24 }} />
+          </View>
+
+          <View style={styles.modalSearch}>
+            <Ionicons name="search-outline" size={18} color={colors.textMuted} />
+            <TextInput
+              style={styles.modalSearchInput}
+              placeholder="Search friends..."
+              placeholderTextColor={colors.textMuted}
+              value={friendSearch}
+              onChangeText={setFriendSearch}
+              autoFocus
+            />
+            {!!friendSearch && (
+              <Pressable onPress={() => setFriendSearch("")}>
+                <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+              </Pressable>
+            )}
+          </View>
+
+          {loadingFriends ? (
+            <View style={{ padding: space.md }}>
+              {[0, 1, 2].map((i) => (
+                <View key={i} style={{ marginBottom: space.md, flexDirection: "row", gap: space.sm, alignItems: "center" }}>
+                  <Skeleton width={44} height={44} radius={22} />
+                  <View style={{ flex: 1, gap: 6 }}>
+                    <Skeleton width="50%" height={14} />
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <FlatList
+              data={friendsList}
+              keyExtractor={(item) => item._id}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={({ pressed }) => [styles.friendRow, pressed && { opacity: 0.8 }]}
+                  onPress={() => openChatWithFriend(item)}
+                  disabled={creatingChat}
+                >
+                  <Avatar uri={item.profile_picture} name={item.fullname} size={44} />
+                  <Text style={styles.friendName} numberOfLines={1}>
+                    {item.fullname}
+                  </Text>
+                  {creatingChat ? (
+                    <ActivityIndicator size="small" color={colors.brandNavy} />
+                  ) : (
+                    <Ionicons name="chatbubble-outline" size={20} color={colors.brandNavy} />
+                  )}
+                </Pressable>
+              )}
+              contentContainerStyle={{ padding: space.md, gap: space.xs }}
+              ListEmptyComponent={
+                <EmptyState
+                  icon="people-outline"
+                  title="No friends found"
+                  description={
+                    friendSearch
+                      ? "No friends match your search."
+                      : "Add friends from the Community page to start chatting."
+                  }
+                />
+              }
+            />
+          )}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -242,7 +392,15 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     gap: space.sm,
   },
-  searchInput: { flex: 1, ...typography.bodyMd, color: colors.text },
+  searchInput: {
+    flex: 1,
+    fontSize: typography.bodyMd.fontSize,
+    fontWeight: typography.bodyMd.fontWeight,
+    fontFamily: typography.bodyMd.fontFamily,
+    letterSpacing: typography.bodyMd.letterSpacing,
+    color: colors.text,
+    textAlignVertical: "center",
+  },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -275,4 +433,65 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   avatarInitial: { color: colors.brandTextOn, fontWeight: "700" },
+
+  fab: {
+    position: "absolute",
+    right: space.md,
+    bottom: space.lg,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.brandNavy,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+  },
+
+  modalRoot: { flex: 1, backgroundColor: colors.surface },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: space.md,
+    paddingVertical: 14,
+    backgroundColor: colors.surfaceElevated,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  modalTitle: { ...typography.titleSm, color: colors.text },
+  modalSearch: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surfaceMuted,
+    margin: space.md,
+    borderRadius: radii.md,
+    paddingHorizontal: space.sm,
+    paddingVertical: 9,
+    gap: space.sm,
+  },
+  modalSearchInput: {
+    flex: 1,
+    fontSize: typography.bodyMd.fontSize,
+    fontWeight: typography.bodyMd.fontWeight,
+    fontFamily: typography.bodyMd.fontFamily,
+    letterSpacing: typography.bodyMd.letterSpacing,
+    color: colors.text,
+    textAlignVertical: "center",
+  },
+  friendRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    paddingVertical: 10,
+    paddingHorizontal: space.sm,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  friendName: { ...typography.subtitle, color: colors.text, flex: 1 },
 });

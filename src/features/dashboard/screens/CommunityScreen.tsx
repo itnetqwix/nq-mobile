@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Pressable,
@@ -31,6 +32,7 @@ import {
   NOTIFICATION_TYPES,
   useNotifications,
 } from "../../notifications/NotificationContext";
+import { ChatRoomScreen } from "../../chats/screens/ChatRoomScreen";
 
 async function fetchCommunityUsers(search?: string): Promise<any[]> {
   const res = await apiClient.get(API_ROUTES.user.getAllUsers, {
@@ -70,12 +72,16 @@ function MemberCard({
   user,
   status,
   onAction,
+  onMessage,
   actionBusy,
+  messageBusy,
 }: {
   user: any;
   status: FriendStatus;
   onAction: (userId: string, action: string) => void;
+  onMessage: (userId: string, name: string, picture?: string) => void;
   actionBusy: boolean;
+  messageBusy: boolean;
 }) {
   const name = user?.fullname || user?.fullName || "Member";
   const role = user?.account_type || user?.accountType || "";
@@ -116,14 +122,28 @@ function MemberCard({
           </Pressable>
         )}
         {status === "friends" && (
-          <Pressable
-            style={styles.friendsBadge}
-            onPress={() => onAction(String(user._id), "remove")}
-            disabled={actionBusy}
-          >
-            <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-            <Text style={styles.friendsBadgeText}>Friends</Text>
-          </Pressable>
+          <>
+            <Pressable
+              style={styles.friendsBadge}
+              onPress={() => onAction(String(user._id), "remove")}
+              disabled={actionBusy}
+            >
+              <Ionicons name="checkmark-circle" size={14} color={colors.success} />
+              <Text style={styles.friendsBadgeText}>Friends</Text>
+            </Pressable>
+            <Pressable
+              style={styles.chatBtn}
+              onPress={() => onMessage(String(user._id), name, user?.profile_picture)}
+              disabled={messageBusy}
+            >
+              {messageBusy ? (
+                <ActivityIndicator size={12} color={colors.brandTextOn} />
+              ) : (
+                <Ionicons name="chatbubble-outline" size={12} color={colors.brandTextOn} />
+              )}
+              <Text style={styles.chatBtnText}>Chat</Text>
+            </Pressable>
+          </>
         )}
       </View>
     </View>
@@ -138,6 +158,11 @@ export function CommunityScreen() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
+  const [messageBusy, setMessageBusy] = useState(false);
+  const [activeChat, setActiveChat] = useState<{
+    conversationId: string;
+    partner: { _id: string; fullname?: string; profile_picture?: string };
+  } | null>(null);
   const currentUserId = String((user as any)?._id ?? (user as any)?.id ?? "");
 
   const listPad = useMemo(
@@ -264,6 +289,46 @@ export function CommunityScreen() {
     [emitNotification, queryClient]
   );
 
+  const handleMessage = useCallback(
+    async (userId: string, name: string, picture?: string) => {
+      setMessageBusy(true);
+      try {
+        const res = await apiClient.post(API_ROUTES.chat.conversation, {
+          otherUserId: userId,
+          participantId: userId,
+        });
+        const body = (res as any)?.data ?? res;
+        const conversation = body?.data ?? body?.result ?? body;
+        const convId = conversation?._id ?? conversation?.conversationId;
+        if (convId) {
+          queryClient.invalidateQueries({ queryKey: ["conversations"] });
+          setActiveChat({
+            conversationId: convId,
+            partner: { _id: userId, fullname: name, profile_picture: picture },
+          });
+        }
+      } catch (e: any) {
+        Alert.alert("Error", e?.response?.data?.message ?? "Could not open chat.");
+      } finally {
+        setMessageBusy(false);
+      }
+    },
+    [queryClient]
+  );
+
+  if (activeChat) {
+    return (
+      <ChatRoomScreen
+        conversationId={activeChat.conversationId}
+        partner={activeChat.partner}
+        onGoBack={() => {
+          setActiveChat(null);
+          queryClient.invalidateQueries({ queryKey: ["conversations"] });
+        }}
+      />
+    );
+  }
+
   if (isLoading) {
     return (
       <View style={listPad}>
@@ -310,7 +375,9 @@ export function CommunityScreen() {
             user={item}
             status={getStatus(String(item._id))}
             onAction={handleAction}
+            onMessage={handleMessage}
             actionBusy={actionBusy}
+            messageBusy={messageBusy}
           />
         )}
         contentContainerStyle={listPad}
@@ -356,9 +423,13 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    ...typography.bodyMd,
+    fontSize: typography.bodyMd.fontSize,
+    fontWeight: typography.bodyMd.fontWeight,
+    fontFamily: typography.bodyMd.fontFamily,
+    letterSpacing: typography.bodyMd.letterSpacing,
     color: colors.text,
     paddingVertical: 0,
+    textAlignVertical: "center",
   },
   headerCard: {
     backgroundColor: colors.brandSubtle,
@@ -418,6 +489,16 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
   },
   friendsBadgeText: { fontSize: 12, fontWeight: "700", color: colors.success },
+  chatBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.brandNavy,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radii.pill,
+  },
+  chatBtnText: { fontSize: 11, fontWeight: "700", color: colors.brandTextOn },
   avatarFallback: { backgroundColor: colors.brandNavy, alignItems: "center", justifyContent: "center" },
   avatarInitial: { color: colors.brandTextOn, fontWeight: "700" },
 });

@@ -292,6 +292,7 @@ export function TrainerScheduleScreen() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["trainerSchedule"] });
+      queryClient.invalidateQueries({ queryKey: ["trainerAvailability"] });
       Alert.alert("Schedule saved", "Your availability is live.");
     },
     onError: (err: any) => {

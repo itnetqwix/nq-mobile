@@ -7,6 +7,7 @@ import { InstantLessonTraineeModal } from "../features/instant-lesson/InstantLes
 import { InstantLessonTrainerModal } from "../features/instant-lesson/InstantLessonTrainerModal";
 import { MeetingRouter } from "../features/calling/screens/MeetingRouter";
 import { NotificationToast } from "../features/notifications/NotificationToast";
+import { OnboardingWalkthrough } from "../features/onboarding/OnboardingWalkthrough";
 import { AuthNavigator } from "./AuthNavigator";
 import { DashboardDrawerShell } from "./DashboardDrawerShell";
 import type { RootStackParamList } from "./types";
@@ -34,6 +35,7 @@ export function RootNavigator() {
               into the inbox; lives inside NavigationContainer scope by virtue of being
               rendered from RootNavigator. */}
           <NotificationToast />
+          <OnboardingWalkthrough />
         </>
       )}
 

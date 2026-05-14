@@ -298,13 +298,17 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    ...typography.bodyMd,
+    fontSize: typography.bodyMd.fontSize,
+    fontWeight: typography.bodyMd.fontWeight,
+    fontFamily: typography.bodyMd.fontFamily,
+    letterSpacing: typography.bodyMd.letterSpacing,
     color: colors.text,
     backgroundColor: colors.surfaceMuted,
     borderRadius: radii.lg,
     paddingHorizontal: 14,
     paddingVertical: 10,
     maxHeight: 100,
+    textAlignVertical: "center",
   },
   sendBtn: {
     width: 42,

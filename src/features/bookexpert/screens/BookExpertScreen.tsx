@@ -319,9 +319,13 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    ...typography.bodyMd,
+    fontSize: typography.bodyMd.fontSize,
+    fontWeight: typography.bodyMd.fontWeight,
+    fontFamily: typography.bodyMd.fontFamily,
+    letterSpacing: typography.bodyMd.letterSpacing,
     color: colors.text,
     paddingVertical: 0,
+    textAlignVertical: "center",
   },
 
   list: { padding: space.md, gap: space.sm, paddingBottom: space.xl },
