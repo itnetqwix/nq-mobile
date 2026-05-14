@@ -23,6 +23,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { AccountType } from "../../../constants/accountType";
 import { postRating } from "../postSessionApi";
+import LessonSummaryCard from "../../ai/LessonSummaryCard";
 
 type Props = {
   visible: boolean;
@@ -41,6 +42,7 @@ export function RatingsModal({
   accountType,
   isFromCall = true,
 }: Props) {
+  const [submitted, setSubmitted] = useState(false);
   const [session, setSession] = useState(0);
   const [audio, setAudio] = useState(0);
   const [recommend, setRecommend] = useState(0);
@@ -83,7 +85,7 @@ export function RatingsModal({
         accountType: accountType ?? undefined,
       });
       reset();
-      onClose();
+      setSubmitted(true);
     } catch (err: any) {
       Alert.alert(
         "Could not submit",
@@ -103,58 +105,75 @@ export function RatingsModal({
     >
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <Text style={styles.title}>How was your session?</Text>
-          <Text style={styles.subtitle}>
-            Your feedback helps us improve every lesson.
-          </Text>
-
-          <StarsRow value={session} onChange={setSession} label="Overall" />
-          <StarsRow value={audio} onChange={setAudio} label="Audio / Video" />
-          {!isTrainer && (
-            <StarsRow
-              value={recommend}
-              onChange={setRecommend}
-              label="Would you recommend?"
-            />
-          )}
-
-          {!isFromCall && (
+          {!submitted ? (
             <>
-              <TextInput
-                placeholder="Title"
-                placeholderTextColor="#888"
-                value={title}
-                onChangeText={setTitle}
-                style={styles.input}
-              />
-              <TextInput
-                placeholder="Tell us more (optional)"
-                placeholderTextColor="#888"
-                value={remarks}
-                onChangeText={setRemarks}
-                style={[styles.input, styles.textarea]}
-                multiline
-                numberOfLines={4}
-              />
+              <Text style={styles.title}>How was your session?</Text>
+              <Text style={styles.subtitle}>
+                Your feedback helps us improve every lesson.
+              </Text>
+
+              <StarsRow value={session} onChange={setSession} label="Overall" />
+              <StarsRow value={audio} onChange={setAudio} label="Audio / Video" />
+              {!isTrainer && (
+                <StarsRow
+                  value={recommend}
+                  onChange={setRecommend}
+                  label="Would you recommend?"
+                />
+              )}
+
+              {!isFromCall && (
+                <>
+                  <TextInput
+                    placeholder="Title"
+                    placeholderTextColor="#888"
+                    value={title}
+                    onChangeText={setTitle}
+                    style={styles.input}
+                  />
+                  <TextInput
+                    placeholder="Tell us more (optional)"
+                    placeholderTextColor="#888"
+                    value={remarks}
+                    onChangeText={setRemarks}
+                    style={[styles.input, styles.textarea]}
+                    multiline
+                    numberOfLines={4}
+                  />
+                </>
+              )}
+
+              <View style={styles.row}>
+                <Pressable onPress={onClose} style={[styles.btn, styles.btnGhost]}>
+                  <Text style={styles.btnGhostText}>Skip</Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleSubmit}
+                  style={[styles.btn, styles.btnPrimary]}
+                  disabled={submitting}
+                >
+                  {submitting ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.btnPrimaryText}>Submit</Text>
+                  )}
+                </Pressable>
+              </View>
+            </>
+          ) : (
+            <>
+              <Text style={styles.title}>Thank you for your feedback!</Text>
+              <LessonSummaryCard sessionId={bookingId} />
+              <View style={[styles.row, { marginTop: 12 }]}>
+                <Pressable
+                  onPress={() => { setSubmitted(false); onClose(); }}
+                  style={[styles.btn, styles.btnPrimary]}
+                >
+                  <Text style={styles.btnPrimaryText}>Done</Text>
+                </Pressable>
+              </View>
             </>
           )}
-
-          <View style={styles.row}>
-            <Pressable onPress={onClose} style={[styles.btn, styles.btnGhost]}>
-              <Text style={styles.btnGhostText}>Skip</Text>
-            </Pressable>
-            <Pressable
-              onPress={handleSubmit}
-              style={[styles.btn, styles.btnPrimary]}
-              disabled={submitting}
-            >
-              {submitting ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.btnPrimaryText}>Submit</Text>
-              )}
-            </Pressable>
-          </View>
         </View>
       </View>
     </Modal>

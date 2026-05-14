@@ -1,8 +1,9 @@
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as ImagePicker from "expo-image-picker";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import {
   Avatar,
   Button,
@@ -18,6 +19,7 @@ import type { MenuStackParamList } from "../../../navigation/types";
 import { colors, space, typography } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
 import { apiClient } from "../../../api/client";
+import { API_ROUTES } from "../../../config/apiRoutes";
 import {
   postUpdateMobileNumber,
   putProfile,
@@ -29,6 +31,7 @@ export function EditProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MenuStackParamList>>();
   const isTrainer = accountType === AccountType.TRAINER;
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [enhancing, setEnhancing] = useState(false);
   const [localAvatar, setLocalAvatar] = useState<string | null>(null);
 
   const currentAvatar = localAvatar ?? getS3ImageUrl((user?.profile_picture as string) ?? "");
@@ -216,6 +219,40 @@ export function EditProfileScreen() {
                 multiline
                 inputStyle={{ minHeight: 110, textAlignVertical: "top" }}
               />
+              <Pressable
+                onPress={async () => {
+                  try {
+                    setEnhancing(true);
+                    const res = await apiClient.get(API_ROUTES.ai.enhanceProfile);
+                    const r = res.data?.result;
+                    if (r?.enhancedBio) {
+                      Alert.alert(
+                        "AI-Enhanced Bio",
+                        r.enhancedBio,
+                        [
+                          { text: "Cancel", style: "cancel" },
+                          { text: "Apply", onPress: () => setBio(r.enhancedBio) },
+                        ]
+                      );
+                    }
+                  } catch {
+                    Alert.alert("Error", "Could not enhance profile right now.");
+                  } finally {
+                    setEnhancing(false);
+                  }
+                }}
+                style={[styles.enhanceBtn, enhancing && { opacity: 0.6 }]}
+                disabled={enhancing}
+              >
+                {enhancing ? (
+                  <ActivityIndicator size="small" color={colors.brandAccent} />
+                ) : (
+                  <Ionicons name="sparkles" size={16} color={colors.brandAccent} />
+                )}
+                <Text style={styles.enhanceBtnText}>
+                  {enhancing ? "Enhancing..." : "Enhance with AI"}
+                </Text>
+              </Pressable>
             </View>
           </Card>
         </>
@@ -262,4 +299,20 @@ const styles = StyleSheet.create({
   },
   sectionCard: { marginBottom: space.sm },
   fieldStack: { gap: space.md },
+  enhanceBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: colors.brandAccentSubtle,
+    borderRadius: 20,
+    gap: 6,
+    marginTop: 4,
+  },
+  enhanceBtnText: {
+    ...typography.label,
+    color: colors.brandAccent,
+    fontSize: 13,
+  },
 });

@@ -1,7 +1,8 @@
-import React, { useCallback, useLayoutEffect, useMemo } from "react";
+import React, { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -37,6 +38,11 @@ import {
   TrainerBoxCard,
   webHomeStyles,
 } from "../components/webHome";
+import AIFloatingButton from "../../ai/AIFloatingButton";
+import AIAssistantScreen from "../../ai/AIAssistantScreen";
+import ReviewAnalysisCard from "../../ai/ReviewAnalysisCard";
+import { apiClient } from "../../../api/client";
+import { API_ROUTES } from "../../../config/apiRoutes";
 
 function Avatar({ uri, name, size = 56 }: { uri?: string; name?: string; size?: number }) {
   const [failed, setFailed] = React.useState(false);
@@ -209,7 +215,71 @@ function QuickActionButton({
   );
 }
 
+function AIRecommendedSection({ onBook }: { onBook: (t: any) => void }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["aiRecommendations"],
+    queryFn: async () => {
+      const res = await apiClient.get(API_ROUTES.ai.recommendTrainers);
+      return res.data?.result?.recommendations || [];
+    },
+    staleTime: 300_000,
+    retry: 1,
+  });
+
+  if (isLoading) {
+    return (
+      <HomeMainCont title="Recommended For You ✨" testID="card ai-recommended">
+        <View style={{ flexDirection: "row", gap: space.sm }}>
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} width={160} height={180} radius={radii.md} />
+          ))}
+        </View>
+      </HomeMainCont>
+    );
+  }
+
+  if (!data?.length) return null;
+
+  return (
+    <HomeMainCont title="Recommended For You ✨" testID="card ai-recommended">
+      <FlatList
+        horizontal
+        nestedScrollEnabled
+        data={data.slice(0, 6)}
+        keyExtractor={(item: any, i: number) => item?.trainerId ?? String(i)}
+        renderItem={({ item }: { item: any }) => (
+          <TrainerBoxCard style={{ width: 150, flexShrink: 0 }}>
+            <Avatar uri={item.trainer?.profile_picture} name={item.trainer?.fullname} size={60} />
+            <Text style={styles.coachName} numberOfLines={1}>{item.trainer?.fullname || "Coach"}</Text>
+            <Text style={[styles.coachCat, { fontSize: 11 }]} numberOfLines={1}>
+              {item.trainer?.category || ""}
+            </Text>
+            <Text style={{ fontSize: 10, color: colors.textMuted, textAlign: "center", marginTop: 2 }} numberOfLines={2}>
+              {item.reason || ""}
+            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4, gap: 2 }}>
+              <Ionicons name="star" size={12} color="#f59e0b" />
+              <Text style={{ fontSize: 11, color: colors.text, fontWeight: "600" }}>
+                {item.trainer?.avgRating || "New"}
+              </Text>
+            </View>
+            <Pressable
+              style={({ pressed }) => [styles.bookBtn, pressed && styles.bookBtnPressed]}
+              onPress={() => onBook(item.trainer)}
+            >
+              <Text style={styles.bookBtnText}>Book Now</Text>
+            </Pressable>
+          </TrainerBoxCard>
+        )}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: space.sm, paddingVertical: 4 }}
+      />
+    </HomeMainCont>
+  );
+}
+
 export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) {
+  const [aiOpen, setAiOpen] = useState(false);
   const { user, accountType } = useAuth();
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
@@ -319,6 +389,7 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
   }, [onlineUsers]);
 
   return (
+    <>
     <ScrollView
       style={styles.root}
       contentContainerStyle={[styles.content, { paddingBottom: space.xl * 2 + insets.bottom }]}
@@ -469,6 +540,13 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
           </HomeMainCont>
         )}
 
+        {/* AI Recommended Trainers */}
+        {isTrainee && <AIRecommendedSection onBook={(t: any) =>
+          t?._id != null
+            ? openFeature("book-lesson", { bookLessonTrainerId: String(t._id) })
+            : openFeature("book-lesson")
+        } />}
+
         {/* Active Sessions */}
         {(loadingSessions || nowSessions.length > 0) && (
           <HomeMainCont title="Active Sessions" testID="card trainer-profile-card Home-main-Cont active-sessions">
@@ -541,6 +619,13 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
           </HomeMainCont>
         )}
 
+        {/* AI Review Analysis — trainer only */}
+        {isTrainer && (
+          <View style={[{ paddingHorizontal: space.md }]}>
+            <ReviewAnalysisCard />
+          </View>
+        )}
+
         {/* Web: `UploadClipCard` + `InviteFriendsCard` row */}
         <HomeMainCont title="Locker" testID="card trainer-profile-card Home-main-Cont locker-promos">
           <HomeUploadInviteRow
@@ -550,6 +635,13 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
         </HomeMainCont>
       </View>
     </ScrollView>
+
+      <AIFloatingButton onPress={() => setAiOpen(true)} />
+
+      <Modal visible={aiOpen} animationType="slide" onRequestClose={() => setAiOpen(false)}>
+        <AIAssistantScreen onClose={() => setAiOpen(false)} />
+      </Modal>
+    </>
   );
 }
 

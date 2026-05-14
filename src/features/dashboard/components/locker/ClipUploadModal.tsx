@@ -27,6 +27,8 @@ import {
 } from "../../../home/api/homeApi";
 import { getApiErrorMessage } from "../../../../lib/http/getApiErrorMessage";
 import { putFileToPresignedUrl } from "../../../../lib/presignedPut";
+import { apiClient } from "../../../../api/client";
+import { API_ROUTES } from "../../../../config/apiRoutes";
 import { colors, radii, space } from "../../../../theme";
 
 const SHARE_MY_CLIPS = "My Clips";
@@ -193,7 +195,14 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
         setThumbProgress(percent);
       });
       setUploadPhase("finalize");
-      Alert.alert("Uploaded", "Your clip is in your locker. It may take a moment to appear in the list.");
+
+      // AI auto-tag the clip in the background
+      if (row.clipId || data.results?.[0]?._id) {
+        const clipId = row.clipId || data.results[0]._id;
+        apiClient.post(API_ROUTES.ai.tagClip(String(clipId))).catch(() => {});
+      }
+
+      Alert.alert("Uploaded", "Your clip has been uploaded and AI is auto-tagging it for better searchability.");
       onUploaded();
       onClose();
     } catch (e) {

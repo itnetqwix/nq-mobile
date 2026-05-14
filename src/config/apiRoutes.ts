@@ -168,4 +168,15 @@ export const API_ROUTES = {
     policy: (otherUserId: string) =>
       `/common/chat-policy?otherUserId=${encodeURIComponent(otherUserId)}` as const,
   },
+  ai: {
+    recommendTrainers: "/ai/recommend-trainers",
+    chatAssistant: "/ai/chat-assistant",
+    lessonSummary: (sessionId: string) => `/ai/lesson-summary/${sessionId}` as const,
+    tagClip: (clipId: string) => `/ai/tag-clip/${clipId}` as const,
+    enhanceProfile: "/ai/enhance-profile",
+    applyEnhancedProfile: "/ai/apply-enhanced-profile",
+    smartSchedule: (trainerId: string) => `/ai/smart-schedule/${trainerId}` as const,
+    reviewAnalysis: "/ai/review-analysis",
+    smartSearch: "/ai/smart-search",
+  },
 } as const;
