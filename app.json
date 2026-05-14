@@ -32,7 +32,8 @@
           "audio",
           "voip",
           "remote-notification"
-        ]
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       },
       "bitcode": false,
       "bundleIdentifier": "com.netqwix.nqmobile"
