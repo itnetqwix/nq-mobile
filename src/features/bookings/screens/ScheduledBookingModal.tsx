@@ -10,6 +10,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -60,6 +61,16 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
   const [step, setStep] = useState<"slots" | "review" | "paying">("slots");
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [couponError, setCouponError] = useState("");
+  const [promoValidating, setPromoValidating] = useState(false);
+  const [promoResult, setPromoResult] = useState<{
+    valid: boolean;
+    discount_amount?: number;
+    final_amount?: number;
+    display_label?: string;
+  } | null>(null);
+  const [visiblePromos, setVisiblePromos] = useState<any[]>([]);
 
   const trainerId = String(trainer?._id ?? trainer?.id ?? "");
   const trainerName = String(
@@ -78,6 +89,14 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
     if (!visible) {
       setSelectedSlot(null);
       setStep("slots");
+      setCouponCode("");
+      setCouponError("");
+      setPromoResult(null);
+    } else {
+      apiClient
+        .get(API_ROUTES.promo.visible)
+        .then((res: any) => setVisiblePromos(res?.data?.data || []))
+        .catch(() => {});
     }
   }, [visible]);
 
@@ -152,23 +171,66 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
   const handleSelectSlot = (slot: Slot) => {
     setSelectedSlot(slot);
     setStep("review");
+    setCouponCode("");
+    setCouponError("");
+    setPromoResult(null);
   };
+
+  const handleApplyPromo = useCallback(async () => {
+    if (!couponCode.trim()) {
+      setCouponError("Please enter a promo code.");
+      return;
+    }
+    if (!selectedSlot) return;
+    setPromoValidating(true);
+    setPromoResult(null);
+    try {
+      const price = computePrice(selectedSlot);
+      const res = await apiClient.post(API_ROUTES.promo.validate, {
+        code: couponCode.trim(),
+        booking_type: "scheduled",
+        amount: price,
+      });
+      const data = (res as any)?.data;
+      if (data?.valid) {
+        setPromoResult(data);
+        setCouponError("");
+      } else {
+        setPromoResult(null);
+        setCouponError(data?.reason || "Invalid promo code.");
+      }
+    } catch {
+      setPromoResult(null);
+      setCouponError("Failed to validate promo code.");
+    } finally {
+      setPromoValidating(false);
+    }
+  }, [couponCode, selectedSlot, computePrice]);
+
+  const handleRemovePromo = useCallback(() => {
+    setCouponCode("");
+    setPromoResult(null);
+    setCouponError("");
+  }, []);
 
   const handlePayAndBook = useCallback(async () => {
     if (!selectedSlot) return;
-    const price = computePrice(selectedSlot);
+    const originalPrice = computePrice(selectedSlot);
+    const price = promoResult?.final_amount != null ? promoResult.final_amount : originalPrice;
 
     if (price > 0) {
       setPaymentLoading(true);
       try {
+        const intentPayload: Record<string, unknown> = {
+          amount: price,
+          destination: trainerStripeId,
+          commission,
+          customer: userStripeId,
+        };
+        if (couponCode.trim()) intentPayload.couponCode = couponCode.trim();
         const res = await apiClient.post(
           API_ROUTES.transaction.createPaymentIntent,
-          {
-            amount: price,
-            destination: trainerStripeId,
-            commission,
-            customer: userStripeId,
-          }
+          intentPayload
         );
         const data = (res as any)?.data ?? res;
         if (!data?.skip) {
@@ -206,7 +268,7 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
     setBookingLoading(true);
     try {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      await apiClient.post(API_ROUTES.trainee.bookSession, {
+      const bookPayload: Record<string, unknown> = {
         trainer_id: trainerId,
         status: "confirm",
         booked_date: selectedSlot.date || new Date().toISOString(),
@@ -214,7 +276,9 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
         session_end_time: selectedSlot.end,
         charging_price: price,
         time_zone: tz,
-      });
+      };
+      if (couponCode.trim()) bookPayload.coupon_code = couponCode.trim();
+      await apiClient.post(API_ROUTES.trainee.bookSession, bookPayload);
 
       const traineeName = String(
         (user as Record<string, unknown>)?.fullname ??
@@ -251,6 +315,8 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
     user,
     emitNotification,
     onDismiss,
+    couponCode,
+    promoResult,
   ]);
 
   if (!trainer) return null;
@@ -344,64 +410,153 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
           </>
         )}
 
-        {step === "review" && selectedSlot && (
-          <ScrollView contentContainerStyle={styles.reviewContent}>
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Review booking</Text>
-              <View style={styles.row}>
-                <Text style={styles.rowKey}>Coach</Text>
-                <Text style={styles.rowVal}>{trainerName}</Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.rowKey}>Date</Text>
-                <Text style={styles.rowVal}>
-                  {selectedSlot.date || selectedSlot.day}
-                </Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.rowKey}>Time</Text>
-                <Text style={styles.rowVal}>
-                  {formatAmPm(selectedSlot.start)} -{" "}
-                  {formatAmPm(selectedSlot.end)}
-                </Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.rowKey}>Price</Text>
-                <Text style={[styles.rowVal, { fontWeight: "700" }]}>
-                  {computePrice(selectedSlot) > 0
-                    ? `$${computePrice(selectedSlot).toFixed(2)}`
-                    : "Free"}
-                </Text>
-              </View>
-            </View>
-
-            <Pressable
-              style={[
-                styles.primaryBtn,
-                (paymentLoading || bookingLoading) && styles.btnDisabled,
-              ]}
-              disabled={paymentLoading || bookingLoading}
-              onPress={handlePayAndBook}
-            >
-              {paymentLoading || bookingLoading ? (
-                <ActivityIndicator color={colors.brandTextOn} />
-              ) : (
-                <>
-                  <Ionicons
-                    name="calendar-outline"
-                    size={18}
-                    color={colors.brandTextOn}
-                  />
-                  <Text style={styles.primaryBtnText}>
-                    {computePrice(selectedSlot) > 0
-                      ? `Pay & Book ($${computePrice(selectedSlot).toFixed(2)})`
-                      : "Book Session"}
+        {step === "review" && selectedSlot && (() => {
+          const originalPrice = computePrice(selectedSlot);
+          const finalPrice = promoResult?.final_amount != null ? promoResult.final_amount : originalPrice;
+          return (
+            <ScrollView contentContainerStyle={styles.reviewContent}>
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>Review booking</Text>
+                <View style={styles.row}>
+                  <Text style={styles.rowKey}>Coach</Text>
+                  <Text style={styles.rowVal}>{trainerName}</Text>
+                </View>
+                <View style={styles.row}>
+                  <Text style={styles.rowKey}>Date</Text>
+                  <Text style={styles.rowVal}>
+                    {selectedSlot.date || selectedSlot.day}
                   </Text>
-                </>
-              )}
-            </Pressable>
-          </ScrollView>
-        )}
+                </View>
+                <View style={styles.row}>
+                  <Text style={styles.rowKey}>Time</Text>
+                  <Text style={styles.rowVal}>
+                    {formatAmPm(selectedSlot.start)} -{" "}
+                    {formatAmPm(selectedSlot.end)}
+                  </Text>
+                </View>
+                {promoResult ? (
+                  <>
+                    <View style={styles.row}>
+                      <Text style={styles.rowKey}>Original</Text>
+                      <Text style={[styles.rowVal, { textDecorationLine: "line-through", color: colors.textMuted }]}>
+                        ${originalPrice.toFixed(2)}
+                      </Text>
+                    </View>
+                    <View style={styles.row}>
+                      <Text style={[styles.rowKey, { color: colors.success }]}>Discount</Text>
+                      <Text style={[styles.rowVal, { color: colors.success, fontWeight: "600" }]}>
+                        -${(promoResult.discount_amount ?? 0).toFixed(2)}
+                      </Text>
+                    </View>
+                    <View style={styles.row}>
+                      <Text style={styles.rowKey}>Final</Text>
+                      <Text style={[styles.rowVal, { fontWeight: "700" }]}>
+                        ${finalPrice.toFixed(2)}
+                      </Text>
+                    </View>
+                  </>
+                ) : (
+                  <View style={styles.row}>
+                    <Text style={styles.rowKey}>Price</Text>
+                    <Text style={[styles.rowVal, { fontWeight: "700" }]}>
+                      {originalPrice > 0 ? `$${originalPrice.toFixed(2)}` : "Free"}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Promo Code Input */}
+              <View style={styles.promoSection}>
+                <Text style={styles.promoLabel}>Promo Code (optional)</Text>
+                <View style={styles.promoRow}>
+                  <TextInput
+                    value={couponCode}
+                    onChangeText={(t) => {
+                      setCouponCode(t);
+                      if (couponError) setCouponError("");
+                      if (promoResult) setPromoResult(null);
+                    }}
+                    editable={!promoResult}
+                    placeholder="Enter promo code"
+                    placeholderTextColor={colors.textMuted}
+                    style={[
+                      styles.promoInput,
+                      couponError ? { borderColor: colors.danger } : null,
+                      promoResult ? { borderColor: colors.success } : null,
+                    ]}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    maxLength={50}
+                  />
+                  {promoResult ? (
+                    <Pressable style={styles.promoRemoveBtn} onPress={handleRemovePromo}>
+                      <Text style={styles.promoRemoveBtnText}>Remove</Text>
+                    </Pressable>
+                  ) : (
+                    <Pressable
+                      style={[styles.promoApplyBtn, (!couponCode.trim() || promoValidating) && { opacity: 0.5 }]}
+                      onPress={handleApplyPromo}
+                      disabled={!couponCode.trim() || promoValidating}
+                    >
+                      {promoValidating ? (
+                        <ActivityIndicator size="small" color={colors.brandTextOn} />
+                      ) : (
+                        <Text style={styles.promoApplyBtnText}>Apply</Text>
+                      )}
+                    </Pressable>
+                  )}
+                </View>
+                {!!couponError && <Text style={styles.promoError}>{couponError}</Text>}
+
+                {visiblePromos.length > 0 && !promoResult && (
+                  <View style={{ marginTop: 10 }}>
+                    <Text style={styles.availableTitle}>Available Promos</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                      {visiblePromos.map((p: any) => (
+                        <Pressable
+                          key={p.code}
+                          style={[styles.promoChip, couponCode === p.code && { backgroundColor: "#e8e8ff" }]}
+                          onPress={() => { setCouponCode(p.code); setCouponError(""); setPromoResult(null); }}
+                        >
+                          <Text style={styles.promoChipText}>
+                            {p.code}{" "}
+                            {p.discount_type === "percentage" ? `(${p.discount_value}% off)` : `($${p.discount_value} off)`}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+              </View>
+
+              <Pressable
+                style={[
+                  styles.primaryBtn,
+                  (paymentLoading || bookingLoading) && styles.btnDisabled,
+                ]}
+                disabled={paymentLoading || bookingLoading}
+                onPress={handlePayAndBook}
+              >
+                {paymentLoading || bookingLoading ? (
+                  <ActivityIndicator color={colors.brandTextOn} />
+                ) : (
+                  <>
+                    <Ionicons
+                      name="calendar-outline"
+                      size={18}
+                      color={colors.brandTextOn}
+                    />
+                    <Text style={styles.primaryBtnText}>
+                      {finalPrice > 0
+                        ? `Pay & Book ($${finalPrice.toFixed(2)})`
+                        : "Book Session"}
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+            </ScrollView>
+          );
+        })()}
       </View>
     </Modal>
   );
@@ -497,4 +652,47 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: { ...typography.button, color: colors.brandTextOn },
   btnDisabled: { opacity: 0.65 },
+  promoSection: { marginTop: space.md },
+  promoLabel: { fontSize: 15, fontWeight: "600", color: colors.text, marginBottom: 8 },
+  promoRow: { flexDirection: "row", gap: 8, alignItems: "center" },
+  promoInput: {
+    flex: 1,
+    borderWidth: 2,
+    borderColor: colors.brandNavy,
+    borderRadius: radii.md,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: colors.text,
+  },
+  promoApplyBtn: {
+    backgroundColor: colors.brandNavy,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: radii.md,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  promoApplyBtnText: { color: colors.brandTextOn, fontWeight: "700", fontSize: 14 },
+  promoRemoveBtn: {
+    backgroundColor: colors.danger,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: radii.md,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  promoRemoveBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  promoError: { color: colors.danger, fontSize: 13, marginTop: 4 },
+  availableTitle: { fontSize: 13, color: "#666", fontWeight: "600", marginBottom: 8 },
+  promoChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: colors.brandNavy,
+    backgroundColor: "#f8f9fa",
+  },
+  promoChipText: { fontSize: 13, fontWeight: "600", color: colors.brandNavy },
 });

@@ -47,6 +47,16 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
   const [selectedClipIds, setSelectedClipIds] = useState<string[]>([]);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [chargingPrice, setChargingPrice] = useState(0);
+  const [promoValidating, setPromoValidating] = useState(false);
+  const [promoResult, setPromoResult] = useState<{
+    valid: boolean;
+    discount_type?: string;
+    discount_value?: number;
+    discount_amount?: number;
+    final_amount?: number;
+    display_label?: string;
+  } | null>(null);
+  const [visiblePromos, setVisiblePromos] = useState<any[]>([]);
 
   const tid = trainerIdOf(trainer);
   const tname = trainerNameOf(trainer);
@@ -70,7 +80,18 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     setSelectedClipIds([]);
     setPaymentIntentId(null);
     setChargingPrice(0);
+    setPromoResult(null);
+    setPromoValidating(false);
   }, []);
+
+  useEffect(() => {
+    if (visible) {
+      apiClient
+        .get(API_ROUTES.promo.visible)
+        .then((res: any) => setVisiblePromos(res?.data?.data || []))
+        .catch(() => {});
+    }
+  }, [visible]);
 
   useEffect(() => {
     if (!visible) resetWizard();
@@ -105,6 +126,50 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     return true;
   }, [couponCode]);
 
+  const trainerHourlyRate = Number(
+    (trainer as Record<string, unknown>)?.extraInfo
+      ? ((trainer as any).extraInfo as Record<string, unknown>)?.hourly_rate
+      : (trainer as any)?.userInfo?.extraInfo?.hourly_rate ?? 0
+  );
+  const expectedPrice = Number(((trainerHourlyRate / 60) * durationMinutes).toFixed(2));
+  const requiresPayment = trainerHourlyRate > 0 && expectedPrice > 0;
+
+  const handleApplyPromo = useCallback(async () => {
+    if (!couponCode.trim()) {
+      setCouponError("Please enter a promo code.");
+      return;
+    }
+    if (!validateCoupon()) return;
+    setPromoValidating(true);
+    setPromoResult(null);
+    try {
+      const res = await apiClient.post(API_ROUTES.promo.validate, {
+        code: couponCode.trim(),
+        booking_type: "instant",
+        amount: expectedPrice,
+      });
+      const data = res?.data;
+      if (data?.valid) {
+        setPromoResult(data);
+        setCouponError("");
+      } else {
+        setPromoResult(null);
+        setCouponError(data?.reason || "Invalid promo code.");
+      }
+    } catch {
+      setPromoResult(null);
+      setCouponError("Failed to validate promo code.");
+    } finally {
+      setPromoValidating(false);
+    }
+  }, [couponCode, validateCoupon, expectedPrice]);
+
+  const handleRemovePromo = useCallback(() => {
+    setCouponCode("");
+    setPromoResult(null);
+    setCouponError("");
+  }, []);
+
   const goNext = useCallback(() => {
     const i = wizardStepIndex(step);
     if (step === "duration" && !validateCoupon()) return;
@@ -130,6 +195,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
         charging_price: chargingPrice,
       };
       if (paymentIntentId) bookingPayload.payment_intent_id = paymentIntentId;
+      if (couponCode.trim()) bookingPayload.coupon_code = couponCode.trim();
       const res = await apiClient.post(API_ROUTES.trainee.bookInstantMeeting, bookingPayload);
       const lessonId = parseInstantBookingLessonId(res);
       if (!lessonId) throw new Error("Server did not return a booking id.");
@@ -182,14 +248,6 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     },
   });
 
-  const trainerHourlyRate = Number(
-    (trainer as Record<string, unknown>)?.extraInfo
-      ? ((trainer as any).extraInfo as Record<string, unknown>)?.hourly_rate
-      : (trainer as any)?.userInfo?.extraInfo?.hourly_rate ?? 0
-  );
-  const expectedPrice = Number(((trainerHourlyRate / 60) * durationMinutes).toFixed(2));
-  const requiresPayment = trainerHourlyRate > 0 && expectedPrice > 0;
-
   const handleSendRequest = useCallback(() => {
     if (!validateCoupon()) return;
     const promoMadeFree = requiresPayment && chargingPrice === 0 && !paymentIntentId;
@@ -230,5 +288,11 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     handlePaymentComplete,
     paymentIntentId,
     chargingPrice,
+    promoValidating,
+    promoResult,
+    handleApplyPromo,
+    handleRemovePromo,
+    visiblePromos,
+    expectedPrice,
   };
 }

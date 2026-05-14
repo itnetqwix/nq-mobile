@@ -1,9 +1,33 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { colors, radii, space } from "../../../../theme";
 import { INSTANT_LESSON_DURATIONS } from "../constants";
 import { sharedStepStyles } from "../sharedStepStyles";
+
+type PromoResult = {
+  valid: boolean;
+  discount_type?: string;
+  discount_value?: number;
+  discount_amount?: number;
+  final_amount?: number;
+  display_label?: string;
+} | null;
+
+type VisiblePromo = {
+  code: string;
+  display_label?: string;
+  discount_type: string;
+  discount_value: number;
+};
 
 type Props = {
   durationMinutes: number;
@@ -13,6 +37,12 @@ type Props = {
   couponError: string;
   onCouponErrorClear: () => void;
   onNext: () => void;
+  promoValidating?: boolean;
+  promoResult?: PromoResult;
+  onApplyPromo?: () => void;
+  onRemovePromo?: () => void;
+  visiblePromos?: VisiblePromo[];
+  expectedPrice?: number;
 };
 
 export function WizardStepDuration({
@@ -23,6 +53,12 @@ export function WizardStepDuration({
   couponError,
   onCouponErrorClear,
   onNext,
+  promoValidating,
+  promoResult,
+  onApplyPromo,
+  onRemovePromo,
+  visiblePromos = [],
+  expectedPrice = 0,
 }: Props) {
   return (
     <View style={sharedStepStyles.card}>
@@ -43,23 +79,89 @@ export function WizardStepDuration({
       </View>
 
       <Text style={[sharedStepStyles.sectionTitle, styles.promoTitle]}>Promo code (optional)</Text>
-      <TextInput
-        value={couponCode}
-        onChangeText={(t) => {
-          onCouponCodeChange(t);
-          onCouponErrorClear();
-        }}
-        placeholder="Enter promo code"
-        placeholderTextColor={colors.textMuted}
-        style={[styles.input, couponError ? styles.inputError : null]}
-        autoCapitalize="none"
-        autoCorrect={false}
-        maxLength={50}
-      />
+      <View style={styles.promoRow}>
+        <TextInput
+          value={couponCode}
+          onChangeText={(t) => {
+            onCouponCodeChange(t);
+            onCouponErrorClear();
+          }}
+          editable={!promoResult}
+          placeholder="Enter promo code"
+          placeholderTextColor={colors.textMuted}
+          style={[
+            styles.input,
+            { flex: 1 },
+            couponError ? styles.inputError : null,
+            promoResult ? styles.inputSuccess : null,
+          ]}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          maxLength={50}
+        />
+        {promoResult ? (
+          <Pressable style={styles.removeBtn} onPress={onRemovePromo}>
+            <Text style={styles.removeBtnText}>Remove</Text>
+          </Pressable>
+        ) : (
+          <Pressable
+            style={[styles.applyBtn, (!couponCode.trim() || promoValidating) && styles.applyBtnDisabled]}
+            onPress={onApplyPromo}
+            disabled={!couponCode.trim() || promoValidating}
+          >
+            {promoValidating ? (
+              <ActivityIndicator size="small" color={colors.brandTextOn} />
+            ) : (
+              <Text style={styles.applyBtnText}>Apply</Text>
+            )}
+          </Pressable>
+        )}
+      </View>
       {!!couponError && <Text style={styles.errorText}>{couponError}</Text>}
-      <Text style={sharedStepStyles.mutedSmall}>
-        Enter "free" for a 100% discount (if configured). Promo codes are validated with Stripe.
-      </Text>
+
+      {promoResult && (
+        <View style={styles.discountCard}>
+          <View style={styles.discountRow}>
+            <Text style={styles.discountLabel}>Original Price</Text>
+            <Text style={styles.discountLabel}>${expectedPrice.toFixed(2)}</Text>
+          </View>
+          <View style={styles.discountRow}>
+            <Text style={styles.discountGreen}>
+              Discount ({promoResult.display_label || couponCode})
+            </Text>
+            <Text style={styles.discountGreen}>
+              -${promoResult.discount_amount?.toFixed(2)}
+            </Text>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.discountRow}>
+            <Text style={styles.discountFinal}>Final Price</Text>
+            <Text style={styles.discountFinal}>${promoResult.final_amount?.toFixed(2)}</Text>
+          </View>
+        </View>
+      )}
+
+      {visiblePromos.length > 0 && !promoResult && (
+        <View style={styles.availableSection}>
+          <Text style={styles.availableTitle}>Available Promos</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.availableScroll}>
+            {visiblePromos.map((p) => (
+              <Pressable
+                key={p.code}
+                style={[styles.promoChip, couponCode === p.code && styles.promoChipActive]}
+                onPress={() => onCouponCodeChange(p.code)}
+              >
+                <Text style={styles.promoChipText}>
+                  {p.code}{" "}
+                  {p.discount_type === "percentage"
+                    ? `(${p.discount_value}% off)`
+                    : `($${p.discount_value} off)`}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       <Pressable style={sharedStepStyles.primaryBtn} onPress={onNext}>
         <Text style={sharedStepStyles.primaryBtnText}>Next: clips</Text>
@@ -87,6 +189,7 @@ const styles = StyleSheet.create({
   durationLabel: { fontSize: 15, fontWeight: "700", color: colors.brandNavy },
   durationLabelOn: { color: colors.success },
   promoTitle: { marginTop: space.lg },
+  promoRow: { flexDirection: "row", gap: 8, alignItems: "center" },
   input: {
     borderWidth: 2,
     borderColor: colors.brandNavy,
@@ -97,5 +200,56 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   inputError: { borderColor: colors.danger },
-  errorText: { color: colors.danger, fontSize: 13 },
+  inputSuccess: { borderColor: colors.success },
+  errorText: { color: colors.danger, fontSize: 13, marginTop: 4 },
+  applyBtn: {
+    backgroundColor: colors.brandNavy,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: radii.md,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  applyBtnDisabled: { opacity: 0.5 },
+  applyBtnText: { color: colors.brandTextOn, fontWeight: "700", fontSize: 14 },
+  removeBtn: {
+    backgroundColor: colors.danger,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: radii.md,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  removeBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  discountCard: {
+    marginTop: 10,
+    padding: 12,
+    backgroundColor: "#f0f8f0",
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.success,
+  },
+  discountRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  discountLabel: { color: "#555", fontSize: 14 },
+  discountGreen: { color: colors.success, fontSize: 14, fontWeight: "600" },
+  divider: { height: 1, backgroundColor: colors.success, marginVertical: 6 },
+  discountFinal: { color: colors.brandNavy, fontSize: 16, fontWeight: "700" },
+  availableSection: { marginTop: 12 },
+  availableTitle: { fontSize: 13, color: "#666", fontWeight: "600", marginBottom: 8 },
+  availableScroll: { gap: 8 },
+  promoChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: colors.brandNavy,
+    backgroundColor: "#f8f9fa",
+  },
+  promoChipActive: { backgroundColor: "#e8e8ff" },
+  promoChipText: { fontSize: 13, fontWeight: "600", color: colors.brandNavy },
 });

@@ -42,6 +42,12 @@ export function InstantLessonBookingWizardModal({ visible, trainer, onDismiss }:
               couponError={w.couponError}
               onCouponErrorClear={() => w.setCouponError("")}
               onNext={w.goNext}
+              promoValidating={w.promoValidating}
+              promoResult={w.promoResult}
+              onApplyPromo={w.handleApplyPromo}
+              onRemovePromo={w.handleRemovePromo}
+              visiblePromos={w.visiblePromos}
+              expectedPrice={w.expectedPrice}
             />
           )}
 

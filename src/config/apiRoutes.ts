@@ -154,6 +154,10 @@ export const API_ROUTES = {
     unregisterPushToken: (deviceId: string) =>
       `/notifications/unregister-push-token/${encodeURIComponent(deviceId)}` as const,
   },
+  promo: {
+    validate: "/common/validate-promo",
+    visible: "/common/visible-promos",
+  },
   chat: {
     conversations: "/common/chat-conversations",
     messages: (conversationId: string) => `/common/chat-messages/${conversationId}` as const,
