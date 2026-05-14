@@ -1,6 +1,8 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
   Alert,
+  FlatList,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -8,49 +10,83 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Banner, Button } from "../../../components/ui";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Banner, Button, Skeleton } from "../../../components/ui";
 import { colors, radii, space, typography } from "../../../theme";
-import { postInviteFriendEmail } from "../../home/api/homeApi";
+import { postInviteFriendEmail, fetchMyReferrals } from "../../home/api/homeApi";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
+
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function InviteFriendsScreen() {
+  const queryClient = useQueryClient();
   const [text, setText] = useState("");
+  const [chips, setChips] = useState<string[]>([]);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
-  const [lastSent, setLastSent] = useState<string[]>([]);
 
-  const { validEmails, invalidEmails, parsedCount } = useMemo(() => {
-    const parsed = text
-      .split(/[,;\s]+/)
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean);
-    const dedup = Array.from(new Set(parsed));
-    const valid = dedup.filter((e) => emailRegex.test(e));
-    const invalid = dedup.filter((e) => e && !emailRegex.test(e));
-    return { validEmails: valid, invalidEmails: invalid, parsedCount: dedup.length };
-  }, [text]);
+  const { data: referrals = [], isLoading: loadingHistory } = useQuery({
+    queryKey: ["myReferrals"],
+    queryFn: fetchMyReferrals,
+    staleTime: 60_000,
+  });
+
+  const handleTextChange = (val: string) => {
+    if (val.endsWith(",") || val.endsWith(" ") || val.endsWith(";")) {
+      const raw = val.slice(0, -1).trim().toLowerCase();
+      if (raw && emailRegex.test(raw) && !chips.includes(raw)) {
+        setChips((prev) => [...prev, raw]);
+        setText("");
+        setErr("");
+        return;
+      } else if (raw && !emailRegex.test(raw)) {
+        setErr(`"${raw}" is not a valid email.`);
+      }
+      setText("");
+      return;
+    }
+    setText(val);
+    if (err) setErr("");
+  };
+
+  const handleSubmitEditing = () => {
+    const raw = text.trim().toLowerCase();
+    if (raw && emailRegex.test(raw) && !chips.includes(raw)) {
+      setChips((prev) => [...prev, raw]);
+      setText("");
+      setErr("");
+    } else if (raw && !emailRegex.test(raw)) {
+      setErr(`"${raw}" is not a valid email.`);
+    }
+  };
+
+  const removeChip = (email: string) => {
+    setChips((prev) => prev.filter((e) => e !== email));
+  };
+
+  const allEmails = useMemo(() => {
+    const extra = text.trim().toLowerCase();
+    if (extra && emailRegex.test(extra) && !chips.includes(extra)) {
+      return [...chips, extra];
+    }
+    return chips;
+  }, [chips, text]);
 
   const sendInvites = useCallback(async () => {
     setErr("");
-    setLastSent([]);
-    if (validEmails.length === 0) {
+    if (allEmails.length === 0) {
       setErr("Enter at least one valid email address.");
       return;
     }
-    if (validEmails.length > 10) {
+    if (allEmails.length > 10) {
       setErr("You can invite a maximum of 10 friends at a time.");
       return;
     }
 
     setLoading(true);
-    /**
-     * Sequential sends avoid rate-limit / SMTP flooding (web does serial-ish bursts too).
-     * Track per-address failures so we can show partial success instead of all-or-nothing.
-     */
     const ok: string[] = [];
     const failed: { email: string; reason: string }[] = [];
-    for (const email of validEmails) {
+    for (const email of allEmails) {
       try {
         await postInviteFriendEmail(email);
         ok.push(email);
@@ -60,28 +96,22 @@ export function InviteFriendsScreen() {
     }
     setLoading(false);
 
-    setLastSent(ok);
     if (failed.length && ok.length) {
       Alert.alert(
         "Some invites failed",
-        `Sent: ${ok.length}\nFailed: ${failed
-          .map((f) => `${f.email} (${f.reason})`)
-          .join(", ")}`
+        `Sent: ${ok.length}\nFailed: ${failed.map((f) => `${f.email} (${f.reason})`).join(", ")}`
       );
-      setText(failed.map((f) => f.email).join(", "));
+      setChips(failed.map((f) => f.email));
     } else if (failed.length) {
-      setErr(
-        `Failed for: ${failed.map((f) => f.email).join(", ")}.`
-      );
+      setErr(`Failed for: ${failed.map((f) => f.email).join(", ")}.`);
     } else {
+      setChips([]);
       setText("");
       setErr("");
-      Alert.alert(
-        "Invitations sent",
-        `Sent ${ok.length} invitation${ok.length === 1 ? "" : "s"}. Your friends should receive an email shortly.`
-      );
+      Alert.alert("Invitations sent", `Sent ${ok.length} invitation${ok.length === 1 ? "" : "s"}.`);
     }
-  }, [validEmails]);
+    queryClient.invalidateQueries({ queryKey: ["myReferrals"] });
+  }, [allEmails, queryClient]);
 
   return (
     <ScrollView
@@ -92,57 +122,85 @@ export function InviteFriendsScreen() {
       <View style={styles.card}>
         <Text style={styles.title}>Invite friends</Text>
         <Text style={styles.sub}>
-          We email each address from your account.
+          Enter email addresses to send invitations. Press space, comma, or return after each email.
         </Text>
 
         <Text style={styles.label}>Email addresses</Text>
-        <TextInput
-          style={styles.input}
-          multiline
-          numberOfLines={4}
-          placeholder="e.g. friend@example.com, coach@example.com"
-          placeholderTextColor={colors.textMuted}
-          value={text}
-          onChangeText={setText}
-          autoCapitalize="none"
-          autoCorrect={false}
-          accessibilityLabel="Email addresses"
-        />
+        <View style={styles.chipContainer}>
+          {chips.map((email) => (
+            <View key={email} style={styles.chip}>
+              <Text style={styles.chipText} numberOfLines={1}>{email}</Text>
+              <Pressable onPress={() => removeChip(email)} hitSlop={8}>
+                <Ionicons name="close-circle" size={16} color={colors.textMuted} />
+              </Pressable>
+            </View>
+          ))}
+          <TextInput
+            style={styles.chipInput}
+            placeholder={chips.length === 0 ? "friend@example.com" : "Add more..."}
+            placeholderTextColor={colors.textMuted}
+            value={text}
+            onChangeText={handleTextChange}
+            onSubmitEditing={handleSubmitEditing}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            returnKeyType="done"
+            blurOnSubmit={false}
+          />
+        </View>
 
         <View style={styles.metaRow}>
           <Text style={styles.meta}>
-            {validEmails.length} valid{parsedCount > 0 ? ` • ${parsedCount} typed` : ""}
+            {allEmails.length} email{allEmails.length === 1 ? "" : "s"} ready
           </Text>
           <Text style={styles.metaMuted}>Max 10 per send</Text>
         </View>
 
-        {invalidEmails.length > 0 && (
-          <Banner
-            tone="warning"
-            title="Invalid addresses skipped"
-            description={invalidEmails.join(", ")}
-          />
-        )}
-
-        {!!err && (
-          <Banner tone="danger" title="Invites failed" description={err} />
-        )}
+        {!!err && <Banner tone="danger" title="Error" description={err} />}
 
         <Button
-          label={`Send ${
-            validEmails.length > 0 ? `${validEmails.length} ` : ""
-          }invite${validEmails.length === 1 ? "" : "s"}`}
+          label={`Send ${allEmails.length > 0 ? `${allEmails.length} ` : ""}invite${allEmails.length === 1 ? "" : "s"}`}
           onPress={sendInvites}
-          disabled={loading || validEmails.length === 0}
+          disabled={loading || allEmails.length === 0}
           loading={loading}
           size="lg"
         />
+      </View>
 
-        {lastSent.length > 0 && (
-          <View style={styles.okBox}>
-            <Ionicons name="mail-open-outline" size={18} color={colors.success} />
-            <Text style={styles.okText}>Last sent to: {lastSent.join(", ")}</Text>
+      {/* Invite History */}
+      <View style={styles.historySection}>
+        <Text style={styles.historyTitle}>Past invitations</Text>
+        {loadingHistory ? (
+          <View style={{ gap: 8 }}>
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} width="100%" height={40} radius={radii.sm} />
+            ))}
           </View>
+        ) : referrals.length === 0 ? (
+          <View style={styles.emptyHistory}>
+            <Ionicons name="mail-outline" size={28} color={colors.textMuted} />
+            <Text style={styles.emptyHistoryText}>No invitations sent yet</Text>
+          </View>
+        ) : (
+          referrals.map((ref: any) => (
+            <View key={ref._id ?? ref.email} style={styles.historyRow}>
+              <View style={styles.historyIcon}>
+                <Ionicons name="mail-outline" size={18} color={colors.brandNavy} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.historyEmail} numberOfLines={1}>{ref.email}</Text>
+                <Text style={styles.historyDate}>
+                  {ref.createdAt
+                    ? new Date(ref.createdAt).toLocaleDateString(undefined, {
+                        month: "short", day: "numeric", year: "numeric",
+                      })
+                    : ""}
+                </Text>
+              </View>
+              <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+            </View>
+          ))
         )}
       </View>
     </ScrollView>
@@ -151,7 +209,7 @@ export function InviteFriendsScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surface },
-  content: { padding: space.md, paddingBottom: space.xl },
+  content: { padding: space.md, paddingBottom: space.xl, gap: space.md },
 
   card: {
     backgroundColor: colors.surfaceElevated,
@@ -162,22 +220,40 @@ const styles = StyleSheet.create({
     gap: space.sm,
   },
   title: { ...typography.titleMd, color: colors.brandNavy },
-  sub: { ...typography.bodyMd, color: colors.textMuted },
+  sub: { ...typography.bodySm, color: colors.textMuted },
   label: { ...typography.label, color: colors.textSecondary, marginTop: space.sm },
-  input: {
+
+  chipContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radii.sm,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: typography.bodyMd.fontSize,
-    fontWeight: typography.bodyMd.fontWeight,
-    fontFamily: typography.bodyMd.fontFamily,
-    letterSpacing: typography.bodyMd.letterSpacing,
-    color: colors.text,
-    minHeight: 96,
-    textAlignVertical: "top",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    minHeight: 48,
+    alignItems: "center",
   },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.brandSubtle,
+    borderRadius: radii.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    maxWidth: "90%",
+  },
+  chipText: { ...typography.bodySm, color: colors.brandNavy, fontWeight: "600", flexShrink: 1 },
+  chipInput: {
+    flex: 1,
+    minWidth: 120,
+    fontSize: typography.bodyMd.fontSize,
+    color: colors.text,
+    paddingVertical: 4,
+  },
+
   metaRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -186,14 +262,34 @@ const styles = StyleSheet.create({
   meta: { ...typography.caption, color: colors.textMuted },
   metaMuted: { ...typography.caption, color: colors.textMuted },
 
-  okBox: {
+  historySection: {
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: space.md,
+    gap: space.sm,
+  },
+  historyTitle: { ...typography.subtitle, color: colors.text, marginBottom: 4 },
+  emptyHistory: { alignItems: "center", gap: 6, paddingVertical: space.md },
+  emptyHistoryText: { ...typography.bodySm, color: colors.textMuted },
+
+  historyRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    backgroundColor: colors.successSubtle,
-    borderRadius: radii.sm,
-    padding: space.sm,
-    marginTop: space.sm,
+    gap: space.sm,
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
-  okText: { flex: 1, ...typography.caption, color: colors.success },
+  historyIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.brandSubtle,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  historyEmail: { ...typography.bodySm, color: colors.text, fontWeight: "600" },
+  historyDate: { ...typography.caption, color: colors.textMuted, marginTop: 1 },
 });

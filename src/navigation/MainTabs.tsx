@@ -105,6 +105,15 @@ export function MainTabs() {
           ),
           tabBarLabel: "Settings",
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate("Menu", {
+              screen: "ShellSurface",
+              params: { surfaceId: "settings" },
+            });
+          },
+        })}
       />
     </Tab.Navigator>
   );

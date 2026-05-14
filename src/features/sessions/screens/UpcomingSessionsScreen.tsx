@@ -173,18 +173,27 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
   );
 }
 
-function buildCalendarDays(baseDate: Date, range = 14): { key: string; date: Date; label: string; dayName: string }[] {
-  const days: { key: string; date: Date; label: string; dayName: string }[] = [];
+function buildCalendarDays(
+  baseDate: Date,
+  pastDays = 3,
+  futureDays = 14,
+): { key: string; date: Date; label: string; dayName: string; monthLabel?: string }[] {
+  const days: { key: string; date: Date; label: string; dayName: string; monthLabel?: string }[] = [];
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  for (let i = -3; i < range; i++) {
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  let prevMonth = -1;
+  for (let i = -pastDays; i < futureDays; i++) {
     const d = new Date(baseDate);
     d.setDate(d.getDate() + i);
+    const month = d.getMonth();
     days.push({
       key: d.toISOString().slice(0, 10),
       date: d,
       label: String(d.getDate()),
       dayName: dayNames[d.getDay()],
+      monthLabel: month !== prevMonth ? monthNames[month] : undefined,
     });
+    prevMonth = month;
   }
   return days;
 }
@@ -205,7 +214,10 @@ export function UpcomingSessionsScreen() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const calendarDays = useMemo(() => buildCalendarDays(new Date()), []);
+  const calendarDays = useMemo(
+    () => buildCalendarDays(new Date(), activeTab === "completed" ? 90 : 3, activeTab === "completed" ? 1 : 14),
+    [activeTab],
+  );
   const todayKey = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const { data: rawSessions = [], isLoading, isRefetching, refetch } = useQuery({
@@ -281,15 +293,21 @@ export function UpcomingSessionsScreen() {
           const isToday = d.key === todayKey;
           const hasSession = sessionDates.has(d.key);
           return (
-            <Pressable
-              key={d.key}
-              style={[styles.calDay, isSelected && styles.calDaySelected, isToday && !isSelected && styles.calDayToday]}
-              onPress={() => setSelectedDate(isSelected ? null : d.key)}
-            >
-              <Text style={[styles.calDayName, isSelected && styles.calDayTextSelected]}>{d.dayName}</Text>
-              <Text style={[styles.calDayNum, isSelected && styles.calDayTextSelected]}>{d.label}</Text>
-              {hasSession && <View style={[styles.calDot, isSelected && { backgroundColor: "#fff" }]} />}
-            </Pressable>
+            <React.Fragment key={d.key}>
+              {d.monthLabel && (
+                <View style={styles.calMonthLabel}>
+                  <Text style={styles.calMonthText}>{d.monthLabel}</Text>
+                </View>
+              )}
+              <Pressable
+                style={[styles.calDay, isSelected && styles.calDaySelected, isToday && !isSelected && styles.calDayToday]}
+                onPress={() => setSelectedDate(isSelected ? null : d.key)}
+              >
+                <Text style={[styles.calDayName, isSelected && styles.calDayTextSelected]}>{d.dayName}</Text>
+                <Text style={[styles.calDayNum, isSelected && styles.calDayTextSelected]}>{d.label}</Text>
+                {hasSession && <View style={[styles.calDot, isSelected && { backgroundColor: "#fff" }]} />}
+              </Pressable>
+            </React.Fragment>
           );
         })}
       </ScrollView>
@@ -437,5 +455,15 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: colors.brandAccent,
     marginTop: 3,
+  },
+  calMonthLabel: {
+    justifyContent: "center",
+    paddingHorizontal: 4,
+  },
+  calMonthText: {
+    ...typography.overline,
+    color: colors.brandNavy,
+    fontWeight: "700",
+    fontSize: 10,
   },
 });

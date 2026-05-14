@@ -210,6 +210,26 @@ export async function postRaiseConcern(payload: RaiseConcernPayload): Promise<vo
   await apiClient.post(API_ROUTES.user.raiseConcern, payload);
 }
 
+export async function fetchMyRaiseConcerns(): Promise<any[]> {
+  try {
+    const res = await apiClient.get(API_ROUTES.user.myRaiseConcerns);
+    const body = (res.data as any)?.data ?? res.data?.result;
+    return Array.isArray(body) ? body : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchMyReferrals(): Promise<any[]> {
+  try {
+    const res = await apiClient.get(API_ROUTES.user.myReferrals);
+    const body = (res.data as any)?.data ?? res.data?.result;
+    return Array.isArray(body) ? body : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function fetchTrainersWithSlots(params?: { search?: string }): Promise<any[]> {
   const res = await apiClient.get(API_ROUTES.trainee.getTrainersWithSlots, { params });
   const body = res.data as Record<string, unknown>;

@@ -59,6 +59,8 @@ export const API_ROUTES = {
     getRaiseConcern: "/user/raise-concern",
     updateContactUsStatus: "/user/update-contact-us-status",
     updateRaisedConcernTicket: "/user/update-raised-concern-ticket",
+    myRaiseConcerns: "/user/my-raise-concerns",
+    myReferrals: "/user/my-referrals",
     allOnlineUser: "/user/all-online-user",
     updateMobileNumber: "/user/update-mobile-number",
     updateNotificationsSettings: "/user/update-notifications-settings",
