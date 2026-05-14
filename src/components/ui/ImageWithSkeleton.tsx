@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useCallback, useEffect, useState } from "react";
+import { Image as ExpoImage } from "expo-image";
+import React, { useCallback, useState } from "react";
 import {
-  Image,
   StyleSheet,
   View,
   type ImageResizeMode,
@@ -11,6 +11,13 @@ import {
 } from "react-native";
 import { colors } from "../../theme";
 import { Skeleton } from "./Skeleton";
+
+const RESIZE_MAP: Record<string, string> = {
+  cover: "cover",
+  contain: "contain",
+  stretch: "fill",
+  center: "center",
+};
 
 export type ImageWithSkeletonProps = {
   /** Remote URI (or use `source` for local assets). */
@@ -29,9 +36,8 @@ export type ImageWithSkeletonProps = {
 };
 
 /**
- * Network image with a shimmer skeleton until `onLoadEnd`, plus a compact
- * placeholder if loading fails. Fixed width/height keep layout stable on all
- * phone sizes.
+ * Network image with built-in disk/memory caching via expo-image, a shimmer
+ * skeleton while loading, and a compact placeholder on failure.
  */
 export function ImageWithSkeleton({
   uri,
@@ -55,12 +61,7 @@ export function ImageWithSkeleton({
   const [loaded, setLoaded] = useState(!isRemoteUri);
   const [error, setError] = useState(false);
 
-  useEffect(() => {
-    setError(false);
-    setLoaded(!isRemoteUri);
-  }, [uri, source, isRemoteUri]);
-
-  const handleLoadEnd = useCallback(() => {
+  const handleLoad = useCallback(() => {
     setLoaded(true);
   }, []);
 
@@ -97,11 +98,14 @@ export function ImageWithSkeleton({
           <Skeleton width={width} height={height} radius={borderRadius} />
         </View>
       )}
-      <Image
+      <ExpoImage
         source={resolved}
         style={[styles.img, { opacity: loaded ? 1 : 0 }]}
-        resizeMode={resizeMode}
-        onLoadEnd={handleLoadEnd}
+        contentFit={(RESIZE_MAP[resizeMode] as any) ?? "cover"}
+        cachePolicy="disk"
+        transition={200}
+        recyclingKey={isRemoteUri ? (resolved as { uri: string }).uri : undefined}
+        onLoad={handleLoad}
         onError={handleError}
       />
     </View>

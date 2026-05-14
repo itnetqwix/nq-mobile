@@ -308,7 +308,12 @@ export function CommunityScreen() {
           });
         }
       } catch (e: any) {
-        Alert.alert("Error", e?.response?.data?.message ?? "Could not open chat.");
+        const msg =
+          e?.response?.data?.message ??
+          e?.response?.data?.error ??
+          e?.message ??
+          "Could not open chat.";
+        Alert.alert("Error", String(msg));
       } finally {
         setMessageBusy(false);
       }

@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChatsScreen } from "../features/chats/screens/ChatsScreen";
 import { DashboardHomeScreen } from "../features/dashboard/screens/DashboardHomeScreen";
 import { ScheduleScreen } from "../features/schedule/screens/ScheduleScreen";
-import { colors } from "../theme";
+import { useThemeColors } from "../theme";
 import { MenuNavigator } from "./MenuNavigator";
 import type { MainTabParamList } from "./types";
 import { useAuth } from "../features/auth/context/AuthContext";
@@ -17,11 +17,11 @@ export function MainTabs() {
   const { accountType } = useAuth();
   const isTrainer = accountType === AccountType.TRAINER;
   const insets = useSafeAreaInsets();
+  const c = useThemeColors();
   const tabPadBottom = Math.max(insets.bottom, 6);
   const tabPadTop = 6;
   const tabMinHeight = 52 + tabPadTop + tabPadBottom;
 
-  // Schedule tab shows "Schedule" for trainers, "Sessions" for trainees — mirrors website sidebar
   const scheduleTabLabel = isTrainer ? "Schedule" : "Sessions";
   const scheduleTabIcon = isTrainer ? "calendar-outline" : "time-outline";
 
@@ -29,11 +29,11 @@ export function MainTabs() {
     <Tab.Navigator
       screenOptions={{
         headerTitleAlign: "center",
-        tabBarActiveTintColor: colors.brandNavy,
-        tabBarInactiveTintColor: colors.textMuted,
+        tabBarActiveTintColor: c.brandNavy,
+        tabBarInactiveTintColor: c.textMuted,
         tabBarStyle: {
-          borderTopColor: colors.tabBarBorder,
-          backgroundColor: colors.background,
+          borderTopColor: c.tabBarBorder,
+          backgroundColor: c.background,
           paddingTop: tabPadTop,
           paddingBottom: tabPadBottom,
           paddingLeft: Math.max(insets.left, 4),
@@ -45,22 +45,20 @@ export function MainTabs() {
           fontWeight: "600",
           fontSize: 11,
         },
-        /** Hide the bar while the keyboard is open so chat / form screens
-         *  don't render two competing chrome rows on small phones. */
         tabBarHideOnKeyboard: true,
         headerStyle: {
-          backgroundColor: colors.background,
-          borderBottomColor: colors.border,
+          backgroundColor: c.background,
+          borderBottomColor: c.border,
           borderBottomWidth: 1,
           elevation: 0,
           shadowOpacity: 0,
         },
         headerTitleStyle: {
           fontWeight: "700",
-          color: colors.brandNavy,
+          color: c.brandNavy,
           fontSize: 17,
         },
-        headerLeft: () => <DrawerToggleButton tintColor={colors.brandNavy} />,
+        headerLeft: () => <DrawerToggleButton tintColor={c.brandNavy} />,
       }}
     >
       <Tab.Screen

@@ -17,9 +17,8 @@ export { shadows, type ShadowToken } from "./shadows";
 export { durations, easings, type DurationToken, type EasingToken } from "./motion";
 
 /**
- * Default (light) palette. Existing screens use this directly via
- * `import { colors } from "@/theme"` — once the dark-mode toggle ships
- * (Phase 6c), screens are migrated to `useThemeColors()` instead.
+ * Default (light) palette — used by StyleSheet.create() at module scope.
+ * Runtime code should prefer `useThemeColors()` for dark-mode support.
  */
 export const colors = colorsLight;
 
@@ -28,8 +27,10 @@ export function resolveColors(scheme: "light" | "dark" | null | undefined): AppC
   return scheme === "dark" ? colorsDark : colorsLight;
 }
 
-/** React hook variant — follows the system color scheme by default. Wire a
- *  manual override here once Settings exposes the toggle. */
+/**
+ * React hook — resolves the active palette based on the user's theme
+ * preference (from ThemeContext) or the system scheme as fallback.
+ */
 export function useThemeColors(): AppColors {
   const scheme = useColorScheme();
   return resolveColors(scheme);

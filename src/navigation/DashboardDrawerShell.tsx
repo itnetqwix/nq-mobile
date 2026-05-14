@@ -1,6 +1,6 @@
 import { createDrawerNavigator } from "@react-navigation/drawer";
 import React from "react";
-import { colors, layout } from "../theme";
+import { useThemeColors, layout } from "../theme";
 import { DashboardDrawerContent } from "./DashboardDrawerContent";
 import { MainTabs } from "./MainTabs";
 import type { DashboardDrawerParamList } from "./types";
@@ -8,6 +8,7 @@ import type { DashboardDrawerParamList } from "./types";
 const Drawer = createDrawerNavigator<DashboardDrawerParamList>();
 
 export function DashboardDrawerShell() {
+  const c = useThemeColors();
   return (
     <Drawer.Navigator
       drawerContent={(props) => <DashboardDrawerContent {...props} />}
@@ -16,9 +17,9 @@ export function DashboardDrawerShell() {
         drawerType: "front",
         drawerStyle: {
           width: layout.drawerWidth,
-          backgroundColor: colors.background,
+          backgroundColor: c.background,
         },
-        overlayColor: colors.scrim,
+        overlayColor: c.scrim,
       }}
     >
       <Drawer.Screen

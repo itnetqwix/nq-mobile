@@ -542,72 +542,6 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
           />
         </HomeMainCont>
       </View>
-
-      {/* More shortcuts */}
-      <View style={styles.section}>
-        <SectionHeader title="More" />
-        <View style={styles.moreGrid}>
-          {isTrainer && (
-            <Pressable
-              style={styles.moreItem}
-              onPress={() => openFeature("students")}
-              accessibilityRole="button"
-              accessibilityLabel="Open students"
-            >
-              <Ionicons name="people-outline" size={20} color={colors.brandNavy} />
-              <Text style={styles.moreItemText}>Students</Text>
-            </Pressable>
-          )}
-          <Pressable
-            style={styles.moreItem}
-            onPress={() => openFeature("my-community")}
-            accessibilityRole="button"
-            accessibilityLabel="Open community"
-          >
-            <Ionicons name="globe-outline" size={20} color={colors.brandNavy} />
-            <Text style={styles.moreItemText}>Community</Text>
-          </Pressable>
-          <Pressable
-            style={styles.moreItem}
-            onPress={() => openFeature("friends")}
-            accessibilityRole="button"
-            accessibilityLabel="Open friends"
-          >
-            <Ionicons name="person-add-outline" size={20} color={colors.brandNavy} />
-            <Text style={styles.moreItemText}>Friends</Text>
-          </Pressable>
-          <Pressable
-            style={styles.moreItem}
-            onPress={() => openShell("transactions")}
-            accessibilityRole="button"
-            accessibilityLabel="Open transactions"
-          >
-            <Ionicons name="wallet-outline" size={20} color={colors.brandNavy} />
-            <Text style={styles.moreItemText}>Transactions</Text>
-          </Pressable>
-          <Pressable
-            style={styles.moreItem}
-            onPress={() => openFeature("meeting-room")}
-            accessibilityRole="button"
-            accessibilityLabel="Open meeting room"
-          >
-            <Ionicons name="videocam-outline" size={20} color={colors.brandNavy} />
-            <Text style={styles.moreItemText}>Meeting Room</Text>
-          </Pressable>
-          <Pressable style={styles.moreItem} onPress={() => openShell("settings")}>
-            <Ionicons name="settings-outline" size={20} color={colors.brandNavy} />
-            <Text style={styles.moreItemText}>Settings</Text>
-          </Pressable>
-          <Pressable style={styles.moreItem} onPress={() => openFeature("contact-us")}>
-            <Ionicons name="mail-outline" size={20} color={colors.brandNavy} />
-            <Text style={styles.moreItemText}>Contact Us</Text>
-          </Pressable>
-          <Pressable style={styles.moreItem} onPress={() => openFeature("about-us")}>
-            <Ionicons name="information-circle-outline" size={20} color={colors.brandNavy} />
-            <Text style={styles.moreItemText}>About Us</Text>
-          </Pressable>
-        </View>
-      </View>
     </ScrollView>
   );
 }
@@ -738,12 +672,4 @@ const styles = StyleSheet.create({
   },
   seeAllText: { fontSize: 14, color: colors.brandNavy, fontWeight: "600" },
 
-  moreGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: space.sm },
-  moreItem: {
-    width: "25%",
-    alignItems: "center",
-    paddingVertical: space.md,
-    gap: 6,
-  },
-  moreItemText: { fontSize: 11, color: colors.text, fontWeight: "500", textAlign: "center" },
 });

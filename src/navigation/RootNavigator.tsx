@@ -25,31 +25,10 @@ export function RootNavigator() {
 
   return (
     <>
-      {/* Global instant-lesson modals — survive navigation away from Instant Booking */}
-      {signedIn && (
-        <>
-          <InstantLessonTrainerModal />
-          <InstantLessonTraineeModal />
-          <InstantLessonStatusBanner />
-          {/* Live notification banner — uses the navigation context so it can deep-link
-              into the inbox; lives inside NavigationContainer scope by virtue of being
-              rendered from RootNavigator. */}
-          <NotificationToast />
-          <OnboardingWalkthrough />
-        </>
-      )}
-
-      {/**
-       * Auth vs app stacks must not register the same routes at once — otherwise the native
-       * stack can keep "Main" active after `status` flips to `signedOut`. Pattern:
-       * https://reactnavigation.org/docs/auth-flow
-       */}
       <Stack.Navigator
         key={signedIn ? "signedIn" : "signedOut"}
         screenOptions={{
           headerShown: false,
-          /** Global iOS swipe-back gesture + Android horizontal slide for parity.
-           *  Individual screens (Meeting) override this where appropriate. */
           gestureEnabled: true,
           gestureDirection: "horizontal",
           animation: "slide_from_right",
@@ -65,9 +44,6 @@ export function RootNavigator() {
                 headerShown: false,
                 presentation: "fullScreenModal",
                 animation: "slide_from_bottom",
-                /** Lock the swipe-back gesture inside an active call — a stray
-                 *  edge swipe must never drop the user out. They leave via the
-                 *  explicit "End" action in ActionButtons. */
                 gestureEnabled: false,
               }}
             />
@@ -76,6 +52,16 @@ export function RootNavigator() {
           <Stack.Screen name="Auth" component={AuthNavigator} />
         )}
       </Stack.Navigator>
+
+      {signedIn && (
+        <>
+          <InstantLessonTrainerModal />
+          <InstantLessonTraineeModal />
+          <InstantLessonStatusBanner />
+          <NotificationToast />
+          <OnboardingWalkthrough />
+        </>
+      )}
     </>
   );
 }

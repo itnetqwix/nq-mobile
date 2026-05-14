@@ -20,6 +20,7 @@ import { API_ROUTES } from "../../../config/apiRoutes";
 import {
   fetchFriends,
   fetchFriendRequests,
+  fetchSentFriendRequests,
   postAcceptFriendRequest,
   postRejectFriendRequest,
 } from "../../home/api/homeApi";
@@ -30,6 +31,7 @@ import { ChatRoomScreen } from "../../chats/screens/ChatRoomScreen";
 const TABS = [
   { key: "friends", label: "Friends" },
   { key: "requests", label: "Requests" },
+  { key: "sent", label: "Sent" },
   { key: "share", label: "Share clips" },
 ] as const;
 type Tab = (typeof TABS)[number]["key"];
@@ -129,9 +131,50 @@ function RequestCard({
   );
 }
 
+function SentRequestCard({
+  request,
+  onCancel,
+  cancelBusy,
+}: {
+  request: any;
+  onCancel: (receiverId: string) => void;
+  cancelBusy: boolean;
+}) {
+  const receiver = request?.receiverId;
+  const name = receiver?.fullname || receiver?.fullName || "User";
+  const status: string = request?.status ?? "pending";
+  const isPending = status === "pending";
+
+  return (
+    <View style={styles.row}>
+      <Avatar uri={receiver?.profile_picture} name={name} />
+      <View style={styles.rowInfo}>
+        <Text style={styles.rowName}>{name}</Text>
+        <View style={styles.statusRow}>
+          <View style={[styles.statusDot, isPending ? styles.statusPending : styles.statusAccepted]} />
+          <Text style={[styles.rowSub, { marginTop: 0 }]}>
+            {isPending ? "Pending" : "Accepted"}
+          </Text>
+        </View>
+      </View>
+      {isPending && (
+        <Button
+          label="Cancel"
+          size="sm"
+          variant="danger"
+          fullWidth={false}
+          onPress={() => onCancel(String(receiver?._id))}
+          disabled={cancelBusy}
+        />
+      )}
+    </View>
+  );
+}
+
 export function FriendsScreen() {
   const [tab, setTab] = useState<Tab>("friends");
   const [messageBusy, setMessageBusy] = useState(false);
+  const [cancelBusy, setCancelBusy] = useState(false);
   const [activeChat, setActiveChat] = useState<{
     conversationId: string;
     partner: { _id: string; fullname?: string; profile_picture?: string };
@@ -151,6 +194,13 @@ export function FriendsScreen() {
     staleTime: 60_000,
   });
 
+  const { data: sentRequests = [], isLoading: loadingSent, isRefetching: refreshingSent, refetch: refetchSent } = useQuery({
+    queryKey: ["sentFriendRequests"],
+    queryFn: fetchSentFriendRequests,
+    staleTime: 60_000,
+    enabled: tab === "sent",
+  });
+
   const handleAccept = async (requestId: string) => {
     await postAcceptFriendRequest(requestId);
     queryClient.invalidateQueries({ queryKey: ["friendRequests"] });
@@ -160,6 +210,18 @@ export function FriendsScreen() {
   const handleReject = async (requestId: string) => {
     await postRejectFriendRequest(requestId);
     queryClient.invalidateQueries({ queryKey: ["friendRequests"] });
+  };
+
+  const handleCancelRequest = async (receiverId: string) => {
+    setCancelBusy(true);
+    try {
+      await apiClient.post(API_ROUTES.user.cancelFriendRequest, { receiverId });
+      queryClient.invalidateQueries({ queryKey: ["sentFriendRequests"] });
+    } catch (e: any) {
+      Alert.alert("Error", e?.response?.data?.error ?? "Could not cancel request.");
+    } finally {
+      setCancelBusy(false);
+    }
   };
 
   const handleMessage = useCallback(
@@ -179,9 +241,16 @@ export function FriendsScreen() {
             conversationId: convId,
             partner: { _id: userId, fullname: name, profile_picture: picture },
           });
+        } else {
+          Alert.alert("Error", "Could not open chat — no conversation returned.");
         }
       } catch (e: any) {
-        Alert.alert("Error", e?.response?.data?.message ?? "Could not open chat.");
+        const msg =
+          e?.response?.data?.message ??
+          e?.response?.data?.error ??
+          e?.message ??
+          "Could not open chat.";
+        Alert.alert("Error", String(msg));
       } finally {
         setMessageBusy(false);
       }
@@ -189,11 +258,22 @@ export function FriendsScreen() {
     [queryClient]
   );
 
-  const isLoading = tab === "friends" ? loadingFriends : tab === "requests" ? loadingReqs : false;
+  const isLoading =
+    tab === "friends" ? loadingFriends :
+    tab === "requests" ? loadingReqs :
+    tab === "sent" ? loadingSent : false;
   const isRefetching =
-    tab === "friends" ? refreshingFriends : tab === "requests" ? refreshingReqs : false;
-  const refetch = tab === "friends" ? refetchFriends : tab === "requests" ? refetchReqs : () => {};
-  const data = tab === "friends" ? friends : tab === "requests" ? requests : [];
+    tab === "friends" ? refreshingFriends :
+    tab === "requests" ? refreshingReqs :
+    tab === "sent" ? refreshingSent : false;
+  const refetch =
+    tab === "friends" ? refetchFriends :
+    tab === "requests" ? refetchReqs :
+    tab === "sent" ? refetchSent : () => {};
+  const data =
+    tab === "friends" ? friends :
+    tab === "requests" ? requests :
+    tab === "sent" ? sentRequests : [];
 
   if (activeChat) {
     return (
@@ -248,6 +328,12 @@ export function FriendsScreen() {
                 onMessage={handleMessage}
                 messageBusy={messageBusy}
               />
+            ) : tab === "sent" ? (
+              <SentRequestCard
+                request={item}
+                onCancel={handleCancelRequest}
+                cancelBusy={cancelBusy}
+              />
             ) : (
               <RequestCard
                 request={item}
@@ -262,11 +348,21 @@ export function FriendsScreen() {
           }
           ListEmptyComponent={
             <EmptyState
-              icon={tab === "friends" ? "people-outline" : "person-add-outline"}
-              title={tab === "friends" ? "No friends yet" : "No pending requests"}
+              icon={
+                tab === "friends" ? "people-outline" :
+                tab === "sent" ? "paper-plane-outline" :
+                "person-add-outline"
+              }
+              title={
+                tab === "friends" ? "No friends yet" :
+                tab === "sent" ? "No sent requests" :
+                "No pending requests"
+              }
               description={
                 tab === "friends"
                   ? "Connect with trainers and trainees to build your network."
+                  : tab === "sent"
+                  ? "Friend requests you send will appear here with their status."
                   : "Friend requests you receive will appear here."
               }
             />
@@ -331,4 +427,9 @@ const styles = StyleSheet.create({
 
   avatarFallback: { backgroundColor: colors.brandNavy, alignItems: "center", justifyContent: "center" },
   avatarInitial: { color: colors.brandTextOn, fontWeight: "700" },
+
+  statusRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  statusPending: { backgroundColor: "#f59e0b" },
+  statusAccepted: { backgroundColor: colors.success },
 });

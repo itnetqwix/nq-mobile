@@ -173,10 +173,40 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
   );
 }
 
+function buildCalendarDays(baseDate: Date, range = 14): { key: string; date: Date; label: string; dayName: string }[] {
+  const days: { key: string; date: Date; label: string; dayName: string }[] = [];
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  for (let i = -3; i < range; i++) {
+    const d = new Date(baseDate);
+    d.setDate(d.getDate() + i);
+    days.push({
+      key: d.toISOString().slice(0, 10),
+      date: d,
+      label: String(d.getDate()),
+      dayName: dayNames[d.getDay()],
+    });
+  }
+  return days;
+}
+
+function isSameDay(dateStr: string | undefined, target: string): boolean {
+  if (!dateStr) return false;
+  try {
+    const d = new Date(dateStr);
+    return d.toISOString().slice(0, 10) === target || dateStr.slice(0, 10) === target;
+  } catch {
+    return false;
+  }
+}
+
 export function UpcomingSessionsScreen() {
   const { accountType } = useAuth();
   const [activeTab, setActiveTab] = useState<StatusTab>("upcoming");
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const queryClient = useQueryClient();
+
+  const calendarDays = useMemo(() => buildCalendarDays(new Date()), []);
+  const todayKey = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const { data: rawSessions = [], isLoading, isRefetching, refetch } = useQuery({
     queryKey: ["sessions", activeTab],
@@ -184,10 +214,6 @@ export function UpcomingSessionsScreen() {
     staleTime: 60_000,
   });
 
-  /**
-   * Tick every 30 s while the screen is mounted so any instant lesson that crosses the
-   * 1-hour join window disappears without needing a manual refresh.
-   */
   const [, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((n) => n + 1), 30_000);
@@ -196,36 +222,77 @@ export function UpcomingSessionsScreen() {
 
   const sessions = useMemo(() => {
     const nowMs = Date.now();
-    /** Hide expired instant lessons from Upcoming + Confirmed; keep Completed/historical as-is. */
-    if (activeTab === "completed") return rawSessions;
-    return rawSessions.filter((s: any) => !isInstantLessonExpired(s, nowMs));
-  }, [rawSessions, activeTab]);
+    let list = activeTab === "completed" ? rawSessions : rawSessions.filter((s: any) => !isInstantLessonExpired(s, nowMs));
+    if (selectedDate) {
+      list = list.filter((s: any) => isSameDay(s.booked_date, selectedDate));
+    }
+    return list;
+  }, [rawSessions, activeTab, selectedDate]);
 
-  /** Silently refresh the cache when expired rows are filtered, so the count is honest after refresh. */
   useEffect(() => {
-    if (rawSessions.length !== sessions.length) {
+    if (rawSessions.length !== sessions.length && !selectedDate) {
       queryClient.invalidateQueries({ queryKey: ["sessions", activeTab] });
     }
-  }, [rawSessions.length, sessions.length, queryClient, activeTab]);
+  }, [rawSessions.length, sessions.length, queryClient, activeTab, selectedDate]);
+
+  const sessionDates = useMemo(() => {
+    const dates = new Set<string>();
+    for (const s of rawSessions as any[]) {
+      if (s.booked_date) {
+        try {
+          const key = new Date(s.booked_date).toISOString().slice(0, 10);
+          dates.add(key);
+        } catch { /* skip invalid */ }
+      }
+    }
+    return dates;
+  }, [rawSessions]);
 
   return (
     <View style={styles.root}>
-      {/* Status Tabs */}
       <View style={styles.tabs}>
         {STATUS_TABS.map((tab) => (
           <Pressable
             key={tab.key}
             style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-            onPress={() => setActiveTab(tab.key)}
+            onPress={() => { setActiveTab(tab.key); setSelectedDate(null); }}
           >
-            <Text
-              style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}
-            >
+            <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
               {tab.label}
             </Text>
           </Pressable>
         ))}
       </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.calStrip}
+      >
+        <Pressable
+          style={[styles.calDay, !selectedDate && styles.calDaySelected]}
+          onPress={() => setSelectedDate(null)}
+        >
+          <Text style={[styles.calDayName, !selectedDate && styles.calDayTextSelected]}>All</Text>
+          <Text style={[styles.calDayNum, !selectedDate && styles.calDayTextSelected]}>•</Text>
+        </Pressable>
+        {calendarDays.map((d) => {
+          const isSelected = selectedDate === d.key;
+          const isToday = d.key === todayKey;
+          const hasSession = sessionDates.has(d.key);
+          return (
+            <Pressable
+              key={d.key}
+              style={[styles.calDay, isSelected && styles.calDaySelected, isToday && !isSelected && styles.calDayToday]}
+              onPress={() => setSelectedDate(isSelected ? null : d.key)}
+            >
+              <Text style={[styles.calDayName, isSelected && styles.calDayTextSelected]}>{d.dayName}</Text>
+              <Text style={[styles.calDayNum, isSelected && styles.calDayTextSelected]}>{d.label}</Text>
+              {hasSession && <View style={[styles.calDot, isSelected && { backgroundColor: "#fff" }]} />}
+            </Pressable>
+          );
+        })}
+      </ScrollView>
 
       {isLoading ? (
         <Stack gap="sm" style={styles.list}>
@@ -244,30 +311,24 @@ export function UpcomingSessionsScreen() {
         <ScrollView
           contentContainerStyle={styles.list}
           refreshControl={
-            <RefreshControl
-              refreshing={isRefetching}
-              onRefresh={refetch}
-              tintColor={colors.brand}
-            />
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brand} />
           }
         >
           {sessions.length === 0 ? (
             <EmptyState
               icon="calendar-outline"
-              title={`No ${activeTab} sessions`}
+              title={selectedDate ? `No sessions on ${selectedDate}` : `No ${activeTab} sessions`}
               description={
-                activeTab === "upcoming"
+                selectedDate
+                  ? "Tap a different date or 'All' to see all sessions."
+                  : activeTab === "upcoming"
                   ? "Your booked sessions will appear here."
                   : `No ${activeTab} sessions found.`
               }
             />
           ) : (
             sessions.map((session: any) => (
-              <SessionCard
-                key={session._id}
-                session={session}
-                accountType={accountType}
-              />
+              <SessionCard key={session._id} session={session} accountType={accountType} />
             ))
           )}
         </ScrollView>
@@ -343,4 +404,38 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   avatarInitial: { color: colors.brandTextOn, fontWeight: "700" },
+
+  calStrip: {
+    flexDirection: "row",
+    paddingHorizontal: space.sm,
+    paddingVertical: space.sm,
+    gap: 6,
+    backgroundColor: colors.surfaceElevated,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  calDay: {
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: radii.md,
+    minWidth: 48,
+  },
+  calDaySelected: {
+    backgroundColor: colors.brandNavy,
+  },
+  calDayToday: {
+    borderWidth: 1,
+    borderColor: colors.brandNavy,
+  },
+  calDayName: { ...typography.caption, color: colors.textMuted, fontWeight: "600" },
+  calDayNum: { ...typography.subtitle, color: colors.text, marginTop: 2 },
+  calDayTextSelected: { color: colors.brandTextOn },
+  calDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: colors.brandAccent,
+    marginTop: 3,
+  },
 });

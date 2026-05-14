@@ -11,7 +11,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, space } from "../../theme";
+import { colors, space, useThemeColors } from "../../theme";
 
 export type ScreenContainerProps = {
   /** Render mode — scroll wraps a `ScrollView`, plain skips it for flex
@@ -51,12 +51,13 @@ export function ScreenContainer({
   style,
   children,
 }: ScreenContainerProps) {
+  const c = useThemeColors();
   const insets = useSafeAreaInsets();
   const padValue = padding === 0 ? 0 : space[padding];
 
   const containerStyle: ViewStyle = {
     flex: 1,
-    backgroundColor: background ?? colors.surface,
+    backgroundColor: background ?? c.surface,
     paddingTop: applyTopInset ? insets.top : 0,
     paddingBottom: applyBottomInset ? insets.bottom : 0,
   };
@@ -72,13 +73,13 @@ export function ScreenContainer({
     <ScrollView
       contentContainerStyle={[styles.scrollContent, innerPadding, contentStyle]}
       keyboardShouldPersistTaps="handled"
-      refreshControl={
+        refreshControl={
         onRefresh ? (
           <RefreshControl
             refreshing={!!refreshing}
             onRefresh={onRefresh}
-            tintColor={colors.brandAccent}
-            colors={[colors.brandAccent]}
+            tintColor={c.brandAccent}
+            colors={[c.brandAccent]}
           />
         ) : undefined
       }

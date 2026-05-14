@@ -127,9 +127,9 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
         trainer_id: tid,
         booked_date: new Date().toISOString(),
         duration: durationMinutes,
+        charging_price: chargingPrice,
       };
       if (paymentIntentId) bookingPayload.payment_intent_id = paymentIntentId;
-      if (chargingPrice > 0) bookingPayload.charging_price = chargingPrice;
       const res = await apiClient.post(API_ROUTES.trainee.bookInstantMeeting, bookingPayload);
       const lessonId = parseInstantBookingLessonId(res);
       if (!lessonId) throw new Error("Server did not return a booking id.");
@@ -192,7 +192,8 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
 
   const handleSendRequest = useCallback(() => {
     if (!validateCoupon()) return;
-    if (requiresPayment && !paymentIntentId) {
+    const promoMadeFree = requiresPayment && chargingPrice === 0 && !paymentIntentId;
+    if (requiresPayment && !paymentIntentId && !promoMadeFree) {
       Alert.alert(
         "Payment required",
         `This trainer charges $${trainerHourlyRate}/hr. Please complete payment before booking.`
@@ -200,7 +201,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
       return;
     }
     submitMutation.mutate();
-  }, [validateCoupon, submitMutation, requiresPayment, paymentIntentId, trainerHourlyRate]);
+  }, [validateCoupon, submitMutation, requiresPayment, paymentIntentId, trainerHourlyRate, chargingPrice]);
 
   const stepNum = wizardStepIndex(step) + 1;
   const totalSteps = WIZARD_STEPS.length;

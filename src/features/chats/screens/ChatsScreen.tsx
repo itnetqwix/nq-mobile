@@ -140,11 +140,18 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
     for (const f of friends) {
       const receiver = f?.receiverId;
       const sender = f?.senderId;
-      const other = receiver && String(receiver._id ?? receiver) !== currentUserId
-        ? receiver
-        : sender && String(sender._id ?? sender) !== currentUserId
-        ? sender
-        : null;
+
+      let other: any = null;
+      if (receiver && typeof receiver === "object" && receiver._id) {
+        other = String(receiver._id) !== currentUserId ? receiver : null;
+      }
+      if (!other && sender && typeof sender === "object" && sender._id) {
+        other = String(sender._id) !== currentUserId ? sender : null;
+      }
+      if (!other && f?._id && String(f._id) !== currentUserId) {
+        other = f;
+      }
+
       if (other && other._id) {
         items.push({
           _id: String(other._id),
@@ -155,7 +162,7 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
     }
     if (!friendSearch.trim()) return items;
     const q = friendSearch.toLowerCase();
-    return items.filter((f) => (f.fullname ?? "").toLowerCase().includes(q));
+    return items.filter((fp) => (fp.fullname ?? "").toLowerCase().includes(q));
   }, [friends, currentUserId, friendSearch]);
 
   const openChatWithFriend = useCallback(async (friend: ChatPartner) => {

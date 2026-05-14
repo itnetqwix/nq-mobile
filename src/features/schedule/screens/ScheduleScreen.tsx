@@ -1,23 +1,21 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useQuery } from "@tanstack/react-query";
 import React, { useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
-  Linking,
-  Pressable,
   RefreshControl,
   SectionList,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { WEB_APP_ORIGIN } from "../../../config/env";
-import { WebRoutes } from "../../../constants/webRoutes";
 import { AccountType } from "../../../constants/accountType";
 import { Button, EmptyState, Pill } from "../../../components/ui";
 import { colors, radii, space, typography } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
-import { fetchScheduledMeetings, fetchTrainerSlots } from "../../home/api/homeApi";
+import { fetchTrainerSlots } from "../../home/api/homeApi";
 import { UpcomingSessionsScreen } from "../../sessions/screens/UpcomingSessionsScreen";
 import type { MainTabScreenProps } from "../../../navigation/types";
 
@@ -48,6 +46,7 @@ type DaySection = {
 };
 
 function TrainerSchedule() {
+  const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { data: inventory = [], isLoading, isRefetching, refetch } = useQuery({
     queryKey: ["trainerSlots"],
     queryFn: fetchTrainerSlots,
@@ -63,10 +62,16 @@ function TrainerSchedule() {
     }).filter((s) => s.data.length > 0);
   }, [inventory]);
 
-  const openWebSchedule = useCallback(async () => {
-    const url = `${WEB_APP_ORIGIN.replace(/\/$/, "")}${WebRoutes.dashboardSchedule}`;
-    if (await Linking.canOpenURL(url)) void Linking.openURL(url);
-  }, []);
+  const openScheduleEditor = useCallback(() => {
+    try {
+      navigation.navigate("Menu", {
+        screen: "ShellSurface",
+        params: { surfaceId: "trainerSchedule" },
+      });
+    } catch {
+      /* fallback if nested nav doesn't resolve */
+    }
+  }, [navigation]);
 
   if (isLoading) {
     return (
@@ -80,16 +85,12 @@ function TrainerSchedule() {
     <View style={styles.root}>
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>My schedule</Text>
-          <Text style={styles.headerSub}>
-            Weekly hours from GET /trainer/get-slots (available_slots), same source as the web
-            schedule page.
-          </Text>
+          <Text style={styles.headerTitle}>My Schedule</Text>
         </View>
         <Button
-          label="Edit on web"
-          leftIcon="open-outline"
-          onPress={openWebSchedule}
+          label="Edit schedule"
+          leftIcon="create-outline"
+          onPress={openScheduleEditor}
           size="sm"
           fullWidth={false}
         />
@@ -120,9 +121,9 @@ function TrainerSchedule() {
           <EmptyState
             icon="calendar-outline"
             title="No weekly slots yet"
-            description="Set your availability on the schedule, then pull to refresh here."
-            actionLabel="Open schedule on web"
-            onAction={openWebSchedule}
+            description="Tap 'Edit schedule' to set your weekly availability."
+            actionLabel="Edit schedule"
+            onAction={openScheduleEditor}
           />
         }
       />
@@ -153,7 +154,6 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   headerTitle: { ...typography.titleSm, color: colors.brandNavy, fontSize: 18 },
-  headerSub: { ...typography.caption, color: colors.textMuted, marginTop: 4 },
 
   listContent: { padding: space.md, paddingBottom: space.xl },
   listEmptyGrow: { flexGrow: 1, padding: space.md },

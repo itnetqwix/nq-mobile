@@ -1,8 +1,10 @@
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import * as ImagePicker from "expo-image-picker";
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import {
+  Avatar,
   Button,
   Card,
   FormField,
@@ -11,20 +13,61 @@ import {
 } from "../../../components/ui";
 import { AccountType } from "../../../constants/accountType";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
+import { getS3ImageUrl } from "../../../lib/imageUtils";
 import type { MenuStackParamList } from "../../../navigation/types";
 import { colors, space, typography } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
+import { apiClient } from "../../../api/client";
 import {
   postUpdateMobileNumber,
   putProfile,
   type ProfileUpdate,
 } from "../../home/api/homeApi";
 
-/** Mirrors the website "Trainer profile" / "Edit profile" page — name + mobile + timezone + bio. */
 export function EditProfileScreen() {
   const { user, accountType, refreshUser } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<MenuStackParamList>>();
   const isTrainer = accountType === AccountType.TRAINER;
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [localAvatar, setLocalAvatar] = useState<string | null>(null);
+
+  const currentAvatar = localAvatar ?? getS3ImageUrl((user?.profile_picture as string) ?? "");
+
+  const pickAndUploadAvatar = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission needed", "Please allow access to your photo library.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets?.[0]?.uri) return;
+
+    setAvatarUploading(true);
+    try {
+      const asset = result.assets[0];
+      const formData = new FormData();
+      formData.append("profile_picture", {
+        uri: asset.uri,
+        type: asset.mimeType ?? "image/jpeg",
+        name: asset.fileName ?? "avatar.jpg",
+      } as any);
+
+      await apiClient.put("/common/update-profile-picture", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setLocalAvatar(asset.uri);
+      await refreshUser();
+    } catch (e) {
+      Alert.alert("Upload failed", getApiErrorMessage(e, "Could not update profile picture."));
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
 
   const initial = useMemo(
     () => ({
@@ -92,13 +135,34 @@ export function EditProfileScreen() {
     }
   };
 
+  const displayName = initial.fullname || "User";
+
   return (
     <ScreenContainer scroll padding="md" background={colors.surface}>
-      {/* <Text style={styles.lead}>
-        Updates go to the same endpoints as the website:{" "}
-        {isTrainer ? "PUT /trainer/profile" : "PUT /trainee/profile"} and POST
-        /user/update-mobile-number.
-      </Text> */}
+      <View style={styles.avatarSection}>
+        <Pressable onPress={pickAndUploadAvatar} disabled={avatarUploading} style={styles.avatarWrap}>
+          {currentAvatar ? (
+            <Image
+              source={{ uri: currentAvatar }}
+              style={styles.avatarImg}
+            />
+          ) : (
+            <Avatar name={displayName} size="xl" />
+          )}
+          <View style={styles.cameraBadge}>
+            {avatarUploading ? (
+              <ActivityIndicator size={14} color="#fff" />
+            ) : (
+              <Text style={{ color: "#fff", fontSize: 14 }}>📷</Text>
+            )}
+          </View>
+        </Pressable>
+        <Pressable onPress={pickAndUploadAvatar} disabled={avatarUploading}>
+          <Text style={styles.changePhotoText}>
+            {avatarUploading ? "Uploading…" : "Change photo"}
+          </Text>
+        </Pressable>
+      </View>
 
       <SectionHeader label="Identity" />
       <Card variant="outlined" padding="md" style={styles.sectionCard}>
@@ -170,10 +234,31 @@ export function EditProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  lead: {
-    ...typography.caption,
-    color: colors.textMuted,
+  avatarSection: {
+    alignItems: "center",
+    paddingVertical: space.md,
     marginBottom: space.sm,
+  },
+  avatarWrap: { position: "relative" },
+  avatarImg: { width: 96, height: 96, borderRadius: 48, backgroundColor: colors.surfaceMuted },
+  cameraBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.brandNavy,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: colors.surface,
+  },
+  changePhotoText: {
+    ...typography.bodySm,
+    color: colors.brandAccent,
+    fontWeight: "600",
+    marginTop: space.xs,
   },
   sectionCard: { marginBottom: space.sm },
   fieldStack: { gap: space.md },

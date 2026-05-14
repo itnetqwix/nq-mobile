@@ -58,8 +58,7 @@ export function WizardStepDuration({
       />
       {!!couponError && <Text style={styles.errorText}>{couponError}</Text>}
       <Text style={sharedStepStyles.mutedSmall}>
-        Instant booking is sent with trainer and time only; promo is for parity with the web form until the API
-        accepts it.
+        Enter "free" for a 100% discount (if configured). Promo codes are validated with Stripe.
       </Text>
 
       <Pressable style={sharedStepStyles.primaryBtn} onPress={onNext}>

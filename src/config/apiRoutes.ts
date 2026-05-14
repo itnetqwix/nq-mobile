@@ -37,6 +37,7 @@ export const API_ROUTES = {
     cancelFriendRequest: "/user/cancel-friend-request",
     rejectFriendRequest: "/user/reject-friend-request",
     friendRequests: "/user/friend-requests",
+    sentFriendRequests: "/user/sent-friend-requests",
     friends: "/user/friends",
     removeFriend: "/user/remove-friend",
     updateAccountPrivacy: "/user/update-account-privacy",

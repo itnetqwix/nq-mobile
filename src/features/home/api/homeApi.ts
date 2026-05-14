@@ -59,6 +59,11 @@ export async function fetchFriendRequests(): Promise<any[]> {
   return res.data?.friendRequests ?? res.data ?? [];
 }
 
+export async function fetchSentFriendRequests(): Promise<any[]> {
+  const res = await apiClient.get(API_ROUTES.user.sentFriendRequests);
+  return res.data?.sentRequests ?? res.data ?? [];
+}
+
 export async function fetchRecentTrainees(): Promise<any[]> {
   const res = await apiClient.get(API_ROUTES.trainer.getRecentTrainees);
   return res.data?.result ?? res.data ?? [];

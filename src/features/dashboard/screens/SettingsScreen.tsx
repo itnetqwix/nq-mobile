@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
+  Pressable,
   StyleSheet,
   Switch,
   Text,
@@ -166,21 +167,24 @@ export function SettingsScreen() {
 
   return (
     <ScreenContainer scroll padding="md" background={colors.surface}>
-      <Card variant="outlined" padding="md" style={styles.profileCard}>
-        <Avatar name={name} size="xl" />
-        <View style={{ flex: 1 }}>
-          <Text style={[typography.titleMd, { color: colors.text }]} numberOfLines={1}>
-            {name}
-          </Text>
-          <Text
-            style={[typography.bodySm, { color: colors.textMuted, marginTop: 2 }]}
-            numberOfLines={1}
-          >
-            {email}
-          </Text>
-          <Pill label={accountType ?? "Member"} tone="brand" style={{ marginTop: 6 }} />
-        </View>
-      </Card>
+      <Pressable onPress={() => openShell("editProfile")}>
+        <Card variant="outlined" padding="md" style={styles.profileCard}>
+          <Avatar name={name} size="xl" />
+          <View style={{ flex: 1 }}>
+            <Text style={[typography.titleMd, { color: colors.text }]} numberOfLines={1}>
+              {name}
+            </Text>
+            <Text
+              style={[typography.bodySm, { color: colors.textMuted, marginTop: 2 }]}
+              numberOfLines={1}
+            >
+              {email}
+            </Text>
+            <Pill label={accountType ?? "Member"} tone="brand" style={{ marginTop: 6 }} />
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+        </Card>
+      </Pressable>
 
       <SectionHeader label="Account" />
       <Card variant="outlined" padding={0} style={styles.sectionCard}>

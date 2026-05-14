@@ -15,7 +15,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { useColorScheme } from "react-native";
+import { Appearance, useColorScheme } from "react-native";
 import { type AppColors, resolveColors } from "./index";
 
 export type ThemeMode = "system" | "light" | "dark";
@@ -58,19 +58,22 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const setMode = (next: ThemeMode) => {
     setModeState(next);
-    /** Fire-and-forget persistence. */
     SecureStore.setItemAsync(STORAGE_KEY, next).catch(() => undefined);
+    Appearance.setColorScheme(next === "system" ? null : next);
   };
 
   const scheme: "light" | "dark" =
     mode === "system" ? (system === "dark" ? "dark" : "light") : mode;
+
+  useEffect(() => {
+    Appearance.setColorScheme(mode === "system" ? null : mode);
+  }, [mode]);
 
   const value = useMemo<ThemeContextValue>(
     () => ({ mode, setMode, scheme, colors: resolveColors(scheme) }),
     [mode, scheme]
   );
 
-  /** Don't block render on hydration — first paint uses the default ("system"). */
   void hydrated;
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
@@ -79,7 +82,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 export function useTheme(): ThemeContextValue {
   const ctx = useContext(ThemeContext);
   if (!ctx) {
-    /** Sensible default for tests / preview render. */
     return {
       mode: "system",
       setMode: () => undefined,

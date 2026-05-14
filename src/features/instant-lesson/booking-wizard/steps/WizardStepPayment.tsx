@@ -74,7 +74,7 @@ export function WizardStepPayment({
         destination: trainerStripeId,
         commission,
         customer: userStripeId,
-        couponCode: couponCode.trim() || undefined,
+        couponCode: couponCode.trim().toLowerCase() || undefined,
       });
       const data = (res as any)?.data ?? res;
       if (data?.skip) {
