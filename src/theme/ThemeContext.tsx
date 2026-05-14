@@ -10,6 +10,7 @@
 import * as SecureStore from "expo-secure-store";
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -56,11 +57,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const setMode = (next: ThemeMode) => {
+  const setMode = useCallback((next: ThemeMode) => {
     setModeState(next);
     SecureStore.setItemAsync(STORAGE_KEY, next).catch(() => undefined);
     Appearance.setColorScheme(next === "system" ? null : next);
-  };
+  }, []);
 
   const scheme: "light" | "dark" =
     mode === "system" ? (system === "dark" ? "dark" : "light") : mode;

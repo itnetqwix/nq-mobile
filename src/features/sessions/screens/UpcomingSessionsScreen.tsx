@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -212,7 +212,6 @@ export function UpcomingSessionsScreen() {
   const { accountType } = useAuth();
   const [activeTab, setActiveTab] = useState<StatusTab>("upcoming");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const queryClient = useQueryClient();
 
   const calendarDays = useMemo(
     () => buildCalendarDays(new Date(), activeTab === "completed" ? 90 : 3, activeTab === "completed" ? 1 : 14),
@@ -238,14 +237,14 @@ export function UpcomingSessionsScreen() {
     if (selectedDate) {
       list = list.filter((s: any) => isSameDay(s.booked_date, selectedDate));
     }
-    return list;
+    const seen = new Set<string>();
+    return list.filter((s: any) => {
+      const id = String(s._id);
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
   }, [rawSessions, activeTab, selectedDate]);
-
-  useEffect(() => {
-    if (rawSessions.length !== sessions.length && !selectedDate) {
-      queryClient.invalidateQueries({ queryKey: ["sessions", activeTab] });
-    }
-  }, [rawSessions.length, sessions.length, queryClient, activeTab, selectedDate]);
 
   const sessionDates = useMemo(() => {
     const dates = new Set<string>();

@@ -1,4 +1,4 @@
-import React, { useCallback, useLayoutEffect } from "react";
+import React, { useCallback, useLayoutEffect, useMemo } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -309,7 +309,14 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
   }, [queryClient]);
 
   const nowSessions = sessions.filter((s: any) => isSessionLiveNow(s));
-  const coaches = onlineUsers.map((u: any) => u.trainer_info ?? u).filter(Boolean);
+  const coaches = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const u of onlineUsers) {
+      const t = u.trainer_info ?? u;
+      if (t?._id && !map.has(String(t._id))) map.set(String(t._id), t);
+    }
+    return Array.from(map.values());
+  }, [onlineUsers]);
 
   return (
     <ScrollView
@@ -472,9 +479,9 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
                 ))}
               </View>
             ) : (
-              nowSessions.map((session: any) => (
+              nowSessions.map((session: any, idx: number) => (
                 <SessionCard
-                  key={session._id}
+                  key={`${session._id}-now-${idx}`}
                   session={session}
                   accountType={accountType}
                 />
@@ -486,9 +493,9 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
         {/* Upcoming Sessions (next 3) */}
         {sessions.length > 0 && nowSessions.length === 0 && (
           <HomeMainCont title="Upcoming Sessions" testID="card trainer-profile-card Home-main-Cont upcoming-sessions">
-            {sessions.slice(0, 3).map((session: any) => (
+            {sessions.slice(0, 3).map((session: any, idx: number) => (
               <SessionCard
-                key={session._id}
+                key={`${session._id}-up-${idx}`}
                 session={session}
                 accountType={accountType}
               />
@@ -513,7 +520,7 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
           >
             <RecentUsersGrid accountIsTrainer>
               {recentTrainees.map((u: any, i: number) => (
-                <View key={u._id ?? i} style={webHomeStyles.recentUsersGridItemTrainer}>
+                <View key={`${u._id ?? "t"}-${i}`} style={webHomeStyles.recentUsersGridItemTrainer}>
                   <RecentUserChip user={u} />
                 </View>
               ))}
@@ -528,7 +535,7 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
           >
             <RecentUsersGrid accountIsTrainer={false}>
               {recentTrainers.map((u: any, i: number) => (
-                <RecentUserChip key={u._id ?? i} user={u} />
+                <RecentUserChip key={`${u._id ?? "e"}-${i}`} user={u} />
               ))}
             </RecentUsersGrid>
           </HomeMainCont>

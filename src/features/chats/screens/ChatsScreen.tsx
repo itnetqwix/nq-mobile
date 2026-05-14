@@ -88,6 +88,10 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
   const [showNewChat, setShowNewChat] = useState(false);
   const [friendSearch, setFriendSearch] = useState("");
   const [creatingChat, setCreatingChat] = useState(false);
+  const [showGroupCreate, setShowGroupCreate] = useState(false);
+  const [groupName, setGroupName] = useState("");
+  const [selectedGroupMembers, setSelectedGroupMembers] = useState<Set<string>>(new Set());
+  const [creatingGroup, setCreatingGroup] = useState(false);
 
   const { data: conversations = [], isLoading, isRefetching, refetch } = useQuery({
     queryKey: ["conversations"],
@@ -103,7 +107,15 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
   });
 
   const getPartner = useCallback(
-    (conv: any): ChatPartner => {
+    (conv: any): ChatPartner & { isGroup?: boolean } => {
+      if (conv?.isGroup) {
+        return {
+          _id: String(conv._id),
+          fullname: conv.groupName ?? "Group",
+          profile_picture: conv.groupAvatar,
+          isGroup: true,
+        };
+      }
       const participants: any[] = conv?.participants ?? [];
       const other = participants.find(
         (p: any) => String(p?._id) !== currentUserId
@@ -127,6 +139,52 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
     [currentUserId]
   );
 
+  const toggleGroupMember = useCallback((id: string) => {
+    setSelectedGroupMembers((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const createGroup = useCallback(async () => {
+    if (!groupName.trim() || selectedGroupMembers.size < 2) {
+      Alert.alert("Error", "Please enter a group name and select at least 2 members.");
+      return;
+    }
+    setCreatingGroup(true);
+    try {
+      const res = await apiClient.post(API_ROUTES.chat.createGroup, {
+        participantIds: Array.from(selectedGroupMembers),
+        groupName: groupName.trim(),
+      });
+      const body = (res as any)?.data ?? res;
+      const conversation = body?.data ?? body?.result ?? body;
+      const convId = conversation?._id;
+      if (convId) {
+        setShowGroupCreate(false);
+        setShowNewChat(false);
+        setGroupName("");
+        setSelectedGroupMembers(new Set());
+        queryClient.invalidateQueries({ queryKey: ["conversations"] });
+        setActiveChat({
+          conversationId: convId,
+          partner: {
+            _id: convId,
+            fullname: groupName.trim(),
+          },
+        });
+      } else {
+        Alert.alert("Error", "Could not create group.");
+      }
+    } catch (e: any) {
+      Alert.alert("Error", e?.response?.data?.error ?? e?.message ?? "Could not create group.");
+    } finally {
+      setCreatingGroup(false);
+    }
+  }, [groupName, selectedGroupMembers, queryClient]);
+
   const filtered = useMemo(() => {
     if (!search.trim()) return conversations;
     const q = search.toLowerCase();
@@ -138,6 +196,7 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
 
   const friendsList = useMemo(() => {
     const items: ChatPartner[] = [];
+    const seen = new Set<string>();
     for (const f of friends) {
       const receiver = f?.receiverId;
       const sender = f?.senderId;
@@ -154,8 +213,11 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
       }
 
       if (other && other._id) {
+        const id = String(other._id);
+        if (seen.has(id)) continue;
+        seen.add(id);
         items.push({
-          _id: String(other._id),
+          _id: id,
           fullname: other.fullname ?? other.fullName ?? "Friend",
           profile_picture: other.profile_picture,
         });
@@ -244,6 +306,7 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
             const lastMsg = item.lastMessage ?? item.last_message ?? "";
             const unread = item.unreadCount ?? 0;
             const time = timeAgo(item.lastMessageAt ?? item.updatedAt);
+            const isGroup = !!(item.isGroup || (partner as any).isGroup);
 
             return (
               <Pressable
@@ -251,12 +314,18 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
                 onPress={() =>
                   setActiveChat({
                     conversationId: item._id,
-                    partner,
+                    partner: { _id: partner._id, fullname: partner.fullname, profile_picture: partner.profile_picture },
                   })
                 }
               >
                 <View style={styles.avatarWrap}>
-                  <Avatar uri={partner.profile_picture} name={partner.fullname} />
+                  {isGroup ? (
+                    <View style={[styles.avatarFallback, { width: 48, height: 48, borderRadius: 24 }]}>
+                      <Ionicons name="people" size={22} color="#fff" />
+                    </View>
+                  ) : (
+                    <Avatar uri={partner.profile_picture} name={partner.fullname} />
+                  )}
                 </View>
                 <View style={styles.rowContent}>
                   <View style={styles.rowTop}>
@@ -306,31 +375,72 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
         <Ionicons name="create-outline" size={24} color={colors.brandTextOn} />
       </Pressable>
 
-      {/* New Chat Modal — Friend Picker */}
+      {/* New Chat Modal — Friend Picker + Group */}
       <Modal
         visible={showNewChat}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => { setShowNewChat(false); setFriendSearch(""); }}
+        onRequestClose={() => { setShowNewChat(false); setShowGroupCreate(false); setFriendSearch(""); setGroupName(""); setSelectedGroupMembers(new Set()); }}
       >
         <View style={styles.modalRoot}>
           <View style={styles.modalHeader}>
-            <Pressable onPress={() => { setShowNewChat(false); setFriendSearch(""); }} hitSlop={12}>
-              <Ionicons name="close" size={24} color={colors.text} />
+            <Pressable onPress={() => {
+              if (showGroupCreate) {
+                setShowGroupCreate(false);
+                setGroupName("");
+                setSelectedGroupMembers(new Set());
+              } else {
+                setShowNewChat(false);
+                setFriendSearch("");
+              }
+            }} hitSlop={12}>
+              <Ionicons name={showGroupCreate ? "arrow-back" : "close"} size={24} color={colors.text} />
             </Pressable>
-            <Text style={styles.modalTitle}>New Chat</Text>
-            <View style={{ width: 24 }} />
+            <Text style={styles.modalTitle}>{showGroupCreate ? "New Group" : "New Chat"}</Text>
+            {showGroupCreate ? (
+              <Pressable onPress={createGroup} disabled={creatingGroup} hitSlop={12}>
+                {creatingGroup ? (
+                  <ActivityIndicator size="small" color={colors.brandNavy} />
+                ) : (
+                  <Text style={[styles.modalCreateBtn, selectedGroupMembers.size < 2 && { opacity: 0.4 }]}>Create</Text>
+                )}
+              </Pressable>
+            ) : (
+              <Pressable onPress={() => setShowGroupCreate(true)} hitSlop={12}>
+                <Ionicons name="people" size={24} color={colors.brandNavy} />
+              </Pressable>
+            )}
           </View>
+
+          {/* Group name input */}
+          {showGroupCreate && (
+            <View style={styles.groupNameRow}>
+              <View style={styles.groupIconCircle}>
+                <Ionicons name="people" size={22} color="#fff" />
+              </View>
+              <TextInput
+                style={styles.groupNameInput}
+                placeholder="Group name"
+                placeholderTextColor={colors.textMuted}
+                value={groupName}
+                onChangeText={setGroupName}
+                autoFocus
+              />
+            </View>
+          )}
+
+          {showGroupCreate && selectedGroupMembers.size > 0 && (
+            <Text style={styles.selectedCount}>{selectedGroupMembers.size} member{selectedGroupMembers.size > 1 ? "s" : ""} selected</Text>
+          )}
 
           <View style={styles.modalSearch}>
             <Ionicons name="search-outline" size={18} color={colors.textMuted} />
             <TextInput
               style={styles.modalSearchInput}
-              placeholder="Search friends..."
+              placeholder={showGroupCreate ? "Add participants..." : "Search friends..."}
               placeholderTextColor={colors.textMuted}
               value={friendSearch}
               onChangeText={setFriendSearch}
-              autoFocus
             />
             {!!friendSearch && (
               <Pressable onPress={() => setFriendSearch("")}>
@@ -354,23 +464,28 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
             <FlatList
               data={friendsList}
               keyExtractor={(item) => item._id}
-              renderItem={({ item }) => (
-                <Pressable
-                  style={({ pressed }) => [styles.friendRow, pressed && { opacity: 0.8 }]}
-                  onPress={() => openChatWithFriend(item)}
-                  disabled={creatingChat}
-                >
-                  <Avatar uri={item.profile_picture} name={item.fullname} size={44} />
-                  <Text style={styles.friendName} numberOfLines={1}>
-                    {item.fullname}
-                  </Text>
-                  {creatingChat ? (
-                    <ActivityIndicator size="small" color={colors.brandNavy} />
-                  ) : (
-                    <Ionicons name="chatbubble-outline" size={20} color={colors.brandNavy} />
-                  )}
-                </Pressable>
-              )}
+              renderItem={({ item }) => {
+                const isSelected = selectedGroupMembers.has(item._id);
+                return (
+                  <Pressable
+                    style={({ pressed }) => [styles.friendRow, pressed && { opacity: 0.8 }, isSelected && styles.friendRowSelected]}
+                    onPress={() => showGroupCreate ? toggleGroupMember(item._id) : openChatWithFriend(item)}
+                    disabled={creatingChat}
+                  >
+                    <Avatar uri={item.profile_picture} name={item.fullname} size={44} />
+                    <Text style={styles.friendName} numberOfLines={1}>
+                      {item.fullname}
+                    </Text>
+                    {showGroupCreate ? (
+                      <Ionicons name={isSelected ? "checkmark-circle" : "ellipse-outline"} size={24} color={isSelected ? colors.brandNavy : colors.textMuted} />
+                    ) : creatingChat ? (
+                      <ActivityIndicator size="small" color={colors.brandNavy} />
+                    ) : (
+                      <Ionicons name="chatbubble-outline" size={20} color={colors.brandNavy} />
+                    )}
+                  </Pressable>
+                );
+              }}
               contentContainerStyle={{ padding: space.md, gap: space.xs }}
               ListEmptyComponent={
                 <EmptyState
@@ -504,5 +619,40 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  friendRowSelected: {
+    backgroundColor: `${colors.brandNavy}10`,
+    borderColor: colors.brandNavy,
+  },
   friendName: { ...typography.subtitle, color: colors.text, flex: 1 },
+  modalCreateBtn: { color: colors.brandNavy, fontWeight: "700", fontSize: 16 },
+  groupNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: space.md,
+    paddingTop: 12,
+  },
+  groupIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.brandNavy,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  groupNameInput: {
+    flex: 1,
+    fontSize: 16,
+    color: colors.text,
+    borderBottomWidth: 2,
+    borderBottomColor: colors.brandNavy,
+    paddingVertical: 8,
+  },
+  selectedCount: {
+    paddingHorizontal: space.md,
+    paddingTop: 8,
+    fontSize: 13,
+    color: colors.brandNavy,
+    fontWeight: "600",
+  },
 });

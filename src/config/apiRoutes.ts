@@ -157,5 +157,7 @@ export const API_ROUTES = {
     messages: (conversationId: string) => `/common/chat-messages/${conversationId}` as const,
     send: "/common/chat-send",
     conversation: "/common/chat-conversation",
+    mediaUploadUrl: "/common/chat-media-upload-url",
+    createGroup: "/common/chat-create-group",
   },
 } as const;
