@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   Modal,
@@ -180,9 +181,12 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
         setFriendSearch("");
         queryClient.invalidateQueries({ queryKey: ["conversations"] });
         setActiveChat({ conversationId: convId, partner: friend });
+      } else {
+        Alert.alert("Error", "Could not open chat. Please try again.");
       }
-    } catch {
-      // silently handle — the conversation list will refresh
+    } catch (e: any) {
+      const msg = e?.response?.data?.error ?? e?.message ?? "Could not open chat.";
+      Alert.alert("Error", msg);
     } finally {
       setCreatingChat(false);
     }

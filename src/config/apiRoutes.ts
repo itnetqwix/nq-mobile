@@ -151,9 +151,9 @@ export const API_ROUTES = {
       `/notifications/unregister-push-token/${encodeURIComponent(deviceId)}` as const,
   },
   chat: {
-    conversations: "/chat/conversations",
-    messages: (conversationId: string) => `/chat/messages/${conversationId}` as const,
-    send: "/chat/send",
-    conversation: "/chat/conversation",
+    conversations: "/common/chat-conversations",
+    messages: (conversationId: string) => `/common/chat-messages/${conversationId}` as const,
+    send: "/common/chat-send",
+    conversation: "/common/chat-conversation",
   },
 } as const;
