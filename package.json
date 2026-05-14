@@ -9,7 +9,12 @@
     "expo": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "build:ios": "eas build --platform ios --profile production",
+    "build:android": "eas build --platform android --profile production",
+    "build:dev": "eas build --platform ios --profile development",
+    "submit:ios": "eas submit --platform ios --profile production",
+    "deploy:ios": "eas build --platform ios --profile production --auto-submit"
   },
   "dependencies": {
     "@config-plugins/react-native-webrtc": "13.0.0",

@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "nq-mobile",
-    "slug": "nq-mobile",
+    "name": "NetQwix",
+    "slug": "netqwix",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/netquix_logo_v1.png",
@@ -35,7 +35,7 @@
         ]
       },
       "bitcode": false,
-      "bundleIdentifier": "com.anonymous.nqmobile"
+      "bundleIdentifier": "com.netqwix.nqmobile"
     },
     "android": {
       "usesCleartextTraffic": true,
@@ -58,7 +58,7 @@
         "android.permission.INTERNET",
         "android.permission.SYSTEM_ALERT_WINDOW"
       ],
-      "package": "com.anonymous.nqmobile"
+      "package": "com.netqwix.nqmobile"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -97,6 +97,12 @@
           "defaultChannel": "default"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "fc0cbae6-e93e-4661-8a6b-0339b19391ad"
+      }
+    },
+    "owner": "netqwix"
   }
 }
