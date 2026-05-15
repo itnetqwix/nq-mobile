@@ -1,6 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import React from "react";
+import { WalletScreen } from "../../wallet/screens/WalletScreen";
+import { TrainerEarningsScreen } from "../../wallet/screens/TrainerEarningsScreen";
 import {
   ActivityIndicator,
   FlatList,
@@ -102,6 +104,12 @@ export function TransactionsScreen() {
       keyExtractor={(item, i) => item?._id ?? String(i)}
       renderItem={({ item }) => <TransactionRow booking={item} isTrainer={isTrainer} />}
       contentContainerStyle={styles.list}
+      ListHeaderComponent={
+        <View style={{ marginBottom: space.md }}>
+          {isTrainer ? <TrainerEarningsScreen /> : <WalletScreen />}
+          <Text style={[styles.sectionTitle, { marginTop: space.lg }]}>Booking history</Text>
+        </View>
+      }
       refreshControl={
         <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brandNavy} />
       }
@@ -143,4 +151,5 @@ const styles = StyleSheet.create({
   rowDate: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
   rowRight: { alignItems: "flex-end", gap: 4 },
   rowAmount: { ...typography.bodyMd, fontWeight: "700", color: colors.text },
+  sectionTitle: { ...typography.titleSm, color: colors.text, marginHorizontal: space.md },
 });

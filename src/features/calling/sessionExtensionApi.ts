@@ -45,6 +45,8 @@ export async function confirmSessionExtension(payload: {
   sessionId: string;
   minutes: number;
   payment_intent_id?: string | null;
+  payment_method?: "wallet" | "card";
+  pin_session_token?: string | null;
 }): Promise<unknown> {
   const res = await apiClient.post(API_ROUTES.trainee.sessionExtensionConfirm, payload);
   return (res.data as { data?: unknown })?.data ?? res.data;

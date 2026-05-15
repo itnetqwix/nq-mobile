@@ -20,6 +20,7 @@ import {
   createSessionExtensionPaymentIntent,
   fetchSessionExtensionQuote,
 } from "../sessionExtensionApi";
+import { fetchWalletBalance, verifyWalletPin } from "../../wallet/walletApi";
 
 const EXTEND_PROMPT_SECONDS = 120;
 
@@ -46,6 +47,8 @@ export function SessionExtensionModal({
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [paying, setPaying] = useState(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [payWithWallet, setPayWithWallet] = useState(true);
+  const [pinSessionToken, setPinSessionToken] = useState<string | null>(null);
 
   const userStripeId = String((user as Record<string, unknown>)?.stripe_account_id ?? "");
 
@@ -81,7 +84,25 @@ export function SessionExtensionModal({
     try {
       let paymentIntentId: string | null = null;
 
-      if (quoteAmount != null && quoteAmount > 0) {
+      if (quoteAmount != null && quoteAmount > 0 && payWithWallet) {
+        const bal = await fetchWalletBalance();
+        const availableMinor = bal.balances?.available_minor ?? 0;
+        const needMinor = Math.round(quoteAmount * 100);
+        if (availableMinor >= needMinor) {
+          await confirmSessionExtension({
+            sessionId,
+            minutes,
+            payment_method: "wallet",
+            pin_session_token: pinSessionToken,
+          });
+          Alert.alert("Session extended", `Added ${minutes} more minutes (paid from wallet).`);
+          onExtended();
+          onDismiss();
+          return;
+        }
+      }
+
+      if (quoteAmount != null && quoteAmount > 0 && !payWithWallet) {
         const intentData = await createSessionExtensionPaymentIntent({
           sessionId,
           minutes,
@@ -110,6 +131,7 @@ export function SessionExtensionModal({
         sessionId,
         minutes,
         payment_intent_id: paymentIntentId,
+        payment_method: paymentIntentId ? "card" : undefined,
       });
 
       Alert.alert("Session extended", `Added ${minutes} more minutes to your lesson.`);
@@ -166,6 +188,23 @@ export function SessionExtensionModal({
             ))}
           </View>
 
+          {quoteAmount != null && quoteAmount > 0 ? (
+            <View style={styles.payRow}>
+              <Pressable
+                style={[styles.payChip, payWithWallet && styles.payChipActive]}
+                onPress={() => setPayWithWallet(true)}
+              >
+                <Text style={styles.payChipText}>Wallet</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.payChip, !payWithWallet && styles.payChipActive]}
+                onPress={() => setPayWithWallet(false)}
+              >
+                <Text style={styles.payChipText}>Card</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
           {quoteLoading ? (
             <ActivityIndicator color={colors.brandNavy} style={{ marginVertical: space.md }} />
           ) : quoteError ? (
@@ -219,4 +258,15 @@ const styles = StyleSheet.create({
   chipTextActive: { color: colors.brandTextOn },
   price: { ...typography.titleMd, color: colors.brandNavy, textAlign: "center" },
   error: { ...typography.bodySm, color: colors.danger, textAlign: "center" },
+  payRow: { flexDirection: "row", gap: 8, marginVertical: space.sm },
+  payChip: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+  },
+  payChipActive: { backgroundColor: colors.brandNavy, borderColor: colors.brandNavy },
+  payChipText: { ...typography.label, color: colors.textSecondary },
 });
