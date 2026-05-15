@@ -71,6 +71,14 @@ export const API_ROUTES = {
     deleteUser: (id: string) => `/user/delete-user/${id}` as const,
     approveExpert: (id: string) => `/user/approve-expert/${id}` as const,
   },
+  verification: {
+    status: "/verification/status",
+    otpSend: "/verification/otp/send",
+    otpVerify: "/verification/otp/verify",
+    profile: "/verification/profile",
+    faceSession: "/verification/face/session",
+    faceComplete: "/verification/face/complete",
+  },
   master: {
     masterData: "/master/master-data",
   },

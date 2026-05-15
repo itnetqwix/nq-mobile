@@ -50,7 +50,7 @@ export function SignUpScreen({ navigation }: AuthScreenProps<"SignUp">) {
     onSuccess: () => {
       const body =
         accountType === AccountType.TRAINER
-          ? "You can sign in here. If the website required KYC or Stripe onboarding, finish that there when prompted."
+          ? "Sign in to complete trainer verification (contact, profile, and face check) in the app."
           : "You can sign in now.";
       Alert.alert("Account created", body, [{ text: "OK", onPress: () => navigation.navigate("Login") }]);
     },

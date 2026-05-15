@@ -2,6 +2,8 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React from "react";
 import { BrandedSessionLoader } from "../components/brand/BrandedSessionLoader";
 import { useAuth } from "../features/auth/context/AuthContext";
+import { OnboardingNavigator } from "./OnboardingNavigator";
+import { needsTrainerOnboarding } from "../features/verification/verificationApi";
 import { InstantLessonStatusBanner } from "../features/instant-lesson/InstantLessonStatusBanner";
 import { InstantLessonTraineeModal } from "../features/instant-lesson/InstantLessonTraineeModal";
 import { InstantLessonTrainerModal } from "../features/instant-lesson/InstantLessonTrainerModal";
@@ -15,13 +17,24 @@ import type { RootStackParamList } from "./types";
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
-  const { status } = useAuth();
+  const { status, user, refreshUser } = useAuth();
 
   if (status === "loading") {
     return <BrandedSessionLoader />;
   }
 
   const signedIn = status === "signedIn";
+  const onboardingRequired = signedIn && needsTrainerOnboarding(user);
+
+  if (onboardingRequired) {
+    return (
+      <OnboardingNavigator
+        onComplete={() => {
+          void refreshUser();
+        }}
+      />
+    );
+  }
 
   return (
     <>
