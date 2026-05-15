@@ -1,6 +1,9 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import React from "react";
+import { EmptyState } from "../../../components/ui";
+import { useAuth } from "../../auth/context/AuthContext";
 import type { MenuStackParamList } from "../../../navigation/types";
+import { isDashboardRouteAllowed } from "../config/dashboardRoutes";
 import { UpcomingSessionsScreen } from "../../sessions/screens/UpcomingSessionsScreen";
 import { BookExpertScreen } from "../../bookexpert/screens/BookExpertScreen";
 import { StudentsScreen } from "../../students/screens/StudentsScreen";
@@ -16,6 +19,17 @@ export type DashboardFeatureScreenProps = NativeStackScreenProps<MenuStackParamL
 
 export function DashboardFeatureScreen({ route }: DashboardFeatureScreenProps) {
   const { featureId, bookLessonTrainerId } = route.params;
+  const { accountType } = useAuth();
+
+  if (!isDashboardRouteAllowed(featureId, accountType)) {
+    return (
+      <EmptyState
+        icon="lock-closed-outline"
+        title="Not available"
+        description="This section is only available for trainee accounts."
+      />
+    );
+  }
 
   switch (featureId) {
     case "upcoming-sessions":

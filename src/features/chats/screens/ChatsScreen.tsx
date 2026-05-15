@@ -36,6 +36,14 @@ async function fetchConversations(): Promise<any[]> {
   }
 }
 
+function formatLastMessagePreview(raw: string): string {
+  const s = String(raw ?? "").trim();
+  if (s === "[video]" || s === "[clip]") return "Video";
+  if (s === "[image]") return "Photo";
+  if (s === "[voice]") return "Voice message";
+  return s;
+}
+
 function timeAgo(dateStr?: string): string {
   if (!dateStr) return "";
   try {
@@ -353,7 +361,7 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
                   </View>
                   <View style={styles.rowBottom}>
                     <Text style={styles.rowPreview} numberOfLines={1}>
-                      {lastMsg || "Tap to start chatting"}
+                      {formatLastMessagePreview(lastMsg) || "Tap to start chatting"}
                     </Text>
                     {unread > 0 && (
                       <View style={styles.unreadBadge}>

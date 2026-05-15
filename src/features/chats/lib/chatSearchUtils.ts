@@ -26,7 +26,7 @@ export function getSearchableText(m: {
 }): string {
   if (m.type === "text") return (m.content ?? "").trim();
   if (m.type === "image") return "Photo";
-  if (m.type === "video") return "Video";
+  if (m.type === "video" || m.type === "clip") return "Video";
   if (m.type === "voice") return "Voice message";
   return (m.content ?? "").trim();
 }

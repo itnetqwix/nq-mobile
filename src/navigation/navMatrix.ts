@@ -75,8 +75,8 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
   },
   {
     id: "schedule-trainer",
-    label: "Schedule",
-    icon: "calendar-outline",
+    label: "Sessions",
+    icon: "time-outline",
     target: { kind: "tab", tab: "Schedule" },
     surfaces: ["drawer"],
     roles: [AccountType.TRAINER],
@@ -88,6 +88,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
     target: { kind: "feature", featureId: "instant-booking" },
     surfaces: ["drawer", "more"],
     group: "dashboard",
+    roles: [AccountType.TRAINEE],
   },
   {
     id: "book-lesson",

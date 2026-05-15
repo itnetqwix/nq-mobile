@@ -29,7 +29,12 @@ import { useAuth } from "../../auth/context/AuthContext";
 import { useSocket } from "../../socket/SocketContext";
 import { useOnlinePresence } from "../../socket/useOnlinePresence";
 import { ChatMediaViewerModal } from "../components/ChatMediaViewerModal";
-import { buildChatMediaList, resolveChatMediaUri } from "../lib/chatMediaUtils";
+import { ChatVideoThumbnail } from "../components/ChatVideoThumbnail";
+import {
+  buildChatMediaList,
+  inferChatMediaKind,
+  resolveChatMediaUri,
+} from "../lib/chatMediaUtils";
 import {
   formatDayLabel,
   getSearchableText,
@@ -768,7 +773,11 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
     ({ item }: { item: Message }) => {
       const isMine = item.senderId === currentUserId;
       const mediaUri = resolveChatMediaUri(item.mediaUrl);
+      const mediaKind = inferChatMediaKind(item.type, item.mediaUrl);
       const isHighlighted = item._id === highlightedMessageId;
+      const showTextFallback =
+        !mediaUri ||
+        (mediaKind === null && item.type !== "voice");
 
       return (
         <View
@@ -778,24 +787,24 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
             isHighlighted && styles.bubbleHighlight,
           ]}
         >
-          {item.type === "image" && mediaUri ? (
+          {mediaKind === "image" && mediaUri ? (
             <Pressable onPress={() => openMediaViewer(item._id)}>
               <Image source={{ uri: mediaUri }} style={styles.mediaThumbnail} resizeMode="cover" />
             </Pressable>
-          ) : item.type === "video" && mediaUri ? (
-            <Pressable onPress={() => openMediaViewer(item._id)} style={styles.videoContainer}>
-              <View style={styles.videoPlaceholder}>
-                <Ionicons name="videocam" size={28} color={isMine ? "#fff" : colors.brandNavy} />
-              </View>
-              <View style={styles.playOverlay}>
-                <Ionicons name="play-circle" size={44} color="rgba(255,255,255,0.9)" />
-              </View>
-            </Pressable>
+          ) : mediaKind === "video" && mediaUri ? (
+            <ChatVideoThumbnail
+              uri={mediaUri}
+              style={styles.videoContainer}
+              isMine={isMine}
+              onPress={() => openMediaViewer(item._id)}
+            />
           ) : item.type === "voice" && mediaUri ? (
             <VoicePlayer uri={mediaUri} isMine={isMine} />
-          ) : (
-            <Text style={[styles.bubbleText, isMine && styles.bubbleTextMine]}>{item.content}</Text>
-          )}
+          ) : showTextFallback ? (
+            <Text style={[styles.bubbleText, isMine && styles.bubbleTextMine]}>
+              {mediaKind === "video" && !mediaUri ? "Video" : item.content}
+            </Text>
+          ) : null}
           <View style={styles.bubbleFooter}>
             <Text style={[styles.bubbleTime, isMine && styles.bubbleTimeMine]}>
               {formatTime(item.createdAt)}
@@ -1122,11 +1131,15 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
                           }}
                         >
                           {item.type === "video" ? (
-                            <View style={styles.mediaGridItem}>
-                              <View style={styles.mediaGridVideo}>
-                                <Ionicons name="play-circle" size={28} color="#fff" />
-                              </View>
-                            </View>
+                            <ChatVideoThumbnail
+                              uri={item.uri}
+                              style={styles.mediaGridItem}
+                              onPress={() => {
+                                const index = chatMediaItems.findIndex((m) => m.id === item.id);
+                                setShowProfile(false);
+                                if (index >= 0) setMediaViewer({ index });
+                              }}
+                            />
                           ) : (
                             <Image source={{ uri: item.uri }} style={styles.mediaGridItem} resizeMode="cover" />
                           )}

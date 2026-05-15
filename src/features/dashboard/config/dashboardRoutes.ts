@@ -39,7 +39,7 @@ export const DASHBOARD_ROUTES: readonly DashboardRouteMeta[] = [
     subtitle:
       "Same flows as the web locker home (`NavHomePage`): instant lesson modal, active sessions, and quick bookings.",
     webPath: "/dashboard/home",
-    allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
+    allowedRoles: [AccountType.TRAINEE],
   },
   {
     id: "schedule",
@@ -128,6 +128,16 @@ export function dashboardRoutesForRoles(accountType: string | null): DashboardRo
   if (!accountType) return [];
   const role = accountType as AccountTypeValue;
   return DASHBOARD_ROUTES.filter((r) => r.allowedRoles.includes(role));
+}
+
+export function isDashboardRouteAllowed(
+  id: DashboardRouteId,
+  accountType: string | null
+): boolean {
+  if (!accountType) return false;
+  const route = dashboardRouteById(id);
+  if (!route) return false;
+  return route.allowedRoles.includes(accountType as AccountTypeValue);
 }
 
 /** Primary shortcuts on the home hub (subset of full menu). */

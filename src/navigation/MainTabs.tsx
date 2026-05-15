@@ -9,21 +9,16 @@ import { ScheduleScreen } from "../features/schedule/screens/ScheduleScreen";
 import { useThemeColors } from "../theme";
 import { MenuNavigator } from "./MenuNavigator";
 import type { MainTabParamList } from "./types";
-import { useAuth } from "../features/auth/context/AuthContext";
-import { AccountType } from "../constants/accountType";
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
+const SESSIONS_TAB_LABEL = "Sessions";
+
 export function MainTabs() {
-  const { accountType } = useAuth();
-  const isTrainer = accountType === AccountType.TRAINER;
   const insets = useSafeAreaInsets();
   const c = useThemeColors();
   const tabPadBottom = Math.max(insets.bottom, 6);
   const tabPadTop = 6;
   const tabMinHeight = 52 + tabPadTop + tabPadBottom;
-
-  const scheduleTabLabel = isTrainer ? "Schedule" : "Sessions";
-  const scheduleTabIcon = isTrainer ? "calendar-outline" : "time-outline";
 
   return (
     <Tab.Navigator
@@ -76,12 +71,12 @@ export function MainTabs() {
         name="Schedule"
         component={ScheduleScreen}
         options={{
-          title: scheduleTabLabel,
-          headerTitle: scheduleTabLabel,
+          title: SESSIONS_TAB_LABEL,
+          headerTitle: SESSIONS_TAB_LABEL,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name={scheduleTabIcon as any} color={color} size={size} />
+            <Ionicons name="time-outline" color={color} size={size} />
           ),
-          tabBarLabel: scheduleTabLabel,
+          tabBarLabel: SESSIONS_TAB_LABEL,
         }}
       />
       <Tab.Screen
