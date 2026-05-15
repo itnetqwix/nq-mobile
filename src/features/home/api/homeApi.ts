@@ -55,6 +55,19 @@ export async function fetchScheduledMeetings(status = "upcoming"): Promise<any[]
   return [];
 }
 
+export type BookedSessionStatus = "booked" | "confirmed" | "canceled" | "completed" | "upcoming";
+
+/** PUT /user/update-booked-session/:id — trainer confirm / cancel (web parity). */
+export async function updateBookedSessionStatus(
+  sessionId: string,
+  booked_status: BookedSessionStatus
+): Promise<any> {
+  const { data } = await apiClient.put(API_ROUTES.user.updateBookedSession(sessionId), {
+    booked_status,
+  });
+  return data?.result ?? data;
+}
+
 export async function fetchFriendRequests(): Promise<any[]> {
   const res = await apiClient.get(API_ROUTES.user.friendRequests);
   return res.data?.friendRequests ?? res.data ?? [];

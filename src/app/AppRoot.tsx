@@ -11,6 +11,7 @@ import { AuthProvider } from "../features/auth/context/AuthContext";
 import { SocketProvider } from "../features/socket/SocketContext";
 import { InstantLessonProvider } from "../features/instant-lesson/InstantLessonContext";
 import { NotificationProvider } from "../features/notifications/NotificationContext";
+import { SessionBookingProvider } from "../features/sessions/SessionBookingContext";
 import { PushNotificationBridge } from "../features/notifications/PushNotificationBridge";
 import { RootNavigator } from "../navigation/RootNavigator";
 import { navigationRef } from "../navigation/navigationRef";
@@ -52,13 +53,15 @@ export function AppRoot() {
               <AuthProvider>
                 <SocketProvider>
                   <NotificationProvider>
-                    <InstantLessonProvider onNavigateToMeeting={navigateToMeeting}>
-                      <PushNotificationBridge />
-                      <NavigationContainer ref={navigationRef}>
-                        <StatusBar style="dark" />
-                        <RootNavigator />
-                      </NavigationContainer>
-                    </InstantLessonProvider>
+                    <SessionBookingProvider>
+                      <InstantLessonProvider onNavigateToMeeting={navigateToMeeting}>
+                        <PushNotificationBridge />
+                        <NavigationContainer ref={navigationRef}>
+                          <StatusBar style="dark" />
+                          <RootNavigator />
+                        </NavigationContainer>
+                      </InstantLessonProvider>
+                    </SessionBookingProvider>
                   </NotificationProvider>
                 </SocketProvider>
               </AuthProvider>

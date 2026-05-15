@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  Dimensions,
   FlatList,
   Image,
   Keyboard,
@@ -29,6 +28,15 @@ import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { useAuth } from "../../auth/context/AuthContext";
 import { useSocket } from "../../socket/SocketContext";
 import { useOnlinePresence } from "../../socket/useOnlinePresence";
+import { ChatMediaViewerModal } from "../components/ChatMediaViewerModal";
+import { buildChatMediaList, resolveChatMediaUri } from "../lib/chatMediaUtils";
+import {
+  formatDayLabel,
+  getSearchableText,
+  groupMessagesByDay,
+  highlightQueryParts,
+  messageMatchesQuery,
+} from "../lib/chatSearchUtils";
 
 type Props = {
   conversationId: string;
@@ -245,7 +253,8 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [recordSecs, setRecordSecs] = useState(0);
   const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [previewUri, setPreviewUri] = useState<string | null>(null);
+  const [mediaViewer, setMediaViewer] = useState<{ index: number } | null>(null);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [sendingText, setSendingText] = useState(false);
   const [profileSearch, setProfileSearch] = useState("");
@@ -725,25 +734,56 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
     }
   }, [partner, onGoBack]);
 
+  const chatMediaItems = useMemo(() => buildChatMediaList(allMessages), [allMessages]);
+
+  const openMediaViewer = useCallback(
+    (messageId: string) => {
+      const index = chatMediaItems.findIndex((m) => m.id === messageId);
+      if (index >= 0) setMediaViewer({ index });
+    },
+    [chatMediaItems]
+  );
+
+  const jumpToMessage = useCallback(
+    (messageId: string) => {
+      const index = allMessages.findIndex((m) => m._id === messageId);
+      if (index < 0) return;
+      setShowProfile(false);
+      setHighlightedMessageId(messageId);
+      requestAnimationFrame(() => {
+        flatListRef.current?.scrollToIndex({
+          index,
+          animated: true,
+          viewPosition: 0.5,
+        });
+      });
+      setTimeout(() => setHighlightedMessageId(null), 2500);
+    },
+    [allMessages]
+  );
+
   // ─── Render message ─────────────────────────────────────────────────────────
 
   const renderMessage = useCallback(
     ({ item }: { item: Message }) => {
       const isMine = item.senderId === currentUserId;
-      const mediaUri = item.mediaUrl
-        ? item.mediaUrl.startsWith("http") || item.mediaUrl.startsWith("file")
-          ? item.mediaUrl
-          : getS3ImageUrl(item.mediaUrl)
-        : null;
+      const mediaUri = resolveChatMediaUri(item.mediaUrl);
+      const isHighlighted = item._id === highlightedMessageId;
 
       return (
-        <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleTheirs]}>
+        <View
+          style={[
+            styles.bubble,
+            isMine ? styles.bubbleMine : styles.bubbleTheirs,
+            isHighlighted && styles.bubbleHighlight,
+          ]}
+        >
           {item.type === "image" && mediaUri ? (
-            <Pressable onPress={() => setPreviewUri(mediaUri)}>
+            <Pressable onPress={() => openMediaViewer(item._id)}>
               <Image source={{ uri: mediaUri }} style={styles.mediaThumbnail} resizeMode="cover" />
             </Pressable>
           ) : item.type === "video" && mediaUri ? (
-            <Pressable onPress={() => setPreviewUri(mediaUri)} style={styles.videoContainer}>
+            <Pressable onPress={() => openMediaViewer(item._id)} style={styles.videoContainer}>
               <View style={styles.videoPlaceholder}>
                 <Ionicons name="videocam" size={28} color={isMine ? "#fff" : colors.brandNavy} />
               </View>
@@ -770,33 +810,27 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
         </View>
       );
     },
-    [currentUserId]
+    [currentUserId, highlightedMessageId, openMediaViewer]
   );
 
   const partnerName = partner?.fullname ?? "Chat";
   const partnerAvatar = getS3ImageUrl(partner?.profile_picture);
-  const screenW = Dimensions.get("window").width;
   const inputBottomInset = keyboardHeight > 0 ? 8 : insets.bottom + 4;
 
-  const sharedImages = useMemo(() => {
-    return allMessages
-      .filter((m) => m.type === "image" && m.mediaUrl)
-      .map((m) => {
-        const uri = m.mediaUrl!.startsWith("http") || m.mediaUrl!.startsWith("file")
-          ? m.mediaUrl!
-          : getS3ImageUrl(m.mediaUrl!) ?? "";
-        return { id: m._id, uri };
-      })
-      .filter((x) => !!x.uri);
-  }, [allMessages]);
+  const sharedMedia = chatMediaItems;
 
   const searchHits = useMemo(() => {
-    const q = profileSearch.trim().toLowerCase();
+    const q = profileSearch.trim();
     if (!q) return [];
-    return allMessages.filter(
-      (m) => m.type === "text" && (m.content ?? "").toLowerCase().includes(q)
-    );
+    return allMessages
+      .filter((m) => messageMatchesQuery(m, q))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [allMessages, profileSearch]);
+
+  const searchSections = useMemo(
+    () => groupMessagesByDay(searchHits),
+    [searchHits]
+  );
 
   const headerSubtitle = partnerTyping
     ? "typing..."
@@ -863,6 +897,12 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
         renderItem={renderMessage}
         contentContainerStyle={styles.messageList}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+        onScrollToIndexFailed={(info) => {
+          flatListRef.current?.scrollToOffset({
+            offset: info.averageItemLength * info.index,
+            animated: true,
+          });
+        }}
         style={styles.messageArea}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
@@ -984,17 +1024,12 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
         </View>
       </Modal>
 
-      {/* Image preview */}
-      <Modal visible={!!previewUri} transparent animationType="fade" onRequestClose={() => setPreviewUri(null)}>
-        <View style={styles.previewBackdrop}>
-          <Pressable onPress={() => setPreviewUri(null)} style={[styles.previewClose, { top: insets.top + 8 }]}>
-            <Ionicons name="close-circle" size={34} color="#fff" />
-          </Pressable>
-          {previewUri && (
-            <Image source={{ uri: previewUri }} style={{ width: screenW, height: screenW * 1.2 }} resizeMode="contain" />
-          )}
-        </View>
-      </Modal>
+      <ChatMediaViewerModal
+        visible={mediaViewer != null}
+        items={chatMediaItems}
+        initialIndex={mediaViewer?.index ?? 0}
+        onClose={() => setMediaViewer(null)}
+      />
 
       {/* User profile modal */}
       <Modal visible={showProfile} transparent animationType="slide" onRequestClose={() => setShowProfile(false)}>
@@ -1073,13 +1108,28 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
 
               {profileTab === "media" && (
                 <View style={styles.mediaSection}>
-                  {sharedImages.length === 0 ? (
-                    <Text style={styles.profileEmptyText}>No photos shared yet</Text>
+                  {sharedMedia.length === 0 ? (
+                    <Text style={styles.profileEmptyText}>No photos or videos shared yet</Text>
                   ) : (
                     <View style={styles.mediaGrid}>
-                      {sharedImages.map((img) => (
-                        <Pressable key={img.id} onPress={() => { setShowProfile(false); setPreviewUri(img.uri); }}>
-                          <Image source={{ uri: img.uri }} style={styles.mediaGridItem} resizeMode="cover" />
+                      {sharedMedia.map((item) => (
+                        <Pressable
+                          key={item.id}
+                          onPress={() => {
+                            const index = chatMediaItems.findIndex((m) => m.id === item.id);
+                            setShowProfile(false);
+                            if (index >= 0) setMediaViewer({ index });
+                          }}
+                        >
+                          {item.type === "video" ? (
+                            <View style={styles.mediaGridItem}>
+                              <View style={styles.mediaGridVideo}>
+                                <Ionicons name="play-circle" size={28} color="#fff" />
+                              </View>
+                            </View>
+                          ) : (
+                            <Image source={{ uri: item.uri }} style={styles.mediaGridItem} resizeMode="cover" />
+                          )}
                         </Pressable>
                       ))}
                     </View>
@@ -1103,10 +1153,34 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
                     searchHits.length === 0 ? (
                       <Text style={styles.profileEmptyText}>No messages found</Text>
                     ) : (
-                      searchHits.map((m) => (
-                        <View key={m._id} style={styles.searchHit}>
-                          <Text style={styles.searchHitTime}>{formatTime(m.createdAt)}</Text>
-                          <Text style={styles.searchHitText}>{m.content}</Text>
+                      searchSections.map((section) => (
+                        <View key={section.title}>
+                          <Text style={styles.searchDayHeader}>{section.title}</Text>
+                          {section.data.map((m) => {
+                            const text = getSearchableText(m);
+                            const parts = highlightQueryParts(text, profileSearch);
+                            return (
+                              <Pressable
+                                key={m._id}
+                                style={styles.searchHit}
+                                onPress={() => jumpToMessage(m._id)}
+                              >
+                                <Text style={styles.searchHitTime}>
+                                  {formatDayLabel(m.createdAt)} · {formatTime(m.createdAt)}
+                                </Text>
+                                <Text style={styles.searchHitText}>
+                                  {parts.map((p, i) => (
+                                    <Text
+                                      key={`${m._id}-${i}`}
+                                      style={p.highlight ? styles.searchHitHighlight : undefined}
+                                    >
+                                      {p.text}
+                                    </Text>
+                                  ))}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
                         </View>
                       ))
                     )
@@ -1220,6 +1294,30 @@ const styles = StyleSheet.create({
   },
   profileSearchInput: { flex: 1, fontSize: 15, color: colors.text },
   profileEmptyText: { textAlign: "center", color: colors.textMuted, marginTop: 20, fontSize: 14 },
+  bubbleHighlight: {
+    borderWidth: 2,
+    borderColor: colors.brandAccent,
+  },
+  searchDayHeader: {
+    ...typography.label,
+    color: colors.brandNavy,
+    fontWeight: "700",
+    marginTop: space.md,
+    marginBottom: space.xs,
+    paddingHorizontal: 2,
+  },
+  searchHitHighlight: {
+    backgroundColor: "#FFF59D",
+    fontWeight: "700",
+    color: colors.text,
+  },
+  mediaGridVideo: {
+    flex: 1,
+    backgroundColor: colors.brandNavy,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radii.sm,
+  },
   searchHit: {
     marginTop: 12,
     padding: 12,

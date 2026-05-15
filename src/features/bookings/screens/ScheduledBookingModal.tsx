@@ -270,7 +270,7 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const bookPayload: Record<string, unknown> = {
         trainer_id: trainerId,
-        status: "confirm",
+        status: "booked",
         booked_date: selectedSlot.date || new Date().toISOString(),
         session_start_time: selectedSlot.start,
         session_end_time: selectedSlot.end,
@@ -278,7 +278,9 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
         time_zone: tz,
       };
       if (couponCode.trim()) bookPayload.coupon_code = couponCode.trim();
-      await apiClient.post(API_ROUTES.trainee.bookSession, bookPayload);
+      const { data: bookRes } = await apiClient.post(API_ROUTES.trainee.bookSession, bookPayload);
+      const bookingInfo =
+        (bookRes as { result?: unknown })?.result ?? bookRes ?? { trainer_id: trainerId };
 
       const traineeName = String(
         (user as Record<string, unknown>)?.fullname ??
@@ -290,6 +292,7 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
         description: `${traineeName} has booked a scheduled session with you.`,
         receiverId: trainerId,
         type: NOTIFICATION_TYPES.TRANSCATIONAL,
+        bookingInfo,
       });
 
       Alert.alert("Session booked", "Your session has been scheduled.", [

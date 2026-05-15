@@ -19,20 +19,19 @@ import { Button, Card, EmptyState, Pill, Skeleton, Stack } from "../../../compon
 import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { fetchScheduledMeetings } from "../../home/api/homeApi";
+import {
+  canJoinSession,
+  formatSessionWhen,
+  getOtherParty,
+  isInstantLesson,
+  isPendingBooking,
+  normalizeSessionStatus,
+} from "../../../lib/sessions/sessionUtils";
+import { useSessionBooking } from "../SessionBookingContext";
+import { SessionsCalendar } from "../components/SessionsCalendar";
 import type { RootStackParamList } from "../../../navigation/types";
 
-/**
- * Instant lessons must be joined within 1 hour of being booked. After that we hide them
- * from the Upcoming / Confirmed tabs and the trainee can't join (web parity for the
- * "lesson is no longer available" auto-expiry). Scheduled sessions are unaffected.
- */
 const INSTANT_LESSON_JOIN_WINDOW_MS = 60 * 60 * 1000;
-
-function isInstantLesson(session: any): boolean {
-  if (typeof session?.is_instant === "boolean") return session.is_instant;
-  /** Defensive heuristic for legacy rows that pre-date the `is_instant` field. */
-  return !session?.time_zone && !session?.start_time && !session?.end_time;
-}
 
 function isInstantLessonExpired(session: any, nowMs: number): boolean {
   if (!isInstantLesson(session)) return false;
@@ -81,13 +80,15 @@ function StatusBadge({ status }: { status?: string }) {
 }
 
 function getBadgeTone(status?: string): React.ComponentProps<typeof Pill>["tone"] {
-  switch (status) {
+  switch (normalizeSessionStatus(status)) {
     case "confirmed":
       return "success";
     case "completed":
       return "neutral";
     case "cancelled":
       return "danger";
+    case "booked":
+      return "warning";
     default:
       return "info";
   }
@@ -95,46 +96,44 @@ function getBadgeTone(status?: string): React.ComponentProps<typeof Pill>["tone"
 
 function SessionCard({ session, accountType }: { session: any; accountType: string | null }) {
   const isTrainer = accountType === AccountType.TRAINER;
-  const other = isTrainer ? session.trainee_info : session.trainer_info;
+  const other = getOtherParty(session, isTrainer);
   const name = other?.fullname || other?.fullName || "Unknown";
   const theirRole = isTrainer ? "Student" : "Trainer";
   const instant = isInstantLesson(session);
+  const pending = isPendingBooking(session);
+  const status = normalizeSessionStatus(session.status);
+  const { openSession } = useSessionBooking();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-
-  const date = session.booked_date ?? "";
-  const time =
-    session.start_time && session.end_time
-      ? `${session.start_time} – ${session.end_time}`
-      : instant && session.session_start_time && session.session_end_time
-        ? `${session.session_start_time} – ${session.session_end_time}`
-        : "";
+  const { dateLabel, timeLabel } = formatSessionWhen(session);
+  const joinEnabled = canJoinSession(session);
 
   const handleJoin = () => {
     const lessonId = session._id ?? session.id;
-    if (lessonId) navigation.navigate("Meeting", { lessonId });
+    if (lessonId) navigation.navigate("Meeting", { lessonId: String(lessonId) });
   };
 
   return (
-    <View style={styles.card}>
+    <Pressable
+      style={({ pressed }) => [styles.card, pressed && { opacity: 0.92 }]}
+      onPress={() => openSession(session)}
+    >
       <View style={styles.cardTop}>
         <Avatar uri={other?.profile_picture} name={name} size={56} />
         <View style={styles.cardInfo}>
           <Text style={styles.cardName}>{name}</Text>
           <Text style={styles.cardRole}>{theirRole}</Text>
-          {!!date && (
-            <View style={styles.metaRow}>
-              <Ionicons name="calendar-outline" size={13} color={colors.textMuted} />
-              <Text style={styles.metaText}>{date}</Text>
-            </View>
-          )}
-          {!!time && (
+          <View style={styles.metaRow}>
+            <Ionicons name="calendar-outline" size={13} color={colors.textMuted} />
+            <Text style={styles.metaText}>{dateLabel}</Text>
+          </View>
+          {!!timeLabel && (
             <View style={styles.metaRow}>
               <Ionicons name="time-outline" size={13} color={colors.textMuted} />
-              <Text style={styles.metaText}>{time}</Text>
+              <Text style={styles.metaText}>{timeLabel}</Text>
             </View>
           )}
         </View>
-        <StatusBadge status={session.status} />
+        <StatusBadge status={pending ? "booked" : status} />
       </View>
 
       {(session.category || instant) && (
@@ -158,44 +157,32 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
         </View>
       )}
 
-      {(session.status === "upcoming" || session.status === "confirmed") ? (
-        <View style={styles.cardFooter}>
+      <View style={styles.cardFooter}>
+        {isTrainer && pending ? (
+          <Button
+            label="Review & confirm"
+            leftIcon="checkmark-circle-outline"
+            onPress={() => openSession(session)}
+            size="md"
+            fullWidth={false}
+          />
+        ) : null}
+        {!pending && (
           <Button
             label="Join Session"
             leftIcon="videocam-outline"
             onPress={handleJoin}
             size="md"
             fullWidth={false}
+            disabled={!joinEnabled}
           />
-        </View>
-      ) : null}
-    </View>
+        )}
+        {!pending && !joinEnabled ? (
+          <Text style={styles.joinHint}>Join opens closer to session time</Text>
+        ) : null}
+      </View>
+    </Pressable>
   );
-}
-
-function buildCalendarDays(
-  baseDate: Date,
-  pastDays = 3,
-  futureDays = 14,
-): { key: string; date: Date; label: string; dayName: string; monthLabel?: string }[] {
-  const days: { key: string; date: Date; label: string; dayName: string; monthLabel?: string }[] = [];
-  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  let prevMonth = -1;
-  for (let i = -pastDays; i < futureDays; i++) {
-    const d = new Date(baseDate);
-    d.setDate(d.getDate() + i);
-    const month = d.getMonth();
-    days.push({
-      key: d.toISOString().slice(0, 10),
-      date: d,
-      label: String(d.getDate()),
-      dayName: dayNames[d.getDay()],
-      monthLabel: month !== prevMonth ? monthNames[month] : undefined,
-    });
-    prevMonth = month;
-  }
-  return days;
 }
 
 function isSameDay(dateStr: string | undefined, target: string): boolean {
@@ -212,11 +199,11 @@ export function UpcomingSessionsScreen() {
   const { accountType } = useAuth();
   const [activeTab, setActiveTab] = useState<StatusTab>("upcoming");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [monthAnchor, setMonthAnchor] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
 
-  const calendarDays = useMemo(
-    () => buildCalendarDays(new Date(), activeTab === "completed" ? 90 : 3, activeTab === "completed" ? 1 : 14),
-    [activeTab],
-  );
   const todayKey = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const { data: rawSessions = [], isLoading, isRefetching, refetch } = useQuery({
@@ -275,41 +262,16 @@ export function UpcomingSessionsScreen() {
         ))}
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.calStrip}
-      >
-        <Pressable
-          style={[styles.calDay, !selectedDate && styles.calDaySelected]}
-          onPress={() => setSelectedDate(null)}
-        >
-          <Text style={[styles.calDayName, !selectedDate && styles.calDayTextSelected]}>All</Text>
-          <Text style={[styles.calDayNum, !selectedDate && styles.calDayTextSelected]}>•</Text>
-        </Pressable>
-        {calendarDays.map((d) => {
-          const isSelected = selectedDate === d.key;
-          const isToday = d.key === todayKey;
-          const hasSession = sessionDates.has(d.key);
-          return (
-            <React.Fragment key={d.key}>
-              {d.monthLabel && (
-                <View style={styles.calMonthLabel}>
-                  <Text style={styles.calMonthText}>{d.monthLabel}</Text>
-                </View>
-              )}
-              <Pressable
-                style={[styles.calDay, isSelected && styles.calDaySelected, isToday && !isSelected && styles.calDayToday]}
-                onPress={() => setSelectedDate(isSelected ? null : d.key)}
-              >
-                <Text style={[styles.calDayName, isSelected && styles.calDayTextSelected]}>{d.dayName}</Text>
-                <Text style={[styles.calDayNum, isSelected && styles.calDayTextSelected]}>{d.label}</Text>
-                {hasSession && <View style={[styles.calDot, isSelected && { backgroundColor: "#fff" }]} />}
-              </Pressable>
-            </React.Fragment>
-          );
-        })}
-      </ScrollView>
+      <SessionsCalendar
+        monthAnchor={monthAnchor}
+        selectedDate={selectedDate}
+        sessionDates={sessionDates}
+        todayKey={todayKey}
+        onMonthChange={(delta) => {
+          setMonthAnchor((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
+        }}
+        onSelectDate={setSelectedDate}
+      />
 
       {isLoading ? (
         <Stack gap="sm" style={styles.list}>
@@ -413,6 +375,12 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
     alignItems: "flex-end",
+    gap: space.xs,
+  },
+  joinHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: "right",
   },
 
   avatarFallback: {

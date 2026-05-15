@@ -58,6 +58,7 @@ import { TimeRemaining } from "../components/TimeRemaining";
 import { PeerJoinedModal } from "../components/PeerJoinedModal";
 import { ClipPickerModal } from "../components/ClipPickerModal";
 import { ClipPlayer } from "../components/ClipPlayer";
+import { ClipPlaybackControls } from "../components/ClipPlaybackControls";
 import { DrawingOverlay } from "../components/DrawingOverlay";
 import { RecordingBar } from "../components/RecordingBar";
 import { RatingsModal } from "../components/RatingsModal";
@@ -275,12 +276,14 @@ function MeetingSurface({
     socket,
     fromUserId: myId,
     toUserId: peerId,
+    sessionId: lessonId,
   });
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [ratingsOpen, setRatingsOpen] = useState(false);
   const [activeClipUri, setActiveClipUri] = useState<string | null>(null);
   const [drawingMode, setDrawingMode] = useState(false);
+  const clipProgressRef = useRef(0);
 
   /** When the trainer selects a clip we receive the clip metadata so we can
    *  compute the playback URL locally. The trainee receives only the id via
@@ -294,10 +297,19 @@ function MeetingSurface({
         return;
       }
       setActiveClipUri(uri);
-      clipSync.selectClip(clip._id);
+      clipSync.selectClip(String(clip._id), uri);
     },
     [clipSync]
   );
+
+  useEffect(() => {
+    if (clipSync.activeClipUrl && !isTrainer) {
+      setActiveClipUri(clipSync.activeClipUrl);
+    }
+    if (!clipSync.activeClipId) {
+      setActiveClipUri(null);
+    }
+  }, [clipSync.activeClipId, clipSync.activeClipUrl, isTrainer]);
 
   /** Show ratings after the call ends — `endCall()` will pop us back, so we
    *  wrap that path: open the modal first, then exit on dismiss. */
@@ -387,8 +399,19 @@ function MeetingSurface({
                   : null
               }
               onProgressSeconds={(seconds) => {
+                clipProgressRef.current = seconds;
                 if (isTrainer) clipSync.seek(seconds);
               }}
+            />
+            <ClipPlaybackControls
+              isPlaying={clipSync.isPlaying}
+              onTogglePlay={() => clipSync.togglePlay()}
+              progressSeconds={clipProgressRef.current}
+              onStepFrame={(next) => {
+                clipProgressRef.current = next;
+                clipSync.seek(next);
+              }}
+              disabled={!activeClipUri}
             />
             <DrawingOverlay enabled={isTrainer && drawingMode} />
           </View>

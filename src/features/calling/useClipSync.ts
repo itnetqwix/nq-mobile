@@ -33,10 +33,12 @@ type Args = {
   socket: Socket | null;
   fromUserId: string;
   toUserId: string;
+  sessionId?: string;
 };
 
-export function useClipSync({ socket, fromUserId, toUserId }: Args) {
+export function useClipSync({ socket, fromUserId, toUserId, sessionId }: Args) {
   const [activeClipId, setActiveClipId] = useState<string | null>(null);
+  const [activeClipUrl, setActiveClipUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [hideLocalCamera, setHideLocalCamera] = useState(false);
   const [seekHint, setSeekHint] = useState<SeekHint>(null);
@@ -52,10 +54,14 @@ export function useClipSync({ socket, fromUserId, toUserId }: Args) {
       const type = payload?.type;
       if (type === "swap" && !id) {
         setActiveClipId(null);
+        setActiveClipUrl(null);
         setIsPlaying(false);
         return;
       }
       setActiveClipId(id);
+      if (typeof payload?.playbackUrl === "string" && payload.playbackUrl) {
+        setActiveClipUrl(payload.playbackUrl);
+      }
       setIsPlaying(false);
     };
 
@@ -96,16 +102,19 @@ export function useClipSync({ socket, fromUserId, toUserId }: Args) {
 
   /** Trainer broadcasts a clip id to play; trainee tracks it locally. */
   const selectClip = useCallback(
-    (clipId: string | null) => {
+    (clipId: string | null, playbackUrl?: string | null) => {
       setActiveClipId(clipId);
+      setActiveClipUrl(playbackUrl ?? null);
       setIsPlaying(false);
       socket?.emit(CLIP_EVENTS.ON_VIDEO_SELECT, {
         type: clipId ? "clip" : "swap",
         id: clipId,
+        playbackUrl: playbackUrl ?? undefined,
         userInfo,
+        sessionId,
       });
     },
-    [socket, userInfo]
+    [socket, userInfo, sessionId]
   );
 
   const togglePlay = useCallback(
@@ -127,6 +136,11 @@ export function useClipSync({ socket, fromUserId, toUserId }: Args) {
     (progressSeconds: number) => {
       if (!activeClipId) return;
       const now = Date.now();
+      setSeekHint({
+        videoId: activeClipId,
+        progress: progressSeconds,
+        receivedAt: now,
+      });
       if (now - lastSeekEmit.current < 200) return;
       lastSeekEmit.current = now;
       socket?.emit(CLIP_EVENTS.ON_VIDEO_TIME, {
@@ -151,6 +165,7 @@ export function useClipSync({ socket, fromUserId, toUserId }: Args) {
 
   return {
     activeClipId,
+    activeClipUrl,
     isPlaying,
     hideLocalCamera,
     /** Latest playhead nudge from the trainer; consumer should debounce-seek. */

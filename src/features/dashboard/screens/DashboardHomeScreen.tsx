@@ -47,6 +47,8 @@ import ReviewAnalysisCard from "../../ai/ReviewAnalysisCard";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { TrainerOnlineToggle } from "../components/TrainerOnlineToggle";
+import { useSessionBooking } from "../../sessions/SessionBookingContext";
+import { isPendingBooking, normalizeSessionStatus } from "../../../lib/sessions/sessionUtils";
 
 function Avatar({
   uri,
@@ -129,31 +131,58 @@ function CoachCard({
   );
 }
 
-function SessionCard({ session, accountType }: { session: any; accountType: string | null }) {
+function SessionCard({
+  session,
+  accountType,
+  onPress,
+}: {
+  session: any;
+  accountType: string | null;
+  onPress?: () => void;
+}) {
   const isTrainer = accountType === AccountType.TRAINER;
   const other = isTrainer ? session.trainee_info : session.trainer_info;
   const name = other?.fullname || other?.fullName || "Unknown";
   const date = session.booked_date ?? "";
-  const time = session.start_time && session.end_time
-    ? `${session.start_time} – ${session.end_time}`
-    : "";
+  const time =
+    session.session_start_time && session.session_end_time
+      ? `${session.session_start_time} – ${session.session_end_time}`
+      : session.start_time && session.end_time
+        ? `${session.start_time} – ${session.end_time}`
+        : "";
+  const pending = isPendingBooking(session);
+  const status = normalizeSessionStatus(session.status);
 
-  return (
-    <View style={styles.sessionCard}>
+  const inner = (
+    <>
       <Avatar uri={other?.profile_picture} name={name} size={52} />
       <View style={styles.sessionInfo}>
         <Text style={styles.sessionName}>{name}</Text>
-        {!!date && <Text style={styles.sessionMeta}>{date}</Text>}
+        {!!date && <Text style={styles.sessionMeta}>{String(date).slice(0, 10)}</Text>}
         {!!time && <Text style={styles.sessionMeta}>{time}</Text>}
         <Pill
-          label={session.status ?? "upcoming"}
-          tone={getStatusTone(session.status)}
+          label={pending ? "Needs confirmation" : status}
+          tone={pending ? "warning" : getStatusTone(status)}
           style={{ marginTop: 4 }}
         />
       </View>
       <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-    </View>
+    </>
   );
+
+  if (onPress) {
+    return (
+      <Pressable
+        style={({ pressed }) => [styles.sessionCard, pressed && { opacity: 0.85 }]}
+        onPress={onPress}
+        accessibilityRole="button"
+      >
+        {inner}
+      </Pressable>
+    );
+  }
+
+  return <View style={styles.sessionCard}>{inner}</View>;
 }
 
 function getStatusTone(status?: string): React.ComponentProps<typeof Pill>["tone"] {
@@ -307,6 +336,7 @@ function AIRecommendedSection({ onBook }: { onBook: (t: any) => void }) {
 export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) {
   const [aiOpen, setAiOpen] = useState(false);
   const { user, accountType, refreshUser, patchUser } = useAuth();
+  const { openSession } = useSessionBooking();
   const queryClient = useQueryClient();
   const showAsOnline = resolveShowAsOnline(user);
   const insets = useSafeAreaInsets();
@@ -417,6 +447,14 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
   }, [queryClient]);
 
   const nowSessions = sessions.filter((s: any) => isSessionLiveNow(s));
+  const pendingSessions = useMemo(
+    () => (isTrainer ? sessions.filter((s: any) => isPendingBooking(s)) : []),
+    [sessions, isTrainer]
+  );
+  const upcomingConfirmed = useMemo(
+    () => sessions.filter((s: any) => !isPendingBooking(s)),
+    [sessions]
+  );
   const coaches = useMemo(() => {
     const map = new Map<string, any>();
     for (const u of onlineUsers) {
@@ -589,6 +627,46 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
             : openFeature("book-lesson")
         } />}
 
+        {/* Trainer: pending session requests (realtime via socket) */}
+        {isTrainer && (loadingSessions || pendingSessions.length > 0) && (
+          <HomeMainCont
+            title={
+              pendingSessions.length > 0
+                ? `Session requests (${pendingSessions.length})`
+                : "Session requests"
+            }
+            testID="card trainer-profile-card Home-main-Cont session-requests"
+          >
+            {loadingSessions ? (
+              <View style={[styles.loadingRow, { gap: space.sm }]}>
+                <Skeleton width="100%" height={80} radius={radii.md} />
+              </View>
+            ) : (
+              <>
+                {pendingSessions.slice(0, 3).map((session: any, idx: number) => (
+                  <SessionCard
+                    key={`${session._id}-pending-${idx}`}
+                    session={session}
+                    accountType={accountType}
+                    onPress={() => openSession(session)}
+                  />
+                ))}
+                {pendingSessions.length > 3 ? (
+                  <Pressable
+                    style={styles.seeAllBtn}
+                    onPress={() => openFeature("upcoming-sessions")}
+                  >
+                    <Text style={styles.seeAllText}>
+                      Review all {pendingSessions.length} requests
+                    </Text>
+                    <Ionicons name="chevron-forward" size={16} color={colors.brandNavy} />
+                  </Pressable>
+                ) : null}
+              </>
+            )}
+          </HomeMainCont>
+        )}
+
         {/* Active Sessions */}
         {(loadingSessions || nowSessions.length > 0) && (
           <HomeMainCont title="Active Sessions" testID="card trainer-profile-card Home-main-Cont active-sessions">
@@ -604,6 +682,7 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
                   key={`${session._id}-now-${idx}`}
                   session={session}
                   accountType={accountType}
+                  onPress={() => openSession(session)}
                 />
               ))
             )}
@@ -611,21 +690,24 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
         )}
 
         {/* Upcoming Sessions (next 3) */}
-        {sessions.length > 0 && nowSessions.length === 0 && (
+        {upcomingConfirmed.length > 0 && nowSessions.length === 0 && (
           <HomeMainCont title="Upcoming Sessions" testID="card trainer-profile-card Home-main-Cont upcoming-sessions">
-            {sessions.slice(0, 3).map((session: any, idx: number) => (
+            {upcomingConfirmed.slice(0, 3).map((session: any, idx: number) => (
               <SessionCard
                 key={`${session._id}-up-${idx}`}
                 session={session}
                 accountType={accountType}
+                onPress={() => openSession(session)}
               />
             ))}
-            {sessions.length > 3 && (
+            {upcomingConfirmed.length > 3 && (
               <Pressable
                 style={styles.seeAllBtn}
                 onPress={() => openFeature("upcoming-sessions")}
               >
-                <Text style={styles.seeAllText}>See all {sessions.length} sessions</Text>
+                <Text style={styles.seeAllText}>
+                  See all {upcomingConfirmed.length} sessions
+                </Text>
                 <Ionicons name="chevron-forward" size={16} color={colors.brandNavy} />
               </Pressable>
             )}
