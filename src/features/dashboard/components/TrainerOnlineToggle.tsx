@@ -46,8 +46,10 @@ export function TrainerOnlineToggle({ value, onToggle }: Props) {
   const blend = useRef(new Animated.Value(value ? 1 : 0)).current;
 
   useEffect(() => {
-    if (!syncing) setDisplayOnline(value);
-  }, [value, syncing]);
+    if (syncing) return;
+    setDisplayOnline(value);
+    blend.setValue(value ? 1 : 0);
+  }, [value, syncing, blend]);
 
   useEffect(() => {
     Animated.timing(blend, {
@@ -64,8 +66,8 @@ export function TrainerOnlineToggle({ value, onToggle }: Props) {
     }
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.4, duration: 1000, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1, duration: 1000, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1.4, duration: 1000, useNativeDriver: false }),
+        Animated.timing(pulse, { toValue: 1, duration: 1000, useNativeDriver: false }),
       ])
     );
     loop.start();

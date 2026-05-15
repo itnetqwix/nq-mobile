@@ -4,7 +4,7 @@ import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useThemeColors, radii, typography } from "../../theme";
 
-const GAP_ABOVE_TAB_BAR = 12;
+const GAP_ABOVE_TAB_BAR = 4;
 
 type Props = {
   onPress: () => void;

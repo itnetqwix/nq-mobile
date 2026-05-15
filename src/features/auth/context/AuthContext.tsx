@@ -24,6 +24,7 @@ type AuthContextValue = {
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  patchUser: (patch: Record<string, unknown>) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -41,6 +42,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(me);
     const at = await getAccountType();
     if (at) setAccountType(at);
+  }, []);
+
+  const patchUser = useCallback((patch: Record<string, unknown>) => {
+    setUser((prev) => (prev ? { ...prev, ...patch } : { ...patch }));
   }, []);
 
   useEffect(() => {
@@ -135,8 +140,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signIn,
       signOut,
       refreshUser,
+      patchUser,
     }),
-    [status, user, accountType, signIn, signOut, refreshUser]
+    [status, user, accountType, signIn, signOut, refreshUser, patchUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

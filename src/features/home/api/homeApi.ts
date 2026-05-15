@@ -346,9 +346,14 @@ export async function fetchAllUsers(search?: string): Promise<any[]> {
  * (or `null` if not found). The backend regex matches case-insensitively, so we filter
  * client-side for an exact email match before accepting it as a recipient.
  */
-export async function setOnlineAvailability(showAsOnline: boolean): Promise<void> {
+export async function setOnlineAvailability(showAsOnline: boolean): Promise<boolean> {
   try {
-    await apiClient.put(API_ROUTES.user.onlineAvailability, { showAsOnline });
+    const { data } = await apiClient.put(API_ROUTES.user.onlineAvailability, { showAsOnline });
+    const inner = (data as { result?: Record<string, unknown> })?.result ?? data;
+    if (typeof inner?.showAsOnline === "boolean") return inner.showAsOnline;
+    const updatedUser = inner?.user as { showAsOnline?: boolean } | undefined;
+    if (typeof updatedUser?.showAsOnline === "boolean") return updatedUser.showAsOnline;
+    return showAsOnline;
   } catch (e) {
     throw new Error(getApiErrorMessage(e, "Could not update online status."));
   }

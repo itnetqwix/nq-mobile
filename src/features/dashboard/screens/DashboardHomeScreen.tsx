@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Pill, Skeleton, ImageWithSkeleton } from "../../../components/ui";
 import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
+import { resolveShowAsOnline } from "../../../lib/user/resolveShowAsOnline";
 import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
 import {
   fetchOnlineUsers,
@@ -305,9 +306,9 @@ function AIRecommendedSection({ onBook }: { onBook: (t: any) => void }) {
 
 export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) {
   const [aiOpen, setAiOpen] = useState(false);
-  const { user, accountType, refreshUser } = useAuth();
+  const { user, accountType, refreshUser, patchUser } = useAuth();
   const queryClient = useQueryClient();
-  const showAsOnline = (user as any)?.showAsOnline !== false;
+  const showAsOnline = resolveShowAsOnline(user);
   const insets = useSafeAreaInsets();
   const gutter = useHorizontalGutter("md");
   const isTrainee = accountType === AccountType.TRAINEE;
@@ -321,12 +322,13 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
 
   const handleAvailabilityToggle = useCallback(
     async (next: boolean) => {
-      await setOnlineAvailability(next);
+      const confirmed = await setOnlineAvailability(next);
+      patchUser({ showAsOnline: confirmed });
       await refreshUser();
       await queryClient.invalidateQueries({ queryKey: ["onlineUsers"] });
       await queryClient.invalidateQueries({ queryKey: ["conversations"] });
     },
-    [refreshUser, queryClient]
+    [patchUser, refreshUser, queryClient]
   );
 
   const { data: onlineUsers = [], isLoading: loadingCoaches } = useQuery({
