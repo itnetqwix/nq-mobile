@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
+import type { BrowseTrainersParams } from "../../home/api/homeApi";
 import {
   ActivityIndicator,
   FlatList,
   Image,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,7 +17,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Button, EmptyState, Skeleton } from "../../../components/ui";
-import { colors, radii, space, typography } from "../../../theme";
+import { type AppColors, radii, space, typography, useThemeColors } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { fetchOnlineUsers, fetchTrainersWithSlots } from "../../home/api/homeApi";
 import { useOnlinePresence } from "../../socket/useOnlinePresence";
@@ -23,13 +25,23 @@ import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wi
 import { ScheduledBookingModal } from "../../bookings/screens/ScheduledBookingModal";
 import type { MenuStackParamList } from "../../../navigation/types";
 
-function Avatar({ uri, name, size = 64 }: { uri?: string; name?: string; size?: number }) {
+function Avatar({
+  uri,
+  name,
+  size = 64,
+  styles: st,
+}: {
+  uri?: string;
+  name?: string;
+  size?: number;
+  styles: ReturnType<typeof makeStyles>;
+}) {
   const [failed, setFailed] = React.useState(false);
   const url = getS3ImageUrl(uri);
   if (!url || failed) {
     return (
-      <View style={[styles.avatarFallback, { width: size, height: size, borderRadius: size / 2 }]}>
-        <Text style={[styles.avatarInitial, { fontSize: size * 0.38 }]}>
+      <View style={[st.avatarFallback, { width: size, height: size, borderRadius: size / 2 }]}>
+        <Text style={[st.avatarInitial, { fontSize: size * 0.38 }]}>
           {(name ?? "?")[0]?.toUpperCase()}
         </Text>
       </View>
@@ -44,14 +56,25 @@ function Avatar({ uri, name, size = 64 }: { uri?: string; name?: string; size?: 
   );
 }
 
+const SORT_OPTIONS: { key: NonNullable<BrowseTrainersParams["sortBy"]>; label: string }[] = [
+  { key: "name", label: "Name" },
+  { key: "rating", label: "Rating" },
+  { key: "hourly_rate", label: "Rate ↑" },
+  { key: "hourly_rate_desc", label: "Rate ↓" },
+];
+
 function TrainerCard({
   trainer,
   onBook,
   onSchedule,
+  styles,
+  themeColors,
 }: {
   trainer: any;
   onBook: (t: any) => void;
   onSchedule: (t: any) => void;
+  styles: ReturnType<typeof makeStyles>;
+  themeColors: AppColors;
 }) {
   const { isOnline } = useOnlinePresence();
   const trainerId = String(trainer?._id ?? "");
@@ -60,13 +83,14 @@ function TrainerCard({
   const cats = Array.isArray(trainer?.categories)
     ? trainer.categories.slice(0, 3).join(" • ")
     : trainer?.categories ?? "";
-  const rating = trainer?.rating;
+  const rating = trainer?.avgRating ?? trainer?.rating;
+  const hourly = trainer?.hourly_rate ?? trainer?.extraInfo?.hourly_rate;
   const slotsCount = Array.isArray(trainer?.slots) ? trainer.slots.length : null;
 
   return (
     <View style={styles.card}>
       <View style={styles.cardRow}>
-        <Avatar uri={trainer?.profile_picture} name={name} size={64} />
+        <Avatar uri={trainer?.profile_picture} name={name} size={64} styles={styles} />
         <View style={styles.cardInfo}>
           <Text style={styles.trainerName}>{name}</Text>
           {!!cats && (
@@ -76,9 +100,12 @@ function TrainerCard({
           )}
           {rating != null && (
             <View style={styles.ratingRow}>
-              <Ionicons name="star" size={13} color={colors.warning} />
+              <Ionicons name="star" size={13} color={themeColors.warning} />
               <Text style={styles.ratingText}>{Number(rating).toFixed(1)}</Text>
             </View>
+          )}
+          {hourly != null && Number(hourly) > 0 && (
+            <Text style={styles.rateText}>${Number(hourly).toFixed(0)}/hr</Text>
           )}
           {slotsCount !== null && (
             <Text style={styles.slotsText}>
@@ -118,73 +145,69 @@ function TrainerCard({
 type Props = { bookLessonTrainerId?: string };
 
 export function BookExpertScreen({ bookLessonTrainerId }: Props) {
+  const themeColors = useThemeColors();
+  const styles = useMemo(() => makeStyles(themeColors), [themeColors]);
+
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [category, setCategory] = useState("");
+  const [sortBy, setSortBy] = useState<NonNullable<BrowseTrainersParams["sortBy"]>>("name");
+  const [onlineOnly, setOnlineOnly] = useState(false);
   const [wizardTrainer, setWizardTrainer] = useState<Record<string, unknown> | null>(null);
   const [scheduleTrainer, setScheduleTrainer] = useState<Record<string, unknown> | null>(null);
   const navigation = useNavigation<NativeStackNavigationProp<MenuStackParamList>>();
 
-  const trimmed = search.trim();
-  /** Backend rejects empty or numeric-only `search` — see `TraineeService.getSlotsOfAllTrainers`. */
-  const searchOk = trimmed.length >= 2 && !/^\d+$/.test(trimmed);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => clearTimeout(t);
+  }, [search]);
 
-  const { data: onlineRaw = [], isLoading: onlineLoading, isRefetching: onlineRefetching, refetch: refetchOnline } =
-    useQuery({
-      queryKey: ["bookExpert", "online"],
-      queryFn: fetchOnlineUsers,
-      staleTime: 30_000,
-      refetchInterval: 30_000,
-    });
-
-  const onlineTrainers = useMemo(
-    () => onlineRaw.map((t: any) => ({ ...t, is_online: true })),
-    [onlineRaw]
-  );
+  const trimmed = debouncedSearch;
+  const searchActive = trimmed.length >= 2 && !/^\d+$/.test(trimmed);
 
   const {
-    data: searchRows = [],
-    isLoading: searchLoading,
-    isRefetching: searchRefetching,
-    refetch: refetchSearch,
+    data: directoryRows = [],
+    isLoading: directoryLoading,
+    isRefetching: directoryRefetching,
+    refetch: refetchDirectory,
   } = useQuery({
-    queryKey: ["trainersWithSlots", trimmed],
-    queryFn: () => fetchTrainersWithSlots({ search: trimmed }),
-    enabled: searchOk,
+    queryKey: ["trainersDirectory", trimmed, category, sortBy, onlineOnly],
+    queryFn: () =>
+      fetchTrainersWithSlots({
+        search: searchActive ? trimmed : undefined,
+        category: category.trim() || undefined,
+        sortBy,
+        onlineOnly,
+        limit: 80,
+      }),
     staleTime: 60_000,
+  });
+
+  const { data: onlineRaw = [] } = useQuery({
+    queryKey: ["bookExpert", "online"],
+    queryFn: fetchOnlineUsers,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
   });
 
   const { isOnline } = useOnlinePresence();
 
   const mergedRows = useMemo(() => {
-    const apiOnlineIds = new Set(onlineTrainers.map((t: any) => String(t._id)));
+    const apiOnlineIds = new Set(onlineRaw.map((t: any) => String(t._id)));
     const isTrainerOnline = (id: string) => apiOnlineIds.has(id) || isOnline(id);
-    if (!searchOk) {
-      return onlineTrainers.map((t: any) => ({
-        ...t,
-        is_online: isTrainerOnline(String(t._id)),
-      }));
-    }
-    const map = new Map<string, any>();
-    for (const t of onlineTrainers) {
-      const id = String(t._id);
-      map.set(id, { ...t, is_online: isTrainerOnline(id) });
-    }
-    for (const t of searchRows) {
-      const id = String(t._id);
-      const prev = map.get(id);
-      map.set(id, {
-        ...t,
-        is_online: prev?.is_online ?? isTrainerOnline(id),
-      });
-    }
-    return Array.from(map.values());
-  }, [onlineTrainers, searchRows, searchOk, isOnline]);
+    const rows = directoryRows.map((t: any) => ({
+      ...t,
+      is_online: isTrainerOnline(String(t._id)),
+    }));
+    if (onlineOnly) return rows.filter((t) => t.is_online);
+    return rows;
+  }, [directoryRows, onlineRaw, isOnline, onlineOnly]);
 
-  const loading = onlineLoading || (searchOk && searchLoading);
-  const refreshing = onlineRefetching || (searchOk && searchRefetching);
+  const loading = directoryLoading;
+  const refreshing = directoryRefetching;
 
   const onRefresh = () => {
-    void refetchOnline();
-    if (searchOk) void refetchSearch();
+    void refetchDirectory();
   };
 
   useEffect(() => {
@@ -216,17 +239,16 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
       <View style={styles.hero}>
         <Text style={styles.heroTitle}>Book a coach</Text>
         <Text style={styles.heroSub}>
-          Coaches who are online now appear below. Search by name or category (at least 2 characters) to see trainers
-          with published slots.
+          Browse all coaches or search by name. Filter by category, sort by rating or rate, and show online only.
         </Text>
       </View>
 
       <View style={styles.searchBar}>
-        <Ionicons name="search-outline" size={18} color={colors.textMuted} />
+        <Ionicons name="search-outline" size={18} color={themeColors.textMuted} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search trainers…"
-          placeholderTextColor={colors.textMuted}
+          placeholderTextColor={themeColors.textMuted}
           value={search}
           onChangeText={setSearch}
           returnKeyType="search"
@@ -234,13 +256,49 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
         />
         {!!search && (
           <Pressable onPress={() => setSearch("")} accessibilityLabel="Clear search">
-            <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+            <Ionicons name="close-circle" size={18} color={themeColors.textMuted} />
           </Pressable>
         )}
       </View>
 
-      {!searchOk && trimmed.length > 0 && trimmed.length < 2 && (
-        <Text style={styles.searchHint}>Enter at least 2 characters to search the full directory.</Text>
+      <View style={styles.filterRow}>
+        <TextInput
+          style={styles.categoryInput}
+          placeholder="Category filter"
+          placeholderTextColor={themeColors.textMuted}
+          value={category}
+          onChangeText={setCategory}
+          autoCorrect={false}
+        />
+        <Pressable
+          style={[styles.filterChip, onlineOnly && styles.filterChipActive]}
+          onPress={() => setOnlineOnly((v) => !v)}
+        >
+          <Ionicons
+            name="radio-button-on"
+            size={14}
+            color={onlineOnly ? themeColors.brandTextOn : themeColors.success}
+          />
+          <Text style={[styles.filterChipText, onlineOnly && styles.filterChipTextActive]}>Online</Text>
+        </Pressable>
+      </View>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sortRow}>
+        {SORT_OPTIONS.map((opt) => (
+          <Pressable
+            key={opt.key}
+            style={[styles.sortChip, sortBy === opt.key && styles.sortChipActive]}
+            onPress={() => setSortBy(opt.key)}
+          >
+            <Text style={[styles.sortChipText, sortBy === opt.key && styles.sortChipTextActive]}>
+              {opt.label}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      {search.trim().length > 0 && search.trim().length < 2 && (
+        <Text style={styles.searchHint}>Enter at least 2 characters to narrow search.</Text>
       )}
 
       {loading ? (
@@ -258,36 +316,37 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
           renderItem={({ item }) => (
             <TrainerCard
               trainer={item}
+              styles={styles}
+              themeColors={themeColors}
               onBook={handleBook}
               onSchedule={(t) => setScheduleTrainer(t)}
             />
           )}
           contentContainerStyle={styles.list}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brandNavy} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={themeColors.brandNavy} />
           }
           ListHeaderComponent={
-            !searchOk ? (
-              <View style={styles.listBanner}>
-                <Ionicons name="radio-button-on" size={16} color={colors.success} />
-                <Text style={styles.listBannerText}>Online now — tap Book session to start</Text>
-              </View>
-            ) : (
-              <View style={styles.listBanner}>
-                <Ionicons name="funnel-outline" size={16} color={colors.brandNavy} />
-                <Text style={styles.listBannerText}>Results for &quot;{trimmed}&quot;</Text>
-              </View>
-            )
+            <View style={styles.listBanner}>
+              <Ionicons
+                name={searchActive ? "funnel-outline" : "people-outline"}
+                size={16}
+                color={themeColors.brandNavy}
+              />
+              <Text style={styles.listBannerText}>
+                {searchActive
+                  ? `Results for "${trimmed}"`
+                  : onlineOnly
+                    ? "Online coaches"
+                    : "All coaches — book instant or schedule"}
+              </Text>
+            </View>
           }
           ListEmptyComponent={
             <EmptyState
               icon="people-outline"
-              title={searchOk ? "No trainers match that search" : "No coaches online right now"}
-              description={
-                searchOk
-                  ? "Try another name or category, or pull to refresh."
-                  : "Try a search (2+ letters), check back soon, or use Instant booking from the home hub."
-              }
+              title={searchActive || category.trim() ? "No trainers match your filters" : "No coaches found"}
+              description="Try another search, category, or turn off Online-only."
             />
           }
         />
@@ -296,94 +355,133 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.surface },
-  hero: {
-    paddingHorizontal: space.md,
-    paddingTop: space.md,
-    paddingBottom: space.sm,
-    backgroundColor: colors.surfaceElevated,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  heroTitle: { ...typography.titleMd, color: colors.brandNavy },
-  heroSub: { ...typography.bodySm, color: colors.textMuted, marginTop: 6 },
-  searchHint: {
-    ...typography.caption,
-    color: colors.text,
-    paddingHorizontal: space.md,
-    paddingVertical: 6,
-    backgroundColor: colors.warningSubtle,
-  },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: space.sm },
-  loadingText: { ...typography.bodyMd, color: colors.textMuted },
-
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.surfaceElevated,
-    paddingHorizontal: space.md,
-    paddingVertical: 10,
-    gap: space.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: typography.bodyMd.fontSize,
-    fontWeight: typography.bodyMd.fontWeight,
-    fontFamily: typography.bodyMd.fontFamily,
-    letterSpacing: typography.bodyMd.letterSpacing,
-    color: colors.text,
-    paddingVertical: 0,
-    textAlignVertical: "center",
-  },
-
-  list: { padding: space.md, gap: space.sm, paddingBottom: space.xl },
-  listBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: space.sm,
-    paddingVertical: 8,
-  },
-  listBannerText: { ...typography.bodySm, fontWeight: "600", color: colors.textSecondary, flex: 1 },
-
-  card: {
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: radii.md,
-    padding: space.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  cardRow: { flexDirection: "row", gap: space.md, alignItems: "flex-start" },
-  cardInfo: { flex: 1 },
-  trainerName: { ...typography.titleSm, color: colors.text },
-  trainerCat: { ...typography.bodySm, color: colors.textMuted, marginTop: 3 },
-  ratingRow: { flexDirection: "row", alignItems: "center", gap: 3, marginTop: 4 },
-  ratingText: { ...typography.bodySm, fontWeight: "600", color: colors.textSecondary },
-  slotsText: { ...typography.caption, color: colors.success, marginTop: 3, fontWeight: "500" },
-
-  cardFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: space.md,
-    paddingTop: space.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderSubtle,
-  },
-  btnRow: { flexDirection: "row", gap: 8 },
-
-  onlineBadge: { flexDirection: "row", alignItems: "center", gap: 5 },
-  onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success },
-  onlineText: { ...typography.caption, color: colors.success, fontWeight: "600" },
-
-  avatarFallback: { backgroundColor: colors.brandNavy, alignItems: "center", justifyContent: "center" },
-  avatarInitial: { color: colors.brandTextOn, fontWeight: "700" },
-});
+function makeStyles(colors: AppColors) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: colors.surface },
+    hero: {
+      paddingHorizontal: space.md,
+      paddingTop: space.md,
+      paddingBottom: space.sm,
+      backgroundColor: colors.surfaceElevated,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    heroTitle: { ...typography.titleMd, color: colors.headerTitle },
+    heroSub: { ...typography.bodySm, color: colors.textMuted, marginTop: 6 },
+    searchHint: {
+      ...typography.caption,
+      color: colors.text,
+      paddingHorizontal: space.md,
+      paddingVertical: 6,
+      backgroundColor: colors.warningSubtle,
+    },
+    searchBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.surfaceElevated,
+      paddingHorizontal: space.md,
+      paddingVertical: 10,
+      gap: space.sm,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: typography.bodyMd.fontSize,
+      fontWeight: typography.bodyMd.fontWeight,
+      fontFamily: typography.bodyMd.fontFamily,
+      letterSpacing: typography.bodyMd.letterSpacing,
+      color: colors.text,
+      paddingVertical: 0,
+      textAlignVertical: "center",
+    },
+    filterRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: space.sm,
+      paddingHorizontal: space.md,
+      paddingVertical: 8,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    categoryInput: {
+      flex: 1,
+      ...typography.bodySm,
+      color: colors.text,
+      backgroundColor: colors.surfaceElevated,
+      borderRadius: radii.sm,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    filterChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: radii.pill,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    filterChipActive: { backgroundColor: colors.brandNavy, borderColor: colors.brandNavy },
+    filterChipText: { ...typography.caption, fontWeight: "600", color: colors.textSecondary },
+    filterChipTextActive: { color: colors.brandTextOn },
+    sortRow: {
+      paddingHorizontal: space.md,
+      paddingVertical: 8,
+      gap: 8,
+    },
+    sortChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: radii.pill,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceElevated,
+    },
+    sortChipActive: { backgroundColor: colors.brandNavy, borderColor: colors.brandNavy },
+    sortChipText: { ...typography.caption, fontWeight: "600", color: colors.textMuted },
+    sortChipTextActive: { color: colors.brandTextOn },
+    list: { padding: space.md, gap: space.sm, paddingBottom: space.xl },
+    listBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: space.sm,
+      paddingVertical: 8,
+    },
+    listBannerText: { ...typography.bodySm, fontWeight: "600", color: colors.textSecondary, flex: 1 },
+    card: {
+      backgroundColor: colors.surfaceElevated,
+      borderRadius: radii.md,
+      padding: space.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    cardRow: { flexDirection: "row", gap: space.md, alignItems: "flex-start" },
+    cardInfo: { flex: 1 },
+    trainerName: { ...typography.titleSm, color: colors.text },
+    trainerCat: { ...typography.bodySm, color: colors.textMuted, marginTop: 3 },
+    ratingRow: { flexDirection: "row", alignItems: "center", gap: 3, marginTop: 4 },
+    ratingText: { ...typography.bodySm, fontWeight: "600", color: colors.textSecondary },
+    rateText: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+    slotsText: { ...typography.caption, color: colors.success, marginTop: 3, fontWeight: "500" },
+    cardFooter: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: space.md,
+      paddingTop: space.sm,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.borderSubtle,
+    },
+    btnRow: { flexDirection: "row", gap: 8 },
+    onlineBadge: { flexDirection: "row", alignItems: "center", gap: 5 },
+    onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success },
+    onlineText: { ...typography.caption, color: colors.success, fontWeight: "600" },
+    avatarFallback: { backgroundColor: colors.brandNavy, alignItems: "center", justifyContent: "center" },
+    avatarInitial: { color: colors.brandTextOn, fontWeight: "700" },
+  });
+}

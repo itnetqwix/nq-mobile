@@ -244,8 +244,25 @@ export async function fetchMyReferrals(): Promise<any[]> {
   }
 }
 
-export async function fetchTrainersWithSlots(params?: { search?: string }): Promise<any[]> {
-  const res = await apiClient.get(API_ROUTES.trainee.getTrainersWithSlots, { params });
+export type BrowseTrainersParams = {
+  search?: string;
+  category?: string;
+  sortBy?: "name" | "rating" | "hourly_rate" | "hourly_rate_desc";
+  onlineOnly?: boolean;
+  page?: number;
+  limit?: number;
+};
+
+export async function fetchTrainersWithSlots(params?: BrowseTrainersParams): Promise<any[]> {
+  const query: Record<string, string> = {};
+  if (params?.search?.trim()) query.search = params.search.trim();
+  if (params?.category?.trim()) query.category = params.category.trim();
+  if (params?.sortBy) query.sortBy = params.sortBy;
+  if (params?.onlineOnly) query.onlineOnly = "1";
+  if (params?.page) query.page = String(params.page);
+  if (params?.limit) query.limit = String(params.limit);
+
+  const res = await apiClient.get(API_ROUTES.trainee.getTrainersWithSlots, { params: query });
   const body = res.data as Record<string, unknown>;
   /** Backend: `{ status, data: Trainer[] }` — see `traineeController.getSlotsOfAllTrainers`. */
   const rows = body?.data ?? body?.result;

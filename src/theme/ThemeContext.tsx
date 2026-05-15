@@ -92,3 +92,8 @@ export function useTheme(): ThemeContextValue {
   }
   return ctx;
 }
+
+/** Prefer this over the legacy hook in `index.ts` — respects ThemeProvider mode. */
+export function useThemeColors(): AppColors {
+  return useTheme().colors;
+}

@@ -17,7 +17,7 @@ import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Pill, Skeleton, ImageWithSkeleton } from "../../../components/ui";
-import { colors, radii, space, typography } from "../../../theme";
+import { colors, radii, space, typography, useThemeColors } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { resolveShowAsOnline } from "../../../lib/user/resolveShowAsOnline";
 import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
@@ -334,6 +334,7 @@ function AIRecommendedSection({ onBook }: { onBook: (t: any) => void }) {
 }
 
 export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) {
+  const themeColors = useThemeColors();
   const [aiOpen, setAiOpen] = useState(false);
   const { user, accountType, refreshUser, patchUser } = useAuth();
   const { openSession } = useSessionBooking();
@@ -467,20 +468,20 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
   return (
     <>
     <ScrollView
-      style={styles.root}
+      style={[styles.root, { backgroundColor: themeColors.background }]}
       contentContainerStyle={[styles.content, { paddingBottom: space.xl * 2 + insets.bottom }]}
       refreshControl={
         <RefreshControl
           refreshing={isRefreshing}
           onRefresh={onRefresh}
-          tintColor={colors.brandNavy}
+          tintColor={themeColors.brandNavy}
         />
       }
     >
       {/* Header — greeting row (app bar = native header + drawer) */}
       <View style={[styles.header, gutter]}>
         <View>
-          <Text style={styles.greeting}>Hello, {name}</Text>
+          <Text style={[styles.greeting, { color: themeColors.headerTitle }]}>Hello, {name}</Text>
           <Text style={styles.roleTag}>{accountType ?? "Member"}</Text>
         </View>
       </View>
@@ -717,7 +718,7 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
         {/* Recent Users — `recent-users-grid` / `trainer-students-grid` vs `single-row-experts` */}
         {isTrainer && recentTrainees.length > 0 && (
           <HomeMainCont
-            title="Recent Students"
+            title="Recent Trainees"
             testID="card rounded trainer-profile-card Select Recent Student"
           >
             <RecentUsersGrid accountIsTrainer>

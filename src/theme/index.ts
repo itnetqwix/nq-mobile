@@ -8,8 +8,8 @@
  *     new tokens doesn't require atomic touches across the app.
  */
 
-import { useColorScheme } from "react-native";
 import { type AppColors, colorsDark, colorsLight } from "./colors";
+export { useTheme, useThemeColors, ThemeProvider, type ThemeMode } from "./ThemeContext";
 
 export { colorsDark, colorsLight, type AppColors } from "./colors";
 export { typography, type TypographyToken } from "./typography";
@@ -25,15 +25,6 @@ export const colors = colorsLight;
 /** Resolve light or dark — explicit form for non-hook callers. */
 export function resolveColors(scheme: "light" | "dark" | null | undefined): AppColors {
   return scheme === "dark" ? colorsDark : colorsLight;
-}
-
-/**
- * React hook — resolves the active palette based on the user's theme
- * preference (from ThemeContext) or the system scheme as fallback.
- */
-export function useThemeColors(): AppColors {
-  const scheme = useColorScheme();
-  return resolveColors(scheme);
 }
 
 /** Spacing scale. Kept here so design tokens live next to each other. */

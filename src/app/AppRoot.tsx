@@ -1,7 +1,6 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StripeProvider } from "@stripe/stripe-react-native";
-import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useMemo } from "react";
 import { StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -15,6 +14,7 @@ import { SessionBookingProvider } from "../features/sessions/SessionBookingConte
 import { PushNotificationBridge } from "../features/notifications/PushNotificationBridge";
 import { RootNavigator } from "../navigation/RootNavigator";
 import { navigationRef } from "../navigation/navigationRef";
+import { AppStatusBar } from "../theme/AppStatusBar";
 import { ThemeProvider } from "../theme/ThemeContext";
 
 export function AppRoot() {
@@ -57,7 +57,7 @@ export function AppRoot() {
                       <InstantLessonProvider onNavigateToMeeting={navigateToMeeting}>
                         <PushNotificationBridge />
                         <NavigationContainer ref={navigationRef}>
-                          <StatusBar style="dark" />
+                          <AppStatusBar />
                           <RootNavigator />
                         </NavigationContainer>
                       </InstantLessonProvider>

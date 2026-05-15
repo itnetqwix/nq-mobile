@@ -101,7 +101,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
   },
   {
     id: "students",
-    label: "Students",
+    label: "My trainees",
     icon: "school-outline",
     target: { kind: "feature", featureId: "students" },
     surfaces: ["drawer", "more"],

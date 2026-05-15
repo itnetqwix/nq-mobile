@@ -268,10 +268,32 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
     setBookingLoading(true);
     try {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const bookedDateIso = selectedSlot.date || new Date().toISOString();
+      try {
+        const checkRes = await apiClient.post(API_ROUTES.trainee.checkSlot, {
+          trainer_id: trainerId,
+          booked_date: bookedDateIso,
+          slotTime: { from: selectedSlot.start, to: selectedSlot.end },
+          traineeTimeZone: tz,
+        });
+        const slotCheck = (checkRes.data as { data?: { isAvailable?: boolean; message?: string } })?.data;
+        if (slotCheck && slotCheck.isAvailable === false) {
+          Alert.alert(
+            "Time unavailable",
+            slotCheck.message ??
+              "This slot conflicts with another booking. Please choose a different time."
+          );
+          setBookingLoading(false);
+          return;
+        }
+      } catch {
+        /* proceed — booking API still validates conflicts */
+      }
+
       const bookPayload: Record<string, unknown> = {
         trainer_id: trainerId,
         status: "booked",
-        booked_date: selectedSlot.date || new Date().toISOString(),
+        booked_date: bookedDateIso,
         session_start_time: selectedSlot.start,
         session_end_time: selectedSlot.end,
         charging_price: price,
@@ -299,10 +321,15 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
         { text: "OK", onPress: onDismiss },
       ]);
     } catch (e: any) {
-      Alert.alert(
-        "Booking failed",
-        e?.response?.data?.message ?? e?.response?.data?.error ?? e?.message ?? "Could not book the session."
-      );
+      const msg =
+        e?.response?.data?.message ??
+        e?.response?.data?.error ??
+        e?.message ??
+        "Could not book the session.";
+      const conflict =
+        typeof msg === "string" &&
+        /booking during this time|conflict|unavailable/i.test(msg);
+      Alert.alert(conflict ? "Scheduling conflict" : "Booking failed", msg);
     } finally {
       setBookingLoading(false);
     }

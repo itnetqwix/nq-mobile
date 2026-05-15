@@ -15,17 +15,8 @@ import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
 import { fetchRecentTrainees } from "../../home/api/homeApi";
 import { useOnlinePresence } from "../../socket/useOnlinePresence";
-import { apiClient } from "../../../api/client";
-import { API_ROUTES } from "../../../config/apiRoutes";
-
-async function fetchStudents(): Promise<any[]> {
-  try {
-    const res = await apiClient.get(API_ROUTES.user.getAllTrainee);
-    return res.data?.result ?? res.data ?? [];
-  } catch {
-    return fetchRecentTrainees();
-  }
-}
+import { useAuth } from "../../auth/context/AuthContext";
+import { AccountType } from "../../../constants/accountType";
 
 function Avatar({ uri, name, size = 52 }: { uri?: string; name?: string; size?: number }) {
   const [failed, setFailed] = React.useState(false);
@@ -89,6 +80,8 @@ function StudentCard({ student }: { student: any }) {
 export function StudentsScreen() {
   const insets = useSafeAreaInsets();
   const gutter = useHorizontalGutter("md");
+  const { accountType } = useAuth();
+  const isTrainer = accountType === AccountType.TRAINER;
   const listPad = useMemo(
     () => ({
       ...gutter,
@@ -99,11 +92,25 @@ export function StudentsScreen() {
     [gutter, insets.bottom]
   );
 
+  /** Only trainees this trainer has worked with (same API as web Student Record). */
   const { data: students = [], isLoading, isRefetching, refetch } = useQuery({
-    queryKey: ["students"],
-    queryFn: fetchStudents,
+    queryKey: ["recentTrainees"],
+    queryFn: fetchRecentTrainees,
+    enabled: isTrainer,
     staleTime: 120_000,
   });
+
+  if (!isTrainer) {
+    return (
+      <View style={listPad}>
+        <EmptyState
+          icon="lock-closed-outline"
+          title="Not available"
+          description="This section is only available for trainer accounts."
+        />
+      </View>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -136,8 +143,8 @@ export function StudentsScreen() {
       ListEmptyComponent={
         <EmptyState
           icon="people-outline"
-          title="No students yet"
-          description="Students who book sessions with you will appear here."
+          title="No trainees yet"
+          description="Trainees you have booked sessions with will appear here — not the full NetQwix directory."
         />
       }
     />

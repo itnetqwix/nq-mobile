@@ -76,7 +76,8 @@ export function formatSessionWhen(session: any): { dateLabel: string; timeLabel:
   return { dateLabel, timeLabel };
 }
 
-const INSTANT_JOIN_MS = 60 * 60 * 1000;
+import { INSTANT_JOIN_AFTER_ACCEPT_MS } from "./instantLessonConstants";
+
 const EARLY_JOIN_MS = 15 * 60 * 1000;
 const LATE_JOIN_MS = 15 * 60 * 1000;
 
@@ -90,9 +91,11 @@ export function canJoinSession(session: any, now = new Date()): boolean {
   const nowMs = now.getTime();
 
   if (isInstantLesson(session)) {
-    const bookedAt = session?.booked_date ? new Date(session.booked_date).getTime() : NaN;
-    if (!Number.isFinite(bookedAt)) return true;
-    return nowMs - bookedAt <= INSTANT_JOIN_MS;
+    const acceptedAt = session?.accepted_at
+      ? new Date(session.accepted_at).getTime()
+      : NaN;
+    if (!Number.isFinite(acceptedAt)) return false;
+    return nowMs - acceptedAt <= INSTANT_JOIN_AFTER_ACCEPT_MS;
   }
 
   const start = getSessionStart(session);

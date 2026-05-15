@@ -17,10 +17,10 @@ export function MenuNavigator() {
     <Stack.Navigator
       initialRouteName="ShellSurface"
       screenOptions={{
-        headerTintColor: c.brandNavy,
-        headerTitleStyle: { fontWeight: "600", color: c.brandNavy },
+        headerTintColor: c.headerTint,
+        headerTitleStyle: { fontWeight: "600", color: c.headerTitle },
         headerStyle: { backgroundColor: c.background },
-        headerLeft: () => <DrawerToggleButton tintColor={c.brandNavy} />,
+        headerLeft: () => <DrawerToggleButton tintColor={c.headerTint} />,
         contentStyle: { backgroundColor: c.background },
         gestureEnabled: true,
         gestureDirection: "horizontal",
@@ -42,7 +42,7 @@ export function MenuNavigator() {
         initialParams={{ surfaceId: "settings" }}
         options={({ route, navigation }) => ({
           title: shellSurfaceById(route.params.surfaceId)?.title ?? "NetQwix",
-          headerLeft: navigation.canGoBack() ? undefined : () => <DrawerToggleButton tintColor={c.brandNavy} />,
+          headerLeft: navigation.canGoBack() ? undefined : () => <DrawerToggleButton tintColor={c.headerTint} />,
         })}
       />
     </Stack.Navigator>

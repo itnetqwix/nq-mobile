@@ -114,6 +114,12 @@ export const colorsLight: Palette & {
   /** Tab bar */
   tabBarBorder: "#e5e7eb",
   tabBar: "#ffffff",
+  tabBarActive: BRAND.brandNavy,
+  tabBarInactive: "#6b7280",
+
+  /** Navigation chrome (headers, drawer toggle) */
+  headerTitle: BRAND.brand,
+  headerTint: BRAND.brand,
 
   /** Overlay (modals, sheets). */
   overlay: "rgba(15, 23, 42, 0.6)",
@@ -152,6 +158,11 @@ export const colorsDark: typeof colorsLight = {
 
   tabBarBorder: NEUTRALS.neutral700,
   tabBar: "#0f0f12",
+  tabBarActive: BRAND.brandAccent,
+  tabBarInactive: "#9ca3af",
+
+  headerTitle: "#f9fafb",
+  headerTint: "#f9fafb",
 
   overlay: "rgba(0, 0, 0, 0.72)",
   scrim: "rgba(0, 0, 0, 0.5)",

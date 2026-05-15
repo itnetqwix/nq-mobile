@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, radii, space, typography } from "../theme";
+import { radii, space, typography, useThemeColors } from "../theme";
 import { useAuth } from "../features/auth/context/AuthContext";
 import type { MainTabParamList } from "./types";
 import type { NavigatorScreenParams } from "@react-navigation/native";
@@ -17,6 +17,7 @@ import { navMatrixFor, type NavMatrixEntry } from "./navMatrix";
 
 export function DashboardDrawerContent(props: DrawerContentComponentProps) {
   const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
   const { accountType, user, signOut } = useAuth();
 
   const drawerEntries = useMemo(
@@ -87,12 +88,16 @@ export function DashboardDrawerContent(props: DrawerContentComponentProps) {
         styles.scrollContent,
         { paddingTop: Math.max(insets.top, space.md), paddingBottom: insets.bottom + space.md },
       ]}
-      style={styles.scroll}
+      style={[styles.scroll, { backgroundColor: colors.background }]}
     >
-      <View style={styles.brandBlock}>
-        <Text style={styles.brandTitle}>NetQwix</Text>
-        <Text style={styles.brandSub}>Dashboard</Text>
-        {!!displayName && <Text style={styles.userLine} numberOfLines={1}>{displayName}</Text>}
+      <View style={[styles.brandBlock, { borderBottomColor: colors.border }]}>
+        <Text style={[styles.brandTitle, { color: colors.headerTitle }]}>NetQwix</Text>
+        <Text style={[styles.brandSub, { color: colors.textMuted }]}>Dashboard</Text>
+        {!!displayName && (
+          <Text style={[styles.userLine, { color: colors.textSecondary }]} numberOfLines={1}>
+            {displayName}
+          </Text>
+        )}
       </View>
 
       {drawerEntries.map((entry) => (
@@ -104,7 +109,7 @@ export function DashboardDrawerContent(props: DrawerContentComponentProps) {
           <View style={styles.iconWrap}>
             <Ionicons name={entry.icon} size={22} color={colors.textSecondary} />
           </View>
-          <Text style={styles.rowLabel}>{entry.label}</Text>
+          <Text style={[styles.rowLabel, { color: colors.text }]}>{entry.label}</Text>
         </Pressable>
       ))}
 
@@ -121,21 +126,19 @@ export function DashboardDrawerContent(props: DrawerContentComponentProps) {
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: colors.background },
+  scroll: { flex: 1 },
   scrollContent: { flexGrow: 1 },
   brandBlock: {
     paddingHorizontal: space.md,
     paddingBottom: space.lg,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
     marginBottom: space.sm,
   },
   brandTitle: {
     ...typography.titleLg,
-    color: colors.brandNavy,
   },
-  brandSub: { ...typography.caption, color: colors.textMuted, marginTop: 2, fontWeight: "600" },
-  userLine: { ...typography.bodySm, color: colors.textSecondary, marginTop: space.sm },
+  brandSub: { ...typography.caption, marginTop: 2, fontWeight: "600" },
+  userLine: { ...typography.bodySm, marginTop: space.sm },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -153,6 +156,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  rowLabel: { flex: 1, ...typography.subtitle, color: colors.text },
+  rowLabel: { flex: 1, ...typography.subtitle },
   spacer: { flexGrow: 1, minHeight: space.md },
 });

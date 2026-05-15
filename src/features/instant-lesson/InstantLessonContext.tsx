@@ -15,6 +15,7 @@ import {
   NOTIFICATION_TYPES,
   useNotifications,
 } from "../notifications/NotificationContext";
+import { INSTANT_ACCEPT_WINDOW_MS } from "../../lib/sessions/instantLessonConstants";
 import { INSTANT_LESSON_SOCKET as EVENTS } from "./instantLessonSocketEvents";
 
 /** Short "session confirmed" haptic — two quick taps. Vibration is the
@@ -49,6 +50,7 @@ type InstantLessonContextValue = {
   traineeBooking: TraineeBooking | null;
   acceptRequest: () => void;
   declineRequest: () => void;
+  expireRequest: () => void;
   startBooking: (booking: Omit<TraineeBooking, "step"> & { durationMinutes?: number }) => void;
   cancelBooking: () => void;
   clearTraineeBooking: () => void;
@@ -62,6 +64,7 @@ const InstantLessonContext = createContext<InstantLessonContextValue>({
   traineeBooking: null,
   acceptRequest: () => {},
   declineRequest: () => {},
+  expireRequest: () => {},
   startBooking: (_booking: Omit<TraineeBooking, "step"> & { durationMinutes?: number }) => {},
   cancelBooking: () => {},
   clearTraineeBooking: () => {},
@@ -135,7 +138,7 @@ export function InstantLessonProvider({
           ? new Date(expiresAt).getTime()
           : typeof expiresAt === "number"
             ? expiresAt
-            : Date.now() + 120_000;
+            : Date.now() + INSTANT_ACCEPT_WINDOW_MS;
       setTrainerIncoming({
         lessonId,
         coachId,
@@ -211,34 +214,31 @@ export function InstantLessonProvider({
 
   const acceptRequest = useCallback(() => {
     if (!trainerIncoming || !socket) return;
-    socket.emit(EVENTS.ACCEPT, {
-      lessonId: trainerIncoming.lessonId,
-      coachId: trainerIncoming.coachId,
-      traineeId: trainerIncoming.traineeId,
-    });
+    const { lessonId, coachId, traineeId } = trainerIncoming;
+    socket.emit(
+      EVENTS.ACCEPT,
+      { lessonId, coachId, traineeId },
+      (response?: { ok?: boolean; error?: string; message?: string }) => {
+        if (!response?.ok) return;
 
-    /**
-     * Persistent inbox entry for the trainee — same `Session Confirmation` title the web
-     * uses (`TrainerRenderBooking.jsx`). The trainee also sees the floating banner from
-     * `InstantLessonStatusBanner`, but this guarantees an audit trail in their inbox.
-     */
-    const trainerName = String(
-      (user as Record<string, unknown>)?.fullname ??
-        (user as Record<string, unknown>)?.fullName ??
-        "Your coach"
+        const trainerName = String(
+          (user as Record<string, unknown>)?.fullname ??
+            (user as Record<string, unknown>)?.fullName ??
+            "Your coach"
+        );
+        emitNotification({
+          title: NOTIFICATION_TITLES.sessionConfirmation,
+          description: `${trainerName} accepted your instant lesson. Tap Join to enter the session.`,
+          receiverId: traineeId,
+          type: NOTIFICATION_TYPES.TRANSCATIONAL,
+          bookingInfo: { lessonId, isInstant: true },
+        });
+
+        clearExpiryTimer();
+        setTrainerIncoming(null);
+        onNavigateToMeeting(lessonId);
+      }
     );
-    emitNotification({
-      title: NOTIFICATION_TITLES.sessionConfirmation,
-      description: `${trainerName} accepted your instant lesson. Tap Join to enter the session.`,
-      receiverId: trainerIncoming.traineeId,
-      type: NOTIFICATION_TYPES.TRANSCATIONAL,
-      bookingInfo: { lessonId: trainerIncoming.lessonId, isInstant: true },
-    });
-
-    clearExpiryTimer();
-    const lessonId = trainerIncoming.lessonId;
-    setTrainerIncoming(null);
-    onNavigateToMeeting(lessonId);
   }, [
     trainerIncoming,
     socket,
@@ -247,6 +247,17 @@ export function InstantLessonProvider({
     emitNotification,
     user,
   ]);
+
+  const expireRequest = useCallback(() => {
+    if (!trainerIncoming || !socket) return;
+    socket.emit(EVENTS.EXPIRE, {
+      lessonId: trainerIncoming.lessonId,
+      coachId: trainerIncoming.coachId,
+      traineeId: trainerIncoming.traineeId,
+    });
+    clearExpiryTimer();
+    setTrainerIncoming(null);
+  }, [trainerIncoming, socket, clearExpiryTimer]);
 
   const declineRequest = useCallback(() => {
     if (!trainerIncoming || !socket) return;
@@ -293,7 +304,7 @@ export function InstantLessonProvider({
       });
 
       /** Align with web `InstantLessonTimeLine` socket emit (ISO `expiresAt`, minutes, `lessonType`). */
-      const expiresAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
+      const expiresAt = new Date(Date.now() + INSTANT_ACCEPT_WINDOW_MS).toISOString();
       const payload = {
         lessonId,
         coachId,
@@ -313,8 +324,19 @@ export function InstantLessonProvider({
       } else {
         pendingInstantRequestRef.current = payload;
       }
+
+      clearExpiryTimer();
+      expiryTimerRef.current = setTimeout(() => {
+        if (socket) {
+          socket.emit(EVENTS.EXPIRE, { lessonId, coachId, traineeId });
+        }
+        setTraineeBooking((prev) => {
+          if (!prev || String(prev.lessonId) !== lessonId) return prev;
+          return { ...prev, step: "expired" as const };
+        });
+      }, INSTANT_ACCEPT_WINDOW_MS);
     },
-    [socket, userId, user]
+    [socket, userId, user, clearExpiryTimer]
   );
 
   const cancelBooking = useCallback(() => {
@@ -360,6 +382,7 @@ export function InstantLessonProvider({
       traineeBooking,
       acceptRequest,
       declineRequest,
+      expireRequest,
       startBooking,
       cancelBooking,
       clearTraineeBooking,
@@ -372,6 +395,7 @@ export function InstantLessonProvider({
       traineeBooking,
       acceptRequest,
       declineRequest,
+      expireRequest,
       startBooking,
       cancelBooking,
       clearTraineeBooking,

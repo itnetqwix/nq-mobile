@@ -1,14 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { INSTANT_ACCEPT_WINDOW_MS } from "../../lib/sessions/instantLessonConstants";
 import { useInstantLesson } from "./InstantLessonContext";
 import { getS3ImageUrl } from "../../lib/imageUtils";
 import { Button, ImageWithSkeleton } from "../../components/ui";
 import { colors, radii, space, typography } from "../../theme";
 
 export function InstantLessonTrainerModal() {
-  const { trainerIncoming, acceptRequest, declineRequest } = useInstantLesson();
-  const [secondsLeft, setSecondsLeft] = useState(120);
+  const { trainerIncoming, acceptRequest, declineRequest, expireRequest } = useInstantLesson();
+  const [secondsLeft, setSecondsLeft] = useState(Math.ceil(INSTANT_ACCEPT_WINDOW_MS / 1000));
   const [avatarFailed, setAvatarFailed] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pulseRef = useRef<Animated.CompositeAnimation | null>(null);
@@ -23,7 +24,7 @@ export function InstantLessonTrainerModal() {
 
   useEffect(() => {
     if (!trainerIncoming) {
-      setSecondsLeft(120);
+      setSecondsLeft(Math.ceil(INSTANT_ACCEPT_WINDOW_MS / 1000));
       pulseRef.current?.stop();
       return;
     }
@@ -33,7 +34,11 @@ export function InstantLessonTrainerModal() {
 
     const interval = setInterval(() => {
       setSecondsLeft((prev) => {
-        if (prev <= 1) { clearInterval(interval); return 0; }
+        if (prev <= 1) {
+          clearInterval(interval);
+          expireRequest();
+          return 0;
+        }
         return prev - 1;
       });
     }, 1000);
@@ -50,7 +55,7 @@ export function InstantLessonTrainerModal() {
       clearInterval(interval);
       pulseRef.current?.stop();
     };
-  }, [trainerIncoming, pulseAnim]);
+  }, [trainerIncoming, pulseAnim, expireRequest]);
 
   if (!trainerIncoming) return null;
 
@@ -95,7 +100,7 @@ export function InstantLessonTrainerModal() {
               {secondsLeft}
             </Text>
             <Text style={[styles.countdownLabel, urgency && styles.countdownLabelUrgent]}>
-              seconds to respond
+              {secondsLeft >= 60 ? "seconds to respond (up to 1 hour)" : "seconds to respond"}
             </Text>
           </View>
 

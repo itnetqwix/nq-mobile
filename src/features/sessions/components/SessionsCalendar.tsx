@@ -13,6 +13,8 @@ type Props = {
   onMonthChange: (delta: number) => void;
   onSelectDate: (key: string | null) => void;
   todayKey: string;
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 };
 
 function pad(n: number) {
@@ -30,6 +32,8 @@ export function SessionsCalendar({
   onMonthChange,
   onSelectDate,
   todayKey,
+  collapsed = false,
+  onToggleCollapsed,
 }: Props) {
   const { weeks, monthTitle } = useMemo(() => {
     const year = monthAnchor.getFullYear();
@@ -67,7 +71,22 @@ export function SessionsCalendar({
         >
           <Ionicons name="chevron-back" size={22} color={colors.brandNavy} />
         </Pressable>
-        <Text style={styles.monthTitle}>{monthTitle}</Text>
+        <Pressable
+          style={styles.monthTitleWrap}
+          onPress={onToggleCollapsed}
+          disabled={!onToggleCollapsed}
+          accessibilityRole="button"
+          accessibilityLabel={collapsed ? "Expand calendar" : "Collapse calendar"}
+        >
+          <Text style={styles.monthTitle}>{monthTitle}</Text>
+          {onToggleCollapsed ? (
+            <Ionicons
+              name={collapsed ? "chevron-down" : "chevron-up"}
+              size={18}
+              color={colors.brandNavy}
+            />
+          ) : null}
+        </Pressable>
         <Pressable
           onPress={() => onMonthChange(1)}
           hitSlop={12}
@@ -95,6 +114,8 @@ export function SessionsCalendar({
         </Pressable>
       </View>
 
+      {!collapsed ? (
+        <>
       <View style={styles.weekHeader}>
         {DAY_LABELS.map((d) => (
           <Text key={d} style={styles.weekLabel}>
@@ -141,6 +162,8 @@ export function SessionsCalendar({
           })}
         </View>
       ))}
+        </>
+      ) : null}
     </View>
   );
 }
@@ -167,6 +190,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.surface,
+  },
+  monthTitleWrap: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 4,
   },
   monthTitle: { ...typography.subtitle, color: colors.brandNavy, fontWeight: "700" },
   quickRow: {

@@ -24,11 +24,11 @@ export function MainTabs() {
     <Tab.Navigator
       screenOptions={{
         headerTitleAlign: "center",
-        tabBarActiveTintColor: c.brandNavy,
-        tabBarInactiveTintColor: c.textMuted,
+        tabBarActiveTintColor: c.tabBarActive,
+        tabBarInactiveTintColor: c.tabBarInactive,
         tabBarStyle: {
           borderTopColor: c.tabBarBorder,
-          backgroundColor: c.background,
+          backgroundColor: c.tabBar,
           paddingTop: tabPadTop,
           paddingBottom: tabPadBottom,
           paddingLeft: Math.max(insets.left, 4),
@@ -50,10 +50,10 @@ export function MainTabs() {
         },
         headerTitleStyle: {
           fontWeight: "700",
-          color: c.brandNavy,
+          color: c.headerTitle,
           fontSize: 17,
         },
-        headerLeft: () => <DrawerToggleButton tintColor={c.brandNavy} />,
+        headerLeft: () => <DrawerToggleButton tintColor={c.headerTint} />,
       }}
     >
       <Tab.Screen

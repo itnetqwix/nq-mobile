@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
-import { colors, radii, space, typography } from "../../../theme";
+import { colors, radii, space, typography, useThemeColors } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { useAuth } from "../../auth/context/AuthContext";
 import { useSocket } from "../../socket/SocketContext";
@@ -243,6 +243,7 @@ const voiceStyles = StyleSheet.create({
 // ─── Main component ─────────────────────────────────────────────────────────
 
 export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
+  const themeColors = useThemeColors();
   const insets = useSafeAreaInsets();
   const { user: authUser } = useAuth();
   const { socket } = useSocket();
@@ -850,7 +851,12 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
     : "";
 
   return (
-    <View style={[styles.root, { paddingBottom: keyboardHeight }]}>
+    <View
+      style={[
+        styles.root,
+        { paddingBottom: keyboardHeight, backgroundColor: themeColors.background },
+      ]}
+    >
       {/* Header */}
       <Pressable
         onPress={() => {
@@ -858,10 +864,17 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
           setProfileSearch("");
           setShowProfile(true);
         }}
-        style={[styles.header, { paddingTop: insets.top + 8 }]}
+        style={[
+          styles.header,
+          {
+            paddingTop: insets.top + 8,
+            backgroundColor: themeColors.surfaceElevated,
+            borderBottomColor: themeColors.border,
+          },
+        ]}
       >
         <Pressable onPress={onGoBack} hitSlop={12} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={26} color={colors.text} />
+          <Ionicons name="chevron-back" size={26} color={themeColors.text} />
         </Pressable>
         <View>
           {partnerAvatar ? (

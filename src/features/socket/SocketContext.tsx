@@ -68,7 +68,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         queryClient.invalidateQueries({ queryKey: ["bookExpert", "online"] });
         queryClient.invalidateQueries({ queryKey: ["friends"] });
         queryClient.invalidateQueries({ queryKey: ["conversations"] });
-        queryClient.invalidateQueries({ queryKey: ["students"] });
+        queryClient.invalidateQueries({ queryKey: ["recentTrainees"] });
         queryClient.invalidateQueries({ queryKey: ["communityUsers"] });
       };
       createdSocket.on("userStatus", bumpPresenceQueries);

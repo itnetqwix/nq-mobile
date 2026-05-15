@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import * as SecureStore from "expo-secure-store";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -19,6 +20,7 @@ import { Button, Card, EmptyState, Pill, Skeleton, Stack } from "../../../compon
 import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { fetchScheduledMeetings } from "../../home/api/homeApi";
+import { INSTANT_JOIN_AFTER_ACCEPT_MS } from "../../../lib/sessions/instantLessonConstants";
 import {
   canJoinSession,
   formatSessionWhen,
@@ -31,13 +33,15 @@ import { useSessionBooking } from "../SessionBookingContext";
 import { SessionsCalendar } from "../components/SessionsCalendar";
 import type { RootStackParamList } from "../../../navigation/types";
 
-const INSTANT_LESSON_JOIN_WINDOW_MS = 60 * 60 * 1000;
+const CALENDAR_COLLAPSED_KEY = "nq.sessions-calendar-collapsed";
 
 function isInstantLessonExpired(session: any, nowMs: number): boolean {
   if (!isInstantLesson(session)) return false;
-  const bookedAt = session?.booked_date ? new Date(session.booked_date).getTime() : NaN;
-  if (!Number.isFinite(bookedAt)) return false;
-  return nowMs - bookedAt > INSTANT_LESSON_JOIN_WINDOW_MS;
+  const acceptedAt = session?.accepted_at
+    ? new Date(session.accepted_at).getTime()
+    : NaN;
+  if (!Number.isFinite(acceptedAt)) return false;
+  return nowMs - acceptedAt > INSTANT_JOIN_AFTER_ACCEPT_MS;
 }
 
 const STATUS_TABS = [
@@ -203,6 +207,23 @@ export function UpcomingSessionsScreen() {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
+  const [calendarCollapsed, setCalendarCollapsed] = useState(false);
+
+  useEffect(() => {
+    SecureStore.getItemAsync(CALENDAR_COLLAPSED_KEY)
+      .then((v) => {
+        if (v === "1") setCalendarCollapsed(true);
+      })
+      .catch(() => undefined);
+  }, []);
+
+  const toggleCalendarCollapsed = useCallback(() => {
+    setCalendarCollapsed((prev) => {
+      const next = !prev;
+      SecureStore.setItemAsync(CALENDAR_COLLAPSED_KEY, next ? "1" : "0").catch(() => undefined);
+      return next;
+    });
+  }, []);
 
   const todayKey = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
@@ -267,6 +288,8 @@ export function UpcomingSessionsScreen() {
         selectedDate={selectedDate}
         sessionDates={sessionDates}
         todayKey={todayKey}
+        collapsed={calendarCollapsed}
+        onToggleCollapsed={toggleCalendarCollapsed}
         onMonthChange={(delta) => {
           setMonthAnchor((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
         }}

@@ -2,9 +2,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useQuery } from "@tanstack/react-query";
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Pressable,
   RefreshControl,
   SectionList,
   StyleSheet,
@@ -131,10 +132,46 @@ function TrainerSchedule() {
   );
 }
 
+type TrainerSegment = "sessions" | "availability";
+
+function TrainerScheduleTabs() {
+  const [segment, setSegment] = useState<TrainerSegment>("sessions");
+
+  return (
+    <View style={styles.root}>
+      <View style={styles.segmentRow}>
+        <Pressable
+          style={[styles.segmentBtn, segment === "sessions" && styles.segmentBtnActive]}
+          onPress={() => setSegment("sessions")}
+        >
+          <Text style={[styles.segmentText, segment === "sessions" && styles.segmentTextActive]}>
+            My sessions
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.segmentBtn, segment === "availability" && styles.segmentBtnActive]}
+          onPress={() => setSegment("availability")}
+        >
+          <Text style={[styles.segmentText, segment === "availability" && styles.segmentTextActive]}>
+            Availability
+          </Text>
+        </Pressable>
+      </View>
+      {segment === "sessions" ? (
+        <View style={styles.segmentBody}>
+          <UpcomingSessionsScreen />
+        </View>
+      ) : (
+        <TrainerSchedule />
+      )}
+    </View>
+  );
+}
+
 export function ScheduleScreen(_props: MainTabScreenProps<"Schedule">) {
   const { accountType } = useAuth();
   if (accountType === AccountType.TRAINER) {
-    return <TrainerSchedule />;
+    return <TrainerScheduleTabs />;
   }
   return <UpcomingSessionsScreen />;
 }
@@ -176,4 +213,26 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   slotTime: { flex: 1, ...typography.subtitle, color: colors.textSecondary },
+
+  segmentRow: {
+    flexDirection: "row",
+    marginHorizontal: space.md,
+    marginTop: space.sm,
+    marginBottom: space.xs,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 4,
+  },
+  segmentBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: radii.sm,
+    alignItems: "center",
+  },
+  segmentBtnActive: { backgroundColor: colors.brandNavy },
+  segmentText: { ...typography.label, color: colors.textMuted, fontWeight: "600" },
+  segmentTextActive: { color: colors.brandTextOn },
+  segmentBody: { flex: 1 },
 });
