@@ -1,6 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -31,7 +29,7 @@ import {
   NOTIFICATION_TYPES,
   useNotifications,
 } from "../notifications/NotificationContext";
-import type { RootStackParamList } from "../../navigation/types";
+import { navigationRef } from "../../navigation/navigationRef";
 import { colors, radii, space, typography } from "../../theme";
 
 type Props = {
@@ -44,7 +42,6 @@ export function SessionActionModal({ visible, session, onClose }: Props) {
   const { user, accountType } = useAuth();
   const { emitNotification } = useNotifications();
   const queryClient = useQueryClient();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [busy, setBusy] = useState<"confirm" | "decline" | null>(null);
   const [joinHint, setJoinHint] = useState("");
@@ -157,8 +154,14 @@ export function SessionActionModal({ visible, session, onClose }: Props) {
   const handleJoin = useCallback(() => {
     if (!sessionId || !joinEnabled) return;
     onClose();
-    navigation.navigate("Meeting", { lessonId: sessionId });
-  }, [sessionId, joinEnabled, onClose, navigation]);
+    const go = () => {
+      if (navigationRef.isReady()) {
+        navigationRef.navigate("Meeting", { lessonId: sessionId });
+      }
+    };
+    go();
+    setTimeout(go, 400);
+  }, [sessionId, joinEnabled, onClose]);
 
   if (!session) return null;
 
