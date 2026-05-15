@@ -14,6 +14,7 @@ import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
 import { fetchRecentTrainees } from "../../home/api/homeApi";
+import { useOnlinePresence } from "../../socket/useOnlinePresence";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 
@@ -57,7 +58,9 @@ function Avatar({ uri, name, size = 52 }: { uri?: string; name?: string; size?: 
 }
 
 function StudentCard({ student }: { student: any }) {
+  const { isOnline } = useOnlinePresence();
   const name = student?.fullname || student?.fullName || "Student";
+  const userId = String(student?._id ?? "");
   const email = student?.email ?? "";
   const joined = student?.createdAt
     ? new Date(student.createdAt).toLocaleDateString()
@@ -76,7 +79,7 @@ function StudentCard({ student }: { student: any }) {
           </View>
         )}
       </View>
-      {student?.is_online && (
+      {(isOnline(userId) || !!student?.is_online) && (
         <View style={styles.onlineDot} />
       )}
     </View>

@@ -18,6 +18,7 @@ import { Button, EmptyState, Skeleton } from "../../../components/ui";
 import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { fetchOnlineUsers, fetchTrainersWithSlots } from "../../home/api/homeApi";
+import { useOnlinePresence } from "../../socket/useOnlinePresence";
 import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
 import { ScheduledBookingModal } from "../../bookings/screens/ScheduledBookingModal";
 import type { MenuStackParamList } from "../../../navigation/types";
@@ -52,7 +53,10 @@ function TrainerCard({
   onBook: (t: any) => void;
   onSchedule: (t: any) => void;
 }) {
+  const { isOnline } = useOnlinePresence();
+  const trainerId = String(trainer?._id ?? "");
   const name = trainer?.fullname || trainer?.fullName || "Trainer";
+  const showOnline = isOnline(trainerId) || !!trainer?.is_online;
   const cats = Array.isArray(trainer?.categories)
     ? trainer.categories.slice(0, 3).join(" • ")
     : trainer?.categories ?? "";
@@ -100,7 +104,7 @@ function TrainerCard({
             onPress={() => onSchedule(trainer)}
           />
         </View>
-        {trainer?.is_online && (
+        {showOnline && (
           <View style={styles.onlineBadge}>
             <View style={styles.onlineDot} />
             <Text style={styles.onlineText}>Online</Text>
@@ -148,25 +152,32 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
     staleTime: 60_000,
   });
 
+  const { isOnline } = useOnlinePresence();
+
   const mergedRows = useMemo(() => {
-    const onlineIds = new Set(onlineTrainers.map((t: any) => String(t._id)));
+    const apiOnlineIds = new Set(onlineTrainers.map((t: any) => String(t._id)));
+    const isTrainerOnline = (id: string) => apiOnlineIds.has(id) || isOnline(id);
     if (!searchOk) {
-      return onlineTrainers;
+      return onlineTrainers.map((t: any) => ({
+        ...t,
+        is_online: isTrainerOnline(String(t._id)),
+      }));
     }
     const map = new Map<string, any>();
     for (const t of onlineTrainers) {
-      map.set(String(t._id), { ...t, is_online: true });
+      const id = String(t._id);
+      map.set(id, { ...t, is_online: isTrainerOnline(id) });
     }
     for (const t of searchRows) {
       const id = String(t._id);
       const prev = map.get(id);
       map.set(id, {
         ...t,
-        is_online: prev?.is_online ?? onlineIds.has(id),
+        is_online: prev?.is_online ?? isTrainerOnline(id),
       });
     }
     return Array.from(map.values());
-  }, [onlineTrainers, searchRows, searchOk]);
+  }, [onlineTrainers, searchRows, searchOk, isOnline]);
 
   const loading = onlineLoading || (searchOk && searchLoading);
   const refreshing = onlineRefetching || (searchOk && searchRefetching);

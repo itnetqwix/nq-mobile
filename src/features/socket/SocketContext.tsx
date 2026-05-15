@@ -63,17 +63,22 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         if (createdSocket?.connected) createdSocket.emit("HEARTBEAT");
       }, 10_000);
 
-      const bumpOnlineUsers = () => {
+      const bumpPresenceQueries = () => {
         queryClient.invalidateQueries({ queryKey: ["onlineUsers"] });
+        queryClient.invalidateQueries({ queryKey: ["bookExpert", "online"] });
+        queryClient.invalidateQueries({ queryKey: ["friends"] });
+        queryClient.invalidateQueries({ queryKey: ["conversations"] });
+        queryClient.invalidateQueries({ queryKey: ["students"] });
+        queryClient.invalidateQueries({ queryKey: ["communityUsers"] });
       };
-      createdSocket.on("userStatus", bumpOnlineUsers);
-      createdSocket.on("onlineUser", bumpOnlineUsers);
+      createdSocket.on("userStatus", bumpPresenceQueries);
+      createdSocket.on("onlineUser", bumpPresenceQueries);
 
       const onDisconnect = () => {
         if (!cancelled) setIsConnected(false);
         clearInterval(heartbeatId);
-        createdSocket?.off("userStatus", bumpOnlineUsers);
-        createdSocket?.off("onlineUser", bumpOnlineUsers);
+        createdSocket?.off("userStatus", bumpPresenceQueries);
+        createdSocket?.off("onlineUser", bumpPresenceQueries);
       };
       createdSocket.on("disconnect", onDisconnect);
     })();

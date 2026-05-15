@@ -20,6 +20,7 @@ import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { useAuth } from "../../auth/context/AuthContext";
+import { useOnlinePresence } from "../../socket/useOnlinePresence";
 import {
   fetchFriends,
   fetchFriendRequests,
@@ -83,8 +84,11 @@ function MemberCard({
   actionBusy: boolean;
   messageBusy: boolean;
 }) {
+  const { isOnline } = useOnlinePresence();
   const name = user?.fullname || user?.fullName || "Member";
   const role = user?.account_type || user?.accountType || "";
+  const userId = String(user?._id ?? "");
+  const showOnline = isOnline(userId) || !!user?.is_online;
 
   return (
     <View style={styles.card}>
@@ -100,7 +104,7 @@ function MemberCard({
         )}
       </View>
       <View style={styles.actionCol}>
-        {user?.is_online && <View style={styles.onlineDot} />}
+        {showOnline && <View style={styles.onlineDot} />}
         {status === "none" && (
           <Pressable
             style={styles.addBtn}

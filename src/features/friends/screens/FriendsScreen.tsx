@@ -19,6 +19,7 @@ import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
+import { useOnlinePresence } from "../../socket/useOnlinePresence";
 import {
   fetchFriends,
   fetchFriendRequests,
@@ -82,9 +83,11 @@ function FriendCard({
   onBlock: (userId: string, name: string) => void;
   onReport: (userId: string, name: string) => void;
 }) {
+  const { isOnline } = useOnlinePresence();
   const user = friend?.receiverId ?? friend?.senderId ?? friend;
   const name = user?.fullname || user?.fullName || "Friend";
   const userId = String(user?._id ?? "");
+  const showOnline = isOnline(userId) || !!user?.is_online;
 
   const showActions = () => {
     const options = ["Remove Friend", "Block User", "Report User", "Cancel"];
@@ -117,7 +120,7 @@ function FriendCard({
         {!!user?.email && <Text style={styles.rowSub}>{user.email}</Text>}
       </View>
       <View style={styles.friendActions}>
-        {user?.is_online && <View style={styles.onlineDot} />}
+        {showOnline && <View style={styles.onlineDot} />}
         <View style={styles.friendBtns}>
           <Pressable
             style={styles.msgBtn}
