@@ -27,6 +27,7 @@ import type { MenuStackParamList, ShellSurfaceRouteId } from "../../../navigatio
 import { colors, space, typography } from "../../../theme";
 import { useTheme, type ThemeMode } from "../../../theme/ThemeContext";
 import { useAuth } from "../../auth/context/AuthContext";
+import { getS3ImageUrl } from "../../../lib/imageUtils";
 import {
   patchUserNotificationSettings,
   postAccountPrivacy,
@@ -68,6 +69,7 @@ export function SettingsScreen() {
   const { user, accountType, signOut, refreshUser } = useAuth();
   const name = (user?.fullname as string) || (user?.fullName as string) || "User";
   const email = (user?.email as string) ?? "";
+  const profileUri = getS3ImageUrl((user as any)?.profile_picture);
   const isTrainer = accountType === AccountType.TRAINER;
 
   const [isPrivate, setIsPrivate] = useState(Boolean(user?.isPrivate));
@@ -169,7 +171,7 @@ export function SettingsScreen() {
     <ScreenContainer scroll padding="md" background={colors.surface}>
       <Pressable onPress={() => openShell("editProfile")}>
         <Card variant="outlined" padding="md" style={styles.profileCard}>
-          <Avatar name={name} size="xl" />
+          <Avatar name={name} size="xl" uri={profileUri} />
           <View style={{ flex: 1 }}>
             <Text style={[typography.titleMd, { color: colors.text }]} numberOfLines={1}>
               {name}

@@ -1,12 +1,14 @@
 import React, { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Modal,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   View,
 } from "react-native";
@@ -27,6 +29,7 @@ import {
   fetchRecentTrainers,
   postAcceptFriendRequest,
   postRejectFriendRequest,
+  setOnlineAvailability,
 } from "../../home/api/homeApi";
 import type { MainTabScreenProps } from "../../../navigation/types";
 import type { DashboardRouteId } from "../config/dashboardRoutes";
@@ -280,8 +283,10 @@ function AIRecommendedSection({ onBook }: { onBook: (t: any) => void }) {
 
 export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) {
   const [aiOpen, setAiOpen] = useState(false);
-  const { user, accountType } = useAuth();
+  const { user, accountType, refreshUser } = useAuth();
   const queryClient = useQueryClient();
+  const [availabilityBusy, setAvailabilityBusy] = useState(false);
+  const showAsOnline = (user as any)?.showAsOnline !== false;
   const insets = useSafeAreaInsets();
   const gutter = useHorizontalGutter("md");
   const isTrainee = accountType === AccountType.TRAINEE;
@@ -292,6 +297,22 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
     (user?.fullName as string) ||
     (user?.name as string) ||
     "there";
+
+  const handleAvailabilityToggle = useCallback(
+    async (next: boolean) => {
+      setAvailabilityBusy(true);
+      try {
+        await setOnlineAvailability(next);
+        await refreshUser();
+        queryClient.invalidateQueries({ queryKey: ["onlineUsers"] });
+      } catch (e: any) {
+        Alert.alert("Availability", e?.message ?? "Could not update online status.");
+      } finally {
+        setAvailabilityBusy(false);
+      }
+    },
+    [refreshUser, queryClient]
+  );
 
   const { data: onlineUsers = [], isLoading: loadingCoaches } = useQuery({
     queryKey: ["onlineUsers"],
@@ -477,6 +498,23 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
                     Account & settings →
                   </Text>
                 </Pressable>
+                <View style={styles.availabilityRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.availabilityLabel}>Show as online</Text>
+                    <Text style={styles.availabilityHint}>
+                      {showAsOnline
+                        ? "Trainees can see you in chat and booking"
+                        : "You appear offline to others"}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={showAsOnline}
+                    onValueChange={handleAvailabilityToggle}
+                    disabled={availabilityBusy}
+                    trackColor={{ false: colors.border, true: colors.brandNavy }}
+                    thumbColor="#fff"
+                  />
+                </View>
               </View>
             </View>
           </HomeMainCont>
@@ -680,6 +718,17 @@ const styles = StyleSheet.create({
   },
   greeting: { ...typography.titleMd, color: colors.text },
   roleTag: { ...typography.bodySm, color: colors.textMuted, marginTop: 2 },
+  availabilityRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: space.md,
+    paddingTop: space.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    gap: space.sm,
+  },
+  availabilityLabel: { ...typography.subtitle, color: colors.text },
+  availabilityHint: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
 
   quickRow: {
     flexDirection: "row",

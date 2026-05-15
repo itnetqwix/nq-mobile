@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Audio } from "expo-av";
 import * as ImagePicker from "expo-image-picker";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -12,7 +11,6 @@ import {
   FlatList,
   Image,
   Keyboard,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -30,6 +28,7 @@ import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { useAuth } from "../../auth/context/AuthContext";
 import { useSocket } from "../../socket/SocketContext";
+import { useOnlinePresence } from "../../socket/useOnlinePresence";
 
 type Props = {
   conversationId: string;
@@ -48,7 +47,8 @@ type Message = {
   content: string;
   type: string;
   mediaUrl?: string | null;
-  status?: "sent" | "delivered" | "read";
+  status?: "sent" | "delivered" | "read" | "sending";
+  pending?: boolean;
   createdAt: string;
 };
 
@@ -123,27 +123,42 @@ function delay(ms: number) {
 
 // ─── Status checkmarks ──────────────────────────────────────────────────────
 
-function MessageStatus({ status }: { status?: string }) {
-  if (!status) return null;
-  if (status === "read") {
+function MessageStatus({
+  status,
+  pending,
+}: {
+  status?: string;
+  pending?: boolean;
+}) {
+  if (pending || status === "sending") {
     return (
       <View style={statusStyles.row}>
-        <Ionicons name="checkmark-done" size={14} color="#34b7f1" />
+        <ActivityIndicator size={10} color="rgba(255,255,255,0.75)" />
+      </View>
+    );
+  }
+  if (!status || status === "sent") {
+    return (
+      <View style={statusStyles.row}>
+        <Ionicons name="checkmark" size={14} color="#8696a0" />
       </View>
     );
   }
   if (status === "delivered") {
     return (
       <View style={statusStyles.row}>
-        <Ionicons name="checkmark-done" size={14} color="rgba(255,255,255,0.6)" />
+        <Ionicons name="checkmark-done" size={14} color="#667781" />
       </View>
     );
   }
-  return (
-    <View style={statusStyles.row}>
-      <Ionicons name="checkmark" size={14} color="rgba(255,255,255,0.6)" />
-    </View>
-  );
+  if (status === "read") {
+    return (
+      <View style={statusStyles.row}>
+        <Ionicons name="checkmark-done" size={14} color="#ffffff" />
+      </View>
+    );
+  }
+  return null;
 }
 
 const statusStyles = StyleSheet.create({
@@ -216,10 +231,9 @@ const voiceStyles = StyleSheet.create({
 
 export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
   const insets = useSafeAreaInsets();
-  let tabBarHeight = 0;
-  try { tabBarHeight = useBottomTabBarHeight(); } catch { tabBarHeight = 49 + insets.bottom; }
   const { user: authUser } = useAuth();
   const { socket } = useSocket();
+  const { isOnline: isUserOnline } = useOnlinePresence();
   const queryClient = useQueryClient();
   const flatListRef = useRef<FlatList>(null);
   const [text, setText] = useState("");
@@ -232,7 +246,10 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
   const [recordSecs, setRecordSecs] = useState(0);
   const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [previewUri, setPreviewUri] = useState<string | null>(null);
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [sendingText, setSendingText] = useState(false);
+  const [profileSearch, setProfileSearch] = useState("");
+  const [profileTab, setProfileTab] = useState<"info" | "media" | "search">("info");
   const [partnerTyping, setPartnerTyping] = useState(false);
   const [partnerOnline, setPartnerOnline] = useState(false);
   const [partnerLastSeen, setPartnerLastSeen] = useState<string | null>(null);
@@ -258,10 +275,20 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
   }, [partner?._id]);
 
   useEffect(() => {
-    const showSub = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
-    const hideSub = Keyboard.addListener("keyboardDidHide", () => setKeyboardVisible(false));
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const onShow = (e: { endCoordinates: { height: number } }) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    };
+    const onHide = () => setKeyboardHeight(0);
+    const showSub = Keyboard.addListener(showEvent, onShow);
+    const hideSub = Keyboard.addListener(hideEvent, onHide);
     return () => { showSub.remove(); hideSub.remove(); };
   }, []);
+
+  useEffect(() => {
+    if (partner?._id) setPartnerOnline(isUserOnline(partner._id));
+  }, [partner?._id, isUserOnline]);
 
   // Fetch partner's online status / lastSeen
   useEffect(() => {
@@ -357,18 +384,27 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
   useEffect(() => {
     if (!socket || !conversationId) return;
 
+    const patchMessageStatus = (
+      updater: (m: Message) => Message
+    ) => {
+      setLocalMessages((prev) => prev.map(updater));
+      queryClient.setQueryData<Message[]>(["chatMessages", conversationId], (old) =>
+        old?.map(updater) ?? old
+      );
+    };
+
     const handleDelivered = (data: any) => {
       if (data?.conversationId !== conversationId) return;
       const ids = data.messageIds ? data.messageIds : data.messageId ? [data.messageId] : [];
       if (!ids.length) return;
-      setLocalMessages((prev) =>
-        prev.map((m) => ids.includes(m._id) && m.status === "sent" ? { ...m, status: "delivered" } : m)
+      patchMessageStatus((m) =>
+        ids.includes(m._id) && m.status === "sent" ? { ...m, status: "delivered" } : m
       );
     };
     const handleRead = (data: any) => {
       if (data?.conversationId !== conversationId) return;
-      setLocalMessages((prev) =>
-        prev.map((m) => m.senderId === currentUserId && m.status !== "read" ? { ...m, status: "read" } : m)
+      patchMessageStatus((m) =>
+        m.senderId === currentUserId && m.status !== "read" ? { ...m, status: "read" } : m
       );
     };
 
@@ -378,7 +414,7 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
       socket.off("CHAT_DELIVERED", handleDelivered);
       socket.off("CHAT_READ", handleRead);
     };
-  }, [socket, conversationId, currentUserId]);
+  }, [socket, conversationId, currentUserId, queryClient]);
 
   useEffect(() => {
     if (!socket || !conversationId) return;
@@ -412,14 +448,15 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
 
   const sendMessage = useCallback(async () => {
     const content = text.trim();
-    if (!content || !partner?._id) return;
+    if (!content || !partner?._id || sendingText) return;
     setText("");
     setShowEmoji(false);
+    setSendingText(true);
     if (socket) socket.emit("CHAT_STOP_TYPING", { conversationId, userId: currentUserId });
     const tempId = `temp_${Date.now()}`;
     const tempMsg: Message = {
       _id: tempId, senderId: currentUserId, receiverId: partner._id,
-      content, type: "text", status: "sent", createdAt: new Date().toISOString(),
+      content, type: "text", status: "sending", pending: true, createdAt: new Date().toISOString(),
     };
     setLocalMessages((prev) => [...prev, tempMsg]);
     try {
@@ -429,7 +466,11 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
       const data = (res as any)?.data?.data ?? (res as any)?.data;
       if (data?.message) {
         setLocalMessages((prev) =>
-          prev.map((m) => (m._id === tempId ? { ...data.message, _id: data.message._id, status: "sent" } : m))
+          prev.map((m) =>
+            m._id === tempId
+              ? { ...data.message, _id: data.message._id, status: "sent" as const, pending: false }
+              : m
+          )
         );
       }
       if (socket) socket.emit("CHAT_MESSAGE", { ...data?.message, conversationId });
@@ -446,8 +487,10 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
         setChatPolicy((p) => p ? { ...p, remainingToday: 0 } : p);
         Alert.alert("Limit Reached", msg);
       }
+    } finally {
+      setSendingText(false);
     }
-  }, [text, partner, currentUserId, socket, conversationId, queryClient, chatPolicy]);
+  }, [text, partner, currentUserId, socket, conversationId, queryClient, chatPolicy, sendingText]);
 
   // ─── Send media ─────────────────────────────────────────────────────────────
 
@@ -470,7 +513,11 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
         const data = (res as any)?.data?.data ?? (res as any)?.data;
         if (data?.message) {
           setLocalMessages((prev) =>
-            prev.map((m) => (m._id === tempId ? { ...data.message, _id: data.message._id, status: "sent" } : m))
+            prev.map((m) =>
+              m._id === tempId
+                ? { ...data.message, _id: data.message._id, status: "sent" as const, pending: false }
+                : m
+            )
           );
         }
         if (socket) socket.emit("CHAT_MESSAGE", { ...data?.message, conversationId });
@@ -713,7 +760,12 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
             <Text style={[styles.bubbleTime, isMine && styles.bubbleTimeMine]}>
               {formatTime(item.createdAt)}
             </Text>
-            {isMine && <MessageStatus status={item.status} />}
+            {isMine && (
+              <MessageStatus
+                status={item.status}
+                pending={item.pending || item.status === "sending"}
+              />
+            )}
           </View>
         </View>
       );
@@ -724,7 +776,27 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
   const partnerName = partner?.fullname ?? "Chat";
   const partnerAvatar = getS3ImageUrl(partner?.profile_picture);
   const screenW = Dimensions.get("window").width;
-  const bottomPad = keyboardVisible ? 0 : 4;
+  const inputBottomInset = keyboardHeight > 0 ? 8 : insets.bottom + 4;
+
+  const sharedImages = useMemo(() => {
+    return allMessages
+      .filter((m) => m.type === "image" && m.mediaUrl)
+      .map((m) => {
+        const uri = m.mediaUrl!.startsWith("http") || m.mediaUrl!.startsWith("file")
+          ? m.mediaUrl!
+          : getS3ImageUrl(m.mediaUrl!) ?? "";
+        return { id: m._id, uri };
+      })
+      .filter((x) => !!x.uri);
+  }, [allMessages]);
+
+  const searchHits = useMemo(() => {
+    const q = profileSearch.trim().toLowerCase();
+    if (!q) return [];
+    return allMessages.filter(
+      (m) => m.type === "text" && (m.content ?? "").toLowerCase().includes(q)
+    );
+  }, [allMessages, profileSearch]);
 
   const headerSubtitle = partnerTyping
     ? "typing..."
@@ -735,13 +807,16 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
     : "";
 
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={tabBarHeight}
-    >
+    <View style={[styles.root, { paddingBottom: keyboardHeight }]}>
       {/* Header */}
-      <Pressable onPress={() => setShowProfile(true)} style={[styles.header, { paddingTop: insets.top }]}>
+      <Pressable
+        onPress={() => {
+          setProfileTab("info");
+          setProfileSearch("");
+          setShowProfile(true);
+        }}
+        style={[styles.header, { paddingTop: insets.top + 8 }]}
+      >
         <Pressable onPress={onGoBack} hitSlop={12} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={26} color={colors.text} />
         </Pressable>
@@ -808,7 +883,7 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
 
       {/* Recording / Input bar */}
       {recording ? (
-        <View style={[styles.recordBar, { paddingBottom: bottomPad }]}>
+        <View style={[styles.recordBar, { paddingBottom: inputBottomInset }]}>
           <Animated.View style={[styles.recordDot, { transform: [{ scale: pulseAnim }] }]} />
           <Text style={styles.recordTime}>{formatDuration(recordSecs * 1000)}</Text>
           <Text style={styles.recordLabel}>Recording...</Text>
@@ -821,7 +896,7 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
           </Pressable>
         </View>
       ) : (
-        <View style={[styles.inputBar, { paddingBottom: bottomPad }]}>
+        <View style={[styles.inputBar, { paddingBottom: inputBottomInset }]}>
           {rateLimited ? (
             <View style={styles.limitedBar}>
               <Ionicons name="lock-closed-outline" size={18} color={colors.textMuted} />
@@ -846,8 +921,12 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
                 onFocus={() => setShowEmoji(false)}
               />
               {text.trim() ? (
-                <Pressable style={styles.sendBtn} onPress={sendMessage}>
-                  <Ionicons name="send" size={18} color="#fff" />
+                <Pressable style={styles.sendBtn} onPress={sendMessage} disabled={sendingText}>
+                  {sendingText ? (
+                    <ActivityIndicator size={16} color="#fff" />
+                  ) : (
+                    <Ionicons name="send" size={18} color="#fff" />
+                  )}
                 </Pressable>
               ) : (
                 <Pressable style={styles.iconBtn} onPress={startRecording}>
@@ -864,7 +943,6 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
         <View style={styles.uploadingOverlay}>
           <View style={styles.uploadingCard}>
             <ActivityIndicator color={colors.brandNavy} size="large" />
-            <Text style={styles.uploadingText}>Sending…</Text>
           </View>
         </View>
       )}
@@ -925,59 +1003,123 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
             <Pressable onPress={() => setShowProfile(false)} style={styles.profileClose}>
               <Ionicons name="close" size={28} color={colors.text} />
             </Pressable>
-            <View style={styles.profileCenter}>
-              {partnerAvatar ? (
-                <Image source={{ uri: partnerAvatar }} style={styles.profileAvatar} />
-              ) : (
-                <View style={[styles.profileAvatar, styles.profileAvatarFb]}>
-                  <Text style={styles.profileAvatarInitial}>{partnerName[0]?.toUpperCase()}</Text>
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <View style={styles.profileCenter}>
+                {partnerAvatar ? (
+                  <Image source={{ uri: partnerAvatar }} style={styles.profileAvatar} />
+                ) : (
+                  <View style={[styles.profileAvatar, styles.profileAvatarFb]}>
+                    <Text style={styles.profileAvatarInitial}>{partnerName[0]?.toUpperCase()}</Text>
+                  </View>
+                )}
+                <Text style={styles.profileName}>{partnerName}</Text>
+                <View style={styles.profileStatusRow}>
+                  <View style={[styles.profileDot, partnerOnline ? styles.profileDotOnline : styles.profileDotOffline]} />
+                  <Text style={styles.profileStatusText}>
+                    {partnerOnline ? "Online" : partnerLastSeen ? `Last seen ${formatLastSeen(partnerLastSeen)}` : "Offline"}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.profileTabs}>
+                {(["info", "media", "search"] as const).map((tab) => (
+                  <Pressable
+                    key={tab}
+                    onPress={() => setProfileTab(tab)}
+                    style={[styles.profileTab, profileTab === tab && styles.profileTabActive]}
+                  >
+                    <Text style={[styles.profileTabText, profileTab === tab && styles.profileTabTextActive]}>
+                      {tab === "info" ? "Info" : tab === "media" ? "Media" : "Search"}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              {profileTab === "info" && (
+                <View style={styles.profileActions}>
+                  <Pressable
+                    style={styles.profileActionBtn}
+                    onPress={() => {
+                      setShowProfile(false);
+                      Alert.alert("Block User", `Block ${partnerName}?`, [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                          text: "Block", style: "destructive",
+                          onPress: async () => {
+                            try {
+                              await apiClient.post(API_ROUTES.user.blockUser, { userId: partner._id });
+                              Alert.alert("Done", "User blocked.");
+                              onGoBack();
+                            } catch (e: any) {
+                              Alert.alert("Error", e?.response?.data?.error ?? "Failed.");
+                            }
+                          },
+                        },
+                      ]);
+                    }}
+                  >
+                    <Ionicons name="ban-outline" size={22} color={colors.error} />
+                    <Text style={[styles.profileActionText, { color: colors.error }]}>Block</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.profileActionBtn}
+                    onPress={() => { setShowProfile(false); handleProfileAction(); }}
+                  >
+                    <Ionicons name="flag-outline" size={22} color={colors.textMuted} />
+                    <Text style={styles.profileActionText}>Report</Text>
+                  </Pressable>
                 </View>
               )}
-              <Text style={styles.profileName}>{partnerName}</Text>
-              <View style={styles.profileStatusRow}>
-                <View style={[styles.profileDot, partnerOnline ? styles.profileDotOnline : styles.profileDotOffline]} />
-                <Text style={styles.profileStatusText}>
-                  {partnerOnline ? "Online" : partnerLastSeen ? `Last seen ${formatLastSeen(partnerLastSeen)}` : "Offline"}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.profileActions}>
-              <Pressable
-                style={styles.profileActionBtn}
-                onPress={() => {
-                  setShowProfile(false);
-                  Alert.alert("Block User", `Block ${partnerName}?`, [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Block", style: "destructive",
-                      onPress: async () => {
-                        try {
-                          await apiClient.post(API_ROUTES.user.blockUser, { userId: partner._id });
-                          Alert.alert("Done", "User blocked.");
-                          onGoBack();
-                        } catch (e: any) {
-                          Alert.alert("Error", e?.response?.data?.error ?? "Failed.");
-                        }
-                      },
-                    },
-                  ]);
-                }}
-              >
-                <Ionicons name="ban-outline" size={22} color={colors.error} />
-                <Text style={[styles.profileActionText, { color: colors.error }]}>Block</Text>
-              </Pressable>
-              <Pressable
-                style={styles.profileActionBtn}
-                onPress={() => { setShowProfile(false); handleProfileAction(); }}
-              >
-                <Ionicons name="flag-outline" size={22} color={colors.textMuted} />
-                <Text style={styles.profileActionText}>Report</Text>
-              </Pressable>
-            </View>
+
+              {profileTab === "media" && (
+                <View style={styles.mediaSection}>
+                  {sharedImages.length === 0 ? (
+                    <Text style={styles.profileEmptyText}>No photos shared yet</Text>
+                  ) : (
+                    <View style={styles.mediaGrid}>
+                      {sharedImages.map((img) => (
+                        <Pressable key={img.id} onPress={() => { setShowProfile(false); setPreviewUri(img.uri); }}>
+                          <Image source={{ uri: img.uri }} style={styles.mediaGridItem} resizeMode="cover" />
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {profileTab === "search" && (
+                <View style={styles.searchSection}>
+                  <View style={styles.profileSearchBar}>
+                    <Ionicons name="search-outline" size={18} color={colors.textMuted} />
+                    <TextInput
+                      style={styles.profileSearchInput}
+                      placeholder="Search messages..."
+                      placeholderTextColor={colors.textMuted}
+                      value={profileSearch}
+                      onChangeText={setProfileSearch}
+                    />
+                  </View>
+                  {profileSearch.trim() ? (
+                    searchHits.length === 0 ? (
+                      <Text style={styles.profileEmptyText}>No messages found</Text>
+                    ) : (
+                      searchHits.map((m) => (
+                        <View key={m._id} style={styles.searchHit}>
+                          <Text style={styles.searchHitTime}>{formatTime(m.createdAt)}</Text>
+                          <Text style={styles.searchHitText}>{m.content}</Text>
+                        </View>
+                      ))
+                    )
+                  ) : (
+                    <Text style={styles.profileEmptyText}>Type to search this conversation</Text>
+                  )}
+                </View>
+              )}
+            </ScrollView>
           </View>
         </View>
       </Modal>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -988,7 +1130,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     paddingHorizontal: 12,
-    paddingBottom: 8,
+    paddingBottom: 12,
     backgroundColor: colors.surfaceElevated,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
@@ -1007,7 +1149,7 @@ const styles = StyleSheet.create({
   headerSubTyping: { color: "#4CAF50", fontStyle: "italic" },
   headerMore: { padding: 6 },
   messageArea: { flex: 1 },
-  messageList: { paddingHorizontal: 12, paddingTop: 8, paddingBottom: 4, gap: 3 },
+  messageList: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 8, gap: 3 },
   bubble: { maxWidth: "78%", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, marginBottom: 1 },
   bubbleMine: { alignSelf: "flex-end", backgroundColor: colors.brandNavy, borderBottomRightRadius: 4 },
   bubbleTheirs: { alignSelf: "flex-start", backgroundColor: colors.surfaceElevated, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: colors.border },
@@ -1050,7 +1192,42 @@ const styles = StyleSheet.create({
   recordSend: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.brandNavy, alignItems: "center", justifyContent: "center" },
   uploadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.3)", alignItems: "center", justifyContent: "center" },
   uploadingCard: { backgroundColor: "#fff", borderRadius: 16, padding: 32, alignItems: "center", gap: 12, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 },
-  uploadingText: { color: colors.text, ...typography.titleSm },
+
+  profileTabs: {
+    flexDirection: "row",
+    marginTop: 24,
+    marginHorizontal: 20,
+    borderRadius: radii.md,
+    backgroundColor: colors.surfaceMuted,
+    padding: 4,
+  },
+  profileTab: { flex: 1, paddingVertical: 8, alignItems: "center", borderRadius: radii.sm },
+  profileTabActive: { backgroundColor: colors.surfaceElevated },
+  profileTabText: { fontSize: 13, color: colors.textMuted, fontWeight: "500" },
+  profileTabTextActive: { color: colors.brandNavy, fontWeight: "700" },
+  mediaSection: { paddingHorizontal: 20, paddingTop: 16 },
+  mediaGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  mediaGridItem: { width: 100, height: 100, borderRadius: radii.sm },
+  searchSection: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 },
+  profileSearchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radii.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  profileSearchInput: { flex: 1, fontSize: 15, color: colors.text },
+  profileEmptyText: { textAlign: "center", color: colors.textMuted, marginTop: 20, fontSize: 14 },
+  searchHit: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radii.md,
+  },
+  searchHitTime: { fontSize: 11, color: colors.textMuted, marginBottom: 4 },
+  searchHitText: { fontSize: 14, color: colors.text, lineHeight: 20 },
   sheetBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
   sheetCard: { backgroundColor: colors.surfaceElevated, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, paddingHorizontal: 24 },
   sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: 16 },

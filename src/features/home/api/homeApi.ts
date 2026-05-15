@@ -345,6 +345,10 @@ export async function fetchAllUsers(search?: string): Promise<any[]> {
  * (or `null` if not found). The backend regex matches case-insensitively, so we filter
  * client-side for an exact email match before accepting it as a recipient.
  */
+export async function setOnlineAvailability(showAsOnline: boolean): Promise<void> {
+  await apiClient.put(API_ROUTES.user.onlineAvailability, { showAsOnline });
+}
+
 export async function findNetqwixUserByEmail(email: string): Promise<any | null> {
   const normalized = email.trim().toLowerCase();
   if (!normalized) return null;

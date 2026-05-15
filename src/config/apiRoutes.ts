@@ -67,6 +67,7 @@ export const API_ROUTES = {
     updateMobileNumber: "/user/update-mobile-number",
     updateNotificationsSettings: "/user/update-notifications-settings",
     updateTrainerStatus: "/user/update-trainer-status",
+    onlineAvailability: "/user/online-availability",
     deleteUser: (id: string) => `/user/delete-user/${id}` as const,
     approveExpert: (id: string) => `/user/approve-expert/${id}` as const,
   },

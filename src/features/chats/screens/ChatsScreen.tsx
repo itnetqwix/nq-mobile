@@ -21,6 +21,7 @@ import { API_ROUTES } from "../../../config/apiRoutes";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { colors, radii, space, typography } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
+import { useOnlinePresence } from "../../socket/useOnlinePresence";
 import { fetchFriends } from "../../home/api/homeApi";
 import type { MainTabScreenProps } from "../../../navigation/types";
 import { ChatRoomScreen } from "./ChatRoomScreen";
@@ -94,6 +95,7 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
   const [groupName, setGroupName] = useState("");
   const [selectedGroupMembers, setSelectedGroupMembers] = useState<Set<string>>(new Set());
   const [creatingGroup, setCreatingGroup] = useState(false);
+  const { isOnline } = useOnlinePresence();
 
   const { data: conversations = [], isLoading, isRefetching, refetch } = useQuery({
     queryKey: ["conversations"],
@@ -312,6 +314,13 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
             const unread = item.unreadCount ?? 0;
             const time = timeAgo(item.lastMessageAt ?? item.updatedAt);
             const isGroup = !!(item.isGroup || (partner as any).isGroup);
+            const participants: any[] = item?.participants ?? [];
+            const otherParticipant = participants.find(
+              (p: any) => String(p?._id) !== currentUserId
+            );
+            const partnerOnline =
+              !isGroup &&
+              (isOnline(partner._id) || otherParticipant?.isOnline === true);
 
             return (
               <Pressable
@@ -329,7 +338,10 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
                       <Ionicons name="people" size={22} color="#fff" />
                     </View>
                   ) : (
-                    <Avatar uri={partner.profile_picture} name={partner.fullname} />
+                    <>
+                      <Avatar uri={partner.profile_picture} name={partner.fullname} />
+                      {partnerOnline && <View style={styles.onlineDot} />}
+                    </>
                   )}
                 </View>
                 <View style={styles.rowContent}>
@@ -554,6 +566,17 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   avatarWrap: { position: "relative" },
+  onlineDot: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#4CAF50",
+    borderWidth: 2,
+    borderColor: colors.surface,
+  },
   rowContent: { flex: 1 },
   rowTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   rowName: { ...typography.subtitle, color: colors.text, flex: 1, marginRight: 8 },
