@@ -96,6 +96,9 @@ export const API_ROUTES = {
     profile: "/trainee/profile",
     checkSlot: "/trainee/check-slot",
     recentTrainers: "/trainee/recent-trainers",
+    sessionExtensionQuote: "/trainee/session-extension/quote",
+    sessionExtensionPaymentIntent: "/trainee/session-extension/create-payment-intent",
+    sessionExtensionConfirm: "/trainee/session-extension/confirm",
   },
   transaction: {
     createPaymentIntent: "/transaction/create-payment-intent",

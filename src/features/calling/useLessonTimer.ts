@@ -30,6 +30,7 @@ const TIMER_EVENTS = {
   PAUSED: "LESSON_TIME_PAUSED",
   RESUMED: "LESSON_TIME_RESUMED",
   ENDED: "LESSON_TIME_ENDED",
+  EXTENDED: "LESSON_TIMER_EXTENDED",
   ERROR: "LESSON_TIMER_ERROR",
   STATE_REQUEST: "LESSON_STATE_REQUEST",
   START_REQUEST: "LESSON_TIMER_START_REQUEST",
@@ -299,6 +300,26 @@ export function useLessonTimer({
       }));
     };
 
+    const handleExtended = (data: any) => {
+      if (!matches(data)) return;
+      setStatus("running");
+      if (data.startedAt != null && data.duration != null) {
+        startLessonTimer({
+          sessionId,
+          startedAt: data.startedAt ?? new Date().toISOString(),
+          duration: data.duration,
+          remainingSeconds: data.remainingSeconds,
+        });
+      } else if (typeof data.remainingSeconds === "number") {
+        startLessonTimer({
+          sessionId,
+          startedAt: new Date().toISOString(),
+          duration: data.duration ?? data.remainingSeconds,
+          remainingSeconds: data.remainingSeconds,
+        });
+      }
+    };
+
     const handleTimerError = (_data: any) => {
       autoStartedRef.current = false;
       setTimeout(() => setRetryToken((t) => t + 1), 2000);
@@ -316,6 +337,7 @@ export function useLessonTimer({
     socket.on(TIMER_EVENTS.PAUSED, handlePaused);
     socket.on(TIMER_EVENTS.RESUMED, handleResumed);
     socket.on(TIMER_EVENTS.ENDED, handleEnded);
+    socket.on(TIMER_EVENTS.EXTENDED, handleExtended);
     socket.on(TIMER_EVENTS.ERROR, handleTimerError);
     socket.on("connect", handleReconnect);
     socket.on("reconnect", handleReconnect);
@@ -326,6 +348,7 @@ export function useLessonTimer({
       socket.off(TIMER_EVENTS.PAUSED, handlePaused);
       socket.off(TIMER_EVENTS.RESUMED, handleResumed);
       socket.off(TIMER_EVENTS.ENDED, handleEnded);
+      socket.off(TIMER_EVENTS.EXTENDED, handleExtended);
       socket.off(TIMER_EVENTS.ERROR, handleTimerError);
       socket.off("connect", handleReconnect);
       socket.off("reconnect", handleReconnect);

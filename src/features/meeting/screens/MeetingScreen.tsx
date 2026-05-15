@@ -17,23 +17,36 @@ import { getAccessToken, getAccountType } from "../../auth/session/tokenStorage"
 import { AccountType } from "../../../constants/accountType";
 import { fetchScheduledMeetings } from "../../home/api/homeApi";
 import { PortraitCallOverlay } from "../../calling/components/PortraitCallOverlay";
-import { useLessonCountdown } from "../../calling/useLessonCountdown";
+import { SessionExtensionModal } from "../../calling/components/SessionExtensionModal";
+import { useLessonTimer } from "../../calling/useLessonTimer";
+import { useSocket } from "../../socket/SocketContext";
+import { useAuth } from "../../auth/context/AuthContext";
 import type { CallParticipant } from "../../calling/types";
 
 const NAVY = "#000080";
 const WEB_ORIGIN = "https://www.netqwix.com";
+const EXTEND_PROMPT_SECONDS = 120;
 
 type Props = NativeStackScreenProps<RootStackParamList, "Meeting">;
 
-/**
- * Locate a session by id across the upcoming/confirmed lists already cached by React
- * Query. Used to drive the native portrait-calling overlay (peer name, avatar, countdown).
- */
+function formatRemainingSeconds(seconds: number | null): {
+  label: string;
+  expired: boolean;
+} {
+  if (seconds == null) return { label: "—", expired: false };
+  if (seconds <= 0) return { label: "0:00", expired: true };
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const label =
+    h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+  return { label, expired: seconds <= 0 };
+}
+
 function useSessionPeer(lessonId: string, accountType: string | null) {
   const queryClient = useQueryClient();
 
-  /** Pull from cache first to avoid an extra round-trip when the user came from
-   *  UpcomingSessionsScreen — fallback to fresh fetches if not cached. */
   const cached = useMemo(() => {
     const caches = queryClient.getQueriesData<any[]>({ queryKey: ["sessions"] });
     for (const [, list] of caches) {
@@ -77,48 +90,73 @@ function useSessionPeer(lessonId: string, accountType: string | null) {
 export function MeetingScreen({ navigation, route }: Props) {
   const { lessonId } = route.params;
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
+  const { socket } = useSocket();
+  const { accountType: authAccountType } = useAuth();
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState<string | null>(null);
   const [accountType, setAccountType] = useState<string | null>(null);
+  const [timerBufferElapsed, setTimerBufferElapsed] = useState(false);
+  const [extendModalOpen, setExtendModalOpen] = useState(false);
+  const [extensionNotice, setExtensionNotice] = useState<string | null>(null);
   const webViewRef = useRef<WebView>(null);
 
   useEffect(() => {
     (async () => {
       const [t, at] = await Promise.all([getAccessToken(), getAccountType()]);
       setToken(t);
-      setAccountType(at);
+      setAccountType(at ?? authAccountType);
     })();
-  }, []);
+  }, [authAccountType]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setTimerBufferElapsed(true), 5000);
+    return () => clearTimeout(t);
+  }, [lessonId]);
 
   const { session, peer } = useSessionPeer(lessonId, accountType);
 
-  const { remainingLabel, expired } = useLessonCountdown({
-    bookedDate: session?.booked_date,
-    sessionEndTime:
-      session?.extended_session_end_time || session?.session_end_time,
+  const { remainingSeconds, status } = useLessonTimer({
+    socket,
+    sessionId: lessonId,
+    bothUsersJoined: true,
+    timerBufferElapsed,
+    accountType,
+    session,
   });
 
-  /**
-   * Web parity: `MeetingPage` reads `router.query.id` (see
-   * `nq-frontend-main/app/features/meeting/MeetingPage.jsx:126`). It does NOT read
-   * `lessonId`. Sending `?lessonId=...` left the embedded page stuck on
-   * "Loading your profile..." because `getScheduledMeetingDetailsAsync({ id })` never
-   * fired and `accountType` never got set, so the trainer/trainee never reached the
-   * portrait-calling stack that emits `ON_CALL_JOIN` to the peer.
-   */
+  useEffect(() => {
+    if (!socket) return;
+    const onExtended = (data: any) => {
+      if (!data || String(data.sessionId) !== String(lessonId)) return;
+      const addedMin = Math.round((data.addedSeconds ?? 0) / 60);
+      if (accountType === AccountType.TRAINER && addedMin > 0) {
+        setExtensionNotice(`Trainee added +${addedMin} min to this lesson`);
+        setTimeout(() => setExtensionNotice(null), 8000);
+      }
+      void queryClient.invalidateQueries({ queryKey: ["sessionLookup", lessonId] });
+      void queryClient.invalidateQueries({ queryKey: ["sessions"] });
+    };
+    socket.on("LESSON_TIMER_EXTENDED", onExtended);
+    return () => {
+      socket.off("LESSON_TIMER_EXTENDED", onExtended);
+    };
+  }, [socket, lessonId, accountType, queryClient]);
+
+  const { label: countdownLabel, expired: countdownExpired } = useMemo(
+    () => formatRemainingSeconds(remainingSeconds),
+    [remainingSeconds]
+  );
+
+  const isTrainee = accountType === AccountType.TRAINEE;
+  const showExtendButton =
+    isTrainee &&
+    !!session?.is_instant &&
+    remainingSeconds != null &&
+    remainingSeconds <= EXTEND_PROMPT_SECONDS;
+
   const meetingUrl = `${WEB_ORIGIN}/meeting?id=${lessonId}`;
 
-  /**
-   * Push the stored auth blob into the embedded site's localStorage so the website
-   * meeting page authenticates as the same user.
-   *
-   * Hardening: the web reducer treats `""` as falsy and silently falls back to
-   * `localStorage.getItem("acc_type")`. If we inject an empty string we just blank
-   * out whatever was there. So:
-   *   1. Always inject token (when present).
-   *   2. Only overwrite acc_type when the device actually has a known role —
-   *      otherwise leave whatever's already in the embedded localStorage alone.
-   */
   const injectedJS = token
     ? `
       try {
@@ -126,7 +164,7 @@ export function MeetingScreen({ navigation, route }: Props) {
         ${
           accountType
             ? `localStorage.setItem('acc_type', ${JSON.stringify(accountType)});`
-            : `/* skip acc_type override — would otherwise wipe existing value */`
+            : `/* skip acc_type override */`
         }
       } catch(e) {}
       true;
@@ -176,22 +214,31 @@ export function MeetingScreen({ navigation, route }: Props) {
         javaScriptEnabled
         domStorageEnabled
         allowsFullscreenVideo
-        /** Required for the embedded portrait-calling stack to grab camera + mic
-         *  without re-prompting. iOS uses the WebKit grant type; Android relies on
-         *  `onPermissionRequest` to auto-approve the WebRTC permission dialog. */
         mediaCapturePermissionGrantType={
           Platform.OS === "ios" ? "grant" : undefined
         }
         onError={(e) => console.warn("[Meeting] WebView error", e.nativeEvent)}
       />
 
-      {/* Native overlay (peer info, countdown, leave button) sits on top of the WebView */}
       <PortraitCallOverlay
         peer={peer}
-        countdownLabel={remainingLabel}
-        countdownExpired={expired}
+        countdownLabel={countdownLabel}
+        countdownExpired={countdownExpired || status === "ended"}
+        showExtendButton={showExtendButton}
+        onExtendPress={() => setExtendModalOpen(true)}
+        extensionNotice={extensionNotice}
         onLeavePress={confirmLeave}
         onMinimize={goHome}
+      />
+
+      <SessionExtensionModal
+        visible={extendModalOpen}
+        sessionId={lessonId}
+        remainingSeconds={remainingSeconds}
+        onDismiss={() => setExtendModalOpen(false)}
+        onExtended={() => {
+          void queryClient.invalidateQueries({ queryKey: ["sessionLookup", lessonId] });
+        }}
       />
 
       {loading && (

@@ -21,6 +21,11 @@ type Props = {
   peer: CallParticipant;
   countdownLabel: string;
   countdownExpired?: boolean;
+  /** Trainee: show extend when timer is low. */
+  showExtendButton?: boolean;
+  onExtendPress?: () => void;
+  /** Trainer: read-only notice when trainee extended. */
+  extensionNotice?: string | null;
   /** Tap "X" — confirms before leaving. */
   onLeavePress: () => void;
   /** Tap top-left "↓" — hide the call without leaving (future: minimize to a pill). */
@@ -31,6 +36,9 @@ export function PortraitCallOverlay({
   peer,
   countdownLabel,
   countdownExpired,
+  showExtendButton,
+  onExtendPress,
+  extensionNotice,
   onLeavePress,
   onMinimize,
 }: Props) {
@@ -94,10 +102,22 @@ export function PortraitCallOverlay({
           </View>
         </View>
 
+        {showExtendButton && onExtendPress ? (
+          <Pressable hitSlop={10} onPress={onExtendPress} style={[styles.iconBtn, styles.iconBtnExtend]}>
+            <Ionicons name="add-circle-outline" size={20} color="#fff" />
+          </Pressable>
+        ) : null}
         <Pressable hitSlop={10} onPress={onLeavePress} style={[styles.iconBtn, styles.iconBtnLeave]}>
           <Ionicons name="exit-outline" size={20} color="#fff" />
         </Pressable>
       </View>
+      {!!extensionNotice && (
+        <View style={styles.notice}>
+          <Text style={styles.noticeText} numberOfLines={2}>
+            {extensionNotice}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -129,6 +149,16 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.14)",
   },
   iconBtnLeave: { backgroundColor: "#dc2626" },
+  iconBtnExtend: { backgroundColor: "#000080" },
+  notice: {
+    marginHorizontal: 10,
+    marginTop: 6,
+    backgroundColor: "rgba(0,0,128,0.85)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  noticeText: { color: "#fff", fontSize: 12, fontWeight: "600" },
 
   peerInfo: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
   avatar: {
