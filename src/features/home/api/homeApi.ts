@@ -1,5 +1,6 @@
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
+import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 
 /**
  * `/user/all-online-user` returns `ResponseBuilder` JSON; `data` may be an aggregate row
@@ -346,7 +347,11 @@ export async function fetchAllUsers(search?: string): Promise<any[]> {
  * client-side for an exact email match before accepting it as a recipient.
  */
 export async function setOnlineAvailability(showAsOnline: boolean): Promise<void> {
-  await apiClient.put(API_ROUTES.user.onlineAvailability, { showAsOnline });
+  try {
+    await apiClient.put(API_ROUTES.user.onlineAvailability, { showAsOnline });
+  } catch (e) {
+    throw new Error(getApiErrorMessage(e, "Could not update online status."));
+  }
 }
 
 export async function findNetqwixUserByEmail(email: string): Promise<any | null> {

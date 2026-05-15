@@ -1,7 +1,10 @@
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import React, { useRef } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useThemeColors, radii, typography } from "../../theme";
+
+const GAP_ABOVE_TAB_BAR = 12;
 
 type Props = {
   onPress: () => void;
@@ -10,6 +13,9 @@ type Props = {
 
 export default function AIFloatingButton({ onPress, label }: Props) {
   const colors = useThemeColors();
+  const tabBarHeight = useBottomTabBarHeight();
+  const bottom = tabBarHeight + GAP_ABOVE_TAB_BAR;
+
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(0.4)).current;
 
@@ -32,7 +38,9 @@ export default function AIFloatingButton({ onPress, label }: Props) {
   };
 
   return (
-    <Animated.View style={[styles.wrapper, { transform: [{ scale: scaleAnim }] }]}>
+    <Animated.View
+      style={[styles.wrapper, { bottom, transform: [{ scale: scaleAnim }] }]}
+    >
       {/* Pulse ring */}
       <Animated.View
         style={[
@@ -61,7 +69,6 @@ export default function AIFloatingButton({ onPress, label }: Props) {
 const styles = StyleSheet.create({
   wrapper: {
     position: "absolute",
-    bottom: 90,
     right: 20,
     zIndex: 999,
   },

@@ -8,7 +8,6 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   View,
 } from "react-native";
@@ -46,33 +45,56 @@ import AIAssistantScreen from "../../ai/AIAssistantScreen";
 import ReviewAnalysisCard from "../../ai/ReviewAnalysisCard";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
+import { TrainerOnlineToggle } from "../components/TrainerOnlineToggle";
 
-function Avatar({ uri, name, size = 56 }: { uri?: string; name?: string; size?: number }) {
+function Avatar({
+  uri,
+  name,
+  size = 56,
+  onlineStatus,
+}: {
+  uri?: string;
+  name?: string;
+  size?: number;
+  onlineStatus?: "online" | "offline";
+}) {
   const [failed, setFailed] = React.useState(false);
   const url = getS3ImageUrl(uri);
 
   React.useEffect(() => {
     setFailed(false);
   }, [uri]);
-  if (!url || failed) {
-    return (
+
+  const inner =
+    !url || failed ? (
       <View style={[styles.avatarFallback, { width: size, height: size, borderRadius: size / 2 }]}>
         <Text style={[styles.avatarInitial, { fontSize: size * 0.38 }]}>
           {(name ?? "?")[0]?.toUpperCase()}
         </Text>
       </View>
+    ) : (
+      <ImageWithSkeleton
+        uri={url}
+        width={size}
+        height={size}
+        borderRadius={size / 2}
+        resizeMode="cover"
+        onLoadError={() => setFailed(true)}
+        accessibilityLabel={name ? `Photo of ${name}` : "Profile photo"}
+      />
     );
-  }
+
+  if (!onlineStatus) return inner;
+
   return (
-    <ImageWithSkeleton
-      uri={url}
-      width={size}
-      height={size}
-      borderRadius={size / 2}
-      resizeMode="cover"
-      onLoadError={() => setFailed(true)}
-      accessibilityLabel={name ? `Photo of ${name}` : "Profile photo"}
-    />
+    <View style={{ width: size, height: size }}>
+      {inner}
+      <View
+        style={
+          onlineStatus === "online" ? styles.avatarOnlineDot : styles.avatarOfflineDot
+        }
+      />
+    </View>
   );
 }
 
@@ -285,7 +307,6 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
   const [aiOpen, setAiOpen] = useState(false);
   const { user, accountType, refreshUser } = useAuth();
   const queryClient = useQueryClient();
-  const [availabilityBusy, setAvailabilityBusy] = useState(false);
   const showAsOnline = (user as any)?.showAsOnline !== false;
   const insets = useSafeAreaInsets();
   const gutter = useHorizontalGutter("md");
@@ -300,16 +321,10 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
 
   const handleAvailabilityToggle = useCallback(
     async (next: boolean) => {
-      setAvailabilityBusy(true);
-      try {
-        await setOnlineAvailability(next);
-        await refreshUser();
-        queryClient.invalidateQueries({ queryKey: ["onlineUsers"] });
-      } catch (e: any) {
-        Alert.alert("Availability", e?.message ?? "Could not update online status.");
-      } finally {
-        setAvailabilityBusy(false);
-      }
+      await setOnlineAvailability(next);
+      await refreshUser();
+      await queryClient.invalidateQueries({ queryKey: ["onlineUsers"] });
+      await queryClient.invalidateQueries({ queryKey: ["conversations"] });
     },
     [refreshUser, queryClient]
   );
@@ -479,44 +494,31 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
             title="Your profile"
             testID="card trainer-profile-card Home-main-Cont trainer-profile-summary"
           >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+            <View style={styles.profileRow}>
               <Avatar
                 uri={(user as any)?.profile_picture}
                 name={name}
                 size={64}
+                onlineStatus={showAsOnline ? "online" : "offline"}
               />
-              <View style={{ flex: 1 }}>
+              <View style={styles.profileMeta}>
                 <Text style={{ ...typography.titleSm, color: colors.text }}>{name}</Text>
                 <Text style={{ ...typography.bodySm, color: colors.textMuted, marginTop: 4 }}>
                   {accountType}
                 </Text>
                 <Pressable
-                  style={{ marginTop: 10, alignSelf: "flex-start" }}
+                  style={styles.settingsLink}
                   onPress={() => openShell("settings")}
                 >
-                  <Text style={{ ...typography.bodyMd, fontWeight: "600", color: colors.sidebarActive }}>
-                    Account & settings →
-                  </Text>
+                  <Text style={styles.settingsLinkText}>Account & settings</Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.sidebarActive} />
                 </Pressable>
-                <View style={styles.availabilityRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.availabilityLabel}>Show as online</Text>
-                    <Text style={styles.availabilityHint}>
-                      {showAsOnline
-                        ? "Trainees can see you in chat and booking"
-                        : "You appear offline to others"}
-                    </Text>
-                  </View>
-                  <Switch
-                    value={showAsOnline}
-                    onValueChange={handleAvailabilityToggle}
-                    disabled={availabilityBusy}
-                    trackColor={{ false: colors.border, true: colors.brandNavy }}
-                    thumbColor="#fff"
-                  />
-                </View>
               </View>
             </View>
+            <TrainerOnlineToggle
+              value={showAsOnline}
+              onToggle={handleAvailabilityToggle}
+            />
           </HomeMainCont>
         )}
 
@@ -718,17 +720,49 @@ const styles = StyleSheet.create({
   },
   greeting: { ...typography.titleMd, color: colors.text },
   roleTag: { ...typography.bodySm, color: colors.textMuted, marginTop: 2 },
-  availabilityRow: {
+  profileRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: space.md,
-    paddingTop: space.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-    gap: space.sm,
+    gap: space.md,
   },
-  availabilityLabel: { ...typography.subtitle, color: colors.text },
-  availabilityHint: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+  profileMeta: {
+    flex: 1,
+    minWidth: 0,
+  },
+  settingsLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 10,
+    alignSelf: "flex-start",
+    gap: 2,
+  },
+  settingsLinkText: {
+    ...typography.bodyMd,
+    fontWeight: "600",
+    color: colors.sidebarActive,
+  },
+  avatarOnlineDot: {
+    position: "absolute",
+    right: 0,
+    bottom: 0,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "#43A047",
+    borderWidth: 2,
+    borderColor: colors.surfaceElevated,
+  },
+  avatarOfflineDot: {
+    position: "absolute",
+    right: 0,
+    bottom: 0,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "#E57373",
+    borderWidth: 2,
+    borderColor: colors.surfaceElevated,
+  },
 
   quickRow: {
     flexDirection: "row",
