@@ -22,6 +22,7 @@ import { useLessonTimer } from "../../calling/useLessonTimer";
 import { useSocket } from "../../socket/SocketContext";
 import { useAuth } from "../../auth/context/AuthContext";
 import type { CallParticipant } from "../../calling/types";
+import { reportOpsEvent } from "../../ops/opsEventsApi";
 
 const NAVY = "#000080";
 const WEB_ORIGIN = "https://www.netqwix.com";
@@ -217,7 +218,18 @@ export function MeetingScreen({ navigation, route }: Props) {
         mediaCapturePermissionGrantType={
           Platform.OS === "ios" ? "grant" : undefined
         }
-        onError={(e) => console.warn("[Meeting] WebView error", e.nativeEvent)}
+        onError={(e) => {
+          console.warn("[Meeting] WebView error", e.nativeEvent);
+          reportOpsEvent({
+            event_type: "CLIENT_WEBVIEW_ERROR",
+            category: "connection",
+            severity: "error",
+            session_id: lessonId,
+            title: "Meeting WebView load error",
+            payload: e.nativeEvent as unknown as Record<string, unknown>,
+            correlation_id: lessonId,
+          });
+        }}
       />
 
       <PortraitCallOverlay

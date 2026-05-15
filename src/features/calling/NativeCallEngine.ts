@@ -28,6 +28,7 @@ import type { Socket } from "socket.io-client";
 import InCallManager from "react-native-incall-manager";
 
 import { CALL_EVENTS } from "./callEvents";
+import { reportOpsEvent } from "../ops/opsEventsApi";
 import { buildIceConfig } from "./iceServers";
 import type {
   CallEngineStatus,
@@ -506,6 +507,16 @@ export class NativeCallEngine {
   private setStatus(status: CallEngineStatus) {
     if (this.status === status) return;
     this.status = status;
+    if (status === "failed" || status === "reconnecting") {
+      reportOpsEvent({
+        event_type: "CLIENT_CALL_ERROR",
+        category: "call",
+        severity: status === "failed" ? "error" : "warning",
+        session_id: this.sessionId,
+        title: `Native call ${status}`,
+        correlation_id: this.sessionId,
+      });
+    }
     this.events.onStatus?.(status);
   }
 
