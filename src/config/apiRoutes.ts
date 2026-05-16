@@ -120,6 +120,8 @@ export const API_ROUTES = {
     ledger: "/wallet/ledger",
     earnings: "/wallet/earnings",
     topUpCreateIntent: "/wallet/topup/create-intent",
+    topUpStatus: (topupId: string) => `/wallet/topup/${topupId}/status` as const,
+    topUpConfirm: (topupId: string) => `/wallet/topup/${topupId}/confirm` as const,
     pinSet: "/wallet/pin/set",
     pinVerify: "/wallet/pin/verify",
     pinForgotRequest: "/wallet/pin/forgot/request",

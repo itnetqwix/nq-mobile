@@ -8,17 +8,26 @@ import { WalletSecurityScreen } from "../screens/WalletSecurityScreen";
 
 export type WalletStackParamList = {
   WalletHome: undefined;
-  WalletTopUp: undefined;
+  WalletTopUp: { suggestedAmount?: number } | undefined;
   WalletActivity: undefined;
   WalletSecurity: undefined;
 };
 
 const Stack = createNativeStackNavigator<WalletStackParamList>();
 
-export function WalletNavigator() {
+type WalletNavigatorProps = {
+  initialRouteName?: keyof WalletStackParamList;
+  initialParams?: WalletStackParamList["WalletTopUp"];
+};
+
+export function WalletNavigator({
+  initialRouteName,
+  initialParams,
+}: WalletNavigatorProps = {}) {
   const c = useThemeColors();
   return (
     <Stack.Navigator
+      initialRouteName={initialRouteName ?? "WalletHome"}
       screenOptions={{
         headerTintColor: c.headerTint,
         headerTitleStyle: { fontWeight: "600", color: c.headerTitle },
@@ -27,7 +36,12 @@ export function WalletNavigator() {
       }}
     >
       <Stack.Screen name="WalletHome" component={WalletHomeScreen} options={{ title: "Wallet" }} />
-      <Stack.Screen name="WalletTopUp" component={WalletTopUpScreen} options={{ title: "Add funds" }} />
+      <Stack.Screen
+        name="WalletTopUp"
+        component={WalletTopUpScreen}
+        initialParams={initialRouteName === "WalletTopUp" ? initialParams : undefined}
+        options={{ title: "Add funds" }}
+      />
       <Stack.Screen
         name="WalletActivity"
         component={WalletActivityScreen}

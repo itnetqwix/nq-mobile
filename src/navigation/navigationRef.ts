@@ -23,3 +23,26 @@ export function navigateToNotifications(): boolean {
   });
   return true;
 }
+
+/** Open wallet Add funds (optionally pre-filled for booking shortfall). */
+export function navigateToWalletTopUp(suggestedAmount?: number): boolean {
+  if (!navigationRef.isReady()) return false;
+  (navigationRef as any).navigate("Main", {
+    screen: "Tabs",
+    params: {
+      screen: "Home",
+      params: {
+        screen: "ShellSurface",
+        params: {
+          surfaceId: "wallet" as ShellSurfaceRouteId,
+          walletScreen: "WalletTopUp",
+          walletParams:
+            suggestedAmount != null && suggestedAmount > 0
+              ? { suggestedAmount }
+              : undefined,
+        },
+      },
+    },
+  });
+  return true;
+}

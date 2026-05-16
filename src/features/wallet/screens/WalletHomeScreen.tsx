@@ -136,7 +136,10 @@ function TraineeWalletHome({ navigation }: Props) {
             ${balance!.balances.pending_topup.toFixed(2)} pending top-up
           </Text>
         )}
-        <Pressable style={styles.addFundsBtn} onPress={() => navigation.navigate("WalletTopUp")}>
+        <Pressable
+          style={styles.addFundsBtn}
+          onPress={() => navigation.navigate("WalletTopUp", undefined)}
+        >
           <Ionicons name="add-circle" size={20} color={c.brandTextOn} />
           <Text style={styles.addFundsText}>Add funds</Text>
         </Pressable>

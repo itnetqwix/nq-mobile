@@ -9,6 +9,7 @@ import { WizardTitleBlock } from "./WizardTitleBlock";
 import { WizardStepClips } from "./steps/WizardStepClips";
 import { WizardStepConfirm } from "./steps/WizardStepConfirm";
 import { WizardStepDuration } from "./steps/WizardStepDuration";
+import { navigateToWalletTopUp } from "../../../navigation/navigationRef";
 import { WizardStepPayment } from "./steps/WizardStepPayment";
 
 /**
@@ -70,6 +71,10 @@ export function InstantLessonBookingWizardModal({ visible, trainer, onDismiss }:
               userStripeId={w.userStripeId}
               onPaymentComplete={w.handlePaymentComplete}
               onNext={w.goNext}
+              onAddFunds={(shortfall) => {
+                onDismiss();
+                navigateToWalletTopUp(shortfall);
+              }}
             />
           )}
 

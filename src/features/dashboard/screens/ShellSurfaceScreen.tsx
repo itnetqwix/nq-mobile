@@ -22,7 +22,12 @@ export function ShellSurfaceScreen({ route }: ShellSurfaceScreenProps) {
     case "notifications":
       return <NotificationsScreen />;
     case "wallet":
-      return <WalletNavigator />;
+      return (
+        <WalletNavigator
+          initialRouteName={route.params.walletScreen}
+          initialParams={route.params.walletParams}
+        />
+      );
     case "transactions":
       return <TransactionsScreen />;
     case "clips":

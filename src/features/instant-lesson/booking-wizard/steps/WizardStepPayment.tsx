@@ -32,7 +32,7 @@ type Props = {
   userStripeId: string;
   onPaymentComplete: (payload: PaymentCompletePayload) => void;
   onNext: () => void;
-  onAddFunds?: () => void;
+  onAddFunds?: (shortfallDollars: number) => void;
 };
 
 export function WizardStepPayment({
@@ -261,7 +261,7 @@ export function WizardStepPayment({
             Need ${wallet.shortfall.toFixed(2)} more in your wallet.
           </Text>
           {onAddFunds ? (
-            <Pressable onPress={onAddFunds} style={styles.addFundsLink}>
+            <Pressable onPress={() => onAddFunds(wallet.shortfall)} style={styles.addFundsLink}>
               <Text style={styles.addFundsText}>Add funds</Text>
             </Pressable>
           ) : null}

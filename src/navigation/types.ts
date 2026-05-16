@@ -15,7 +15,12 @@ export type ShellSurfaceRouteId = ShellSurfaceMeta["id"];
 export type HomeStackParamList = {
   DashboardHome: undefined;
   DashboardFeature: { featureId: DashboardRouteId; bookLessonTrainerId?: string };
-  ShellSurface: { surfaceId: ShellSurfaceRouteId };
+  ShellSurface: {
+    surfaceId: ShellSurfaceRouteId;
+    /** Deep-link into the wallet stack (e.g. Add funds from booking). */
+    walletScreen?: "WalletTopUp";
+    walletParams?: { suggestedAmount?: number };
+  };
   TransactionDetail: { bookingId?: string; ledgerEntryId?: string };
   ReportIssue: {
     bookingId?: string;

@@ -65,12 +65,60 @@ export async function fetchBookingDetail(bookingId: string) {
   return ((res.data as { data?: unknown })?.data ?? res.data) as Record<string, any>;
 }
 
-export async function createTopUpIntent(amountMinor: number) {
+export type TopUpIntentResult = {
+  topupId?: string;
+  client_secret?: string;
+  id?: string;
+  amount_minor?: number;
+};
+
+export type TopUpStatusResult = {
+  topupId?: string;
+  status: "pending" | "succeeded" | "failed" | string;
+  amount_minor?: number;
+  currency?: string;
+  payment_intent_status?: string | null;
+};
+
+function unwrapData<T>(res: { data: unknown }): T {
+  const root = res.data as { data?: T };
+  return (root?.data ?? res.data) as T;
+}
+
+export async function createTopUpIntent(amountMinor: number): Promise<TopUpIntentResult> {
   const res = await apiClient.post(API_ROUTES.wallet.topUpCreateIntent, {
     amount_minor: amountMinor,
   });
-  return ((res.data as { data?: { client_secret?: string; id?: string } })?.data ??
-    res.data) as { client_secret?: string; id?: string };
+  return unwrapData<TopUpIntentResult>(res);
+}
+
+export async function fetchTopUpStatus(topupId: string): Promise<TopUpStatusResult> {
+  const res = await apiClient.get(API_ROUTES.wallet.topUpStatus(topupId));
+  return unwrapData<TopUpStatusResult>(res);
+}
+
+export async function confirmTopUp(topupId: string): Promise<{ status: string; processed?: boolean }> {
+  const res = await apiClient.post(API_ROUTES.wallet.topUpConfirm(topupId));
+  return unwrapData<{ status: string; processed?: boolean }>(res);
+}
+
+/** Poll until top-up succeeds or times out (webhook + client confirm). */
+export async function waitForTopUpSettled(
+  topupId: string,
+  options?: { maxAttempts?: number; intervalMs?: number }
+): Promise<"succeeded" | "failed" | "timeout"> {
+  const maxAttempts = options?.maxAttempts ?? 15;
+  const intervalMs = options?.intervalMs ?? 2000;
+
+  for (let i = 0; i < maxAttempts; i++) {
+    await confirmTopUp(topupId).catch(() => undefined);
+    const status = await fetchTopUpStatus(topupId);
+    if (status.status === "succeeded") return "succeeded";
+    if (status.status === "failed") return "failed";
+    if (status.payment_intent_status === "canceled") return "failed";
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+  return "timeout";
 }
 
 export async function setWalletPin(pin: string) {
