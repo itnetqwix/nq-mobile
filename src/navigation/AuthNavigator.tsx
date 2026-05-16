@@ -12,12 +12,13 @@ export function AuthNavigator() {
     <Stack.Navigator
       initialRouteName="Login"
       screenOptions={{
+        headerShown: false,
         headerTitleAlign: "center",
         headerShadowVisible: false,
       }}
     >
-      <Stack.Screen name="Login" component={LoginScreen} options={{ title: "Sign in" }} />
-      <Stack.Screen name="SignUp" component={SignUpScreen} options={{ title: "Create account" }} />
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="SignUp" component={SignUpScreen} />
       <Stack.Screen
         name="ForgotPassword"
         component={ForgotPasswordScreen}

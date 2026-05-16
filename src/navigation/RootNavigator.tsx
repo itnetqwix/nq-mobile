@@ -1,6 +1,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React, { useEffect, useState } from "react";
 import { BrandedSessionLoader } from "../components/brand/BrandedSessionLoader";
+import { AppUnlockGate } from "../features/auth/components/AppUnlockGate";
 import { useAuth } from "../features/auth/context/AuthContext";
 import { OnboardingNavigator } from "./OnboardingNavigator";
 import { useTrainerVerificationGate } from "../features/verification/hooks/useTrainerVerificationGate";
@@ -16,6 +17,14 @@ import { DashboardDrawerShell } from "./DashboardDrawerShell";
 import type { RootStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+function MainWithAppUnlock() {
+  return (
+    <AppUnlockGate>
+      <DashboardDrawerShell />
+    </AppUnlockGate>
+  );
+}
 
 export function RootNavigator() {
   const { status, refreshUser } = useAuth();
@@ -61,7 +70,7 @@ export function RootNavigator() {
       >
         {signedIn ? (
           <>
-            <Stack.Screen name="Main" component={DashboardDrawerShell} />
+            <Stack.Screen name="Main" component={MainWithAppUnlock} />
             <Stack.Screen
               name="Meeting"
               component={MeetingRouter}

@@ -22,6 +22,7 @@ export const API_ROUTES = {
     forgotPassword: "/auth/forgot-password",
     confirmResetPassword: "/auth/confirm-reset-password",
     verifyGoogleLogin: "/auth/verify-google-login",
+    verifyAppleLogin: "/auth/verify-apple-login",
   },
   user: {
     me: "/user/me",

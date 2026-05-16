@@ -23,6 +23,10 @@ type AuthContextValue = {
   user: AuthUser;
   accountType: string | null;
   signIn: (email: string, password: string) => Promise<void>;
+  completeSessionFromTokens: (tokens: {
+    access_token: string;
+    account_type: string;
+  }) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
   patchUser: (patch: Record<string, unknown>) => void;
@@ -82,24 +86,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const signIn = useCallback(
-    async (email: string, password: string) => {
-      let res: Awaited<ReturnType<typeof postLogin>>;
-      try {
-        res = await postLogin({ email, password });
-      } catch (e) {
-        throw new Error(getApiErrorMessage(e, "Sign in failed."));
-      }
-
-      const tokens = extractLoginTokens(res);
-      if (!tokens) {
-        throw new Error(
-          `Unexpected login response (no tokens). ${summarizeLoginPayloadKeys(res)}`
-        );
-      }
-
+  const completeSessionFromTokens = useCallback(
+    async (tokens: { access_token: string; account_type: string }) => {
       await saveSession(tokens.access_token, tokens.account_type);
-
       try {
         const me = await getCurrentUser();
         setUser(me);
@@ -118,6 +107,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     },
     [queryClient]
+  );
+
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      let res: Awaited<ReturnType<typeof postLogin>>;
+      try {
+        res = await postLogin({ email, password });
+      } catch (e) {
+        throw new Error(getApiErrorMessage(e, "Sign in failed."));
+      }
+
+      const tokens = extractLoginTokens(res);
+      if (!tokens) {
+        throw new Error(
+          `Unexpected login response (no tokens). ${summarizeLoginPayloadKeys(res)}`
+        );
+      }
+
+      await completeSessionFromTokens(tokens);
+    },
+    [completeSessionFromTokens]
   );
 
   const signOut = useCallback(async () => {
@@ -145,11 +155,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       accountType,
       signIn,
+      completeSessionFromTokens,
       signOut,
       refreshUser,
       patchUser,
     }),
-    [status, user, accountType, signIn, signOut, refreshUser, patchUser]
+    [status, user, accountType, signIn, completeSessionFromTokens, signOut, refreshUser, patchUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

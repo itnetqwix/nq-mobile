@@ -58,7 +58,7 @@ export function InstantLessonTraineeModal() {
       {
         screen: "Tabs",
         params: {
-          screen: "Menu",
+          screen: "Home",
           params: {
             screen: "ShellSurface",
             params: { surfaceId: "clips" },

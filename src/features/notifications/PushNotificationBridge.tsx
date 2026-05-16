@@ -100,7 +100,7 @@ function handlePushTap(title: string, data: Record<string, unknown>) {
       (navigationRef as any).navigate("Main", {
         screen: "Tabs",
         params: {
-          screen: "Menu",
+          screen: "Home",
           params: {
             screen: "DashboardFeature",
             params: { featureId: "upcoming-sessions" },

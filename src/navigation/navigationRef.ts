@@ -11,17 +11,14 @@ export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 /** Convenience: jump to the Notifications inbox surface from anywhere in the app. */
 export function navigateToNotifications(): boolean {
   if (!navigationRef.isReady()) return false;
-  /**
-   * `navigate` is overloaded with strict types per stack. We're addressing
-   * the nested Menu stack inside the Main drawer; the runtime form is the
-   * `(name, params)` payload below. Cast through `any` to bypass the
-   * compiler narrowing that only knows about the top-level RootStackParamList.
-   */
   (navigationRef as any).navigate("Main", {
-    screen: "Menu",
+    screen: "Tabs",
     params: {
-      screen: "ShellSurface",
-      params: { surfaceId: "notifications" as ShellSurfaceRouteId },
+      screen: "Home",
+      params: {
+        screen: "ShellSurface",
+        params: { surfaceId: "notifications" as ShellSurfaceRouteId },
+      },
     },
   });
   return true;

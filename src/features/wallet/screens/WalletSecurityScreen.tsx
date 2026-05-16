@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { Alert, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../../components/ui";
-import { space, typography, useThemeColors, useThemedStyles } from "../../../theme";
+import { space, typography, useThemedStyles } from "../../../theme";
 import {
+  biometricWalletLabel,
   isBiometricWalletEnabled,
   requireBiometricForWallet,
   setBiometricWalletEnabled,
@@ -11,98 +12,150 @@ import {
 import { checkDeviceIntegrity } from "../../../lib/security/deviceIntegrity";
 import { setWalletPin, verifyWalletPin } from "../walletApi";
 import { useWalletBalance } from "../hooks/useWalletBalance";
+import { PinPad } from "../security/PinPad";
+import { savePinSession } from "../security/pinSessionStore";
 
 export function WalletSecurityScreen() {
-  const c = useThemeColors();
-  const styles = useThemedStyles((c) => StyleSheet.create({
-  root: { flex: 1, padding: space.lg, gap: space.md, backgroundColor: c.surface },
-  title: { ...typography.titleSm, color: c.text },
-  sub: { ...typography.bodySm, color: c.textMuted, lineHeight: 20 },
-  input: {
-    borderWidth: 1,
-    borderColor: c.border,
-    borderRadius: 8,
-    padding: space.md,
-    fontSize: 18,
-    letterSpacing: 4,
-    backgroundColor: c.surfaceElevated,
-  },
-}));
+  const styles = useThemedStyles((c) =>
+    StyleSheet.create({
+      root: { flex: 1, backgroundColor: c.surface },
+      content: { padding: space.lg, gap: space.md },
+      sub: { ...typography.bodySm, color: c.textMuted, lineHeight: 20 },
+      step: { ...typography.label, color: c.textMuted, fontWeight: "600" },
+    })
+  );
 
   const queryClient = useQueryClient();
   const { data: balance } = useWalletBalance();
   const [pin, setPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [mode, setMode] = useState<"set" | "confirm" | "verify">("verify");
   const [biometricOn, setBiometricOn] = useState(false);
+  const [bioLabel, setBioLabel] = useState("Biometrics");
+  const [busy, setBusy] = useState(false);
+
+  const pinSet = balance?.pinSet;
 
   useEffect(() => {
     void isBiometricWalletEnabled().then(setBiometricOn);
+    void biometricWalletLabel().then(setBioLabel);
     void checkDeviceIntegrity().then((r) => {
       if (r.compromised) {
         Alert.alert("Device security", r.reason ?? "This device may not be secure for wallet actions.");
       }
     });
-  }, []);
+    setMode(pinSet ? "verify" : "set");
+  }, [pinSet]);
 
-  const handleSetPin = async () => {
-    if (!/^\d{6}$/.test(pin)) {
-      Alert.alert("PIN", "Enter a 6-digit PIN");
+  const handleSetFlow = async () => {
+    if (mode === "set") {
+      if (pin.length !== 6) {
+        Alert.alert("PIN", "Enter a 6-digit PIN");
+        return;
+      }
+      setMode("confirm");
+      setConfirmPin("");
       return;
     }
-    try {
-      await setWalletPin(pin);
-      Alert.alert("PIN set", "Your wallet PIN is active.");
-      setPin("");
-      void queryClient.invalidateQueries({ queryKey: ["wallet"] });
-    } catch (e: any) {
-      Alert.alert("Error", e?.response?.data?.error ?? e?.message);
+    if (mode === "confirm") {
+      if (confirmPin !== pin) {
+        Alert.alert("PIN", "PINs do not match. Try again.");
+        setPin("");
+        setConfirmPin("");
+        setMode("set");
+        return;
+      }
+      setBusy(true);
+      try {
+        await setWalletPin(pin);
+        Alert.alert("PIN set", "Your wallet PIN is active.");
+        setPin("");
+        setConfirmPin("");
+        setMode("verify");
+        void queryClient.invalidateQueries({ queryKey: ["wallet"] });
+      } catch (e: unknown) {
+        Alert.alert("Error", (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? (e as Error).message);
+      } finally {
+        setBusy(false);
+      }
     }
   };
 
-  const handleVerifyPin = async () => {
-    const okBio = await requireBiometricForWallet("Verify wallet PIN");
+  const handleVerify = async () => {
+    if (pin.length !== 6) {
+      Alert.alert("PIN", "Enter your 6-digit PIN");
+      return;
+    }
+    const okBio = await requireBiometricForWallet("Verify wallet PIN", { failClosed: false });
     if (!okBio) return;
+    setBusy(true);
     try {
-      await verifyWalletPin(pin);
+      const res = await verifyWalletPin(pin);
+      if (res.pinSessionToken) await savePinSession(res.pinSessionToken);
       Alert.alert("Verified", "PIN session active for 15 minutes.");
       setPin("");
-    } catch (e: any) {
-      Alert.alert("Error", e?.response?.data?.error ?? e?.message);
+    } catch (e: unknown) {
+      Alert.alert("Error", (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? (e as Error).message);
+    } finally {
+      setBusy(false);
     }
   };
 
+  const activePin = mode === "confirm" ? confirmPin : pin;
+  const onPinChange = mode === "confirm" ? setConfirmPin : setPin;
+
   return (
-    <View style={styles.root}>
-      <Text style={styles.title}>Wallet PIN</Text>
+    <ScrollView style={styles.root} contentContainerStyle={styles.content}>
       <Text style={styles.sub}>
-        {balance?.pinSet
+        {pinSet
           ? "Your PIN protects larger payments. Verify before booking or withdrawing."
-          : "Set a 6-digit PIN to secure wallet payments."}
+          : "Create a 6-digit PIN to secure wallet payments."}
       </Text>
-      <TextInput
-        style={styles.input}
-        keyboardType="number-pad"
-        secureTextEntry
-        maxLength={6}
-        placeholder="6-digit PIN"
-        value={pin}
-        onChangeText={setPin}
-      />
-      <Button label="Set PIN" onPress={handleSetPin} fullWidth />
-      {balance?.pinSet ? (
-        <Button label="Verify PIN (15 min session)" onPress={handleVerifyPin} variant="secondary" fullWidth />
-      ) : null}
-      <Button
-        label={biometricOn ? "Biometric protection: On" : "Enable biometric for wallet"}
-        onPress={async () => {
-          const next = !biometricOn;
-          await setBiometricWalletEnabled(next);
-          setBiometricOn(next);
-        }}
-        variant="ghost"
-        fullWidth
-      />
-    </View>
+
+      {!pinSet ? (
+        <>
+          <Text style={styles.step}>{mode === "set" ? "Step 1 of 2 — Choose PIN" : "Step 2 of 2 — Confirm PIN"}</Text>
+          <PinPad value={activePin} onChange={onPinChange} disabled={busy} />
+          <Button
+            label={mode === "set" ? "Continue" : "Set PIN"}
+            onPress={handleSetFlow}
+            loading={busy}
+            fullWidth
+          />
+        </>
+      ) : (
+        <>
+          <PinPad value={pin} onChange={setPin} disabled={busy} />
+          <Button label="Verify PIN (15 min session)" onPress={handleVerify} loading={busy} fullWidth />
+          <Button
+            label="Change PIN"
+            variant="secondary"
+            onPress={() => {
+              setMode("set");
+              setPin("");
+              setConfirmPin("");
+            }}
+            fullWidth
+          />
+        </>
+      )}
+
+      <View style={{ marginTop: space.md }}>
+        <Button
+          label={biometricOn ? `${bioLabel} protection: On` : `Enable ${bioLabel} for wallet`}
+          variant="secondary"
+          onPress={async () => {
+            const next = !biometricOn;
+            if (next) {
+              const ok = await requireBiometricForWallet(`Enable ${bioLabel}`, { failClosed: true });
+              if (!ok) return;
+            }
+            await setBiometricWalletEnabled(next);
+            setBiometricOn(next);
+          }}
+          fullWidth
+        />
+      </View>
+    </ScrollView>
   );
 }
-
-

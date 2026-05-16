@@ -4,11 +4,11 @@ import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChatsScreen } from "../features/chats/screens/ChatsScreen";
-import { DashboardHomeScreen } from "../features/dashboard/screens/DashboardHomeScreen";
 import { ScheduleScreen } from "../features/schedule/screens/ScheduleScreen";
 import { useThemeColors } from "../theme";
-import { MenuNavigator } from "./MenuNavigator";
+import { HomeNavigator } from "./HomeNavigator";
 import type { MainTabParamList } from "./types";
+
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 const SESSIONS_TAB_LABEL = "Sessions";
@@ -23,7 +23,7 @@ export function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
-        headerTitleAlign: "center",
+        headerShown: false,
         tabBarActiveTintColor: c.tabBarActive,
         tabBarInactiveTintColor: c.tabBarInactive,
         tabBarStyle: {
@@ -41,30 +41,17 @@ export function MainTabs() {
           fontSize: 11,
         },
         tabBarHideOnKeyboard: true,
-        headerStyle: {
-          backgroundColor: c.background,
-          borderBottomColor: c.border,
-          borderBottomWidth: 1,
-          elevation: 0,
-          shadowOpacity: 0,
-        },
-        headerTitleStyle: {
-          fontWeight: "700",
-          color: c.headerTitle,
-          fontSize: 17,
-        },
-        headerLeft: () => <DrawerToggleButton tintColor={c.headerTint} />,
       }}
     >
       <Tab.Screen
         name="Home"
-        component={DashboardHomeScreen}
+        component={HomeNavigator}
         options={{
-          title: "My Locker",
-          headerShown: true,
+          title: "Dashboard",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" color={color} size={size} />
           ),
+          tabBarLabel: "Dashboard",
         }}
       />
       <Tab.Screen
@@ -72,7 +59,16 @@ export function MainTabs() {
         component={ScheduleScreen}
         options={{
           title: SESSIONS_TAB_LABEL,
+          headerShown: true,
           headerTitle: SESSIONS_TAB_LABEL,
+          headerTitleAlign: "center",
+          headerStyle: {
+            backgroundColor: c.background,
+            borderBottomColor: c.border,
+            borderBottomWidth: 1,
+          },
+          headerTitleStyle: { fontWeight: "700", color: c.headerTitle, fontSize: 17 },
+          headerLeft: () => <DrawerToggleButton tintColor={c.headerTint} />,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="time-outline" color={color} size={size} />
           ),
@@ -89,27 +85,6 @@ export function MainTabs() {
             <Ionicons name="chatbubbles-outline" color={color} size={size} />
           ),
         }}
-      />
-      <Tab.Screen
-        name="Menu"
-        component={MenuNavigator}
-        options={{
-          title: "Settings",
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" color={color} size={size} />
-          ),
-          tabBarLabel: "Settings",
-        }}
-        listeners={({ navigation }) => ({
-          tabPress: (e) => {
-            e.preventDefault();
-            navigation.navigate("Menu", {
-              screen: "ShellSurface",
-              params: { surfaceId: "settings" },
-            });
-          },
-        })}
       />
     </Tab.Navigator>
   );

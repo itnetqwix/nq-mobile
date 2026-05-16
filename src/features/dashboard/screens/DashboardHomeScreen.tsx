@@ -16,7 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Pill, Skeleton, ImageWithSkeleton } from "../../../components/ui";
+import { Skeleton, ImageWithSkeleton } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { resolveShowAsOnline } from "../../../lib/user/resolveShowAsOnline";
@@ -31,24 +31,34 @@ import {
   postRejectFriendRequest,
   setOnlineAvailability,
 } from "../../home/api/homeApi";
-import type { MainTabScreenProps } from "../../../navigation/types";
+import type { CompositeScreenProps } from "@react-navigation/native";
+import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type {
+  HomeStackParamList,
+  MainTabParamList,
+  ShellSurfaceRouteId,
+} from "../../../navigation/types";
 import type { DashboardRouteId } from "../config/dashboardRoutes";
-import type { ShellSurfaceRouteId } from "../../../navigation/types";
 import {
   HomeMainCont,
-  HomeUploadInviteRow,
   RecentUsersGrid,
   TrainerBoxCard,
   webHomeStyles,
 } from "../components/webHome";
+import {
+  LockerHub,
+  SessionListSection,
+  TraineeProfileSection,
+  TrainerProfileSection,
+} from "../components/home";
 import AIFloatingButton from "../../ai/AIFloatingButton";
 import AIAssistantScreen from "../../ai/AIAssistantScreen";
 import ReviewAnalysisCard from "../../ai/ReviewAnalysisCard";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
-import { TrainerOnlineToggle } from "../components/TrainerOnlineToggle";
 import { useSessionBooking } from "../../sessions/SessionBookingContext";
-import { isPendingBooking, normalizeSessionStatus } from "../../../lib/sessions/sessionUtils";
+import { isPendingBooking } from "../../../lib/sessions/sessionUtils";
 import { TrainerProfileModal } from "../../bookexpert/components/TrainerProfileModal";
 import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
 import { ScheduledBookingModal } from "../../bookings/screens/ScheduledBookingModal";
@@ -71,27 +81,6 @@ function useDashboardHomeStyles() {
   },
   greeting: { ...typography.titleMd, color: palette.text },
   roleTag: { ...typography.bodySm, color: palette.textMuted, marginTop: 2 },
-  profileRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.md,
-  },
-  profileMeta: {
-    flex: 1,
-    minWidth: 0,
-  },
-  settingsLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 10,
-    alignSelf: "flex-start",
-    gap: 2,
-  },
-  settingsLinkText: {
-    ...typography.bodyMd,
-    fontWeight: "600",
-    color: palette.sidebarActive,
-  },
   avatarOnlineDot: {
     position: "absolute",
     right: 0,
@@ -162,19 +151,6 @@ function useDashboardHomeStyles() {
   bookBtnPressed: { opacity: 0.75 },
   bookBtnText: { fontSize: 12, color: palette.brandTextOn, fontWeight: "600" },
 
-  sessionCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: space.md,
-    paddingVertical: space.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: palette.border,
-    gap: space.sm,
-  },
-  sessionInfo: { flex: 1 },
-  sessionName: { ...typography.subtitle, color: palette.text },
-  sessionMeta: { ...typography.bodySm, color: palette.textMuted, marginTop: 2 },
-
   recentChip: { alignItems: "center", width: 68 },
   recentName: {
     fontSize: 11,
@@ -196,14 +172,6 @@ function useDashboardHomeStyles() {
   },
   avatarInitial: { color: palette.brandTextOn, fontWeight: "700" },
 
-  seeAllBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: space.sm,
-    gap: 4,
-  },
-  seeAllText: { fontSize: 14, color: palette.brandNavy, fontWeight: "600" },
 }));
 }
 
@@ -291,75 +259,6 @@ function CoachCard({
       </TrainerBoxCard>
     </Pressable>
   );
-}
-
-function SessionCard({
-  session,
-  accountType,
-  onPress,
-}: {
-  session: any;
-  accountType: string | null;
-  onPress?: () => void;
-}) {
-  const styles = useDashboardHomeStyles();
-  const themeColors = useThemeColors();
-  const isTrainer = accountType === AccountType.TRAINER;
-  const other = isTrainer ? session.trainee_info : session.trainer_info;
-  const name = other?.fullname || other?.fullName || "Unknown";
-  const date = session.booked_date ?? "";
-  const time =
-    session.session_start_time && session.session_end_time
-      ? `${session.session_start_time} – ${session.session_end_time}`
-      : session.start_time && session.end_time
-        ? `${session.start_time} – ${session.end_time}`
-        : "";
-  const pending = isPendingBooking(session);
-  const status = normalizeSessionStatus(session.status);
-
-  const inner = (
-    <>
-      <Avatar uri={other?.profile_picture} name={name} size={52} />
-      <View style={styles.sessionInfo}>
-        <Text style={styles.sessionName}>{name}</Text>
-        {!!date && <Text style={styles.sessionMeta}>{String(date).slice(0, 10)}</Text>}
-        {!!time && <Text style={styles.sessionMeta}>{time}</Text>}
-        <Pill
-          label={pending ? "Needs confirmation" : status}
-          tone={pending ? "warning" : getStatusTone(status)}
-          style={{ marginTop: 4 }}
-        />
-      </View>
-      <Ionicons name="chevron-forward" size={18} color={themeColors.textMuted} />
-    </>
-  );
-
-  if (onPress) {
-    return (
-      <Pressable
-        style={({ pressed }) => [styles.sessionCard, pressed && { opacity: 0.85 }]}
-        onPress={onPress}
-        accessibilityRole="button"
-      >
-        {inner}
-      </Pressable>
-    );
-  }
-
-  return <View style={styles.sessionCard}>{inner}</View>;
-}
-
-function getStatusTone(status?: string): React.ComponentProps<typeof Pill>["tone"] {
-  switch (status) {
-    case "confirmed":
-      return "success";
-    case "completed":
-      return "neutral";
-    case "cancelled":
-      return "danger";
-    default:
-      return "info";
-  }
 }
 
 function RecentUserChip({ user, label }: { user: any; label?: string }) {
@@ -506,7 +405,12 @@ function AIRecommendedSection({ onView }: { onView: (t: any) => void }) {
   );
 }
 
-export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) {
+type DashboardHomeProps = CompositeScreenProps<
+  NativeStackScreenProps<HomeStackParamList, "DashboardHome">,
+  BottomTabScreenProps<MainTabParamList>
+>;
+
+export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
   const themeColors = useThemeColors();
   const styles = useDashboardHomeStyles();
   const [aiOpen, setAiOpen] = useState(false);
@@ -585,14 +489,14 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
   }, [queryClient]);
 
   const openFeature = (id: DashboardRouteId, extra?: Partial<{ bookLessonTrainerId: string }>) => {
-    navigation.navigate("Menu", {
-      screen: "DashboardFeature",
-      params: { featureId: id, ...extra },
+    navigation.navigate("DashboardFeature", {
+      featureId: id,
+      ...extra,
     });
   };
 
   const openShell = (id: ShellSurfaceRouteId) => {
-    navigation.navigate("Menu", { screen: "ShellSurface", params: { surfaceId: id } });
+    navigation.navigate("ShellSurface", { surfaceId: id });
   };
 
   useLayoutEffect(() => {
@@ -626,6 +530,15 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
             accessibilityRole="button"
           >
             <Ionicons name="notifications-outline" size={24} color={themeColors.brandNavy} />
+          </Pressable>
+          <Pressable
+            onPress={() => openShell("settings")}
+            hitSlop={12}
+            style={{ padding: 4, marginLeft: 4 }}
+            accessibilityLabel="Settings"
+            accessibilityRole="button"
+          >
+            <Ionicons name="settings-outline" size={24} color={themeColors.brandNavy} />
           </Pressable>
         </View>
       ),
@@ -733,46 +646,27 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
           label="Chats"
           onPress={() => navigation.navigate("Chats")}
         />
-        <QuickActionButton
-          icon="film-outline"
-          label="Clips"
-          onPress={() => openShell("clips")}
-        />
       </View>
 
       <View style={[{ paddingTop: space.md }, gutter]}>
         {/* Web: trainer `UserInfoCard` inside `Home-main-Cont` above recent students */}
         {isTrainer && (
-          <HomeMainCont
-            title="Your profile"
-            testID="card trainer-profile-card Home-main-Cont trainer-profile-summary"
-          >
-            <View style={styles.profileRow}>
-              <Avatar
-                uri={(user as any)?.profile_picture}
-                name={name}
-                size={64}
-                onlineStatus={showAsOnline ? "online" : "offline"}
-              />
-              <View style={styles.profileMeta}>
-                <Text style={{ ...typography.titleSm, color: themeColors.text }}>{name}</Text>
-                <Text style={{ ...typography.bodySm, color: themeColors.textMuted, marginTop: 4 }}>
-                  {accountType}
-                </Text>
-                <Pressable
-                  style={styles.settingsLink}
-                  onPress={() => openShell("settings")}
-                >
-                  <Text style={styles.settingsLinkText}>Account & settings</Text>
-                  <Ionicons name="chevron-forward" size={16} color={themeColors.sidebarActive} />
-                </Pressable>
-              </View>
-            </View>
-            <TrainerOnlineToggle
-              value={showAsOnline}
-              onToggle={handleAvailabilityToggle}
-            />
-          </HomeMainCont>
+          <TrainerProfileSection
+            name={name}
+            accountType={accountType ?? AccountType.TRAINER}
+            profilePicture={(user as any)?.profile_picture}
+            showAsOnline={showAsOnline}
+            onSettings={() => openShell("settings")}
+            onAvailabilityToggle={handleAvailabilityToggle}
+          />
+        )}
+        {isTrainee && (
+          <TraineeProfileSection
+            name={name}
+            accountType={accountType ?? AccountType.TRAINEE}
+            profilePicture={(user as any)?.profile_picture}
+            onSettings={() => openShell("settings")}
+          />
         )}
 
         {/* Web `NavHomePage` — Recent Friend Requests card */}
@@ -831,89 +725,46 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
 
         {/* Trainer: pending session requests (realtime via socket) */}
         {isTrainer && (loadingSessions || pendingSessions.length > 0) && (
-          <HomeMainCont
-            title={
-              pendingSessions.length > 0
-                ? `Session requests (${pendingSessions.length})`
-                : "Session requests"
-            }
-            testID="card trainer-profile-card Home-main-Cont session-requests"
-          >
-            {loadingSessions ? (
-              <View style={[styles.loadingRow, { gap: space.sm }]}>
-                <Skeleton width="100%" height={80} radius={radii.md} />
-              </View>
-            ) : (
-              <>
-                {pendingSessions.slice(0, 3).map((session: any, idx: number) => (
-                  <SessionCard
-                    key={`${session._id}-pending-${idx}`}
-                    session={session}
-                    accountType={accountType}
-                    onPress={() => openSession(session)}
-                  />
-                ))}
-                {pendingSessions.length > 3 ? (
-                  <Pressable
-                    style={styles.seeAllBtn}
-                    onPress={() => openFeature("upcoming-sessions")}
-                  >
-                    <Text style={styles.seeAllText}>
-                      Review all {pendingSessions.length} requests
-                    </Text>
-                    <Ionicons name="chevron-forward" size={16} color={themeColors.brandNavy} />
-                  </Pressable>
-                ) : null}
-              </>
-            )}
-          </HomeMainCont>
+          <SessionListSection
+            title="Session requests"
+            subtitle="Confirm or decline new bookings"
+            sessions={pendingSessions}
+            accountType={accountType}
+            loading={loadingSessions}
+            count={pendingSessions.length}
+            maxPreview={3}
+            seeAllLabel={`Review all ${pendingSessions.length} requests`}
+            onSeeAll={() => openFeature("upcoming-sessions")}
+            onSessionPress={openSession}
+            testID="home-session-requests"
+          />
         )}
 
-        {/* Active Sessions */}
         {(loadingSessions || nowSessions.length > 0) && (
-          <HomeMainCont title="Active Sessions" testID="card trainer-profile-card Home-main-Cont active-sessions">
-            {loadingSessions ? (
-              <View style={[styles.loadingRow, { gap: space.sm }]}>
-                {[0, 1].map((i) => (
-                  <Skeleton key={i} width="100%" height={80} radius={radii.md} />
-                ))}
-              </View>
-            ) : (
-              nowSessions.map((session: any, idx: number) => (
-                <SessionCard
-                  key={`${session._id}-now-${idx}`}
-                  session={session}
-                  accountType={accountType}
-                  onPress={() => openSession(session)}
-                />
-              ))
-            )}
-          </HomeMainCont>
+          <SessionListSection
+            title="Active sessions"
+            subtitle="Happening now or starting soon"
+            sessions={nowSessions}
+            accountType={accountType}
+            loading={loadingSessions}
+            maxPreview={5}
+            onSessionPress={openSession}
+            testID="home-active-sessions"
+          />
         )}
 
-        {/* Upcoming Sessions (next 3) */}
         {upcomingConfirmed.length > 0 && nowSessions.length === 0 && (
-          <HomeMainCont title="Upcoming Sessions" testID="card trainer-profile-card Home-main-Cont upcoming-sessions">
-            {upcomingConfirmed.slice(0, 3).map((session: any, idx: number) => (
-              <SessionCard
-                key={`${session._id}-up-${idx}`}
-                session={session}
-                accountType={accountType}
-                onPress={() => openSession(session)}
-              />
-            ))}
-            {upcomingConfirmed.length > 3 && (
-              <Pressable
-                style={styles.seeAllBtn}
-                onPress={() => openFeature("upcoming-sessions")}
-              >
-                <Text style={styles.seeAllText}>
-                  See all {upcomingConfirmed.length} sessions
-                </Text>
-                <Ionicons name="chevron-forward" size={16} color={themeColors.brandNavy} />
-              </Pressable>
-            )}
-          </HomeMainCont>
+          <SessionListSection
+            title="Upcoming sessions"
+            subtitle="Your confirmed schedule"
+            sessions={upcomingConfirmed}
+            accountType={accountType}
+            maxPreview={3}
+            seeAllLabel={`See all ${upcomingConfirmed.length} sessions`}
+            onSeeAll={() => openFeature("upcoming-sessions")}
+            onSessionPress={openSession}
+            testID="home-upcoming-sessions"
+          />
         )}
 
         {/* Recent Users — `recent-users-grid` / `trainer-students-grid` vs `single-row-experts` */}
@@ -952,13 +803,7 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
           </View>
         )}
 
-        {/* Web: `UploadClipCard` + `InviteFriendsCard` row */}
-        <HomeMainCont title="Locker" testID="card trainer-profile-card Home-main-Cont locker-promos">
-          <HomeUploadInviteRow
-            onClips={() => openShell("clips")}
-            onInvite={() => openShell("invite")}
-          />
-        </HomeMainCont>
+        <LockerHub accountType={accountType} onOpenSurface={openShell} />
       </View>
     </ScrollView>
 

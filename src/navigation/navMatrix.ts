@@ -21,9 +21,9 @@ import type { ShellSurfaceRouteId, MainTabParamList } from "./types";
 export type NavTarget =
   /** Bottom-tab destination. */
   | { kind: "tab"; tab: keyof MainTabParamList }
-  /** DashboardFeature surface inside the Menu stack. */
+  /** DashboardFeature surface inside the Home stack. */
   | { kind: "feature"; featureId: DashboardRouteId }
-  /** ShellSurface inside the Menu stack. */
+  /** ShellSurface inside the Home stack. */
   | { kind: "shell"; surfaceId: ShellSurfaceRouteId };
 
 export type NavMatrixEntry = {
@@ -60,7 +60,7 @@ export type NavMatrixEntry = {
 export const NAV_MATRIX: readonly NavMatrixEntry[] = [
   {
     id: "my-locker",
-    label: "My Locker",
+    label: "Dashboard",
     icon: "home-outline",
     target: { kind: "tab", tab: "Home" },
     surfaces: ["drawer"],

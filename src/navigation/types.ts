@@ -6,14 +6,14 @@ import type { ShellSurfaceMeta } from "../features/dashboard/config/shellSurface
 
 export type AuthStackParamList = {
   Login: undefined;
-  SignUp: undefined;
+  SignUp: { prefillEmail?: string } | undefined;
   ForgotPassword: undefined;
 };
 
 export type ShellSurfaceRouteId = ShellSurfaceMeta["id"];
 
-export type MenuStackParamList = {
-  MenuHome: undefined;
+export type HomeStackParamList = {
+  DashboardHome: undefined;
   DashboardFeature: { featureId: DashboardRouteId; bookLessonTrainerId?: string };
   ShellSurface: { surfaceId: ShellSurfaceRouteId };
   TransactionDetail: { bookingId?: string; ledgerEntryId?: string };
@@ -24,11 +24,13 @@ export type MenuStackParamList = {
   };
 };
 
+/** @deprecated Use HomeStackParamList */
+export type MenuStackParamList = HomeStackParamList;
+
 export type MainTabParamList = {
-  Home: undefined;
+  Home: NavigatorScreenParams<HomeStackParamList>;
   Schedule: undefined;
   Chats: undefined;
-  Menu: NavigatorScreenParams<MenuStackParamList>;
 };
 
 /** Drawer wraps the bottom-tab shell — mirrors web `DashboardLayout` + left rail. */

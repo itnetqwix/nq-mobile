@@ -220,10 +220,41 @@ function useChatRoomStyles() {
   headerSubTyping: { color: "#4CAF50", fontStyle: "italic" },
   headerMore: { padding: 6 },
   messageArea: { flex: 1 },
-  messageList: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 12, gap: 4 },
-  bubble: { maxWidth: "78%", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, marginBottom: 1 },
-  bubbleMine: { alignSelf: "flex-end", backgroundColor: themeColors.brandNavy, borderBottomRightRadius: 4 },
-  bubbleTheirs: { alignSelf: "flex-start", backgroundColor: themeColors.surfaceElevated, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: themeColors.border },
+  messageList: {
+    paddingHorizontal: space.md,
+    paddingTop: space.sm,
+    paddingBottom: space.md,
+    flexGrow: 1,
+  },
+  messageListEmpty: {
+    flexGrow: 1,
+    justifyContent: "center",
+  },
+  messageRow: {
+    width: "100%",
+    flexDirection: "row",
+    paddingVertical: 3,
+  },
+  messageRowMine: { justifyContent: "flex-end" },
+  messageRowTheirs: { justifyContent: "flex-start" },
+  bubble: {
+    maxWidth: "80%",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+  },
+  bubbleMine: { backgroundColor: themeColors.brandNavy, borderBottomRightRadius: 4 },
+  bubbleTheirs: {
+    backgroundColor: themeColors.surfaceElevated,
+    borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: themeColors.border,
+  },
+  composer: {
+    backgroundColor: themeColors.surfaceElevated,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: themeColors.border,
+  },
   bubbleText: { ...typography.bodyMd, color: themeColors.text, lineHeight: 20 },
   bubbleTextMine: { color: "#fff" },
   bubbleFooter: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", marginTop: 2 },
@@ -233,15 +264,20 @@ function useChatRoomStyles() {
   videoContainer: { position: "relative", width: 200, height: 120, borderRadius: radii.md, overflow: "hidden" },
   videoPlaceholder: { flex: 1, backgroundColor: "rgba(0,0,0,0.1)", alignItems: "center", justifyContent: "center" },
   playOverlay: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
-  emojiTray: { backgroundColor: themeColors.surfaceElevated, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: themeColors.border },
-  emojiScroll: { paddingHorizontal: 8, paddingVertical: 6, gap: 2 },
+  emojiTray: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: themeColors.border,
+    maxHeight: 220,
+  },
+  emojiScroll: { paddingHorizontal: 8, paddingVertical: 10, gap: 2 },
   emojiBtn: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
   emojiText: { fontSize: 24 },
   inputBar: {
-    flexDirection: "row", alignItems: "flex-end", gap: 4,
-    paddingHorizontal: 8, paddingTop: 4,
-    backgroundColor: themeColors.surfaceElevated,
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: themeColors.border,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingTop: 8,
   },
   iconBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
   textInput: {
@@ -251,10 +287,23 @@ function useChatRoomStyles() {
   },
   sendBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: themeColors.brandNavy, alignItems: "center", justifyContent: "center" },
   recordBar: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    paddingHorizontal: 16, paddingTop: 8,
-    backgroundColor: themeColors.surfaceElevated,
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: themeColors.border,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
+  emptyChat: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: space.xl,
+    paddingHorizontal: space.lg,
+  },
+  emptyChatText: {
+    ...typography.bodyMd,
+    color: themeColors.textMuted,
+    textAlign: "center",
   },
   recordDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: "#F44336" },
   recordTime: { fontSize: 16, fontWeight: "600", color: themeColors.text, fontVariant: ["tabular-nums"] },
@@ -448,8 +497,8 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
   const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [mediaViewer, setMediaViewer] = useState<{ index: number } | null>(null);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const didInitialScrollRef = useRef(false);
   const [profileSearch, setProfileSearch] = useState("");
   const [profileTab, setProfileTab] = useState<"info" | "media" | "search">("info");
   const [partnerTyping, setPartnerTyping] = useState(false);
@@ -477,16 +526,8 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
   }, [partner?._id]);
 
   useEffect(() => {
-    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-    const onShow = (e: { endCoordinates: { height: number } }) => {
-      setKeyboardHeight(e.endCoordinates.height);
-    };
-    const onHide = () => setKeyboardHeight(0);
-    const showSub = Keyboard.addListener(showEvent, onShow);
-    const hideSub = Keyboard.addListener(hideEvent, onHide);
-    return () => { showSub.remove(); hideSub.remove(); };
-  }, []);
+    didInitialScrollRef.current = false;
+  }, [conversationId]);
 
   useEffect(() => {
     if (partner?._id) setPartnerOnline(isUserOnline(partner._id));
@@ -583,19 +624,44 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
     [allMessages]
   );
 
+  const scrollToLatestMessage = useCallback((animated: boolean) => {
+    const list = sectionListRef.current;
+    if (!list || messageSections.length === 0) return;
+
+    for (let sectionIndex = messageSections.length - 1; sectionIndex >= 0; sectionIndex--) {
+      const items = messageSections[sectionIndex]?.data;
+      if (!items?.length) continue;
+      try {
+        list.scrollToLocation({
+          sectionIndex,
+          itemIndex: items.length - 1,
+          animated,
+        });
+      } catch {
+        /* SectionList not laid out yet */
+      }
+      return;
+    }
+  }, [messageSections]);
+
   useEffect(() => {
-    if (keyboardHeight <= 0) return;
-    const t = setTimeout(() => {
-      const lastSection = messageSections.length - 1;
-      if (lastSection < 0) return;
-      sectionListRef.current?.scrollToLocation({
-        sectionIndex: lastSection,
-        itemIndex: Math.max(0, (messageSections[lastSection]?.data.length ?? 1) - 1),
-        animated: true,
-      });
-    }, 80);
+    if (allMessages.length === 0) return;
+    const animated = didInitialScrollRef.current;
+    if (!didInitialScrollRef.current) didInitialScrollRef.current = true;
+    const t = setTimeout(() => scrollToLatestMessage(animated), 60);
     return () => clearTimeout(t);
-  }, [keyboardHeight, messageSections]);
+  }, [allMessages.length, scrollToLatestMessage]);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const onShow = () => {
+      if (allMessages.length > 0) {
+        setTimeout(() => scrollToLatestMessage(true), Platform.OS === "ios" ? 60 : 140);
+      }
+    };
+    const showSub = Keyboard.addListener(showEvent, onShow);
+    return () => showSub.remove();
+  }, [allMessages.length, scrollToLatestMessage]);
 
   // Mark messages as read when opening and receiving
   useEffect(() => {
@@ -972,12 +1038,16 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
       setShowProfile(false);
       setHighlightedMessageId(messageId);
       requestAnimationFrame(() => {
-        sectionListRef.current?.scrollToLocation({
-          sectionIndex: loc.sectionIndex,
-          itemIndex: loc.itemIndex,
-          animated: true,
-          viewPosition: 0.5,
-        });
+        try {
+          sectionListRef.current?.scrollToLocation({
+            sectionIndex: loc.sectionIndex,
+            itemIndex: loc.itemIndex,
+            animated: true,
+            viewPosition: 0.5,
+          });
+        } catch {
+          /* ignore if list not ready */
+        }
       });
       setTimeout(() => setHighlightedMessageId(null), 2500);
     },
@@ -997,13 +1067,14 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
         (mediaKind === null && item.type !== "voice");
 
       return (
-        <View
-          style={[
-            styles.bubble,
-            isMine ? styles.bubbleMine : styles.bubbleTheirs,
-            isHighlighted && styles.bubbleHighlight,
-          ]}
-        >
+        <View style={[styles.messageRow, isMine ? styles.messageRowMine : styles.messageRowTheirs]}>
+          <View
+            style={[
+              styles.bubble,
+              isMine ? styles.bubbleMine : styles.bubbleTheirs,
+              isHighlighted && styles.bubbleHighlight,
+            ]}
+          >
           {mediaKind === "image" && mediaUri ? (
             <Pressable onPress={() => openMediaViewer(item._id)}>
               <Image source={{ uri: mediaUri }} style={styles.mediaThumbnail} resizeMode="cover" />
@@ -1033,6 +1104,7 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
               />
             )}
           </View>
+          </View>
         </View>
       );
     },
@@ -1041,10 +1113,10 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
 
   const partnerName = partner?.fullname ?? "Chat";
   const partnerAvatar = getS3ImageUrl(partner?.profile_picture);
-  const inputBottomInset =
-    keyboardHeight > 0
-      ? Math.max(8, keyboardHeight - insets.bottom)
-      : insets.bottom + 4;
+  const showPolicyBanner = !!(chatPolicy && !chatPolicy.hasPaidSession);
+  const composerBottomInset = Math.max(insets.bottom, 8);
+  const keyboardVerticalOffset =
+    insets.top + 56 + (showPolicyBanner ? 48 : 0);
 
   const sharedMedia = chatMediaItems;
 
@@ -1122,7 +1194,7 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
       </View>
 
       {/* Chat policy banner */}
-      {chatPolicy && !chatPolicy.hasPaidSession && (
+      {showPolicyBanner && (
         <View style={styles.policyBanner}>
           <Ionicons name="information-circle-outline" size={16} color="#f59e0b" />
           <Text style={styles.policyText}>
@@ -1136,9 +1208,8 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
       <KeyboardAvoidingView
         style={styles.keyboardWrap}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}
+        keyboardVerticalOffset={Platform.OS === "ios" ? keyboardVerticalOffset : 0}
       >
-        {/* Messages */}
         <SectionList
           ref={sectionListRef}
           sections={messageSections}
@@ -1147,17 +1218,17 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
           renderSectionHeader={({ section: { title } }) => (
             <ChatDaySeparator label={title} />
           )}
-          stickySectionHeadersEnabled
-          contentContainerStyle={styles.messageList}
-          onContentSizeChange={() =>
-            sectionListRef.current?.scrollToLocation({
-              sectionIndex: Math.max(0, messageSections.length - 1),
-              itemIndex: Math.max(
-                0,
-                (messageSections[messageSections.length - 1]?.data.length ?? 1) - 1
-              ),
-              animated: false,
-            })
+          stickySectionHeadersEnabled={false}
+          contentContainerStyle={[
+            styles.messageList,
+            allMessages.length === 0 && styles.messageListEmpty,
+          ]}
+          ListEmptyComponent={
+            <View style={styles.emptyChat}>
+              <Text style={styles.emptyChatText}>
+                Say hello — your messages are private and secure.
+              </Text>
+            </View>
           }
           onScrollToIndexFailed={() => {
             /* SectionList scroll recovery */
@@ -1167,75 +1238,95 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
           keyboardShouldPersistTaps="handled"
         />
 
-        {/* Emoji tray */}
-        {showEmoji && (
-          <View style={styles.emojiTray}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.emojiScroll}>
-              {EMOJI_LIST.map((e) => (
-                <Pressable key={e} onPress={() => insertEmoji(e)} style={styles.emojiBtn}>
-                  <Text style={styles.emojiText}>{e}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
-        )}
+        <View style={styles.composer}>
+          {showEmoji && !recording && (
+            <View style={styles.emojiTray}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyboardShouldPersistTaps="always"
+                contentContainerStyle={styles.emojiScroll}
+              >
+                {EMOJI_LIST.map((e) => (
+                  <Pressable key={e} onPress={() => insertEmoji(e)} style={styles.emojiBtn}>
+                    <Text style={styles.emojiText}>{e}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          )}
 
-        {/* Recording / Input bar */}
-        {recording ? (
-          <View style={[styles.recordBar, { paddingBottom: inputBottomInset }]}>
-          <Animated.View style={[styles.recordDot, { transform: [{ scale: pulseAnim }] }]} />
-          <Text style={styles.recordTime}>{formatDuration(recordSecs * 1000)}</Text>
-          <Text style={styles.recordLabel}>Recording...</Text>
-          <View style={{ flex: 1 }} />
-          <Pressable onPress={cancelRecording} hitSlop={10} style={styles.recordCancel}>
-            <Ionicons name="trash-outline" size={22} color={themeColors.error} />
-          </Pressable>
-          <Pressable onPress={finishRecording} hitSlop={10} style={styles.recordSend}>
-            <Ionicons name="send" size={20} color="#fff" />
-          </Pressable>
-        </View>
-      ) : (
-        <View style={[styles.inputBar, { paddingBottom: inputBottomInset }]}>
-          {rateLimited ? (
-            <View style={styles.limitedBar}>
-              <Ionicons name="lock-closed-outline" size={18} color={themeColors.textMuted} />
-              <Text style={styles.limitedText}>Book a lesson to continue chatting</Text>
+          {recording ? (
+            <View style={[styles.recordBar, { paddingBottom: composerBottomInset }]}>
+              <Animated.View style={[styles.recordDot, { transform: [{ scale: pulseAnim }] }]} />
+              <Text style={styles.recordTime}>{formatDuration(recordSecs * 1000)}</Text>
+              <Text style={styles.recordLabel}>Recording...</Text>
+              <View style={{ flex: 1 }} />
+              <Pressable onPress={cancelRecording} hitSlop={10} style={styles.recordCancel}>
+                <Ionicons name="trash-outline" size={22} color={themeColors.danger} />
+              </Pressable>
+              <Pressable onPress={finishRecording} hitSlop={10} style={styles.recordSend}>
+                <Ionicons name="send" size={20} color="#fff" />
+              </Pressable>
             </View>
           ) : (
-            <>
-              <Pressable onPress={() => setShowAttach(true)} hitSlop={8} style={styles.iconBtn}>
-                <Ionicons name="add-circle-outline" size={26} color={themeColors.brandNavy} />
-              </Pressable>
-              <Pressable onPress={() => setShowEmoji((v) => !v)} hitSlop={8} style={styles.iconBtn}>
-                <Ionicons name={showEmoji ? "happy" : "happy-outline"} size={24} color={showEmoji ? themeColors.brandNavy : themeColors.textMuted} />
-              </Pressable>
-              <TextInput
-                style={styles.textInput}
-                value={text}
-                onChangeText={handleTextChange}
-                placeholder="Message..."
-                placeholderTextColor={themeColors.textMuted}
-                multiline
-                maxLength={2000}
-                onFocus={() => setShowEmoji(false)}
-              />
-              {text.trim() ? (
-                <Pressable style={styles.sendBtn} onPress={sendMessage} disabled={isSendingMessage}>
-                  {isSendingMessage ? (
-                    <ActivityIndicator size={16} color="#fff" />
-                  ) : (
-                    <Ionicons name="send" size={18} color="#fff" />
-                  )}
-                </Pressable>
+            <View style={[styles.inputBar, { paddingBottom: composerBottomInset }]}>
+              {rateLimited ? (
+                <View style={styles.limitedBar}>
+                  <Ionicons name="lock-closed-outline" size={18} color={themeColors.textMuted} />
+                  <Text style={styles.limitedText}>Book a lesson to continue chatting</Text>
+                </View>
               ) : (
-                <Pressable style={styles.iconBtn} onPress={startRecording}>
-                  <Ionicons name="mic-outline" size={26} color={themeColors.brandNavy} />
-                </Pressable>
+                <>
+                  <Pressable onPress={() => setShowAttach(true)} hitSlop={8} style={styles.iconBtn}>
+                    <Ionicons name="add-circle-outline" size={26} color={themeColors.brandNavy} />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      if (showEmoji) {
+                        setShowEmoji(false);
+                      } else {
+                        Keyboard.dismiss();
+                        setShowEmoji(true);
+                      }
+                    }}
+                    hitSlop={8}
+                    style={styles.iconBtn}
+                  >
+                    <Ionicons
+                      name={showEmoji ? "happy" : "happy-outline"}
+                      size={24}
+                      color={showEmoji ? themeColors.brandNavy : themeColors.textMuted}
+                    />
+                  </Pressable>
+                  <TextInput
+                    style={styles.textInput}
+                    value={text}
+                    onChangeText={handleTextChange}
+                    placeholder="Message..."
+                    placeholderTextColor={themeColors.textMuted}
+                    multiline
+                    maxLength={2000}
+                    onFocus={() => setShowEmoji(false)}
+                  />
+                  {text.trim() ? (
+                    <Pressable style={styles.sendBtn} onPress={sendMessage} disabled={isSendingMessage}>
+                      {isSendingMessage ? (
+                        <ActivityIndicator size={16} color="#fff" />
+                      ) : (
+                        <Ionicons name="send" size={18} color="#fff" />
+                      )}
+                    </Pressable>
+                  ) : (
+                    <Pressable style={styles.iconBtn} onPress={startRecording}>
+                      <Ionicons name="mic-outline" size={26} color={themeColors.brandNavy} />
+                    </Pressable>
+                  )}
+                </>
               )}
-            </>
+            </View>
           )}
         </View>
-        )}
       </KeyboardAvoidingView>
 
       {/* Upload overlay */}

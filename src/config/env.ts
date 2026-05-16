@@ -43,6 +43,13 @@ export const WEB_APP_ORIGIN = normalizeEnvUrl(
 export const STRIPE_PUBLISHABLE_KEY =
   (process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "").trim() || "";
 
+export const GOOGLE_IOS_CLIENT_ID =
+  (process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? "").trim() || "";
+export const GOOGLE_ANDROID_CLIENT_ID =
+  (process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? "").trim() || "";
+export const GOOGLE_WEB_CLIENT_ID =
+  (process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "").trim() || "";
+
 if (__DEV__) {
   // eslint-disable-next-line no-console
   console.log("[nq-mobile] API_BASE_URL =", API_BASE_URL, "| WEB_APP_ORIGIN =", WEB_APP_ORIGIN);

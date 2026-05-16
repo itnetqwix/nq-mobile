@@ -1,9 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { getPinSessionToken } from "../security/pinSessionStore";
 import { fetchWalletConfig } from "../walletApi";
 import { useWalletBalance } from "./useWalletBalance";
 
 export function useWalletPaymentOption(priceDollars: number, enabled = true) {
   const { data: balance, refetch: refetchBalance } = useWalletBalance(enabled);
+  const [storedPinToken, setStoredPinToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!enabled) return;
+    void getPinSessionToken().then(setStoredPinToken);
+  }, [enabled, balance?.pinSet]);
   const { data: config } = useQuery({
     queryKey: ["wallet", "config"],
     queryFn: fetchWalletConfig,
@@ -27,6 +35,7 @@ export function useWalletPaymentOption(priceDollars: number, enabled = true) {
     shortfall,
     needsPin,
     pinSet: balance?.pinSet,
+    storedPinToken,
     refetchBalance,
   };
 }

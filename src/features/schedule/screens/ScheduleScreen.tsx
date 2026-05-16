@@ -65,7 +65,7 @@ function TrainerSchedule() {
 
   const openScheduleEditor = useCallback(() => {
     try {
-      navigation.navigate("Menu", {
+      navigation.navigate("Home", {
         screen: "ShellSurface",
         params: { surfaceId: "trainerSchedule" },
       });

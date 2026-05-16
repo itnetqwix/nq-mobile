@@ -25,9 +25,9 @@ import type { AuthScreenProps } from "../../../navigation/types";
 
 const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 
-export function SignUpScreen({ navigation }: AuthScreenProps<"SignUp">) {
+export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
   const [fullname, setFullname] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(route.params?.prefillEmail ?? "");
   const [password, setPassword] = useState("");
   const [mobile, setMobile] = useState("");
   const [accountType, setAccountType] = useState<string>(AccountType.TRAINEE);

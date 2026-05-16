@@ -12,6 +12,7 @@ import { NotificationProvider } from "../features/notifications/NotificationCont
 import { SessionBookingProvider } from "../features/sessions/SessionBookingContext";
 import { PushNotificationBridge } from "../features/notifications/PushNotificationBridge";
 import { navigationRef } from "../navigation/navigationRef";
+import { LoaderProvider } from "../components/brand/LoaderProvider";
 import { ThemeProvider } from "../theme/ThemeContext";
 import { ThemedNavigationContainer } from "./ThemedNavigationContainer";
 
@@ -47,6 +48,7 @@ export function AppRoot() {
       <SafeAreaProvider>
         <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
           <ThemeProvider>
+            <LoaderProvider>
             <QueryClientProvider client={queryClient}>
               <AuthProvider>
                 <SocketProvider>
@@ -61,6 +63,7 @@ export function AppRoot() {
                 </SocketProvider>
               </AuthProvider>
             </QueryClientProvider>
+            </LoaderProvider>
           </ThemeProvider>
         </StripeProvider>
       </SafeAreaProvider>

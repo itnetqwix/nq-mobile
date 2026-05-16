@@ -14,6 +14,7 @@ import { useAuth } from "../features/auth/context/AuthContext";
 import type { MainTabParamList } from "./types";
 import type { NavigatorScreenParams } from "@react-navigation/native";
 import { navMatrixFor, type NavMatrixEntry } from "./navMatrix";
+import { getActiveNavState, isNavEntryActive } from "./activeNavState";
 
 export function DashboardDrawerContent(props: DrawerContentComponentProps) {
   const insets = useSafeAreaInsets();
@@ -23,6 +24,11 @@ export function DashboardDrawerContent(props: DrawerContentComponentProps) {
   const drawerEntries = useMemo(
     () => navMatrixFor("drawer", accountType),
     [accountType]
+  );
+
+  const activeNav = useMemo(
+    () => getActiveNavState(props.state),
+    [props.state]
   );
 
   const close = () => props.navigation.closeDrawer();
@@ -38,31 +44,32 @@ export function DashboardDrawerContent(props: DrawerContentComponentProps) {
   const goEntry = (entry: NavMatrixEntry) => {
     const { target } = entry;
     if (target.kind === "tab") {
-      goTab(target.tab);
+      if (target.tab === "Home") {
+        props.navigation.navigate("Tabs", {
+          screen: "Home",
+          params: { screen: "DashboardHome" },
+        } as NavigatorScreenParams<MainTabParamList>);
+      } else {
+        goTab(target.tab);
+      }
       return;
     }
     if (target.kind === "feature") {
-      props.navigation.navigate(
-        "Tabs",
-        {
-          screen: "Menu",
-          params: {
-            screen: "DashboardFeature",
-            params: { featureId: target.featureId },
-          },
-        } as NavigatorScreenParams<MainTabParamList>
-      );
+      props.navigation.navigate("Tabs", {
+        screen: "Home",
+        params: {
+          screen: "DashboardFeature",
+          params: { featureId: target.featureId },
+        },
+      } as NavigatorScreenParams<MainTabParamList>);
     } else if (target.kind === "shell") {
-      props.navigation.navigate(
-        "Tabs",
-        {
-          screen: "Menu",
-          params: {
-            screen: "ShellSurface",
-            params: { surfaceId: target.surfaceId },
-          },
-        } as NavigatorScreenParams<MainTabParamList>
-      );
+      props.navigation.navigate("Tabs", {
+        screen: "Home",
+        params: {
+          screen: "ShellSurface",
+          params: { surfaceId: target.surfaceId },
+        },
+      } as NavigatorScreenParams<MainTabParamList>);
     }
     close();
   };
@@ -100,18 +107,42 @@ export function DashboardDrawerContent(props: DrawerContentComponentProps) {
         )}
       </View>
 
-      {drawerEntries.map((entry) => (
-        <Pressable
-          key={entry.id}
-          style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-          onPress={() => goEntry(entry)}
-        >
-          <View style={styles.iconWrap}>
-            <Ionicons name={entry.icon} size={22} color={colors.textSecondary} />
-          </View>
-          <Text style={[styles.rowLabel, { color: colors.text }]}>{entry.label}</Text>
-        </Pressable>
-      ))}
+      {drawerEntries.map((entry) => {
+        const active = isNavEntryActive(entry, activeNav);
+        return (
+          <Pressable
+            key={entry.id}
+            style={({ pressed }) => [
+              styles.row,
+              active && { backgroundColor: colors.sidebarActiveBg },
+              pressed && !active && styles.rowPressed,
+            ]}
+            onPress={() => goEntry(entry)}
+          >
+            <View
+              style={[
+                styles.iconWrap,
+                active && { backgroundColor: `${colors.sidebarActive}18` },
+              ]}
+            >
+              <Ionicons
+                name={entry.icon}
+                size={22}
+                color={active ? colors.sidebarActive : colors.textSecondary}
+              />
+            </View>
+            <Text
+              style={[
+                styles.rowLabel,
+                { color: active ? colors.sidebarActive : colors.text },
+                active && styles.rowLabelActive,
+              ]}
+            >
+              {entry.label}
+            </Text>
+          </Pressable>
+        );
+      })}
 
       <View style={styles.spacer} />
 
@@ -129,33 +160,32 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { flexGrow: 1 },
   brandBlock: {
-    paddingHorizontal: space.md,
-    paddingBottom: space.lg,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: space.lg,
+    paddingBottom: space.md,
     marginBottom: space.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  brandTitle: {
-    ...typography.titleLg,
-  },
-  brandSub: { ...typography.caption, marginTop: 2, fontWeight: "600" },
-  userLine: { ...typography.bodySm, marginTop: space.sm },
+  brandTitle: { ...typography.titleMd, fontWeight: "800" },
+  brandSub: { ...typography.caption, marginTop: 2 },
+  userLine: { ...typography.bodySm, marginTop: space.xs },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
+    paddingVertical: space.sm + 2,
     paddingHorizontal: space.md,
     marginHorizontal: space.sm,
     borderRadius: radii.md,
-    gap: space.sm,
+    gap: space.md,
   },
-  rowPressed: { opacity: 0.85 },
+  rowPressed: { opacity: 0.75 },
   iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: radii.sm,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },
-  rowLabel: { flex: 1, ...typography.subtitle },
-  spacer: { flexGrow: 1, minHeight: space.md },
+  rowLabel: { ...typography.bodyMd, flex: 1 },
+  rowLabelActive: { fontWeight: "700" },
+  spacer: { flex: 1, minHeight: space.lg },
 });

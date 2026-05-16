@@ -1,6 +1,6 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import React from "react";
-import type { MenuStackParamList } from "../../../navigation/types";
+import type { HomeStackParamList } from "../../../navigation/types";
 import { NotificationsScreen } from "../../notifications/screens/NotificationsScreen";
 import { InviteFriendsScreen } from "./InviteFriendsScreen";
 import { TransactionsScreen } from "./TransactionsScreen";
@@ -13,7 +13,7 @@ import { SettingsScreen } from "./SettingsScreen";
 import { TrainerScheduleScreen } from "./TrainerScheduleScreen";
 import { WalletNavigator } from "../../wallet/navigation/WalletNavigator";
 
-export type ShellSurfaceScreenProps = NativeStackScreenProps<MenuStackParamList, "ShellSurface">;
+export type ShellSurfaceScreenProps = NativeStackScreenProps<HomeStackParamList, "ShellSurface">;
 
 export function ShellSurfaceScreen({ route }: ShellSurfaceScreenProps) {
   const { surfaceId } = route.params;

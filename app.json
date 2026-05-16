@@ -98,7 +98,8 @@
           "color": "#000080",
           "defaultChannel": "default"
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {

@@ -2,6 +2,7 @@ import { useStripe } from "@stripe/stripe-react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useEffect, useRef, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useLoader } from "../../../components/brand/LoaderProvider";
 import { Button } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { createTopUpIntent, fetchWalletBalance, fetchWalletConfig } from "../walletApi";
@@ -37,6 +38,7 @@ export function WalletTopUpScreen() {
 }));
 
   const queryClient = useQueryClient();
+  const { showLoader, hideLoader } = useLoader();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [amount, setAmount] = useState("25");
   const [loading, setLoading] = useState(false);
@@ -84,6 +86,7 @@ export function WalletTopUpScreen() {
       return;
     }
     setLoading(true);
+    showLoader("Processing payment…");
     try {
       const amountMinor = Math.round(dollars * 100);
       const intent = await createTopUpIntent(amountMinor);
@@ -103,6 +106,7 @@ export function WalletTopUpScreen() {
     } catch (e: any) {
       Alert.alert("Top-up failed", e?.message ?? "Could not complete payment");
     } finally {
+      hideLoader();
       setLoading(false);
     }
   };

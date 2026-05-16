@@ -129,9 +129,15 @@ export function WizardStepPayment({
     createIntent();
   }, [createIntent]);
 
+  useEffect(() => {
+    if (wallet.storedPinToken && !pinSessionToken) {
+      setPinSessionToken(wallet.storedPinToken);
+    }
+  }, [wallet.storedPinToken, pinSessionToken]);
+
   const handleWalletPay = useCallback(async () => {
     try {
-      let token = pinSessionToken;
+      let token = pinSessionToken ?? wallet.storedPinToken ?? undefined;
       if (wallet.needsPin && !token) {
         if (!/^\d{6}$/.test(pin)) {
           Alert.alert("PIN required", "Enter your 6-digit wallet PIN for this payment.");

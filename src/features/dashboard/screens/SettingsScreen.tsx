@@ -27,6 +27,11 @@ import type { MenuStackParamList, ShellSurfaceRouteId } from "../../../navigatio
 import { space, typography, useThemeColors } from "../../../theme";
 import { useTheme, type ThemeMode } from "../../../theme/ThemeContext";
 import { useAuth } from "../../auth/context/AuthContext";
+import {
+  biometricLabel,
+  isAppUnlockEnabled,
+  setAppUnlockEnabled,
+} from "../../auth/security/appUnlock";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import {
   patchUserNotificationSettings,
@@ -77,6 +82,13 @@ export function SettingsScreen() {
   const [notif, setNotif] = useState<UserNotificationPrefs>(() => readNotificationPrefs(user));
   const [privacyBusy, setPrivacyBusy] = useState(false);
   const [notifBusy, setNotifBusy] = useState<string | null>(null);
+  const [appUnlockOn, setAppUnlockOn] = useState(false);
+  const [unlockLabel, setUnlockLabel] = useState("Biometrics");
+
+  useEffect(() => {
+    void isAppUnlockEnabled().then(setAppUnlockOn);
+    void biometricLabel().then(setUnlockLabel);
+  }, []);
 
   useEffect(() => {
     setIsPrivate(Boolean(user?.isPrivate));
@@ -251,6 +263,32 @@ export function SettingsScreen() {
             />
           </React.Fragment>
         ))}
+      </Card>
+
+      <SectionHeader label="Security" />
+      <Card variant="outlined" padding={0} style={styles.sectionCard}>
+        <ListRow
+          icon="finger-print-outline"
+          title={`${unlockLabel} app unlock`}
+          subtitle="Require biometrics when opening NetQwix"
+          rightAdornment={
+            <Switch
+              value={appUnlockOn}
+              onValueChange={async (v) => {
+                await setAppUnlockEnabled(v);
+                setAppUnlockOn(v);
+              }}
+              trackColor={{ false: c.neutral200, true: c.brandAccentSubtle }}
+              thumbColor={appUnlockOn ? c.brandAccent : c.neutral100}
+            />
+          }
+        />
+        <Divider />
+        <ListRow
+          icon="wallet-outline"
+          title="Wallet security"
+          onPress={() => navigation.navigate("ShellSurface", { surfaceId: "wallet" })}
+        />
       </Card>
 
       <SectionHeader label="Privacy" />
