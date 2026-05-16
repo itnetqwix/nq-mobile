@@ -8,7 +8,6 @@ import {
   Alert,
   Animated,
   SectionList,
-  type SectionList,
   Image,
   Keyboard,
   KeyboardAvoidingView,
@@ -25,7 +24,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
-import { radii, space, typography, useThemeColors } from "../../../theme";
+import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { useAuth } from "../../auth/context/AuthContext";
 import { useSocket } from "../../socket/SocketContext";
@@ -186,11 +185,8 @@ const statusStyles = StyleSheet.create({
   row: { marginLeft: 4 },
 });
 
-// ─── Voice note player ──────────────────────────────────────────────────────
-
-function VoicePlayer({ uri, isMine }: { uri: string; isMine: boolean }) {
-  const themeColors = useThemeColors();
-  const styles = useThemedStyles((themeColors) => StyleSheet.create({
+function useChatRoomStyles() {
+  return useThemedStyles((themeColors) => StyleSheet.create({
   root: { flex: 1, backgroundColor: themeColors.surface },
   header: {
     flexDirection: "row",
@@ -365,6 +361,12 @@ function VoicePlayer({ uri, isMine }: { uri: string; isMine: boolean }) {
   profileActionBtn: { alignItems: "center", gap: 6 },
   profileActionText: { fontSize: 13, color: themeColors.textMuted, fontWeight: "500" },
 }));
+}
+
+// ─── Voice note player ──────────────────────────────────────────────────────
+
+function VoicePlayer({ uri, isMine }: { uri: string; isMine: boolean }) {
+  const themeColors = useThemeColors();
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [playing, setPlaying] = useState(false);
   const [pos, setPos] = useState(0);
@@ -428,6 +430,7 @@ const voiceStyles = StyleSheet.create({
 
 export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
   const themeColors = useThemeColors();
+  const styles = useChatRoomStyles();
   const insets = useSafeAreaInsets();
   const { user: authUser } = useAuth();
   const { socket } = useSocket();
@@ -484,14 +487,6 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
     const hideSub = Keyboard.addListener(hideEvent, onHide);
     return () => { showSub.remove(); hideSub.remove(); };
   }, []);
-
-  useEffect(() => {
-    if (keyboardHeight <= 0) return;
-    const t = setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }, 80);
-    return () => clearTimeout(t);
-  }, [keyboardHeight]);
 
   useEffect(() => {
     if (partner?._id) setPartnerOnline(isUserOnline(partner._id));
@@ -587,6 +582,20 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
     () => groupMessagesByDayAsc(allMessages),
     [allMessages]
   );
+
+  useEffect(() => {
+    if (keyboardHeight <= 0) return;
+    const t = setTimeout(() => {
+      const lastSection = messageSections.length - 1;
+      if (lastSection < 0) return;
+      sectionListRef.current?.scrollToLocation({
+        sectionIndex: lastSection,
+        itemIndex: Math.max(0, (messageSections[lastSection]?.data.length ?? 1) - 1),
+        animated: true,
+      });
+    }, 80);
+    return () => clearTimeout(t);
+  }, [keyboardHeight, messageSections]);
 
   // Mark messages as read when opening and receiving
   useEffect(() => {
@@ -1421,7 +1430,7 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
                                 onPress={() => jumpToMessage(m._id)}
                               >
                                 <Text style={styles.searchHitTime}>
-                                  {formatDayLabel(m.createdAt)} · {formatTime(m.createdAt)}
+                                  {formatChatDayLabel(m.createdAt)} · {formatTime(m.createdAt)}
                                 </Text>
                                 <Text style={styles.searchHitText}>
                                   {parts.map((p, i) => (

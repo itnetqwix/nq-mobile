@@ -20,7 +20,7 @@ import { AccountType } from "../../../constants/accountType";
 import { Button, EmptyState, FormField, ImageWithSkeleton, Pill, Skeleton } from "../../../components/ui";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
-import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
+import { type AppColors, radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
 import {
   fetchScheduledMeetings,
@@ -33,9 +33,8 @@ const REASONS: RaiseConcernReason[] = ["Technical issue", "Request for Refund"];
 
 type ScreenMode = "list" | "form" | "success" | "tracker";
 
-export function ReportIssueScreen() {
-  const c = useThemeColors();
-  const styles = useThemedStyles((palette) => StyleSheet.create({
+function useReportIssueStyles() {
+  return useThemedStyles((palette) => StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.surface },
   hero: {
     padding: space.md,
@@ -181,7 +180,12 @@ export function ReportIssueScreen() {
   progressLine: { flex: 1, height: 2, backgroundColor: palette.border, marginHorizontal: 4 },
   progressLineDone: { backgroundColor: palette.success },
   progressLabel: { ...typography.caption, color: palette.textMuted, fontSize: 9 },
-});
+}));
+}
+
+export function ReportIssueScreen() {
+  const c = useThemeColors();
+  const styles = useReportIssueStyles();
 
   const route = useRoute<RouteProp<MenuStackParamList, "ReportIssue">>();
   const { user, accountType } = useAuth();
@@ -508,7 +512,7 @@ export function ReportIssueScreen() {
   );
 }
 
-function getStatusConfig(status?: string) {
+function getStatusConfig(status: string | undefined, c: AppColors) {
   switch (status?.toLowerCase()) {
     case "resolved":
     case "closed":
@@ -523,7 +527,9 @@ function getStatusConfig(status?: string) {
 }
 
 function ReportTrackerCard({ report }: { report: any }) {
-  const cfg = getStatusConfig(report.ticket_status);
+  const c = useThemeColors();
+  const styles = useReportIssueStyles();
+  const cfg = getStatusConfig(report.ticket_status, c);
   const date = report.createdAt
     ? new Date(report.createdAt).toLocaleDateString(undefined, {
         month: "short", day: "numeric", year: "numeric",
@@ -613,6 +619,8 @@ function SessionCard({
   isTrainer: boolean;
   onPress: () => void;
 }) {
+  const c = useThemeColors();
+  const styles = useReportIssueStyles();
   const peer = isTrainer
     ? session.trainee_info ?? session.trainee_id
     : session.trainer_info ?? session.trainer_id;

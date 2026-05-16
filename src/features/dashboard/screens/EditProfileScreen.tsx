@@ -73,7 +73,7 @@ export function EditProfileScreen() {
     color: palette.brandAccent,
     fontSize: 13,
   },
-});
+}));
 
   const { user, accountType, refreshUser } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<MenuStackParamList>>();

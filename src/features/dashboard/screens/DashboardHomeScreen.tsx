@@ -54,296 +54,8 @@ import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wi
 import { ScheduledBookingModal } from "../../bookings/screens/ScheduledBookingModal";
 import { getTrainerCategories } from "../../bookexpert/lib/trainerUtils";
 
-function Avatar({
-  uri,
-  name,
-  size = 56,
-  onlineStatus,
-}: {
-  uri?: string;
-  name?: string;
-  size?: number;
-  onlineStatus?: "online" | "offline";
-}) {
-  const [failed, setFailed] = React.useState(false);
-  const url = getS3ImageUrl(uri);
-
-  React.useEffect(() => {
-    setFailed(false);
-  }, [uri]);
-
-  const inner =
-    !url || failed ? (
-      <View style={[styles.avatarFallback, { width: size, height: size, borderRadius: size / 2 }]}>
-        <Text style={[styles.avatarInitial, { fontSize: size * 0.38 }]}>
-          {(name ?? "?")[0]?.toUpperCase()}
-        </Text>
-      </View>
-    ) : (
-      <ImageWithSkeleton
-        uri={url}
-        width={size}
-        height={size}
-        borderRadius={size / 2}
-        resizeMode="cover"
-        onLoadError={() => setFailed(true)}
-        accessibilityLabel={name ? `Photo of ${name}` : "Profile photo"}
-      />
-    );
-
-  if (!onlineStatus) return inner;
-
-  return (
-    <View style={{ width: size, height: size }}>
-      {inner}
-      <View
-        style={
-          onlineStatus === "online" ? styles.avatarOnlineDot : styles.avatarOfflineDot
-        }
-      />
-    </View>
-  );
-}
-
-function SectionHeader({ title }: { title: string }) {
-  return <Text style={styles.sectionHeader}>{title}</Text>;
-}
-
-function CoachCard({
-  trainer,
-  onView,
-}: {
-  trainer: any;
-  onView: (trainer: any) => void;
-}) {
-  const name = trainer?.fullname || trainer?.fullName || "Coach";
-  const cats = getTrainerCategories(trainer).slice(0, 2).join(", ");
-  return (
-    <Pressable
-      style={({ pressed }) => [pressed && { opacity: 0.9 }]}
-      onPress={() => onView(trainer)}
-      accessibilityRole="button"
-      accessibilityLabel={`View coach ${name}`}
-    >
-      <TrainerBoxCard style={{ width: 132, flexShrink: 0 }}>
-        <Avatar uri={trainer?.profile_picture} name={name} size={70} onlineStatus="online" />
-        <Text style={styles.coachName} numberOfLines={1}>{name}</Text>
-        {!!cats && <Text style={styles.coachCat} numberOfLines={1}>{cats}</Text>}
-        <View style={styles.bookBtn}>
-          <Text style={styles.bookBtnText}>View profile</Text>
-        </View>
-      </TrainerBoxCard>
-    </Pressable>
-  );
-}
-
-function SessionCard({
-  session,
-  accountType,
-  onPress,
-}: {
-  session: any;
-  accountType: string | null;
-  onPress?: () => void;
-}) {
-  const isTrainer = accountType === AccountType.TRAINER;
-  const other = isTrainer ? session.trainee_info : session.trainer_info;
-  const name = other?.fullname || other?.fullName || "Unknown";
-  const date = session.booked_date ?? "";
-  const time =
-    session.session_start_time && session.session_end_time
-      ? `${session.session_start_time} – ${session.session_end_time}`
-      : session.start_time && session.end_time
-        ? `${session.start_time} – ${session.end_time}`
-        : "";
-  const pending = isPendingBooking(session);
-  const status = normalizeSessionStatus(session.status);
-
-  const inner = (
-    <>
-      <Avatar uri={other?.profile_picture} name={name} size={52} />
-      <View style={styles.sessionInfo}>
-        <Text style={styles.sessionName}>{name}</Text>
-        {!!date && <Text style={styles.sessionMeta}>{String(date).slice(0, 10)}</Text>}
-        {!!time && <Text style={styles.sessionMeta}>{time}</Text>}
-        <Pill
-          label={pending ? "Needs confirmation" : status}
-          tone={pending ? "warning" : getStatusTone(status)}
-          style={{ marginTop: 4 }}
-        />
-      </View>
-      <Ionicons name="chevron-forward" size={18} color={themeColors.textMuted} />
-    </>
-  );
-
-  if (onPress) {
-    return (
-      <Pressable
-        style={({ pressed }) => [styles.sessionCard, pressed && { opacity: 0.85 }]}
-        onPress={onPress}
-        accessibilityRole="button"
-      >
-        {inner}
-      </Pressable>
-    );
-  }
-
-  return <View style={styles.sessionCard}>{inner}</View>;
-}
-
-function getStatusTone(status?: string): React.ComponentProps<typeof Pill>["tone"] {
-  switch (status) {
-    case "confirmed":
-      return "success";
-    case "completed":
-      return "neutral";
-    case "cancelled":
-      return "danger";
-    default:
-      return "info";
-  }
-}
-
-function RecentUserChip({ user, label }: { user: any; label?: string }) {
-  const name = user?.fullname || user?.fullName || label || "User";
-  return (
-    <View style={styles.recentChip}>
-      <Avatar uri={user?.profile_picture} name={name} size={44} />
-      <Text style={styles.recentName} numberOfLines={1}>{name}</Text>
-    </View>
-  );
-}
-
-/** Web `NavHomePage` friend request tiles — column card with navy border */
-function FriendRequestWebTile({
-  request,
-  onAccept,
-  onReject,
-}: {
-  request: any;
-  onAccept: (id: string) => void;
-  onReject: (id: string) => void;
-}) {
-  const sender = request?.senderId;
-  const name = sender?.fullname || sender?.fullName || "User";
-  return (
-    <View style={webHomeStyles.friendRequestTile}>
-      <Avatar uri={sender?.profile_picture} name={name} size={72} />
-      <Text style={[styles.friendName, { marginTop: 10, textAlign: "center" }]} numberOfLines={2}>
-        {name}
-      </Text>
-      <View style={[styles.friendActions, { justifyContent: "center" }]}>
-        <Pressable
-          style={[styles.friendBtn, { backgroundColor: themeColors.success }]}
-          onPress={() => onAccept(request._id)}
-          accessibilityRole="button"
-          accessibilityLabel={`Accept friend request from ${name}`}
-        >
-          <Text style={styles.friendBtnText}>Accept</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.friendBtn, { backgroundColor: themeColors.danger }]}
-          onPress={() => onReject(request._id)}
-          accessibilityRole="button"
-          accessibilityLabel={`Reject friend request from ${name}`}
-        >
-          <Text style={styles.friendBtnText}>Reject</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
-function QuickActionButton({
-  icon,
-  label,
-  onPress,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      style={({ pressed }) => [styles.quickBtn, pressed && styles.quickBtnPressed]}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-    >
-      <Ionicons name={icon} size={26} color={themeColors.brandNavy} />
-      <Text style={styles.quickBtnText}>{label}</Text>
-    </Pressable>
-  );
-}
-
-function AIRecommendedSection({ onView }: { onView: (t: any) => void }) {
-  const { data, isLoading } = useQuery({
-    queryKey: ["aiRecommendations"],
-    queryFn: async () => {
-      const res = await apiClient.get(API_ROUTES.ai.recommendTrainers);
-      return res.data?.result?.recommendations || [];
-    },
-    staleTime: 300_000,
-    retry: 1,
-  });
-
-  if (isLoading) {
-    return (
-      <HomeMainCont title="Recommended For You ✨" testID="card ai-recommended">
-        <View style={{ flexDirection: "row", gap: space.sm }}>
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} width={160} height={180} radius={radii.md} />
-          ))}
-        </View>
-      </HomeMainCont>
-    );
-  }
-
-  if (!data?.length) return null;
-
-  return (
-    <HomeMainCont title="Recommended For You ✨" testID="card ai-recommended">
-      <FlatList
-        horizontal
-        nestedScrollEnabled
-        data={data.slice(0, 6)}
-        keyExtractor={(item: any, i: number) => item?.trainerId ?? String(i)}
-        renderItem={({ item }: { item: any }) => (
-          <Pressable
-            style={({ pressed }) => [pressed && { opacity: 0.9 }]}
-            onPress={() => item.trainer && onView(item.trainer)}
-          >
-            <TrainerBoxCard style={{ width: 150, flexShrink: 0 }}>
-              <Avatar uri={item.trainer?.profile_picture} name={item.trainer?.fullname} size={60} />
-              <Text style={styles.coachName} numberOfLines={1}>{item.trainer?.fullname || "Coach"}</Text>
-              <Text style={[styles.coachCat, { fontSize: 11 }]} numberOfLines={1}>
-                {item.trainer?.category || ""}
-              </Text>
-              <Text style={{ fontSize: 10, color: themeColors.textMuted, textAlign: "center", marginTop: 2 }} numberOfLines={2}>
-                {item.reason || ""}
-              </Text>
-              <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4, gap: 2 }}>
-                <Ionicons name="star" size={12} color="#f59e0b" />
-                <Text style={{ fontSize: 11, color: themeColors.text, fontWeight: "600" }}>
-                  {item.trainer?.avgRating || "New"}
-                </Text>
-              </View>
-              <View style={styles.bookBtn}>
-                <Text style={styles.bookBtnText}>View profile</Text>
-              </View>
-            </TrainerBoxCard>
-          </Pressable>
-        )}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: space.sm, paddingVertical: 4 }}
-      />
-    </HomeMainCont>
-  );
-}
-
-export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) {
-  const themeColors = useThemeColors();
-  const styles = useThemedStyles((palette) => StyleSheet.create({
+function useDashboardHomeStyles() {
+  return useThemedStyles((palette) => StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.surface },
   content: {},
 
@@ -492,8 +204,311 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
     gap: 4,
   },
   seeAllText: { fontSize: 14, color: palette.brandNavy, fontWeight: "600" },
+}));
+}
 
-});
+function Avatar({
+  uri,
+  name,
+  size = 56,
+  onlineStatus,
+}: {
+  uri?: string;
+  name?: string;
+  size?: number;
+  onlineStatus?: "online" | "offline";
+}) {
+  const styles = useDashboardHomeStyles();
+  const [failed, setFailed] = React.useState(false);
+  const url = getS3ImageUrl(uri);
+
+  React.useEffect(() => {
+    setFailed(false);
+  }, [uri]);
+
+  const inner =
+    !url || failed ? (
+      <View style={[styles.avatarFallback, { width: size, height: size, borderRadius: size / 2 }]}>
+        <Text style={[styles.avatarInitial, { fontSize: size * 0.38 }]}>
+          {(name ?? "?")[0]?.toUpperCase()}
+        </Text>
+      </View>
+    ) : (
+      <ImageWithSkeleton
+        uri={url}
+        width={size}
+        height={size}
+        borderRadius={size / 2}
+        resizeMode="cover"
+        onLoadError={() => setFailed(true)}
+        accessibilityLabel={name ? `Photo of ${name}` : "Profile photo"}
+      />
+    );
+
+  if (!onlineStatus) return inner;
+
+  return (
+    <View style={{ width: size, height: size }}>
+      {inner}
+      <View
+        style={
+          onlineStatus === "online" ? styles.avatarOnlineDot : styles.avatarOfflineDot
+        }
+      />
+    </View>
+  );
+}
+
+function SectionHeader({ title }: { title: string }) {
+  const styles = useDashboardHomeStyles();
+  return <Text style={styles.sectionHeader}>{title}</Text>;
+}
+
+function CoachCard({
+  trainer,
+  onView,
+}: {
+  trainer: any;
+  onView: (trainer: any) => void;
+}) {
+  const styles = useDashboardHomeStyles();
+  const name = trainer?.fullname || trainer?.fullName || "Coach";
+  const cats = getTrainerCategories(trainer).slice(0, 2).join(", ");
+  return (
+    <Pressable
+      style={({ pressed }) => [pressed && { opacity: 0.9 }]}
+      onPress={() => onView(trainer)}
+      accessibilityRole="button"
+      accessibilityLabel={`View coach ${name}`}
+    >
+      <TrainerBoxCard style={{ width: 132, flexShrink: 0 }}>
+        <Avatar uri={trainer?.profile_picture} name={name} size={70} onlineStatus="online" />
+        <Text style={styles.coachName} numberOfLines={1}>{name}</Text>
+        {!!cats && <Text style={styles.coachCat} numberOfLines={1}>{cats}</Text>}
+        <View style={styles.bookBtn}>
+          <Text style={styles.bookBtnText}>View profile</Text>
+        </View>
+      </TrainerBoxCard>
+    </Pressable>
+  );
+}
+
+function SessionCard({
+  session,
+  accountType,
+  onPress,
+}: {
+  session: any;
+  accountType: string | null;
+  onPress?: () => void;
+}) {
+  const styles = useDashboardHomeStyles();
+  const themeColors = useThemeColors();
+  const isTrainer = accountType === AccountType.TRAINER;
+  const other = isTrainer ? session.trainee_info : session.trainer_info;
+  const name = other?.fullname || other?.fullName || "Unknown";
+  const date = session.booked_date ?? "";
+  const time =
+    session.session_start_time && session.session_end_time
+      ? `${session.session_start_time} – ${session.session_end_time}`
+      : session.start_time && session.end_time
+        ? `${session.start_time} – ${session.end_time}`
+        : "";
+  const pending = isPendingBooking(session);
+  const status = normalizeSessionStatus(session.status);
+
+  const inner = (
+    <>
+      <Avatar uri={other?.profile_picture} name={name} size={52} />
+      <View style={styles.sessionInfo}>
+        <Text style={styles.sessionName}>{name}</Text>
+        {!!date && <Text style={styles.sessionMeta}>{String(date).slice(0, 10)}</Text>}
+        {!!time && <Text style={styles.sessionMeta}>{time}</Text>}
+        <Pill
+          label={pending ? "Needs confirmation" : status}
+          tone={pending ? "warning" : getStatusTone(status)}
+          style={{ marginTop: 4 }}
+        />
+      </View>
+      <Ionicons name="chevron-forward" size={18} color={themeColors.textMuted} />
+    </>
+  );
+
+  if (onPress) {
+    return (
+      <Pressable
+        style={({ pressed }) => [styles.sessionCard, pressed && { opacity: 0.85 }]}
+        onPress={onPress}
+        accessibilityRole="button"
+      >
+        {inner}
+      </Pressable>
+    );
+  }
+
+  return <View style={styles.sessionCard}>{inner}</View>;
+}
+
+function getStatusTone(status?: string): React.ComponentProps<typeof Pill>["tone"] {
+  switch (status) {
+    case "confirmed":
+      return "success";
+    case "completed":
+      return "neutral";
+    case "cancelled":
+      return "danger";
+    default:
+      return "info";
+  }
+}
+
+function RecentUserChip({ user, label }: { user: any; label?: string }) {
+  const styles = useDashboardHomeStyles();
+  const name = user?.fullname || user?.fullName || label || "User";
+  return (
+    <View style={styles.recentChip}>
+      <Avatar uri={user?.profile_picture} name={name} size={44} />
+      <Text style={styles.recentName} numberOfLines={1}>{name}</Text>
+    </View>
+  );
+}
+
+/** Web `NavHomePage` friend request tiles — column card with navy border */
+function FriendRequestWebTile({
+  request,
+  onAccept,
+  onReject,
+}: {
+  request: any;
+  onAccept: (id: string) => void;
+  onReject: (id: string) => void;
+}) {
+  const styles = useDashboardHomeStyles();
+  const themeColors = useThemeColors();
+  const sender = request?.senderId;
+  const name = sender?.fullname || sender?.fullName || "User";
+  return (
+    <View style={webHomeStyles.friendRequestTile}>
+      <Avatar uri={sender?.profile_picture} name={name} size={72} />
+      <Text style={[styles.friendName, { marginTop: 10, textAlign: "center" }]} numberOfLines={2}>
+        {name}
+      </Text>
+      <View style={[styles.friendActions, { justifyContent: "center" }]}>
+        <Pressable
+          style={[styles.friendBtn, { backgroundColor: themeColors.success }]}
+          onPress={() => onAccept(request._id)}
+          accessibilityRole="button"
+          accessibilityLabel={`Accept friend request from ${name}`}
+        >
+          <Text style={styles.friendBtnText}>Accept</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.friendBtn, { backgroundColor: themeColors.danger }]}
+          onPress={() => onReject(request._id)}
+          accessibilityRole="button"
+          accessibilityLabel={`Reject friend request from ${name}`}
+        >
+          <Text style={styles.friendBtnText}>Reject</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function QuickActionButton({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+}) {
+  const styles = useDashboardHomeStyles();
+  const themeColors = useThemeColors();
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.quickBtn, pressed && styles.quickBtnPressed]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <Ionicons name={icon} size={26} color={themeColors.brandNavy} />
+      <Text style={styles.quickBtnText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function AIRecommendedSection({ onView }: { onView: (t: any) => void }) {
+  const styles = useDashboardHomeStyles();
+  const themeColors = useThemeColors();
+  const { data, isLoading } = useQuery({
+    queryKey: ["aiRecommendations"],
+    queryFn: async () => {
+      const res = await apiClient.get(API_ROUTES.ai.recommendTrainers);
+      return res.data?.result?.recommendations || [];
+    },
+    staleTime: 300_000,
+    retry: 1,
+  });
+
+  if (isLoading) {
+    return (
+      <HomeMainCont title="Recommended For You ✨" testID="card ai-recommended">
+        <View style={{ flexDirection: "row", gap: space.sm }}>
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} width={160} height={180} radius={radii.md} />
+          ))}
+        </View>
+      </HomeMainCont>
+    );
+  }
+
+  if (!data?.length) return null;
+
+  return (
+    <HomeMainCont title="Recommended For You ✨" testID="card ai-recommended">
+      <FlatList
+        horizontal
+        nestedScrollEnabled
+        data={data.slice(0, 6)}
+        keyExtractor={(item: any, i: number) => item?.trainerId ?? String(i)}
+        renderItem={({ item }: { item: any }) => (
+          <Pressable
+            style={({ pressed }) => [pressed && { opacity: 0.9 }]}
+            onPress={() => item.trainer && onView(item.trainer)}
+          >
+            <TrainerBoxCard style={{ width: 150, flexShrink: 0 }}>
+              <Avatar uri={item.trainer?.profile_picture} name={item.trainer?.fullname} size={60} />
+              <Text style={styles.coachName} numberOfLines={1}>{item.trainer?.fullname || "Coach"}</Text>
+              <Text style={[styles.coachCat, { fontSize: 11 }]} numberOfLines={1}>
+                {item.trainer?.category || ""}
+              </Text>
+              <Text style={{ fontSize: 10, color: themeColors.textMuted, textAlign: "center", marginTop: 2 }} numberOfLines={2}>
+                {item.reason || ""}
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4, gap: 2 }}>
+                <Ionicons name="star" size={12} color="#f59e0b" />
+                <Text style={{ fontSize: 11, color: themeColors.text, fontWeight: "600" }}>
+                  {item.trainer?.avgRating || "New"}
+                </Text>
+              </View>
+              <View style={styles.bookBtn}>
+                <Text style={styles.bookBtnText}>View profile</Text>
+              </View>
+            </TrainerBoxCard>
+          </Pressable>
+        )}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: space.sm, paddingVertical: 4 }}
+      />
+    </HomeMainCont>
+  );
+}
+
+export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) {
+  const themeColors = useThemeColors();
+  const styles = useDashboardHomeStyles();
   const [aiOpen, setAiOpen] = useState(false);
   const [profileTrainer, setProfileTrainer] = useState<Record<string, unknown> | null>(null);
   const [wizardTrainer, setWizardTrainer] = useState<Record<string, unknown> | null>(null);

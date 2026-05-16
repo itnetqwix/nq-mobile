@@ -19,17 +19,7 @@ import { fetchBookingDetail, fetchWalletTransactionDetail } from "../../wallet/w
 
 type Props = NativeStackScreenProps<MenuStackParamList, "TransactionDetail">;
 
-function DetailRow({ label, value }: { label: string; value?: string | null }) {
-  if (!value) return null;
-  return (
-    <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowValue}>{value}</Text>
-    </View>
-  );
-}
-
-export function TransactionDetailScreen({
+export function TransactionDetailScreen({ navigation, route }: Props) {
   const c = useThemeColors();
   const styles = useThemedStyles((palette) => StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: space.lg },
@@ -59,8 +49,18 @@ export function TransactionDetailScreen({
   rowValue: { ...typography.bodyMd, color: palette.text, fontWeight: "500" },
   copyRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   actions: { marginTop: space.lg, gap: space.sm },
-});
- navigation, route }: Props) {
+}));
+
+  function DetailRow({ label, value }: { label: string; value?: string | null }) {
+    if (!value) return null;
+    return (
+      <View style={styles.row}>
+        <Text style={styles.rowLabel}>{label}</Text>
+        <Text style={styles.rowValue}>{value}</Text>
+      </View>
+    );
+  }
+
   const { bookingId, ledgerEntryId } = route.params;
 
   const { data, isLoading, error } = useQuery({
@@ -186,7 +186,7 @@ export function TransactionDetailScreen({
         {data.support?.reportAllowed !== false ? (
           <Button label="Report an issue" onPress={reportIssue} variant="secondary" fullWidth />
         ) : null}
-        <Button label="Copy transaction ID" onPress={copyId} variant="outline" fullWidth />
+        <Button label="Copy transaction ID" onPress={copyId} variant="secondary" fullWidth />
       </View>
     </ScrollView>
   );
