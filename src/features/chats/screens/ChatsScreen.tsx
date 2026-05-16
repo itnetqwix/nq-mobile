@@ -60,12 +60,22 @@ function timeAgo(dateStr?: string): string {
 }
 
 function Avatar({ uri, name, size = 48 }: { uri?: string; name?: string; size?: number }) {
+  const c = useThemeColors();
   const [failed, setFailed] = React.useState(false);
   const url = getS3ImageUrl(uri);
   if (!url || failed) {
     return (
-      <View style={[styles.avatarFallback, { width: size, height: size, borderRadius: size / 2 }]}>
-        <Text style={[styles.avatarInitial, { fontSize: size * 0.4 }]}>
+      <View
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: c.brandNavy,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Text style={{ fontSize: size * 0.4, color: c.brandTextOn, fontWeight: "700" }}>
           {(name ?? "?")[0]?.toUpperCase()}
         </Text>
       </View>
@@ -262,7 +272,7 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
     color: palette.brandNavy,
     fontWeight: "600",
   },
-});
+}));
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const queryClient = useQueryClient();
