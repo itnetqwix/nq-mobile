@@ -1,9 +1,10 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { BrandedSessionLoader } from "../components/brand/BrandedSessionLoader";
 import { useAuth } from "../features/auth/context/AuthContext";
 import { OnboardingNavigator } from "./OnboardingNavigator";
-import { needsTrainerOnboarding } from "../features/verification/verificationApi";
+import { useTrainerVerificationGate } from "../features/verification/hooks/useTrainerVerificationGate";
+import { GracePeriodBanner } from "../features/verification/components/GracePeriodBanner";
 import { InstantLessonStatusBanner } from "../features/instant-lesson/InstantLessonStatusBanner";
 import { InstantLessonTraineeModal } from "../features/instant-lesson/InstantLessonTraineeModal";
 import { InstantLessonTrainerModal } from "../features/instant-lesson/InstantLessonTrainerModal";
@@ -17,19 +18,30 @@ import type { RootStackParamList } from "./types";
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
-  const { status, user, refreshUser } = useAuth();
+  const { status, refreshUser } = useAuth();
+  const verificationGate = useTrainerVerificationGate();
+  const [startVerificationEarly, setStartVerificationEarly] = useState(false);
 
-  if (status === "loading") {
+  useEffect(() => {
+    if (status !== "signedIn") setStartVerificationEarly(false);
+  }, [status]);
+
+  const authLoading = status === "loading";
+  const signedIn = status === "signedIn";
+  const gateLoading = signedIn && verificationGate.loading;
+
+  if (authLoading || gateLoading) {
     return <BrandedSessionLoader />;
   }
 
-  const signedIn = status === "signedIn";
-  const onboardingRequired = signedIn && needsTrainerOnboarding(user);
+  const showVerificationWizard =
+    signedIn && (verificationGate.required || startVerificationEarly);
 
-  if (onboardingRequired) {
+  if (showVerificationWizard) {
     return (
       <OnboardingNavigator
         onComplete={() => {
+          setStartVerificationEarly(false);
           void refreshUser();
         }}
       />
@@ -68,6 +80,12 @@ export function RootNavigator() {
 
       {signedIn && (
         <>
+          {verificationGate.inGracePeriod && verificationGate.graceDaysRemaining > 0 ? (
+            <GracePeriodBanner
+              daysRemaining={verificationGate.graceDaysRemaining}
+              onCompleteVerification={() => setStartVerificationEarly(true)}
+            />
+          ) : null}
           <InstantLessonTrainerModal />
           <InstantLessonTraineeModal />
           <InstantLessonStatusBanner />

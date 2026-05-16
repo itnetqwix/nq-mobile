@@ -7,6 +7,12 @@ export type OnboardingStatus = {
   status: string;
   email_verified: boolean;
   phone_verified: boolean;
+  email_masked?: string | null;
+  phone_masked?: string | null;
+  contact_substep?: "email" | "phone" | "complete";
+  in_grace_period?: boolean;
+  grace_days_remaining?: number;
+  grace_deadline?: string;
   rejection_reason?: string;
 };
 
@@ -40,13 +46,24 @@ export async function completeFaceLiveness(sessionId?: string) {
   return res.data?.data ?? res.data;
 }
 
+/** Fallback when `/verification/status` is unavailable — mirrors backend rules. */
 export function needsTrainerOnboarding(
   user: { account_type?: string; status?: string; trainer_verification?: Record<string, unknown> } | null
 ): boolean {
   if (!user || user.account_type !== "Trainer") return false;
+
+  const onboarding = user.onboarding as { required?: boolean } | undefined;
+  if (typeof onboarding?.required === "boolean") return onboarding.required;
+
   const tv = (user.trainer_verification || {}) as Record<string, unknown>;
   const grace = tv.grace_deadline ? new Date(String(tv.grace_deadline)) : null;
   if (grace && Date.now() < grace.getTime()) return false;
+
   const step = String(tv.onboarding_step || "account_created");
+  const submitted = Boolean(tv.submitted_for_review_at);
+  if (user.status === "approved" && !submitted && step === "account_created") {
+    return false;
+  }
+
   return step !== "completed" || user.status !== "approved";
 }

@@ -17,9 +17,19 @@ const Stack = createNativeStackNavigator<OnboardingStackParamList>();
 
 type Props = { onComplete: () => void };
 
-function stepToRoute(step: string | null | undefined): keyof OnboardingStackParamList {
-  if (step === "account_created") return "Contact";
-  if (step === "contact_verified" || step === "profile_face_complete") return "Profile";
+function stepToRoute(
+  step: string | null | undefined,
+  contactSubstep?: string | null
+): keyof OnboardingStackParamList {
+  if (contactSubstep === "complete" || step === "contact_verified") {
+    if (step === "under_review" || step === "completed") return "Pending";
+    if (step === "profile_face_complete") return "Profile";
+    return "Profile";
+  }
+  if (step === "account_created" || contactSubstep === "email" || contactSubstep === "phone") {
+    return "Contact";
+  }
+  if (step === "profile_face_complete") return "Profile";
   return "Pending";
 }
 
@@ -32,7 +42,7 @@ export function OnboardingNavigator({ onComplete }: Props) {
     (async () => {
       try {
         const s = await getVerificationStatus();
-        if (!cancelled) setInitialRoute(stepToRoute(s.step));
+        if (!cancelled) setInitialRoute(stepToRoute(s.step, s.contact_substep));
       } catch {
         const tv = (user?.trainer_verification || {}) as Record<string, unknown>;
         if (!cancelled) setInitialRoute(stepToRoute(String(tv.onboarding_step || "account_created")));
