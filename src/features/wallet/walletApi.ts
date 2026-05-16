@@ -21,9 +21,48 @@ export async function fetchWalletBalance(): Promise<WalletBalance> {
   return ((res.data as { data?: WalletBalance })?.data ?? res.data) as WalletBalance;
 }
 
-export async function fetchWalletLedger(page = 1, limit = 25) {
+export type WalletLedgerPage = {
+  items: Array<{
+    entry_id: string;
+    entry_type: string;
+    amount_minor: number;
+    reference_type?: string;
+    reference_id?: string;
+    createdAt?: string;
+  }>;
+  total: number;
+  page: number;
+  limit: number;
+};
+
+export async function fetchWalletLedger(page = 1, limit = 25): Promise<WalletLedgerPage> {
   const res = await apiClient.get(API_ROUTES.wallet.ledger, { params: { page, limit } });
-  return (res.data as { data?: unknown })?.data ?? res.data;
+  return ((res.data as { data?: WalletLedgerPage })?.data ?? res.data) as WalletLedgerPage;
+}
+
+export type WalletConfig = {
+  enabled?: boolean;
+  escrowEnabled?: boolean;
+  walletPayEnabled?: boolean;
+  minTopUpMinor?: number;
+  maxTopUpMinor?: number;
+  stepUpThresholdMinor?: number;
+  regionCurrency?: string;
+};
+
+export async function fetchWalletConfig(): Promise<WalletConfig> {
+  const res = await apiClient.get(API_ROUTES.wallet.config);
+  return ((res.data as { data?: WalletConfig })?.data ?? res.data) as WalletConfig;
+}
+
+export async function fetchWalletTransactionDetail(entryId: string) {
+  const res = await apiClient.get(API_ROUTES.wallet.transactionDetail(entryId));
+  return ((res.data as { data?: unknown })?.data ?? res.data) as Record<string, any>;
+}
+
+export async function fetchBookingDetail(bookingId: string) {
+  const res = await apiClient.get(API_ROUTES.user.bookingById(bookingId));
+  return ((res.data as { data?: unknown })?.data ?? res.data) as Record<string, any>;
 }
 
 export async function createTopUpIntent(amountMinor: number) {

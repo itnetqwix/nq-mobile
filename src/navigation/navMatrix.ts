@@ -157,9 +157,17 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
     group: "tools",
   },
   {
+    id: "wallet",
+    label: "Wallet",
+    icon: "wallet-outline",
+    target: { kind: "shell", surfaceId: "wallet" },
+    surfaces: ["drawer", "more"],
+    group: "tools",
+  },
+  {
     id: "transactions",
     label: "Transactions",
-    icon: "wallet-outline",
+    icon: "receipt-outline",
     target: { kind: "shell", surfaceId: "transactions" },
     surfaces: ["drawer", "more"],
     group: "tools",

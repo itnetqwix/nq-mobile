@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
-import { colors, radii, typography } from "../../theme";
+import type { AppColors } from "../../theme";
+import { radii, typography, useThemeColors } from "../../theme";
 
 export type PillTone =
   | "neutral"
@@ -19,7 +20,8 @@ export type PillProps = {
 
 /** Status chip — used for "Upcoming", "Live", "Cancelled" tags etc. */
 export function Pill({ label, tone = "neutral", icon, style }: PillProps) {
-  const p = getPalette(tone);
+  const c = useThemeColors();
+  const p = getPalette(tone, c);
   return (
     <View style={[styles.wrap, { backgroundColor: p.bg }, style]}>
       {icon ? <Ionicons name={icon} size={12} color={p.text} style={{ marginRight: 4 }} /> : null}
@@ -30,21 +32,21 @@ export function Pill({ label, tone = "neutral", icon, style }: PillProps) {
   );
 }
 
-function getPalette(tone: PillTone) {
+function getPalette(tone: PillTone, c: AppColors) {
   switch (tone) {
     case "info":
-      return { bg: colors.infoSubtle, text: colors.info };
+      return { bg: c.infoSubtle, text: c.info };
     case "success":
-      return { bg: colors.successSubtle, text: colors.successText };
+      return { bg: c.successSubtle, text: c.successText };
     case "warning":
-      return { bg: colors.warningSubtle, text: colors.warningText };
+      return { bg: c.warningSubtle, text: c.warningText };
     case "danger":
-      return { bg: colors.dangerSubtle, text: colors.dangerText };
+      return { bg: c.dangerSubtle, text: c.dangerText };
     case "brand":
-      return { bg: colors.brandSubtle, text: colors.brand };
+      return { bg: c.brandSubtle, text: c.brand };
     case "neutral":
     default:
-      return { bg: colors.neutral100, text: colors.neutral700 };
+      return { bg: c.surfaceMuted, text: c.textMuted };
   }
 }
 

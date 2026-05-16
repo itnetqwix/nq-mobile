@@ -16,7 +16,7 @@ import { AccountType } from "../../../constants/accountType";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import type { MenuStackParamList } from "../../../navigation/types";
-import { colors, space, typography } from "../../../theme";
+import { space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
@@ -27,6 +27,54 @@ import {
 } from "../../home/api/homeApi";
 
 export function EditProfileScreen() {
+  const c = useThemeColors();
+  const styles = useThemedStyles((palette) => StyleSheet.create({
+  avatarSection: {
+    alignItems: "center",
+    paddingVertical: space.md,
+    marginBottom: space.sm,
+  },
+  avatarWrap: { position: "relative" },
+  avatarImg: { width: 96, height: 96, borderRadius: 48, backgroundColor: palette.surfaceMuted },
+  cameraBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: palette.brandNavy,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: palette.surface,
+  },
+  changePhotoText: {
+    ...typography.bodySm,
+    color: palette.brandAccent,
+    fontWeight: "600",
+    marginTop: space.xs,
+  },
+  sectionCard: { marginBottom: space.sm },
+  fieldStack: { gap: space.md },
+  enhanceBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: palette.brandAccentSubtle,
+    borderRadius: 20,
+    gap: 6,
+    marginTop: 4,
+  },
+  enhanceBtnText: {
+    ...typography.label,
+    color: palette.brandAccent,
+    fontSize: 13,
+  },
+});
+
   const { user, accountType, refreshUser } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<MenuStackParamList>>();
   const isTrainer = accountType === AccountType.TRAINER;
@@ -141,7 +189,7 @@ export function EditProfileScreen() {
   const displayName = initial.fullname || "User";
 
   return (
-    <ScreenContainer scroll padding="md" background={colors.surface}>
+    <ScreenContainer scroll padding="md" background={c.surface}>
       <View style={styles.avatarSection}>
         <Pressable onPress={pickAndUploadAvatar} disabled={avatarUploading} style={styles.avatarWrap}>
           {currentAvatar ? (
@@ -245,9 +293,9 @@ export function EditProfileScreen() {
                 disabled={enhancing}
               >
                 {enhancing ? (
-                  <ActivityIndicator size="small" color={colors.brandAccent} />
+                  <ActivityIndicator size="small" color={c.brandAccent} />
                 ) : (
-                  <Ionicons name="sparkles" size={16} color={colors.brandAccent} />
+                  <Ionicons name="sparkles" size={16} color={c.brandAccent} />
                 )}
                 <Text style={styles.enhanceBtnText}>
                   {enhancing ? "Enhancing..." : "Enhance with AI"}
@@ -270,49 +318,4 @@ export function EditProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  avatarSection: {
-    alignItems: "center",
-    paddingVertical: space.md,
-    marginBottom: space.sm,
-  },
-  avatarWrap: { position: "relative" },
-  avatarImg: { width: 96, height: 96, borderRadius: 48, backgroundColor: colors.surfaceMuted },
-  cameraBadge: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: colors.brandNavy,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: colors.surface,
-  },
-  changePhotoText: {
-    ...typography.bodySm,
-    color: colors.brandAccent,
-    fontWeight: "600",
-    marginTop: space.xs,
-  },
-  sectionCard: { marginBottom: space.sm },
-  fieldStack: { gap: space.md },
-  enhanceBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    backgroundColor: colors.brandAccentSubtle,
-    borderRadius: 20,
-    gap: 6,
-    marginTop: 4,
-  },
-  enhanceBtnText: {
-    ...typography.label,
-    color: colors.brandAccent,
-    fontSize: 13,
-  },
-});
+

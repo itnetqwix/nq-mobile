@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { colors, space, typography } from "../../theme";
+import { space, typography, useThemeColors, useThemedStyles } from "../../theme";
 import { Button } from "./Button";
 
 export type EmptyStateProps = {
@@ -20,19 +20,41 @@ export function EmptyState({
   actionLabel,
   onAction,
 }: EmptyStateProps) {
+  const c = useThemeColors();
+  const styles = useThemedStyles((colors) =>
+    StyleSheet.create({
+      wrap: {
+        alignItems: "center",
+        justifyContent: "center",
+        gap: space.sm,
+        paddingVertical: space.xl,
+        paddingHorizontal: space.lg,
+      },
+      iconHalo: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        backgroundColor: colors.brandAccentSubtle,
+        alignItems: "center",
+        justifyContent: "center",
+        marginBottom: space.sm,
+      },
+    })
+  );
+
   return (
     <View style={styles.wrap}>
       <View style={styles.iconHalo}>
-        <Ionicons name={icon} size={36} color={colors.brandAccent} />
+        <Ionicons name={icon} size={36} color={c.brandAccent} />
       </View>
-      <Text style={[typography.titleSm, { color: colors.text, textAlign: "center" }]}>
+      <Text style={[typography.titleSm, { color: c.text, textAlign: "center" }]}>
         {title}
       </Text>
       {description ? (
         <Text
           style={[
             typography.bodyMd,
-            { color: colors.textMuted, textAlign: "center" },
+            { color: c.textMuted, textAlign: "center" },
           ]}
         >
           {description}
@@ -44,22 +66,3 @@ export function EmptyState({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: {
-    alignItems: "center",
-    justifyContent: "center",
-    gap: space.sm,
-    paddingVertical: space.xl,
-    paddingHorizontal: space.lg,
-  },
-  iconHalo: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.brandAccentSubtle,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: space.sm,
-  },
-});

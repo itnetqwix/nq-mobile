@@ -1,21 +1,25 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
-import React from "react";
-import { WalletScreen } from "../../wallet/screens/WalletScreen";
-import { TrainerEarningsScreen } from "../../wallet/screens/TrainerEarningsScreen";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import React, { useCallback } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { EmptyState, Pill, Skeleton } from "../../../components/ui";
-import { colors, space, typography } from "../../../theme";
+import { space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { AccountType } from "../../../constants/accountType";
 import { useAuth } from "../../auth/context/AuthContext";
 import { fetchBookingTransactions } from "../../home/api/homeApi";
+import type { MenuStackParamList } from "../../../navigation/types";
+
+const PAGE_SIZE = 25;
 
 function formatBookedDate(d?: string): string {
   if (!d) return "";
@@ -34,10 +38,28 @@ function bookingAmountDisplay(booking: any, isTrainer: boolean): string {
   const amount = Number(booking?.amount ?? 0);
   const fee = Number(booking?.application_fee_amount ?? 0);
   const usd = isTrainer ? amount - fee : amount;
-  return `${usd.toFixed(2)} USD`;
+  return `$${usd.toFixed(2)}`;
 }
 
-function TransactionRow({ booking, isTrainer }: { booking: any; isTrainer: boolean }) {
+function getStatusTone(status: string): React.ComponentProps<typeof Pill>["tone"] {
+  const s = String(status).toLowerCase();
+  if (s.includes("success") || s.includes("confirm") || s.includes("paid")) return "success";
+  if (s.includes("pending") || s.includes("process")) return "warning";
+  if (s.includes("fail") || s.includes("cancel") || s.includes("refund")) return "danger";
+  return "neutral";
+}
+
+function TransactionRow({
+  booking,
+  isTrainer,
+  onPress,
+}: {
+  booking: any;
+  isTrainer: boolean;
+  onPress: () => void;
+}) {
+  const c = useThemeColors();
+  const styles = useTransactionStyles();
   const other = isTrainer ? booking?.trainee_info : booking?.trainer_info;
   const name = other?.fullName ?? other?.fullname ?? "Session";
   const status = booking?.refund_status ?? booking?.status ?? "—";
@@ -48,9 +70,13 @@ function TransactionRow({ booking, isTrainer }: { booking: any; isTrainer: boole
       : "";
 
   return (
-    <View style={styles.row}>
+    <Pressable
+      style={({ pressed }) => [styles.row, pressed && { opacity: 0.85 }]}
+      onPress={onPress}
+      accessibilityRole="button"
+    >
       <View style={styles.iconBox}>
-        <Ionicons name="receipt-outline" size={18} color={colors.brandNavy} />
+        <Ionicons name="receipt-outline" size={18} color={c.brandNavy} />
       </View>
       <View style={styles.rowInfo}>
         <Text style={styles.rowDesc} numberOfLines={2}>
@@ -63,32 +89,91 @@ function TransactionRow({ booking, isTrainer }: { booking: any; isTrainer: boole
       <View style={styles.rowRight}>
         <Text style={styles.rowAmount}>{bookingAmountDisplay(booking, isTrainer)}</Text>
         <Pill label={String(status)} tone={getStatusTone(status)} />
+        <Ionicons name="chevron-forward" size={16} color={c.textMuted} style={{ marginTop: 4 }} />
       </View>
-    </View>
+    </Pressable>
   );
 }
 
-function getStatusTone(status: string): React.ComponentProps<typeof Pill>["tone"] {
-  const s = String(status).toLowerCase();
-  if (s.includes("success") || s.includes("confirm") || s.includes("paid")) return "success";
-  if (s.includes("pending") || s.includes("process")) return "warning";
-  if (s.includes("fail") || s.includes("cancel") || s.includes("refund")) return "danger";
-  return "neutral";
+function useTransactionStyles() {
+  return useThemedStyles((c) =>
+    StyleSheet.create({
+      list: { paddingBottom: space.xl },
+      listHeader: {
+        paddingHorizontal: space.md,
+        paddingTop: space.md,
+        paddingBottom: space.sm,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: c.border,
+        marginBottom: space.xs,
+      },
+      pageTitle: { ...typography.titleSm, color: c.text },
+      pageSub: { ...typography.bodySm, color: c.textMuted, marginTop: 6, lineHeight: 20 },
+      row: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: space.md,
+        paddingVertical: 14,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: c.borderSubtle,
+        backgroundColor: c.surfaceElevated,
+        gap: space.sm,
+      },
+      iconBox: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: c.brandSubtle,
+        alignItems: "center",
+        justifyContent: "center",
+      },
+      rowInfo: { flex: 1 },
+      rowDesc: { ...typography.bodyMd, fontWeight: "600", color: c.text },
+      rowDate: { ...typography.caption, color: c.textMuted, marginTop: 2 },
+      rowRight: { alignItems: "flex-end", gap: 4 },
+      rowAmount: { ...typography.bodyMd, fontWeight: "700", color: c.text },
+    })
+  );
 }
 
 export function TransactionsScreen() {
+  const c = useThemeColors();
+  const styles = useTransactionStyles();
   const { accountType } = useAuth();
   const isTrainer = accountType === AccountType.TRAINER;
+  const navigation = useNavigation<NativeStackNavigationProp<MenuStackParamList>>();
 
-  const { data: rows = [], isLoading, isRefetching, refetch } = useQuery({
+  const {
+    data,
+    isLoading,
+    isRefetching,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ["transactions", "booking-list-by-id"],
-    queryFn: () => fetchBookingTransactions({ page: 1, limit: 500 }),
+    queryFn: ({ pageParam }) =>
+      fetchBookingTransactions({ page: pageParam, limit: PAGE_SIZE }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, _all, lastPageParam) =>
+      lastPage.length >= PAGE_SIZE ? lastPageParam + 1 : undefined,
     staleTime: 60_000,
   });
+
+  const rows = data?.pages.flat() ?? [];
+
+  const openDetail = useCallback(
+    (bookingId: string) => {
+      navigation.navigate("TransactionDetail", { bookingId });
+    },
+    [navigation]
+  );
 
   if (isLoading) {
     return (
       <View style={{ padding: space.md }}>
+        <Skeleton width="40%" height={20} style={{ marginBottom: space.md }} />
         {[0, 1, 2, 3].map((i) => (
           <View key={i} style={{ marginBottom: space.sm }}>
             <Skeleton width="100%" height={64} />
@@ -102,54 +187,42 @@ export function TransactionsScreen() {
     <FlatList
       data={rows}
       keyExtractor={(item, i) => item?._id ?? String(i)}
-      renderItem={({ item }) => <TransactionRow booking={item} isTrainer={isTrainer} />}
+      renderItem={({ item }) => (
+        <TransactionRow
+          booking={item}
+          isTrainer={isTrainer}
+          onPress={() => item?._id && openDetail(String(item._id))}
+        />
+      )}
       contentContainerStyle={styles.list}
       ListHeaderComponent={
-        <View style={{ marginBottom: space.md }}>
-          {isTrainer ? <TrainerEarningsScreen /> : <WalletScreen />}
-          <Text style={[styles.sectionTitle, { marginTop: space.lg }]}>Booking history</Text>
+        <View style={styles.listHeader}>
+          <Text style={styles.pageTitle}>Booking history</Text>
+          <Text style={styles.pageSub}>
+            Session payments and receipts. Manage your wallet from the wallet icon on Home.
+          </Text>
         </View>
       }
       refreshControl={
-        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brandNavy} />
+        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.brandNavy} />
+      }
+      onEndReached={() => {
+        if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
+      }}
+      onEndReachedThreshold={0.4}
+      ListFooterComponent={
+        isFetchingNextPage ? (
+          <ActivityIndicator style={{ padding: space.md }} color={c.brandNavy} />
+        ) : null
       }
       ListEmptyComponent={
         <EmptyState
-          icon="wallet-outline"
-          title="No bookings in this window"
-          description="Sessions with amounts and status will appear here."
+          icon="receipt-outline"
+          title="No booking history"
+          description="Sessions you book or teach will appear here with payment details."
         />
       }
     />
   );
 }
 
-const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  list: { paddingBottom: space.xl },
-
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: space.md,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.borderSubtle,
-    backgroundColor: colors.surfaceElevated,
-    gap: space.sm,
-  },
-  iconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.brandSubtle,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  rowInfo: { flex: 1 },
-  rowDesc: { ...typography.bodyMd, fontWeight: "600", color: colors.text },
-  rowDate: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
-  rowRight: { alignItems: "flex-end", gap: 4 },
-  rowAmount: { ...typography.bodyMd, fontWeight: "700", color: colors.text },
-  sectionTitle: { ...typography.titleSm, color: colors.text, marginHorizontal: space.md },
-});

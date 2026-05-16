@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../../components/ui";
-import { colors, radii, space, typography } from "../../../theme";
+import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import {
   fetchTrainerEarnings,
   requestWithdraw,
@@ -10,6 +10,29 @@ import {
 } from "../walletApi";
 
 export function TrainerEarningsScreen() {
+  const c = useThemeColors();
+  const styles = useThemedStyles((c) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.background },
+  content: { padding: space.lg, gap: space.md },
+  card: {
+    backgroundColor: c.surfaceElevated,
+    borderRadius: radii.lg,
+    padding: space.lg,
+  },
+  label: { ...typography.label, color: c.textMuted },
+  amount: { ...typography.displaySm, color: c.brandNavy },
+  sub: { ...typography.bodySm, color: c.textMuted, marginTop: space.sm },
+  section: { ...typography.titleSm, color: c.text },
+  chips: { gap: space.sm },
+  input: {
+    borderWidth: 1,
+    borderColor: c.border,
+    borderRadius: radii.md,
+    padding: space.sm,
+    backgroundColor: c.surface,
+  },
+}));
+
   const queryClient = useQueryClient();
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const { data: earnings, isLoading } = useQuery({
@@ -92,24 +115,4 @@ export function TrainerEarningsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.background },
-  content: { padding: space.lg, gap: space.md },
-  card: {
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: radii.lg,
-    padding: space.lg,
-  },
-  label: { ...typography.label, color: colors.textMuted },
-  amount: { ...typography.displaySm, color: colors.brandNavy },
-  sub: { ...typography.bodySm, color: colors.textMuted, marginTop: space.sm },
-  section: { ...typography.titleSm, color: colors.text },
-  chips: { gap: space.sm },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    padding: space.sm,
-    backgroundColor: colors.surface,
-  },
-});
+

@@ -11,6 +11,7 @@ import { ReportIssueScreen } from "./ReportIssueScreen";
 import { SavedLessonsScreen } from "./SavedLessonsScreen";
 import { SettingsScreen } from "./SettingsScreen";
 import { TrainerScheduleScreen } from "./TrainerScheduleScreen";
+import { WalletNavigator } from "../../wallet/navigation/WalletNavigator";
 
 export type ShellSurfaceScreenProps = NativeStackScreenProps<MenuStackParamList, "ShellSurface">;
 
@@ -20,6 +21,8 @@ export function ShellSurfaceScreen({ route }: ShellSurfaceScreenProps) {
   switch (surfaceId) {
     case "notifications":
       return <NotificationsScreen />;
+    case "wallet":
+      return <WalletNavigator />;
     case "transactions":
       return <TransactionsScreen />;
     case "clips":

@@ -52,6 +52,7 @@ export const API_ROUTES = {
     createVerificationSession: "/user/create-verification-session",
     bookingList: "/user/booking-list",
     bookingListById: "/user/booking-list-by-id",
+    bookingById: (id: string) => `/user/booking/${id}` as const,
     stripeAccountVerification: "/user/stripe-account-verification",
     checkStripeVerification: "/user/check-stripe-verification",
     updateRefundStatus: "/user/update-refund-status",
@@ -125,6 +126,7 @@ export const API_ROUTES = {
     payoutPreference: "/wallet/payout-preference",
     withdraw: "/wallet/withdraw",
     config: "/wallet/config",
+    transactionDetail: (id: string) => `/wallet/transactions/${id}` as const,
   },
   common: {
     extendSessionEndTime: "/common/extend-session-end-time",

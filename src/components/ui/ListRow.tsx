@@ -6,7 +6,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, layout, radii, space, typography } from "../../theme";
+import { layout, radii, space, typography, useThemeColors, useThemedStyles } from "../../theme";
 
 export type ListRowProps = {
   icon?: keyof typeof Ionicons.glyphMap;
@@ -34,13 +34,37 @@ export function ListRow({
   hideChevron,
   accessibilityLabel,
 }: ListRowProps) {
-  const titleColor = destructive ? colors.danger : colors.text;
-  const tint = iconTint ?? (destructive ? colors.danger : colors.brandNavy);
+  const c = useThemeColors();
+  const styles = useThemedStyles((colors) =>
+    StyleSheet.create({
+      row: {
+        flexDirection: "row",
+        alignItems: "center",
+        minHeight: layout.minTapTarget,
+        paddingHorizontal: space.md,
+        paddingVertical: 10,
+        gap: space.md,
+      },
+      iconBox: {
+        width: 36,
+        height: 36,
+        borderRadius: radii.sm,
+        backgroundColor: colors.brandSubtle,
+        alignItems: "center",
+        justifyContent: "center",
+      },
+      text: { flex: 1, gap: 2 },
+      right: { marginLeft: "auto" },
+    })
+  );
+
+  const titleColor = destructive ? c.danger : c.text;
+  const tint = iconTint ?? (destructive ? c.danger : c.brandNavy);
 
   const content = (
     <>
       {icon ? (
-        <View style={[styles.iconBox, destructive && { backgroundColor: colors.dangerSubtle }]}>
+        <View style={[styles.iconBox, destructive && { backgroundColor: c.dangerSubtle }]}>
           <Ionicons name={icon} size={20} color={tint} />
         </View>
       ) : null}
@@ -49,7 +73,7 @@ export function ListRow({
           {title}
         </Text>
         {subtitle ? (
-          <Text style={[typography.bodySm, { color: colors.textMuted }]} numberOfLines={2}>
+          <Text style={[typography.bodySm, { color: c.textMuted }]} numberOfLines={2}>
             {subtitle}
           </Text>
         ) : null}
@@ -57,7 +81,7 @@ export function ListRow({
       {rightAdornment ? (
         <View style={styles.right}>{rightAdornment}</View>
       ) : onPress && !hideChevron ? (
-        <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+        <Ionicons name="chevron-forward" size={16} color={c.textMuted} />
       ) : null}
     </>
   );
@@ -68,7 +92,7 @@ export function ListRow({
         onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel ?? title}
-        style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.surface }]}
+        style={({ pressed }) => [styles.row, pressed && { backgroundColor: c.surface }]}
       >
         {content}
       </Pressable>
@@ -77,24 +101,3 @@ export function ListRow({
 
   return <View style={styles.row}>{content}</View>;
 }
-
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    minHeight: layout.minTapTarget,
-    paddingHorizontal: space.md,
-    paddingVertical: 10,
-    gap: space.md,
-  },
-  iconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: radii.sm,
-    backgroundColor: colors.brandSubtle,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  text: { flex: 1, gap: 2 },
-  right: { marginLeft: "auto" },
-});

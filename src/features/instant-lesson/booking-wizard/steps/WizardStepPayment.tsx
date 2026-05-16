@@ -7,21 +7,32 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { apiClient } from "../../../../api/client";
 import { API_ROUTES } from "../../../../config/apiRoutes";
 import { colors, radii, space } from "../../../../theme";
+import { useWalletPaymentOption } from "../../../wallet/hooks/useWalletPaymentOption";
+import { verifyWalletPin } from "../../../wallet/walletApi";
 import { INSTANT_LESSON_DURATIONS } from "../constants";
 import { sharedStepStyles } from "../sharedStepStyles";
+
+export type PaymentCompletePayload = {
+  paymentIntentId: string | null;
+  chargingPrice: number;
+  paymentMethod?: "wallet" | "card";
+  pinSessionToken?: string;
+};
 
 type Props = {
   trainer: Record<string, unknown> | null;
   durationMinutes: number;
   couponCode: string;
   userStripeId: string;
-  onPaymentComplete: (paymentIntentId: string | null, chargingPrice: number) => void;
+  onPaymentComplete: (payload: PaymentCompletePayload) => void;
   onNext: () => void;
+  onAddFunds?: () => void;
 };
 
 export function WizardStepPayment({
@@ -31,10 +42,13 @@ export function WizardStepPayment({
   userStripeId,
   onPaymentComplete,
   onNext,
+  onAddFunds,
 }: Props) {
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [loading, setLoading] = useState(false);
   const [paymentReady, setPaymentReady] = useState(false);
+  const [pin, setPin] = useState("");
+  const [pinSessionToken, setPinSessionToken] = useState<string | undefined>();
   const [priceInfo, setPriceInfo] = useState<{
     amount: number;
     skip: boolean;
@@ -58,6 +72,7 @@ export function WizardStepPayment({
   );
 
   const chargingPrice = Number(((hourlyRate / 60) * durationMinutes).toFixed(2));
+  const wallet = useWalletPaymentOption(chargingPrice);
   const lengthLabel =
     INSTANT_LESSON_DURATIONS.find((d) => d.minutes === durationMinutes)?.label ??
     `${durationMinutes} min`;
@@ -114,9 +129,34 @@ export function WizardStepPayment({
     createIntent();
   }, [createIntent]);
 
+  const handleWalletPay = useCallback(async () => {
+    try {
+      let token = pinSessionToken;
+      if (wallet.needsPin && !token) {
+        if (!/^\d{6}$/.test(pin)) {
+          Alert.alert("PIN required", "Enter your 6-digit wallet PIN for this payment.");
+          return;
+        }
+        const res = await verifyWalletPin(pin);
+        token = res.pinSessionToken;
+        setPinSessionToken(token);
+        setPin("");
+      }
+      onPaymentComplete({
+        paymentIntentId: null,
+        chargingPrice,
+        paymentMethod: "wallet",
+        pinSessionToken: token,
+      });
+      onNext();
+    } catch (e: any) {
+      Alert.alert("Wallet payment", e?.response?.data?.error ?? e?.message ?? "Could not verify PIN.");
+    }
+  }, [wallet.needsPin, pin, pinSessionToken, onPaymentComplete, onNext, chargingPrice]);
+
   const handlePay = useCallback(async () => {
     if (priceInfo?.skip) {
-      onPaymentComplete(null, 0);
+      onPaymentComplete({ paymentIntentId: null, chargingPrice: 0 });
       onNext();
       return;
     }
@@ -128,7 +168,11 @@ export function WizardStepPayment({
       return;
     }
     const intentId = priceInfo?.clientSecret?.split("_secret_")[0] ?? null;
-    onPaymentComplete(intentId, chargingPrice);
+    onPaymentComplete({
+      paymentIntentId: intentId,
+      chargingPrice,
+      paymentMethod: "card",
+    });
     onNext();
   }, [priceInfo, presentPaymentSheet, onPaymentComplete, onNext, chargingPrice]);
 
@@ -173,22 +217,78 @@ export function WizardStepPayment({
         </View>
       )}
 
+      {!loading && wallet.walletPayEnabled && !isFree && wallet.canPayWithWallet ? (
+        <>
+          {wallet.needsPin && !pinSessionToken ? (
+            <TextInput
+              style={styles.pinInput}
+              keyboardType="number-pad"
+              secureTextEntry
+              maxLength={6}
+              placeholder="6-digit PIN"
+              value={pin}
+              onChangeText={setPin}
+            />
+          ) : null}
+          <Pressable style={sharedStepStyles.primaryBtn} onPress={handleWalletPay}>
+            <Ionicons name="wallet-outline" size={18} color={colors.brandTextOn} />
+            <Text style={sharedStepStyles.primaryBtnText}>
+              Pay ${chargingPrice.toFixed(2)} with wallet (${wallet.available.toFixed(2)} available)
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[sharedStepStyles.primaryBtn, styles.cardBtn]}
+            disabled={!paymentReady}
+            onPress={handlePay}
+          >
+            <Ionicons name="card-outline" size={18} color={colors.brandNavy} />
+            <Text style={[sharedStepStyles.primaryBtnText, { color: colors.brandNavy }]}>
+              Pay with card
+            </Text>
+          </Pressable>
+        </>
+      ) : null}
+
+      {!loading && wallet.walletPayEnabled && !isFree && !wallet.canPayWithWallet && wallet.shortfall > 0 ? (
+        <View style={styles.shortfallBox}>
+          <Text style={sharedStepStyles.muted}>
+            Need ${wallet.shortfall.toFixed(2)} more in your wallet.
+          </Text>
+          {onAddFunds ? (
+            <Pressable onPress={onAddFunds} style={styles.addFundsLink}>
+              <Text style={styles.addFundsText}>Add funds</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
+
       {!loading && (
         <Pressable
           style={[
             sharedStepStyles.primaryBtn,
-            (!paymentReady && !isFree) && sharedStepStyles.btnDisabled,
+            (!paymentReady && !isFree && !(wallet.canPayWithWallet && wallet.walletPayEnabled)) &&
+              sharedStepStyles.btnDisabled,
+            wallet.canPayWithWallet && wallet.walletPayEnabled && !isFree && styles.cardBtn,
           ]}
-          disabled={!paymentReady && !isFree}
+          disabled={!paymentReady && !isFree && !(wallet.canPayWithWallet && wallet.walletPayEnabled)}
           onPress={handlePay}
         >
           <Ionicons
             name={isFree ? "checkmark-circle" : "card-outline"}
             size={18}
-            color={colors.brandTextOn}
+            color={wallet.canPayWithWallet && !isFree ? colors.brandNavy : colors.brandTextOn}
           />
-          <Text style={sharedStepStyles.primaryBtnText}>
-            {isFree ? "Continue (free)" : `Pay $${chargingPrice.toFixed(2)}`}
+          <Text
+            style={[
+              sharedStepStyles.primaryBtnText,
+              wallet.canPayWithWallet && !isFree && { color: colors.brandNavy },
+            ]}
+          >
+            {isFree
+              ? "Continue (free)"
+              : wallet.canPayWithWallet && wallet.walletPayEnabled
+                ? "Pay with card"
+                : `Pay $${chargingPrice.toFixed(2)}`}
           </Text>
         </Pressable>
       )}
@@ -222,4 +322,20 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: space.md,
   },
+  cardBtn: {
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pinInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    padding: space.md,
+    marginBottom: space.sm,
+    backgroundColor: colors.surface,
+  },
+  shortfallBox: { marginBottom: space.sm, gap: 4 },
+  addFundsLink: { alignSelf: "flex-start" },
+  addFundsText: { color: colors.brandNavy, fontWeight: "600" },
 });

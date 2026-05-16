@@ -7,7 +7,7 @@
 
 import React from "react";
 import { Pressable, type PressableProps, StyleSheet, View, type ViewStyle } from "react-native";
-import { colors, radii, shadows, space } from "../../theme";
+import { radii, shadows, space, useThemeColors } from "../../theme";
 
 export type CardVariant = "flat" | "raised" | "outlined";
 
@@ -29,14 +29,15 @@ export function Card({
   children,
   ...rest
 }: Props) {
+  const c = useThemeColors();
   const padValue = padding === 0 ? 0 : space[padding];
   const wrapStyle: ViewStyle = {
-    backgroundColor: colors.surfaceElevated,
+    backgroundColor: c.surfaceElevated,
     borderRadius: radii.md,
     padding: padValue,
     ...(variant === "raised" ? shadows.md : null),
     ...(variant === "outlined"
-      ? { borderWidth: 1, borderColor: colors.border }
+      ? { borderWidth: 1, borderColor: c.border }
       : null),
   };
 

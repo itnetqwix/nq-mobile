@@ -7,6 +7,8 @@ import { shellSurfaceById } from "../features/dashboard/config/shellSurfaces";
 import { DashboardFeatureScreen } from "../features/dashboard/screens/DashboardFeatureScreen";
 import { MenuHomeScreen } from "../features/dashboard/screens/MenuHomeScreen";
 import { ShellSurfaceScreen } from "../features/dashboard/screens/ShellSurfaceScreen";
+import { TransactionDetailScreen } from "../features/dashboard/screens/TransactionDetailScreen";
+import { ReportIssueScreen } from "../features/dashboard/screens/ReportIssueScreen";
 import type { MenuStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<MenuStackParamList>();
@@ -44,6 +46,16 @@ export function MenuNavigator() {
           title: shellSurfaceById(route.params.surfaceId)?.title ?? "NetQwix",
           headerLeft: navigation.canGoBack() ? undefined : () => <DrawerToggleButton tintColor={c.headerTint} />,
         })}
+      />
+      <Stack.Screen
+        name="TransactionDetail"
+        component={TransactionDetailScreen}
+        options={{ title: "Transaction" }}
+      />
+      <Stack.Screen
+        name="ReportIssue"
+        component={ReportIssueScreen}
+        options={{ title: "Report an issue" }}
       />
     </Stack.Navigator>
   );

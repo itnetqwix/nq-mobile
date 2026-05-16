@@ -1,6 +1,8 @@
 import axios from "axios";
 import { Platform } from "react-native";
 import { API_BASE_URL, WEB_APP_ORIGIN } from "../config/env";
+import { emitUnauthorized } from "../lib/auth/sessionEvents";
+import { assertCertificatePinningAllowed } from "../lib/security/certPinning";
 import { getAccessToken } from "../features/auth/session/tokenStorage";
 import { expoFetchForAxios } from "./expoFetchForAxios";
 import { logHttpErrorDebug, logHttpRequestDebug, logHttpResponseDebug } from "./httpDebug";
@@ -49,6 +51,13 @@ export const apiClient = axios.create(
 );
 
 apiClient.interceptors.request.use(async (config) => {
+  if (!assertCertificatePinningAllowed()) {
+    return Promise.reject(
+      Object.assign(new Error("Secure connection unavailable. Update the app or contact support."), {
+        code: "CERT_PINNING_BLOCKED",
+      })
+    );
+  }
   const token = await getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -66,6 +75,7 @@ apiClient.interceptors.response.use(
     logHttpErrorDebug(error);
     if (error?.response?.status === 401) {
       error.isUnauthorized = true;
+      emitUnauthorized();
     }
     return Promise.reject(error);
   }

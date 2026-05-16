@@ -7,9 +7,11 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  FlatList,
+  SectionList,
+  type SectionList,
   Image,
   Keyboard,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -23,7 +25,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
-import { colors, radii, space, typography, useThemeColors } from "../../../theme";
+import { radii, space, typography, useThemeColors } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { useAuth } from "../../auth/context/AuthContext";
 import { useSocket } from "../../socket/SocketContext";
@@ -35,8 +37,14 @@ import {
   inferChatMediaKind,
   resolveChatMediaUri,
 } from "../lib/chatMediaUtils";
+import { ChatDaySeparator } from "../components/ChatDaySeparator";
 import {
-  formatDayLabel,
+  findMessageSectionLocation,
+  formatChatDayLabel,
+  groupMessagesByDayAsc,
+  sortMessagesAsc,
+} from "../lib/chatDateUtils";
+import {
   getSearchableText,
   groupMessagesByDay,
   highlightQueryParts,
@@ -153,21 +161,21 @@ function MessageStatus({
   if (!status || status === "sent") {
     return (
       <View style={statusStyles.row}>
-        <Ionicons name="checkmark" size={14} color="#8696a0" />
+        <Ionicons name="checkmark" size={15} color="#9CA3AF" />
       </View>
     );
   }
   if (status === "delivered") {
     return (
       <View style={statusStyles.row}>
-        <Ionicons name="checkmark-done" size={14} color="#667781" />
+        <Ionicons name="checkmark-done" size={15} color="#54656F" />
       </View>
     );
   }
   if (status === "read") {
     return (
       <View style={statusStyles.row}>
-        <Ionicons name="checkmark-done" size={14} color="#ffffff" />
+        <Ionicons name="checkmark-done" size={15} color="#FFFFFF" />
       </View>
     );
   }
@@ -181,6 +189,182 @@ const statusStyles = StyleSheet.create({
 // ─── Voice note player ──────────────────────────────────────────────────────
 
 function VoicePlayer({ uri, isMine }: { uri: string; isMine: boolean }) {
+  const themeColors = useThemeColors();
+  const styles = useThemedStyles((themeColors) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: themeColors.surface },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+    backgroundColor: themeColors.surfaceElevated,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: themeColors.border,
+  },
+  keyboardWrap: { flex: 1 },
+  backBtn: { marginRight: -2 },
+  headerProfileTap: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    minWidth: 0,
+  },
+  headerAvatar: { width: 36, height: 36, borderRadius: 18 },
+  headerAvatarFb: { backgroundColor: themeColors.brandNavy, alignItems: "center", justifyContent: "center" },
+  headerAvatarInitial: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  onlineDot: {
+    width: 10, height: 10, borderRadius: 5, backgroundColor: "#4CAF50",
+    position: "absolute", bottom: 0, right: -1, borderWidth: 2, borderColor: themeColors.surfaceElevated,
+  },
+  headerInfo: { flex: 1 },
+  headerName: { ...typography.titleSm, color: themeColors.text, fontSize: 16 },
+  headerSub: { fontSize: 12, color: themeColors.textMuted, marginTop: 1 },
+  headerSubTyping: { color: "#4CAF50", fontStyle: "italic" },
+  headerMore: { padding: 6 },
+  messageArea: { flex: 1 },
+  messageList: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 12, gap: 4 },
+  bubble: { maxWidth: "78%", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, marginBottom: 1 },
+  bubbleMine: { alignSelf: "flex-end", backgroundColor: themeColors.brandNavy, borderBottomRightRadius: 4 },
+  bubbleTheirs: { alignSelf: "flex-start", backgroundColor: themeColors.surfaceElevated, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: themeColors.border },
+  bubbleText: { ...typography.bodyMd, color: themeColors.text, lineHeight: 20 },
+  bubbleTextMine: { color: "#fff" },
+  bubbleFooter: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", marginTop: 2 },
+  bubbleTime: { ...typography.caption, color: themeColors.textMuted, fontSize: 10 },
+  bubbleTimeMine: { color: "rgba(255,255,255,0.6)" },
+  mediaThumbnail: { width: 200, height: 200, borderRadius: radii.md, marginBottom: 4 },
+  videoContainer: { position: "relative", width: 200, height: 120, borderRadius: radii.md, overflow: "hidden" },
+  videoPlaceholder: { flex: 1, backgroundColor: "rgba(0,0,0,0.1)", alignItems: "center", justifyContent: "center" },
+  playOverlay: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
+  emojiTray: { backgroundColor: themeColors.surfaceElevated, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: themeColors.border },
+  emojiScroll: { paddingHorizontal: 8, paddingVertical: 6, gap: 2 },
+  emojiBtn: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
+  emojiText: { fontSize: 24 },
+  inputBar: {
+    flexDirection: "row", alignItems: "flex-end", gap: 4,
+    paddingHorizontal: 8, paddingTop: 4,
+    backgroundColor: themeColors.surfaceElevated,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: themeColors.border,
+  },
+  iconBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
+  textInput: {
+    flex: 1, fontSize: 15, color: themeColors.text, backgroundColor: themeColors.surfaceMuted,
+    borderRadius: 20, paddingHorizontal: 14, paddingTop: 8, paddingBottom: 8,
+    maxHeight: 100, textAlignVertical: "center",
+  },
+  sendBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: themeColors.brandNavy, alignItems: "center", justifyContent: "center" },
+  recordBar: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    paddingHorizontal: 16, paddingTop: 8,
+    backgroundColor: themeColors.surfaceElevated,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: themeColors.border,
+  },
+  recordDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: "#F44336" },
+  recordTime: { fontSize: 16, fontWeight: "600", color: themeColors.text, fontVariant: ["tabular-nums"] },
+  recordLabel: { fontSize: 13, color: themeColors.textMuted },
+  recordCancel: { padding: 6 },
+  recordSend: { width: 40, height: 40, borderRadius: 20, backgroundColor: themeColors.brandNavy, alignItems: "center", justifyContent: "center" },
+  uploadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.3)", alignItems: "center", justifyContent: "center" },
+  uploadingCard: { backgroundColor: "#fff", borderRadius: 16, padding: 32, alignItems: "center", gap: 12, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 },
+
+  profileTabs: {
+    flexDirection: "row",
+    marginTop: 24,
+    marginHorizontal: 20,
+    borderRadius: radii.md,
+    backgroundColor: themeColors.surfaceMuted,
+    padding: 4,
+  },
+  profileTab: { flex: 1, paddingVertical: 8, alignItems: "center", borderRadius: radii.sm },
+  profileTabActive: { backgroundColor: themeColors.surfaceElevated },
+  profileTabText: { fontSize: 13, color: themeColors.textMuted, fontWeight: "500" },
+  profileTabTextActive: { color: themeColors.brandNavy, fontWeight: "700" },
+  mediaSection: { paddingHorizontal: 20, paddingTop: 16 },
+  mediaGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  mediaGridItem: { width: 100, height: 100, borderRadius: radii.sm },
+  searchSection: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 },
+  profileSearchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: themeColors.surfaceMuted,
+    borderRadius: radii.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  profileSearchInput: { flex: 1, fontSize: 15, color: themeColors.text },
+  profileEmptyText: { textAlign: "center", color: themeColors.textMuted, marginTop: 20, fontSize: 14 },
+  bubbleHighlight: {
+    borderWidth: 2,
+    borderColor: themeColors.brandAccent,
+  },
+  searchDayHeader: {
+    ...typography.label,
+    color: themeColors.brandNavy,
+    fontWeight: "700",
+    marginTop: space.md,
+    marginBottom: space.xs,
+    paddingHorizontal: 2,
+  },
+  searchHitHighlight: {
+    backgroundColor: "#FFF59D",
+    fontWeight: "700",
+    color: themeColors.text,
+  },
+  mediaGridVideo: {
+    flex: 1,
+    backgroundColor: themeColors.brandNavy,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radii.sm,
+  },
+  searchHit: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: themeColors.surfaceMuted,
+    borderRadius: radii.md,
+  },
+  searchHitTime: { fontSize: 11, color: themeColors.textMuted, marginBottom: 4 },
+  searchHitText: { fontSize: 14, color: themeColors.text, lineHeight: 20 },
+  sheetBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
+  sheetCard: { backgroundColor: themeColors.surfaceElevated, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, paddingHorizontal: 24 },
+  sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: themeColors.border, alignSelf: "center", marginBottom: 16 },
+  sheetTitle: { ...typography.titleSm, color: themeColors.text, marginBottom: 20, fontSize: 18 },
+  sheetGrid: { flexDirection: "row", justifyContent: "space-around" },
+  sheetOption: { alignItems: "center", gap: 8, width: 72 },
+  sheetIcon: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center" },
+  sheetLabel: { fontSize: 13, color: themeColors.text, fontWeight: "500" },
+  policyBanner: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    paddingHorizontal: 14, paddingVertical: 8,
+    backgroundColor: "#fef3c7",
+  },
+  policyText: { flex: 1, fontSize: 12, color: "#92400e", lineHeight: 16 },
+  limitedBar: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, paddingVertical: 10,
+  },
+  limitedText: { fontSize: 14, color: themeColors.textMuted, fontWeight: "500" },
+  previewBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.95)", justifyContent: "center", alignItems: "center" },
+  previewClose: { position: "absolute", right: 16, zIndex: 10 },
+  profileBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)" },
+  profileCard: { flex: 1, backgroundColor: themeColors.surfaceElevated },
+  profileClose: { position: "absolute", top: 52, right: 16, zIndex: 10, padding: 4 },
+  profileCenter: { alignItems: "center", marginTop: 40 },
+  profileAvatar: { width: 100, height: 100, borderRadius: 50 },
+  profileAvatarFb: { backgroundColor: themeColors.brandNavy, alignItems: "center", justifyContent: "center" },
+  profileAvatarInitial: { color: "#fff", fontWeight: "700", fontSize: 40 },
+  profileName: { fontSize: 22, fontWeight: "700", color: themeColors.text, marginTop: 16 },
+  profileStatusRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
+  profileDot: { width: 10, height: 10, borderRadius: 5 },
+  profileDotOnline: { backgroundColor: "#4CAF50" },
+  profileDotOffline: { backgroundColor: themeColors.textMuted },
+  profileStatusText: { fontSize: 14, color: themeColors.textMuted },
+  profileActions: { flexDirection: "row", justifyContent: "center", gap: 40, marginTop: 40 },
+  profileActionBtn: { alignItems: "center", gap: 6 },
+  profileActionText: { fontSize: 13, color: themeColors.textMuted, fontWeight: "500" },
+}));
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [playing, setPlaying] = useState(false);
   const [pos, setPos] = useState(0);
@@ -216,10 +400,10 @@ function VoicePlayer({ uri, isMine }: { uri: string; isMine: boolean }) {
   }, [uri, sound, playing]);
 
   const progress = dur > 0 ? pos / dur : 0;
-  const fg = isMine ? "rgba(255,255,255,0.9)" : colors.brandNavy;
-  const barBg = isMine ? "rgba(255,255,255,0.3)" : colors.border;
-  const barFill = isMine ? "#fff" : colors.brandNavy;
-  const timeFg = isMine ? "rgba(255,255,255,0.7)" : colors.textMuted;
+  const fg = isMine ? "rgba(255,255,255,0.9)" : themeColors.brandNavy;
+  const barBg = isMine ? "rgba(255,255,255,0.3)" : themeColors.border;
+  const barFill = isMine ? "#fff" : themeColors.brandNavy;
+  const timeFg = isMine ? "rgba(255,255,255,0.7)" : themeColors.textMuted;
 
   return (
     <Pressable onPress={toggle} style={voiceStyles.row}>
@@ -249,7 +433,7 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
   const { socket } = useSocket();
   const { isOnline: isUserOnline } = useOnlinePresence();
   const queryClient = useQueryClient();
-  const flatListRef = useRef<FlatList>(null);
+  const sectionListRef = useRef<SectionList<Message>>(null);
   const [text, setText] = useState("");
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -262,7 +446,7 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
   const [mediaViewer, setMediaViewer] = useState<{ index: number } | null>(null);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const [sendingText, setSendingText] = useState(false);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [profileSearch, setProfileSearch] = useState("");
   const [profileTab, setProfileTab] = useState<"info" | "media" | "search">("info");
   const [partnerTyping, setPartnerTyping] = useState(false);
@@ -300,6 +484,14 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
     const hideSub = Keyboard.addListener(hideEvent, onHide);
     return () => { showSub.remove(); hideSub.remove(); };
   }, []);
+
+  useEffect(() => {
+    if (keyboardHeight <= 0) return;
+    const t = setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 80);
+    return () => clearTimeout(t);
+  }, [keyboardHeight]);
 
   useEffect(() => {
     if (partner?._id) setPartnerOnline(isUserOnline(partner._id));
@@ -368,7 +560,9 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
   const { data: serverMessages = [] } = useQuery<Message[]>({
     queryKey: ["chatMessages", conversationId],
     queryFn: async () => {
-      const res = await apiClient.get(API_ROUTES.chat.messages(conversationId));
+      const res = await apiClient.get(API_ROUTES.chat.messages(conversationId), {
+        params: { page: 1, limit: 200 },
+      });
       const body = (res as any)?.data ?? res;
       return body?.data ?? body?.result ?? [];
     },
@@ -386,8 +580,13 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
     for (const m of localMessages) {
       if (!seen.has(m._id)) { seen.add(m._id); merged.push(m); }
     }
-    return merged;
+    return sortMessagesAsc(merged);
   }, [serverMessages, localMessages]);
+
+  const messageSections = useMemo(
+    () => groupMessagesByDayAsc(allMessages),
+    [allMessages]
+  );
 
   // Mark messages as read when opening and receiving
   useEffect(() => {
@@ -440,6 +639,12 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
           return [...prev, msg];
         });
         queryClient.invalidateQueries({ queryKey: ["chatMessages", conversationId] });
+        if (msg?.senderId && String(msg.senderId) !== currentUserId && msg?._id) {
+          socket.emit("CHAT_DELIVERED", {
+            messageIds: [String(msg._id)],
+            conversationId,
+          });
+        }
         socket.emit("CHAT_READ", { conversationId, readerId: currentUserId });
       }
     };
@@ -463,10 +668,10 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
 
   const sendMessage = useCallback(async () => {
     const content = text.trim();
-    if (!content || !partner?._id || sendingText) return;
+    if (!content || !partner?._id || isSendingMessage) return;
     setText("");
     setShowEmoji(false);
-    setSendingText(true);
+    setIsSendingMessage(true);
     if (socket) socket.emit("CHAT_STOP_TYPING", { conversationId, userId: currentUserId });
     const tempId = `temp_${Date.now()}`;
     const tempMsg: Message = {
@@ -503,9 +708,9 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
         Alert.alert("Limit Reached", msg);
       }
     } finally {
-      setSendingText(false);
+      setIsSendingMessage(false);
     }
-  }, [text, partner, currentUserId, socket, conversationId, queryClient, chatPolicy, sendingText]);
+  }, [text, partner, currentUserId, socket, conversationId, queryClient, chatPolicy, isSendingMessage]);
 
   // ─── Send media ─────────────────────────────────────────────────────────────
 
@@ -517,7 +722,8 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
       const label = type === "image" ? "📷 Photo" : type === "video" ? "🎬 Video" : "🎤 Voice note";
       setLocalMessages((prev) => [...prev, {
         _id: tempId, senderId: currentUserId, receiverId: partner._id,
-        content: label, type, mediaUrl: fileUri, status: "sent", createdAt: new Date().toISOString(),
+        content: label, type, mediaUrl: fileUri, status: "sending", pending: true,
+        createdAt: new Date().toISOString(),
       }]);
       try {
         const { uploadUrl, mediaUrl } = await getPresignedUploadUrl(fileName, mimeType);
@@ -752,20 +958,21 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
 
   const jumpToMessage = useCallback(
     (messageId: string) => {
-      const index = allMessages.findIndex((m) => m._id === messageId);
-      if (index < 0) return;
+      const loc = findMessageSectionLocation(messageSections, messageId);
+      if (!loc) return;
       setShowProfile(false);
       setHighlightedMessageId(messageId);
       requestAnimationFrame(() => {
-        flatListRef.current?.scrollToIndex({
-          index,
+        sectionListRef.current?.scrollToLocation({
+          sectionIndex: loc.sectionIndex,
+          itemIndex: loc.itemIndex,
           animated: true,
           viewPosition: 0.5,
         });
       });
       setTimeout(() => setHighlightedMessageId(null), 2500);
     },
-    [allMessages]
+    [messageSections]
   );
 
   // ─── Render message ─────────────────────────────────────────────────────────
@@ -825,7 +1032,10 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
 
   const partnerName = partner?.fullname ?? "Chat";
   const partnerAvatar = getS3ImageUrl(partner?.profile_picture);
-  const inputBottomInset = keyboardHeight > 0 ? 8 : insets.bottom + 4;
+  const inputBottomInset =
+    keyboardHeight > 0
+      ? Math.max(8, keyboardHeight - insets.bottom)
+      : insets.bottom + 4;
 
   const sharedMedia = chatMediaItems;
 
@@ -850,24 +1060,20 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
     ? `last seen ${formatLastSeen(partnerLastSeen)}`
     : "";
 
+  const openPartnerProfile = useCallback(() => {
+    setProfileTab("info");
+    setProfileSearch("");
+    setShowProfile(true);
+  }, []);
+
   return (
-    <View
-      style={[
-        styles.root,
-        { paddingBottom: keyboardHeight, backgroundColor: themeColors.background },
-      ]}
-    >
+    <View style={[styles.root, { backgroundColor: themeColors.background }]}>
       {/* Header */}
-      <Pressable
-        onPress={() => {
-          setProfileTab("info");
-          setProfileSearch("");
-          setShowProfile(true);
-        }}
+      <View
         style={[
           styles.header,
           {
-            paddingTop: insets.top + 8,
+            paddingTop: insets.top + 12,
             backgroundColor: themeColors.surfaceElevated,
             borderBottomColor: themeColors.border,
           },
@@ -876,28 +1082,35 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
         <Pressable onPress={onGoBack} hitSlop={12} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={26} color={themeColors.text} />
         </Pressable>
-        <View>
-          {partnerAvatar ? (
-            <Image source={{ uri: partnerAvatar }} style={styles.headerAvatar} />
-          ) : (
-            <View style={[styles.headerAvatar, styles.headerAvatarFb]}>
-              <Text style={styles.headerAvatarInitial}>{partnerName[0]?.toUpperCase()}</Text>
-            </View>
-          )}
-          {partnerOnline && <View style={styles.onlineDot} />}
-        </View>
-        <View style={styles.headerInfo}>
-          <Text style={styles.headerName} numberOfLines={1}>{partnerName}</Text>
-          {!!headerSubtitle && (
-            <Text style={[styles.headerSub, partnerTyping && styles.headerSubTyping]} numberOfLines={1}>
-              {headerSubtitle}
-            </Text>
-          )}
-        </View>
-        <Pressable onPress={handleProfileAction} hitSlop={10} style={styles.headerMore}>
-          <Ionicons name="ellipsis-vertical" size={20} color={colors.textMuted} />
+        <Pressable
+          onPress={openPartnerProfile}
+          style={styles.headerProfileTap}
+          accessibilityRole="button"
+          accessibilityLabel={`${partnerName} profile`}
+        >
+          <View>
+            {partnerAvatar ? (
+              <Image source={{ uri: partnerAvatar }} style={styles.headerAvatar} />
+            ) : (
+              <View style={[styles.headerAvatar, styles.headerAvatarFb]}>
+                <Text style={styles.headerAvatarInitial}>{partnerName[0]?.toUpperCase()}</Text>
+              </View>
+            )}
+            {partnerOnline && <View style={styles.onlineDot} />}
+          </View>
+          <View style={styles.headerInfo}>
+            <Text style={styles.headerName} numberOfLines={1}>{partnerName}</Text>
+            {!!headerSubtitle && (
+              <Text style={[styles.headerSub, partnerTyping && styles.headerSubTyping]} numberOfLines={1}>
+                {headerSubtitle}
+              </Text>
+            )}
+          </View>
         </Pressable>
-      </Pressable>
+        <Pressable onPress={handleProfileAction} hitSlop={10} style={styles.headerMore}>
+          <Ionicons name="ellipsis-vertical" size={20} color={themeColors.textMuted} />
+        </Pressable>
+      </View>
 
       {/* Chat policy banner */}
       {chatPolicy && !chatPolicy.hasPaidSession && (
@@ -911,47 +1124,62 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
         </View>
       )}
 
-      {/* Messages */}
-      <FlatList
-        ref={flatListRef}
-        data={allMessages}
-        keyExtractor={(item) => item._id}
-        renderItem={renderMessage}
-        contentContainerStyle={styles.messageList}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
-        onScrollToIndexFailed={(info) => {
-          flatListRef.current?.scrollToOffset({
-            offset: info.averageItemLength * info.index,
-            animated: true,
-          });
-        }}
-        style={styles.messageArea}
-        keyboardDismissMode="interactive"
-        keyboardShouldPersistTaps="handled"
-      />
+      <KeyboardAvoidingView
+        style={styles.keyboardWrap}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}
+      >
+        {/* Messages */}
+        <SectionList
+          ref={sectionListRef}
+          sections={messageSections}
+          keyExtractor={(item) => item._id}
+          renderItem={renderMessage}
+          renderSectionHeader={({ section: { title } }) => (
+            <ChatDaySeparator label={title} />
+          )}
+          stickySectionHeadersEnabled
+          contentContainerStyle={styles.messageList}
+          onContentSizeChange={() =>
+            sectionListRef.current?.scrollToLocation({
+              sectionIndex: Math.max(0, messageSections.length - 1),
+              itemIndex: Math.max(
+                0,
+                (messageSections[messageSections.length - 1]?.data.length ?? 1) - 1
+              ),
+              animated: false,
+            })
+          }
+          onScrollToIndexFailed={() => {
+            /* SectionList scroll recovery */
+          }}
+          style={styles.messageArea}
+          keyboardDismissMode="interactive"
+          keyboardShouldPersistTaps="handled"
+        />
 
-      {/* Emoji tray */}
-      {showEmoji && (
-        <View style={styles.emojiTray}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.emojiScroll}>
-            {EMOJI_LIST.map((e) => (
-              <Pressable key={e} onPress={() => insertEmoji(e)} style={styles.emojiBtn}>
-                <Text style={styles.emojiText}>{e}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-      )}
+        {/* Emoji tray */}
+        {showEmoji && (
+          <View style={styles.emojiTray}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.emojiScroll}>
+              {EMOJI_LIST.map((e) => (
+                <Pressable key={e} onPress={() => insertEmoji(e)} style={styles.emojiBtn}>
+                  <Text style={styles.emojiText}>{e}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
-      {/* Recording / Input bar */}
-      {recording ? (
-        <View style={[styles.recordBar, { paddingBottom: inputBottomInset }]}>
+        {/* Recording / Input bar */}
+        {recording ? (
+          <View style={[styles.recordBar, { paddingBottom: inputBottomInset }]}>
           <Animated.View style={[styles.recordDot, { transform: [{ scale: pulseAnim }] }]} />
           <Text style={styles.recordTime}>{formatDuration(recordSecs * 1000)}</Text>
           <Text style={styles.recordLabel}>Recording...</Text>
           <View style={{ flex: 1 }} />
           <Pressable onPress={cancelRecording} hitSlop={10} style={styles.recordCancel}>
-            <Ionicons name="trash-outline" size={22} color={colors.error} />
+            <Ionicons name="trash-outline" size={22} color={themeColors.error} />
           </Pressable>
           <Pressable onPress={finishRecording} hitSlop={10} style={styles.recordSend}>
             <Ionicons name="send" size={20} color="#fff" />
@@ -961,30 +1189,30 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
         <View style={[styles.inputBar, { paddingBottom: inputBottomInset }]}>
           {rateLimited ? (
             <View style={styles.limitedBar}>
-              <Ionicons name="lock-closed-outline" size={18} color={colors.textMuted} />
+              <Ionicons name="lock-closed-outline" size={18} color={themeColors.textMuted} />
               <Text style={styles.limitedText}>Book a lesson to continue chatting</Text>
             </View>
           ) : (
             <>
               <Pressable onPress={() => setShowAttach(true)} hitSlop={8} style={styles.iconBtn}>
-                <Ionicons name="add-circle-outline" size={26} color={colors.brandNavy} />
+                <Ionicons name="add-circle-outline" size={26} color={themeColors.brandNavy} />
               </Pressable>
               <Pressable onPress={() => setShowEmoji((v) => !v)} hitSlop={8} style={styles.iconBtn}>
-                <Ionicons name={showEmoji ? "happy" : "happy-outline"} size={24} color={showEmoji ? colors.brandNavy : colors.textMuted} />
+                <Ionicons name={showEmoji ? "happy" : "happy-outline"} size={24} color={showEmoji ? themeColors.brandNavy : themeColors.textMuted} />
               </Pressable>
               <TextInput
                 style={styles.textInput}
                 value={text}
                 onChangeText={handleTextChange}
                 placeholder="Message..."
-                placeholderTextColor={colors.textMuted}
+                placeholderTextColor={themeColors.textMuted}
                 multiline
                 maxLength={2000}
                 onFocus={() => setShowEmoji(false)}
               />
               {text.trim() ? (
-                <Pressable style={styles.sendBtn} onPress={sendMessage} disabled={sendingText}>
-                  {sendingText ? (
+                <Pressable style={styles.sendBtn} onPress={sendMessage} disabled={isSendingMessage}>
+                  {isSendingMessage ? (
                     <ActivityIndicator size={16} color="#fff" />
                   ) : (
                     <Ionicons name="send" size={18} color="#fff" />
@@ -992,19 +1220,20 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
                 </Pressable>
               ) : (
                 <Pressable style={styles.iconBtn} onPress={startRecording}>
-                  <Ionicons name="mic-outline" size={26} color={colors.brandNavy} />
+                  <Ionicons name="mic-outline" size={26} color={themeColors.brandNavy} />
                 </Pressable>
               )}
             </>
           )}
         </View>
-      )}
+        )}
+      </KeyboardAvoidingView>
 
       {/* Upload overlay */}
       {uploading && (
         <View style={styles.uploadingOverlay}>
           <View style={styles.uploadingCard}>
-            <ActivityIndicator color={colors.brandNavy} size="large" />
+            <ActivityIndicator color={themeColors.brandNavy} size="large" />
           </View>
         </View>
       )}
@@ -1058,7 +1287,7 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
         <View style={styles.profileBackdrop}>
           <View style={[styles.profileCard, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
             <Pressable onPress={() => setShowProfile(false)} style={styles.profileClose}>
-              <Ionicons name="close" size={28} color={colors.text} />
+              <Ionicons name="close" size={28} color={themeColors.text} />
             </Pressable>
             <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
               <View style={styles.profileCenter}>
@@ -1115,14 +1344,14 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
                       ]);
                     }}
                   >
-                    <Ionicons name="ban-outline" size={22} color={colors.error} />
-                    <Text style={[styles.profileActionText, { color: colors.error }]}>Block</Text>
+                    <Ionicons name="ban-outline" size={22} color={themeColors.error} />
+                    <Text style={[styles.profileActionText, { color: themeColors.error }]}>Block</Text>
                   </Pressable>
                   <Pressable
                     style={styles.profileActionBtn}
                     onPress={() => { setShowProfile(false); handleProfileAction(); }}
                   >
-                    <Ionicons name="flag-outline" size={22} color={colors.textMuted} />
+                    <Ionicons name="flag-outline" size={22} color={themeColors.textMuted} />
                     <Text style={styles.profileActionText}>Report</Text>
                   </Pressable>
                 </View>
@@ -1166,11 +1395,11 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
               {profileTab === "search" && (
                 <View style={styles.searchSection}>
                   <View style={styles.profileSearchBar}>
-                    <Ionicons name="search-outline" size={18} color={colors.textMuted} />
+                    <Ionicons name="search-outline" size={18} color={themeColors.textMuted} />
                     <TextInput
                       style={styles.profileSearchInput}
                       placeholder="Search messages..."
-                      placeholderTextColor={colors.textMuted}
+                      placeholderTextColor={themeColors.textMuted}
                       value={profileSearch}
                       onChangeText={setProfileSearch}
                     />
@@ -1223,170 +1452,4 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.surface },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingBottom: 12,
-    backgroundColor: colors.surfaceElevated,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  backBtn: { marginRight: -2 },
-  headerAvatar: { width: 36, height: 36, borderRadius: 18 },
-  headerAvatarFb: { backgroundColor: colors.brandNavy, alignItems: "center", justifyContent: "center" },
-  headerAvatarInitial: { color: "#fff", fontWeight: "700", fontSize: 14 },
-  onlineDot: {
-    width: 10, height: 10, borderRadius: 5, backgroundColor: "#4CAF50",
-    position: "absolute", bottom: 0, right: -1, borderWidth: 2, borderColor: colors.surfaceElevated,
-  },
-  headerInfo: { flex: 1 },
-  headerName: { ...typography.titleSm, color: colors.text, fontSize: 16 },
-  headerSub: { fontSize: 12, color: colors.textMuted, marginTop: 1 },
-  headerSubTyping: { color: "#4CAF50", fontStyle: "italic" },
-  headerMore: { padding: 6 },
-  messageArea: { flex: 1 },
-  messageList: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 8, gap: 3 },
-  bubble: { maxWidth: "78%", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, marginBottom: 1 },
-  bubbleMine: { alignSelf: "flex-end", backgroundColor: colors.brandNavy, borderBottomRightRadius: 4 },
-  bubbleTheirs: { alignSelf: "flex-start", backgroundColor: colors.surfaceElevated, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: colors.border },
-  bubbleText: { ...typography.bodyMd, color: colors.text, lineHeight: 20 },
-  bubbleTextMine: { color: "#fff" },
-  bubbleFooter: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", marginTop: 2 },
-  bubbleTime: { ...typography.caption, color: colors.textMuted, fontSize: 10 },
-  bubbleTimeMine: { color: "rgba(255,255,255,0.6)" },
-  mediaThumbnail: { width: 200, height: 200, borderRadius: radii.md, marginBottom: 4 },
-  videoContainer: { position: "relative", width: 200, height: 120, borderRadius: radii.md, overflow: "hidden" },
-  videoPlaceholder: { flex: 1, backgroundColor: "rgba(0,0,0,0.1)", alignItems: "center", justifyContent: "center" },
-  playOverlay: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
-  emojiTray: { backgroundColor: colors.surfaceElevated, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
-  emojiScroll: { paddingHorizontal: 8, paddingVertical: 6, gap: 2 },
-  emojiBtn: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
-  emojiText: { fontSize: 24 },
-  inputBar: {
-    flexDirection: "row", alignItems: "flex-end", gap: 4,
-    paddingHorizontal: 8, paddingTop: 4,
-    backgroundColor: colors.surfaceElevated,
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border,
-  },
-  iconBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
-  textInput: {
-    flex: 1, fontSize: 15, color: colors.text, backgroundColor: colors.surfaceMuted,
-    borderRadius: 20, paddingHorizontal: 14, paddingTop: 8, paddingBottom: 8,
-    maxHeight: 100, textAlignVertical: "center",
-  },
-  sendBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.brandNavy, alignItems: "center", justifyContent: "center" },
-  recordBar: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    paddingHorizontal: 16, paddingTop: 8,
-    backgroundColor: colors.surfaceElevated,
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border,
-  },
-  recordDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: "#F44336" },
-  recordTime: { fontSize: 16, fontWeight: "600", color: colors.text, fontVariant: ["tabular-nums"] },
-  recordLabel: { fontSize: 13, color: colors.textMuted },
-  recordCancel: { padding: 6 },
-  recordSend: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.brandNavy, alignItems: "center", justifyContent: "center" },
-  uploadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.3)", alignItems: "center", justifyContent: "center" },
-  uploadingCard: { backgroundColor: "#fff", borderRadius: 16, padding: 32, alignItems: "center", gap: 12, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 },
 
-  profileTabs: {
-    flexDirection: "row",
-    marginTop: 24,
-    marginHorizontal: 20,
-    borderRadius: radii.md,
-    backgroundColor: colors.surfaceMuted,
-    padding: 4,
-  },
-  profileTab: { flex: 1, paddingVertical: 8, alignItems: "center", borderRadius: radii.sm },
-  profileTabActive: { backgroundColor: colors.surfaceElevated },
-  profileTabText: { fontSize: 13, color: colors.textMuted, fontWeight: "500" },
-  profileTabTextActive: { color: colors.brandNavy, fontWeight: "700" },
-  mediaSection: { paddingHorizontal: 20, paddingTop: 16 },
-  mediaGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  mediaGridItem: { width: 100, height: 100, borderRadius: radii.sm },
-  searchSection: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 },
-  profileSearchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: radii.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  profileSearchInput: { flex: 1, fontSize: 15, color: colors.text },
-  profileEmptyText: { textAlign: "center", color: colors.textMuted, marginTop: 20, fontSize: 14 },
-  bubbleHighlight: {
-    borderWidth: 2,
-    borderColor: colors.brandAccent,
-  },
-  searchDayHeader: {
-    ...typography.label,
-    color: colors.brandNavy,
-    fontWeight: "700",
-    marginTop: space.md,
-    marginBottom: space.xs,
-    paddingHorizontal: 2,
-  },
-  searchHitHighlight: {
-    backgroundColor: "#FFF59D",
-    fontWeight: "700",
-    color: colors.text,
-  },
-  mediaGridVideo: {
-    flex: 1,
-    backgroundColor: colors.brandNavy,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radii.sm,
-  },
-  searchHit: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: radii.md,
-  },
-  searchHitTime: { fontSize: 11, color: colors.textMuted, marginBottom: 4 },
-  searchHitText: { fontSize: 14, color: colors.text, lineHeight: 20 },
-  sheetBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
-  sheetCard: { backgroundColor: colors.surfaceElevated, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, paddingHorizontal: 24 },
-  sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: 16 },
-  sheetTitle: { ...typography.titleSm, color: colors.text, marginBottom: 20, fontSize: 18 },
-  sheetGrid: { flexDirection: "row", justifyContent: "space-around" },
-  sheetOption: { alignItems: "center", gap: 8, width: 72 },
-  sheetIcon: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center" },
-  sheetLabel: { fontSize: 13, color: colors.text, fontWeight: "500" },
-  policyBanner: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    paddingHorizontal: 14, paddingVertical: 8,
-    backgroundColor: "#fef3c7",
-  },
-  policyText: { flex: 1, fontSize: 12, color: "#92400e", lineHeight: 16 },
-  limitedBar: {
-    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 8, paddingVertical: 10,
-  },
-  limitedText: { fontSize: 14, color: colors.textMuted, fontWeight: "500" },
-  previewBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.95)", justifyContent: "center", alignItems: "center" },
-  previewClose: { position: "absolute", right: 16, zIndex: 10 },
-  profileBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)" },
-  profileCard: { flex: 1, backgroundColor: colors.surfaceElevated },
-  profileClose: { position: "absolute", top: 52, right: 16, zIndex: 10, padding: 4 },
-  profileCenter: { alignItems: "center", marginTop: 40 },
-  profileAvatar: { width: 100, height: 100, borderRadius: 50 },
-  profileAvatarFb: { backgroundColor: colors.brandNavy, alignItems: "center", justifyContent: "center" },
-  profileAvatarInitial: { color: "#fff", fontWeight: "700", fontSize: 40 },
-  profileName: { fontSize: 22, fontWeight: "700", color: colors.text, marginTop: 16 },
-  profileStatusRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
-  profileDot: { width: 10, height: 10, borderRadius: 5 },
-  profileDotOnline: { backgroundColor: "#4CAF50" },
-  profileDotOffline: { backgroundColor: colors.textMuted },
-  profileStatusText: { fontSize: 14, color: colors.textMuted },
-  profileActions: { flexDirection: "row", justifyContent: "center", gap: 40, marginTop: 40 },
-  profileActionBtn: { alignItems: "center", gap: 6 },
-  profileActionText: { fontSize: 13, color: colors.textMuted, fontWeight: "500" },
-});

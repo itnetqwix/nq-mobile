@@ -246,7 +246,13 @@ export async function fetchMyReferrals(): Promise<any[]> {
 
 export type BrowseTrainersParams = {
   search?: string;
+  /** @deprecated Use `categories` */
   category?: string;
+  /** Comma-separated sport/category labels */
+  categories?: string;
+  minRating?: number;
+  minHourlyRate?: number;
+  maxHourlyRate?: number;
   sortBy?: "name" | "rating" | "hourly_rate" | "hourly_rate_desc";
   onlineOnly?: boolean;
   page?: number;
@@ -256,7 +262,17 @@ export type BrowseTrainersParams = {
 export async function fetchTrainersWithSlots(params?: BrowseTrainersParams): Promise<any[]> {
   const query: Record<string, string> = {};
   if (params?.search?.trim()) query.search = params.search.trim();
-  if (params?.category?.trim()) query.category = params.category.trim();
+  const cats = params?.categories?.trim() || params?.category?.trim();
+  if (cats) query.categories = cats;
+  if (params?.minRating != null && params.minRating > 0) {
+    query.minRating = String(params.minRating);
+  }
+  if (params?.minHourlyRate != null && params.minHourlyRate > 0) {
+    query.minHourlyRate = String(params.minHourlyRate);
+  }
+  if (params?.maxHourlyRate != null && params.maxHourlyRate > 0) {
+    query.maxHourlyRate = String(params.maxHourlyRate);
+  }
   if (params?.sortBy) query.sortBy = params.sortBy;
   if (params?.onlineOnly) query.onlineOnly = "1";
   if (params?.page) query.page = String(params.page);

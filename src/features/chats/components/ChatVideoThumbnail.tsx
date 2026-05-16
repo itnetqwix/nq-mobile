@@ -10,7 +10,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { colors } from "../../../theme";
+import { useThemeColors } from "../../../theme";
 
 type Props = {
   uri: string;
@@ -20,6 +20,7 @@ type Props = {
 };
 
 export function ChatVideoThumbnail({ uri, style, onPress, isMine }: Props) {
+  const c = useThemeColors();
   const [thumbUri, setThumbUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -52,9 +53,9 @@ export function ChatVideoThumbnail({ uri, style, onPress, isMine }: Props) {
       ) : (
         <View style={styles.fallback}>
           {loading ? (
-            <ActivityIndicator color={isMine ? "#fff" : colors.brandNavy} />
+            <ActivityIndicator color={isMine ? "#fff" : c.brandNavy} />
           ) : (
-            <Ionicons name="videocam" size={28} color={isMine ? "#fff" : colors.brandNavy} />
+            <Ionicons name="videocam" size={28} color={isMine ? "#fff" : c.brandNavy} />
           )}
         </View>
       )}

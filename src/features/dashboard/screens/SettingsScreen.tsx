@@ -24,7 +24,7 @@ import { WEB_APP_ORIGIN } from "../../../config/env";
 import { AccountType } from "../../../constants/accountType";
 import { WebRoutes } from "../../../constants/webRoutes";
 import type { MenuStackParamList, ShellSurfaceRouteId } from "../../../navigation/types";
-import { colors, space, typography } from "../../../theme";
+import { space, typography, useThemeColors } from "../../../theme";
 import { useTheme, type ThemeMode } from "../../../theme/ThemeContext";
 import { useAuth } from "../../auth/context/AuthContext";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
@@ -49,6 +49,7 @@ function readNotificationPrefs(user: Record<string, unknown> | null): UserNotifi
 }
 
 export function SettingsScreen() {
+  const c = useThemeColors();
   const navigation = useNavigation<NativeStackNavigationProp<MenuStackParamList>>();
 
   const openShell = useCallback(
@@ -168,23 +169,23 @@ export function SettingsScreen() {
   }, [isTrainer, openWeb, openDashboard, openShell]);
 
   return (
-    <ScreenContainer scroll padding="md" background={colors.surface}>
+    <ScreenContainer scroll padding="md" background={c.surface}>
       <Pressable onPress={() => openShell("editProfile")}>
         <Card variant="outlined" padding="md" style={styles.profileCard}>
           <Avatar name={name} size="xl" uri={profileUri} />
           <View style={{ flex: 1 }}>
-            <Text style={[typography.titleMd, { color: colors.text }]} numberOfLines={1}>
+            <Text style={[typography.titleMd, { color: c.text }]} numberOfLines={1}>
               {name}
             </Text>
             <Text
-              style={[typography.bodySm, { color: colors.textMuted, marginTop: 2 }]}
+              style={[typography.bodySm, { color: c.textMuted, marginTop: 2 }]}
               numberOfLines={1}
             >
               {email}
             </Text>
             <Pill label={accountType ?? "Member"} tone="brand" style={{ marginTop: 6 }} />
           </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          <Ionicons name="chevron-forward" size={20} color={c.textMuted} />
         </Card>
       </Pressable>
 
@@ -240,9 +241,9 @@ export function SettingsScreen() {
               accessibilityLabel={`Theme: ${label}${themeMode === id ? " (selected)" : ""}`}
               rightAdornment={
                 themeMode === id ? (
-                  <Ionicons name="checkmark-circle" size={22} color={colors.brandAccent} />
+                  <Ionicons name="checkmark-circle" size={22} color={c.brandAccent} />
                 ) : (
-                  <Ionicons name="ellipse-outline" size={22} color={colors.neutral300} />
+                  <Ionicons name="ellipse-outline" size={22} color={c.neutral300} />
                 )
               }
               onPress={() => setThemeMode(id as ThemeMode)}
@@ -259,13 +260,13 @@ export function SettingsScreen() {
           title="Private account"
           rightAdornment={
             privacyBusy ? (
-              <ActivityIndicator size="small" color={colors.brandAccent} />
+              <ActivityIndicator size="small" color={c.brandAccent} />
             ) : (
               <Switch
                 value={isPrivate}
                 onValueChange={handlePrivacy}
-                trackColor={{ false: colors.neutral200, true: colors.brandAccentSubtle }}
-                thumbColor={isPrivate ? colors.brandAccent : colors.neutral100}
+                trackColor={{ false: c.neutral200, true: c.brandAccentSubtle }}
+                thumbColor={isPrivate ? c.brandAccent : c.neutral100}
               />
             )
           }
@@ -295,13 +296,13 @@ export function SettingsScreen() {
                 title={label}
                 rightAdornment={
                   busy ? (
-                    <ActivityIndicator size="small" color={colors.brandAccent} />
+                    <ActivityIndicator size="small" color={c.brandAccent} />
                   ) : (
                     <Switch
                       value={on}
                       onValueChange={(v) => void handleNotifToggle(cat, ch, v)}
-                      trackColor={{ false: colors.neutral200, true: colors.brandAccentSubtle }}
-                      thumbColor={on ? colors.brandAccent : colors.neutral100}
+                      trackColor={{ false: c.neutral200, true: c.brandAccentSubtle }}
+                      thumbColor={on ? c.brandAccent : c.neutral100}
                     />
                   )
                 }
@@ -335,13 +336,31 @@ export function SettingsScreen() {
         />
       </Card>
 
-      <Text style={styles.version}>NetQwix Mobile · v1.0.0</Text>
+      <Text
+        style={{
+          textAlign: "center",
+          fontSize: 12,
+          color: c.textMuted,
+          paddingVertical: space.sm,
+        }}
+      >
+        NetQwix Mobile · v1.0.0
+      </Text>
     </ScreenContainer>
   );
 }
 
 function Divider() {
-  return <View style={styles.divider} />;
+  const c = useThemeColors();
+  return (
+    <View
+      style={{
+        height: StyleSheet.hairlineWidth,
+        backgroundColor: c.border,
+        marginLeft: space.md + 36 + space.md,
+      }}
+    />
+  );
 }
 
 const styles = StyleSheet.create({
@@ -351,22 +370,4 @@ const styles = StyleSheet.create({
     gap: space.md,
   },
   sectionCard: { marginBottom: space.sm },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
-    marginLeft: space.md + 36 + space.md,
-  },
-  hint: {
-    fontSize: 12,
-    color: colors.textMuted,
-    paddingHorizontal: space.md,
-    paddingBottom: space.sm,
-    lineHeight: 16,
-  },
-  version: {
-    textAlign: "center",
-    fontSize: 12,
-    color: colors.textMuted,
-    paddingVertical: space.sm,
-  },
 });

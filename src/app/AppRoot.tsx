@@ -1,4 +1,3 @@
-import { NavigationContainer } from "@react-navigation/native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StripeProvider } from "@stripe/stripe-react-native";
 import React, { useCallback, useMemo } from "react";
@@ -12,10 +11,9 @@ import { InstantLessonProvider } from "../features/instant-lesson/InstantLessonC
 import { NotificationProvider } from "../features/notifications/NotificationContext";
 import { SessionBookingProvider } from "../features/sessions/SessionBookingContext";
 import { PushNotificationBridge } from "../features/notifications/PushNotificationBridge";
-import { RootNavigator } from "../navigation/RootNavigator";
 import { navigationRef } from "../navigation/navigationRef";
-import { AppStatusBar } from "../theme/AppStatusBar";
 import { ThemeProvider } from "../theme/ThemeContext";
+import { ThemedNavigationContainer } from "./ThemedNavigationContainer";
 
 export function AppRoot() {
   const queryClient = useMemo(
@@ -56,10 +54,7 @@ export function AppRoot() {
                     <SessionBookingProvider>
                       <InstantLessonProvider onNavigateToMeeting={navigateToMeeting}>
                         <PushNotificationBridge />
-                        <NavigationContainer ref={navigationRef}>
-                          <AppStatusBar />
-                          <RootNavigator />
-                        </NavigationContainer>
+                        <ThemedNavigationContainer />
                       </InstantLessonProvider>
                     </SessionBookingProvider>
                   </NotificationProvider>

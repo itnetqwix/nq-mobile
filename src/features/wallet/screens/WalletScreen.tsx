@@ -15,7 +15,7 @@ import {
 import { Button } from "../../../components/ui";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
-import { colors, radii, space, typography } from "../../../theme";
+import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import {
   createTopUpIntent,
   fetchWalletBalance,
@@ -25,6 +25,43 @@ import {
 } from "../walletApi";
 
 export function WalletScreen() {
+  const c = useThemeColors();
+  const styles = useThemedStyles((c) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.background },
+  content: { padding: space.lg, gap: space.md },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  card: {
+    backgroundColor: c.surfaceElevated,
+    borderRadius: radii.lg,
+    padding: space.lg,
+  },
+  label: { ...typography.label, color: c.textMuted },
+  amount: { ...typography.displaySm, color: c.brandNavy, marginTop: 4 },
+  currency: { ...typography.bodySm, color: c.textMuted },
+  sub: { ...typography.bodySm, color: c.textSecondary, marginTop: space.sm },
+  section: { ...typography.titleSm, color: c.text, marginTop: space.md },
+  hint: { ...typography.bodySm, color: c.textMuted },
+  row: { flexDirection: "row", gap: space.sm, alignItems: "center" },
+  input: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: c.border,
+    borderRadius: radii.md,
+    padding: space.sm,
+    backgroundColor: c.surface,
+  },
+  ledgerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: space.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: c.border,
+  },
+  ledgerType: { ...typography.bodySm, color: c.text },
+  ledgerAmt: { ...typography.label, color: c.brandNavy },
+  ok: { ...typography.bodySm, color: c.success },
+}));
+
   const { accountType } = useAuth();
   const queryClient = useQueryClient();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
@@ -103,7 +140,7 @@ export function WalletScreen() {
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={colors.brandNavy} />
+        <ActivityIndicator color={c.brandNavy} />
       </View>
     );
   }
@@ -182,38 +219,4 @@ export function WalletScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.background },
-  content: { padding: space.lg, gap: space.md },
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  card: {
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: radii.lg,
-    padding: space.lg,
-  },
-  label: { ...typography.label, color: colors.textMuted },
-  amount: { ...typography.displaySm, color: colors.brandNavy, marginTop: 4 },
-  currency: { ...typography.bodySm, color: colors.textMuted },
-  sub: { ...typography.bodySm, color: colors.textSecondary, marginTop: space.sm },
-  section: { ...typography.titleSm, color: colors.text, marginTop: space.md },
-  hint: { ...typography.bodySm, color: colors.textMuted },
-  row: { flexDirection: "row", gap: space.sm, alignItems: "center" },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    padding: space.sm,
-    backgroundColor: colors.surface,
-  },
-  ledgerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: space.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  ledgerType: { ...typography.bodySm, color: colors.text },
-  ledgerAmt: { ...typography.label, color: colors.brandNavy },
-  ok: { ...typography.bodySm, color: colors.success },
-});
+

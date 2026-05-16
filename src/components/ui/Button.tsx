@@ -20,7 +20,8 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
-import { colors, radii, space, typography } from "../../theme";
+import type { AppColors } from "../../theme";
+import { radii, space, typography, useThemeColors } from "../../theme";
 
 export type ButtonVariant =
   | "primary"
@@ -58,9 +59,10 @@ export function Button({
   style,
   ...rest
 }: ButtonProps) {
+  const c = useThemeColors();
   const text = label ?? title ?? "";
   const isDisabled = !!disabled || !!loading;
-  const palette = getVariantPalette(variant);
+  const palette = getVariantPalette(variant, c);
   const sizing = SIZE_MAP[size];
   const labelColor = palette.text;
 
@@ -119,43 +121,43 @@ export function Button({
   );
 }
 
-function getVariantPalette(variant: ButtonVariant) {
+function getVariantPalette(variant: ButtonVariant, c: AppColors) {
   switch (variant) {
     case "secondary":
       return {
-        bg: colors.brandSubtle,
-        bgPressed: "#cdd6ff",
+        bg: c.brandSubtle,
+        bgPressed: c.surfaceMuted,
         border: "transparent",
-        text: colors.brand,
+        text: c.brand,
       };
     case "ghost":
       return {
         bg: "transparent",
-        bgPressed: colors.surface,
-        border: colors.border,
-        text: colors.text,
+        bgPressed: c.surface,
+        border: c.border,
+        text: c.text,
       };
     case "danger":
       return {
-        bg: colors.danger,
-        bgPressed: "#b91c1c",
+        bg: c.danger,
+        bgPressed: c.danger,
         border: "transparent",
-        text: colors.dangerTextOn,
+        text: c.dangerTextOn,
       };
     case "link":
       return {
         bg: "transparent",
         bgPressed: "transparent",
         border: "transparent",
-        text: colors.brandAccent,
+        text: c.brandAccent,
       };
     case "primary":
     default:
       return {
-        bg: colors.brand,
-        bgPressed: colors.brandPressed,
+        bg: c.brand,
+        bgPressed: c.brandPressed,
         border: "transparent",
-        text: colors.brandTextOn,
+        text: c.brandTextOn,
       };
   }
 }

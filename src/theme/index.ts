@@ -10,6 +10,8 @@
 
 import { type AppColors, colorsDark, colorsLight } from "./colors";
 export { useTheme, useThemeColors, ThemeProvider, type ThemeMode } from "./ThemeContext";
+export { useThemedStyles } from "./useThemedStyles";
+export { buildNavigationTheme } from "./navigationTheme";
 
 export { colorsDark, colorsLight, type AppColors } from "./colors";
 export { typography, type TypographyToken } from "./typography";

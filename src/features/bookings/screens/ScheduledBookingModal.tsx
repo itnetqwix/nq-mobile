@@ -24,6 +24,8 @@ import {
   NOTIFICATION_TYPES,
   useNotifications,
 } from "../../notifications/NotificationContext";
+import { useWalletPaymentOption } from "../../wallet/hooks/useWalletPaymentOption";
+import { verifyWalletPin } from "../../wallet/walletApi";
 
 type Props = {
   visible: boolean;
@@ -71,6 +73,9 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
     display_label?: string;
   } | null>(null);
   const [visiblePromos, setVisiblePromos] = useState<any[]>([]);
+  const [preferWallet, setPreferWallet] = useState(true);
+  const [walletPin, setWalletPin] = useState("");
+  const [pinSessionToken, setPinSessionToken] = useState<string | undefined>();
 
   const trainerId = String(trainer?._id ?? trainer?.id ?? "");
   const trainerName = String(
@@ -213,12 +218,39 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
     setCouponError("");
   }, []);
 
+  const reviewPrice = useMemo(() => {
+    if (!selectedSlot) return 0;
+    const originalPrice = computePrice(selectedSlot);
+    return promoResult?.final_amount != null ? promoResult.final_amount : originalPrice;
+  }, [selectedSlot, promoResult, computePrice]);
+
+  const walletPay = useWalletPaymentOption(reviewPrice, visible);
+
   const handlePayAndBook = useCallback(async () => {
     if (!selectedSlot) return;
     const originalPrice = computePrice(selectedSlot);
     const price = promoResult?.final_amount != null ? promoResult.final_amount : originalPrice;
+    const useWallet =
+      preferWallet && walletPay.walletPayEnabled && walletPay.canPayWithWallet;
 
-    if (price > 0) {
+    let walletToken = pinSessionToken;
+    if (price > 0 && useWallet) {
+      if (walletPay.needsPin && !walletToken) {
+        if (!/^\d{6}$/.test(walletPin)) {
+          Alert.alert("PIN required", "Enter your 6-digit wallet PIN.");
+          return;
+        }
+        try {
+          const res = await verifyWalletPin(walletPin);
+          walletToken = res.pinSessionToken;
+          setPinSessionToken(walletToken);
+          setWalletPin("");
+        } catch (e: any) {
+          Alert.alert("PIN error", e?.response?.data?.error ?? e?.message);
+          return;
+        }
+      }
+    } else if (price > 0) {
       setPaymentLoading(true);
       try {
         const intentPayload: Record<string, unknown> = {
@@ -300,6 +332,10 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
         time_zone: tz,
       };
       if (couponCode.trim()) bookPayload.coupon_code = couponCode.trim();
+      if (useWallet && price > 0) {
+        bookPayload.payment_method = "wallet";
+        if (walletToken) bookPayload.pin_session_token = walletToken;
+      }
       const { data: bookRes } = await apiClient.post(API_ROUTES.trainee.bookSession, bookPayload);
       const bookingInfo =
         (bookRes as { result?: unknown })?.result ?? bookRes ?? { trainer_id: trainerId };
@@ -559,31 +595,69 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
                 )}
               </View>
 
-              <Pressable
-                style={[
-                  styles.primaryBtn,
-                  (paymentLoading || bookingLoading) && styles.btnDisabled,
-                ]}
-                disabled={paymentLoading || bookingLoading}
-                onPress={handlePayAndBook}
-              >
-                {paymentLoading || bookingLoading ? (
-                  <ActivityIndicator color={colors.brandTextOn} />
-                ) : (
-                  <>
-                    <Ionicons
-                      name="calendar-outline"
-                      size={18}
-                      color={colors.brandTextOn}
+              {walletPay.walletPayEnabled && finalPrice > 0 && walletPay.canPayWithWallet ? (
+                <>
+                  {walletPay.needsPin && !pinSessionToken ? (
+                    <TextInput
+                      style={styles.promoInput}
+                      keyboardType="number-pad"
+                      secureTextEntry
+                      maxLength={6}
+                      placeholder="6-digit wallet PIN"
+                      value={walletPin}
+                      onChangeText={setWalletPin}
                     />
+                  ) : null}
+                  <Pressable
+                    style={[styles.primaryBtn, preferWallet && styles.walletBtnActive]}
+                    disabled={paymentLoading || bookingLoading}
+                    onPress={() => {
+                      setPreferWallet(true);
+                      void handlePayAndBook();
+                    }}
+                  >
+                    <Ionicons name="wallet-outline" size={18} color={colors.brandTextOn} />
                     <Text style={styles.primaryBtnText}>
-                      {finalPrice > 0
-                        ? `Pay & Book ($${finalPrice.toFixed(2)})`
-                        : "Book Session"}
+                      Pay ${finalPrice.toFixed(2)} with wallet
                     </Text>
-                  </>
-                )}
-              </Pressable>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.primaryBtn, styles.cardPayBtn]}
+                    disabled={paymentLoading || bookingLoading}
+                    onPress={() => {
+                      setPreferWallet(false);
+                      void handlePayAndBook();
+                    }}
+                  >
+                    <Ionicons name="card-outline" size={18} color={colors.brandNavy} />
+                    <Text style={[styles.primaryBtnText, { color: colors.brandNavy }]}>
+                      Pay with card
+                    </Text>
+                  </Pressable>
+                </>
+              ) : (
+                <Pressable
+                  style={[
+                    styles.primaryBtn,
+                    (paymentLoading || bookingLoading) && styles.btnDisabled,
+                  ]}
+                  disabled={paymentLoading || bookingLoading}
+                  onPress={handlePayAndBook}
+                >
+                  {paymentLoading || bookingLoading ? (
+                    <ActivityIndicator color={colors.brandTextOn} />
+                  ) : (
+                    <>
+                      <Ionicons name="calendar-outline" size={18} color={colors.brandTextOn} />
+                      <Text style={styles.primaryBtnText}>
+                        {finalPrice > 0
+                          ? `Pay & Book ($${finalPrice.toFixed(2)})`
+                          : "Book Session"}
+                      </Text>
+                    </>
+                  )}
+                </Pressable>
+              )}
             </ScrollView>
           );
         })()}
@@ -682,6 +756,13 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: { ...typography.button, color: colors.brandTextOn },
   btnDisabled: { opacity: 0.65 },
+  walletBtnActive: { marginTop: space.lg },
+  cardPayBtn: {
+    marginTop: space.sm,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   promoSection: { marginTop: space.md },
   promoLabel: { fontSize: 15, fontWeight: "600", color: colors.text, marginBottom: 8 },
   promoRow: { flexDirection: "row", gap: 8, alignItems: "center" },

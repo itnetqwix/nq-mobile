@@ -1,6 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRoute } from "@react-navigation/native";
+import type { RouteProp } from "@react-navigation/native";
 import React, { useEffect, useMemo, useState } from "react";
+import type { MenuStackParamList } from "../../../navigation/types";
 import {
   ActivityIndicator,
   Alert,
@@ -17,7 +20,7 @@ import { AccountType } from "../../../constants/accountType";
 import { Button, EmptyState, FormField, ImageWithSkeleton, Pill, Skeleton } from "../../../components/ui";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
-import { colors, radii, space, typography } from "../../../theme";
+import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
 import {
   fetchScheduledMeetings,
@@ -31,6 +34,156 @@ const REASONS: RaiseConcernReason[] = ["Technical issue", "Request for Refund"];
 type ScreenMode = "list" | "form" | "success" | "tracker";
 
 export function ReportIssueScreen() {
+  const c = useThemeColors();
+  const styles = useThemedStyles((palette) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: palette.surface },
+  hero: {
+    padding: space.md,
+    paddingBottom: space.sm,
+    backgroundColor: palette.surfaceElevated,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: palette.border,
+  },
+  heroRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  heroTitle: { ...typography.titleLg, color: palette.brandNavy },
+  heroSub: { ...typography.bodySm, color: palette.textMuted, marginTop: 6 },
+
+  trackerBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: space.md,
+    paddingVertical: 12,
+    backgroundColor: palette.surfaceElevated,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: palette.border,
+  },
+  trackerBtnText: { ...typography.bodySm, color: palette.brandNavy, fontWeight: "600" },
+  trackerBadge: {
+    backgroundColor: palette.brandNavy,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 5,
+  },
+  trackerBadgeText: { fontSize: 11, color: palette.brandTextOn, fontWeight: "700" },
+
+  list: { padding: space.md, gap: space.sm, paddingBottom: space.xl * 2 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+
+  sessionCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.sm,
+    padding: space.md,
+    backgroundColor: palette.surfaceElevated,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  sessionAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: palette.brandSubtle },
+  sessionAvatarFallback: { alignItems: "center", justifyContent: "center" },
+  sessionAvatarInitial: { color: palette.brandNavy, fontWeight: "800", fontSize: 18 },
+  sessionPeer: { ...typography.subtitle, color: palette.text },
+  sessionCategory: { ...typography.caption, color: palette.brandNavy, fontWeight: "600", marginTop: 1 },
+  sessionMeta: { ...typography.caption, color: palette.textMuted, marginTop: 2 },
+  sessionRight: { flexDirection: "row", alignItems: "center", gap: 6 },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+
+  formContent: { padding: space.md, gap: space.md, paddingBottom: space.xl * 2 },
+  backRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  backLabel: { ...typography.label, color: palette.brandNavy },
+
+  card: {
+    backgroundColor: palette.surfaceElevated,
+    borderRadius: radii.md,
+    padding: space.md,
+    borderWidth: 1,
+    borderColor: palette.border,
+    gap: space.sm,
+  },
+  cardLabel: { ...typography.overline, color: palette.textMuted },
+  cardSession: { ...typography.subtitle, color: palette.text },
+  cardPeer: { ...typography.bodySm, color: palette.textSecondary },
+
+  label: { ...typography.label, color: palette.textSecondary },
+
+  reasonRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  reasonChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: palette.surface,
+  },
+  reasonChipOn: { backgroundColor: palette.brandNavy, borderColor: palette.brandNavy },
+  reasonChipText: { ...typography.bodySm, color: palette.textSecondary, fontWeight: "600" },
+  reasonChipTextOn: { color: palette.brandTextOn },
+
+  textarea: { minHeight: 130 },
+
+  successWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: space.lg,
+    backgroundColor: palette.surface,
+    gap: space.sm,
+  },
+  successTitle: { ...typography.titleLg, color: palette.success },
+  successBody: {
+    ...typography.bodyMd,
+    color: palette.textSecondary,
+    textAlign: "center",
+    marginBottom: space.md,
+  },
+
+  reportCard: {
+    backgroundColor: palette.surfaceElevated,
+    borderRadius: radii.md,
+    padding: space.md,
+    borderWidth: 1,
+    borderColor: palette.border,
+    gap: 8,
+  },
+  reportHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  reportStatusDot: { width: 8, height: 8, borderRadius: 4 },
+  reportSubject: { ...typography.subtitle, color: palette.text, flex: 1 },
+  reportReason: { ...typography.caption, color: palette.brandNavy, fontWeight: "600" },
+  reportDesc: { ...typography.bodySm, color: palette.textMuted },
+  reportFooter: { flexDirection: "row", gap: 16, marginTop: 2 },
+  reportMeta: { flexDirection: "row", alignItems: "center", gap: 4 },
+  reportMetaText: { ...typography.caption, color: palette.textMuted },
+
+  progressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingTop: 8,
+    marginTop: 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: palette.border,
+  },
+  progressStep: { alignItems: "center", gap: 4 },
+  progressStepDone: {},
+  progressCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  progressCircleDone: { backgroundColor: palette.success },
+  progressCirclePending: { backgroundColor: palette.surfaceMuted, borderWidth: 1.5, borderColor: palette.border },
+  progressInnerDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: palette.textMuted },
+  progressLine: { flex: 1, height: 2, backgroundColor: palette.border, marginHorizontal: 4 },
+  progressLineDone: { backgroundColor: palette.success },
+  progressLabel: { ...typography.caption, color: palette.textMuted, fontSize: 9 },
+});
+
+  const route = useRoute<RouteProp<MenuStackParamList, "ReportIssue">>();
   const { user, accountType } = useAuth();
   const queryClient = useQueryClient();
 
@@ -45,6 +198,17 @@ export function ReportIssueScreen() {
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const params = route.params;
+    if (!params?.bookingId && !params?.prefillSubject && !params?.prefillDescription) return;
+    if (params.prefillSubject) setSubject(params.prefillSubject);
+    if (params.prefillDescription) setDescription(params.prefillDescription);
+    if (params.bookingId) {
+      setRefundLinked("Yes");
+      setMode("form");
+    }
+  }, [route.params]);
 
   const confirmedQ = useQuery({
     queryKey: ["raiseConcern", "sessions", "confirmed"],
@@ -135,7 +299,7 @@ export function ReportIssueScreen() {
   if (mode === "success") {
     return (
       <View style={styles.successWrap}>
-        <Ionicons name="checkmark-circle" size={64} color={colors.success} />
+        <Ionicons name="checkmark-circle" size={64} color={c.success} />
         <Text style={styles.successTitle}>Report submitted</Text>
         <Text style={styles.successBody}>
           Our team has received your report. You'll hear back at{" "}
@@ -162,7 +326,7 @@ export function ReportIssueScreen() {
         <View style={styles.hero}>
           <View style={styles.heroRow}>
             <Pressable onPress={() => setMode("list")} hitSlop={10}>
-              <Ionicons name="chevron-back" size={22} color={colors.brandNavy} />
+              <Ionicons name="chevron-back" size={22} color={c.brandNavy} />
             </Pressable>
             <Text style={styles.heroTitle}>My Reports</Text>
           </View>
@@ -179,7 +343,7 @@ export function ReportIssueScreen() {
           <ScrollView
             contentContainerStyle={styles.list}
             refreshControl={
-              <RefreshControl refreshing={false} onRefresh={() => refetchReports()} tintColor={colors.brandNavy} />
+              <RefreshControl refreshing={false} onRefresh={() => refetchReports()} tintColor={c.brandNavy} />
             }
           >
             {pastReports.length === 0 ? (
@@ -207,12 +371,12 @@ export function ReportIssueScreen() {
 
     return (
       <KeyboardAvoidingView
-        style={{ flex: 1, backgroundColor: colors.surface }}
+        style={{ flex: 1, backgroundColor: c.surface }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView contentContainerStyle={styles.formContent} keyboardShouldPersistTaps="handled">
           <Pressable style={styles.backRow} onPress={() => { setMode("list"); setSelected(null); }} hitSlop={10}>
-            <Ionicons name="chevron-back" size={20} color={colors.brandNavy} />
+            <Ionicons name="chevron-back" size={20} color={c.brandNavy} />
             <Text style={styles.backLabel}>Choose a different session</Text>
           </Pressable>
 
@@ -300,7 +464,7 @@ export function ReportIssueScreen() {
       </View>
 
       <Pressable style={styles.trackerBtn} onPress={() => setMode("tracker")}>
-        <Ionicons name="document-text-outline" size={18} color={colors.brandNavy} />
+        <Ionicons name="document-text-outline" size={18} color={c.brandNavy} />
         <Text style={styles.trackerBtnText}>View my past reports</Text>
         <View style={{ flex: 1 }} />
         {pastReports.length > 0 && (
@@ -308,18 +472,18 @@ export function ReportIssueScreen() {
             <Text style={styles.trackerBadgeText}>{pastReports.length}</Text>
           </View>
         )}
-        <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        <Ionicons name="chevron-forward" size={18} color={c.textMuted} />
       </Pressable>
 
       {loadingList ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.brandNavy} />
+          <ActivityIndicator size="large" color={c.brandNavy} />
         </View>
       ) : (
         <ScrollView
           contentContainerStyle={styles.list}
           refreshControl={
-            <RefreshControl refreshing={refreshingList} onRefresh={onRefreshSessions} tintColor={colors.brandNavy} />
+            <RefreshControl refreshing={refreshingList} onRefresh={onRefreshSessions} tintColor={c.brandNavy} />
           }
         >
           {sessions.length === 0 ? (
@@ -348,13 +512,13 @@ function getStatusConfig(status?: string) {
   switch (status?.toLowerCase()) {
     case "resolved":
     case "closed":
-      return { label: "Resolved", tone: "success" as const, icon: "checkmark-circle" as const, color: colors.success };
+      return { label: "Resolved", tone: "success" as const, icon: "checkmark-circle" as const, color: c.success };
     case "in_progress":
     case "in progress":
     case "in-progress":
       return { label: "In Progress", tone: "warning" as const, icon: "time" as const, color: "#E5A100" };
     default:
-      return { label: "Submitted", tone: "info" as const, icon: "document-text" as const, color: colors.brandNavy };
+      return { label: "Submitted", tone: "info" as const, icon: "document-text" as const, color: c.brandNavy };
   }
 }
 
@@ -388,12 +552,12 @@ function ReportTrackerCard({ report }: { report: any }) {
 
       <View style={styles.reportFooter}>
         <View style={styles.reportMeta}>
-          <Ionicons name="calendar-outline" size={12} color={colors.textMuted} />
+          <Ionicons name="calendar-outline" size={12} color={c.textMuted} />
           <Text style={styles.reportMetaText}>Filed {date}</Text>
         </View>
         {!!bookingDate && (
           <View style={styles.reportMeta}>
-            <Ionicons name="videocam-outline" size={12} color={colors.textMuted} />
+            <Ionicons name="videocam-outline" size={12} color={c.textMuted} />
             <Text style={styles.reportMetaText}>Session {bookingDate}</Text>
           </View>
         )}
@@ -500,12 +664,12 @@ function SessionCard({
         {!!status && (
           <View style={[styles.statusDot, {
             backgroundColor:
-              status === "completed" ? colors.success
-              : status === "confirmed" ? colors.brandAccent
-              : colors.textMuted,
+              status === "completed" ? c.success
+              : status === "confirmed" ? c.brandAccent
+              : c.textMuted,
           }]} />
         )}
-        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+        <Ionicons name="chevron-forward" size={20} color={c.textMuted} />
       </View>
     </Pressable>
   );
@@ -525,150 +689,4 @@ function formatSessionLabel(session: any): string {
   return `${datePart}${time}${instant}`;
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.surface },
-  hero: {
-    padding: space.md,
-    paddingBottom: space.sm,
-    backgroundColor: colors.surfaceElevated,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  heroRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  heroTitle: { ...typography.titleLg, color: colors.brandNavy },
-  heroSub: { ...typography.bodySm, color: colors.textMuted, marginTop: 6 },
 
-  trackerBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: space.md,
-    paddingVertical: 12,
-    backgroundColor: colors.surfaceElevated,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  trackerBtnText: { ...typography.bodySm, color: colors.brandNavy, fontWeight: "600" },
-  trackerBadge: {
-    backgroundColor: colors.brandNavy,
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 5,
-  },
-  trackerBadgeText: { fontSize: 11, color: colors.brandTextOn, fontWeight: "700" },
-
-  list: { padding: space.md, gap: space.sm, paddingBottom: space.xl * 2 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-
-  sessionCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.sm,
-    padding: space.md,
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  sessionAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.brandSubtle },
-  sessionAvatarFallback: { alignItems: "center", justifyContent: "center" },
-  sessionAvatarInitial: { color: colors.brandNavy, fontWeight: "800", fontSize: 18 },
-  sessionPeer: { ...typography.subtitle, color: colors.text },
-  sessionCategory: { ...typography.caption, color: colors.brandNavy, fontWeight: "600", marginTop: 1 },
-  sessionMeta: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
-  sessionRight: { flexDirection: "row", alignItems: "center", gap: 6 },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
-
-  formContent: { padding: space.md, gap: space.md, paddingBottom: space.xl * 2 },
-  backRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  backLabel: { ...typography.label, color: colors.brandNavy },
-
-  card: {
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: radii.md,
-    padding: space.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: space.sm,
-  },
-  cardLabel: { ...typography.overline, color: colors.textMuted },
-  cardSession: { ...typography.subtitle, color: colors.text },
-  cardPeer: { ...typography.bodySm, color: colors.textSecondary },
-
-  label: { ...typography.label, color: colors.textSecondary },
-
-  reasonRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  reasonChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  reasonChipOn: { backgroundColor: colors.brandNavy, borderColor: colors.brandNavy },
-  reasonChipText: { ...typography.bodySm, color: colors.textSecondary, fontWeight: "600" },
-  reasonChipTextOn: { color: colors.brandTextOn },
-
-  textarea: { minHeight: 130 },
-
-  successWrap: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: space.lg,
-    backgroundColor: colors.surface,
-    gap: space.sm,
-  },
-  successTitle: { ...typography.titleLg, color: colors.success },
-  successBody: {
-    ...typography.bodyMd,
-    color: colors.textSecondary,
-    textAlign: "center",
-    marginBottom: space.md,
-  },
-
-  reportCard: {
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: radii.md,
-    padding: space.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: 8,
-  },
-  reportHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
-  reportStatusDot: { width: 8, height: 8, borderRadius: 4 },
-  reportSubject: { ...typography.subtitle, color: colors.text, flex: 1 },
-  reportReason: { ...typography.caption, color: colors.brandNavy, fontWeight: "600" },
-  reportDesc: { ...typography.bodySm, color: colors.textMuted },
-  reportFooter: { flexDirection: "row", gap: 16, marginTop: 2 },
-  reportMeta: { flexDirection: "row", alignItems: "center", gap: 4 },
-  reportMetaText: { ...typography.caption, color: colors.textMuted },
-
-  progressRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingTop: 8,
-    marginTop: 4,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
-  progressStep: { alignItems: "center", gap: 4 },
-  progressStepDone: {},
-  progressCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  progressCircleDone: { backgroundColor: colors.success },
-  progressCirclePending: { backgroundColor: colors.surfaceMuted, borderWidth: 1.5, borderColor: colors.border },
-  progressInnerDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.textMuted },
-  progressLine: { flex: 1, height: 2, backgroundColor: colors.border, marginHorizontal: 4 },
-  progressLineDone: { backgroundColor: colors.success },
-  progressLabel: { ...typography.caption, color: colors.textMuted, fontSize: 9 },
-});

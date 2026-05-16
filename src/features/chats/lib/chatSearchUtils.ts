@@ -1,23 +1,8 @@
+import { formatChatDayLabel } from "./chatDateUtils";
+
+/** @deprecated Use formatChatDayLabel from chatDateUtils */
 export function formatDayLabel(iso: string): string {
-  try {
-    const d = new Date(iso);
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    const diffDays = Math.round(
-      (startOfToday.getTime() - startOfDay.getTime()) / (24 * 60 * 60 * 1000)
-    );
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "Yesterday";
-    return d.toLocaleDateString(undefined, {
-      weekday: "long",
-      month: "short",
-      day: "numeric",
-      year: d.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
-    });
-  } catch {
-    return "Earlier";
-  }
+  return formatChatDayLabel(iso);
 }
 
 export function getSearchableText(m: {

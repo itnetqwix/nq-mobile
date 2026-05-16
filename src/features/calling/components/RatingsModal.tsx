@@ -24,6 +24,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { AccountType } from "../../../constants/accountType";
 import { postRating } from "../postSessionApi";
 import LessonSummaryCard from "../../ai/LessonSummaryCard";
+import { useThemeColors } from "../../../theme";
 
 type Props = {
   visible: boolean;
@@ -42,6 +43,7 @@ export function RatingsModal({
   accountType,
   isFromCall = true,
 }: Props) {
+  const c = useThemeColors();
   const [submitted, setSubmitted] = useState(false);
   const [session, setSession] = useState(0);
   const [audio, setAudio] = useState(0);
@@ -103,8 +105,8 @@ export function RatingsModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.backdrop}>
-        <View style={styles.card}>
+      <View style={[styles.backdrop, { backgroundColor: c.overlay }]}>
+        <View style={[styles.card, { backgroundColor: c.surfaceElevated }]}>
           {!submitted ? (
             <>
               <Text style={styles.title}>How was your session?</Text>

@@ -16,6 +16,12 @@ export type MenuStackParamList = {
   MenuHome: undefined;
   DashboardFeature: { featureId: DashboardRouteId; bookLessonTrainerId?: string };
   ShellSurface: { surfaceId: ShellSurfaceRouteId };
+  TransactionDetail: { bookingId?: string; ledgerEntryId?: string };
+  ReportIssue: {
+    bookingId?: string;
+    prefillSubject?: string;
+    prefillDescription?: string;
+  };
 };
 
 export type MainTabParamList = {

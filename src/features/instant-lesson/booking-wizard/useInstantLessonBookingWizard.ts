@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert } from "react-native";
 import { apiClient } from "../../../api/client";
@@ -18,6 +18,7 @@ import {
 import { MAX_CLIPS, WIZARD_STEPS, wizardStepIndex } from "./constants";
 import { parseInstantBookingLessonId } from "./parseInstantBookingLessonId";
 import type { WizardStep, WizardTrainer } from "./types";
+import { fetchWalletBalance } from "../../wallet/walletApi";
 
 function trainerIdOf(t: WizardTrainer): string {
   if (!t) return "";
@@ -37,6 +38,7 @@ type UseWizardArgs = {
 
 export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: UseWizardArgs) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { startBooking } = useInstantLesson();
   const { emitNotification } = useNotifications();
 
@@ -46,6 +48,8 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
   const [couponError, setCouponError] = useState("");
   const [selectedClipIds, setSelectedClipIds] = useState<string[]>([]);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"wallet" | "card" | undefined>();
+  const [pinSessionToken, setPinSessionToken] = useState<string | undefined>();
   const [chargingPrice, setChargingPrice] = useState(0);
   const [promoValidating, setPromoValidating] = useState(false);
   const [promoResult, setPromoResult] = useState<{
@@ -65,9 +69,16 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
   );
 
   const handlePaymentComplete = useCallback(
-    (intentId: string | null, price: number) => {
-      setPaymentIntentId(intentId);
-      setChargingPrice(price);
+    (payload: {
+      paymentIntentId: string | null;
+      chargingPrice: number;
+      paymentMethod?: "wallet" | "card";
+      pinSessionToken?: string;
+    }) => {
+      setPaymentIntentId(payload.paymentIntentId);
+      setChargingPrice(payload.chargingPrice);
+      setPaymentMethod(payload.paymentMethod);
+      setPinSessionToken(payload.pinSessionToken);
     },
     []
   );
@@ -79,6 +90,8 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     setCouponError("");
     setSelectedClipIds([]);
     setPaymentIntentId(null);
+    setPaymentMethod(undefined);
+    setPinSessionToken(undefined);
     setChargingPrice(0);
     setPromoResult(null);
     setPromoValidating(false);
@@ -90,8 +103,12 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
         .get(API_ROUTES.promo.visible)
         .then((res: any) => setVisiblePromos(res?.data?.data || []))
         .catch(() => {});
+      void queryClient.prefetchQuery({
+        queryKey: ["wallet", "balance"],
+        queryFn: fetchWalletBalance,
+      });
     }
-  }, [visible]);
+  }, [visible, queryClient]);
 
   useEffect(() => {
     if (!visible) resetWizard();
@@ -195,6 +212,10 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
         charging_price: chargingPrice,
       };
       if (paymentIntentId) bookingPayload.payment_intent_id = paymentIntentId;
+      if (paymentMethod === "wallet") {
+        bookingPayload.payment_method = "wallet";
+        if (pinSessionToken) bookingPayload.pin_session_token = pinSessionToken;
+      }
       if (couponCode.trim()) bookingPayload.coupon_code = couponCode.trim();
       const res = await apiClient.post(API_ROUTES.trainee.bookInstantMeeting, bookingPayload);
       const lessonId = parseInstantBookingLessonId(res);

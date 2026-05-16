@@ -19,7 +19,7 @@ import { apiClient } from "../../../api/client";
 import { EmptyState, Skeleton } from "../../../components/ui";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
-import { colors, radii, space, typography } from "../../../theme";
+import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
 import { useOnlinePresence } from "../../socket/useOnlinePresence";
 import { fetchFriends } from "../../home/api/homeApi";
@@ -87,6 +87,182 @@ type ChatPartner = {
 };
 
 export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
+  const c = useThemeColors();
+  const styles = useThemedStyles((palette) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: palette.surfaceElevated },
+  listHeader: {
+    paddingHorizontal: space.md,
+    paddingBottom: 8,
+    backgroundColor: palette.surfaceElevated,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: palette.border,
+  },
+  listTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: palette.brandNavy,
+  },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: palette.surfaceMuted,
+    margin: space.md,
+    borderRadius: radii.md,
+    paddingHorizontal: space.sm,
+    paddingVertical: 9,
+    gap: space.sm,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: typography.bodyMd.fontSize,
+    fontWeight: typography.bodyMd.fontWeight,
+    fontFamily: typography.bodyMd.fontFamily,
+    letterSpacing: typography.bodyMd.letterSpacing,
+    color: palette.text,
+    textAlignVertical: "center",
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: space.md,
+    paddingVertical: 12,
+    gap: space.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: palette.border,
+  },
+  avatarWrap: { position: "relative" },
+  onlineDot: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#4CAF50",
+    borderWidth: 2,
+    borderColor: palette.surface,
+  },
+  rowContent: { flex: 1 },
+  rowTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  rowName: { ...typography.subtitle, color: palette.text, flex: 1, marginRight: 8 },
+  rowTime: { ...typography.caption, color: palette.textMuted },
+  rowBottom: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 3 },
+  rowPreviewWrap: { flex: 1, marginRight: 8, minWidth: 0 },
+  rowOnline: { fontSize: 12, fontWeight: "600", color: "#43A047", marginBottom: 1 },
+  rowPreview: { ...typography.bodySm, color: palette.textMuted },
+  unreadBadge: {
+    backgroundColor: palette.brandNavy,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 5,
+  },
+  unreadText: { fontSize: 11, color: palette.brandTextOn, fontWeight: "700" },
+  avatarFallback: {
+    backgroundColor: palette.brandNavy,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarInitial: { color: palette.brandTextOn, fontWeight: "700" },
+
+  fab: {
+    position: "absolute",
+    right: space.md,
+    bottom: space.lg,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: palette.brandNavy,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+  },
+
+  modalRoot: { flex: 1, backgroundColor: palette.surface },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: space.md,
+    paddingVertical: 14,
+    backgroundColor: palette.surfaceElevated,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: palette.border,
+  },
+  modalTitle: { ...typography.titleSm, color: palette.text },
+  modalSearch: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: palette.surfaceMuted,
+    margin: space.md,
+    borderRadius: radii.md,
+    paddingHorizontal: space.sm,
+    paddingVertical: 9,
+    gap: space.sm,
+  },
+  modalSearchInput: {
+    flex: 1,
+    fontSize: typography.bodyMd.fontSize,
+    fontWeight: typography.bodyMd.fontWeight,
+    fontFamily: typography.bodyMd.fontFamily,
+    letterSpacing: typography.bodyMd.letterSpacing,
+    color: palette.text,
+    textAlignVertical: "center",
+  },
+  friendRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    paddingVertical: 10,
+    paddingHorizontal: space.sm,
+    backgroundColor: palette.surfaceElevated,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  friendRowSelected: {
+    backgroundColor: `${palette.brandNavy}10`,
+    borderColor: palette.brandNavy,
+  },
+  friendName: { ...typography.subtitle, color: palette.text, flex: 1 },
+  modalCreateBtn: { color: palette.brandNavy, fontWeight: "700", fontSize: 16 },
+  groupNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: space.md,
+    paddingTop: 12,
+  },
+  groupIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: palette.brandNavy,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  groupNameInput: {
+    flex: 1,
+    fontSize: 16,
+    color: palette.text,
+    borderBottomWidth: 2,
+    borderBottomColor: palette.brandNavy,
+    paddingVertical: 8,
+  },
+  selectedCount: {
+    paddingHorizontal: space.md,
+    paddingTop: 8,
+    fontSize: 13,
+    color: palette.brandNavy,
+    fontWeight: "600",
+  },
+});
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -108,7 +284,8 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
   const { data: conversations = [], isLoading, isRefetching, refetch } = useQuery({
     queryKey: ["conversations"],
     queryFn: fetchConversations,
-    staleTime: 30_000,
+    staleTime: 15_000,
+    refetchInterval: 25_000,
   });
 
   const { data: friends = [], isLoading: loadingFriends } = useQuery({
@@ -285,17 +462,17 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
         <Text style={styles.listTitle}>Chats</Text>
       </View>
       <View style={styles.searchBar}>
-        <Ionicons name="search-outline" size={18} color={colors.textMuted} />
+        <Ionicons name="search-outline" size={18} color={c.textMuted} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search conversations..."
-          placeholderTextColor={colors.textMuted}
+          placeholderTextColor={c.textMuted}
           value={search}
           onChangeText={setSearch}
         />
         {!!search && (
           <Pressable onPress={() => setSearch("")}>
-            <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+            <Ionicons name="close-circle" size={18} color={c.textMuted} />
           </Pressable>
         )}
       </View>
@@ -360,9 +537,14 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
                     {!!time && <Text style={styles.rowTime}>{time}</Text>}
                   </View>
                   <View style={styles.rowBottom}>
-                    <Text style={styles.rowPreview} numberOfLines={1}>
-                      {formatLastMessagePreview(lastMsg) || "Tap to start chatting"}
-                    </Text>
+                    <View style={styles.rowPreviewWrap}>
+                      {partnerOnline && (
+                        <Text style={styles.rowOnline}>Online</Text>
+                      )}
+                      <Text style={styles.rowPreview} numberOfLines={1}>
+                        {formatLastMessagePreview(lastMsg) || "Tap to start chatting"}
+                      </Text>
+                    </View>
                     {unread > 0 && (
                       <View style={styles.unreadBadge}>
                         <Text style={styles.unreadText}>
@@ -376,7 +558,7 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
             );
           }}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brandNavy} />
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.brandNavy} />
           }
           ListEmptyComponent={
             <EmptyState
@@ -397,7 +579,7 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
         style={({ pressed }) => [styles.fab, pressed && { transform: [{ scale: 0.92 }] }]}
         onPress={() => setShowNewChat(true)}
       >
-        <Ionicons name="create-outline" size={24} color={colors.brandTextOn} />
+        <Ionicons name="create-outline" size={24} color={c.brandTextOn} />
       </Pressable>
 
       {/* New Chat Modal — Friend Picker + Group */}
@@ -419,20 +601,20 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
                 setFriendSearch("");
               }
             }} hitSlop={12}>
-              <Ionicons name={showGroupCreate ? "arrow-back" : "close"} size={24} color={colors.text} />
+              <Ionicons name={showGroupCreate ? "arrow-back" : "close"} size={24} color={c.text} />
             </Pressable>
             <Text style={styles.modalTitle}>{showGroupCreate ? "New Group" : "New Chat"}</Text>
             {showGroupCreate ? (
               <Pressable onPress={createGroup} disabled={creatingGroup} hitSlop={12}>
                 {creatingGroup ? (
-                  <ActivityIndicator size="small" color={colors.brandNavy} />
+                  <ActivityIndicator size="small" color={c.brandNavy} />
                 ) : (
                   <Text style={[styles.modalCreateBtn, selectedGroupMembers.size < 2 && { opacity: 0.4 }]}>Create</Text>
                 )}
               </Pressable>
             ) : (
               <Pressable onPress={() => setShowGroupCreate(true)} hitSlop={12}>
-                <Ionicons name="people" size={24} color={colors.brandNavy} />
+                <Ionicons name="people" size={24} color={c.brandNavy} />
               </Pressable>
             )}
           </View>
@@ -446,7 +628,7 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
               <TextInput
                 style={styles.groupNameInput}
                 placeholder="Group name"
-                placeholderTextColor={colors.textMuted}
+                placeholderTextColor={c.textMuted}
                 value={groupName}
                 onChangeText={setGroupName}
                 autoFocus
@@ -459,17 +641,17 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
           )}
 
           <View style={styles.modalSearch}>
-            <Ionicons name="search-outline" size={18} color={colors.textMuted} />
+            <Ionicons name="search-outline" size={18} color={c.textMuted} />
             <TextInput
               style={styles.modalSearchInput}
               placeholder={showGroupCreate ? "Add participants..." : "Search friends..."}
-              placeholderTextColor={colors.textMuted}
+              placeholderTextColor={c.textMuted}
               value={friendSearch}
               onChangeText={setFriendSearch}
             />
             {!!friendSearch && (
               <Pressable onPress={() => setFriendSearch("")}>
-                <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+                <Ionicons name="close-circle" size={18} color={c.textMuted} />
               </Pressable>
             )}
           </View>
@@ -502,11 +684,11 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
                       {item.fullname}
                     </Text>
                     {showGroupCreate ? (
-                      <Ionicons name={isSelected ? "checkmark-circle" : "ellipse-outline"} size={24} color={isSelected ? colors.brandNavy : colors.textMuted} />
+                      <Ionicons name={isSelected ? "checkmark-circle" : "ellipse-outline"} size={24} color={isSelected ? c.brandNavy : c.textMuted} />
                     ) : creatingChat ? (
-                      <ActivityIndicator size="small" color={colors.brandNavy} />
+                      <ActivityIndicator size="small" color={c.brandNavy} />
                     ) : (
-                      <Ionicons name="chatbubble-outline" size={20} color={colors.brandNavy} />
+                      <Ionicons name="chatbubble-outline" size={20} color={c.brandNavy} />
                     )}
                   </Pressable>
                 );
@@ -531,176 +713,4 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.surfaceElevated },
-  listHeader: {
-    paddingHorizontal: space.md,
-    paddingBottom: 8,
-    backgroundColor: colors.surfaceElevated,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  listTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: colors.brandNavy,
-  },
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.surfaceMuted,
-    margin: space.md,
-    borderRadius: radii.md,
-    paddingHorizontal: space.sm,
-    paddingVertical: 9,
-    gap: space.sm,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: typography.bodyMd.fontSize,
-    fontWeight: typography.bodyMd.fontWeight,
-    fontFamily: typography.bodyMd.fontFamily,
-    letterSpacing: typography.bodyMd.letterSpacing,
-    color: colors.text,
-    textAlignVertical: "center",
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: space.md,
-    paddingVertical: 12,
-    gap: space.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  avatarWrap: { position: "relative" },
-  onlineDot: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#4CAF50",
-    borderWidth: 2,
-    borderColor: colors.surface,
-  },
-  rowContent: { flex: 1 },
-  rowTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  rowName: { ...typography.subtitle, color: colors.text, flex: 1, marginRight: 8 },
-  rowTime: { ...typography.caption, color: colors.textMuted },
-  rowBottom: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 3 },
-  rowPreview: { ...typography.bodySm, color: colors.textMuted, flex: 1, marginRight: 8 },
-  unreadBadge: {
-    backgroundColor: colors.brandNavy,
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 5,
-  },
-  unreadText: { fontSize: 11, color: colors.brandTextOn, fontWeight: "700" },
-  avatarFallback: {
-    backgroundColor: colors.brandNavy,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarInitial: { color: colors.brandTextOn, fontWeight: "700" },
 
-  fab: {
-    position: "absolute",
-    right: space.md,
-    bottom: space.lg,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.brandNavy,
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-  },
-
-  modalRoot: { flex: 1, backgroundColor: colors.surface },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: space.md,
-    paddingVertical: 14,
-    backgroundColor: colors.surfaceElevated,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  modalTitle: { ...typography.titleSm, color: colors.text },
-  modalSearch: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.surfaceMuted,
-    margin: space.md,
-    borderRadius: radii.md,
-    paddingHorizontal: space.sm,
-    paddingVertical: 9,
-    gap: space.sm,
-  },
-  modalSearchInput: {
-    flex: 1,
-    fontSize: typography.bodyMd.fontSize,
-    fontWeight: typography.bodyMd.fontWeight,
-    fontFamily: typography.bodyMd.fontFamily,
-    letterSpacing: typography.bodyMd.letterSpacing,
-    color: colors.text,
-    textAlignVertical: "center",
-  },
-  friendRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.md,
-    paddingVertical: 10,
-    paddingHorizontal: space.sm,
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  friendRowSelected: {
-    backgroundColor: `${colors.brandNavy}10`,
-    borderColor: colors.brandNavy,
-  },
-  friendName: { ...typography.subtitle, color: colors.text, flex: 1 },
-  modalCreateBtn: { color: colors.brandNavy, fontWeight: "700", fontSize: 16 },
-  groupNameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: space.md,
-    paddingTop: 12,
-  },
-  groupIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.brandNavy,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  groupNameInput: {
-    flex: 1,
-    fontSize: 16,
-    color: colors.text,
-    borderBottomWidth: 2,
-    borderBottomColor: colors.brandNavy,
-    paddingVertical: 8,
-  },
-  selectedCount: {
-    paddingHorizontal: space.md,
-    paddingTop: 8,
-    fontSize: 13,
-    color: colors.brandNavy,
-    fontWeight: "600",
-  },
-});

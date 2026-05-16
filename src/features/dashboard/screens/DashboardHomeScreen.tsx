@@ -17,7 +17,7 @@ import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Pill, Skeleton, ImageWithSkeleton } from "../../../components/ui";
-import { colors, radii, space, typography, useThemeColors } from "../../../theme";
+import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { resolveShowAsOnline } from "../../../lib/user/resolveShowAsOnline";
 import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
@@ -49,6 +49,10 @@ import { API_ROUTES } from "../../../config/apiRoutes";
 import { TrainerOnlineToggle } from "../components/TrainerOnlineToggle";
 import { useSessionBooking } from "../../sessions/SessionBookingContext";
 import { isPendingBooking, normalizeSessionStatus } from "../../../lib/sessions/sessionUtils";
+import { TrainerProfileModal } from "../../bookexpert/components/TrainerProfileModal";
+import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
+import { ScheduledBookingModal } from "../../bookings/screens/ScheduledBookingModal";
+import { getTrainerCategories } from "../../bookexpert/lib/trainerUtils";
 
 function Avatar({
   uri,
@@ -107,27 +111,29 @@ function SectionHeader({ title }: { title: string }) {
 
 function CoachCard({
   trainer,
-  onBook,
+  onView,
 }: {
   trainer: any;
-  onBook: (trainer: any) => void;
+  onView: (trainer: any) => void;
 }) {
   const name = trainer?.fullname || trainer?.fullName || "Coach";
-  const cats = trainer?.categories?.slice(0, 2).join(", ") ?? "";
+  const cats = getTrainerCategories(trainer).slice(0, 2).join(", ");
   return (
-    <TrainerBoxCard style={{ width: 132, flexShrink: 0 }}>
-      <Avatar uri={trainer?.profile_picture} name={name} size={70} />
-      <Text style={styles.coachName} numberOfLines={1}>{name}</Text>
-      {!!cats && <Text style={styles.coachCat} numberOfLines={1}>{cats}</Text>}
-      <Pressable
-        style={({ pressed }) => [styles.bookBtn, pressed && styles.bookBtnPressed]}
-        onPress={() => onBook(trainer)}
-        accessibilityRole="button"
-        accessibilityLabel={`Book session with ${trainer?.fullname ?? "trainer"}`}
-      >
-        <Text style={styles.bookBtnText}>Book Now</Text>
-      </Pressable>
-    </TrainerBoxCard>
+    <Pressable
+      style={({ pressed }) => [pressed && { opacity: 0.9 }]}
+      onPress={() => onView(trainer)}
+      accessibilityRole="button"
+      accessibilityLabel={`View coach ${name}`}
+    >
+      <TrainerBoxCard style={{ width: 132, flexShrink: 0 }}>
+        <Avatar uri={trainer?.profile_picture} name={name} size={70} onlineStatus="online" />
+        <Text style={styles.coachName} numberOfLines={1}>{name}</Text>
+        {!!cats && <Text style={styles.coachCat} numberOfLines={1}>{cats}</Text>}
+        <View style={styles.bookBtn}>
+          <Text style={styles.bookBtnText}>View profile</Text>
+        </View>
+      </TrainerBoxCard>
+    </Pressable>
   );
 }
 
@@ -166,7 +172,7 @@ function SessionCard({
           style={{ marginTop: 4 }}
         />
       </View>
-      <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+      <Ionicons name="chevron-forward" size={18} color={themeColors.textMuted} />
     </>
   );
 
@@ -228,7 +234,7 @@ function FriendRequestWebTile({
       </Text>
       <View style={[styles.friendActions, { justifyContent: "center" }]}>
         <Pressable
-          style={[styles.friendBtn, { backgroundColor: colors.success }]}
+          style={[styles.friendBtn, { backgroundColor: themeColors.success }]}
           onPress={() => onAccept(request._id)}
           accessibilityRole="button"
           accessibilityLabel={`Accept friend request from ${name}`}
@@ -236,7 +242,7 @@ function FriendRequestWebTile({
           <Text style={styles.friendBtnText}>Accept</Text>
         </Pressable>
         <Pressable
-          style={[styles.friendBtn, { backgroundColor: colors.danger }]}
+          style={[styles.friendBtn, { backgroundColor: themeColors.danger }]}
           onPress={() => onReject(request._id)}
           accessibilityRole="button"
           accessibilityLabel={`Reject friend request from ${name}`}
@@ -264,13 +270,13 @@ function QuickActionButton({
       accessibilityRole="button"
       accessibilityLabel={label}
     >
-      <Ionicons name={icon} size={26} color={colors.brandNavy} />
+      <Ionicons name={icon} size={26} color={themeColors.brandNavy} />
       <Text style={styles.quickBtnText}>{label}</Text>
     </Pressable>
   );
 }
 
-function AIRecommendedSection({ onBook }: { onBook: (t: any) => void }) {
+function AIRecommendedSection({ onView }: { onView: (t: any) => void }) {
   const { data, isLoading } = useQuery({
     queryKey: ["aiRecommendations"],
     queryFn: async () => {
@@ -303,28 +309,30 @@ function AIRecommendedSection({ onBook }: { onBook: (t: any) => void }) {
         data={data.slice(0, 6)}
         keyExtractor={(item: any, i: number) => item?.trainerId ?? String(i)}
         renderItem={({ item }: { item: any }) => (
-          <TrainerBoxCard style={{ width: 150, flexShrink: 0 }}>
-            <Avatar uri={item.trainer?.profile_picture} name={item.trainer?.fullname} size={60} />
-            <Text style={styles.coachName} numberOfLines={1}>{item.trainer?.fullname || "Coach"}</Text>
-            <Text style={[styles.coachCat, { fontSize: 11 }]} numberOfLines={1}>
-              {item.trainer?.category || ""}
-            </Text>
-            <Text style={{ fontSize: 10, color: colors.textMuted, textAlign: "center", marginTop: 2 }} numberOfLines={2}>
-              {item.reason || ""}
-            </Text>
-            <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4, gap: 2 }}>
-              <Ionicons name="star" size={12} color="#f59e0b" />
-              <Text style={{ fontSize: 11, color: colors.text, fontWeight: "600" }}>
-                {item.trainer?.avgRating || "New"}
+          <Pressable
+            style={({ pressed }) => [pressed && { opacity: 0.9 }]}
+            onPress={() => item.trainer && onView(item.trainer)}
+          >
+            <TrainerBoxCard style={{ width: 150, flexShrink: 0 }}>
+              <Avatar uri={item.trainer?.profile_picture} name={item.trainer?.fullname} size={60} />
+              <Text style={styles.coachName} numberOfLines={1}>{item.trainer?.fullname || "Coach"}</Text>
+              <Text style={[styles.coachCat, { fontSize: 11 }]} numberOfLines={1}>
+                {item.trainer?.category || ""}
               </Text>
-            </View>
-            <Pressable
-              style={({ pressed }) => [styles.bookBtn, pressed && styles.bookBtnPressed]}
-              onPress={() => onBook(item.trainer)}
-            >
-              <Text style={styles.bookBtnText}>Book Now</Text>
-            </Pressable>
-          </TrainerBoxCard>
+              <Text style={{ fontSize: 10, color: themeColors.textMuted, textAlign: "center", marginTop: 2 }} numberOfLines={2}>
+                {item.reason || ""}
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4, gap: 2 }}>
+                <Ionicons name="star" size={12} color="#f59e0b" />
+                <Text style={{ fontSize: 11, color: themeColors.text, fontWeight: "600" }}>
+                  {item.trainer?.avgRating || "New"}
+                </Text>
+              </View>
+              <View style={styles.bookBtn}>
+                <Text style={styles.bookBtnText}>View profile</Text>
+              </View>
+            </TrainerBoxCard>
+          </Pressable>
         )}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ gap: space.sm, paddingVertical: 4 }}
@@ -335,7 +343,161 @@ function AIRecommendedSection({ onBook }: { onBook: (t: any) => void }) {
 
 export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) {
   const themeColors = useThemeColors();
+  const styles = useThemedStyles((palette) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: palette.surface },
+  content: {},
+
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: space.lg,
+    paddingBottom: space.md,
+    backgroundColor: palette.surfaceElevated,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: palette.border,
+  },
+  greeting: { ...typography.titleMd, color: palette.text },
+  roleTag: { ...typography.bodySm, color: palette.textMuted, marginTop: 2 },
+  profileRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+  },
+  profileMeta: {
+    flex: 1,
+    minWidth: 0,
+  },
+  settingsLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 10,
+    alignSelf: "flex-start",
+    gap: 2,
+  },
+  settingsLinkText: {
+    ...typography.bodyMd,
+    fontWeight: "600",
+    color: palette.sidebarActive,
+  },
+  avatarOnlineDot: {
+    position: "absolute",
+    right: 0,
+    bottom: 0,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "#43A047",
+    borderWidth: 2,
+    borderColor: palette.surfaceElevated,
+  },
+  avatarOfflineDot: {
+    position: "absolute",
+    right: 0,
+    bottom: 0,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "#E57373",
+    borderWidth: 2,
+    borderColor: palette.surfaceElevated,
+  },
+
+  quickRow: {
+    flexDirection: "row",
+    paddingVertical: space.md,
+    gap: space.sm,
+    backgroundColor: palette.surfaceElevated,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: palette.border,
+    flexWrap: "wrap",
+  },
+  quickBtn: {
+    flex: 1,
+    minWidth: 72,
+    alignItems: "center",
+    paddingVertical: space.md,
+    backgroundColor: palette.brandSubtle,
+    borderRadius: radii.md,
+    gap: space.xs,
+  },
+  quickBtnPressed: { opacity: 0.8 },
+  quickBtnText: { ...typography.label, color: palette.text, textAlign: "center", fontSize: 11 },
+
+  section: { marginTop: space.md, backgroundColor: palette.surfaceElevated, paddingVertical: space.md },
+  sectionHeader: {
+    ...typography.titleSm,
+    color: palette.brandNavy,
+    paddingHorizontal: space.md,
+    marginBottom: space.sm,
+  },
+  loadingRow: { alignItems: "center", paddingVertical: space.lg },
+
+  coachName: {
+    ...typography.label,
+    color: palette.text,
+    marginTop: space.xs,
+    textAlign: "center",
+  },
+  coachCat: { ...typography.caption, color: palette.textMuted, textAlign: "center", marginTop: 2 },
+  bookBtn: {
+    marginTop: space.sm,
+    backgroundColor: palette.brandNavy,
+    borderRadius: radii.sm,
+    paddingHorizontal: space.sm,
+    paddingVertical: 5,
+  },
+  bookBtnPressed: { opacity: 0.75 },
+  bookBtnText: { fontSize: 12, color: palette.brandTextOn, fontWeight: "600" },
+
+  sessionCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: palette.border,
+    gap: space.sm,
+  },
+  sessionInfo: { flex: 1 },
+  sessionName: { ...typography.subtitle, color: palette.text },
+  sessionMeta: { ...typography.bodySm, color: palette.textMuted, marginTop: 2 },
+
+  recentChip: { alignItems: "center", width: 68 },
+  recentName: {
+    fontSize: 11,
+    color: palette.text,
+    marginTop: 4,
+    textAlign: "center",
+    fontWeight: "500",
+  },
+
+  friendName: { ...typography.label, color: palette.text, fontSize: 14 },
+  friendActions: { flexDirection: "row", gap: space.sm, marginTop: 6 },
+  friendBtn: { borderRadius: radii.sm, paddingHorizontal: space.md, paddingVertical: 5 },
+  friendBtnText: { fontSize: 12, color: palette.brandTextOn, fontWeight: "600" },
+
+  avatarFallback: {
+    backgroundColor: palette.brandNavy,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarInitial: { color: palette.brandTextOn, fontWeight: "700" },
+
+  seeAllBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: space.sm,
+    gap: 4,
+  },
+  seeAllText: { fontSize: 14, color: palette.brandNavy, fontWeight: "600" },
+
+});
   const [aiOpen, setAiOpen] = useState(false);
+  const [profileTrainer, setProfileTrainer] = useState<Record<string, unknown> | null>(null);
+  const [wizardTrainer, setWizardTrainer] = useState<Record<string, unknown> | null>(null);
+  const [scheduleTrainer, setScheduleTrainer] = useState<Record<string, unknown> | null>(null);
   const { user, accountType, refreshUser, patchUser } = useAuth();
   const { openSession } = useSessionBooking();
   const queryClient = useQueryClient();
@@ -419,20 +581,38 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
   };
 
   useLayoutEffect(() => {
+    void queryClient.prefetchQuery({
+      queryKey: ["wallet", "balance"],
+      queryFn: async () => {
+        const { fetchWalletBalance } = await import("../../wallet/walletApi");
+        return fetchWalletBalance();
+      },
+    });
+  }, [queryClient]);
+
+  useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <Pressable
-          onPress={() =>
-            navigation.navigate("Menu", {
-              screen: "ShellSurface",
-              params: { surfaceId: "notifications" },
-            })
-          }
-          hitSlop={12}
-          style={{ marginRight: 10, padding: 4 }}
-        >
-          <Ionicons name="notifications-outline" size={24} color={colors.brandNavy} />
-        </Pressable>
+        <View style={{ flexDirection: "row", alignItems: "center", marginRight: 6 }}>
+          <Pressable
+            onPress={() => openShell("wallet")}
+            hitSlop={12}
+            style={{ padding: 4 }}
+            accessibilityLabel="Wallet"
+            accessibilityRole="button"
+          >
+            <Ionicons name="wallet-outline" size={24} color={themeColors.brandNavy} />
+          </Pressable>
+          <Pressable
+            onPress={() => openShell("notifications")}
+            hitSlop={12}
+            style={{ padding: 4, marginLeft: 4 }}
+            accessibilityLabel="Notifications"
+            accessibilityRole="button"
+          >
+            <Ionicons name="notifications-outline" size={24} color={themeColors.brandNavy} />
+          </Pressable>
+        </View>
       ),
     });
   }, [navigation]);
@@ -467,6 +647,23 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
 
   return (
     <>
+      <InstantLessonBookingWizardModal
+        visible={!!wizardTrainer}
+        trainer={wizardTrainer}
+        onDismiss={() => setWizardTrainer(null)}
+      />
+      <ScheduledBookingModal
+        visible={!!scheduleTrainer}
+        trainer={scheduleTrainer}
+        onDismiss={() => setScheduleTrainer(null)}
+      />
+      <TrainerProfileModal
+        visible={!!profileTrainer}
+        trainer={profileTrainer}
+        onDismiss={() => setProfileTrainer(null)}
+        onInstant={(t) => setWizardTrainer(t)}
+        onSchedule={(t) => setScheduleTrainer(t)}
+      />
     <ScrollView
       style={[styles.root, { backgroundColor: themeColors.background }]}
       contentContainerStyle={[styles.content, { paddingBottom: space.xl * 2 + insets.bottom }]}
@@ -543,8 +740,8 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
                 onlineStatus={showAsOnline ? "online" : "offline"}
               />
               <View style={styles.profileMeta}>
-                <Text style={{ ...typography.titleSm, color: colors.text }}>{name}</Text>
-                <Text style={{ ...typography.bodySm, color: colors.textMuted, marginTop: 4 }}>
+                <Text style={{ ...typography.titleSm, color: themeColors.text }}>{name}</Text>
+                <Text style={{ ...typography.bodySm, color: themeColors.textMuted, marginTop: 4 }}>
                   {accountType}
                 </Text>
                 <Pressable
@@ -552,7 +749,7 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
                   onPress={() => openShell("settings")}
                 >
                   <Text style={styles.settingsLinkText}>Account & settings</Text>
-                  <Ionicons name="chevron-forward" size={16} color={colors.sidebarActive} />
+                  <Ionicons name="chevron-forward" size={16} color={themeColors.sidebarActive} />
                 </Pressable>
               </View>
             </View>
@@ -605,14 +802,7 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
                 data={coaches}
                 keyExtractor={(item, i) => item?._id ?? String(i)}
                 renderItem={({ item }) => (
-                  <CoachCard
-                    trainer={item}
-                    onBook={(t) =>
-                      t?._id != null
-                        ? openFeature("book-lesson", { bookLessonTrainerId: String(t._id) })
-                        : openFeature("book-lesson")
-                    }
-                  />
+                  <CoachCard trainer={item} onView={setProfileTrainer} />
                 )}
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={{ gap: space.sm, paddingVertical: 4 }}
@@ -622,11 +812,7 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
         )}
 
         {/* AI Recommended Trainers */}
-        {isTrainee && <AIRecommendedSection onBook={(t: any) =>
-          t?._id != null
-            ? openFeature("book-lesson", { bookLessonTrainerId: String(t._id) })
-            : openFeature("book-lesson")
-        } />}
+        {isTrainee && <AIRecommendedSection onView={setProfileTrainer} />}
 
         {/* Trainer: pending session requests (realtime via socket) */}
         {isTrainer && (loadingSessions || pendingSessions.length > 0) && (
@@ -660,7 +846,7 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
                     <Text style={styles.seeAllText}>
                       Review all {pendingSessions.length} requests
                     </Text>
-                    <Ionicons name="chevron-forward" size={16} color={colors.brandNavy} />
+                    <Ionicons name="chevron-forward" size={16} color={themeColors.brandNavy} />
                   </Pressable>
                 ) : null}
               </>
@@ -709,7 +895,7 @@ export function DashboardHomeScreen({ navigation }: MainTabScreenProps<"Home">) 
                 <Text style={styles.seeAllText}>
                   See all {upcomingConfirmed.length} sessions
                 </Text>
-                <Ionicons name="chevron-forward" size={16} color={colors.brandNavy} />
+                <Ionicons name="chevron-forward" size={16} color={themeColors.brandNavy} />
               </Pressable>
             )}
           </HomeMainCont>
@@ -789,154 +975,4 @@ function isSessionLiveNow(session: any): boolean {
   }
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.surface },
-  content: {},
 
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: space.lg,
-    paddingBottom: space.md,
-    backgroundColor: colors.surfaceElevated,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  greeting: { ...typography.titleMd, color: colors.text },
-  roleTag: { ...typography.bodySm, color: colors.textMuted, marginTop: 2 },
-  profileRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.md,
-  },
-  profileMeta: {
-    flex: 1,
-    minWidth: 0,
-  },
-  settingsLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 10,
-    alignSelf: "flex-start",
-    gap: 2,
-  },
-  settingsLinkText: {
-    ...typography.bodyMd,
-    fontWeight: "600",
-    color: colors.sidebarActive,
-  },
-  avatarOnlineDot: {
-    position: "absolute",
-    right: 0,
-    bottom: 0,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: "#43A047",
-    borderWidth: 2,
-    borderColor: colors.surfaceElevated,
-  },
-  avatarOfflineDot: {
-    position: "absolute",
-    right: 0,
-    bottom: 0,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: "#E57373",
-    borderWidth: 2,
-    borderColor: colors.surfaceElevated,
-  },
-
-  quickRow: {
-    flexDirection: "row",
-    paddingVertical: space.md,
-    gap: space.sm,
-    backgroundColor: colors.surfaceElevated,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-    flexWrap: "wrap",
-  },
-  quickBtn: {
-    flex: 1,
-    minWidth: 72,
-    alignItems: "center",
-    paddingVertical: space.md,
-    backgroundColor: colors.brandSubtle,
-    borderRadius: radii.md,
-    gap: space.xs,
-  },
-  quickBtnPressed: { opacity: 0.8 },
-  quickBtnText: { ...typography.label, color: colors.text, textAlign: "center", fontSize: 11 },
-
-  section: { marginTop: space.md, backgroundColor: colors.surfaceElevated, paddingVertical: space.md },
-  sectionHeader: {
-    ...typography.titleSm,
-    color: colors.brandNavy,
-    paddingHorizontal: space.md,
-    marginBottom: space.sm,
-  },
-  loadingRow: { alignItems: "center", paddingVertical: space.lg },
-
-  coachName: {
-    ...typography.label,
-    color: colors.text,
-    marginTop: space.xs,
-    textAlign: "center",
-  },
-  coachCat: { ...typography.caption, color: colors.textMuted, textAlign: "center", marginTop: 2 },
-  bookBtn: {
-    marginTop: space.sm,
-    backgroundColor: colors.brandNavy,
-    borderRadius: radii.sm,
-    paddingHorizontal: space.sm,
-    paddingVertical: 5,
-  },
-  bookBtnPressed: { opacity: 0.75 },
-  bookBtnText: { fontSize: 12, color: colors.brandTextOn, fontWeight: "600" },
-
-  sessionCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: space.md,
-    paddingVertical: space.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-    gap: space.sm,
-  },
-  sessionInfo: { flex: 1 },
-  sessionName: { ...typography.subtitle, color: colors.text },
-  sessionMeta: { ...typography.bodySm, color: colors.textMuted, marginTop: 2 },
-
-  recentChip: { alignItems: "center", width: 68 },
-  recentName: {
-    fontSize: 11,
-    color: colors.text,
-    marginTop: 4,
-    textAlign: "center",
-    fontWeight: "500",
-  },
-
-  friendName: { ...typography.label, color: colors.text, fontSize: 14 },
-  friendActions: { flexDirection: "row", gap: space.sm, marginTop: 6 },
-  friendBtn: { borderRadius: radii.sm, paddingHorizontal: space.md, paddingVertical: 5 },
-  friendBtnText: { fontSize: 12, color: colors.brandTextOn, fontWeight: "600" },
-
-  avatarFallback: {
-    backgroundColor: colors.brandNavy,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarInitial: { color: colors.brandTextOn, fontWeight: "700" },
-
-  seeAllBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: space.sm,
-    gap: 4,
-  },
-  seeAllText: { fontSize: 14, color: colors.brandNavy, fontWeight: "600" },
-
-});

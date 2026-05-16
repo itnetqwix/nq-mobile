@@ -14,6 +14,9 @@
  *
  * Dark-mode pairs are exported separately as `colorsDark`; the resolved
  * palette is selected at runtime by `getThemeColors(scheme)` in `index.ts`.
+ *
+ * Calling / meeting: video stage uses `overlayVideo` (always near-black);
+ * modals and chrome should use `useThemeColors()` like other screens.
  */
 
 /** Neutral grayscale ramp — Material/Tailwind hybrid. */
@@ -124,6 +127,16 @@ export const colorsLight: Palette & {
   /** Overlay (modals, sheets). */
   overlay: "rgba(15, 23, 42, 0.6)",
   scrim: "rgba(15, 23, 42, 0.32)",
+  /** Video call stage — always near-black regardless of app theme. */
+  overlayVideo: "#000000",
+
+  /** Chat bubbles and day dividers. */
+  chatBubbleIncoming: "#f0f0f5",
+  chatBubbleOutgoing: BRAND.brand,
+  chatBubbleOutgoingText: BRAND.brandTextOn,
+  chatDayPill: "rgba(15, 23, 42, 0.08)",
+  chatDayPillText: "#6b7280",
+  divider: "#e5e7eb",
 
   /** Compatibility aliases (do NOT remove). */
   brandNavy: BRAND.brand,
@@ -166,6 +179,14 @@ export const colorsDark: typeof colorsLight = {
 
   overlay: "rgba(0, 0, 0, 0.72)",
   scrim: "rgba(0, 0, 0, 0.5)",
+  overlayVideo: "#000000",
+
+  chatBubbleIncoming: "#2a2a32",
+  chatBubbleOutgoing: BRAND.brand,
+  chatBubbleOutgoingText: BRAND.brandTextOn,
+  chatDayPill: "rgba(255, 255, 255, 0.12)",
+  chatDayPillText: "#a1a1aa",
+  divider: NEUTRALS.neutral700,
 
   /** Compatibility aliases. */
   brandNavy: BRAND.brand,

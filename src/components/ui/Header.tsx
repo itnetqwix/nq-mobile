@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, space, typography } from "../../theme";
+import { space, typography, useThemeColors, useThemedStyles } from "../../theme";
 
 export type HeaderAction = {
   icon?: keyof typeof Ionicons.glyphMap;
@@ -45,8 +45,53 @@ export function Header({
   skipTopInset,
   style,
 }: HeaderProps) {
+  const c = useThemeColors();
   const insets = useSafeAreaInsets();
   const topPad = skipTopInset ? 0 : insets.top;
+  const styles = useThemedStyles((colors) =>
+    StyleSheet.create({
+      wrap: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingBottom: space.sm,
+        borderBottomColor: colors.border,
+        gap: space.xs,
+      },
+      leftBlock: { width: 44, alignItems: "flex-start", justifyContent: "center" },
+      actionsBlock: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "flex-end",
+        minWidth: 44,
+        gap: space.xs,
+      },
+      titleBlock: { flex: 1, alignItems: "center", justifyContent: "center" },
+      title: { textAlign: "center" },
+      subtitle: { color: colors.textMuted, marginTop: 2, textAlign: "center" },
+      iconBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        height: 36,
+        paddingHorizontal: space.xs,
+        borderRadius: 18,
+      },
+      badge: {
+        minWidth: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: colors.danger,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 4,
+        marginLeft: 4,
+      },
+      badgeText: {
+        color: colors.brandTextOn,
+        fontSize: 10,
+        fontWeight: "700",
+      },
+    })
+  );
 
   return (
     <View
@@ -56,7 +101,7 @@ export function Header({
           paddingTop: topPad + (Platform.OS === "android" ? space.xs : space.xxs),
           paddingLeft: space.sm + insets.left,
           paddingRight: space.sm + insets.right,
-          backgroundColor: transparent ? "transparent" : colors.surface,
+          backgroundColor: transparent ? "transparent" : c.surface,
           borderBottomWidth: hideDivider ? 0 : StyleSheet.hairlineWidth,
         },
         style,
@@ -87,6 +132,19 @@ export function Header({
 }
 
 function BackButton({ onPress }: { onPress: () => void }) {
+  const c = useThemeColors();
+  const styles = useThemedStyles(() =>
+    StyleSheet.create({
+      iconBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        height: 36,
+        paddingHorizontal: space.xs,
+        borderRadius: 18,
+      },
+    })
+  );
+
   return (
     <Pressable
       onPress={onPress}
@@ -95,12 +153,40 @@ function BackButton({ onPress }: { onPress: () => void }) {
       accessibilityLabel="Back"
       style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.6 }]}
     >
-      <Ionicons name="chevron-back" size={24} color={colors.text} />
+      <Ionicons name="chevron-back" size={24} color={c.text} />
     </Pressable>
   );
 }
 
 function ActionBtn({ action }: { action: HeaderAction }) {
+  const c = useThemeColors();
+  const styles = useThemedStyles((colors) =>
+    StyleSheet.create({
+      iconBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        height: 36,
+        paddingHorizontal: space.xs,
+        borderRadius: 18,
+      },
+      badge: {
+        minWidth: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: colors.danger,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 4,
+        marginLeft: 4,
+      },
+      badgeText: {
+        color: colors.brandTextOn,
+        fontSize: 10,
+        fontWeight: "700",
+      },
+    })
+  );
+
   return (
     <Pressable
       onPress={action.onPress}
@@ -109,9 +195,9 @@ function ActionBtn({ action }: { action: HeaderAction }) {
       accessibilityLabel={action.accessibilityLabel ?? action.label ?? "Header action"}
       style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.6 }]}
     >
-      {action.icon ? <Ionicons name={action.icon} size={22} color={colors.text} /> : null}
+      {action.icon ? <Ionicons name={action.icon} size={22} color={c.text} /> : null}
       {action.label ? (
-        <Text style={[typography.label, { color: colors.text, marginLeft: 4 }]}>
+        <Text style={[typography.label, { color: c.text, marginLeft: 4 }]}>
           {action.label}
         </Text>
       ) : null}
@@ -123,46 +209,3 @@ function ActionBtn({ action }: { action: HeaderAction }) {
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingBottom: space.sm,
-    borderBottomColor: colors.border,
-    gap: space.xs,
-  },
-  leftBlock: { width: 44, alignItems: "flex-start", justifyContent: "center" },
-  actionsBlock: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    minWidth: 44,
-    gap: space.xs,
-  },
-  titleBlock: { flex: 1, alignItems: "center", justifyContent: "center" },
-  title: { textAlign: "center" },
-  subtitle: { color: colors.textMuted, marginTop: 2, textAlign: "center" },
-  iconBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    height: 36,
-    paddingHorizontal: space.xs,
-    borderRadius: 18,
-  },
-  badge: {
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: colors.danger,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 4,
-    marginLeft: 4,
-  },
-  badgeText: {
-    color: colors.brandTextOn,
-    fontSize: 10,
-    fontWeight: "700",
-  },
-});

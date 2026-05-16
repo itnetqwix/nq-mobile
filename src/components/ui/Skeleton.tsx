@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, StyleSheet, View, type ViewStyle } from "react-native";
-import { colors, durations, easings, radii } from "../../theme";
+import { durations, easings, radii, useThemedStyles } from "../../theme";
 
 export type SkeletonProps = {
   width?: number | string;
@@ -11,6 +11,19 @@ export type SkeletonProps = {
 
 /** Shimmer placeholder for list / card loading states. */
 export function Skeleton({ width = "100%", height = 16, radius = radii.sm, style }: SkeletonProps) {
+  const styles = useThemedStyles((c) =>
+    StyleSheet.create({
+      base: {
+        backgroundColor: c.surfaceMuted,
+        overflow: "hidden",
+      },
+      shimmer: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: c.neutral200,
+      },
+    })
+  );
+
   const pulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -48,14 +61,3 @@ export function Skeleton({ width = "100%", height = 16, radius = radii.sm, style
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  base: {
-    backgroundColor: colors.surfaceMuted,
-    overflow: "hidden",
-  },
-  shimmer: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.neutral200,
-  },
-});

@@ -11,6 +11,7 @@ import { extractLoginTokens, summarizeLoginPayloadKeys } from "../../../lib/http
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { getCurrentUser, postLogin } from "../api/authApi";
 import { fetchMasterRow } from "../api/masterApi";
+import { onUnauthorized } from "../../../lib/auth/sessionEvents";
 import { clearSession, getAccessToken, getAccountType, saveSession } from "../session/tokenStorage";
 
 export type AuthUser = Record<string, unknown> | null;
@@ -131,6 +132,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       queryClient.clear();
     }
   }, [queryClient]);
+
+  useEffect(() => {
+    return onUnauthorized(() => {
+      void signOut();
+    });
+  }, [signOut]);
 
   const value = useMemo(
     () => ({
