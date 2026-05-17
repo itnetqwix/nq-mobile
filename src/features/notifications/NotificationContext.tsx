@@ -262,10 +262,27 @@ export function NotificationProvider({
 
     socket.on(SOCKET_EVENT_RECEIVE, onReceive);
 
-    const onBookingCreated = () => {
+    const onBookingCreated = (data: {
+      bookingId?: string;
+      trainerId?: string;
+      traineeId?: string;
+      type?: string;
+    }) => {
       queryClient.invalidateQueries({ queryKey: ["scheduledMeetings"] });
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["sessions", "upcoming"] });
       queryClient.invalidateQueries({ queryKey: ["trainerAvailability"] });
+      void refreshInbox();
+
+      const uid = userIdRef.current;
+      if (uid && data?.trainerId && String(data.trainerId) === String(uid)) {
+        pushToQueue({
+          title: NOTIFICATION_TITLES.newBookingRequest,
+          description:
+            "You have a new session request. Open Session requests to confirm.",
+          isRead: false,
+        });
+      }
     };
     const onBookingStatusUpdated = (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["scheduledMeetings"] });
@@ -296,7 +313,7 @@ export function NotificationProvider({
       socket.off("BOOKING_CREATED", onBookingCreated);
       socket.off("BOOKING_STATUS_UPDATED", onBookingStatusUpdated);
     };
-  }, [socket, queryClient]);
+  }, [socket, queryClient, pushToQueue, refreshInbox]);
 
   const emitNotification = useCallback(
     (payload: EmitNotificationPayload): boolean => {

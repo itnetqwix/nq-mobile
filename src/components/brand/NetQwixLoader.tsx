@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { StyleSheet, Text, View, type ViewStyle } from "react-native";
+import { StyleSheet, View, type ViewStyle } from "react-native";
 import Animated, {
   Easing,
   interpolate,
@@ -25,7 +25,7 @@ type Props = {
   motion?: "full" | "quick";
   /** `scrim` — frosted translucent overlay (default). `transparent` — no fill. */
   backdrop?: NetQwixLoaderBackdrop;
-  /** Rotating sports tips at the bottom (session / sign-in). */
+  /** Rotating tip text under the logo (plain text, 5–8s each). */
   showTips?: boolean;
   style?: ViewStyle;
 };
@@ -87,19 +87,11 @@ export function NetQwixLoader({
         ...StyleSheet.absoluteFillObject,
         backgroundColor: scrimColor,
       },
-      glassCard: {
-        paddingHorizontal: space.xl,
-        paddingVertical: space.lg,
-        borderRadius: 24,
-        backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.72)",
-        borderWidth: StyleSheet.hairlineWidth,
-        borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(15,23,42,0.08)",
+      centerStack: {
         alignItems: "center",
-        shadowColor: palette.brandNavy,
-        shadowOpacity: isDark ? 0.35 : 0.12,
-        shadowRadius: 24,
-        shadowOffset: { width: 0, height: 8 },
-        elevation: 8,
+        justifyContent: "center",
+        marginTop: -56,
+        maxWidth: 360,
       },
       stage: {
         width: logoW + 48,
@@ -259,7 +251,7 @@ export function NetQwixLoader({
         <View style={styles.scrim} pointerEvents="none" />
       ) : null}
 
-      <Animated.View style={[styles.glassCard, enterStyle]}>
+      <Animated.View style={[styles.centerStack, enterStyle]}>
         <View style={styles.stage}>
           <Animated.View style={[styles.glow, glowStyle]} />
           <Animated.View style={[styles.glowAccent, glowAccentStyle]} />
@@ -282,9 +274,9 @@ export function NetQwixLoader({
         {!!message ? (
           <Animated.Text style={[styles.message, messageStyle]}>{message}</Animated.Text>
         ) : null}
-      </Animated.View>
 
-      {showTips ? <LoaderTipCarousel active /> : null}
+        {showTips ? <LoaderTipCarousel active /> : null}
+      </Animated.View>
     </View>
   );
 }
