@@ -19,6 +19,7 @@ import { getS3ImageUrl } from "../../lib/imageUtils";
 import {
   canJoinSession,
   formatSessionWhen,
+  getJoinDisabledReason,
   getOtherParty,
   isInstantLesson,
   isPendingBooking,
@@ -36,48 +37,55 @@ type Props = {
   visible: boolean;
   session: any | null;
   onClose: () => void;
+  onSessionUpdated?: (session: any) => void;
 };
 
-export function SessionActionModal({ visible, session, onClose }: Props) {
+export function SessionActionModal({ visible, session, onClose, onSessionUpdated }: Props) {
   const { user, accountType } = useAuth();
   const { emitNotification } = useNotifications();
   const queryClient = useQueryClient();
 
   const [busy, setBusy] = useState<"confirm" | "decline" | null>(null);
-  const [joinHint, setJoinHint] = useState("");
+  const [localSession, setLocalSession] = useState<any | null>(null);
+
+  useEffect(() => {
+    setLocalSession(session);
+  }, [session]);
+
+  const viewSession = localSession ?? session;
 
   const isTrainer = accountType === AccountType.TRAINER;
-  const sessionId = String(session?._id ?? session?.id ?? "");
-  const status = normalizeSessionStatus(session?.status);
-  const pending = isPendingBooking(session);
-  const instant = isInstantLesson(session);
-  const other = getOtherParty(session, isTrainer);
+  const sessionId = String(viewSession?._id ?? viewSession?.id ?? "");
+  const status = normalizeSessionStatus(viewSession?.status);
+  const pending = isPendingBooking(viewSession);
+  const instant = isInstantLesson(viewSession);
+  const other = getOtherParty(viewSession, isTrainer);
   const otherName = other?.fullname || other?.fullName || (isTrainer ? "Trainee" : "Coach");
-  const { dateLabel, timeLabel } = formatSessionWhen(session);
+  const { dateLabel, timeLabel } = formatSessionWhen(viewSession);
   const price =
-    session?.charging_price != null
-      ? `$${Number(session.charging_price).toFixed(2)}`
-      : session?.amount != null
-        ? `$${Number(session.amount).toFixed(2)}`
+    viewSession?.charging_price != null
+      ? `$${Number(viewSession.charging_price).toFixed(2)}`
+      : viewSession?.amount != null
+        ? `$${Number(viewSession.amount).toFixed(2)}`
         : null;
 
+  const [joinHint, setJoinHint] = useState("");
+
   const joinEnabled = useMemo(
-    () => (session ? canJoinSession(session) : false),
-    [session]
+    () => (viewSession ? canJoinSession(viewSession) : false),
+    [viewSession]
   );
 
   useEffect(() => {
-    if (!session) return;
+    if (!viewSession) return;
     const tick = () => {
-      if (canJoinSession(session)) setJoinHint("");
-      else if (pending) setJoinHint("Confirm this session before joining.");
-      else if (instant) setJoinHint("Instant lessons can be joined within 1 hour of booking.");
-      else setJoinHint("Join opens 15 minutes before the scheduled start time.");
+      if (canJoinSession(viewSession)) setJoinHint("");
+      else setJoinHint(getJoinDisabledReason(viewSession));
     };
     tick();
     const id = setInterval(tick, 30_000);
     return () => clearInterval(id);
-  }, [session, pending, instant]);
+  }, [viewSession]);
 
   const invalidateSessions = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ["sessions"] });
@@ -89,7 +97,10 @@ export function SessionActionModal({ visible, session, onClose }: Props) {
     setBusy("confirm");
     try {
       await updateBookedSessionStatus(sessionId, "confirmed");
-      const traineeId = String(session?.trainee_info?._id ?? "");
+      const confirmed = { ...viewSession, status: "confirmed" };
+      setLocalSession(confirmed);
+      onSessionUpdated?.(confirmed);
+      const traineeId = String(viewSession?.trainee_info?._id ?? "");
       if (traineeId) {
         emitNotification({
           title: NOTIFICATION_TITLES.sessionConfirmation,
@@ -97,20 +108,22 @@ export function SessionActionModal({ visible, session, onClose }: Props) {
           senderId: String(user?._id ?? ""),
           receiverId: traineeId,
           type: NOTIFICATION_TYPES.TRANSCATIONAL,
-          bookingInfo: session,
+          bookingInfo: viewSession,
         });
       }
       await invalidateSessions();
-      Alert.alert("Session confirmed", "The trainee has been notified.", [
-        { text: "OK", onPress: onClose },
-      ]);
+      Alert.alert(
+        "Session confirmed",
+        "The trainee has been notified. Join opens 15 minutes before the scheduled start time.",
+        [{ text: "OK" }]
+      );
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Could not confirm session.";
       Alert.alert("Confirm failed", msg);
     } finally {
       setBusy(null);
     }
-  }, [sessionId, session, user, emitNotification, invalidateSessions]);
+  }, [sessionId, viewSession, user, emitNotification, invalidateSessions, onSessionUpdated]);
 
   const handleDecline = useCallback(() => {
     if (!sessionId) return;
@@ -126,7 +139,7 @@ export function SessionActionModal({ visible, session, onClose }: Props) {
             setBusy("decline");
             try {
               await updateBookedSessionStatus(sessionId, "canceled");
-              const traineeId = String(session?.trainee_info?._id ?? "");
+              const traineeId = String(viewSession?.trainee_info?._id ?? "");
               if (traineeId) {
                 emitNotification({
                   title: NOTIFICATION_TITLES.sessionCancellation,
@@ -134,7 +147,7 @@ export function SessionActionModal({ visible, session, onClose }: Props) {
                   senderId: String(user?._id ?? ""),
                   receiverId: traineeId,
                   type: NOTIFICATION_TYPES.TRANSCATIONAL,
-                  bookingInfo: session,
+                  bookingInfo: viewSession,
                 });
               }
               await invalidateSessions();
@@ -149,7 +162,7 @@ export function SessionActionModal({ visible, session, onClose }: Props) {
         },
       ]
     );
-  }, [sessionId, session, user, emitNotification, invalidateSessions, onClose]);
+  }, [sessionId, viewSession, user, emitNotification, invalidateSessions, onClose]);
 
   const handleJoin = useCallback(() => {
     if (!sessionId || !joinEnabled) return;
@@ -163,7 +176,7 @@ export function SessionActionModal({ visible, session, onClose }: Props) {
     setTimeout(go, 400);
   }, [sessionId, joinEnabled, onClose]);
 
-  if (!session) return null;
+  if (!viewSession) return null;
 
   const avatarUrl = getS3ImageUrl(other?.profile_picture);
   const statusLabel = pending ? "Awaiting confirmation" : status.charAt(0).toUpperCase() + status.slice(1);
@@ -238,9 +251,14 @@ export function SessionActionModal({ visible, session, onClose }: Props) {
               </Text>
             ) : null}
 
-            {!joinEnabled && !!joinHint && !pending ? (
-              <Text style={styles.hint}>{joinHint}</Text>
+            {pending && isTrainer ? (
+              <Text style={styles.hint}>
+                Review the details below, then tap Confirm session. Join becomes available after
+                confirmation, starting 15 minutes before the scheduled time.
+              </Text>
             ) : null}
+
+            {!joinEnabled && !!joinHint ? <Text style={styles.hint}>{joinHint}</Text> : null}
 
             <View style={styles.actions}>
               {isTrainer && pending && !instant ? (

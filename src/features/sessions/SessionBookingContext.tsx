@@ -8,13 +8,20 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { AppState, type AppStateStatus } from "react-native";
 import { AccountType } from "../../constants/accountType";
 import { useAuth } from "../auth/context/AuthContext";
 import { fetchScheduledMeetings } from "../home/api/homeApi";
-import { isPendingBooking } from "../../lib/sessions/sessionUtils";
-import { NOTIFICATION_TITLES } from "../notifications/NotificationContext";
+import {
+  extractBookingIdFromNotification,
+  isNewBookingNotificationTitle,
+  isPendingBooking,
+} from "../../lib/sessions/sessionUtils";
 import { useSocket } from "../socket/SocketContext";
 import { SessionActionModal } from "./SessionActionModal";
+
+const POLL_MS = 45_000;
+const OPEN_RETRY_DELAYS_MS = [0, 500, 1200, 2500];
 
 type SessionBookingContextValue = {
   openSession: (session: any) => void;
@@ -26,36 +33,48 @@ type SessionBookingContextValue = {
 
 const SessionBookingContext = createContext<SessionBookingContextValue | null>(null);
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export function SessionBookingProvider({ children }: { children: React.ReactNode }) {
   const { accountType, status } = useAuth();
-  const { socket } = useSocket();
+  const { socket, isConnected } = useSocket();
   const queryClient = useQueryClient();
   const isTrainer = accountType === AccountType.TRAINER;
 
   const [activeSession, setActiveSession] = useState<any | null>(null);
   const [pendingSessions, setPendingSessions] = useState<any[]>([]);
   const lastPopupIdRef = useRef<string | null>(null);
+  const knownPendingIdsRef = useRef<Set<string>>(new Set());
+  const pendingSeededRef = useRef(false);
 
-  const refreshPending = useCallback(async () => {
+  const loadPending = useCallback(async () => {
     if (status !== "signedIn" || !isTrainer) {
       setPendingSessions([]);
-      return;
+      return [];
     }
     try {
       const rows = await fetchScheduledMeetings("upcoming");
-      setPendingSessions(rows.filter(isPendingBooking));
+      const pending = rows.filter(isPendingBooking);
+      setPendingSessions(pending);
+      return pending;
     } catch {
       setPendingSessions([]);
+      return [];
     }
   }, [status, isTrainer]);
 
+  const refreshPending = useCallback(async () => {
+    await loadPending();
+  }, [loadPending]);
+
   useEffect(() => {
-    void refreshPending();
-  }, [refreshPending]);
+    void loadPending();
+  }, [loadPending, isConnected]);
 
   const openSession = useCallback((session: any) => {
     if (!session) return;
-    /** Manual opens (locker / upcoming list) should always work. */
     lastPopupIdRef.current = null;
     setActiveSession(session);
   }, []);
@@ -64,37 +83,97 @@ export function SessionBookingProvider({ children }: { children: React.ReactNode
     setActiveSession(null);
   }, []);
 
+  const showSessionModal = useCallback((session: any) => {
+    if (!session) return;
+    const id = String(session._id ?? session.id ?? "");
+    if (!id) return;
+    lastPopupIdRef.current = id;
+    setActiveSession(session);
+  }, []);
+
   const tryOpenFromBookingEvent = useCallback(
     async (bookingId?: string) => {
       if (!isTrainer) return;
-      await refreshPending();
-      const rows = await fetchScheduledMeetings("upcoming");
-      const pending = rows.filter(isPendingBooking);
-      setPendingSessions(pending);
 
-      const match = bookingId
-        ? pending.find((s) => String(s._id) === String(bookingId)) ??
-          rows.find((s) => String(s._id) === String(bookingId))
-        : pending[0];
+      for (const delay of OPEN_RETRY_DELAYS_MS) {
+        if (delay > 0) await sleep(delay);
+        const pending = await loadPending();
 
-      if (!match) return;
-      const id = String(match._id);
-      if (lastPopupIdRef.current === id) return;
-      lastPopupIdRef.current = id;
-      setActiveSession(match);
+        const match = bookingId
+          ? pending.find((s) => String(s._id) === String(bookingId)) ??
+            (await fetchScheduledMeetings("upcoming")).find(
+              (s) => String(s._id) === String(bookingId)
+            )
+          : pending[0];
+
+        if (match && isPendingBooking(match)) {
+          knownPendingIdsRef.current.add(String(match._id));
+          showSessionModal(match);
+          return;
+        }
+      }
     },
-    [isTrainer, refreshPending]
+    [isTrainer, loadPending, showSessionModal]
   );
+
+  /** Detect new pending bookings while the app is open (socket may be offline). */
+  const syncPendingPopups = useCallback(async () => {
+    if (!isTrainer || status !== "signedIn") return;
+    const pending = await loadPending();
+    const ids = pending.map((s) => String(s._id));
+
+    if (!pendingSeededRef.current) {
+      ids.forEach((id) => knownPendingIdsRef.current.add(id));
+      pendingSeededRef.current = true;
+      if (pending.length > 0) {
+        showSessionModal(pending[0]);
+      }
+      return;
+    }
+
+    for (const session of pending) {
+      const id = String(session._id);
+      if (!knownPendingIdsRef.current.has(id)) {
+        knownPendingIdsRef.current.add(id);
+        showSessionModal(session);
+        break;
+      }
+    }
+  }, [isTrainer, status, loadPending, showSessionModal]);
+
+  useEffect(() => {
+    if (!isTrainer || status !== "signedIn") {
+      pendingSeededRef.current = false;
+      knownPendingIdsRef.current.clear();
+      return;
+    }
+
+    void syncPendingPopups();
+    const pollId = setInterval(() => {
+      void syncPendingPopups();
+    }, POLL_MS);
+
+    const onAppState = (next: AppStateStatus) => {
+      if (next === "active") void syncPendingPopups();
+    };
+    const sub = AppState.addEventListener("change", onAppState);
+
+    return () => {
+      clearInterval(pollId);
+      sub.remove();
+    };
+  }, [isTrainer, status, syncPendingPopups]);
 
   useEffect(() => {
     if (!socket || !isTrainer) return;
 
     const invalidate = () => {
       void queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      void queryClient.invalidateQueries({ queryKey: ["sessions", "upcoming"] });
       void refreshPending();
     };
 
-    const onBookingCreated = (data: { bookingId?: string }) => {
+    const onBookingCreated = (data: { bookingId?: string; trainerId?: string }) => {
       invalidate();
       void tryOpenFromBookingEvent(data?.bookingId);
     };
@@ -103,11 +182,11 @@ export function SessionBookingProvider({ children }: { children: React.ReactNode
       invalidate();
     };
 
-    const onReceive = (payload: { title?: string; bookingInfo?: any }) => {
-      if (payload?.title !== NOTIFICATION_TITLES.newBookingRequest) return;
+    const onReceive = (payload: { title?: string; bookingInfo?: Record<string, unknown> }) => {
+      if (!isNewBookingNotificationTitle(payload?.title)) return;
       invalidate();
-      const bookingId = payload?.bookingInfo?._id ?? payload?.bookingInfo?.id;
-      void tryOpenFromBookingEvent(bookingId ? String(bookingId) : undefined);
+      const bookingId = extractBookingIdFromNotification(payload);
+      void tryOpenFromBookingEvent(bookingId);
     };
 
     socket.on("BOOKING_CREATED", onBookingCreated);
@@ -139,6 +218,7 @@ export function SessionBookingProvider({ children }: { children: React.ReactNode
         visible={!!activeSession}
         session={activeSession}
         onClose={closeSession}
+        onSessionUpdated={setActiveSession}
       />
     </SessionBookingContext.Provider>
   );

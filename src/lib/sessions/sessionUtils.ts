@@ -15,6 +15,9 @@ export function isPendingBooking(session: any): boolean {
 
 export function isInstantLesson(session: any): boolean {
   if (typeof session?.is_instant === "boolean") return session.is_instant;
+  /** Scheduled bookings always have slot times or ISO start/end. */
+  if (session?.session_start_time || session?.session_end_time) return false;
+  if (session?.start_time && session?.end_time && session?.time_zone) return false;
   return !session?.time_zone && !session?.session_start_time && !session?.session_end_time;
 }
 
@@ -100,11 +103,74 @@ export function canJoinSession(session: any, now = new Date()): boolean {
 
   const start = getSessionStart(session);
   const end = getSessionEnd(session);
-  if (!start) return status === "confirmed";
+
+  /** Legacy / instant-style rows without ISO slot times — match web (allow join when confirmed). */
+  if (!session?.start_time && !session?.end_time && !session?.session_start_time) {
+    return status === "confirmed" || status === "upcoming";
+  }
+
+  if (!start) return status === "confirmed" || status === "upcoming";
+
   const endMs = (end ?? start).getTime() + LATE_JOIN_MS;
   return nowMs >= start.getTime() - EARLY_JOIN_MS && nowMs <= endMs;
 }
 
+/** User-facing reason Join is disabled (for hints under the button). */
+export function getJoinDisabledReason(session: any, now = new Date()): string {
+  const status = normalizeSessionStatus(session?.status);
+  if (isPendingBooking(session)) {
+    return "Confirm this session first. Join is available after confirmation.";
+  }
+  if (status === "cancelled") return "This session was cancelled.";
+  if (status === "completed") return "This session has already ended.";
+  if (status !== "confirmed" && status !== "upcoming") {
+    return "This session is not ready to join yet.";
+  }
+
+  if (isInstantLesson(session)) {
+    if (!session?.accepted_at) {
+      return "Instant lessons can be joined after the coach confirms.";
+    }
+    if (!canJoinSession(session, now)) {
+      return "The join window for this instant lesson has expired.";
+    }
+  }
+
+  const start = getSessionStart(session);
+  if (!start) return "";
+
+  const nowMs = now.getTime();
+  const openMs = start.getTime() - EARLY_JOIN_MS;
+  if (nowMs < openMs) {
+    const openAt = new Date(openMs);
+    return `Join opens at ${openAt.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })} (15 min before start).`;
+  }
+
+  const end = getSessionEnd(session);
+  const endMs = (end ?? start).getTime() + LATE_JOIN_MS;
+  if (nowMs > endMs) {
+    return "The join window for this session has ended.";
+  }
+
+  return "";
+}
+
 export function getOtherParty(session: any, isTrainer: boolean) {
   return isTrainer ? session?.trainee_info : session?.trainer_info;
+}
+
+/** Extract booking id from socket notification payloads. */
+export function extractBookingIdFromNotification(payload: {
+  bookingInfo?: Record<string, unknown>;
+}): string | undefined {
+  const info = payload?.bookingInfo;
+  if (!info) return undefined;
+  const raw =
+    info.bookingId ?? info.booking_id ?? info._id ?? info.id ?? info.sessionId;
+  return raw != null ? String(raw) : undefined;
+}
+
+export function isNewBookingNotificationTitle(title?: string | null): boolean {
+  const t = (title ?? "").toLowerCase();
+  return t.includes("booking request") || t.includes("instant lesson request");
 }

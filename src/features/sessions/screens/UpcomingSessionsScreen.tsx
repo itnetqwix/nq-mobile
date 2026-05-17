@@ -24,6 +24,7 @@ import { INSTANT_JOIN_AFTER_ACCEPT_MS } from "../../../lib/sessions/instantLesso
 import {
   canJoinSession,
   formatSessionWhen,
+  getJoinDisabledReason,
   getOtherParty,
   isInstantLesson,
   isPendingBooking,
@@ -182,7 +183,9 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
           />
         )}
         {!pending && !joinEnabled ? (
-          <Text style={styles.joinHint}>Join opens closer to session time</Text>
+          <Text style={styles.joinHint}>
+            {getJoinDisabledReason(session) || "Join opens closer to session time"}
+          </Text>
         ) : null}
       </View>
     </Pressable>
