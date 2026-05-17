@@ -72,7 +72,7 @@ export function SettingsScreen() {
   );
 
   const { mode: themeMode, setMode: setThemeMode } = useTheme();
-  const { user, accountType, signOut, refreshUser } = useAuth();
+  const { user, accountType, signOut, patchUser } = useAuth();
   const name = (user?.fullname as string) || (user?.fullName as string) || "User";
   const email = (user?.email as string) ?? "";
   const profileUri = getS3ImageUrl((user as any)?.profile_picture);
@@ -107,7 +107,7 @@ export function SettingsScreen() {
     setPrivacyBusy(true);
     try {
       await postAccountPrivacy(next);
-      await refreshUser();
+      patchUser({ isPrivate: next });
     } catch (e: any) {
       setIsPrivate(!next);
       Alert.alert("Privacy", e?.message ?? "Could not update private account setting.");
@@ -131,7 +131,7 @@ export function SettingsScreen() {
     setNotifBusy(key);
     try {
       await patchUserNotificationSettings(updated);
-      await refreshUser();
+      patchUser({ notifications: updated });
     } catch (e: any) {
       setNotif(prev);
       Alert.alert("Notifications", e?.message ?? "Could not save notification preferences.");

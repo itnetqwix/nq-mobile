@@ -419,7 +419,7 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
   const [profileTrainer, setProfileTrainer] = useState<Record<string, unknown> | null>(null);
   const [wizardTrainer, setWizardTrainer] = useState<Record<string, unknown> | null>(null);
   const [scheduleTrainer, setScheduleTrainer] = useState<Record<string, unknown> | null>(null);
-  const { user, accountType, refreshUser, patchUser } = useAuth();
+  const { user, accountType, patchUser } = useAuth();
   const { openSession } = useSessionBooking();
   const queryClient = useQueryClient();
   const showAsOnline = resolveShowAsOnline(user);
@@ -438,11 +438,10 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
     async (next: boolean) => {
       const confirmed = await setOnlineAvailability(next);
       patchUser({ showAsOnline: confirmed });
-      await refreshUser();
-      await queryClient.invalidateQueries({ queryKey: ["onlineUsers"] });
-      await queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      void queryClient.invalidateQueries({ queryKey: ["onlineUsers"] });
+      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
     },
-    [patchUser, refreshUser, queryClient]
+    [patchUser, queryClient]
   );
 
   const { data: onlineUsers = [], isLoading: loadingCoaches } = useQuery({

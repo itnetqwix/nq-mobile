@@ -28,7 +28,7 @@ function MainWithAppUnlock() {
 
 export function RootNavigator() {
   const { status, refreshUser } = useAuth();
-  const verificationGate = useTrainerVerificationGate();
+  const { refetchVerificationGate, ...verificationGate } = useTrainerVerificationGate();
   const [startVerificationEarly, setStartVerificationEarly] = useState(false);
 
   useEffect(() => {
@@ -52,6 +52,7 @@ export function RootNavigator() {
         onComplete={() => {
           setStartVerificationEarly(false);
           void refreshUser();
+          refetchVerificationGate();
         }}
       />
     );

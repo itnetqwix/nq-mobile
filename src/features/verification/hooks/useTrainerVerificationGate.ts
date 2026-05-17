@@ -1,7 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
 import { getVerificationStatus, needsTrainerOnboarding } from "../verificationApi";
+import {
+  readVerificationGateCache,
+  writeVerificationGateCache,
+} from "../verificationGateCache";
 
 export type VerificationGateState = {
   loading: boolean;
@@ -19,21 +23,41 @@ const IDLE: VerificationGateState = {
   graceDaysRemaining: 0,
 };
 
+function resolveUserId(user: Record<string, unknown> | null | undefined): string {
+  if (!user) return "";
+  const id = user._id ?? user.id;
+  return id != null ? String(id) : "";
+}
+
 /**
  * Server-driven gate for trainer verification. Uses `/verification/status` so
  * grace period and grandfather rules match the API (not only local user JSON).
  */
-export function useTrainerVerificationGate(): VerificationGateState {
+export function useTrainerVerificationGate(): VerificationGateState & {
+  refetchVerificationGate: () => void;
+} {
   const { status: authStatus, user, accountType } = useAuth();
   const [gate, setGate] = useState<VerificationGateState>({ ...IDLE, loading: true });
+  const [refetchTick, setRefetchTick] = useState(0);
+  const hasResolvedRef = useRef(false);
+  const prevUserIdRef = useRef("");
+  const userRef = useRef(user);
+  userRef.current = user;
+  const userId = resolveUserId(user);
+
+  const refetchVerificationGate = useCallback(() => {
+    setRefetchTick((t) => t + 1);
+  }, []);
 
   useEffect(() => {
     if (authStatus === "loading") {
+      hasResolvedRef.current = false;
       setGate({ ...IDLE, loading: true });
       return;
     }
 
     if (authStatus !== "signedIn") {
+      hasResolvedRef.current = false;
       setGate(IDLE);
       return;
     }
@@ -43,18 +67,46 @@ export function useTrainerVerificationGate(): VerificationGateState {
       user?.account_type === AccountType.TRAINER;
 
     if (!isTrainer) {
+      hasResolvedRef.current = false;
       setGate(IDLE);
       return;
     }
 
-    let cancelled = false;
-    setGate((g) => ({ ...g, loading: true }));
+    if (!userId) {
+      setGate({ ...IDLE, loading: true });
+      return;
+    }
 
-    (async () => {
+    if (prevUserIdRef.current !== userId) {
+      hasResolvedRef.current = false;
+      prevUserIdRef.current = userId;
+    }
+
+    let cancelled = false;
+
+    const applyGate = (next: VerificationGateState) => {
+      if (cancelled) return;
+      hasResolvedRef.current = true;
+      setGate(next);
+      void writeVerificationGateCache(userId, next);
+    };
+
+    const run = async () => {
+      const blockUI = !hasResolvedRef.current;
+
+      if (blockUI) {
+        const cached = await readVerificationGateCache(userId);
+        if (cached) {
+          applyGate(cached);
+        } else {
+          setGate({ ...IDLE, loading: true });
+        }
+      }
+
       try {
         const s = await getVerificationStatus();
         if (cancelled) return;
-        setGate({
+        applyGate({
           loading: false,
           required: Boolean(s.required),
           inGracePeriod: Boolean(s.in_grace_period),
@@ -62,20 +114,23 @@ export function useTrainerVerificationGate(): VerificationGateState {
         });
       } catch {
         if (cancelled) return;
-        const onboarding = user?.onboarding as { required?: boolean } | undefined;
-        setGate({
+        const currentUser = userRef.current;
+        const onboarding = currentUser?.onboarding as { required?: boolean } | undefined;
+        applyGate({
           loading: false,
-          required: onboarding?.required ?? needsTrainerOnboarding(user),
+          required: onboarding?.required ?? needsTrainerOnboarding(currentUser),
           inGracePeriod: false,
           graceDaysRemaining: 0,
         });
       }
-    })();
+    };
+
+    void run();
 
     return () => {
       cancelled = true;
     };
-  }, [authStatus, accountType, user]);
+  }, [authStatus, accountType, userId, refetchTick]);
 
-  return gate;
+  return { ...gate, refetchVerificationGate };
 }

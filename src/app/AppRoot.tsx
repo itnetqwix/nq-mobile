@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StripeProvider } from "@stripe/stripe-react-native";
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -13,6 +13,7 @@ import { SessionBookingProvider } from "../features/sessions/SessionBookingConte
 import { PushNotificationBridge } from "../features/notifications/PushNotificationBridge";
 import { navigationRef } from "../navigation/navigationRef";
 import { LoaderProvider } from "../components/brand/LoaderProvider";
+import { warmLoaderTipsCache } from "../components/brand/loaderTips/loaderTipsService";
 import { ThemeProvider } from "../theme/ThemeContext";
 import { ThemedNavigationContainer } from "./ThemedNavigationContainer";
 
@@ -29,6 +30,10 @@ export function AppRoot() {
       }),
     []
   );
+
+  useEffect(() => {
+    warmLoaderTipsCache();
+  }, []);
 
   const navigateToMeeting = useCallback((lessonId: string) => {
     const go = () => {

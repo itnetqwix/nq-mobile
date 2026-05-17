@@ -27,11 +27,27 @@ export function AppUnlockGate({ children }: Props) {
   }, []);
 
   if (failed) {
-    return <NetQwixLoader message="Unlock to continue" variant="fullscreen" />;
+    return (
+      <NetQwixLoader
+        message="Unlock to continue"
+        variant="fullscreen"
+        motion="quick"
+        backdrop="scrim"
+        showTips
+      />
+    );
   }
 
   if (!ready) {
-    return <NetQwixLoader message="Unlocking…" variant="fullscreen" />;
+    return (
+      <NetQwixLoader
+        message="Unlocking…"
+        variant="fullscreen"
+        motion="quick"
+        backdrop="scrim"
+        showTips
+      />
+    );
   }
 
   return <>{children}</>;

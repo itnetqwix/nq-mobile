@@ -76,8 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           return;
         }
-        const me = await getCurrentUser();
-        const at = await getAccountType();
+        const [me, at] = await Promise.all([getCurrentUser(), getAccountType()]);
         if (cancelled) return;
         setUser(me);
         setAccountType(at ?? (me?.account_type as string) ?? (me?.accountType as string) ?? null);

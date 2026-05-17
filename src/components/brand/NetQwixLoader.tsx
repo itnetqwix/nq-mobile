@@ -11,14 +11,22 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { brandImages } from "../../constants/images";
-import { space, typography, useThemedStyles } from "../../theme";
+import { space, typography, useTheme, useThemedStyles } from "../../theme";
+import { LoaderTipCarousel } from "./loaderTips/LoaderTipCarousel";
 
 export type NetQwixLoaderVariant = "fullscreen" | "inline" | "overlay";
+export type NetQwixLoaderBackdrop = "transparent" | "scrim" | "solid";
 
 type Props = {
   message?: string;
   variant?: NetQwixLoaderVariant;
   size?: "sm" | "md" | "lg";
+  /** `quick` — shorter entrance / breathe (session restore, overlays). */
+  motion?: "full" | "quick";
+  /** `scrim` — frosted translucent overlay (default). `transparent` — no fill. */
+  backdrop?: NetQwixLoaderBackdrop;
+  /** Rotating sports tips at the bottom (session / sign-in). */
+  showTips?: boolean;
   style?: ViewStyle;
 };
 
@@ -29,11 +37,19 @@ export function NetQwixLoader({
   message = "Loading",
   variant = "fullscreen",
   size = "md",
+  motion = "full",
+  backdrop = "scrim",
+  showTips = false,
   style,
 }: Props) {
+  const quick = motion === "quick";
+  const { scheme } = useTheme();
+  const isDark = scheme === "dark";
   const stage = SIZES[size];
   const logoW = stage;
   const logoH = stage * LOGO_ASPECT;
+  const useScrim = backdrop === "scrim" && variant !== "inline";
+  const scrimColor = isDark ? "rgba(15,23,42,0.62)" : "rgba(255,255,255,0.55)";
 
   const breathe = useSharedValue(0);
   const shimmer = useSharedValue(0);
@@ -46,25 +62,44 @@ export function NetQwixLoader({
         flex: 1,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: palette.background,
+        backgroundColor: backdrop === "solid" ? palette.background : "transparent",
         paddingHorizontal: space.xl,
       },
       inline: {
         alignItems: "center",
         justifyContent: "center",
         paddingVertical: space.xl,
+        backgroundColor: "transparent",
       },
       overlay: {
         ...StyleSheet.absoluteFillObject,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: `${palette.background}F0`,
+        backgroundColor:
+          backdrop === "solid"
+            ? `${palette.background}E8`
+            : backdrop === "scrim"
+              ? scrimColor
+              : "transparent",
         zIndex: 999,
       },
-      vignette: {
+      scrim: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: palette.brandNavy,
-        opacity: 0.04,
+        backgroundColor: scrimColor,
+      },
+      glassCard: {
+        paddingHorizontal: space.xl,
+        paddingVertical: space.lg,
+        borderRadius: 24,
+        backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.72)",
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(15,23,42,0.08)",
+        alignItems: "center",
+        shadowColor: palette.brandNavy,
+        shadowOpacity: isDark ? 0.35 : 0.12,
+        shadowRadius: 24,
+        shadowOffset: { width: 0, height: 8 },
+        elevation: 8,
       },
       stage: {
         width: logoW + 48,
@@ -117,7 +152,7 @@ export function NetQwixLoader({
       message: {
         ...typography.bodySm,
         color: palette.textMuted,
-        marginTop: space.lg,
+        marginTop: space.md,
         textAlign: "center",
         letterSpacing: 0.3,
         maxWidth: 280,
@@ -126,30 +161,34 @@ export function NetQwixLoader({
   );
 
   useEffect(() => {
-    enter.value = withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic) });
-    msgFade.value = withDelay(180, withTiming(1, { duration: 500 }));
+    const enterMs = quick ? 120 : 320;
+    const breatheMs = quick ? 650 : 1000;
+    const shimmerMs = quick ? 1300 : 2000;
+
+    enter.value = withTiming(1, { duration: enterMs, easing: Easing.out(Easing.cubic) });
+    msgFade.value = withDelay(quick ? 40 : 120, withTiming(1, { duration: quick ? 180 : 400 }));
 
     breathe.value = withRepeat(
       withSequence(
-        withTiming(1, { duration: 1100, easing: Easing.inOut(Easing.sin) }),
-        withTiming(0, { duration: 1100, easing: Easing.inOut(Easing.sin) })
+        withTiming(1, { duration: breatheMs, easing: Easing.inOut(Easing.sin) }),
+        withTiming(0, { duration: breatheMs, easing: Easing.inOut(Easing.sin) })
       ),
       -1,
       false
     );
 
     shimmer.value = withRepeat(
-      withTiming(1, { duration: 2200, easing: Easing.inOut(Easing.quad) }),
+      withTiming(1, { duration: shimmerMs, easing: Easing.inOut(Easing.quad) }),
       -1,
       false
     );
-  }, [breathe, shimmer, enter, msgFade]);
+  }, [breathe, shimmer, enter, msgFade, quick]);
 
   const enterStyle = useAnimatedStyle(() => ({
     opacity: enter.value,
     transform: [
       {
-        scale: interpolate(enter.value, [0, 1], [0.88, 1]),
+        scale: interpolate(enter.value, [0, 1], [0.9, 1]),
       },
     ],
   }));
@@ -158,9 +197,7 @@ export function NetQwixLoader({
     const t = breathe.value;
     return {
       opacity: interpolate(t, [0, 1], [0.35, 0.85]),
-      transform: [
-        { scale: interpolate(t, [0, 1], [0.92, 1.08]) },
-      ],
+      transform: [{ scale: interpolate(t, [0, 1], [0.92, 1.08]) }],
     };
   });
 
@@ -183,7 +220,7 @@ export function NetQwixLoader({
   const logoStyle = useAnimatedStyle(() => {
     const t = breathe.value;
     return {
-      opacity: interpolate(t, [0, 1], [0.42, 1]),
+      opacity: interpolate(t, [0, 1], [0.5, 1]),
       transform: [{ scale: interpolate(t, [0, 1], [0.97, 1.03]) }],
     };
   });
@@ -198,7 +235,7 @@ export function NetQwixLoader({
   }));
 
   const messageStyle = useAnimatedStyle(() => ({
-    opacity: msgFade.value * interpolate(breathe.value, [0, 1], [0.65, 1]),
+    opacity: msgFade.value * interpolate(breathe.value, [0, 1], [0.7, 1]),
   }));
 
   const containerStyle =
@@ -208,38 +245,46 @@ export function NetQwixLoader({
         ? styles.overlay
         : styles.inline;
 
+  const accessibilityLabel = message || (showTips ? "Loading" : "Loading");
+
   return (
     <View
       style={[containerStyle, style]}
       accessibilityRole="progressbar"
-      accessibilityLabel={message}
+      accessibilityLabel={accessibilityLabel}
       accessibilityLiveRegion="polite"
       pointerEvents={variant === "overlay" ? "auto" : "box-none"}
     >
-      {variant === "overlay" ? <View style={styles.vignette} pointerEvents="none" /> : null}
+      {useScrim && variant === "fullscreen" ? (
+        <View style={styles.scrim} pointerEvents="none" />
+      ) : null}
 
-      <Animated.View style={[styles.stage, enterStyle]}>
-        <Animated.View style={[styles.glow, glowStyle]} />
-        <Animated.View style={[styles.glowAccent, glowAccentStyle]} />
+      <Animated.View style={[styles.glassCard, enterStyle]}>
+        <View style={styles.stage}>
+          <Animated.View style={[styles.glow, glowStyle]} />
+          <Animated.View style={[styles.glowAccent, glowAccentStyle]} />
 
-        <View style={styles.logoClip}>
-          <Animated.Image
-            source={brandImages.netquixLogo}
-            resizeMode="contain"
-            style={[styles.logoGhost, ghostStyle]}
-          />
-          <Animated.Image
-            source={brandImages.netquixLogo}
-            resizeMode="contain"
-            style={[styles.logo, logoStyle]}
-          />
-          <Animated.View style={[styles.shimmerBar, shimmerStyle]} pointerEvents="none" />
+          <View style={styles.logoClip}>
+            <Animated.Image
+              source={brandImages.netquixLogo}
+              resizeMode="contain"
+              style={[styles.logoGhost, ghostStyle]}
+            />
+            <Animated.Image
+              source={brandImages.netquixLogo}
+              resizeMode="contain"
+              style={[styles.logo, logoStyle]}
+            />
+            <Animated.View style={[styles.shimmerBar, shimmerStyle]} pointerEvents="none" />
+          </View>
         </View>
+
+        {!!message ? (
+          <Animated.Text style={[styles.message, messageStyle]}>{message}</Animated.Text>
+        ) : null}
       </Animated.View>
 
-      {!!message ? (
-        <Animated.Text style={[styles.message, messageStyle]}>{message}</Animated.Text>
-      ) : null}
+      {showTips ? <LoaderTipCarousel active /> : null}
     </View>
   );
 }

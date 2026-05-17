@@ -21,5 +21,8 @@ export type SignUpPayload = {
 
 export type MasterRow = {
   category?: string[];
+  /** Sports tips shown on loaders — updatable in Mongo without an app release. */
+  loader_tips?: string[];
+  loaderTips?: string[];
   [key: string]: unknown;
 };
