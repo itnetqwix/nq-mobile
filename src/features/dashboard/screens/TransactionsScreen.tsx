@@ -76,7 +76,7 @@ function TransactionRow({
       accessibilityRole="button"
     >
       <View style={styles.iconBox}>
-        <Ionicons name="receipt-outline" size={18} color={c.brandNavy} />
+        <Ionicons name="receipt-outline" size={18} color={c.iconPrimary} />
       </View>
       <View style={styles.rowInfo}>
         <Text style={styles.rowDesc} numberOfLines={2}>
@@ -204,7 +204,7 @@ export function TransactionsScreen() {
         </View>
       }
       refreshControl={
-        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.brandNavy} />
+        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.iconPrimary} />
       }
       onEndReached={() => {
         if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
@@ -212,7 +212,7 @@ export function TransactionsScreen() {
       onEndReachedThreshold={0.4}
       ListFooterComponent={
         isFetchingNextPage ? (
-          <ActivityIndicator style={{ padding: space.md }} color={c.brandNavy} />
+          <ActivityIndicator style={{ padding: space.md }} color={c.iconPrimary} />
         ) : null
       }
       ListEmptyComponent={

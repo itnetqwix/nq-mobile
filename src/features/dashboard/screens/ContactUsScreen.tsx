@@ -13,7 +13,7 @@ import {
   View,
 } from "react-native";
 import { Button, FormField } from "../../../components/ui";
-import { colors, radii, space, typography } from "../../../theme";
+import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
 import { postWriteUs } from "../../home/api/homeApi";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
@@ -27,6 +27,8 @@ import type { MenuStackParamList } from "../../../navigation/types";
  *      which then posts to `/user/raise-concern`.
  */
 export function ContactUsScreen() {
+  const c = useThemeColors();
+  const styles = useContactStyles();
   const navigation = useNavigation<NativeStackNavigationProp<MenuStackParamList>>();
   const { user } = useAuth();
 
@@ -75,7 +77,7 @@ export function ContactUsScreen() {
     >
       <ScrollView style={styles.root} contentContainerStyle={styles.content}>
         <View style={styles.heroCard}>
-          <Ionicons name="mail-outline" size={36} color={colors.brandNavy} />
+          <Ionicons name="mail-outline" size={36} color={c.iconPrimary} />
           <Text style={styles.heroTitle}>Contact NetQwix</Text>
           <Text style={styles.heroSub}>
             Have a question or issue? Send us a message and we'll respond as soon as possible.
@@ -89,7 +91,7 @@ export function ContactUsScreen() {
           }
         >
           <View style={styles.altIcon}>
-            <Ionicons name="alert-circle-outline" size={24} color={colors.warning} />
+            <Ionicons name="alert-circle-outline" size={24} color={c.warning} />
           </View>
           <View style={styles.altText}>
             <Text style={styles.altTitle}>Report a Technical issue / Request a refund</Text>
@@ -97,7 +99,7 @@ export function ContactUsScreen() {
               Pick a session and tell us what went wrong.
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          <Ionicons name="chevron-forward" size={20} color={c.textMuted} />
         </Pressable>
 
         <View style={styles.form}>
@@ -147,11 +149,11 @@ export function ContactUsScreen() {
 
         <View style={styles.infoSection}>
           <View style={styles.infoRow}>
-            <Ionicons name="mail-outline" size={18} color={colors.brandNavy} />
+            <Ionicons name="mail-outline" size={18} color={c.iconPrimary} />
             <Text style={styles.infoText}>support@netqwix.com</Text>
           </View>
           <View style={styles.infoRow}>
-            <Ionicons name="globe-outline" size={18} color={colors.brandNavy} />
+            <Ionicons name="globe-outline" size={18} color={c.iconPrimary} />
             <Text style={styles.infoText}>www.netqwix.com</Text>
           </View>
         </View>
@@ -160,63 +162,63 @@ export function ContactUsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.surface },
-  content: { padding: space.md, gap: space.md, paddingBottom: space.xl },
-
-  heroCard: {
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: radii.md,
-    padding: space.lg,
-    alignItems: "center",
-    gap: space.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  heroTitle: { ...typography.titleMd, color: colors.brandNavy },
-  heroSub: { ...typography.bodyMd, color: colors.textMuted, textAlign: "center" },
-
-  altCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.md,
-    backgroundColor: colors.warningSubtle,
-    borderRadius: radii.md,
-    padding: space.md,
-    borderWidth: 1,
-    borderColor: colors.warning,
-  },
-  altIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.warningSubtle,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  altText: { flex: 1 },
-  altTitle: { ...typography.bodyMd, fontWeight: "700", color: colors.text },
-  altSub: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
-
-  form: {
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: radii.md,
-    padding: space.md,
-    gap: space.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  formTitle: { ...typography.titleSm, color: colors.brandNavy, marginBottom: 4 },
-  textarea: { minHeight: 120 },
-
-  infoSection: {
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: radii.md,
-    padding: space.md,
-    gap: space.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  infoRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
-  infoText: { ...typography.bodyMd, color: colors.textSecondary },
-});
+function useContactStyles() {
+  return useThemedStyles((palette) =>
+    StyleSheet.create({
+      root: { flex: 1, backgroundColor: palette.background },
+      content: { padding: space.md, gap: space.md, paddingBottom: space.xl },
+      heroCard: {
+        backgroundColor: palette.surfaceElevated,
+        borderRadius: radii.md,
+        padding: space.lg,
+        alignItems: "center",
+        gap: space.sm,
+        borderWidth: 1,
+        borderColor: palette.border,
+      },
+      heroTitle: { ...typography.titleMd, color: palette.iconPrimary },
+      heroSub: { ...typography.bodyMd, color: palette.textMuted, textAlign: "center" },
+      altCard: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: space.md,
+        backgroundColor: palette.warningSubtle,
+        borderRadius: radii.md,
+        padding: space.md,
+        borderWidth: 1,
+        borderColor: palette.warning,
+      },
+      altIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: palette.warningSubtle,
+        alignItems: "center",
+        justifyContent: "center",
+      },
+      altText: { flex: 1 },
+      altTitle: { ...typography.bodyMd, fontWeight: "700", color: palette.text },
+      altSub: { ...typography.caption, color: palette.textSecondary, marginTop: 2 },
+      form: {
+        backgroundColor: palette.surfaceElevated,
+        borderRadius: radii.md,
+        padding: space.md,
+        gap: space.sm,
+        borderWidth: 1,
+        borderColor: palette.border,
+      },
+      formTitle: { ...typography.titleSm, color: palette.iconPrimary, marginBottom: 4 },
+      textarea: { minHeight: 120 },
+      infoSection: {
+        backgroundColor: palette.surfaceElevated,
+        borderRadius: radii.md,
+        padding: space.md,
+        gap: space.sm,
+        borderWidth: 1,
+        borderColor: palette.border,
+      },
+      infoRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
+      infoText: { ...typography.bodyMd, color: palette.textSecondary },
+    })
+  );
+}

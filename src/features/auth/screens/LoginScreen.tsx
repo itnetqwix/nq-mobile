@@ -2,9 +2,9 @@ import { useMutation } from "@tanstack/react-query";
 import React, { useMemo, useState } from "react";
 import { Alert, Pressable, StyleSheet, Text } from "react-native";
 import { useLoader } from "../../../components/brand/LoaderProvider";
-import { Button, FormField, Stack } from "../../../components/ui";
+import { Button, FormField, PasswordVisibilityToggle, Stack } from "../../../components/ui";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
-import { space, typography, useThemeColors } from "../../../theme";
+import { space, useThemeColors } from "../../../theme";
 import { useAuth } from "../context/AuthContext";
 import { AuthScreenLayout } from "../components/AuthScreenLayout";
 import { SocialAuthButtons } from "../components/SocialAuthButtons";
@@ -108,6 +108,8 @@ export function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
         <FormField
           label="Password"
           secureTextEntry={!showPassword}
+          autoCapitalize="none"
+          autoCorrect={false}
           value={password}
           onChangeText={(t) => {
             setPassword(t);
@@ -115,12 +117,13 @@ export function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
           }}
           error={passwordError}
           required
+          trailing={
+            <PasswordVisibilityToggle
+              visible={showPassword}
+              onToggle={() => setShowPassword((v) => !v)}
+            />
+          }
         />
-        <Pressable onPress={() => setShowPassword((v) => !v)} hitSlop={8} style={{ alignSelf: "flex-end" }}>
-          <Text style={{ ...typography.label, color: c.brandAccent }}>
-            {showPassword ? "Hide password" : "Show password"}
-          </Text>
-        </Pressable>
         <Button
           label="Sign in"
           loading={mutation.isPending}

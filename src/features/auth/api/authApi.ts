@@ -44,7 +44,11 @@ export async function postLogin(body: { email: string; password: string }): Prom
 }
 
 export async function postSignUp(payload: SignUpPayload): Promise<unknown> {
-  const body: Record<string, unknown> = { ...payload, email: payload.email.toLowerCase() };
+  const body: Record<string, unknown> = {
+    ...payload,
+    email: payload.email.toLowerCase(),
+    isGoogleRegister: payload.isGoogleRegister ?? false,
+  };
   if (body.account_type === "Trainee") {
     delete body.category;
   }

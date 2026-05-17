@@ -1,6 +1,6 @@
 import React from "react";
 import { ScrollView, View } from "react-native";
-import { webHomeStyles } from "./webHomeStyles";
+import { useWebHomeStyles } from "./webHomeStyles";
 
 type Props = {
   /** Web: trainer → `trainer-students-grid`; trainee → `single-row-experts` */
@@ -13,6 +13,7 @@ type Props = {
  * (`app/components/recent-users/index.jsx`)
  */
 export function RecentUsersGrid({ accountIsTrainer, children }: Props) {
+  const webHomeStyles = useWebHomeStyles();
   if (accountIsTrainer) {
     return (
       <View

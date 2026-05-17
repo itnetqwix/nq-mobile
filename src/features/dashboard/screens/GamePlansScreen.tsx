@@ -2,8 +2,6 @@ import React, { useCallback, useMemo, useState } from "react";
 import {
   Alert,
   Pressable,
-  RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -11,18 +9,75 @@ import {
 } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { EmptyState, ImageWithSkeleton, Skeleton } from "../../../components/ui";
-import { colors, radii, space, typography } from "../../../theme";
+import { EmptyState, ImageWithSkeleton } from "../../../components/ui";
+import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { isLikelyPdf } from "../../../lib/clipMediaUrl";
 import { postReportsGetAll } from "../../home/api/homeApi";
+import { LockerListShell } from "../components/locker/LockerListShell";
 import { LockerViewerModal, type LockerViewerMode } from "../components/locker/LockerViewerModal";
 
+function formatReportDate(id: { month?: number; day?: number; year?: number } | null | undefined): string {
+  if (!id?.year) return "Reports";
+  const m = id.month ?? 1;
+  const d = id.day ?? 1;
+  const y = id.year;
+  try {
+    return new Date(y, m - 1, d).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return `${m}/${d}/${y}`;
+  }
+}
+
 export function GamePlansScreen() {
+  const c = useThemeColors();
   const { width: windowWidth } = useWindowDimensions();
-  const planThumbWidth = Math.max(
-    160,
-    windowWidth - space.md * 4 - space.sm * 2
+  const planThumbWidth = Math.max(140, windowWidth - space.md * 4);
+
+  const styles = useThemedStyles((palette) =>
+    StyleSheet.create({
+      section: {
+        backgroundColor: palette.surfaceElevated,
+        borderRadius: radii.lg,
+        borderWidth: 1,
+        borderColor: palette.border,
+        padding: space.md,
+        gap: space.sm,
+      },
+      sectionHead: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
+      sectionTitle: { ...typography.subtitle, color: palette.brandNavy, fontWeight: "700" },
+      planCard: {
+        borderRadius: radii.md,
+        borderWidth: 1,
+        borderColor: palette.border,
+        padding: space.sm,
+        backgroundColor: palette.surface,
+      },
+      planPh: {
+        height: 120,
+        borderRadius: radii.sm,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: palette.brandSubtle,
+      },
+      planTitle: { ...typography.bodyMd, fontWeight: "600", color: palette.text, marginTop: 8 },
+      planHint: { ...typography.caption, color: palette.textMuted, marginTop: 4 },
+      badgeRow: { flexDirection: "row", gap: 6, marginTop: 6, flexWrap: "wrap" },
+      badge: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: radii.pill,
+        backgroundColor: palette.surfaceMuted,
+      },
+      badgeText: { ...typography.caption, color: palette.textMuted, fontSize: 11 },
+    })
   );
 
   const reportsQ = useQuery({
@@ -39,33 +94,25 @@ export function GamePlansScreen() {
 
   const reportSections = useMemo(() => {
     const rows = reportsQ.data ?? [];
-    return rows.map((grp: any) => ({
-      title: grp?._id
-        ? `${grp._id.month}/${grp._id.day}/${grp._id.year}`
-        : "Reports",
-      data: grp?.report ?? [],
+    return rows.map((grp: { _id?: { month?: number; day?: number; year?: number }; report?: unknown[] }) => ({
+      title: formatReportDate(grp._id),
+      data: (grp.report ?? []) as Record<string, unknown>[],
     }));
   }, [reportsQ.data]);
 
-  const openPlan = (item: any) => {
-    /**
-     * Game plans can come back in two shapes from `POST /report/get-all`:
-     *   • `reportData[0].imageUrl`  — image-based plans authored on web.
-     *   • `session.report`          — PDF file key stored on `booked_sessions.report`.
-     * The session can also carry a `sessionRecordingUrl` (video) when the trainer
-     * recorded the lesson. Surface the best available artifact in that order.
-     */
-    const img = item?.reportData?.[0]?.imageUrl;
-    const title = item?.reportData?.[0]?.title ?? "Game plan";
-    const pdfName = item?.session?.report;
-    const recording = item?.session?.sessionRecordingUrl ?? item?.sessionRecordingUrl;
+  const openPlan = (item: Record<string, unknown>) => {
+    const reportData = (item.reportData as { imageUrl?: string; title?: string }[] | undefined)?.[0];
+    const img = reportData?.imageUrl;
+    const title = reportData?.title ?? String(item.title ?? "Game plan");
+    const session = item.session as { report?: string; sessionRecordingUrl?: string } | undefined;
+    const pdfName = session?.report;
+    const recording =
+      session?.sessionRecordingUrl ?? (item.sessionRecordingUrl as string | undefined);
 
     const fromImg = img ? getS3ImageUrl(img) : "";
     const fromPdf = pdfName ? getS3ImageUrl(pdfName) : "";
     const fromRec =
-      typeof recording === "string" && recording.length > 0
-        ? getS3ImageUrl(recording)
-        : "";
+      typeof recording === "string" && recording.length > 0 ? getS3ImageUrl(recording) : "";
 
     const uri = fromImg || fromPdf || fromRec;
     if (!uri) {
@@ -77,13 +124,9 @@ export function GamePlansScreen() {
     }
 
     let mode: LockerViewerMode;
-    if (fromImg && !isLikelyPdf(fromImg)) {
-      mode = "image";
-    } else if (fromPdf || isLikelyPdf(uri)) {
-      mode = "pdf";
-    } else {
-      mode = "video";
-    }
+    if (fromImg && !isLikelyPdf(fromImg)) mode = "image";
+    else if (fromPdf || isLikelyPdf(uri)) mode = "pdf";
+    else mode = "video";
     setViewer({ uri, title, mode });
   };
 
@@ -91,83 +134,104 @@ export function GamePlansScreen() {
     void reportsQ.refetch();
   }, [reportsQ]);
 
-  return (
-    <View style={styles.root}>
-      <View style={styles.hero}>
-        <Text style={styles.heroTitle}>Game plans</Text>
-        <Text style={styles.heroSub}>
-          Session reports and PDFs from your locker. Tap a card to preview inside the app.
-        </Text>
-      </View>
+  const planKind = (item: Record<string, unknown>) => {
+    const reportData = (item.reportData as { imageUrl?: string }[] | undefined)?.[0];
+    const session = item.session as { report?: string; sessionRecordingUrl?: string } | undefined;
+    if (reportData?.imageUrl) return "image";
+    if (session?.report) return "pdf";
+    if (session?.sessionRecordingUrl || item.sessionRecordingUrl) return "video";
+    return "none";
+  };
 
-      {reportsQ.isLoading ? (
-        <View style={styles.scroll}>
-          {[0, 1, 2].map((i) => (
-            <View key={i} style={{ marginBottom: space.md }}>
-              <Skeleton width="100%" height={80} radius={radii.md} />
-            </View>
-          ))}
-        </View>
-      ) : (
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          refreshControl={
-            <RefreshControl
-              refreshing={reportsQ.isRefetching}
-              onRefresh={onRefresh}
-              tintColor={colors.brandNavy}
-            />
-          }
-        >
-          {reportSections.length === 0 ? (
-            <EmptyState
-              icon="document-text-outline"
-              title="No game plans yet"
-              description="After sessions, reports you save on the web appear here grouped by date."
-            />
-          ) : (
-            reportSections.map((section, si) => (
-              <View key={`${section.title}-${si}`} style={styles.section}>
-                <View style={styles.sectionHead}>
-                  <Ionicons name="calendar-outline" size={18} color={colors.brandNavy} />
-                  <Text style={styles.sectionTitle}>{section.title}</Text>
-                </View>
-                {section.data.map((item: any, index: number) => {
-                  const img = item?.reportData?.[0]?.imageUrl;
-                  const title = item?.reportData?.[0]?.title ?? "Game plan";
-                  const uri = img ? getS3ImageUrl(img) : "";
-                  return (
-                    <Pressable
-                      key={String(item?._id ?? index)}
-                      style={styles.planCard}
-                      onPress={() => openPlan(item)}
-                    >
-                      {uri ? (
-                        <ImageWithSkeleton
-                          uri={uri}
-                          width={planThumbWidth}
-                          height={140}
-                          borderRadius={radii.sm}
-                          resizeMode="cover"
-                          accessibilityLabel={title}
-                        />
-                      ) : (
-                        <View style={[styles.planImg, styles.planPh, { width: planThumbWidth }]}>
-                          <Ionicons name="document-outline" size={36} color={colors.sidebarActive} />
-                        </View>
-                      )}
-                      <Text style={styles.planTitle} numberOfLines={2}>
-                        {title}
-                      </Text>
-                      <Text style={styles.planHint}>Tap to preview</Text>
-                    </Pressable>
-                  );
-                })}
+  return (
+    <>
+      <LockerListShell
+        loading={reportsQ.isLoading}
+        isError={reportsQ.isError}
+        error={reportsQ.error}
+        onRetry={() => void reportsQ.refetch()}
+        refreshing={reportsQ.isRefetching}
+        onRefresh={onRefresh}
+      >
+        {reportSections.length === 0 ? (
+          <EmptyState
+            icon="document-text-outline"
+            title="No game plans yet"
+            description="After sessions, reports you save on the web appear here grouped by date."
+          />
+        ) : (
+          reportSections.map((section, si) => (
+            <View key={`${section.title}-${si}`} style={styles.section}>
+              <View style={styles.sectionHead}>
+                <Ionicons name="calendar-outline" size={18} color={c.iconPrimary} />
+                <Text style={styles.sectionTitle}>{section.title}</Text>
               </View>
-            ))
-          )}
-        </ScrollView>
-      )}
+              {section.data.map((item, index) => {
+                const reportData = (item.reportData as { imageUrl?: string; title?: string }[] | undefined)?.[0];
+                const title = reportData?.title ?? String(item.title ?? "Game plan");
+                const uri = reportData?.imageUrl ? getS3ImageUrl(reportData.imageUrl) : "";
+                const kind = planKind(item);
+                return (
+                  <Pressable
+                    key={String(item._id ?? index)}
+                    style={styles.planCard}
+                    onPress={() => openPlan(item)}
+                  >
+                    {uri ? (
+                      <ImageWithSkeleton
+                        uri={uri}
+                        width={planThumbWidth}
+                        height={120}
+                        borderRadius={radii.sm}
+                        resizeMode="cover"
+                        accessibilityLabel={title}
+                      />
+                    ) : (
+                      <View style={[styles.planPh, { width: planThumbWidth }]}>
+                        <Ionicons
+                          name={
+                            kind === "pdf"
+                              ? "document-text-outline"
+                              : kind === "video"
+                                ? "videocam-outline"
+                                : "document-outline"
+                          }
+                          size={32}
+                          color={c.brandAccent}
+                        />
+                      </View>
+                    )}
+                    <Text style={styles.planTitle} numberOfLines={2}>
+                      {title}
+                    </Text>
+                    <View style={styles.badgeRow}>
+                      {kind !== "none" ? (
+                        <View style={styles.badge}>
+                          <Ionicons
+                            name={
+                              kind === "pdf"
+                                ? "document-outline"
+                                : kind === "video"
+                                  ? "play-outline"
+                                  : "image-outline"
+                            }
+                            size={12}
+                            color={c.textMuted}
+                          />
+                          <Text style={styles.badgeText}>
+                            {kind === "pdf" ? "PDF" : kind === "video" ? "Recording" : "Image"}
+                          </Text>
+                        </View>
+                      ) : null}
+                      <Text style={styles.planHint}>Tap to preview</Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ))
+        )}
+      </LockerListShell>
 
       <LockerViewerModal
         visible={!!viewer}
@@ -176,48 +240,6 @@ export function GamePlansScreen() {
         title={viewer?.title}
         mode={viewer?.mode ?? "pdf"}
       />
-    </View>
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.surface },
-  hero: {
-    paddingHorizontal: space.md,
-    paddingTop: space.md,
-    paddingBottom: space.sm,
-    backgroundColor: colors.background,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  heroTitle: { ...typography.titleLg, color: colors.brandNavy },
-  heroSub: { ...typography.bodySm, color: colors.textMuted, marginTop: 6 },
-  scroll: { padding: space.md, paddingBottom: space.xl * 2, gap: space.lg },
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  section: {
-    backgroundColor: colors.background,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: space.md,
-    gap: space.sm,
-  },
-  sectionHead: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
-  sectionTitle: { ...typography.subtitle, color: colors.brandNavy },
-  planCard: {
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: space.sm,
-    backgroundColor: colors.surface,
-  },
-  planImg: {
-    width: "100%",
-    height: 140,
-    borderRadius: radii.sm,
-    backgroundColor: colors.surface,
-  },
-  planPh: { alignItems: "center", justifyContent: "center", backgroundColor: colors.brandSubtle },
-  planTitle: { ...typography.bodyMd, fontWeight: "600", color: colors.text, marginTop: 8 },
-  planHint: { ...typography.caption, color: colors.textMuted, marginTop: 4 },
-});

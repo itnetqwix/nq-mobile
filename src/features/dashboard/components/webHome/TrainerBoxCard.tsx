@@ -1,6 +1,6 @@
 import React from "react";
 import { View, type ViewProps } from "react-native";
-import { webHomeStyles } from "./webHomeStyles";
+import { useWebHomeStyles } from "./webHomeStyles";
 
 type Props = {
   children: React.ReactNode;
@@ -12,6 +12,7 @@ type Props = {
  * Web: `.Trainer-box-1.card-body` — used for online coach tiles (`UserInfoCard` / banner cards).
  */
 export function TrainerBoxCard({ children, style, testID }: Props) {
+  const webHomeStyles = useWebHomeStyles();
   return (
     <View style={[webHomeStyles.trainerBox1, style]} testID={testID ?? "Trainer-box-1 card-body"}>
       {children}

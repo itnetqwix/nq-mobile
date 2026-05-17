@@ -9,6 +9,7 @@ import { DashboardFeatureScreen } from "../features/dashboard/screens/DashboardF
 import { ShellSurfaceScreen } from "../features/dashboard/screens/ShellSurfaceScreen";
 import { TransactionDetailScreen } from "../features/dashboard/screens/TransactionDetailScreen";
 import { ReportIssueScreen } from "../features/dashboard/screens/ReportIssueScreen";
+import { ActiveSessionsScreen } from "../features/auth/screens/ActiveSessionsScreen";
 import type { HomeStackParamList, ShellSurfaceRouteId } from "./types";
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -76,6 +77,11 @@ export function HomeNavigator() {
         name="ReportIssue"
         component={ReportIssueScreen}
         options={{ title: "Report an issue" }}
+      />
+      <Stack.Screen
+        name="ActiveSessions"
+        component={ActiveSessionsScreen}
+        options={{ title: "Active sessions" }}
       />
     </Stack.Navigator>
   );

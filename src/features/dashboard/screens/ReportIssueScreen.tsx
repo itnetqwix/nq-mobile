@@ -330,7 +330,7 @@ export function ReportIssueScreen() {
         <View style={styles.hero}>
           <View style={styles.heroRow}>
             <Pressable onPress={() => setMode("list")} hitSlop={10}>
-              <Ionicons name="chevron-back" size={22} color={c.brandNavy} />
+              <Ionicons name="chevron-back" size={22} color={c.iconPrimary} />
             </Pressable>
             <Text style={styles.heroTitle}>My Reports</Text>
           </View>
@@ -347,7 +347,7 @@ export function ReportIssueScreen() {
           <ScrollView
             contentContainerStyle={styles.list}
             refreshControl={
-              <RefreshControl refreshing={false} onRefresh={() => refetchReports()} tintColor={c.brandNavy} />
+              <RefreshControl refreshing={false} onRefresh={() => refetchReports()} tintColor={c.iconPrimary} />
             }
           >
             {pastReports.length === 0 ? (
@@ -380,7 +380,7 @@ export function ReportIssueScreen() {
       >
         <ScrollView contentContainerStyle={styles.formContent} keyboardShouldPersistTaps="handled">
           <Pressable style={styles.backRow} onPress={() => { setMode("list"); setSelected(null); }} hitSlop={10}>
-            <Ionicons name="chevron-back" size={20} color={c.brandNavy} />
+            <Ionicons name="chevron-back" size={20} color={c.iconPrimary} />
             <Text style={styles.backLabel}>Choose a different session</Text>
           </Pressable>
 
@@ -468,7 +468,7 @@ export function ReportIssueScreen() {
       </View>
 
       <Pressable style={styles.trackerBtn} onPress={() => setMode("tracker")}>
-        <Ionicons name="document-text-outline" size={18} color={c.brandNavy} />
+        <Ionicons name="document-text-outline" size={18} color={c.iconPrimary} />
         <Text style={styles.trackerBtnText}>View my past reports</Text>
         <View style={{ flex: 1 }} />
         {pastReports.length > 0 && (
@@ -481,13 +481,13 @@ export function ReportIssueScreen() {
 
       {loadingList ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={c.brandNavy} />
+          <ActivityIndicator size="large" color={c.iconPrimary} />
         </View>
       ) : (
         <ScrollView
           contentContainerStyle={styles.list}
           refreshControl={
-            <RefreshControl refreshing={refreshingList} onRefresh={onRefreshSessions} tintColor={c.brandNavy} />
+            <RefreshControl refreshing={refreshingList} onRefresh={onRefreshSessions} tintColor={c.iconPrimary} />
           }
         >
           {sessions.length === 0 ? (

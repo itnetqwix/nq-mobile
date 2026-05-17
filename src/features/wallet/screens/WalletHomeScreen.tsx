@@ -121,7 +121,7 @@ function TraineeWalletHome({ navigation }: Props) {
     <ScrollView
       contentContainerStyle={styles.scroll}
       refreshControl={
-        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.brandNavy} />
+        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.iconPrimary} />
       }
     >
       <View style={styles.balanceCard}>
@@ -149,7 +149,7 @@ function TraineeWalletHome({ navigation }: Props) {
       {BENEFITS.map((b) => (
         <View key={b.title} style={styles.benefitRow}>
           <View style={styles.benefitIcon}>
-            <Ionicons name={b.icon} size={22} color={c.brandNavy} />
+            <Ionicons name={b.icon} size={22} color={c.iconPrimary} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.benefitTitle}>{b.title}</Text>
@@ -192,7 +192,7 @@ function MenuRow({
 
   return (
     <Pressable style={({ pressed }) => [styles.menuRow, pressed && { opacity: 0.85 }]} onPress={onPress}>
-      <Ionicons name={icon} size={22} color={c.brandNavy} />
+      <Ionicons name={icon} size={22} color={c.iconPrimary} />
       <View style={{ flex: 1 }}>
         <Text style={styles.menuLabel}>{label}</Text>
         <Text style={styles.menuSub}>{sub}</Text>

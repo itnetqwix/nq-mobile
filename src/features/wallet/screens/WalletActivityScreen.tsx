@@ -76,7 +76,7 @@ export function WalletActivityScreen() {
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={c.brandNavy} />
+        <ActivityIndicator color={c.iconPrimary} />
       </View>
     );
   }
@@ -87,7 +87,7 @@ export function WalletActivityScreen() {
       keyExtractor={(item, i) => item?.entry_id ?? String(i)}
       contentContainerStyle={styles.list}
       refreshControl={
-        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.brandNavy} />
+        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.iconPrimary} />
       }
       onEndReached={() => {
         if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
@@ -95,7 +95,7 @@ export function WalletActivityScreen() {
       onEndReachedThreshold={0.4}
       ListFooterComponent={
         isFetchingNextPage ? (
-          <ActivityIndicator style={{ padding: space.md }} color={c.brandNavy} />
+          <ActivityIndicator style={{ padding: space.md }} color={c.iconPrimary} />
         ) : null
       }
       renderItem={({ item }) => (
@@ -107,7 +107,7 @@ export function WalletActivityScreen() {
           }
         >
           <View style={styles.iconBox}>
-            <Ionicons name="swap-horizontal" size={18} color={c.brandNavy} />
+            <Ionicons name="swap-horizontal" size={18} color={c.iconPrimary} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.title}>{ledgerReferenceLabel(item.reference_type)}</Text>

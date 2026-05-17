@@ -44,7 +44,7 @@ import {
   HomeMainCont,
   RecentUsersGrid,
   TrainerBoxCard,
-  webHomeStyles,
+  useWebHomeStyles,
 } from "../components/webHome";
 import {
   LockerHub,
@@ -284,6 +284,7 @@ function FriendRequestWebTile({
 }) {
   const styles = useDashboardHomeStyles();
   const themeColors = useThemeColors();
+  const webHomeStyles = useWebHomeStyles();
   const sender = request?.senderId;
   const name = sender?.fullname || sender?.fullName || "User";
   return (
@@ -413,6 +414,7 @@ type DashboardHomeProps = CompositeScreenProps<
 export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
   const themeColors = useThemeColors();
   const styles = useDashboardHomeStyles();
+  const webHomeStyles = useWebHomeStyles();
   const [aiOpen, setAiOpen] = useState(false);
   const [profileTrainer, setProfileTrainer] = useState<Record<string, unknown> | null>(null);
   const [wizardTrainer, setWizardTrainer] = useState<Record<string, unknown> | null>(null);

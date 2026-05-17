@@ -49,6 +49,8 @@ import {
   highlightQueryParts,
   messageMatchesQuery,
 } from "../lib/chatSearchUtils";
+import { useChatE2E } from "../hooks/useChatE2E";
+import { isEncryptedChatContent } from "../crypto/chatEncryption";
 
 type Props = {
   conversationId: string;
@@ -505,6 +507,7 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
   const [partnerOnline, setPartnerOnline] = useState(false);
   const [partnerLastSeen, setPartnerLastSeen] = useState<string | null>(null);
   const currentUserId = String((authUser as any)?._id ?? (authUser as any)?.id ?? "");
+  const chatE2E = useChatE2E(partner?._id);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [chatPolicy, setChatPolicy] = useState<{
@@ -619,9 +622,19 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
     return sortMessagesAsc(merged);
   }, [serverMessages, localMessages]);
 
+  const displayMessages = useMemo(
+    () =>
+      allMessages.map((m) => ({
+        ...m,
+        content: chatE2E.decryptForDisplay(m.content),
+        _encrypted: isEncryptedChatContent(m.content),
+      })),
+    [allMessages, chatE2E.decryptForDisplay]
+  );
+
   const messageSections = useMemo(
-    () => groupMessagesByDayAsc(allMessages),
-    [allMessages]
+    () => groupMessagesByDayAsc(displayMessages),
+    [displayMessages]
   );
 
   const scrollToLatestMessage = useCallback((animated: boolean) => {
@@ -742,8 +755,9 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
   // ─── Send text ──────────────────────────────────────────────────────────────
 
   const sendMessage = useCallback(async () => {
-    const content = text.trim();
-    if (!content || !partner?._id || isSendingMessage) return;
+    const plain = text.trim();
+    if (!plain || !partner?._id || isSendingMessage) return;
+    const content = chatE2E.canEncrypt ? chatE2E.encryptForSend(plain) : plain;
     setText("");
     setShowEmoji(false);
     setIsSendingMessage(true);
@@ -785,7 +799,7 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
     } finally {
       setIsSendingMessage(false);
     }
-  }, [text, partner, currentUserId, socket, conversationId, queryClient, chatPolicy, isSendingMessage]);
+  }, [text, partner, currentUserId, socket, conversationId, queryClient, chatPolicy, isSendingMessage, chatE2E]);
 
   // ─── Send media ─────────────────────────────────────────────────────────────
 
@@ -1123,10 +1137,10 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
   const searchHits = useMemo(() => {
     const q = profileSearch.trim();
     if (!q) return [];
-    return allMessages
+    return displayMessages
       .filter((m) => messageMatchesQuery(m, q))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [allMessages, profileSearch]);
+  }, [displayMessages, profileSearch]);
 
   const searchSections = useMemo(
     () => groupMessagesByDay(searchHits),
@@ -1135,11 +1149,13 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
 
   const headerSubtitle = partnerTyping
     ? "typing..."
-    : partnerOnline
-    ? "online"
-    : partnerLastSeen
-    ? `last seen ${formatLastSeen(partnerLastSeen)}`
-    : "";
+    : chatE2E.isE2EActive
+      ? "🔒 End-to-end encrypted"
+      : partnerOnline
+        ? "online"
+        : partnerLastSeen
+          ? `last seen ${formatLastSeen(partnerLastSeen)}`
+          : "";
 
   const openPartnerProfile = useCallback(() => {
     setProfileTab("info");

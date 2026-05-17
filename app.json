@@ -17,6 +17,7 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true,
           "NSExceptionDomains": {
             "localhost": {
               "NSExceptionAllowsInsecureHTTPLoads": true

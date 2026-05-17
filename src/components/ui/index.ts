@@ -16,6 +16,7 @@ export { Card, cardStyles, type CardVariant } from "./Card";
 export { Divider, type DividerProps } from "./Divider";
 export { EmptyState, type EmptyStateProps } from "./EmptyState";
 export { FormField, type FormFieldProps } from "./FormField";
+export { PasswordVisibilityToggle } from "./PasswordVisibilityToggle";
 export { ImageWithSkeleton, type ImageWithSkeletonProps } from "./ImageWithSkeleton";
 export { Header, type HeaderAction, type HeaderProps } from "./Header";
 export { ListRow, type ListRowProps } from "./ListRow";

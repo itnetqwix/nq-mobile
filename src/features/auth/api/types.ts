@@ -16,6 +16,7 @@ export type SignUpPayload = {
   account_type: string;
   category?: string | null;
   tcpa?: boolean;
+  isGoogleRegister?: boolean;
 };
 
 export type MasterRow = {

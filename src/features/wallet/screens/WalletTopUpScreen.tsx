@@ -207,7 +207,7 @@ export function WalletTopUpScreen({ navigation, route }: Props) {
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.hero}>
           <View style={styles.heroIcon}>
-            <Ionicons name="card-outline" size={24} color={c.brandNavy} />
+            <Ionicons name="card-outline" size={24} color={c.iconPrimary} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.heroTitle}>Add funds securely</Text>

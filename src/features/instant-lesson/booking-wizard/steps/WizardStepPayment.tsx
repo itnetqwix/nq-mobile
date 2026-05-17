@@ -12,11 +12,11 @@ import {
 } from "react-native";
 import { apiClient } from "../../../../api/client";
 import { API_ROUTES } from "../../../../config/apiRoutes";
-import { colors, radii, space } from "../../../../theme";
+import { radii, space, useStaticStyles, useThemeColors } from "../../../../theme";
 import { useWalletPaymentOption } from "../../../wallet/hooks/useWalletPaymentOption";
 import { verifyWalletPin } from "../../../wallet/walletApi";
 import { INSTANT_LESSON_DURATIONS } from "../constants";
-import { sharedStepStyles } from "../sharedStepStyles";
+import { useSharedStepStyles } from "../sharedStepStyles";
 
 export type PaymentCompletePayload = {
   paymentIntentId: string | null;
@@ -44,6 +44,9 @@ export function WizardStepPayment({
   onNext,
   onAddFunds,
 }: Props) {
+  const c = useThemeColors();
+  const sharedStepStyles = useSharedStepStyles();
+  const styles = usePaymentStyles();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [loading, setLoading] = useState(false);
   const [paymentReady, setPaymentReady] = useState(false);
@@ -218,7 +221,7 @@ export function WizardStepPayment({
 
       {loading && (
         <View style={styles.loadingBox}>
-          <ActivityIndicator color={colors.brandNavy} />
+          <ActivityIndicator color={c.iconPrimary} />
           <Text style={sharedStepStyles.muted}>Setting up payment...</Text>
         </View>
       )}
@@ -237,7 +240,7 @@ export function WizardStepPayment({
             />
           ) : null}
           <Pressable style={sharedStepStyles.primaryBtn} onPress={handleWalletPay}>
-            <Ionicons name="wallet-outline" size={18} color={colors.brandTextOn} />
+            <Ionicons name="wallet-outline" size={18} color={c.brandTextOn} />
             <Text style={sharedStepStyles.primaryBtnText}>
               Pay ${chargingPrice.toFixed(2)} with wallet (${wallet.available.toFixed(2)} available)
             </Text>
@@ -247,8 +250,8 @@ export function WizardStepPayment({
             disabled={!paymentReady}
             onPress={handlePay}
           >
-            <Ionicons name="card-outline" size={18} color={colors.brandNavy} />
-            <Text style={[sharedStepStyles.primaryBtnText, { color: colors.brandNavy }]}>
+            <Ionicons name="card-outline" size={18} color={c.iconPrimary} />
+            <Text style={[sharedStepStyles.primaryBtnText, { color: c.iconPrimary }]}>
               Pay with card
             </Text>
           </Pressable>
@@ -282,12 +285,12 @@ export function WizardStepPayment({
           <Ionicons
             name={isFree ? "checkmark-circle" : "card-outline"}
             size={18}
-            color={wallet.canPayWithWallet && !isFree ? colors.brandNavy : colors.brandTextOn}
+            color={wallet.canPayWithWallet && !isFree ? c.iconPrimary : c.brandTextOn}
           />
           <Text
             style={[
               sharedStepStyles.primaryBtnText,
-              wallet.canPayWithWallet && !isFree && { color: colors.brandNavy },
+              wallet.canPayWithWallet && !isFree && { color: c.iconPrimary },
             ]}
           >
             {isFree
@@ -302,46 +305,51 @@ export function WizardStepPayment({
   );
 }
 
-const styles = StyleSheet.create({
-  summaryBox: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    padding: space.md,
-    gap: 8,
-  },
-  summaryLine: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-  },
-  summaryKey: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: colors.brandNavy,
-    width: 100,
-  },
-  summaryValue: { flex: 1, fontSize: 15, color: colors.text },
-  bold: { fontWeight: "700" },
-  promoApplied: { color: colors.success },
-  loadingBox: {
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: space.md,
-  },
-  cardBtn: {
-    backgroundColor: colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  pinInput: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    padding: space.md,
-    marginBottom: space.sm,
-    backgroundColor: colors.surface,
-  },
-  shortfallBox: { marginBottom: space.sm, gap: 4 },
-  addFundsLink: { alignSelf: "flex-start" },
-  addFundsText: { color: colors.brandNavy, fontWeight: "600" },
-});
+function usePaymentStyles() {
+  return useStaticStyles((palette) =>
+    StyleSheet.create({
+      summaryBox: {
+        backgroundColor: palette.surfaceMuted,
+        borderRadius: radii.md,
+        padding: space.md,
+        gap: 8,
+      },
+      summaryLine: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 12,
+      },
+      summaryKey: {
+        fontSize: 15,
+        fontWeight: "700",
+        color: palette.iconPrimary,
+        width: 100,
+      },
+      summaryValue: { flex: 1, fontSize: 15, color: palette.text },
+      bold: { fontWeight: "700" },
+      promoApplied: { color: palette.success },
+      loadingBox: {
+        alignItems: "center",
+        gap: 8,
+        paddingVertical: space.md,
+      },
+      cardBtn: {
+        backgroundColor: palette.surfaceElevated,
+        borderWidth: 1,
+        borderColor: palette.border,
+      },
+      pinInput: {
+        borderWidth: 1,
+        borderColor: palette.border,
+        borderRadius: radii.md,
+        padding: space.md,
+        marginBottom: space.sm,
+        backgroundColor: palette.input,
+        color: palette.text,
+      },
+      shortfallBox: { marginBottom: space.sm, gap: 4 },
+      addFundsLink: { alignSelf: "flex-start" },
+      addFundsText: { color: palette.iconPrimary, fontWeight: "600" },
+    })
+  );
+}

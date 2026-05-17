@@ -12,7 +12,15 @@ import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { getCurrentUser, postLogin } from "../api/authApi";
 import { fetchMasterRow } from "../api/masterApi";
 import { onUnauthorized } from "../../../lib/auth/sessionEvents";
-import { clearSession, getAccessToken, getAccountType, saveSession } from "../session/tokenStorage";
+import { ensureAuthSessionRegistered, postLogout } from "../api/authSessionsApi";
+import {
+  clearSession,
+  getAccessToken,
+  getAccountType,
+  getSessionId,
+  saveSession,
+} from "../session/tokenStorage";
+import { registerMyChatPublicKey } from "../../chats/crypto/chatKeysApi";
 
 export type AuthUser = Record<string, unknown> | null;
 
@@ -26,6 +34,8 @@ type AuthContextValue = {
   completeSessionFromTokens: (tokens: {
     access_token: string;
     account_type: string;
+    refresh_token?: string;
+    session_id?: string;
   }) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -72,6 +82,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(me);
         setAccountType(at ?? (me?.account_type as string) ?? (me?.accountType as string) ?? null);
         setStatus("signedIn");
+        const sid = await getSessionId();
+        if (!sid) void ensureAuthSessionRegistered().catch(() => undefined);
       } catch {
         await clearSession();
         if (!cancelled) {
@@ -87,8 +99,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const completeSessionFromTokens = useCallback(
-    async (tokens: { access_token: string; account_type: string }) => {
-      await saveSession(tokens.access_token, tokens.account_type);
+    async (tokens: {
+      access_token: string;
+      account_type: string;
+      refresh_token?: string;
+      session_id?: string;
+    }) => {
+      await saveSession(tokens.access_token, tokens.account_type, {
+        refreshToken: tokens.refresh_token,
+        sessionId: tokens.session_id,
+      });
       try {
         const me = await getCurrentUser();
         setUser(me);
@@ -99,6 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           queryKey: ["masterRow"],
           queryFn: fetchMasterRow,
         });
+        void registerMyChatPublicKey().catch(() => undefined);
       } catch (e) {
         await clearSession();
         throw new Error(
@@ -132,6 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     try {
+      await postLogout();
       await clearSession();
     } catch {
       /** Still leave the app in a signed-out state so the user can sign in again. */

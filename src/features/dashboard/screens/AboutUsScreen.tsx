@@ -1,7 +1,7 @@
 import React from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radii, space, typography } from "../../../theme";
+import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 
 const FEATURES = [
   { icon: "videocam-outline" as const, title: "Live Video Sessions", desc: "HD video calls with screen sharing for immersive coaching experiences." },
@@ -13,6 +13,72 @@ const FEATURES = [
 ];
 
 export function AboutUsScreen() {
+  const c = useThemeColors();
+  const styles = useThemedStyles((palette) =>
+    StyleSheet.create({
+      root: { flex: 1, backgroundColor: palette.background },
+      content: { padding: space.md, gap: space.md, paddingBottom: space.xl },
+      hero: {
+        backgroundColor: palette.surfaceElevated,
+        borderRadius: radii.md,
+        padding: space.lg,
+        alignItems: "center",
+        gap: space.sm,
+        borderWidth: 1,
+        borderColor: palette.border,
+      },
+      logoBox: {
+        backgroundColor: palette.brandNavy,
+        borderRadius: radii.sm,
+        paddingHorizontal: space.lg,
+        paddingVertical: space.sm,
+        marginBottom: space.xs,
+      },
+      logoText: { fontSize: 22, fontWeight: "800", color: palette.brandTextOn, letterSpacing: 1 },
+      tagline: { ...typography.titleSm, color: palette.iconPrimary, textAlign: "center" },
+      description: { ...typography.bodyMd, color: palette.textMuted, textAlign: "center" },
+      section: {
+        backgroundColor: palette.surfaceElevated,
+        borderRadius: radii.md,
+        padding: space.md,
+        borderWidth: 1,
+        borderColor: palette.border,
+      },
+      sectionTitle: { ...typography.titleSm, color: palette.text, marginBottom: space.md },
+      featureRow: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: space.md,
+        paddingVertical: space.sm,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: palette.border,
+      },
+      featureIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: palette.brandSubtle,
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      },
+      featureText: { flex: 1 },
+      featureTitle: { ...typography.subtitle, color: palette.text },
+      featureDesc: { ...typography.bodySm, color: palette.textMuted, marginTop: 2 },
+      missionCard: {
+        backgroundColor: palette.brandNavy,
+        borderRadius: radii.md,
+        padding: space.lg,
+        gap: space.sm,
+      },
+      missionTitle: { ...typography.titleSm, color: palette.brandTextOn },
+      missionText: { ...typography.bodyMd, color: palette.brandSubtle },
+      versionCard: { alignItems: "center", paddingVertical: space.md, gap: 4 },
+      versionText: { ...typography.bodySm, color: palette.textMuted },
+      versionSub: { ...typography.caption, color: palette.textMuted },
+    })
+  );
+
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
       <View style={styles.hero}>
@@ -32,7 +98,7 @@ export function AboutUsScreen() {
         {FEATURES.map((feature) => (
           <View key={feature.title} style={styles.featureRow}>
             <View style={styles.featureIcon}>
-              <Ionicons name={feature.icon} size={22} color={colors.brandNavy} />
+              <Ionicons name={feature.icon} size={22} color={c.iconPrimary} />
             </View>
             <View style={styles.featureText}>
               <Text style={styles.featureTitle}>{feature.title}</Text>
@@ -58,74 +124,3 @@ export function AboutUsScreen() {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.surface },
-  content: { padding: space.md, gap: space.md, paddingBottom: space.xl },
-
-  hero: {
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: radii.md,
-    padding: space.lg,
-    alignItems: "center",
-    gap: space.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  logoBox: {
-    backgroundColor: colors.brandNavy,
-    borderRadius: radii.sm,
-    paddingHorizontal: space.lg,
-    paddingVertical: space.sm,
-    marginBottom: space.xs,
-  },
-  logoText: { fontSize: 22, fontWeight: "800", color: colors.brandTextOn, letterSpacing: 1 },
-  tagline: { ...typography.titleSm, color: colors.brandNavy, textAlign: "center" },
-  description: { ...typography.bodyMd, color: colors.textMuted, textAlign: "center" },
-
-  section: {
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: radii.md,
-    padding: space.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  sectionTitle: { ...typography.titleSm, color: colors.text, marginBottom: space.md },
-  featureRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: space.md,
-    paddingVertical: space.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  featureIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.brandSubtle,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  featureText: { flex: 1 },
-  featureTitle: { ...typography.subtitle, color: colors.text },
-  featureDesc: { ...typography.bodySm, color: colors.textMuted, marginTop: 2 },
-
-  missionCard: {
-    backgroundColor: colors.brandNavy,
-    borderRadius: radii.md,
-    padding: space.lg,
-    gap: space.sm,
-  },
-  missionTitle: { ...typography.titleSm, color: colors.brandTextOn },
-  missionText: { ...typography.bodyMd, color: colors.brandSubtle },
-
-  versionCard: {
-    alignItems: "center",
-    paddingVertical: space.md,
-    gap: 4,
-  },
-  versionText: { ...typography.bodySm, color: colors.textMuted },
-  versionSub: { ...typography.caption, color: colors.textMuted },
-});

@@ -36,7 +36,7 @@ export function SeeAllButton({ label, onPress }: Props) {
       accessibilityRole="button"
     >
       <Text style={styles.text}>{label}</Text>
-      <Ionicons name="chevron-forward" size={16} color={c.brandNavy} />
+      <Ionicons name="chevron-forward" size={16} color={c.iconPrimary} />
     </Pressable>
   );
 }

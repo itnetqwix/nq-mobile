@@ -304,34 +304,42 @@ export async function postTrainerSlots(payload: TrainerScheduleDay[]): Promise<v
   await apiClient.post(API_ROUTES.trainer.updateSlots, { available_slots: payload });
 }
 
+/** Normalize locker/list API bodies (`{ data }`, `{ result }`, or bare array). */
+function extractApiArray(body: unknown): any[] {
+  if (Array.isArray(body)) return body;
+  if (!body || typeof body !== "object") return [];
+  const root = body as Record<string, unknown>;
+  const nested = root.data ?? root.result ?? root.items;
+  if (Array.isArray(nested)) return nested;
+  if (nested && typeof nested === "object") {
+    const inner = (nested as Record<string, unknown>).data ?? (nested as Record<string, unknown>).result;
+    if (Array.isArray(inner)) return inner;
+  }
+  return [];
+}
+
 /** POST `/common/get-clips` — returns clips grouped by category (`_id` = category name). */
 export async function postMyClipsGrouped(params?: {
   trainee_id?: string;
 }): Promise<{ _id: string; clips: any[] }[]> {
   const res = await apiClient.post(API_ROUTES.common.getClips, params ?? {});
-  const data = (res.data as any)?.data;
-  return Array.isArray(data) ? data : [];
+  return extractApiArray(res.data);
 }
 
 /** POST `/common/trainee-clips` — trainer: clips attached to bookings, grouped by trainee user. */
 export async function postTraineeClipsGrouped(): Promise<{ _id: any; clips: any[] }[]> {
   const res = await apiClient.post(API_ROUTES.common.traineeClips, {});
-  const data = (res.data as any)?.data;
-  return Array.isArray(data) ? data : [];
+  return extractApiArray(res.data);
 }
 
 export async function postGetAllSavedSessions(): Promise<any[]> {
   const res = await apiClient.post(API_ROUTES.common.getAllSavedSessions, {});
-  const data = (res.data as any)?.data;
-  return Array.isArray(data) ? data : [];
+  return extractApiArray(res.data);
 }
 
 export async function postReportsGetAll(params?: { trainee_id?: string }): Promise<any[]> {
   const res = await apiClient.post(API_ROUTES.report.getAll, params ?? {});
-  const d = res.data as Record<string, any>;
-  if (Array.isArray(d?.result)) return d.result;
-  if (Array.isArray(d?.data)) return d.data;
-  return [];
+  return extractApiArray(res.data);
 }
 
 /** Web `videoupload.api.js` → `POST /common/video-upload-url` (bulk clips + presigned PUT URLs). */

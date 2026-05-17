@@ -285,6 +285,13 @@ export function SettingsScreen() {
         />
         <Divider />
         <ListRow
+          icon="laptop-outline"
+          title="Active sessions"
+          subtitle="Devices and browsers signed in to your account"
+          onPress={() => navigation.navigate("ActiveSessions")}
+        />
+        <Divider />
+        <ListRow
           icon="wallet-outline"
           title="Wallet security"
           onPress={() => navigation.navigate("ShellSurface", { surfaceId: "wallet" })}

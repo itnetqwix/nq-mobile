@@ -10,10 +10,10 @@ import {
   Text,
   View,
 } from "react-native";
-import { colors, space } from "../../../../theme";
+import { space, useThemeColors } from "../../../../theme";
 import type { ClipGroup, ClipRow } from "../../instantLessonClipsApi";
 import { MAX_CLIPS } from "../constants";
-import { sharedStepStyles } from "../sharedStepStyles";
+import { useSharedStepStyles } from "../sharedStepStyles";
 import { ClipPickerRow } from "../../components/ClipPickerRow";
 
 type Props = {
@@ -33,6 +33,8 @@ export function WizardStepClips({
   onSkip,
   onNext,
 }: Props) {
+  const c = useThemeColors();
+  const sharedStepStyles = useSharedStepStyles();
   return (
     <View style={sharedStepStyles.card}>
       <Text style={sharedStepStyles.sectionTitle}>Videos (optional)</Text>
@@ -41,7 +43,7 @@ export function WizardStepClips({
       </Text>
 
       {clipsQuery.isLoading ? (
-        <ActivityIndicator color={colors.brandNavy} style={{ marginVertical: space.lg }} />
+        <ActivityIndicator color={c.iconPrimary} style={{ marginVertical: space.lg }} />
       ) : flatClips.length === 0 ? (
         <Text style={sharedStepStyles.muted}>No clips yet. You can skip and add them later.</Text>
       ) : (
@@ -52,7 +54,7 @@ export function WizardStepClips({
             <RefreshControl
               refreshing={clipsQuery.isRefetching}
               onRefresh={() => clipsQuery.refetch()}
-              tintColor={colors.brandNavy}
+              tintColor={c.iconPrimary}
             />
           }
         >

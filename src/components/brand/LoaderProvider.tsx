@@ -38,7 +38,7 @@ export function LoaderProvider({ children }: { children: ReactNode }) {
   return (
     <LoaderContext.Provider value={value}>
       {children}
-      <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
+      <Modal visible={visible} transparent animationType="none" statusBarTranslucent>
         <View style={styles.modalRoot}>
           <NetQwixLoader message={message} variant="overlay" size="lg" />
         </View>

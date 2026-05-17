@@ -12,13 +12,15 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Banner, Button, Skeleton } from "../../../components/ui";
-import { colors, radii, space, typography } from "../../../theme";
+import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { postInviteFriendEmail, fetchMyReferrals } from "../../home/api/homeApi";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function InviteFriendsScreen() {
+  const c = useThemeColors();
+  const styles = useInviteStyles();
   const queryClient = useQueryClient();
   const [text, setText] = useState("");
   const [chips, setChips] = useState<string[]>([]);
@@ -131,14 +133,14 @@ export function InviteFriendsScreen() {
             <View key={email} style={styles.chip}>
               <Text style={styles.chipText} numberOfLines={1}>{email}</Text>
               <Pressable onPress={() => removeChip(email)} hitSlop={8}>
-                <Ionicons name="close-circle" size={16} color={colors.textMuted} />
+                <Ionicons name="close-circle" size={16} color={c.textMuted} />
               </Pressable>
             </View>
           ))}
           <TextInput
             style={styles.chipInput}
             placeholder={chips.length === 0 ? "friend@example.com" : "Add more..."}
-            placeholderTextColor={colors.textMuted}
+            placeholderTextColor={c.textMuted}
             value={text}
             onChangeText={handleTextChange}
             onSubmitEditing={handleSubmitEditing}
@@ -179,14 +181,14 @@ export function InviteFriendsScreen() {
           </View>
         ) : referrals.length === 0 ? (
           <View style={styles.emptyHistory}>
-            <Ionicons name="mail-outline" size={28} color={colors.textMuted} />
+            <Ionicons name="mail-outline" size={28} color={c.textMuted} />
             <Text style={styles.emptyHistoryText}>No invitations sent yet</Text>
           </View>
         ) : (
           referrals.map((ref: any) => (
             <View key={ref._id ?? ref.email} style={styles.historyRow}>
               <View style={styles.historyIcon}>
-                <Ionicons name="mail-outline" size={18} color={colors.brandNavy} />
+                <Ionicons name="mail-outline" size={18} color={c.iconPrimary} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.historyEmail} numberOfLines={1}>{ref.email}</Text>
@@ -198,7 +200,7 @@ export function InviteFriendsScreen() {
                     : ""}
                 </Text>
               </View>
-              <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+              <Ionicons name="checkmark-circle" size={18} color={c.success} />
             </View>
           ))
         )}
@@ -207,89 +209,89 @@ export function InviteFriendsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.surface },
-  content: { padding: space.md, paddingBottom: space.xl, gap: space.md },
-
-  card: {
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: space.md,
-    gap: space.sm,
-  },
-  title: { ...typography.titleMd, color: colors.brandNavy },
-  sub: { ...typography.bodySm, color: colors.textMuted },
-  label: { ...typography.label, color: colors.textSecondary, marginTop: space.sm },
-
-  chipContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.sm,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    minHeight: 48,
-    alignItems: "center",
-  },
-  chip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: colors.brandSubtle,
-    borderRadius: radii.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    maxWidth: "90%",
-  },
-  chipText: { ...typography.bodySm, color: colors.brandNavy, fontWeight: "600", flexShrink: 1 },
-  chipInput: {
-    flex: 1,
-    minWidth: 120,
-    fontSize: typography.bodyMd.fontSize,
-    color: colors.text,
-    paddingVertical: 4,
-  },
-
-  metaRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  meta: { ...typography.caption, color: colors.textMuted },
-  metaMuted: { ...typography.caption, color: colors.textMuted },
-
-  historySection: {
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: space.md,
-    gap: space.sm,
-  },
-  historyTitle: { ...typography.subtitle, color: colors.text, marginBottom: 4 },
-  emptyHistory: { alignItems: "center", gap: 6, paddingVertical: space.md },
-  emptyHistoryText: { ...typography.bodySm, color: colors.textMuted },
-
-  historyRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.sm,
-    paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  historyIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.brandSubtle,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  historyEmail: { ...typography.bodySm, color: colors.text, fontWeight: "600" },
-  historyDate: { ...typography.caption, color: colors.textMuted, marginTop: 1 },
-});
+function useInviteStyles() {
+  return useThemedStyles((palette) =>
+    StyleSheet.create({
+      root: { flex: 1, backgroundColor: palette.background },
+      content: { padding: space.md, paddingBottom: space.xl, gap: space.md },
+      card: {
+        backgroundColor: palette.surfaceElevated,
+        borderRadius: radii.md,
+        borderWidth: 1,
+        borderColor: palette.border,
+        padding: space.md,
+        gap: space.sm,
+      },
+      title: { ...typography.titleMd, color: palette.iconPrimary },
+      sub: { ...typography.bodySm, color: palette.textMuted },
+      label: { ...typography.label, color: palette.textSecondary, marginTop: space.sm },
+      chipContainer: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: 6,
+        borderWidth: 1,
+        borderColor: palette.border,
+        borderRadius: radii.sm,
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        minHeight: 48,
+        alignItems: "center",
+        backgroundColor: palette.input,
+      },
+      chip: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        backgroundColor: palette.brandSubtle,
+        borderRadius: radii.pill,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        maxWidth: "90%",
+      },
+      chipText: { ...typography.bodySm, color: palette.iconPrimary, fontWeight: "600", flexShrink: 1 },
+      chipInput: {
+        flex: 1,
+        minWidth: 120,
+        fontSize: typography.bodyMd.fontSize,
+        color: palette.text,
+        paddingVertical: 4,
+      },
+      metaRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+      },
+      meta: { ...typography.caption, color: palette.textMuted },
+      metaMuted: { ...typography.caption, color: palette.textMuted },
+      historySection: {
+        backgroundColor: palette.surfaceElevated,
+        borderRadius: radii.md,
+        borderWidth: 1,
+        borderColor: palette.border,
+        padding: space.md,
+        gap: space.sm,
+      },
+      historyTitle: { ...typography.subtitle, color: palette.text, marginBottom: 4 },
+      emptyHistory: { alignItems: "center", gap: 6, paddingVertical: space.md },
+      emptyHistoryText: { ...typography.bodySm, color: palette.textMuted },
+      historyRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: space.sm,
+        paddingVertical: 8,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: palette.border,
+      },
+      historyIcon: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: palette.brandSubtle,
+        alignItems: "center",
+        justifyContent: "center",
+      },
+      historyEmail: { ...typography.bodySm, color: palette.text, fontWeight: "600" },
+      historyDate: { ...typography.caption, color: palette.textMuted, marginTop: 1 },
+    })
+  );
+}

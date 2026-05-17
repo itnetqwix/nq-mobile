@@ -6,7 +6,13 @@ import type { ShellSurfaceMeta } from "../features/dashboard/config/shellSurface
 
 export type AuthStackParamList = {
   Login: undefined;
-  SignUp: { prefillEmail?: string } | undefined;
+  SignUp:
+    | {
+        prefillEmail?: string;
+        ssoProvider?: "google" | "apple";
+        isGoogleRegister?: boolean;
+      }
+    | undefined;
   ForgotPassword: undefined;
 };
 
@@ -27,6 +33,7 @@ export type HomeStackParamList = {
     prefillSubject?: string;
     prefillDescription?: string;
   };
+  ActiveSessions: undefined;
 };
 
 /** @deprecated Use HomeStackParamList */

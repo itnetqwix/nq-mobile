@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import type { UtilitySurfaceId } from "../../config/shellSurfaces";
-import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
+import { space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
 import { lockerTilesForRole } from "./lockerConfig";
 import { HomeSection } from "./HomeSection";
 import { LockerTile } from "./LockerTile";
@@ -25,40 +25,16 @@ export function LockerHub({ accountType, onOpenSurface }: Props) {
   const tiles = lockerTilesForRole(accountType);
   const styles = useThemedStyles((palette) =>
     StyleSheet.create({
-      hero: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: space.md,
-        paddingHorizontal: space.md,
-        paddingVertical: space.md,
-        backgroundColor: `${palette.brandNavy}0D`,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: palette.border,
-      },
-      heroIcon: {
-        width: 48,
-        height: 48,
-        borderRadius: radii.md,
-        backgroundColor: palette.brandNavy,
-        alignItems: "center",
-        justifyContent: "center",
-      },
-      heroTitle: {
-        ...typography.subtitle,
-        color: palette.text,
-        fontWeight: "700",
-      },
-      heroSubtitle: {
+      hint: {
         ...typography.caption,
         color: palette.textMuted,
-        marginTop: 2,
-        lineHeight: 18,
+        paddingHorizontal: space.md,
+        paddingBottom: space.sm,
       },
-      grid: {
-        flexDirection: "row",
-        flexWrap: "wrap",
+      scrollContent: {
+        paddingHorizontal: space.md,
+        paddingBottom: space.md,
         gap: space.sm,
-        padding: space.md,
       },
     })
   );
@@ -68,28 +44,34 @@ export function LockerHub({ accountType, onOpenSurface }: Props) {
   return (
     <HomeSection
       title="Locker"
-      subtitle="Your training library — synced with the web"
+      subtitle="Clips, game plans & saved lessons"
       testID="home-locker-hub"
+      bare
     >
-      <View style={styles.hero}>
-        <View style={styles.heroIcon}>
-          <Ionicons name="lock-closed" size={22} color={c.brandTextOn} />
-        </View>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={styles.heroTitle}>Everything in one place</Text>
-          <Text style={styles.heroSubtitle}>
-            Clips, game plans, saved lessons, and invites — pick up where you left off.
-          </Text>
-        </View>
-      </View>
-      <View style={styles.grid}>
+      <Text style={styles.hint}>Swipe for more →</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        decelerationRate="fast"
+        snapToInterval={168}
+      >
         {tiles.map((tile) => (
           <LockerTile
             key={tile.id}
             tile={tile}
+            variant="compact"
             onPress={() => onOpenSurface(TILE_TO_SURFACE[tile.id])}
           />
         ))}
+      </ScrollView>
+      <View style={{ paddingHorizontal: space.md, paddingBottom: space.xs }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Ionicons name="lock-closed" size={14} color={c.textMuted} />
+          <Text style={[typography.caption, { color: c.textMuted, flex: 1 }]}>
+            Synced with your web locker
+          </Text>
+        </View>
       </View>
     </HomeSection>
   );

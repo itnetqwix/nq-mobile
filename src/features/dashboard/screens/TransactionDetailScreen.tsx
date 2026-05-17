@@ -106,7 +106,7 @@ export function TransactionDetailScreen({ navigation, route }: Props) {
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={c.brandNavy} />
+        <ActivityIndicator color={c.iconPrimary} />
       </View>
     );
   }
@@ -161,7 +161,7 @@ export function TransactionDetailScreen({ navigation, route }: Props) {
         <DetailRow label="Payment intent" value={data.payment?.payment_intent_id} />
         <Pressable onPress={copyId} style={styles.copyRow}>
           <DetailRow label="Transaction ID" value={data.payment?.transaction_id ?? supportBookingId} />
-          <Ionicons name="copy-outline" size={18} color={c.brandNavy} />
+          <Ionicons name="copy-outline" size={18} color={c.iconPrimary} />
         </Pressable>
       </View>
 

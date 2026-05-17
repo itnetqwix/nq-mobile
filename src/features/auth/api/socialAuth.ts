@@ -73,10 +73,11 @@ export async function postAppleVerify(body: {
 }
 
 export function useGoogleAuthRequest() {
+  const webClientId = GOOGLE_WEB_CLIENT_ID || undefined;
   return Google.useAuthRequest({
-    iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
-    androidClientId: GOOGLE_ANDROID_CLIENT_ID || undefined,
-    webClientId: GOOGLE_WEB_CLIENT_ID || undefined,
+    iosClientId: GOOGLE_IOS_CLIENT_ID || webClientId,
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID || webClientId,
+    webClientId,
   });
 }
 
@@ -106,6 +107,18 @@ export async function signInWithAppleNative(): Promise<{
   };
 }
 
+/** True if any Google OAuth client ID is set (not necessarily valid on this platform). */
 export function isGoogleConfigured(): boolean {
   return !!(GOOGLE_IOS_CLIENT_ID || GOOGLE_ANDROID_CLIENT_ID || GOOGLE_WEB_CLIENT_ID);
+}
+
+/** True when the current platform has the client ID required by expo-auth-session. */
+export function isGoogleConfiguredForPlatform(): boolean {
+  if (Platform.OS === "ios") {
+    return !!(GOOGLE_IOS_CLIENT_ID || GOOGLE_WEB_CLIENT_ID);
+  }
+  if (Platform.OS === "android") {
+    return !!(GOOGLE_ANDROID_CLIENT_ID || GOOGLE_WEB_CLIENT_ID);
+  }
+  return !!GOOGLE_WEB_CLIENT_ID;
 }

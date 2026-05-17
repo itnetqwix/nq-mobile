@@ -70,7 +70,7 @@ function Avatar({ uri, name, size = 48 }: { uri?: string; name?: string; size?: 
           width: size,
           height: size,
           borderRadius: size / 2,
-          backgroundColor: c.brandNavy,
+          backgroundColor: c.brandAccent,
           alignItems: "center",
           justifyContent: "center",
         }}
@@ -568,7 +568,7 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
             );
           }}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.brandNavy} />
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.iconPrimary} />
           }
           ListEmptyComponent={
             <EmptyState
@@ -617,14 +617,14 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
             {showGroupCreate ? (
               <Pressable onPress={createGroup} disabled={creatingGroup} hitSlop={12}>
                 {creatingGroup ? (
-                  <ActivityIndicator size="small" color={c.brandNavy} />
+                  <ActivityIndicator size="small" color={c.iconPrimary} />
                 ) : (
                   <Text style={[styles.modalCreateBtn, selectedGroupMembers.size < 2 && { opacity: 0.4 }]}>Create</Text>
                 )}
               </Pressable>
             ) : (
               <Pressable onPress={() => setShowGroupCreate(true)} hitSlop={12}>
-                <Ionicons name="people" size={24} color={c.brandNavy} />
+                <Ionicons name="people" size={24} color={c.iconPrimary} />
               </Pressable>
             )}
           </View>
@@ -696,9 +696,9 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
                     {showGroupCreate ? (
                       <Ionicons name={isSelected ? "checkmark-circle" : "ellipse-outline"} size={24} color={isSelected ? c.brandNavy : c.textMuted} />
                     ) : creatingChat ? (
-                      <ActivityIndicator size="small" color={c.brandNavy} />
+                      <ActivityIndicator size="small" color={c.iconPrimary} />
                     ) : (
-                      <Ionicons name="chatbubble-outline" size={20} color={c.brandNavy} />
+                      <Ionicons name="chatbubble-outline" size={20} color={c.iconPrimary} />
                     )}
                   </Pressable>
                 );

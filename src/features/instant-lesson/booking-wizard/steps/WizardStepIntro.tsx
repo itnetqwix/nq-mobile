@@ -1,14 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, Text, View } from "react-native";
-import { colors } from "../../../../theme";
-import { sharedStepStyles } from "../sharedStepStyles";
+import { useThemeColors } from "../../../../theme";
+import { useSharedStepStyles } from "../sharedStepStyles";
 
 type Props = {
   onContinue: () => void;
 };
 
 export function WizardStepIntro({ onContinue }: Props) {
+  const c = useThemeColors();
+  const sharedStepStyles = useSharedStepStyles();
   return (
     <View style={sharedStepStyles.card}>
       <Text style={sharedStepStyles.lead}>
@@ -20,7 +22,7 @@ export function WizardStepIntro({ onContinue }: Props) {
       </Text>
       <Pressable style={sharedStepStyles.primaryBtn} onPress={onContinue}>
         <Text style={sharedStepStyles.primaryBtnText}>Continue</Text>
-        <Ionicons name="arrow-forward" size={18} color={colors.brandTextOn} />
+        <Ionicons name="arrow-forward" size={18} color={c.brandTextOn} />
       </Pressable>
     </View>
   );

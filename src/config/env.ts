@@ -1,5 +1,10 @@
+import {
+  isLocalDevApiHost,
+  resolveDevApiBaseUrl,
+} from "./resolveDevApiBaseUrl";
+
 const DEFAULT_API_BASE = "https://api-netqwix.com";
-const DEFAULT_WEB_APP_ORIGIN = "https://www.netqwix.com";
+const DEFAULT_WEB_APP_ORIGIN = "https://netqwix.com";
 
 function stripTrailingSlash(url: string): string {
   return url.replace(/\/+$/, "");
@@ -24,14 +29,19 @@ function normalizeEnvUrl(raw: string | undefined, fallback: string): string {
   }
 }
 
-/**
- * Backend API origin. Set `EXPO_PUBLIC_API_BASE_URL` in `.env` (no spaces around `=`).
- * Restart Metro with cache clear after changes: `npx expo start -c`
- */
-export const API_BASE_URL = normalizeEnvUrl(
+/** Value from `.env` before dev localhost rewrite (for diagnostics). */
+export const API_BASE_URL_CONFIGURED = normalizeEnvUrl(
   process.env.EXPO_PUBLIC_API_BASE_URL,
   DEFAULT_API_BASE
 );
+
+/**
+ * Backend API origin. Set `EXPO_PUBLIC_API_BASE_URL` in `.env` (no spaces around `=`).
+ * Restart Metro with cache clear after changes: `npx expo start -c`
+ *
+ * Dev note: `http://localhost:8000` is rewritten to your Mac's LAN IP on a physical device.
+ */
+export const API_BASE_URL = resolveDevApiBaseUrl(API_BASE_URL_CONFIGURED);
 
 /** Public web origin — sent as `Origin` / `Referer` so API requests match browser traffic (many CDNs block RN defaults). */
 export const WEB_APP_ORIGIN = normalizeEnvUrl(
@@ -43,14 +53,30 @@ export const WEB_APP_ORIGIN = normalizeEnvUrl(
 export const STRIPE_PUBLISHABLE_KEY =
   (process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "").trim() || "";
 
+/** Same value as web `NEXT_PUBLIC_GOOGLE_CLIENT_ID` when only one Web OAuth client exists. */
+const GOOGLE_CLIENT_ID_SHARED =
+  (process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? "").trim() || "";
+
 export const GOOGLE_IOS_CLIENT_ID =
   (process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? "").trim() || "";
 export const GOOGLE_ANDROID_CLIENT_ID =
   (process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? "").trim() || "";
 export const GOOGLE_WEB_CLIENT_ID =
-  (process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "").trim() || "";
+  (process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "").trim() ||
+  GOOGLE_CLIENT_ID_SHARED ||
+  "";
 
 if (__DEV__) {
   // eslint-disable-next-line no-console
-  console.log("[nq-mobile] API_BASE_URL =", API_BASE_URL, "| WEB_APP_ORIGIN =", WEB_APP_ORIGIN);
+  console.log(
+    "[nq-mobile] API_BASE_URL =",
+    API_BASE_URL,
+    API_BASE_URL !== API_BASE_URL_CONFIGURED
+      ? `(from .env ${API_BASE_URL_CONFIGURED})`
+      : "",
+    "| WEB_APP_ORIGIN =",
+    WEB_APP_ORIGIN
+  );
 }
+
+export { isLocalDevApiHost };

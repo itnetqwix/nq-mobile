@@ -7,10 +7,13 @@ import type { LockerTileConfig } from "./types";
 type Props = {
   tile: LockerTileConfig;
   onPress: () => void;
+  variant?: "grid" | "compact";
 };
 
-export function LockerTile({ tile, onPress }: Props) {
+export function LockerTile({ tile, onPress, variant = "grid" }: Props) {
   const c = useThemeColors();
+  const compact = variant === "compact";
+
   const styles = useThemedStyles((palette) => {
     const accents = {
       navy: { bg: `${palette.brandNavy}12`, fg: palette.brandNavy },
@@ -21,43 +24,43 @@ export function LockerTile({ tile, onPress }: Props) {
     const accent = accents[tile.accent];
     return StyleSheet.create({
       tile: {
-        flex: 1,
-        minWidth: "47%",
         borderRadius: radii.lg,
         borderWidth: 1,
         borderColor: palette.border,
         backgroundColor: palette.surfaceElevated,
-        padding: space.md,
-        minHeight: 140,
+        padding: compact ? space.sm : space.md,
         justifyContent: "space-between",
         ...shadows.sm,
+        ...(compact
+          ? { width: 156, minHeight: 108 }
+          : { width: "48%", minHeight: 112 }),
       },
-      top: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+      row: { flexDirection: "row", alignItems: "center", gap: space.sm },
       iconWrap: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: compact ? 36 : 40,
+        height: compact ? 36 : 40,
+        borderRadius: compact ? 18 : 20,
         backgroundColor: accent.bg,
         alignItems: "center",
         justifyContent: "center",
       },
+      textBlock: { flex: 1, minWidth: 0 },
       title: {
-        ...typography.subtitle,
+        ...(compact ? typography.label : typography.subtitle),
         color: palette.text,
         fontWeight: "700",
-        marginTop: space.sm,
       },
       subtitle: {
         ...typography.caption,
         color: palette.textMuted,
-        marginTop: 4,
-        lineHeight: 16,
+        marginTop: 2,
+        lineHeight: compact ? 14 : 16,
       },
       ctaRow: {
         flexDirection: "row",
         alignItems: "center",
         gap: 4,
-        marginTop: space.sm,
+        marginTop: compact ? space.xs : space.sm,
       },
       cta: {
         ...typography.caption,
@@ -83,21 +86,30 @@ export function LockerTile({ tile, onPress }: Props) {
       accessibilityRole="button"
       accessibilityLabel={tile.title}
     >
-      <View>
-        <View style={styles.top}>
-          <View style={styles.iconWrap}>
-            <Ionicons name={tile.icon} size={22} color={accentFg} />
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={c.textMuted} />
+      <View style={styles.row}>
+        <View style={styles.iconWrap}>
+          <Ionicons name={tile.icon} size={compact ? 18 : 20} color={accentFg} />
         </View>
-        <Text style={styles.title}>{tile.title}</Text>
+        <View style={styles.textBlock}>
+          <Text style={styles.title} numberOfLines={1}>
+            {tile.title}
+          </Text>
+          {!compact && (
+            <Text style={styles.subtitle} numberOfLines={2}>
+              {tile.subtitle}
+            </Text>
+          )}
+        </View>
+        <Ionicons name="chevron-forward" size={16} color={c.textMuted} />
+      </View>
+      {compact ? (
         <Text style={styles.subtitle} numberOfLines={2}>
           {tile.subtitle}
         </Text>
-      </View>
+      ) : null}
       <View style={styles.ctaRow}>
         <Text style={styles.cta}>Open</Text>
-        <Ionicons name="arrow-forward" size={14} color={accentFg} />
+        <Ionicons name="arrow-forward" size={12} color={accentFg} />
       </View>
     </Pressable>
   );

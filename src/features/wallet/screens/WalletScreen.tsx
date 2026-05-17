@@ -140,7 +140,7 @@ export function WalletScreen() {
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={c.brandNavy} />
+        <ActivityIndicator color={c.iconPrimary} />
       </View>
     );
   }

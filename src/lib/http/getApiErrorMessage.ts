@@ -1,4 +1,9 @@
 import { isAxiosError } from "axios";
+import {
+  API_BASE_URL,
+  API_BASE_URL_CONFIGURED,
+  isLocalDevApiHost,
+} from "../../config/env";
 
 /** Best-effort message from NetQwix API error bodies (same shape as web toasts). */
 function isTransportFailureMessage(msg: string | undefined): boolean {
@@ -44,8 +49,28 @@ function collectCauseChain(error: unknown): string {
   return parts.join(" ");
 }
 
+function devLocalTransportHint(): string | null {
+  if (!__DEV__) return null;
+  const configuredLocal =
+    API_BASE_URL_CONFIGURED.includes("localhost") ||
+    API_BASE_URL_CONFIGURED.includes("127.0.0.1");
+  const resolvedLocal = isLocalDevApiHost(API_BASE_URL);
+  if (!configuredLocal && !resolvedLocal) return null;
+
+  return (
+    `Cannot reach the API at ${API_BASE_URL}. ` +
+    (configuredLocal && API_BASE_URL !== API_BASE_URL_CONFIGURED
+      ? `(.env has ${API_BASE_URL_CONFIGURED}; rewritten for this device.) `
+      : "") +
+    "Start the backend on your computer (npm run dev in nq-backend-main, port 8000), use the same Wi‑Fi as the phone, then restart Metro: npx expo start -c. " +
+    "If it still fails, set EXPO_PUBLIC_API_BASE_URL=http://YOUR_MAC_LAN_IP:8000 in nq-mobile/.env."
+  );
+}
+
 export function getApiErrorMessage(error: unknown, fallback = "Something went wrong"): string {
+  const devHint = devLocalTransportHint();
   const transportHint =
+    devHint ??
     "Network error — switch Wi‑Fi vs cellular (no VPN), or use an unrestricted network. School/work/public Wi‑Fi often blocks API domains; Safari may show “Web page blocked”. Ask the network admin to allow api-netqwix.com, or develop from home/hotspot. Confirm API_BASE_URL in Metro ([nq-mobile] …) and run `npx expo start -c`.";
 
   const tlsHint =

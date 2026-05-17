@@ -9,9 +9,9 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { colors, radii, space } from "../../../../theme";
+import { radii, space, useStaticStyles, useThemeColors } from "../../../../theme";
 import { INSTANT_LESSON_DURATIONS } from "../constants";
-import { sharedStepStyles } from "../sharedStepStyles";
+import { useSharedStepStyles } from "../sharedStepStyles";
 
 type PromoResult = {
   valid: boolean;
@@ -60,6 +60,9 @@ export function WizardStepDuration({
   visiblePromos = [],
   expectedPrice = 0,
 }: Props) {
+  const c = useThemeColors();
+  const sharedStepStyles = useSharedStepStyles();
+  const styles = useDurationStyles();
   return (
     <View style={sharedStepStyles.card}>
       <Text style={sharedStepStyles.sectionTitle}>Select lesson duration</Text>
@@ -165,91 +168,102 @@ export function WizardStepDuration({
 
       <Pressable style={sharedStepStyles.primaryBtn} onPress={onNext}>
         <Text style={sharedStepStyles.primaryBtnText}>Next: clips</Text>
-        <Ionicons name="arrow-forward" size={18} color={colors.brandTextOn} />
+        <Ionicons name="arrow-forward" size={18} color={c.brandTextOn} />
       </Pressable>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  durationGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, justifyContent: "center" },
-  durationTile: {
-    width: "47%",
-    paddingVertical: 14,
-    borderRadius: radii.md,
-    borderWidth: 2,
-    borderColor: colors.brandNavy,
-    alignItems: "center",
-    backgroundColor: colors.background,
-  },
-  durationTileOn: {
-    borderColor: colors.success,
-    backgroundColor: colors.successSubtle,
-  },
-  durationLabel: { fontSize: 15, fontWeight: "700", color: colors.brandNavy },
-  durationLabelOn: { color: colors.success },
-  promoTitle: { marginTop: space.lg },
-  promoRow: { flexDirection: "row", gap: 8, alignItems: "center" },
-  input: {
-    borderWidth: 2,
-    borderColor: colors.brandNavy,
-    borderRadius: radii.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: colors.text,
-  },
-  inputError: { borderColor: colors.danger },
-  inputSuccess: { borderColor: colors.success },
-  errorText: { color: colors.danger, fontSize: 13, marginTop: 4 },
-  applyBtn: {
-    backgroundColor: colors.brandNavy,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: radii.md,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  applyBtnDisabled: { opacity: 0.5 },
-  applyBtnText: { color: colors.brandTextOn, fontWeight: "700", fontSize: 14 },
-  removeBtn: {
-    backgroundColor: colors.danger,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: radii.md,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  removeBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
-  discountCard: {
-    marginTop: 10,
-    padding: 12,
-    backgroundColor: "#f0f8f0",
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.success,
-  },
-  discountRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 4,
-  },
-  discountLabel: { color: "#555", fontSize: 14 },
-  discountGreen: { color: colors.success, fontSize: 14, fontWeight: "600" },
-  divider: { height: 1, backgroundColor: colors.success, marginVertical: 6 },
-  discountFinal: { color: colors.brandNavy, fontSize: 16, fontWeight: "700" },
-  availableSection: { marginTop: 12 },
-  availableTitle: { fontSize: 13, color: "#666", fontWeight: "600", marginBottom: 8 },
-  availableScroll: { gap: 8 },
-  promoChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderStyle: "dashed",
-    borderColor: colors.brandNavy,
-    backgroundColor: "#f8f9fa",
-  },
-  promoChipActive: { backgroundColor: "#e8e8ff" },
-  promoChipText: { fontSize: 13, fontWeight: "600", color: colors.brandNavy },
-});
+function useDurationStyles() {
+  return useStaticStyles((palette) =>
+    StyleSheet.create({
+      durationGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, justifyContent: "center" },
+      durationTile: {
+        width: "47%",
+        paddingVertical: 14,
+        borderRadius: radii.md,
+        borderWidth: 2,
+        borderColor: palette.iconPrimary,
+        alignItems: "center",
+        backgroundColor: palette.surfaceElevated,
+      },
+      durationTileOn: {
+        borderColor: palette.success,
+        backgroundColor: palette.successSubtle,
+      },
+      durationLabel: { fontSize: 15, fontWeight: "700", color: palette.iconPrimary },
+      durationLabelOn: { color: palette.success },
+      promoTitle: { marginTop: space.lg },
+      promoRow: { flexDirection: "row", gap: 8, alignItems: "center" },
+      input: {
+        flex: 1,
+        borderWidth: 2,
+        borderColor: palette.borderStrong,
+        borderRadius: radii.md,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        fontSize: 15,
+        color: palette.text,
+        backgroundColor: palette.input,
+      },
+      inputError: { borderColor: palette.danger },
+      inputSuccess: { borderColor: palette.success },
+      errorText: { color: palette.danger, fontSize: 13, marginTop: 4 },
+      applyBtn: {
+        backgroundColor: palette.brandNavy,
+        paddingHorizontal: 18,
+        paddingVertical: 12,
+        borderRadius: radii.md,
+        justifyContent: "center",
+        alignItems: "center",
+      },
+      applyBtnDisabled: { opacity: 0.5 },
+      applyBtnText: { color: palette.brandTextOn, fontWeight: "700", fontSize: 14 },
+      removeBtn: {
+        backgroundColor: palette.danger,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        borderRadius: radii.md,
+        justifyContent: "center",
+        alignItems: "center",
+      },
+      removeBtnText: { color: palette.dangerTextOn, fontWeight: "700", fontSize: 14 },
+      discountCard: {
+        marginTop: 10,
+        padding: 12,
+        backgroundColor: palette.successSubtle,
+        borderRadius: radii.md,
+        borderWidth: 1,
+        borderColor: palette.success,
+      },
+      discountRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        marginBottom: 4,
+      },
+      discountLabel: { color: palette.textMuted, fontSize: 14 },
+      discountGreen: { color: palette.success, fontSize: 14, fontWeight: "600" },
+      divider: { height: 1, backgroundColor: palette.success, marginVertical: 6 },
+      discountFinal: { color: palette.iconPrimary, fontSize: 16, fontWeight: "700" },
+      availableSection: { marginTop: 12 },
+      availableTitle: {
+        fontSize: 13,
+        color: palette.textMuted,
+        fontWeight: "600",
+        marginBottom: 8,
+      },
+      availableScroll: { gap: 8 },
+      promoChip: {
+        paddingHorizontal: 14,
+        paddingVertical: 6,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderStyle: "dashed",
+        borderColor: palette.iconPrimary,
+        backgroundColor: palette.surfaceMuted,
+      },
+      promoChipActive: { backgroundColor: palette.brandSubtle },
+      promoChipText: { fontSize: 13, fontWeight: "600", color: palette.iconPrimary },
+    })
+  );
+}

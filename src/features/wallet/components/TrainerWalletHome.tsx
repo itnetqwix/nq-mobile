@@ -37,7 +37,7 @@ export function TrainerWalletHome({ navigation }: Props) {
     <ScrollView
       contentContainerStyle={styles.scroll}
       refreshControl={
-        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.brandNavy} />
+        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.iconPrimary} />
       }
     >
       <TrainerEarningsPanel />
@@ -46,7 +46,7 @@ export function TrainerWalletHome({ navigation }: Props) {
         style={({ pressed }) => [styles.menuRow, pressed && { opacity: 0.85 }]}
         onPress={() => navigation.navigate("WalletActivity")}
       >
-        <Ionicons name="time-outline" size={22} color={c.brandNavy} />
+        <Ionicons name="time-outline" size={22} color={c.iconPrimary} />
         <View style={{ flex: 1 }}>
           <Text style={styles.menuLabel}>Earnings activity</Text>
           <Text style={styles.menuSub}>Payouts and session payments</Text>

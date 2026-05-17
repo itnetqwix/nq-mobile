@@ -9,16 +9,30 @@ function isRecord(x: unknown): x is Record<string, unknown> {
   return x !== null && typeof x === "object" && !Array.isArray(x);
 }
 
-function readTokenBlock(block: unknown): { access_token: string; account_type: string } | null {
+export type LoginTokens = {
+  access_token: string;
+  account_type: string;
+  refresh_token?: string;
+  session_id?: string;
+};
+
+function readTokenBlock(block: unknown): LoginTokens | null {
   if (!isRecord(block)) return null;
   const access_token = block.access_token;
   const account_type = block.account_type;
   if (typeof access_token !== "string" || !access_token) return null;
   if (account_type === undefined || account_type === null) return null;
-  return { access_token, account_type: String(account_type) };
+  const out: LoginTokens = { access_token, account_type: String(account_type) };
+  if (typeof block.refresh_token === "string" && block.refresh_token) {
+    out.refresh_token = block.refresh_token;
+  }
+  if (typeof block.session_id === "string" && block.session_id) {
+    out.session_id = block.session_id;
+  }
+  return out;
 }
 
-export function extractLoginTokens(payload: unknown): { access_token: string; account_type: string } | null {
+export function extractLoginTokens(payload: unknown): LoginTokens | null {
   if (!isRecord(payload)) return null;
 
   // Primary: { result: { data: { access_token, account_type }, ... }, code, msg, status, ... }

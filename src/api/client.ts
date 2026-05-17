@@ -3,7 +3,8 @@ import { Platform } from "react-native";
 import { API_BASE_URL, WEB_APP_ORIGIN } from "../config/env";
 import { emitUnauthorized } from "../lib/auth/sessionEvents";
 import { assertCertificatePinningAllowed } from "../lib/security/certPinning";
-import { getAccessToken } from "../features/auth/session/tokenStorage";
+import { getAccessToken, getSessionId } from "../features/auth/session/tokenStorage";
+import { getClientSessionHeaders } from "../features/auth/session/clientSessionHeaders";
 import { expoFetchForAxios } from "./expoFetchForAxios";
 import { logHttpErrorDebug, logHttpRequestDebug, logHttpResponseDebug } from "./httpDebug";
 
@@ -62,6 +63,11 @@ apiClient.interceptors.request.use(async (config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  const sessionId = await getSessionId();
+  if (sessionId) {
+    config.headers["X-NQ-Session-Id"] = sessionId;
+  }
+  Object.assign(config.headers, getClientSessionHeaders());
   logHttpRequestDebug(config);
   return config;
 });

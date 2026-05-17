@@ -1,40 +1,21 @@
 import React, { useCallback, useMemo, useState } from "react";
-import {
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { EmptyState, ImageWithSkeleton, Skeleton } from "../../../components/ui";
-import { colors, radii, space, typography } from "../../../theme";
+import { EmptyState, ImageWithSkeleton } from "../../../components/ui";
+import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
-import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
 import { getClipPlaybackUrl } from "../../../lib/clipMediaUrl";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
 import { postMyClipsGrouped, postTraineeClipsGrouped } from "../../home/api/homeApi";
+import { LockerListShell } from "../components/locker/LockerListShell";
 import { LockerViewerModal, type LockerViewerMode } from "../components/locker/LockerViewerModal";
 import { ClipUploadModal } from "../components/locker/ClipUploadModal";
 
 type ClipTab = "mine" | "trainees";
 
-/**
- * Backend safety net: `traineeClips` (and occasionally `getClips`) can return
- * the same clip more than once inside a single group — typically when one clip
- * is attached to multiple bookings and the join query is unioned without a
- * `DISTINCT`. Without dedupe, React renders two children with the same
- * `clip._id` and emits "Encountered two children with the same key" + silently
- * drops the duplicate.
- *
- * We keep the first occurrence and drop subsequent ones. Items without an
- * `_id` get a synthetic key so they aren't collapsed against each other.
- */
-function dedupeClipsById<T extends { _id?: any }>(list: T[]): T[] {
+function dedupeClipsById<T extends { _id?: unknown }>(list: T[]): T[] {
   const seen = new Set<string>();
   const out: T[] = [];
   for (let i = 0; i < list.length; i++) {
@@ -45,6 +26,17 @@ function dedupeClipsById<T extends { _id?: any }>(list: T[]): T[] {
     out.push(raw);
   }
   return out;
+}
+
+function formatCategoryLabel(raw: unknown): string {
+  if (raw == null || raw === "") return "Uncategorized";
+  if (typeof raw === "string") return raw;
+  if (typeof raw === "object" && raw !== null) {
+    const o = raw as Record<string, unknown>;
+    if (typeof o.name === "string") return o.name;
+    if (typeof o.title === "string") return o.title;
+  }
+  return String(raw);
 }
 
 function CategorySection({
@@ -58,13 +50,52 @@ function CategorySection({
   children: React.ReactNode;
   defaultOpen?: boolean;
 }) {
+  const c = useThemeColors();
   const [open, setOpen] = useState(defaultOpen === true);
+  const styles = useThemedStyles((palette) =>
+    StyleSheet.create({
+      section: {
+        backgroundColor: palette.surfaceElevated,
+        borderRadius: radii.lg,
+        borderWidth: 1,
+        borderColor: palette.border,
+        overflow: "hidden",
+      },
+      sectionHead: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: space.md,
+        paddingVertical: 12,
+        backgroundColor: palette.surfaceMuted,
+      },
+      sectionHeadLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
+      sectionIcon: {
+        width: 32,
+        height: 32,
+        borderRadius: radii.sm,
+        backgroundColor: palette.brandSubtle,
+        alignItems: "center",
+        justifyContent: "center",
+      },
+      sectionTitle: { flex: 1, ...typography.titleSm, color: palette.text },
+      countPill: {
+        backgroundColor: palette.brandNavy,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: radii.pill,
+      },
+      countPillText: { color: palette.brandTextOn, fontSize: 11, fontWeight: "700" },
+      sectionBody: { paddingHorizontal: space.sm, paddingBottom: space.sm },
+    })
+  );
+
   return (
     <View style={styles.section}>
       <Pressable style={styles.sectionHead} onPress={() => setOpen(!open)}>
         <View style={styles.sectionHeadLeft}>
           <View style={styles.sectionIcon}>
-            <Ionicons name="folder-outline" size={18} color={colors.brandNavy} />
+            <Ionicons name="folder-outline" size={16} color={c.iconPrimary} />
           </View>
           <Text style={styles.sectionTitle} numberOfLines={1}>
             {title}
@@ -73,26 +104,16 @@ function CategorySection({
             <Text style={styles.countPillText}>{count}</Text>
           </View>
         </View>
-        <Ionicons name={open ? "chevron-up" : "chevron-down"} size={20} color={colors.textMuted} />
+        <Ionicons name={open ? "chevron-up" : "chevron-down"} size={20} color={c.textMuted} />
       </Pressable>
-      {open && <View style={styles.sectionBody}>{children}</View>}
+      {open ? <View style={styles.sectionBody}>{children}</View> : null}
     </View>
   );
 }
 
 export function ClipsScreen() {
-  const insets = useSafeAreaInsets();
-  const gutter = useHorizontalGutter("md");
-  const scrollPad = useMemo(
-    () => ({
-      ...gutter,
-      paddingTop: space.md,
-      paddingBottom: space.xl * 2 + insets.bottom,
-      gap: space.md,
-    }),
-    [gutter, insets.bottom]
-  );
   const queryClient = useQueryClient();
+  const c = useThemeColors();
   const { accountType } = useAuth();
   const isTrainer = accountType === AccountType.TRAINER;
   const [tab, setTab] = useState<ClipTab>("mine");
@@ -102,6 +123,61 @@ export function ClipsScreen() {
     title: string;
     mode: LockerViewerMode;
   } | null>(null);
+
+  const styles = useThemedStyles((palette) =>
+    StyleSheet.create({
+      toolbarRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: space.sm,
+      },
+      segment: {
+        flex: 1,
+        flexDirection: "row",
+        padding: 4,
+        borderRadius: radii.md,
+        backgroundColor: palette.surfaceMuted,
+        gap: 4,
+      },
+      segBtn: { flex: 1, paddingVertical: 8, borderRadius: radii.sm, alignItems: "center" },
+      segBtnOn: { backgroundColor: palette.surfaceElevated },
+      segLabel: { ...typography.label, color: palette.textMuted },
+      segLabelOn: { color: palette.brandNavy, fontWeight: "700" },
+      uploadFab: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: palette.brandNavy,
+        alignItems: "center",
+        justifyContent: "center",
+      },
+      clipCard: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: space.md,
+        paddingVertical: 10,
+        paddingHorizontal: space.sm,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: palette.border,
+      },
+      thumbWrap: {
+        width: 64,
+        height: 64,
+        borderRadius: radii.sm,
+        overflow: "hidden",
+        backgroundColor: palette.surfaceMuted,
+      },
+      thumbPh: {
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: palette.brandSubtle,
+      },
+      clipMeta: { flex: 1, minWidth: 0 },
+      clipTitle: { ...typography.bodyMd, fontWeight: "600", color: palette.text },
+      clipDate: { ...typography.caption, color: palette.textMuted, marginTop: 2 },
+    })
+  );
 
   const myQ = useQuery({
     queryKey: ["locker", "myClips"],
@@ -118,202 +194,174 @@ export function ClipsScreen() {
   });
 
   const active = tab === "mine" ? myQ : traineeQ;
-  const refreshing = active.isRefetching;
-  const loading = active.isLoading;
 
   const onRefresh = useCallback(() => {
     void myQ.refetch();
     void traineeQ.refetch();
   }, [myQ, traineeQ]);
 
-  const openClip = (clip: any) => {
+  const openClip = (clip: Record<string, unknown>) => {
     const uri = getClipPlaybackUrl(clip);
     if (!uri) return;
     setViewer({
       uri,
-      title: clip?.title ?? clip?.file_name ?? "Clip",
+      title: String(clip?.title ?? clip?.file_name ?? "Clip"),
       mode: "video",
     });
   };
 
-  return (
-    <View style={styles.root}>
-      <View style={[styles.hero, gutter]}>
-        <View style={styles.heroTop}>
-          <View style={styles.heroTextBlock}>
-            <Text style={styles.heroTitle}>Clips</Text>
-            <Text style={styles.heroSub}>
-              Your locker videos, grouped by category — same data as the web My clips tab.
-            </Text>
-          </View>
-          {tab === "mine" && (
+  const toolbar = useMemo(
+    () => (
+      <View style={styles.toolbarRow}>
+        {isTrainer ? (
+          <View style={styles.segment}>
             <Pressable
-              style={({ pressed }) => [styles.uploadFab, pressed && { opacity: 0.88 }]}
-              onPress={() => setUploadVisible(true)}
-              accessibilityRole="button"
-              accessibilityLabel="Upload clip from device"
+              style={[styles.segBtn, tab === "mine" && styles.segBtnOn]}
+              onPress={() => setTab("mine")}
             >
-              <Ionicons name="cloud-upload-outline" size={22} color={colors.brandTextOn} />
+              <Text style={[styles.segLabel, tab === "mine" && styles.segLabelOn]}>My clips</Text>
             </Pressable>
+            <Pressable
+              style={[styles.segBtn, tab === "trainees" && styles.segBtnOn]}
+              onPress={() => setTab("trainees")}
+            >
+              <Text style={[styles.segLabel, tab === "trainees" && styles.segLabelOn]}>Trainees</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Text style={[typography.bodySm, { flex: 1, color: c.textMuted }]}>
+            Videos grouped by category
+          </Text>
+        )}
+        {tab === "mine" ? (
+          <Pressable
+            style={({ pressed }) => [styles.uploadFab, pressed && { opacity: 0.88 }]}
+            onPress={() => setUploadVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Upload clip"
+          >
+            <Ionicons name="cloud-upload-outline" size={20} color={c.brandTextOn} />
+          </Pressable>
+        ) : null}
+      </View>
+    ),
+    [isTrainer, tab, styles, c]
+  );
+
+  const renderClipRow = (clip: Record<string, unknown>, key: string) => {
+    const thumb = getS3ImageUrl(
+      String(clip.thumbnail ?? clip.thumbnail_url ?? clip.poster ?? "")
+    );
+    return (
+      <Pressable key={key} style={styles.clipCard} onPress={() => openClip(clip)}>
+        <View style={styles.thumbWrap}>
+          {thumb ? (
+            <ImageWithSkeleton
+              uri={thumb}
+              width={64}
+              height={64}
+              borderRadius={radii.sm}
+              resizeMode="cover"
+              accessibilityLabel={String(clip.title ?? clip.file_name ?? "Clip")}
+            />
+          ) : (
+            <View style={styles.thumbPh}>
+              <Ionicons name="play-circle" size={28} color={c.brandAccent} />
+            </View>
           )}
         </View>
-      </View>
-
-      {isTrainer && (
-        <View
-          style={[
-            styles.segment,
-            { marginLeft: space.md + insets.left, marginRight: space.md + insets.right },
-          ]}
-        >
-          <Pressable
-            style={[styles.segBtn, tab === "mine" && styles.segBtnOn]}
-            onPress={() => setTab("mine")}
-          >
-            <Text style={[styles.segLabel, tab === "mine" && styles.segLabelOn]}>My clips</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.segBtn, tab === "trainees" && styles.segBtnOn]}
-            onPress={() => setTab("trainees")}
-          >
-            <Text style={[styles.segLabel, tab === "trainees" && styles.segLabelOn]}>From trainees</Text>
-          </Pressable>
+        <View style={styles.clipMeta}>
+          <Text style={styles.clipTitle} numberOfLines={2}>
+            {String(clip.title ?? clip.file_name ?? "Clip")}
+          </Text>
+          {clip.createdAt ? (
+            <Text style={styles.clipDate}>
+              {new Date(String(clip.createdAt)).toLocaleDateString()}
+            </Text>
+          ) : null}
         </View>
-      )}
+        <Ionicons name="chevron-forward" size={18} color={c.textMuted} />
+      </Pressable>
+    );
+  };
 
-      {loading ? (
-        <View style={scrollPad}>
-          {[0, 1, 2].map((i) => (
-            <View key={i} style={{ marginBottom: space.md }}>
-              <Skeleton width="100%" height={120} radius={radii.md} />
-              <Skeleton width="60%" height={12} style={{ marginTop: 8 }} />
-              <Skeleton width="40%" height={10} style={{ marginTop: 4 }} />
-            </View>
-          ))}
-        </View>
-      ) : (
-        <ScrollView
-          contentContainerStyle={scrollPad}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brandNavy} />
-          }
-        >
-          {tab === "mine" && (
-            <>
-              {(myQ.data ?? []).length === 0 ? (
-                <EmptyState
-                  icon="film-outline"
-                  title="No clips yet"
-                  description="Upload from the web locker or add clips after sessions — they will appear here by category."
-                />
-              ) : (
-                (myQ.data ?? []).map((grp: any, i: number) => {
-                  const clips = dedupeClipsById((grp.clips ?? []) as any[]);
-                  return (
+  return (
+    <>
+      <LockerListShell
+        loading={active.isLoading}
+        isError={active.isError}
+        error={active.error}
+        onRetry={() => void active.refetch()}
+        refreshing={active.isRefetching}
+        onRefresh={onRefresh}
+        toolbar={toolbar}
+      >
+        {tab === "mine" && (
+          <>
+            {(myQ.data ?? []).length === 0 ? (
+              <EmptyState
+                icon="film-outline"
+                title="No clips yet"
+                description="Upload a clip here or add videos from the web locker — they appear by category."
+                actionLabel="Upload clip"
+                onAction={() => setUploadVisible(true)}
+              />
+            ) : (
+              (myQ.data ?? []).map((grp: { _id?: unknown; clips?: unknown[] }, i: number) => {
+                const clips = dedupeClipsById((grp.clips ?? []) as { _id?: unknown }[]);
+                return (
                   <CategorySection
                     key={`mine-grp-${i}-${String(grp._id ?? "uncat")}`}
-                    title={String(grp._id ?? "Uncategorized")}
+                    title={formatCategoryLabel(grp._id)}
                     count={clips.length}
                     defaultOpen={i === 0}
                   >
-                    {clips.map((clip: any, ci: number) => {
-                      const thumb = getS3ImageUrl(clip.thumbnail ?? clip.thumbnail_url ?? clip.poster);
-                      return (
-                        <Pressable key={`mine-${i}-${String(clip._id ?? "noid")}-${ci}`} style={styles.clipCard} onPress={() => openClip(clip)}>
-                          <View style={styles.thumbWrap}>
-                            {thumb ? (
-                              <ImageWithSkeleton
-                                uri={thumb}
-                                width={72}
-                                height={72}
-                                borderRadius={radii.sm}
-                                resizeMode="cover"
-                                accessibilityLabel={clip.title ?? clip.file_name ?? "Clip thumbnail"}
-                              />
-                            ) : (
-                              <View style={styles.thumbPh}>
-                                <Ionicons name="play-circle" size={36} color={colors.sidebarActive} />
-                              </View>
-                            )}
-                          </View>
-                          <View style={styles.clipMeta}>
-                            <Text style={styles.clipTitle} numberOfLines={2}>
-                              {clip.title ?? clip.file_name ?? "Clip"}
-                            </Text>
-                            <Text style={styles.clipDate}>
-                              {clip.createdAt ? new Date(clip.createdAt).toLocaleDateString() : ""}
-                            </Text>
-                          </View>
-                          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-                        </Pressable>
-                      );
-                    })}
+                    {clips.map((clip, ci) =>
+                      renderClipRow(clip as Record<string, unknown>, `mine-${i}-${String(clip._id ?? ci)}`)
+                    )}
                   </CategorySection>
-                  );
-                })
-              )}
-            </>
-          )}
+                );
+              })
+            )}
+          </>
+        )}
 
-          {tab === "trainees" && isTrainer && (
-            <>
-              {(traineeQ.data ?? []).length === 0 ? (
-                <EmptyState
-                  icon="people-outline"
-                  title="No trainee clips"
-                  description="When trainees attach clips to bookings, they show here by trainee."
-                />
-              ) : (
-                (traineeQ.data ?? []).map((grp: any, i: number) => {
-                  const trainee = grp._id;
-                  const name = trainee?.fullname ?? trainee?.fullName ?? "Trainee";
-                  /**
-                   * `grp.clips` may be either a flat array of clip docs OR a
-                   * list of join-table wrappers (each containing a `clips`
-                   * field pointing at the real clip). Normalize, then dedupe
-                   * by the resolved clip `_id` so the same clip attached to
-                   * multiple bookings doesn't render twice.
-                   */
-                  const normalized = ((grp.clips ?? []) as any[]).map((wrap: any) =>
-                    wrap?.clips ?? wrap
-                  );
-                  const clips = dedupeClipsById(normalized);
-                  return (
-                    <CategorySection
-                      key={`tr-grp-${i}-${String(trainee?._id ?? "x")}`}
-                      title={name}
-                      count={clips.length}
-                      defaultOpen={i === 0}
-                    >
-                      {clips.map((clip: any, idx: number) => {
-                        return (
-                          <Pressable
-                            key={`tr-${i}-${String(clip?._id ?? "noid")}-${idx}`}
-                            style={styles.clipCard}
-                            onPress={() => openClip(clip)}
-                          >
-                            <View style={styles.thumbWrap}>
-                              <View style={styles.thumbPh}>
-                                <Ionicons name="play-circle" size={36} color={colors.sidebarActive} />
-                              </View>
-                            </View>
-                            <View style={styles.clipMeta}>
-                              <Text style={styles.clipTitle} numberOfLines={2}>
-                                {clip?.title ?? clip?.file_name ?? "Clip"}
-                              </Text>
-                            </View>
-                            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-                          </Pressable>
-                        );
-                      })}
-                    </CategorySection>
-                  );
-                })
-              )}
-            </>
-          )}
-        </ScrollView>
-      )}
+        {tab === "trainees" && isTrainer && (
+          <>
+            {(traineeQ.data ?? []).length === 0 ? (
+              <EmptyState
+                icon="people-outline"
+                title="No trainee clips"
+                description="When trainees attach clips to bookings, they show here by trainee."
+              />
+            ) : (
+              (traineeQ.data ?? []).map((grp: { _id?: { fullname?: string; fullName?: string; _id?: string }; clips?: unknown[] }, i: number) => {
+                const trainee = grp._id;
+                const name = trainee?.fullname ?? trainee?.fullName ?? "Trainee";
+                const normalized = ((grp.clips ?? []) as { clips?: unknown }[]).map(
+                  (wrap) => (wrap?.clips ?? wrap) as Record<string, unknown>
+                );
+                const clips = dedupeClipsById(normalized as { _id?: unknown }[]);
+                return (
+                  <CategorySection
+                    key={`tr-grp-${i}-${String(trainee?._id ?? "x")}`}
+                    title={name}
+                    count={clips.length}
+                    defaultOpen={i === 0}
+                  >
+                    {clips.map((clip, idx) =>
+                      renderClipRow(
+                        clip as Record<string, unknown>,
+                        `tr-${i}-${String((clip as { _id?: unknown })._id ?? idx)}`
+                      )
+                    )}
+                  </CategorySection>
+                );
+              })
+            )}
+          </>
+        )}
+      </LockerListShell>
 
       <LockerViewerModal
         visible={!!viewer}
@@ -331,98 +379,6 @@ export function ClipsScreen() {
           void queryClient.invalidateQueries({ queryKey: ["instantLessonClips"] });
         }}
       />
-    </View>
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.surface },
-  hero: {
-    paddingTop: space.md,
-    paddingBottom: space.sm,
-    backgroundColor: colors.background,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  heroTop: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: space.md,
-  },
-  heroTextBlock: { flex: 1, minWidth: 0 },
-  uploadFab: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.brandNavy,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 2,
-  },
-  heroTitle: { ...typography.titleLg, color: colors.brandNavy },
-  heroSub: { ...typography.bodySm, color: colors.textMuted, marginTop: 6 },
-
-  segment: {
-    flexDirection: "row",
-    marginTop: space.md,
-    padding: 4,
-    borderRadius: radii.md,
-    backgroundColor: colors.surfaceMuted,
-    gap: 4,
-  },
-  segBtn: { flex: 1, paddingVertical: 10, borderRadius: radii.sm, alignItems: "center" },
-  segBtnOn: { backgroundColor: colors.background, shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 },
-  segLabel: { ...typography.label, color: colors.textMuted },
-  segLabelOn: { color: colors.brandNavy },
-
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-
-  section: {
-    backgroundColor: colors.background,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: "hidden",
-  },
-  sectionHead: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: space.md,
-    paddingVertical: 14,
-    backgroundColor: colors.brandSubtle,
-  },
-  sectionHeadLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
-  sectionIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: radii.sm,
-    backgroundColor: colors.sidebarActiveBg,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sectionTitle: { flex: 1, ...typography.titleSm, color: colors.text },
-  countPill: {
-    backgroundColor: colors.brandNavy,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: radii.pill,
-  },
-  countPillText: { color: colors.brandTextOn, fontSize: 12, fontWeight: "700" },
-  sectionBody: { paddingHorizontal: space.sm, paddingBottom: space.sm },
-
-  clipCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.md,
-    paddingVertical: 12,
-    paddingHorizontal: space.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
-  thumbWrap: { width: 72, height: 72, borderRadius: radii.sm, overflow: "hidden", backgroundColor: colors.surface },
-  thumbPh: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.brandSubtle },
-  clipMeta: { flex: 1 },
-  clipTitle: { ...typography.subtitle, color: colors.text },
-  clipDate: { ...typography.caption, color: colors.textMuted, marginTop: 4 },
-});

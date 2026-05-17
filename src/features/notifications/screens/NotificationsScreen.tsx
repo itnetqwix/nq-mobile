@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { EmptyState, Skeleton } from "../../../components/ui";
 import type { RootStackParamList, ShellSurfaceRouteId } from "../../../navigation/types";
-import { colors, radii, space, typography } from "../../../theme";
+import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { fetchNotifications } from "../../home/api/homeApi";
 import { useNotifications } from "../NotificationContext";
 
@@ -51,6 +51,8 @@ function NotificationItem({
   item: any;
   onPress: () => void;
 }) {
+  const c = useThemeColors();
+  const styles = useNotificationItemStyles();
   const icon = getNotificationIcon(item?.title);
   const isRead = item?.isRead ?? item?.is_read ?? false;
   const bodyText = item?.body ?? item?.description ?? "";
@@ -67,7 +69,7 @@ function NotificationItem({
       accessibilityLabel={`Open ${item?.title ?? "notification"}`}
     >
       <View style={styles.iconWrap}>
-        <Ionicons name={icon} size={22} color={colors.brand} />
+        <Ionicons name={icon} size={22} color={c.iconPrimary} />
       </View>
       <View style={styles.itemContent}>
         {!!item?.title && (
@@ -85,7 +87,7 @@ function NotificationItem({
         )}
       </View>
       {!isRead && <View style={styles.unreadDot} />}
-      <Ionicons name="chevron-forward" size={16} color={colors.borderStrong} style={styles.chev} />
+      <Ionicons name="chevron-forward" size={16} color={c.textMuted} style={styles.chev} />
     </Pressable>
   );
 }
@@ -130,6 +132,8 @@ function buildNotificationRoute(item: any) {
 }
 
 export function NotificationsScreen() {
+  const c = useThemeColors();
+  const styles = useNotificationListStyles();
   const navigation = useNavigation<ShellNav>();
   const { markFirstPageRead, refreshInbox } = useNotifications();
 
@@ -215,7 +219,7 @@ export function NotificationsScreen() {
       )}
       contentContainerStyle={styles.list}
       refreshControl={
-        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brand} />
+        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.iconPrimary} />
       }
       ListEmptyComponent={
         <EmptyState
@@ -228,42 +232,52 @@ export function NotificationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  list: { paddingBottom: space.xl, backgroundColor: colors.background },
+function useNotificationItemStyles() {
+  return useThemedStyles((palette) =>
+    StyleSheet.create({
+      item: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        paddingHorizontal: space.md,
+        paddingVertical: space.md,
+        gap: space.sm,
+        backgroundColor: palette.surfaceElevated,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: palette.border,
+      },
+      itemUnread: { backgroundColor: palette.brandAccentSubtle },
+      itemPressed: { opacity: 0.85 },
+      chev: { marginLeft: 4 },
+      iconWrap: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: palette.brandSubtle,
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      },
+      itemContent: { flex: 1 },
+      itemTitle: { ...typography.bodyMd, color: palette.textSecondary },
+      itemTitleBold: { fontWeight: "700", color: palette.text },
+      itemBody: { ...typography.bodySm, color: palette.textMuted, marginTop: 2 },
+      itemTime: { ...typography.caption, color: palette.textMuted, marginTop: 4 },
+      unreadDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: palette.iconPrimary,
+        marginTop: 6,
+      },
+    })
+  );
+}
 
-  item: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    paddingHorizontal: space.md,
-    paddingVertical: space.md,
-    gap: space.sm,
-    backgroundColor: colors.surfaceElevated,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  itemUnread: { backgroundColor: colors.brandAccentSubtle },
-  itemPressed: { opacity: 0.85 },
-  chev: { marginLeft: 4 },
-  iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.brandSubtle,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  itemContent: { flex: 1 },
-  itemTitle: { ...typography.bodyMd, color: colors.textSecondary },
-  itemTitleBold: { fontWeight: "700", color: colors.text },
-  itemBody: { ...typography.bodySm, color: colors.textMuted, marginTop: 2 },
-  itemTime: { ...typography.caption, color: colors.textMuted, marginTop: 4 },
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.brand,
-    marginTop: 6,
-  },
-});
+function useNotificationListStyles() {
+  return useThemedStyles((palette) =>
+    StyleSheet.create({
+      center: { flex: 1, alignItems: "center", justifyContent: "center" },
+      list: { paddingBottom: space.xl, backgroundColor: palette.background },
+    })
+  );
+}

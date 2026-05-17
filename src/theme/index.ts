@@ -11,6 +11,7 @@
 import { type AppColors, colorsDark, colorsLight } from "./colors";
 export { useTheme, useThemeColors, ThemeProvider, type ThemeMode } from "./ThemeContext";
 export { useThemedStyles } from "./useThemedStyles";
+export { useStaticStyles } from "./useStaticStyles";
 export { buildNavigationTheme } from "./navigationTheme";
 
 export { colorsDark, colorsLight, type AppColors } from "./colors";

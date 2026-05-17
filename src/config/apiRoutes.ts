@@ -18,7 +18,14 @@
 export const API_ROUTES = {
   auth: {
     login: "/auth/login",
+    logout: "/auth/logout",
+    sessionsRegister: "/auth/sessions/register",
+    sessions: "/auth/sessions",
+    sessionsRevoke: "/auth/sessions/revoke",
+    sessionsRevokeOthers: "/auth/sessions/revoke-others",
     signup: "/auth/signup",
+    signupOtpSend: "/auth/signup/otp/send",
+    signupOtpVerify: "/auth/signup/otp/verify",
     forgotPassword: "/auth/forgot-password",
     confirmResetPassword: "/auth/confirm-reset-password",
     verifyGoogleLogin: "/auth/verify-google-login",
@@ -26,6 +33,8 @@ export const API_ROUTES = {
   },
   user: {
     me: "/user/me",
+    chatPublicKeyMe: "/user/me/chat-public-key",
+    chatPublicKey: (userId: string) => `/user/${userId}/chat-public-key` as const,
     signUp: "/user/sign-up",
     scheduledMeetings: "/user/scheduled-meetings",
     updateBookedSession: (id: string) => `/user/update-booked-session/${id}` as const,

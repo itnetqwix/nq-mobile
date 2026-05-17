@@ -1,9 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, radii, space } from "../../../../theme";
+import { radii, space, useStaticStyles, useThemeColors } from "../../../../theme";
 import { INSTANT_LESSON_DURATIONS } from "../constants";
-import { sharedStepStyles } from "../sharedStepStyles";
+import { useSharedStepStyles } from "../sharedStepStyles";
 
 type Props = {
   trainerName: string;
@@ -24,6 +24,9 @@ export function WizardStepConfirm({
   isSubmitting,
   onSubmit,
 }: Props) {
+  const c = useThemeColors();
+  const sharedStepStyles = useSharedStepStyles();
+  const styles = useConfirmStyles();
   const lengthLabel =
     INSTANT_LESSON_DURATIONS.find((d) => d.minutes === durationMinutes)?.label ?? `${durationMinutes} min`;
 
@@ -69,10 +72,10 @@ export function WizardStepConfirm({
         onPress={onSubmit}
       >
         {isSubmitting ? (
-          <ActivityIndicator color={colors.brandTextOn} />
+          <ActivityIndicator color={c.brandTextOn} />
         ) : (
           <>
-            <Ionicons name="flash" size={18} color={colors.brandTextOn} />
+            <Ionicons name="flash" size={18} color={c.brandTextOn} />
             <Text style={sharedStepStyles.primaryBtnText}>Send request to coach</Text>
           </>
         )}
@@ -81,19 +84,23 @@ export function WizardStepConfirm({
   );
 }
 
-const styles = StyleSheet.create({
-  summaryBox: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    padding: space.md,
-    gap: 8,
-    marginTop: 4,
-  },
-  summaryLine: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-  },
-  summaryKey: { fontSize: 15, fontWeight: "700", color: colors.brandNavy, width: 76 },
-  summaryValue: { flex: 1, fontSize: 15, color: colors.text },
-});
+function useConfirmStyles() {
+  return useStaticStyles((palette) =>
+    StyleSheet.create({
+      summaryBox: {
+        backgroundColor: palette.surfaceMuted,
+        borderRadius: radii.md,
+        padding: space.md,
+        gap: 8,
+        marginTop: 4,
+      },
+      summaryLine: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 12,
+      },
+      summaryKey: { fontSize: 15, fontWeight: "700", color: palette.iconPrimary, width: 76 },
+      summaryValue: { flex: 1, fontSize: 15, color: palette.text },
+    })
+  );
+}
