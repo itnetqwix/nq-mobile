@@ -52,7 +52,9 @@ import {
   useNotifications,
 } from "../../notifications/NotificationContext";
 
-import { UserBox, UserBoxMini } from "../components/UserBox";
+import { UserBox } from "../components/UserBox";
+import { DraggableVideoPip } from "../components/DraggableVideoPip";
+import { useVideoPipLayout } from "../useVideoPipLayout";
 import { ActionButtons } from "../components/ActionButtons";
 import { TimeRemaining } from "../components/TimeRemaining";
 import { PeerJoinedModal } from "../components/PeerJoinedModal";
@@ -276,7 +278,28 @@ function MeetingSurface({
     fromUserId: myId,
     toUserId: peerId,
     sessionId: lessonId,
+    isTrainer,
   });
+
+  const [meetingBounds, setMeetingBounds] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+
+  const pipLayout = useVideoPipLayout({
+    isTrainer,
+    hiddenVideos: clipSync.hiddenVideos,
+    setVideoHidden: clipSync.setVideoHidden,
+    bounds: meetingBounds,
+    safeTop: chrome.insets.top,
+    safeBottom: chrome.insets.bottom,
+  });
+
+  const peerUser = session
+    ? isTrainer
+      ? session.trainee_info
+      : session.trainer_info
+    : null;
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [ratingsOpen, setRatingsOpen] = useState(false);
@@ -397,7 +420,13 @@ function MeetingSurface({
   }, [lessonTimer.status, pushLocalToast, lessonId]);
 
   return (
-    <View style={styles.root}>
+    <View
+      style={styles.root}
+      onLayout={(e) => {
+        const { width, height } = e.nativeEvent.layout;
+        setMeetingBounds({ width, height });
+      }}
+    >
       <StatusBar barStyle="light-content" />
 
       {/* Remote video / clip pane */}
@@ -447,13 +476,45 @@ function MeetingSurface({
         )}
       </View>
 
-      {/* Local preview (mini) */}
-      <UserBoxMini
-        user={null}
-        stream={localStream}
-        isStreamOff={!cameraEnabled || !localStream}
-        muted
-      />
+      {/* Draggable live camera PIPs */}
+      {meetingBounds ? (
+        <>
+          <DraggableVideoPip
+            tileId="local"
+            user={null}
+            stream={localStream}
+            isStreamOff={!cameraEnabled || !localStream}
+            muted
+            fallbackLabel="You"
+            tabLabel="You"
+            bounds={meetingBounds}
+            safeTop={chrome.insets.top}
+            safeBottom={chrome.insets.bottom}
+            position={pipLayout.pipLayout.local.position}
+            isHidden={pipLayout.pipLayout.local.isHidden}
+            hiddenEdge={pipLayout.pipLayout.local.hiddenEdge}
+            onPositionChange={(pos) => pipLayout.updatePosition("local", pos)}
+            onHide={(edge, last) => pipLayout.hideTile("local", edge, last)}
+            onRestore={() => pipLayout.restoreTile("local")}
+          />
+          <DraggableVideoPip
+            tileId="remote"
+            user={peerUser}
+            stream={remoteStream}
+            isStreamOff={!remoteStream || remoteCameraOff}
+            tabLabel={peerDisplayName.split(" ")[0] || "Partner"}
+            bounds={meetingBounds}
+            safeTop={chrome.insets.top}
+            safeBottom={chrome.insets.bottom}
+            position={pipLayout.pipLayout.remote.position}
+            isHidden={pipLayout.pipLayout.remote.isHidden}
+            hiddenEdge={pipLayout.pipLayout.remote.hiddenEdge}
+            onPositionChange={(pos) => pipLayout.updatePosition("remote", pos)}
+            onHide={(edge, last) => pipLayout.hideTile("remote", edge, last)}
+            onRestore={() => pipLayout.restoreTile("remote")}
+          />
+        </>
+      ) : null}
 
       {/* Top chrome */}
       <TimeRemaining

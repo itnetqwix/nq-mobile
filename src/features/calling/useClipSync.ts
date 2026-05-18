@@ -11,11 +11,6 @@
  *
  * Trainer-side emitters mirror the names in `socketClient.js` so a trainer on
  * mobile and a trainee on web (or vice-versa) stay perfectly synchronised.
- *
- * The state-machine here intentionally keeps **no** clip metadata — it only
- * holds the currently-selected clip id and play state. The screen looks up the
- * actual clip object from `useTraineeClips` so we don't duplicate the source
- * of truth.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -29,18 +24,52 @@ type SeekHint = {
   receivedAt: number;
 } | null;
 
+export type HiddenVideosMap = {
+  teacher: boolean;
+  student: boolean;
+};
+
+export type VideoHideType = "teacher" | "student" | "live";
+
 type Args = {
   socket: Socket | null;
   fromUserId: string;
   toUserId: string;
   sessionId?: string;
+  /** When true, hide/show emits are sent to the peer. */
+  isTrainer?: boolean;
 };
 
-export function useClipSync({ socket, fromUserId, toUserId, sessionId }: Args) {
+const EMPTY_HIDDEN: HiddenVideosMap = { teacher: false, student: false };
+
+function applyVideoTypeHide(
+  prev: HiddenVideosMap,
+  videoType: string,
+  hidden: boolean
+): HiddenVideosMap {
+  if (videoType === "live") {
+    return { teacher: hidden, student: hidden };
+  }
+  if (videoType === "teacher") {
+    return { ...prev, teacher: hidden };
+  }
+  if (videoType === "student") {
+    return { ...prev, student: hidden };
+  }
+  return prev;
+}
+
+export function useClipSync({
+  socket,
+  fromUserId,
+  toUserId,
+  sessionId,
+  isTrainer = false,
+}: Args) {
   const [activeClipId, setActiveClipId] = useState<string | null>(null);
   const [activeClipUrl, setActiveClipUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [hideLocalCamera, setHideLocalCamera] = useState(false);
+  const [hiddenVideos, setHiddenVideos] = useState<HiddenVideosMap>(EMPTY_HIDDEN);
   const [seekHint, setSeekHint] = useState<SeekHint>(null);
   const lastSeekEmit = useRef(0);
 
@@ -79,10 +108,15 @@ export function useClipSync({ socket, fromUserId, toUserId, sessionId }: Args) {
     };
 
     const onHide = (payload: any) => {
-      if (payload?.videoType === "live") setHideLocalCamera(true);
+      const videoType = payload?.videoType;
+      if (!videoType) return;
+      setHiddenVideos((prev) => applyVideoTypeHide(prev, String(videoType), true));
     };
+
     const onShow = (payload: any) => {
-      if (payload?.videoType === "live") setHideLocalCamera(false);
+      const videoType = payload?.videoType;
+      if (!videoType) return;
+      setHiddenVideos((prev) => applyVideoTypeHide(prev, String(videoType), false));
     };
 
     socket.on(CLIP_EVENTS.ON_VIDEO_SELECT, onSelect);
@@ -100,7 +134,6 @@ export function useClipSync({ socket, fromUserId, toUserId, sessionId }: Args) {
     };
   }, [socket]);
 
-  /** Trainer broadcasts a clip id to play; trainee tracks it locally. */
   const selectClip = useCallback(
     (clipId: string | null, playbackUrl?: string | null) => {
       setActiveClipId(clipId);
@@ -131,7 +164,6 @@ export function useClipSync({ socket, fromUserId, toUserId, sessionId }: Args) {
     [activeClipId, isPlaying, socket, userInfo]
   );
 
-  /** Throttled seek emit — web throttles at ~5 emits / sec. */
   const seek = useCallback(
     (progressSeconds: number) => {
       if (!activeClipId) return;
@@ -152,27 +184,43 @@ export function useClipSync({ socket, fromUserId, toUserId, sessionId }: Args) {
     [activeClipId, socket, userInfo]
   );
 
-  const hideLiveCamera = useCallback(
-    (hidden: boolean) => {
-      setHideLocalCamera(hidden);
-      socket?.emit(hidden ? CLIP_EVENTS.ON_VIDEO_HIDE : CLIP_EVENTS.ON_VIDEO_SHOW, {
-        videoType: "live",
+  const setVideoHidden = useCallback(
+    (videoType: VideoHideType, hidden: boolean) => {
+      setHiddenVideos((prev) => applyVideoTypeHide(prev, videoType, hidden));
+      if (!isTrainer || !socket) return;
+      socket.emit(hidden ? CLIP_EVENTS.ON_VIDEO_HIDE : CLIP_EVENTS.ON_VIDEO_SHOW, {
+        videoType,
         userInfo,
+        sessionId,
       });
     },
-    [socket, userInfo]
+    [isTrainer, socket, userInfo, sessionId]
   );
+
+  /** @deprecated Use setVideoHidden('live', hidden) */
+  const hideLiveCamera = useCallback(
+    (hidden: boolean) => {
+      setVideoHidden("live", hidden);
+    },
+    [setVideoHidden]
+  );
+
+  const hideLocalCamera =
+    hiddenVideos.teacher && hiddenVideos.student
+      ? true
+      : hiddenVideos.teacher || hiddenVideos.student;
 
   return {
     activeClipId,
     activeClipUrl,
     isPlaying,
+    hiddenVideos,
     hideLocalCamera,
-    /** Latest playhead nudge from the trainer; consumer should debounce-seek. */
     seekHint,
     selectClip,
     togglePlay,
     seek,
+    setVideoHidden,
     hideLiveCamera,
   };
 }

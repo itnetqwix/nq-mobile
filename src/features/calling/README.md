@@ -31,14 +31,16 @@ other.
 | `iceServers.ts` | Same ICE config builder as web `callEngine.js → buildIceConfig`. |
 | `screens/NativeMeetingScreen.tsx` | Orchestrator — mirrors the web `VideoCallUI` block. |
 | `screens/MeetingRouter.tsx` | Navigator-level switch (native vs WebView). |
-| `components/UserBox.tsx` | `RTCView` tile for the remote stream plus a draggable mini for the local preview. |
+| `components/UserBox.tsx` | `RTCView` tile for the main remote/clip pane. |
+| `components/DraggableVideoPip.tsx` | Draggable local + remote live camera PIPs; drag off-screen to hide, edge tab to restore. |
+| `useVideoPipLayout.ts` | PIP position/hide state; maps `teacher`/`student` roles for socket sync. |
 | `components/ActionButtons.tsx` | Bottom control bar: mute, camera, flip, clip picker, screenshot, end call. |
 | `components/TimeRemaining.tsx` | RN port of the web `time-remaining.jsx` pill with coach controls and 5-min / 30-s warnings. |
 | `components/PeerJoinedModal.tsx` | Native modal triggered when `CallContext.peerJoined` fires (web parity with `showPartnerJoinedPrompt`). |
 | `components/ClipPickerModal.tsx` | Trainer-only clip picker backed by `/common/get-clips` + `/common/trainee-clips`. |
 | `components/ClipPlayer.tsx` | `expo-av` Video wrapper synced via `useClipSync`. |
 | `components/DrawingOverlay.tsx` | Skia-based annotation overlay on top of the clip pane. |
-| `components/RecordingBar.tsx` | "REC" chip shown during instant lessons. |
+| `components/RecordingBar.tsx` | Deferred — not mounted in native meetings. |
 | `components/RatingsModal.tsx` | Post-session rating modal mirroring `bookings/ratings/index.jsx`. |
 | `components/PortraitCallOverlay.tsx` | Slim native overlay placed on top of the WebView when running the fallback. |
 | `components/PortraitCallChrome.tsx` | Older scaffold for full chrome (kept for compatibility). |
@@ -67,6 +69,20 @@ These are declared in `app.json` and surfaced at runtime via the
 - Android: `CAMERA`, `RECORD_AUDIO`, `MODIFY_AUDIO_SETTINGS`,
   `BLUETOOTH_CONNECT`, `FOREGROUND_SERVICE`,
   `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `WAKE_LOCK`.
+
+## Draggable camera PIPs (hide / restore / sync)
+
+During a native lesson, **local** and **remote** live cameras render as draggable
+picture-in-picture tiles over the main pane (remote video or clip player).
+
+- **Drag off-screen** (less than ~25% visible) hides the tile and shows a small
+  edge tab (camera icon + label).
+- **Tap the edge tab** restores the tile at its last visible position.
+- **Trainer** drag-hide emits `ON_VIDEO_HIDE` / `ON_VIDEO_SHOW` with
+  `videoType: "teacher"` (coach camera) or `"student"` (trainee camera) — same as
+  web clip mode. The **trainee** UI applies the matching hide without emitting.
+- **Trainee** can still drag-hide tiles **locally** (no socket) to clear space for
+  clip controls and lesson chrome.
 
 ## Mobile <→ Web interop note
 
