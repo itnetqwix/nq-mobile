@@ -16,6 +16,9 @@ import { LoaderProvider } from "../components/brand/LoaderProvider";
 import { warmLoaderTipsCache } from "../components/brand/loaderTips/loaderTipsService";
 import { ThemeProvider } from "../theme/ThemeContext";
 import { ThemedNavigationContainer } from "./ThemedNavigationContainer";
+import i18n from "../i18n";
+import { normalizeAppLocale } from "../i18n/languages";
+import { loadPersistedAppLocale } from "../i18n/localeStorage";
 
 export function AppRoot() {
   const queryClient = useMemo(
@@ -33,6 +36,13 @@ export function AppRoot() {
 
   useEffect(() => {
     warmLoaderTipsCache();
+  }, []);
+
+  useEffect(() => {
+    void (async () => {
+      const stored = await loadPersistedAppLocale();
+      if (stored) await i18n.changeLanguage(normalizeAppLocale(stored));
+    })();
   }, []);
 
   const navigateToMeeting = useCallback((lessonId: string) => {

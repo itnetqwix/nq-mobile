@@ -13,13 +13,17 @@ import {
   Text,
   View,
 } from "react-native";
-import { Button } from "../../../components/ui";
+import { useTranslation } from "react-i18next";
+import { Button, TimeZoneSearchModal } from "../../../components/ui";
 import { colors, radii, space, typography } from "../../../theme";
 import {
   fetchTrainerSlots,
   postTrainerSlots,
+  putProfile,
   type TrainerScheduleDay,
 } from "../../home/api/homeApi";
+import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
+import { useAuth } from "../../auth/context/AuthContext";
 
 /** Same day order/casing as web `weekDays` in `nq-frontend-main/app/common/constants.js`. */
 const WEEKDAYS = [
@@ -210,7 +214,49 @@ function TimePickerModal({
 }
 
 export function TrainerScheduleScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { user, accountType, refreshUser, patchUser } = useAuth();
+
+  const defaultTz = "America/New_York";
+  const [profileTz, setProfileTz] = useState(defaultTz);
+  const [tzModalOpen, setTzModalOpen] = useState(false);
+  const [tzBusy, setTzBusy] = useState(false);
+
+  useEffect(() => {
+    setProfileTz(
+      typeof user?.time_zone === "string" && user.time_zone.trim()
+        ? (user.time_zone as string).trim()
+        : defaultTz
+    );
+  }, [user?.time_zone]);
+
+  const tzDirty = useMemo(() => {
+    const saved =
+      typeof user?.time_zone === "string" && user.time_zone.trim()
+        ? (user.time_zone as string).trim()
+        : defaultTz;
+    return profileTz.trim() !== saved;
+  }, [user?.time_zone, profileTz]);
+
+  const saveTimezoneOnly = async () => {
+    if (accountType !== "Trainer") return;
+    setTzBusy(true);
+    try {
+      const next = profileTz.trim() || defaultTz;
+      await putProfile("Trainer", { time_zone: next });
+      await refreshUser();
+      patchUser({ time_zone: next });
+      Alert.alert(
+        t("trainerAvailability.timezoneSaved"),
+        t("trainerAvailability.timezoneSavedBody")
+      );
+    } catch (e) {
+      Alert.alert(t("trainerAvailability.timezoneError"), getApiErrorMessage(e));
+    } finally {
+      setTzBusy(false);
+    }
+  };
 
   const { data, isLoading, isRefetching, refetch } = useQuery({
     queryKey: ["trainerSchedule"],
@@ -325,6 +371,33 @@ export function TrainerScheduleScreen() {
           time ranges as you want per day. Tap a time to change it.
         </Text> */}
 
+        <View style={styles.tzCard}>
+          <Text style={styles.tzTitle}>{t("trainerAvailability.timezoneTitle")}</Text>
+          <Text style={styles.tzHint}>{t("trainerAvailability.timezoneSubtitle")}</Text>
+          <Pressable
+            onPress={() => setTzModalOpen(true)}
+            style={styles.tzChip}
+            accessibilityRole="button"
+            accessibilityLabel={t("trainerAvailability.timezoneTitle")}
+          >
+            <Ionicons name="globe-outline" size={18} color={colors.brandNavy} />
+            <Text style={styles.tzChipText} numberOfLines={2}>
+              {profileTz}
+            </Text>
+            <Ionicons name="chevron-down" size={20} color={colors.brandNavy} />
+          </Pressable>
+          {tzDirty ? (
+            <Button
+              label={t("trainerAvailability.saveTimezone")}
+              leftIcon="save-outline"
+              loading={tzBusy}
+              disabled={tzBusy}
+              onPress={() => void saveTimezoneOnly()}
+              style={{ marginTop: space.sm }}
+            />
+          ) : null}
+        </View>
+
         {days.map((d, dayIdx) => (
           <View key={d.day} style={styles.dayCard}>
             <View style={styles.dayHeader}>
@@ -393,6 +466,12 @@ export function TrainerScheduleScreen() {
           }}
         />
       )}
+      <TimeZoneSearchModal
+        visible={tzModalOpen}
+        selectedId={profileTz}
+        onClose={() => setTzModalOpen(false)}
+        onConfirm={(iana) => setProfileTz(iana)}
+      />
     </View>
   );
 }
@@ -402,6 +481,27 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   content: { padding: space.md, gap: space.md, paddingBottom: space.xl * 2 },
   lead: { ...typography.bodySm, color: colors.textMuted },
+
+  tzCard: {
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: radii.md,
+    padding: space.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: space.sm,
+  },
+  tzTitle: { ...typography.titleSm, color: colors.brandNavy },
+  tzHint: { ...typography.bodySm, color: colors.textMuted },
+  tzChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: colors.brandSubtle,
+    borderRadius: radii.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  tzChipText: { ...typography.bodySm, fontWeight: "600", color: colors.brandNavy, flex: 1 },
 
   dayCard: {
     backgroundColor: colors.surfaceElevated,

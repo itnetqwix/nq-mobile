@@ -124,7 +124,6 @@ export function EditProfileScreen() {
     () => ({
       fullname: (user?.fullname as string) || (user?.fullName as string) || "",
       bio: (user?.bio as string) || "",
-      time_zone: (user?.time_zone as string) || "America/New_York",
       mobile_no: (user?.mobile_no as string) || "",
       hourly_rate: ((user as any)?.extraInfo?.hourly_rate as string) || "",
     }),
@@ -133,7 +132,6 @@ export function EditProfileScreen() {
 
   const [fullname, setFullname] = useState(initial.fullname);
   const [bio, setBio] = useState(initial.bio);
-  const [timeZone, setTimeZone] = useState(initial.time_zone);
   const [mobile, setMobile] = useState(initial.mobile_no);
   const [hourlyRate, setHourlyRate] = useState(initial.hourly_rate);
   const [busy, setBusy] = useState(false);
@@ -141,7 +139,6 @@ export function EditProfileScreen() {
   useEffect(() => {
     setFullname(initial.fullname);
     setBio(initial.bio);
-    setTimeZone(initial.time_zone);
     setMobile(initial.mobile_no);
     setHourlyRate(initial.hourly_rate);
   }, [initial]);
@@ -149,7 +146,6 @@ export function EditProfileScreen() {
   const dirty =
     fullname !== initial.fullname ||
     bio !== initial.bio ||
-    timeZone !== initial.time_zone ||
     mobile !== initial.mobile_no ||
     hourlyRate !== initial.hourly_rate;
 
@@ -162,7 +158,6 @@ export function EditProfileScreen() {
     try {
       const profile: ProfileUpdate = {
         fullname: fullname.trim(),
-        time_zone: timeZone.trim(),
         bio: bio.trim(),
       };
       if (isTrainer && hourlyRate) {
@@ -233,18 +228,6 @@ export function EditProfileScreen() {
             keyboardType="phone-pad"
           />
         </View>
-      </Card>
-
-      <SectionHeader label="Preferences" />
-      <Card variant="outlined" padding="md" style={styles.sectionCard}>
-        <FormField
-          label="Timezone"
-          value={timeZone}
-          onChangeText={setTimeZone}
-          placeholder="e.g. America/New_York"
-          autoCapitalize="none"
-          hint="IANA timezone identifier"
-        />
       </Card>
 
       {isTrainer && (

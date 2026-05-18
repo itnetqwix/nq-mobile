@@ -208,6 +208,7 @@ export type ProfileUpdate = Partial<{
   fullname: string;
   bio: string;
   time_zone: string;
+  preferred_locale: string;
   category: string;
   hourly_rate: string;
 }>;

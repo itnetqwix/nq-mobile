@@ -45,12 +45,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       if (!token) return;
 
       /**
-       * Match web `app/components/socket/SocketProvider.jsx`: JWT in handshake **`auth`**
-       * (not only query). Long `?authorization=…` on the WS upgrade URL is rejected by some
-       * CDNs/proxies; backend reads `handshake.auth.authorization` first (`socket/init.ts`).
+       * JWT in **`auth`** (web parity) and **`query.authorization`** fallback for clients
+       * that omit `handshake.auth` on the first Engine.IO packet.
        */
       createdSocket = io(API_BASE_URL, {
         auth: { authorization: token },
+        query: { authorization: token },
         transports: ["websocket", "polling"],
         reconnection: true,
         reconnectionAttempts: 10,

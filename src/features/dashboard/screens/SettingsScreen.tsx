@@ -12,13 +12,17 @@ import {
   Text,
   View,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import {
   Avatar,
+  Button,
   Card,
+  LanguagePickerModal,
   ListRow,
   Pill,
   ScreenContainer,
   SectionHeader,
+  TimeZoneSearchModal,
 } from "../../../components/ui";
 import { WEB_APP_ORIGIN } from "../../../config/env";
 import { AccountType } from "../../../constants/accountType";
@@ -33,11 +37,16 @@ import {
   setAppUnlockEnabled,
 } from "../../auth/security/appUnlock";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
+import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import {
   patchUserNotificationSettings,
   postAccountPrivacy,
+  putProfile,
   type UserNotificationPrefs,
 } from "../../home/api/homeApi";
+import i18n from "../../../i18n";
+import { languageLabelForCode, normalizeAppLocale } from "../../../i18n/languages";
+import { persistAppLocale } from "../../../i18n/localeStorage";
 
 function readNotificationPrefs(user: Record<string, unknown> | null): UserNotificationPrefs {
   const n = (user?.notifications ?? {}) as Partial<UserNotificationPrefs>;
@@ -54,8 +63,11 @@ function readNotificationPrefs(user: Record<string, unknown> | null): UserNotifi
 }
 
 export function SettingsScreen() {
+  const { t } = useTranslation();
   const c = useThemeColors();
   const navigation = useNavigation<NativeStackNavigationProp<MenuStackParamList>>();
+
+  const defaultTz = "America/New_York";
 
   const openShell = useCallback(
     (id: ShellSurfaceRouteId) => {
@@ -77,6 +89,67 @@ export function SettingsScreen() {
   const email = (user?.email as string) ?? "";
   const profileUri = getS3ImageUrl((user as any)?.profile_picture);
   const isTrainer = accountType === AccountType.TRAINER;
+
+  const [localeDraft, setLocaleDraft] = useState(() => normalizeAppLocale(i18n.language));
+  const [tzDraft, setTzDraft] = useState(defaultTz);
+  const [langOpen, setLangOpen] = useState(false);
+  const [tzOpen, setTzOpen] = useState(false);
+  const [regionalBusy, setRegionalBusy] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    const loc =
+      typeof user.preferred_locale === "string" && user.preferred_locale.trim()
+        ? normalizeAppLocale(user.preferred_locale)
+        : normalizeAppLocale(i18n.language);
+    setLocaleDraft(loc);
+    setTzDraft(
+      typeof user.time_zone === "string" && user.time_zone.trim()
+        ? (user.time_zone as string).trim()
+        : defaultTz
+    );
+  }, [user]);
+
+  const regionalDirty = useMemo(() => {
+    const draftLoc = normalizeAppLocale(localeDraft);
+    const savedLocStr =
+      typeof user?.preferred_locale === "string" ? user.preferred_locale.trim() : "";
+    const savedLoc = savedLocStr ? normalizeAppLocale(savedLocStr) : null;
+    const locDiff =
+      savedLoc !== null
+        ? draftLoc !== savedLoc
+        : draftLoc !== normalizeAppLocale(i18n.language);
+
+    const savedTz = (
+      typeof user?.time_zone === "string" && user.time_zone.trim()
+        ? user.time_zone
+        : defaultTz
+    ).trim();
+    const tzDiff = tzDraft.trim() !== savedTz;
+    return locDiff || tzDiff;
+  }, [user, localeDraft, tzDraft, i18n.language]);
+
+  const saveRegional = async () => {
+    if (!accountType) {
+      Alert.alert(t("settings.regionalError"), "Not signed in.");
+      return;
+    }
+    const role = accountType === AccountType.TRAINER ? "Trainer" : "Trainee";
+    setRegionalBusy(true);
+    try {
+      const nextLoc = normalizeAppLocale(localeDraft);
+      const nextTz = tzDraft.trim() || defaultTz;
+      await putProfile(role, { preferred_locale: nextLoc, time_zone: nextTz });
+      await i18n.changeLanguage(nextLoc);
+      await persistAppLocale(nextLoc);
+      patchUser({ preferred_locale: nextLoc, time_zone: nextTz });
+      Alert.alert(t("settings.regionalSaved"), t("settings.regionalSavedBody"));
+    } catch (e) {
+      Alert.alert(t("settings.regionalError"), getApiErrorMessage(e));
+    } finally {
+      setRegionalBusy(false);
+    }
+  };
 
   const [isPrivate, setIsPrivate] = useState(Boolean(user?.isPrivate));
   const [notif, setNotif] = useState<UserNotificationPrefs>(() => readNotificationPrefs(user));
@@ -264,6 +337,49 @@ export function SettingsScreen() {
           </React.Fragment>
         ))}
       </Card>
+
+      <SectionHeader label={t("settings.regionalTitle")} />
+      <Card variant="outlined" padding={0} style={styles.sectionCard}>
+        <ListRow
+          icon="language-outline"
+          title={t("settings.language")}
+          subtitle={languageLabelForCode(localeDraft)}
+          onPress={() => setLangOpen(true)}
+        />
+        <Divider />
+        <ListRow
+          icon="globe-outline"
+          title={t("settings.timezone")}
+          subtitle={tzDraft}
+          onPress={() => setTzOpen(true)}
+        />
+        {regionalDirty ? (
+          <>
+            <Divider />
+            <View style={{ padding: space.md }}>
+              <Button
+                label={t("settings.saveRegional")}
+                leftIcon="save-outline"
+                loading={regionalBusy}
+                onPress={() => void saveRegional()}
+              />
+            </View>
+          </>
+        ) : null}
+      </Card>
+
+      <LanguagePickerModal
+        visible={langOpen}
+        selectedCode={localeDraft}
+        onClose={() => setLangOpen(false)}
+        onSelect={(code) => setLocaleDraft(normalizeAppLocale(code))}
+      />
+      <TimeZoneSearchModal
+        visible={tzOpen}
+        selectedId={tzDraft}
+        onClose={() => setTzOpen(false)}
+        onConfirm={(iana) => setTzDraft(iana)}
+      />
 
       <SectionHeader label="Security" />
       <Card variant="outlined" padding={0} style={styles.sectionCard}>

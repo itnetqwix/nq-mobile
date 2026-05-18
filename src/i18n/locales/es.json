@@ -1,0 +1,25 @@
+{
+  "common": {
+    "cancel": "Cancelar",
+    "done": "Listo",
+    "close": "Cerrar",
+    "timezonePickerTitle": "Zona horaria"
+  },
+  "settings": {
+    "regionalTitle": "Región e idioma",
+    "language": "Idioma de la app",
+    "timezone": "Zona horaria",
+    "saveRegional": "Guardar región e idioma",
+    "regionalSaved": "Preferencias guardadas",
+    "regionalSavedBody": "El idioma y la zona horaria se actualizaron en tu cuenta.",
+    "regionalError": "No se pudieron guardar las preferencias."
+  },
+  "trainerAvailability": {
+    "timezoneTitle": "Zona horaria de disponibilidad",
+    "timezoneSubtitle": "Las horas semanales se guardan con esta zona en tu perfil. Elige la zona que usas al planificar sesiones.",
+    "saveTimezone": "Guardar zona horaria",
+    "timezoneSaved": "Zona horaria actualizada",
+    "timezoneSavedBody": "La zona horaria del perfil se guardó.",
+    "timezoneError": "No se pudo guardar la zona horaria."
+  }
+}

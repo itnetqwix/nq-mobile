@@ -21,6 +21,7 @@ import {
   saveSession,
 } from "../session/tokenStorage";
 import { registerMyChatPublicKey } from "../../chats/crypto/chatKeysApi";
+import { applyLanguageFromUser } from "../../../i18n/applyLanguageFromUser";
 
 export type AuthUser = Record<string, unknown> | null;
 
@@ -55,6 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!token) return;
     const me = await getCurrentUser();
     setUser(me);
+    void applyLanguageFromUser(me);
     const at = await getAccountType();
     if (at) setAccountType(at);
   }, []);
@@ -81,6 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(me);
         setAccountType(at ?? (me?.account_type as string) ?? (me?.accountType as string) ?? null);
         setStatus("signedIn");
+        void applyLanguageFromUser(me);
         const sid = await getSessionId();
         if (!sid) void ensureAuthSessionRegistered().catch(() => undefined);
       } catch {
@@ -113,6 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(me);
         setAccountType(tokens.account_type);
         setStatus("signedIn");
+        void applyLanguageFromUser(me);
         queryClient.invalidateQueries();
         void queryClient.prefetchQuery({
           queryKey: ["masterRow"],

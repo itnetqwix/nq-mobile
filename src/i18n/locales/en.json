@@ -1,0 +1,25 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "done": "Done",
+    "close": "Close",
+    "timezonePickerTitle": "Timezone"
+  },
+  "settings": {
+    "regionalTitle": "Region & language",
+    "language": "App language",
+    "timezone": "Timezone",
+    "saveRegional": "Save region & language",
+    "regionalSaved": "Preferences saved",
+    "regionalSavedBody": "Language and timezone are updated on your account.",
+    "regionalError": "Could not save preferences."
+  },
+  "trainerAvailability": {
+    "timezoneTitle": "Availability timezone",
+    "timezoneSubtitle": "Weekly hours are stored with this zone on your profile. Pick the zone you use when planning sessions.",
+    "saveTimezone": "Save timezone",
+    "timezoneSaved": "Timezone updated",
+    "timezoneSavedBody": "Your profile timezone is saved.",
+    "timezoneError": "Could not save timezone."
+  }
+}

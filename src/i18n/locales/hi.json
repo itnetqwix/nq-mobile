@@ -1,0 +1,25 @@
+{
+  "common": {
+    "cancel": "रद्द करें",
+    "done": "ठीक",
+    "close": "बंद करें",
+    "timezonePickerTitle": "समय क्षेत्र"
+  },
+  "settings": {
+    "regionalTitle": "क्षेत्र और भाषा",
+    "language": "ऐप की भाषा",
+    "timezone": "समय क्षेत्र",
+    "saveRegional": "क्षेत्र और भाषा सहेजें",
+    "regionalSaved": "प्राथमिकताएँ सहेजी गईं",
+    "regionalSavedBody": "भाषा और समय क्षेत्र आपके खाते में अपडेट हो गए।",
+    "regionalError": "प्राथमिकताएँ सहेजी नहीं जा सकीं।"
+  },
+  "trainerAvailability": {
+    "timezoneTitle": "उपलब्धता समय क्षेत्र",
+    "timezoneSubtitle": "साप्ताहिक समय आपकी प्रोफ़ाइल पर इस क्षेत्र के साथ सहेजे जाते हैं। सत्र नियोजन में जिस क्षेत्र का उपयोग करते हैं, वह चुनें।",
+    "saveTimezone": "समय क्षेत्र सहेजें",
+    "timezoneSaved": "समय क्षेत्र अपडेट हुआ",
+    "timezoneSavedBody": "आपकी प्रोफ़ाइल समय क्षेत्र सहेजा गया।",
+    "timezoneError": "समय क्षेत्र सहेजा नहीं जा सका।"
+  }
+}
