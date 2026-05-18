@@ -87,8 +87,7 @@ export function WizardStepConfirm({
         ) : null}
       </View>
       <Text style={sharedStepStyles.muted}>
-        We create the instant booking, attach any clips you chose, then send the request to the coach (same sequence
-        as the web student flow).
+        We create the instant booking, attach any clips you choose, then send the request to the coach.
       </Text>
 
       <Pressable

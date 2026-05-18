@@ -37,7 +37,7 @@ export const DASHBOARD_ROUTES: readonly DashboardRouteMeta[] = [
     id: "instant-booking",
     title: "Instant booking",
     subtitle:
-      "Same flows as the web locker home (`NavHomePage`): instant lesson modal, active sessions, and quick bookings.",
+      "(`NavHomePage`): instant lesson modal, active sessions, and quick bookings.",
     webPath: "/dashboard/home",
     allowedRoles: [AccountType.TRAINEE],
   },

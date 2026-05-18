@@ -216,7 +216,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
         trainer_id: tid,
         booked_date: new Date().toISOString(),
         duration: durationMinutes,
-        charging_price: chargingPrice,
+        charging_price: expectedPrice,
       };
       if (paymentIntentId) bookingPayload.payment_intent_id = paymentIntentId;
       if (paymentMethod === "wallet") {

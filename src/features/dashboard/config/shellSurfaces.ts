@@ -54,7 +54,7 @@ export const SHELL_SURFACES: readonly ShellSurfaceMeta[] = [
   {
     id: "invite",
     title: "Invite friends",
-    subtitle: "Email invitations — same `/user/invite-friend` flow as the web dashboard card.",
+    subtitle: "Email invitations.",
     webContext: "Dashboard home → Invite friends (`InviteFriendsCard`).",
     allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
   },

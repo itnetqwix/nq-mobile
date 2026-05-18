@@ -29,7 +29,7 @@ export function HomeUploadInviteRow({ onClips, onInvite }: Props) {
         <Ionicons name="film-outline" size={26} color={c.iconPrimary} />
         <Text style={webHomeStyles.homePromoTitle}>Clips</Text>
         <Text style={webHomeStyles.homePromoSub}>
-          Watch locker videos in the app — same data as the web My clips tab.
+          Watch locker videos in the app.
         </Text>
         <Text style={{ fontSize: 12, fontWeight: "700", color: c.sidebarActive }}>
           Open clips →

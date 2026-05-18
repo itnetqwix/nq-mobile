@@ -135,7 +135,7 @@ export function InstantLessonTraineeModal() {
       <View style={styles.clipSection}>
         <Text style={styles.clipSectionTitle}>Videos (optional)</Text>
         <Text style={styles.clipHint}>
-          Select up to {MAX_CLIPS} clips from your locker — same as the web instant-lesson picker. You
+          Select up to {MAX_CLIPS} clips from your locker. You
           can join without clips.
         </Text>
         <Pressable style={styles.uploadLink} onPress={openUploadsShell}>
