@@ -19,6 +19,9 @@ type SocketContextValue = {
 
 const SocketContext = createContext<SocketContextValue>({ socket: null, isConnected: false });
 
+/** Avoid flooding Metro when the API is unreachable or WebSocket upgrade fails. */
+let lastSocketErrorLogAt = 0;
+
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const { status } = useAuth();
   const queryClient = useQueryClient();
@@ -45,19 +48,20 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       if (!token) return;
 
       /**
-       * JWT in **`auth`** (web parity) and **`query.authorization`** fallback for clients
-       * that omit `handshake.auth` on the first Engine.IO packet.
+       * Web parity: JWT only in handshake `auth` (not query) so the WebSocket URL stays
+       * short — long query strings are rejected by some proxies before the upgrade.
+       * Polling first improves reliability on mobile networks; client upgrades when possible.
        */
       createdSocket = io(API_BASE_URL, {
         auth: { authorization: token },
-        query: { authorization: token },
-        transports: ["websocket", "polling"],
+        transports: ["polling", "websocket"],
         reconnection: true,
         reconnectionAttempts: 10,
-        reconnectionDelay: 2000,
+        reconnectionDelay: 1500,
         reconnectionDelayMax: 10_000,
         timeout: 30_000,
         upgrade: true,
+        rememberUpgrade: true,
       });
 
       if (cancelled) {
@@ -69,13 +73,23 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
       createdSocket.on("connect", () => {
         if (!cancelled) setIsConnected(true);
+        if (__DEV__) {
+          // eslint-disable-next-line no-console
+          console.log("[socket] connected via", createdSocket?.io.engine?.transport?.name);
+        }
       });
 
       createdSocket.on("connect_error", (err) => {
-        if (__DEV__) {
-          // eslint-disable-next-line no-console
-          console.warn("[socket] connect_error", err?.message ?? err);
-        }
+        if (!__DEV__) return;
+        const now = Date.now();
+        if (now - lastSocketErrorLogAt < 15_000) return;
+        lastSocketErrorLogAt = now;
+        // eslint-disable-next-line no-console
+        console.warn(
+          "[socket] connect_error",
+          err?.message ?? err,
+          `(API: ${API_BASE_URL})`
+        );
       });
 
       /** Same cadence as web `portrait-calling` heartbeat (10s). */

@@ -69,6 +69,8 @@ export function InstantLessonBookingWizardModal({ visible, trainer, onDismiss }:
             <WizardStepPayment
               trainer={w.trainer}
               durationMinutes={w.durationMinutes}
+              expectedPrice={w.expectedPrice}
+              promoResult={w.promoResult}
               couponCode={w.couponCode}
               userStripeId={w.userStripeId}
               onPaymentComplete={w.handlePaymentComplete}
@@ -86,6 +88,8 @@ export function InstantLessonBookingWizardModal({ visible, trainer, onDismiss }:
               durationMinutes={w.durationMinutes}
               selectedClipIds={w.selectedClipIds}
               couponCode={w.couponCode}
+              expectedPrice={w.expectedPrice}
+              promoResult={w.promoResult}
               chargingPrice={w.chargingPrice}
               isSubmitting={w.submitIsPending}
               onSubmit={w.handleSendRequest}

@@ -62,7 +62,7 @@ import { isPendingBooking, normalizeSessionStatus, getOtherParty } from "../../.
 import { PostLessonConcernBanner } from "../../sessions/components/PostLessonConcernBanner";
 import { TrainerProfileModal } from "../../bookexpert/components/TrainerProfileModal";
 import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
-import { ScheduledBookingModal } from "../../bookings/screens/ScheduledBookingModal";
+import { ScheduledBookingWizardModal } from "../../scheduled-booking/ScheduledBookingWizardModal";
 import { getTrainerCategories } from "../../bookexpert/lib/trainerUtils";
 
 function useDashboardHomeStyles() {
@@ -604,10 +604,11 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
         trainer={wizardTrainer}
         onDismiss={() => setWizardTrainer(null)}
       />
-      <ScheduledBookingModal
+      <ScheduledBookingWizardModal
         visible={!!scheduleTrainer}
         trainer={scheduleTrainer}
         onDismiss={() => setScheduleTrainer(null)}
+        onBooked={() => openFeature("upcoming-sessions")}
       />
       <TrainerProfileModal
         visible={!!profileTrainer}

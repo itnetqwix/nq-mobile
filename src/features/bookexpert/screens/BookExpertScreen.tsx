@@ -20,7 +20,7 @@ import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { fetchOnlineUsers, fetchTrainersWithSlots } from "../../home/api/homeApi";
 import { useOnlinePresence } from "../../socket/useOnlinePresence";
 import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
-import { ScheduledBookingModal } from "../../bookings/screens/ScheduledBookingModal";
+import { ScheduledBookingWizardModal } from "../../scheduled-booking/ScheduledBookingWizardModal";
 import type { MenuStackParamList } from "../../../navigation/types";
 import { TrainerBrowseFiltersSheet } from "../components/TrainerBrowseFiltersSheet";
 import { TrainerProfileModal } from "../components/TrainerProfileModal";
@@ -228,7 +228,7 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
         trainer={wizardTrainer}
         onDismiss={() => setWizardTrainer(null)}
       />
-      <ScheduledBookingModal
+      <ScheduledBookingWizardModal
         visible={!!scheduleTrainer}
         trainer={scheduleTrainer}
         onDismiss={() => setScheduleTrainer(null)}

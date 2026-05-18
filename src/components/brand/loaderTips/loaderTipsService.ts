@@ -1,11 +1,14 @@
 import * as SecureStore from "expo-secure-store";
 import { API_BASE_URL } from "../../../config/env";
 import { fetchMasterRow } from "../../../features/auth/api/masterApi";
+import { readFileCache, writeFileCache } from "../../../lib/fileCacheStorage";
 import { DEFAULT_LOADER_TIPS } from "./defaultLoaderTips";
 
 const DECK_KEY = "nq.loader-tips.deck";
 const REMOTE_KEY = "nq.loader-tips.remote";
 const REMOTE_AT_KEY = "nq.loader-tips.remote.at";
+
+type RemoteTipsCache = { at: number; tips: string[] };
 const REMOTE_TTL_MS = 6 * 60 * 60 * 1000;
 
 type TipDeckState = {
@@ -67,12 +70,19 @@ function buildDeck(tips: string[]): TipDeckState {
 
 async function readDeckFromStore(): Promise<TipDeckState | null> {
   try {
+    const fromFile = await readFileCache<TipDeckState>(DECK_KEY);
+    if (fromFile?.version === 1 && Array.isArray(fromFile.tips) && fromFile.tips.length > 0) {
+      return fromFile;
+    }
+    /** One-time migration from SecureStore (values often exceed the 2KB limit). */
     const raw = await SecureStore.getItemAsync(DECK_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as TipDeckState;
     if (parsed?.version !== 1 || !Array.isArray(parsed.tips) || parsed.tips.length === 0) {
       return null;
     }
+    await writeFileCache(DECK_KEY, parsed);
+    await SecureStore.deleteItemAsync(DECK_KEY).catch(() => undefined);
     return parsed;
   } catch {
     return null;
@@ -82,7 +92,7 @@ async function readDeckFromStore(): Promise<TipDeckState | null> {
 async function writeDeckToStore(deck: TipDeckState): Promise<void> {
   memoryDeck = deck;
   try {
-    await SecureStore.setItemAsync(DECK_KEY, JSON.stringify(deck));
+    await writeFileCache(DECK_KEY, deck);
   } catch {
     /* non-blocking */
   }
@@ -129,12 +139,23 @@ async function fetchTipsFromMasterRow(): Promise<string[]> {
 
 async function readCachedRemoteTips(): Promise<string[]> {
   try {
+    const fromFile = await readFileCache<RemoteTipsCache>(REMOTE_KEY);
+    if (fromFile?.at && Array.isArray(fromFile.tips)) {
+      if (Date.now() - fromFile.at > REMOTE_TTL_MS) return [];
+      return normalizeTipList(fromFile.tips);
+    }
     const atRaw = await SecureStore.getItemAsync(REMOTE_AT_KEY);
     const tipsRaw = await SecureStore.getItemAsync(REMOTE_KEY);
     if (!atRaw || !tipsRaw) return [];
     const at = Number(atRaw);
     if (!Number.isFinite(at) || Date.now() - at > REMOTE_TTL_MS) return [];
-    return normalizeTipList(JSON.parse(tipsRaw));
+    const tips = normalizeTipList(JSON.parse(tipsRaw));
+    await writeFileCache(REMOTE_KEY, { at, tips });
+    await Promise.allSettled([
+      SecureStore.deleteItemAsync(REMOTE_KEY),
+      SecureStore.deleteItemAsync(REMOTE_AT_KEY),
+    ]);
+    return tips;
   } catch {
     return [];
   }
@@ -143,8 +164,7 @@ async function readCachedRemoteTips(): Promise<string[]> {
 async function cacheRemoteTips(tips: string[]): Promise<void> {
   if (tips.length === 0) return;
   try {
-    await SecureStore.setItemAsync(REMOTE_KEY, JSON.stringify(tips));
-    await SecureStore.setItemAsync(REMOTE_AT_KEY, String(Date.now()));
+    await writeFileCache(REMOTE_KEY, { at: Date.now(), tips });
   } catch {
     /* non-blocking */
   }

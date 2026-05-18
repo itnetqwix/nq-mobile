@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useStripe } from "@stripe/stripe-react-native";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { apiClient } from "../../../../api/client";
 import { API_ROUTES } from "../../../../config/apiRoutes";
+import { unwrapApiData } from "../../../../lib/http/unwrapApiData";
 import { radii, space, useStaticStyles, useThemeColors } from "../../../../theme";
 import { useWalletPaymentOption } from "../../../wallet/hooks/useWalletPaymentOption";
 import { verifyWalletPin } from "../../../wallet/walletApi";
@@ -25,11 +26,22 @@ export type PaymentCompletePayload = {
   pinSessionToken?: string;
 };
 
+export type PromoResultShape = {
+  valid: boolean;
+  discount_amount?: number;
+  final_amount?: number;
+  display_label?: string;
+};
+
 type Props = {
   trainer: Record<string, unknown> | null;
   durationMinutes: number;
+  expectedPrice: number;
+  promoResult: PromoResultShape | null;
   couponCode: string;
   userStripeId: string;
+  bookingType?: "instant" | "scheduled";
+  durationLabel?: string;
   onPaymentComplete: (payload: PaymentCompletePayload) => void;
   onNext: () => void;
   onAddFunds?: (shortfallDollars: number) => void;
@@ -38,8 +50,12 @@ type Props = {
 export function WizardStepPayment({
   trainer,
   durationMinutes,
+  expectedPrice,
+  promoResult,
   couponCode,
   userStripeId,
+  bookingType = "instant",
+  durationLabel,
   onPaymentComplete,
   onNext,
   onAddFunds,
@@ -69,39 +85,55 @@ export function WizardStepPayment({
       ""
   );
   const commission = String(
-    (trainer as any)?.commission ??
-      (trainer as any)?.userInfo?.commission ??
-      "0"
+    (trainer as any)?.commission ?? (trainer as any)?.userInfo?.commission ?? "0"
   );
 
-  const chargingPrice = Number(((hourlyRate / 60) * durationMinutes).toFixed(2));
-  const wallet = useWalletPaymentOption(chargingPrice);
+  const payableAmount = useMemo(() => {
+    if (promoResult?.valid && promoResult.final_amount != null) {
+      return Number(promoResult.final_amount);
+    }
+    return expectedPrice;
+  }, [promoResult, expectedPrice]);
+
+  const wallet = useWalletPaymentOption(payableAmount);
   const lengthLabel =
+    durationLabel ??
     INSTANT_LESSON_DURATIONS.find((d) => d.minutes === durationMinutes)?.label ??
     `${durationMinutes} min`;
 
   const createIntent = useCallback(async () => {
-    if (chargingPrice <= 0) {
+    if (payableAmount <= 0) {
       setPriceInfo({ amount: 0, skip: true });
+      setPaymentReady(true);
+      return;
+    }
+    if (expectedPrice <= 0) {
+      setPriceInfo({ amount: 0, skip: true });
+      setPaymentReady(true);
       return;
     }
     setLoading(true);
     try {
       const res = await apiClient.post(API_ROUTES.transaction.createPaymentIntent, {
-        amount: chargingPrice,
+        amount: expectedPrice,
         destination: trainerStripeId,
         commission,
         customer: userStripeId,
         couponCode: couponCode.trim().toLowerCase() || undefined,
+        _bookingType: bookingType,
       });
-      const data = (res as any)?.data ?? res;
+      const data = unwrapApiData<{
+        skip?: boolean;
+        client_secret?: string;
+      }>(res);
       if (data?.skip) {
         setPriceInfo({ amount: 0, skip: true });
+        setPaymentReady(true);
         return;
       }
       const clientSecret = data?.client_secret;
       if (!clientSecret) throw new Error("No client secret returned.");
-      setPriceInfo({ amount: chargingPrice, skip: false, clientSecret });
+      setPriceInfo({ amount: payableAmount, skip: false, clientSecret });
 
       const { error } = await initPaymentSheet({
         paymentIntentClientSecret: clientSecret,
@@ -120,7 +152,8 @@ export function WizardStepPayment({
       setLoading(false);
     }
   }, [
-    chargingPrice,
+    payableAmount,
+    expectedPrice,
     trainerStripeId,
     commission,
     userStripeId,
@@ -138,6 +171,14 @@ export function WizardStepPayment({
     }
   }, [wallet.storedPinToken, pinSessionToken]);
 
+  const completePayment = useCallback(
+    (payload: PaymentCompletePayload) => {
+      onPaymentComplete(payload);
+      onNext();
+    },
+    [onPaymentComplete, onNext]
+  );
+
   const handleWalletPay = useCallback(async () => {
     try {
       let token = pinSessionToken ?? wallet.storedPinToken ?? undefined;
@@ -151,22 +192,20 @@ export function WizardStepPayment({
         setPinSessionToken(token);
         setPin("");
       }
-      onPaymentComplete({
+      completePayment({
         paymentIntentId: null,
-        chargingPrice,
+        chargingPrice: payableAmount,
         paymentMethod: "wallet",
         pinSessionToken: token,
       });
-      onNext();
     } catch (e: any) {
       Alert.alert("Wallet payment", e?.response?.data?.error ?? e?.message ?? "Could not verify PIN.");
     }
-  }, [wallet.needsPin, pin, pinSessionToken, onPaymentComplete, onNext, chargingPrice]);
+  }, [wallet.needsPin, pin, pinSessionToken, wallet.storedPinToken, completePayment, payableAmount]);
 
   const handlePay = useCallback(async () => {
-    if (priceInfo?.skip) {
-      onPaymentComplete({ paymentIntentId: null, chargingPrice: 0 });
-      onNext();
+    if (priceInfo?.skip || payableAmount <= 0) {
+      completePayment({ paymentIntentId: null, chargingPrice: 0 });
       return;
     }
     const { error } = await presentPaymentSheet();
@@ -177,15 +216,18 @@ export function WizardStepPayment({
       return;
     }
     const intentId = priceInfo?.clientSecret?.split("_secret_")[0] ?? null;
-    onPaymentComplete({
+    completePayment({
       paymentIntentId: intentId,
-      chargingPrice,
+      chargingPrice: payableAmount,
       paymentMethod: "card",
     });
-    onNext();
-  }, [priceInfo, presentPaymentSheet, onPaymentComplete, onNext, chargingPrice]);
+  }, [priceInfo, presentPaymentSheet, completePayment, payableAmount]);
 
-  const isFree = priceInfo?.skip === true;
+  const isFree = payableAmount <= 0 || priceInfo?.skip === true;
+  const hasDiscount =
+    promoResult?.valid &&
+    promoResult.discount_amount != null &&
+    promoResult.discount_amount > 0;
 
   return (
     <View style={sharedStepStyles.card}>
@@ -202,19 +244,31 @@ export function WizardStepPayment({
             {hourlyRate > 0 ? `$${hourlyRate}/hr` : "Free"}
           </Text>
         </View>
+        {hasDiscount ? (
+          <>
+            <View style={styles.summaryLine}>
+              <Text style={styles.summaryKey}>Subtotal</Text>
+              <Text style={styles.summaryValue}>${expectedPrice.toFixed(2)}</Text>
+            </View>
+            <View style={styles.summaryLine}>
+              <Text style={styles.summaryKey}>Discount</Text>
+              <Text style={[styles.summaryValue, styles.promoApplied]}>
+                -${promoResult!.discount_amount!.toFixed(2)}
+                {promoResult?.display_label ? ` (${promoResult.display_label})` : ""}
+              </Text>
+            </View>
+          </>
+        ) : null}
         <View style={styles.summaryLine}>
           <Text style={styles.summaryKey}>Total</Text>
           <Text style={[styles.summaryValue, styles.bold]}>
-            {isFree ? "Free" : `$${chargingPrice.toFixed(2)}`}
+            {isFree ? "Free" : `$${payableAmount.toFixed(2)}`}
           </Text>
         </View>
         {couponCode.trim() ? (
           <View style={styles.summaryLine}>
             <Text style={styles.summaryKey}>Promo</Text>
-            <Text style={[styles.summaryValue, styles.promoApplied]}>
-              {couponCode.trim()}
-              {isFree ? " (100% off)" : ""}
-            </Text>
+            <Text style={[styles.summaryValue, styles.promoApplied]}>{couponCode.trim()}</Text>
           </View>
         ) : null}
       </View>
@@ -242,7 +296,7 @@ export function WizardStepPayment({
           <Pressable style={sharedStepStyles.primaryBtn} onPress={handleWalletPay}>
             <Ionicons name="wallet-outline" size={18} color={c.brandTextOn} />
             <Text style={sharedStepStyles.primaryBtnText}>
-              Pay ${chargingPrice.toFixed(2)} with wallet (${wallet.available.toFixed(2)} available)
+              Pay ${payableAmount.toFixed(2)} with wallet (${wallet.available.toFixed(2)} available)
             </Text>
           </Pressable>
           <Pressable
@@ -297,7 +351,7 @@ export function WizardStepPayment({
               ? "Continue (free)"
               : wallet.canPayWithWallet && wallet.walletPayEnabled
                 ? "Pay with card"
-                : `Pay $${chargingPrice.toFixed(2)}`}
+                : `Pay $${payableAmount.toFixed(2)}`}
           </Text>
         </Pressable>
       )}

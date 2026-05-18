@@ -78,7 +78,7 @@ export function WizardStepClips({
         </Pressable>
         <Pressable style={sharedStepStyles.primaryBtn} onPress={onNext}>
           <Text style={sharedStepStyles.primaryBtnText}>Next: review</Text>
-          <Ionicons name="arrow-forward" size={18} color={colors.brandTextOn} />
+          <Ionicons name="arrow-forward" size={18} color={c.brandTextOn} />
         </Pressable>
       </View>
     </View>

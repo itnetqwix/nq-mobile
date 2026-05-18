@@ -38,7 +38,12 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
   const { startBooking } = useInstantLesson();
 
   const [step, setStep] = useState<WizardStep>("duration");
-  const [durationMinutes, setDurationMinutes] = useState(30);
+  const [durationMinutes, setDurationMinutesState] = useState(30);
+  const setDurationMinutes = useCallback((minutes: number) => {
+    setDurationMinutesState(minutes);
+    setPromoResult(null);
+    setCouponError("");
+  }, []);
   const [couponCode, setCouponCode] = useState("");
   const [couponError, setCouponError] = useState("");
   const [selectedClipIds, setSelectedClipIds] = useState<string[]>([]);
@@ -80,7 +85,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
 
   const resetWizard = useCallback(() => {
     setStep("duration");
-    setDurationMinutes(30);
+    setDurationMinutesState(30);
     setCouponCode("");
     setCouponError("");
     setSelectedClipIds([]);

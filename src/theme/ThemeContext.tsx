@@ -17,7 +17,11 @@ import React, {
   useState,
 } from "react";
 import { Appearance, useColorScheme } from "react-native";
-import { type AppColors, resolveColors } from "./index";
+import { type AppColors, colorsDark, colorsLight } from "./colors";
+
+function resolveColors(scheme: "light" | "dark" | null | undefined): AppColors {
+  return scheme === "dark" ? colorsDark : colorsLight;
+}
 
 export type ThemeMode = "system" | "light" | "dark";
 

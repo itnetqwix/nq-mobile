@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
+import { unwrapApiData } from "../../../lib/http/unwrapApiData";
 import { colors, radii, space, typography } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
 import {
@@ -254,17 +255,18 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
       setPaymentLoading(true);
       try {
         const intentPayload: Record<string, unknown> = {
-          amount: price,
+          amount: originalPrice,
           destination: trainerStripeId,
           commission,
           customer: userStripeId,
+          _bookingType: "scheduled",
         };
-        if (couponCode.trim()) intentPayload.couponCode = couponCode.trim();
+        if (couponCode.trim()) intentPayload.couponCode = couponCode.trim().toLowerCase();
         const res = await apiClient.post(
           API_ROUTES.transaction.createPaymentIntent,
           intentPayload
         );
-        const data = (res as any)?.data ?? res;
+        const data = unwrapApiData<{ skip?: boolean; client_secret?: string }>(res);
         if (!data?.skip) {
           const clientSecret = data?.client_secret;
           if (!clientSecret) throw new Error("No client secret returned.");
@@ -328,7 +330,7 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
         booked_date: bookedDateIso,
         session_start_time: selectedSlot.start,
         session_end_time: selectedSlot.end,
-        charging_price: price,
+        charging_price: originalPrice,
         time_zone: tz,
       };
       if (couponCode.trim()) bookPayload.coupon_code = couponCode.trim();

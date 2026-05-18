@@ -94,7 +94,7 @@ export const colorsLight: Palette & {
 
   tabBarBorder: "#e5e7eb",
   tabBar: "#ffffff",
-  tabBarActive: BRAND.brandNavy,
+  tabBarActive: BRAND.brand,
   tabBarInactive: "#6b7280",
 
   headerTitle: BRAND.brand,

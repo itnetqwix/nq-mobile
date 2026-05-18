@@ -113,7 +113,7 @@ export function WizardStepDuration({
           }}
           editable={!promoResult}
           placeholder="Enter promo code"
-          placeholderTextColor={colors.textMuted}
+          placeholderTextColor={c.textMuted}
           style={[
             styles.input,
             { flex: 1 },
@@ -135,7 +135,7 @@ export function WizardStepDuration({
             disabled={!couponCode.trim() || promoValidating}
           >
             {promoValidating ? (
-              <ActivityIndicator size="small" color={colors.brandTextOn} />
+              <ActivityIndicator size="small" color={c.brandTextOn} />
             ) : (
               <Text style={styles.applyBtnText}>Apply</Text>
             )}

@@ -5,11 +5,20 @@ import { radii, space, useStaticStyles, useThemeColors } from "../../../../theme
 import { INSTANT_LESSON_DURATIONS } from "../constants";
 import { useSharedStepStyles } from "../sharedStepStyles";
 
+type PromoResultShape = {
+  valid: boolean;
+  discount_amount?: number;
+  final_amount?: number;
+  display_label?: string;
+};
+
 type Props = {
   trainerName: string;
   durationMinutes: number;
   selectedClipIds: string[];
   couponCode: string;
+  expectedPrice: number;
+  promoResult: PromoResultShape | null;
   chargingPrice: number;
   isSubmitting: boolean;
   onSubmit: () => void;
@@ -20,6 +29,8 @@ export function WizardStepConfirm({
   durationMinutes,
   selectedClipIds,
   couponCode,
+  expectedPrice,
+  promoResult,
   chargingPrice,
   isSubmitting,
   onSubmit,
@@ -48,8 +59,22 @@ export function WizardStepConfirm({
             {selectedClipIds.length === 0 ? "None" : `${selectedClipIds.length} selected`}
           </Text>
         </View>
+        {promoResult?.valid && (promoResult.discount_amount ?? 0) > 0 ? (
+          <>
+            <View style={styles.summaryLine}>
+              <Text style={styles.summaryKey}>Subtotal</Text>
+              <Text style={styles.summaryValue}>${expectedPrice.toFixed(2)}</Text>
+            </View>
+            <View style={styles.summaryLine}>
+              <Text style={styles.summaryKey}>Discount</Text>
+              <Text style={[styles.summaryValue, { color: c.success }]}>
+                -${(promoResult.discount_amount ?? 0).toFixed(2)}
+              </Text>
+            </View>
+          </>
+        ) : null}
         <View style={styles.summaryLine}>
-          <Text style={styles.summaryKey}>Price</Text>
+          <Text style={styles.summaryKey}>Total</Text>
           <Text style={styles.summaryValue}>
             {chargingPrice > 0 ? `$${chargingPrice.toFixed(2)}` : "Free"}
           </Text>
