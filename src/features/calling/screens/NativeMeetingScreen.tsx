@@ -30,7 +30,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useMeetingChromeInsets } from "../useMeetingChromeInsets";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
@@ -60,7 +60,6 @@ import { ClipPickerModal } from "../components/ClipPickerModal";
 import { ClipPlayer } from "../components/ClipPlayer";
 import { ClipPlaybackControls } from "../components/ClipPlaybackControls";
 import { DrawingOverlay } from "../components/DrawingOverlay";
-import { RecordingBar } from "../components/RecordingBar";
 import { RatingsModal } from "../components/RatingsModal";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Meeting">;
@@ -241,7 +240,7 @@ function MeetingSurface({
   peerId: string;
   peerDisplayName: string;
 }) {
-  const insets = useSafeAreaInsets();
+  const chrome = useMeetingChromeInsets();
   const {
     localStream,
     remoteStream,
@@ -284,6 +283,21 @@ function MeetingSurface({
   const [activeClipUri, setActiveClipUri] = useState<string | null>(null);
   const [drawingMode, setDrawingMode] = useState(false);
   const clipProgressRef = useRef(0);
+  const lessonStartedNotifiedRef = useRef(false);
+
+  useEffect(() => {
+    if (!bothJoined) {
+      lessonStartedNotifiedRef.current = false;
+      return;
+    }
+    if (lessonStartedNotifiedRef.current) return;
+    lessonStartedNotifiedRef.current = true;
+    pushLocalToast({
+      title: NOTIFICATION_TITLES.sessionStarted,
+      description: "Lesson started — you're both in the call.",
+      type: NOTIFICATION_TYPES.TRANSCATIONAL,
+    });
+  }, [bothJoined, pushLocalToast]);
 
   /** When the trainer selects a clip we receive the clip metadata so we can
    *  compute the playback URL locally. The trainee receives only the id via
@@ -387,7 +401,7 @@ function MeetingSurface({
       <StatusBar barStyle="light-content" />
 
       {/* Remote video / clip pane */}
-      <View style={[styles.mainPane, { paddingTop: insets.top + 60 }]}>
+      <View style={[styles.mainPane, { paddingTop: chrome.mainPaneTop }]}>
         {activeClipUri ? (
           <View style={styles.clipFrame}>
             <ClipPlayer
@@ -412,11 +426,13 @@ function MeetingSurface({
                 clipSync.seek(next);
               }}
               disabled={!activeClipUri}
+              bottomOffset={chrome.clipControlsBottom}
             />
             <DrawingOverlay enabled={isTrainer && drawingMode} />
           </View>
         ) : (
           <UserBox
+            key={(remoteStream as { toURL?: () => string } | null)?.toURL?.() ?? "no-remote"}
             user={
               session
                 ? isTrainer
@@ -447,18 +463,13 @@ function MeetingSurface({
         bothUsersJoined={bothJoined}
         showCoachControls={isTrainer}
         variant={isInstant ? "instant" : "scheduled"}
+        timerLabel={isInstant ? "Lesson time" : "Time remaining"}
+        topInset={chrome.topChrome}
         onStart={lessonTimer.requestStart}
         onPause={lessonTimer.requestPause}
         onResume={lessonTimer.requestResume}
         onCrossThreshold={onTimerCrossThreshold}
       />
-
-      {isInstant && (
-        <RecordingBar
-          active={bothJoined}
-          onStop={isTrainer ? endCall : undefined}
-        />
-      )}
 
       {/* Trainer-only drawing toggle */}
       {isTrainer && activeClipUri ? (
@@ -471,11 +482,12 @@ function MeetingSurface({
       {/* Bottom chrome */}
       <ActionButtons
         isTrainer={isTrainer}
+        bottomInset={chrome.bottomChrome}
         onOpenClipPicker={isTrainer ? () => setPickerOpen(true) : undefined}
       />
 
       {lastError ? (
-        <View style={[styles.errorBanner, { top: insets.top + 8 }]}>
+        <View style={[styles.errorBanner, { top: chrome.insets.top + 8 }]}>
           <Text style={styles.errorText}>{lastError}</Text>
         </View>
       ) : null}

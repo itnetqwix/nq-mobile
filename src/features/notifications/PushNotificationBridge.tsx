@@ -84,11 +84,28 @@ function handlePushTap(title: string, data: Record<string, unknown>) {
     (data.booking_id as string) ??
     null;
 
+  if (kind === "instant_lesson_request") {
+    if (navigationRef.isReady()) {
+      (navigationRef as any).navigate("Main", {
+        screen: "Tabs",
+        params: {
+          screen: "Home",
+          params: {
+            screen: "DashboardFeature",
+            params: { featureId: "upcoming-sessions" },
+          },
+        },
+      });
+    }
+    return;
+  }
+
   /** Meeting deep link — primary action when a confirmed lesson is ready. */
   if (
     kind === "meeting" ||
     kind === "instant_lesson_accept" ||
     kind === "instant_lesson_accepted" ||
+    kind === "instant_lesson_join_reminder" ||
     (data.isInstant && data.outcome === "accepted")
   ) {
     if (lessonId && navigationRef.isReady()) {

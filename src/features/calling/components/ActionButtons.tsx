@@ -23,12 +23,14 @@ type Props = {
   isTrainer?: boolean;
   /** Optional screenshot capture (trainer-only). */
   onScreenshot?: () => void;
+  bottomInset?: number;
 };
 
 export function ActionButtons({
   onOpenClipPicker,
   isTrainer,
   onScreenshot,
+  bottomInset = 20,
 }: Props) {
   const {
     micEnabled,
@@ -40,7 +42,7 @@ export function ActionButtons({
   } = useCall();
 
   return (
-    <View style={styles.bar} pointerEvents="box-none">
+    <View style={[styles.bar, { bottom: bottomInset }]} pointerEvents="box-none">
       <View style={styles.row}>
         <RoundButton
           onPress={toggleMute}
@@ -144,7 +146,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: 20,
     alignItems: "center",
   },
   row: {

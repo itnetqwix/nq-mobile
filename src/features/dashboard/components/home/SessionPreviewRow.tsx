@@ -3,7 +3,14 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Pill } from "../../../../components/ui";
 import { AccountType } from "../../../../constants/accountType";
-import { isPendingBooking, normalizeSessionStatus } from "../../../../lib/sessions/sessionUtils";
+import {
+  getInstantAcceptDeadlineMs,
+  getInstantJoinDeadlineMs,
+  isInstantLesson,
+  isPendingBooking,
+  normalizeSessionStatus,
+} from "../../../../lib/sessions/sessionUtils";
+import { InstantLessonDeadlineChip } from "../../../instant-lesson/components/InstantLessonDeadlineChip";
 import { space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
 import { HomeUserAvatar } from "./HomeUserAvatar";
 
@@ -61,6 +68,9 @@ export function SessionPreviewRow({ session, accountType, onPress, isLast }: Pro
         : "";
   const pending = isPendingBooking(session);
   const status = normalizeSessionStatus(session.status as string);
+  const instant = isInstantLesson(session);
+  const acceptDeadlineMs = getInstantAcceptDeadlineMs(session);
+  const joinDeadlineMs = getInstantJoinDeadlineMs(session);
 
   const content = (
     <>
@@ -80,6 +90,18 @@ export function SessionPreviewRow({ session, accountType, onPress, isLast }: Pro
           tone={pending ? "warning" : getStatusTone(status)}
           style={{ marginTop: 6, alignSelf: "flex-start" }}
         />
+        {instant && acceptDeadlineMs && pending ? (
+          <InstantLessonDeadlineChip
+            deadlineMs={acceptDeadlineMs}
+            label={isTrainer ? "Respond within" : "Coach has"}
+          />
+        ) : null}
+        {instant && joinDeadlineMs && !pending ? (
+          <InstantLessonDeadlineChip
+            deadlineMs={joinDeadlineMs}
+            label="Join within"
+          />
+        ) : null}
       </View>
       <Ionicons name="chevron-forward" size={18} color={c.textMuted} />
     </>

@@ -57,6 +57,7 @@ export function UserBox({
     <View style={[styles.box, style]}>
       {!isStreamOff && streamId ? (
         <RTCView
+          key={streamId}
           streamURL={streamId}
           objectFit="cover"
           mirror={muted /* local preview only */}

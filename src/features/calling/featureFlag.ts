@@ -16,14 +16,11 @@
 import { Platform } from "react-native";
 
 /**
- * Default `false` so the next release continues to use the proven WebView
- * meeting path. Toggle to `true` to opt into the native call surface (only
- * works on builds that include the prebuild + WebRTC native deps — i.e. NOT
- * Expo Go).
- *
- * Override at runtime via `globalThis.NETQWIX_NATIVE_CALLS = true` for QA.
+ * Native WebRTC is the default for iOS/Android (requires dev client / EAS build
+ * with react-native-webrtc — not Expo Go). Set `globalThis.NETQWIX_NATIVE_CALLS = false`
+ * to force the legacy WebView meeting for QA.
  */
-const DEFAULT_USE_NATIVE = false;
+const DEFAULT_USE_NATIVE = true;
 
 declare global {
   // eslint-disable-next-line no-var, vars-on-top

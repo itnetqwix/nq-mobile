@@ -24,12 +24,15 @@ import { INSTANT_JOIN_AFTER_ACCEPT_MS } from "../../../lib/sessions/instantLesso
 import {
   canJoinSession,
   formatSessionWhen,
+  getInstantAcceptDeadlineMs,
+  getInstantJoinDeadlineMs,
   getJoinDisabledReason,
   getOtherParty,
   isInstantLesson,
   isPendingBooking,
   normalizeSessionStatus,
 } from "../../../lib/sessions/sessionUtils";
+import { InstantLessonDeadlineChip } from "../../instant-lesson/components/InstantLessonDeadlineChip";
 import { useSessionBooking } from "../SessionBookingContext";
 import { SessionsCalendar } from "../components/SessionsCalendar";
 import type { RootStackParamList } from "../../../navigation/types";
@@ -111,6 +114,8 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { dateLabel, timeLabel } = formatSessionWhen(session);
   const joinEnabled = canJoinSession(session);
+  const acceptDeadlineMs = getInstantAcceptDeadlineMs(session);
+  const joinDeadlineMs = getInstantJoinDeadlineMs(session);
 
   const handleJoin = () => {
     const lessonId = session._id ?? session.id;
@@ -141,6 +146,25 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
         <StatusBadge status={pending ? "booked" : status} />
       </View>
 
+      {instant && acceptDeadlineMs && isTrainer && pending ? (
+        <InstantLessonDeadlineChip
+          deadlineMs={acceptDeadlineMs}
+          label="Respond within"
+        />
+      ) : null}
+      {instant && joinDeadlineMs && !pending ? (
+        <InstantLessonDeadlineChip
+          deadlineMs={joinDeadlineMs}
+          label={isTrainer ? "Trainee must join within" : "Join within"}
+        />
+      ) : null}
+      {!isTrainer && instant && acceptDeadlineMs && pending ? (
+        <InstantLessonDeadlineChip
+          deadlineMs={acceptDeadlineMs}
+          label="Coach has"
+        />
+      ) : null}
+
       {(session.category || instant) && (
         <View style={styles.categoryRow}>
           {instant ? (
@@ -163,7 +187,16 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
       )}
 
       <View style={styles.cardFooter}>
-        {isTrainer && pending ? (
+        {isTrainer && pending && instant ? (
+          <Button
+            label="Open instant request"
+            leftIcon="flash-outline"
+            onPress={() => openSession(session)}
+            size="md"
+            fullWidth={false}
+          />
+        ) : null}
+        {isTrainer && pending && !instant ? (
           <Button
             label="Review & confirm"
             leftIcon="checkmark-circle-outline"

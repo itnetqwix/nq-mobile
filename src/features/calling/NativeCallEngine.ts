@@ -107,6 +107,8 @@ export class NativeCallEngine {
   private pc: RTCPeerConnection | null = null;
   private localStream: MediaStream | null = null;
   private remoteStream: MediaStream | null = null;
+  private remoteTrackIds = new Set<string>();
+  private connectionState: string = "new";
   /**
    * Stable id we attach to every emit so the backend logs it as `peerId`. We
    * never *dial* it (no PeerJS), but logs are easier to grep when both clients
@@ -238,6 +240,7 @@ export class NativeCallEngine {
     }
     this.localStream = null;
     this.remoteStream = null;
+    this.remoteTrackIds.clear();
 
     try {
       InCallManager.stop();
@@ -290,16 +293,39 @@ export class NativeCallEngine {
     });
 
     /**
-     * react-native-webrtc fires `ontrack` per individual track. We coalesce
-     * into a single MediaStream so the renderer can bind one srcObject like
-     * the web `<video srcObject>` flow.
+     * react-native-webrtc fires `ontrack` per track (often separate audio/video).
+     * Merge into one persistent MediaStream so we never drop the video track when
+     * the audio track arrives second.
      */
     (pc as any).ontrack = (event: any) => {
-      const incoming: MediaStream =
-        event?.streams?.[0] ?? new MediaStream([event.track]);
-      this.remoteStream = incoming;
-      this.events.onRemoteStream?.(incoming);
-      if (!this.bothJoinedFired) {
+      const track: MediaStreamTrack | undefined = event?.track;
+      if (!track) return;
+
+      if (!this.remoteStream) {
+        this.remoteStream = new MediaStream();
+      }
+
+      if (!this.remoteTrackIds.has(track.id)) {
+        try {
+          this.remoteStream.addTrack(track);
+          this.remoteTrackIds.add(track.id);
+        } catch (err) {
+          log("addTrack failed", err);
+        }
+      }
+
+      (track as any).onended = () => {
+        this.remoteTrackIds.delete(track.id);
+      };
+
+      log("ontrack", {
+        kind: track.kind,
+        trackCount: this.remoteStream.getTracks().length,
+      });
+
+      this.events.onRemoteStream?.(this.remoteStream);
+
+      if (!this.bothJoinedFired && this.remoteStream.getVideoTracks().length > 0) {
         this.bothJoinedFired = true;
         this.events.onBothJoined?.();
       }
@@ -318,6 +344,7 @@ export class NativeCallEngine {
 
     (pc as any).onconnectionstatechange = () => {
       const state = (pc as any).connectionState as string;
+      this.connectionState = state;
       log("connectionState", state);
       if (state === "connected") this.setStatus("connected");
       else if (state === "connecting") this.setStatus("connecting");
@@ -533,5 +560,20 @@ export class NativeCallEngine {
   }
   hasRemoteJoined(): boolean {
     return this.remoteJoined;
+  }
+
+  getConnectionDiagnostics(): {
+    connectionState: string;
+    remoteAudioTracks: number;
+    remoteVideoTracks: number;
+    iceConnectionState: string;
+  } {
+    const ice = (this.pc as any)?.iceConnectionState as string | undefined;
+    return {
+      connectionState: this.connectionState,
+      remoteAudioTracks: this.remoteStream?.getAudioTracks().length ?? 0,
+      remoteVideoTracks: this.remoteStream?.getVideoTracks().length ?? 0,
+      iceConnectionState: ice ?? "unknown",
+    };
   }
 }

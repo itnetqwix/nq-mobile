@@ -14,6 +14,7 @@ import { useAuth } from "../auth/context/AuthContext";
 import { fetchScheduledMeetings } from "../home/api/homeApi";
 import {
   extractBookingIdFromNotification,
+  isInstantLesson,
   isNewBookingNotificationTitle,
   isPendingBooking,
 } from "../../lib/sessions/sessionUtils";
@@ -107,6 +108,7 @@ export function SessionBookingProvider({ children }: { children: React.ReactNode
           : pending[0];
 
         if (match && isPendingBooking(match)) {
+          if (isInstantLesson(match)) return;
           knownPendingIdsRef.current.add(String(match._id));
           showSessionModal(match);
           return;
@@ -125,13 +127,15 @@ export function SessionBookingProvider({ children }: { children: React.ReactNode
     if (!pendingSeededRef.current) {
       ids.forEach((id) => knownPendingIdsRef.current.add(id));
       pendingSeededRef.current = true;
-      if (pending.length > 0) {
-        showSessionModal(pending[0]);
+      const firstScheduled = pending.find((s) => !isInstantLesson(s));
+      if (firstScheduled) {
+        showSessionModal(firstScheduled);
       }
       return;
     }
 
     for (const session of pending) {
+      if (isInstantLesson(session)) continue;
       const id = String(session._id);
       if (!knownPendingIdsRef.current.has(id)) {
         knownPendingIdsRef.current.add(id);

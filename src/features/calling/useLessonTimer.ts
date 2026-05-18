@@ -99,6 +99,17 @@ function toDate(value: string | Date | null | undefined): Date | null {
  *  `duration` field. Returns null when nothing usable is present. */
 function deriveDurationSeconds(session: LessonTimerSessionInput): number | null {
   if (!session) return null;
+
+  const durationMinutes =
+    (session as { duration_minutes?: number }).duration_minutes ??
+    (session as { durationMinutes?: number }).durationMinutes;
+
+  if ((session as { is_instant?: boolean }).is_instant) {
+    if (typeof durationMinutes === "number" && durationMinutes > 0) {
+      return Math.floor(durationMinutes * 60);
+    }
+  }
+
   const start = toDate(session.start_time);
   const end = toDate(session.extended_session_end_time) ?? toDate(session.end_time);
   if (start && end && end.getTime() > start.getTime()) {

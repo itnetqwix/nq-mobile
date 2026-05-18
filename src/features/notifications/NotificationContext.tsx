@@ -11,6 +11,8 @@ import React, {
 import { useAuth } from "../auth/context/AuthContext";
 import { fetchNotifications, patchNotificationsMarkRead } from "../home/api/homeApi";
 import { useSocket } from "../socket/SocketContext";
+import { emitInstantLessonPhase } from "../instant-lesson/instantLessonBridge";
+import { navigationRef } from "../../navigation/navigationRef";
 
 /**
  * Centralised in-app notification system. Web parity with
@@ -271,6 +273,38 @@ export function NotificationProvider({
         pushToQueue({ ...payload, isRead: false });
       }
 
+      const bookingInfo = (payload.bookingInfo ?? {}) as Record<string, unknown>;
+      const kind = String(bookingInfo.kind ?? "").toLowerCase();
+      const lessonId = String(
+        bookingInfo.lessonId ?? bookingInfo.bookingId ?? bookingInfo.booking_id ?? ""
+      );
+      const titleLower = payload.title?.toLowerCase() ?? "";
+
+      if (
+        kind === "instant_lesson_accepted" ||
+        titleLower.includes("instant lesson accepted") ||
+        titleLower.includes("session confirmed")
+      ) {
+        if (lessonId && navigationRef.isReady()) {
+          (navigationRef as { navigate: (name: string, params: object) => void }).navigate(
+            "Meeting",
+            { lessonId }
+          );
+        }
+      } else if (
+        kind === "instant_lesson_request" ||
+        titleLower.includes("instant lesson request")
+      ) {
+        queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      } else if (
+        kind === "instant_lesson_declined" ||
+        kind === "instant_lesson_join_expired" ||
+        kind === "instant_lesson_accept_expired"
+      ) {
+        queryClient.invalidateQueries({ queryKey: ["sessions"] });
+        queryClient.invalidateQueries({ queryKey: ["wallet"] });
+      }
+
       /**
        * Side-effects driven by the notification *title* — same approach as web
        * `NavHomePage`: re-fetch the bookings list when a booking-related notification
@@ -314,11 +348,12 @@ export function NotificationProvider({
       queryClient.invalidateQueries({ queryKey: ["trainerAvailability"] });
     };
 
-    const onInstantPhase = (_data: {
+    const onInstantPhase = (data: {
       lessonId?: string;
       phase?: string;
       refundReason?: string;
     }) => {
+      emitInstantLessonPhase(data);
       queryClient.invalidateQueries({ queryKey: ["scheduledMeetings"] });
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
       queryClient.invalidateQueries({ queryKey: ["wallet"] });

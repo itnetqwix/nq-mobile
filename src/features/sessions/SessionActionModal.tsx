@@ -40,6 +40,7 @@ import {
   hasViewerRated,
 } from "../../lib/sessions/sessionRatingUtils";
 import { formatRefundTransferLabel } from "../../lib/sessions/refundTransferLabel";
+import { useInstantLesson } from "../instant-lesson/InstantLessonContext";
 
 type Props = {
   visible: boolean;
@@ -51,6 +52,7 @@ type Props = {
 export function SessionActionModal({ visible, session, onClose, onSessionUpdated }: Props) {
   const { user, accountType } = useAuth();
   const { emitNotification } = useNotifications();
+  const { focusTrainerRequestFromSession } = useInstantLesson();
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState<"confirm" | "decline" | null>(null);
   const [localSession, setLocalSession] = useState<any | null>(null);
@@ -350,8 +352,8 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
 
             {instant && pending && isTrainer ? (
               <Text style={styles.hint}>
-                Instant requests are also handled in the incoming lesson popup. You can confirm here
-                or use Accept on the instant lesson card.
+                Use the instant lesson popup to accept or decline. This avoids duplicate confirm
+                actions.
               </Text>
             ) : null}
 
@@ -387,11 +389,12 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
 
               {isTrainer && pending && instant ? (
                 <Button
-                  label={busy === "confirm" ? "Confirming…" : "Confirm instant lesson"}
-                  leftIcon="checkmark-circle-outline"
-                  onPress={handleConfirm}
-                  disabled={!!busy}
-                  loading={busy === "confirm"}
+                  label="Open instant request"
+                  leftIcon="flash-outline"
+                  onPress={() => {
+                    focusTrainerRequestFromSession(viewSession ?? {});
+                    onClose();
+                  }}
                 />
               ) : null}
 

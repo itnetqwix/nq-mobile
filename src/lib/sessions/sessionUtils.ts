@@ -84,6 +84,24 @@ import { INSTANT_JOIN_AFTER_ACCEPT_MS } from "./instantLessonConstants";
 const EARLY_JOIN_MS = 15 * 60 * 1000;
 const LATE_JOIN_MS = 15 * 60 * 1000;
 
+export function getInstantAcceptDeadlineMs(session: any): number | null {
+  if (!isInstantLesson(session) || !isPendingBooking(session)) return null;
+  const raw = session?.accept_deadline_at ?? session?.acceptDeadlineAt;
+  if (!raw) return null;
+  const ms = new Date(raw).getTime();
+  return Number.isFinite(ms) ? ms : null;
+}
+
+export function getInstantJoinDeadlineMs(session: any): number | null {
+  if (!isInstantLesson(session)) return null;
+  const status = normalizeSessionStatus(session?.status);
+  if (status !== "confirmed") return null;
+  const raw = session?.join_deadline_at ?? session?.joinDeadlineAt;
+  if (!raw) return null;
+  const ms = new Date(raw).getTime();
+  return Number.isFinite(ms) ? ms : null;
+}
+
 /** Whether the Join button should be enabled (web `meetingAvailability` parity). */
 export function canJoinSession(session: any, now = new Date()): boolean {
   const status = normalizeSessionStatus(session?.status);

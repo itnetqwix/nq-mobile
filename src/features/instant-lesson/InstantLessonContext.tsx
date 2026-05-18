@@ -15,6 +15,10 @@ import {
   INSTANT_JOIN_AFTER_ACCEPT_MS,
 } from "../../lib/sessions/instantLessonConstants";
 import { INSTANT_LESSON_SOCKET as EVENTS } from "./instantLessonSocketEvents";
+import {
+  registerInstantLessonHandlers,
+  type InstantLessonPhasePayload,
+} from "./instantLessonBridge";
 
 /** Short "session confirmed" haptic — two quick taps. Vibration is the
  *  cross-platform built-in; we'll layer expo-haptics on top in Phase 4b. */
@@ -51,12 +55,16 @@ type InstantLessonContextValue = {
   acceptRequest: () => void;
   declineRequest: () => void;
   expireRequest: () => void;
-  startBooking: (booking: Omit<TraineeBooking, "step"> & { durationMinutes?: number }) => void;
+  startBooking: (
+    booking: Omit<TraineeBooking, "step"> & { durationMinutes?: number; acceptDeadlineAt?: number }
+  ) => void;
   cancelBooking: () => void;
   clearTraineeBooking: () => void;
   minimizeBooking: () => void;
   restoreBooking: () => void;
   joinAcceptedLesson: () => void;
+  /** Re-open the trainer accept modal from a session row (e.g. upcoming list). */
+  focusTrainerRequestFromSession: (session: Record<string, unknown>) => void;
 };
 
 const InstantLessonContext = createContext<InstantLessonContextValue>({
@@ -71,6 +79,7 @@ const InstantLessonContext = createContext<InstantLessonContextValue>({
   minimizeBooking: () => {},
   restoreBooking: () => {},
   joinAcceptedLesson: () => {},
+  focusTrainerRequestFromSession: () => {},
 });
 
 export function InstantLessonProvider({
@@ -172,7 +181,7 @@ export function InstantLessonProvider({
       });
     };
 
-    const handlePhase = (payload: any) => {
+    const applyPhase = (payload: InstantLessonPhasePayload) => {
       const { lessonId, phase, refundReason } = payload || {};
       if (phase === "cancelled") {
         setTraineeBooking((prev) => {
@@ -188,6 +197,10 @@ export function InstantLessonProvider({
           return null;
         });
       }
+    };
+
+    const handlePhase = (payload: InstantLessonPhasePayload) => {
+      applyPhase(payload);
     };
 
     const handleDecline = (payload: any) => {
@@ -220,6 +233,8 @@ export function InstantLessonProvider({
       });
     };
 
+    registerInstantLessonHandlers({ onPhase: applyPhase });
+
     socket.on(EVENTS.REQUEST, handleRequest);
     socket.on(EVENTS.ACCEPT, handleAccept);
     socket.on(EVENTS.DECLINE, handleDecline);
@@ -228,6 +243,7 @@ export function InstantLessonProvider({
     socket.on(EVENTS.TRAINEE_CANCELLED, handleTraineeCancelled);
 
     return () => {
+      registerInstantLessonHandlers({});
       socket.off(EVENTS.REQUEST, handleRequest);
       socket.off(EVENTS.ACCEPT, handleAccept);
       socket.off(EVENTS.DECLINE, handleDecline);
@@ -276,13 +292,21 @@ export function InstantLessonProvider({
   }, [trainerIncoming, socket, clearExpiryTimer]);
 
   const startBooking = useCallback(
-    (booking: Omit<TraineeBooking, "step"> & { durationMinutes?: number }) => {
+    (
+      booking: Omit<TraineeBooking, "step"> & {
+        durationMinutes?: number;
+        acceptDeadlineAt?: number;
+      }
+    ) => {
       const durationMin = booking.durationMinutes ?? 30;
       const lessonId = String(booking.lessonId);
       const coachId = String(booking.coachId);
       const traineeId = String(booking.traineeId || userId);
 
-      const acceptDeadlineAt = Date.now() + INSTANT_ACCEPT_WINDOW_MS;
+      const acceptDeadlineAt =
+        booking.acceptDeadlineAt && booking.acceptDeadlineAt > Date.now()
+          ? booking.acceptDeadlineAt
+          : Date.now() + INSTANT_ACCEPT_WINDOW_MS;
       setTraineeBooking({
         ...booking,
         lessonId,
@@ -314,15 +338,14 @@ export function InstantLessonProvider({
       }
 
       clearExpiryTimer();
+      const msUntilExpiry = Math.max(0, acceptDeadlineAt - Date.now());
       expiryTimerRef.current = setTimeout(() => {
-        if (socket) {
-          socket.emit(EVENTS.EXPIRE, { lessonId, coachId, traineeId });
-        }
         setTraineeBooking((prev) => {
           if (!prev || String(prev.lessonId) !== lessonId) return prev;
+          if (prev.step !== "waiting") return prev;
           return { ...prev, step: "expired" as const };
         });
-      }, INSTANT_ACCEPT_WINDOW_MS);
+      }, msUntilExpiry);
     },
     [socket, userId, user, clearExpiryTimer]
   );
@@ -364,6 +387,32 @@ export function InstantLessonProvider({
     setTraineeBooking(null);
   }, [traineeBooking, onNavigateToMeeting]);
 
+  const focusTrainerRequestFromSession = useCallback(
+    (session: Record<string, unknown>) => {
+      const lessonId = String(session._id ?? session.id ?? "");
+      if (!lessonId) return;
+      const acceptRaw = session.accept_deadline_at ?? session.acceptDeadlineAt;
+      const acceptMs = acceptRaw
+        ? new Date(String(acceptRaw)).getTime()
+        : Date.now() + INSTANT_ACCEPT_WINDOW_MS;
+      const traineeInfo = (session.trainee_info ?? {}) as TrainerIncoming["traineeInfo"];
+      setTrainerIncoming({
+        lessonId,
+        coachId: String(session.trainer_id ?? userId),
+        traineeId: String(session.trainee_id ?? ""),
+        traineeInfo: {
+          _id: String(traineeInfo._id ?? session.trainee_id ?? ""),
+          fullname: traineeInfo.fullname ?? "Trainee",
+          profile_picture: traineeInfo.profile_picture,
+        },
+        expiresAt: Number.isFinite(acceptMs) ? acceptMs : Date.now() + INSTANT_ACCEPT_WINDOW_MS,
+        duration: Number(session.duration_minutes) || 30,
+        lessonType: `Instant Lesson - ${Number(session.duration_minutes) || 30} min`,
+      });
+    },
+    [userId]
+  );
+
   const value = useMemo(
     () => ({
       trainerIncoming,
@@ -377,6 +426,7 @@ export function InstantLessonProvider({
       minimizeBooking,
       restoreBooking,
       joinAcceptedLesson,
+      focusTrainerRequestFromSession,
     }),
     [
       trainerIncoming,
@@ -390,6 +440,7 @@ export function InstantLessonProvider({
       minimizeBooking,
       restoreBooking,
       joinAcceptedLesson,
+      focusTrainerRequestFromSession,
     ]
   );
 

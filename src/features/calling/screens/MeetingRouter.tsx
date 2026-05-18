@@ -1,5 +1,5 @@
 import React, { Suspense } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import type { RootStackParamList } from "../../../navigation/types";
@@ -22,7 +22,16 @@ export function MeetingRouter(props: Props) {
       </Suspense>
     );
   }
-  return <MeetingScreen {...props} />;
+  return (
+    <View style={styles.legacyWrap}>
+      <MeetingScreen {...props} />
+      <View style={styles.legacyBanner} pointerEvents="none">
+        <Text style={styles.legacyBannerText}>
+          Legacy web meeting — enable native calls in settings or rebuild with WebRTC.
+        </Text>
+      </View>
+    </View>
+  );
 }
 
 function LoaderFallback() {
@@ -40,4 +49,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  legacyWrap: { flex: 1 },
+  legacyBanner: {
+    position: "absolute",
+    top: 48,
+    left: 12,
+    right: 12,
+    backgroundColor: "rgba(0,0,128,0.85)",
+    padding: 8,
+    borderRadius: 8,
+  },
+  legacyBannerText: { color: "#fff", fontSize: 12, textAlign: "center" },
 });

@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, radii, typography } from "../../theme";
 import { useInstantLesson } from "./InstantLessonContext";
+import { InstantLessonDeadlineChip } from "./components/InstantLessonDeadlineChip";
 
 /**
  * Floating banner on top of the app shell that surfaces the trainee's instant-lesson state
@@ -94,20 +95,37 @@ export function InstantLessonStatusBanner() {
               Your instant lesson is ready — tap Join to enter.
             </Text>
           </View>
-          <Pressable style={styles.joinBtn} onPress={joinAcceptedLesson}>
-            <Text style={styles.joinBtnText}>Join</Text>
-          </Pressable>
+          <View style={styles.acceptedActions}>
+            {traineeBooking.joinDeadlineAt ? (
+              <InstantLessonDeadlineChip
+                deadlineMs={traineeBooking.joinDeadlineAt}
+                label="Join within"
+                variant="urgent"
+              />
+            ) : null}
+            <Pressable style={styles.joinBtn} onPress={joinAcceptedLesson}>
+              <Text style={styles.joinBtnText}>Join</Text>
+            </Pressable>
+          </View>
           <Pressable hitSlop={8} onPress={clearTraineeBooking} style={styles.closeIcon}>
             <Ionicons name="close" size={16} color={colors.brandTextOn} />
           </Pressable>
         </Animated.View>
       ) : (
-        <Pressable style={styles.pill} onPress={restoreBooking}>
-          <Ionicons name="time-outline" size={16} color={colors.brandNavy} />
-          <Text style={styles.pillText} numberOfLines={1}>
-            Waiting for {traineeBooking.trainerName}…
-          </Text>
-          <Ionicons name="chevron-up" size={16} color={colors.brandNavy} />
+        <Pressable style={styles.pillColumn} onPress={restoreBooking}>
+          <View style={styles.pill}>
+            <Ionicons name="time-outline" size={16} color={colors.brandNavy} />
+            <Text style={styles.pillText} numberOfLines={1}>
+              Waiting for {traineeBooking.trainerName}…
+            </Text>
+            <Ionicons name="chevron-up" size={16} color={colors.brandNavy} />
+          </View>
+          {traineeBooking.acceptDeadlineAt ? (
+            <InstantLessonDeadlineChip
+              deadlineMs={traineeBooking.acceptDeadlineAt}
+              label="Coach has"
+            />
+          ) : null}
         </Pressable>
       )}
     </Animated.View>
@@ -122,6 +140,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     zIndex: 9999,
   },
+  pillColumn: { alignItems: "center", gap: 6, width: "100%" },
   pill: {
     flexDirection: "row",
     alignItems: "center",
@@ -167,6 +186,7 @@ const styles = StyleSheet.create({
   acceptedText: { flex: 1 },
   acceptedTitle: { ...typography.bodyMd, fontWeight: "800", color: colors.brandTextOn },
   acceptedSub: { ...typography.caption, color: "rgba(255,255,255,0.92)", marginTop: 1 },
+  acceptedActions: { alignItems: "flex-end", gap: 6 },
   joinBtn: {
     backgroundColor: colors.brandTextOn,
     borderRadius: radii.sm,

@@ -1,15 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { INSTANT_ACCEPT_WINDOW_MS } from "../../lib/sessions/instantLessonConstants";
 import { useInstantLesson } from "./InstantLessonContext";
 import { getS3ImageUrl } from "../../lib/imageUtils";
 import { Button, ImageWithSkeleton } from "../../components/ui";
+import { SessionCountdownText } from "../sessions/components/SessionCountdownText";
 import { colors, radii, space, typography } from "../../theme";
 
 export function InstantLessonTrainerModal() {
   const { trainerIncoming, acceptRequest, declineRequest, expireRequest } = useInstantLesson();
-  const [secondsLeft, setSecondsLeft] = useState(Math.ceil(INSTANT_ACCEPT_WINDOW_MS / 1000));
   const [avatarFailed, setAvatarFailed] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pulseRef = useRef<Animated.CompositeAnimation | null>(null);
@@ -24,24 +23,9 @@ export function InstantLessonTrainerModal() {
 
   useEffect(() => {
     if (!trainerIncoming) {
-      setSecondsLeft(Math.ceil(INSTANT_ACCEPT_WINDOW_MS / 1000));
       pulseRef.current?.stop();
       return;
     }
-
-    const msLeft = Math.max(0, trainerIncoming.expiresAt - Date.now());
-    setSecondsLeft(Math.ceil(msLeft / 1000));
-
-    const interval = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          expireRequest();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
 
     pulseRef.current = Animated.loop(
       Animated.sequence([
@@ -52,16 +36,14 @@ export function InstantLessonTrainerModal() {
     pulseRef.current.start();
 
     return () => {
-      clearInterval(interval);
       pulseRef.current?.stop();
     };
-  }, [trainerIncoming, pulseAnim, expireRequest]);
+  }, [trainerIncoming, pulseAnim]);
 
   if (!trainerIncoming) return null;
 
   const trainee = trainerIncoming.traineeInfo;
   const traineeName = trainee?.fullname || "Trainee";
-  const urgency = secondsLeft <= 30;
 
   return (
     <Modal visible transparent animationType="fade" statusBarTranslucent>
@@ -95,14 +77,11 @@ export function InstantLessonTrainerModal() {
           <Text style={styles.traineeName}>{traineeName}</Text>
           <Text style={styles.subtitle}>wants an instant lesson with you</Text>
 
-          <View style={[styles.countdownBox, urgency && styles.countdownUrgent]}>
-            <Text style={[styles.countdownNum, urgency && styles.countdownNumUrgent]}>
-              {secondsLeft}
-            </Text>
-            <Text style={[styles.countdownLabel, urgency && styles.countdownLabelUrgent]}>
-              {secondsLeft >= 60 ? "seconds to respond (up to 1 hour)" : "seconds to respond"}
-            </Text>
-          </View>
+          <SessionCountdownText
+            deadlineMs={trainerIncoming.expiresAt}
+            label="Respond within"
+            onExpired={expireRequest}
+          />
 
           <View style={styles.btnRow}>
             <Button
@@ -130,61 +109,50 @@ export function InstantLessonTrainerModal() {
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: colors.overlay,
+    backgroundColor: "rgba(0,0,0,0.55)",
     alignItems: "center",
     justifyContent: "center",
-    padding: space.md,
+    padding: space.lg,
   },
   card: {
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: radii.xl,
-    padding: space.lg,
     width: "100%",
-    maxWidth: 340,
+    maxWidth: 400,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: radii.lg,
+    padding: space.lg,
     alignItems: "center",
-    gap: 12,
   },
-  header: { flexDirection: "row", alignItems: "center", gap: 8 },
-  headerTitle: { ...typography.titleSm, color: colors.brandNavy },
-  avatarWrap: { position: "relative", marginTop: 4 },
-  avatarRing: { width: 88, height: 88, borderRadius: 44, borderWidth: 3, borderColor: colors.brandNavy },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: space.md,
+  },
+  headerTitle: { ...typography.titleSm, color: colors.brandNavy, fontWeight: "800" },
+  avatarWrap: { marginBottom: space.sm, position: "relative" },
+  avatarRing: { borderWidth: 3, borderColor: colors.brandAccent },
   avatarFallback: {
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: colors.brandNavy,
+    backgroundColor: colors.surfaceMuted,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 3,
-    borderColor: colors.brandSubtle,
   },
-  avatarInitial: { fontSize: 34, fontWeight: "700", color: colors.brandTextOn },
+  avatarInitial: { fontSize: 32, fontWeight: "700", color: colors.brandNavy },
   onlineDot: {
     position: "absolute",
-    bottom: 4,
     right: 4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    bottom: 4,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: colors.success,
     borderWidth: 2,
     borderColor: colors.surfaceElevated,
   },
-  traineeName: { ...typography.titleMd, color: colors.text },
-  subtitle: { ...typography.bodyMd, color: colors.textMuted },
-  countdownBox: {
-    backgroundColor: colors.brandSubtle,
-    borderRadius: radii.md,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    alignItems: "center",
-    width: "100%",
-  },
-  countdownUrgent: { backgroundColor: colors.dangerSubtle },
-  countdownNum: { fontSize: 40, fontWeight: "800", color: colors.brandNavy },
-  countdownNumUrgent: { color: colors.danger },
-  countdownLabel: { ...typography.bodySm, color: colors.textMuted, marginTop: 2 },
-  countdownLabelUrgent: { color: colors.danger },
-  btnRow: { flexDirection: "row", gap: 12, width: "100%", marginTop: 4 },
+  traineeName: { ...typography.titleMd, fontWeight: "800", color: colors.text },
+  subtitle: { ...typography.bodyMd, color: colors.textMuted, marginTop: 4, marginBottom: space.sm },
+  btnRow: { flexDirection: "row", gap: space.sm, marginTop: space.md, width: "100%" },
   flex1: { flex: 1 },
 });

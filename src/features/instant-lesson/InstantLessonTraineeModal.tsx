@@ -14,6 +14,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, radii, space, typography } from "../../theme";
 import type { RootStackParamList } from "../../navigation/types";
 import { useInstantLesson } from "./InstantLessonContext";
@@ -37,6 +38,7 @@ const MAX_CLIPS = 2;
  * meeting for both roles (same as web). "Upload or manage videos" opens the Clips shell.
  */
 export function InstantLessonTraineeModal() {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const queryClient = useQueryClient();
   const {
@@ -191,7 +193,12 @@ export function InstantLessonTraineeModal() {
 
   return (
     <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={minimizeBooking}>
-      <View style={styles.backdrop}>
+      <View
+        style={[
+          styles.backdrop,
+          { paddingTop: insets.top + space.md, paddingBottom: insets.bottom + space.md },
+        ]}
+      >
         <View style={styles.card}>
           {step === "waiting" && (
             <>

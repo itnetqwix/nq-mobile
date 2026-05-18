@@ -98,8 +98,8 @@ export function WizardStepDuration({
         </View>
       ) : eligibility?.eligible && eligibility.totalWindowMinutes ? (
         <Text style={styles.eligibilityOk}>
-          Coach is available. This request reserves about {eligibility.totalWindowMinutes} minutes
-          (lesson + accept + join + buffer).
+          Coach is available. Lesson: {durationMinutes} min · Total hold: ~
+          {eligibility.totalWindowMinutes} min (accept + join windows + buffer).
         </Text>
       ) : null}
 

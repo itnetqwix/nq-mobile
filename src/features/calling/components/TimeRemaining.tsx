@@ -45,6 +45,10 @@ type Props = {
   /** Optional callback fired when the timer crosses 5 / 1 / 0.5 minute marks.
    *  Wired by the meeting screen so we can emit in-app notifications. */
   onCrossThreshold?: (key: "five" | "one" | "thirty") => void;
+  /** Safe-area top offset for floating chrome. */
+  topInset?: number;
+  /** Pill label (default "Time remaining"; instant lessons use "Lesson time"). */
+  timerLabel?: string;
 };
 
 export function TimeRemaining({
@@ -58,6 +62,8 @@ export function TimeRemaining({
   onPause,
   onResume,
   onCrossThreshold,
+  topInset = 20,
+  timerLabel = "Time remaining",
 }: Props) {
   const [color, setColor] = useState("#28a745");
   const [warning, setWarning] = useState<Warning>(null);
@@ -98,9 +104,9 @@ export function TimeRemaining({
       : format(remainingSeconds);
 
   return (
-    <View style={styles.wrap} pointerEvents="box-none">
+    <View style={[styles.wrap, { top: topInset }]} pointerEvents="box-none">
       <View style={styles.pill}>
-        <Text style={styles.label}>Time remaining</Text>
+        <Text style={styles.label}>{timerLabel}</Text>
         <Text style={[styles.value, { color }]}>{display}</Text>
         {!isAuthoritative && remainingSeconds != null && (
           <Text style={styles.syncHint}>syncing…</Text>
@@ -164,7 +170,6 @@ function CoachBtn({
 const styles = StyleSheet.create({
   wrap: {
     position: "absolute",
-    top: 20,
     left: 0,
     right: 0,
     alignItems: "center",

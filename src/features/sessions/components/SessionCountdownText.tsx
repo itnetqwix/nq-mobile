@@ -7,9 +7,11 @@ type Props = {
   deadlineMs: number;
   label: string;
   onExpired?: () => void;
+  /** When true, render only mm:ss (for inline chips). */
+  timeOnly?: boolean;
 };
 
-export function SessionCountdownText({ deadlineMs, label, onExpired }: Props) {
+export function SessionCountdownText({ deadlineMs, label, onExpired, timeOnly }: Props) {
   const [secondsLeft, setSecondsLeft] = useState(() =>
     Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000))
   );
@@ -28,6 +30,14 @@ export function SessionCountdownText({ deadlineMs, label, onExpired }: Props) {
   const urgency = secondsLeft <= 10;
   const mm = String(Math.floor(secondsLeft / 60)).padStart(1, "0");
   const ss = String(secondsLeft % 60).padStart(2, "0");
+
+  if (timeOnly) {
+    return (
+      <Text style={[styles.timeOnly, urgency && styles.labelUrgent]}>
+        {mm}:{ss}
+      </Text>
+    );
+  }
 
   return (
     <View style={[styles.wrap, urgency && styles.wrapUrgent]}>
@@ -54,4 +64,10 @@ const styles = StyleSheet.create({
   wrapUrgent: { backgroundColor: "#FEE2E2" },
   label: { ...typography.bodyMd, fontWeight: "700", color: colors.brandNavy },
   labelUrgent: { color: colors.danger },
+  timeOnly: {
+    ...typography.bodyMd,
+    fontWeight: "700",
+    color: colors.brandNavy,
+    fontVariant: ["tabular-nums"],
+  },
 });

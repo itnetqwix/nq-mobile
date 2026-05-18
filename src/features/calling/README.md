@@ -3,15 +3,13 @@
 Two parallel call paths now live side by side and can be toggled at runtime
 via `featureFlag.ts → shouldUseNativeMeeting()`:
 
-1. **Native** (default `false` today) — pure `react-native-webrtc` stack
-   orchestrated by `screens/NativeMeetingScreen.tsx`. Mobile ↔ mobile works
-   end-to-end with no WebView. Mobile ↔ web does **not** work directly because
-   the web client speaks PeerJS; for mixed calls keep the WebView path
-   enabled.
-2. **WebView fallback** — `nq-mobile/src/features/meeting/screens/MeetingScreen.tsx`
-   loads the production web meeting page inside a `<WebView />`, which
-   continues to talk PeerJS to the web peers. After the Phase 0 fix this path
-   correctly drives `?id=<lessonId>` + non-empty `acc_type` injection.
+1. **Native** (default `true` on iOS/Android) — pure `react-native-webrtc` stack
+   orchestrated by `screens/NativeMeetingScreen.tsx`. Instant and scheduled
+   lessons use this path. Mobile ↔ mobile works end-to-end with no WebView.
+   Mobile ↔ web does **not** work directly because the web client speaks PeerJS.
+2. **WebView fallback** (deprecated on mobile) — set
+   `globalThis.NETQWIX_NATIVE_CALLS = false` for QA only. Loads the production
+   web meeting page inside a `<WebView />`.
 
 `MeetingRouter.tsx` is the navigator-level switch that picks one or the
 other.

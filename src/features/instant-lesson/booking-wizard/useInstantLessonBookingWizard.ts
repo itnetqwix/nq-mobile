@@ -11,7 +11,7 @@ import {
   flattenGroupedClips,
 } from "../instantLessonClipsApi";
 import { MAX_CLIPS, WIZARD_STEPS, wizardStepIndex } from "./constants";
-import { parseInstantBookingLessonId } from "./parseInstantBookingLessonId";
+import { parseInstantBookingMeta } from "./parseInstantBookingLessonId";
 import type { WizardStep, WizardTrainer } from "./types";
 import { fetchWalletBalance } from "../../wallet/walletApi";
 import { fetchInstantLessonEligibility } from "../../home/api/homeApi";
@@ -225,7 +225,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
       }
       if (couponCode.trim()) bookingPayload.coupon_code = couponCode.trim();
       const res = await apiClient.post(API_ROUTES.trainee.bookInstantMeeting, bookingPayload);
-      const lessonId = parseInstantBookingLessonId(res);
+      const { lessonId, acceptDeadlineAt } = parseInstantBookingMeta(res);
       if (!lessonId) throw new Error("Server did not return a booking id.");
       if (selectedClipIds.length > 0) {
         try {
@@ -243,6 +243,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
         traineeId,
         trainerName: tname,
         durationMinutes,
+        acceptDeadlineAt,
       });
 
       /** Trainer notification is persisted by the backend in `emitBookingCreated`. */
