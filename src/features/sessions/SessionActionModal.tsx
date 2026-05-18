@@ -1,4 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -33,7 +35,14 @@ import {
 import { navigationRef } from "../../navigation/navigationRef";
 import { colors, radii, space, typography } from "../../theme";
 import { BookingDetailsModal } from "./components/BookingDetailsModal";
+import { RatingsModal } from "../calling/components/RatingsModal";
 import { formatDualTimezoneLine } from "../../lib/sessions/formatDualTimezone";
+import {
+  getViewerRatingSummary,
+  hasViewerRated,
+} from "../../lib/sessions/sessionRatingUtils";
+import { formatRefundTransferLabel } from "../../lib/sessions/refundTransferLabel";
+import type { RootStackParamList } from "../../navigation/types";
 
 type Props = {
   visible: boolean;
@@ -46,10 +55,12 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
   const { user, accountType } = useAuth();
   const { emitNotification } = useNotifications();
   const queryClient = useQueryClient();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [busy, setBusy] = useState<"confirm" | "decline" | null>(null);
   const [localSession, setLocalSession] = useState<any | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [ratingsOpen, setRatingsOpen] = useState(false);
 
   useEffect(() => {
     setLocalSession(session);
@@ -76,6 +87,7 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
             ? { ...(prev ?? session)?.trainee_info, ...data.trainee }
             : (prev ?? session)?.trainee_info,
           _escrow: data.escrow,
+          _refund: data.refund,
         }));
       })
       .catch(() => {});
@@ -85,7 +97,13 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
   }, [visible, sessionId, session]);
   const status = normalizeSessionStatus(viewSession?.status);
   const pending = isPendingBooking(viewSession);
+  const completed = status === "completed";
   const instant = isInstantLesson(viewSession);
+  const viewerRated = hasViewerRated(viewSession, isTrainer);
+  const ratingSummary = getViewerRatingSummary(viewSession, isTrainer);
+  const refundTransferLabel = formatRefundTransferLabel(
+    viewSession?._refund?.transfer ?? viewSession?.refund_transfer
+  );
   const other = getOtherParty(viewSession, isTrainer);
   const otherName = other?.fullname || other?.fullName || (isTrainer ? "Trainee" : "Coach");
   const { dateLabel, timeLabel } = formatSessionWhen(viewSession);
@@ -115,9 +133,23 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
   const [joinHint, setJoinHint] = useState("");
 
   const joinEnabled = useMemo(
-    () => (viewSession ? canJoinSession(viewSession) : false),
-    [viewSession]
+    () => (viewSession && !completed ? canJoinSession(viewSession) : false),
+    [viewSession, completed]
   );
+
+  const openReportIssue = useCallback(() => {
+    onClose();
+    navigation.navigate("Main", {
+      screen: "Tabs",
+      params: {
+        screen: "Home",
+        params: {
+          screen: "ShellSurface",
+          params: { surfaceId: "reportIssue", sessionId },
+        },
+      },
+    } as never);
+  }, [navigation, onClose, sessionId]);
 
   useEffect(() => {
     if (!viewSession) return;
@@ -303,6 +335,16 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
               {viewSession?._escrow?.status ? (
                 <DetailRow icon="shield-outline" label="Escrow" value={String(viewSession._escrow.status)} />
               ) : null}
+              {refundTransferLabel ? (
+                <DetailRow icon="cash-outline" label="Refund" value={refundTransferLabel} />
+              ) : null}
+              {Array.isArray(viewSession?.extensions) && viewSession.extensions.length > 0 ? (
+                <DetailRow
+                  icon="add-circle-outline"
+                  label="Extensions"
+                  value={`${viewSession.extensions.length} · +${viewSession.total_extended_minutes ?? 0} min`}
+                />
+              ) : null}
               <DetailRow
                 icon={instant ? "flash-outline" : "bookmark-outline"}
                 label="Type"
@@ -357,7 +399,7 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
                 />
               ) : null}
 
-              {!pending && (
+              {!pending && !completed && (
                 <Button
                   label="Join session"
                   leftIcon="videocam-outline"
@@ -365,6 +407,27 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
                   disabled={!joinEnabled}
                 />
               )}
+
+              {completed ? (
+                <>
+                  {ratingSummary ? (
+                    <Text style={styles.hint}>Your rating: {ratingSummary}</Text>
+                  ) : null}
+                  {!viewerRated ? (
+                    <Button
+                      label="Rate session"
+                      leftIcon="star-outline"
+                      onPress={() => setRatingsOpen(true)}
+                    />
+                  ) : null}
+                  <Button
+                    label="Report an issue"
+                    variant="secondary"
+                    leftIcon="flag-outline"
+                    onPress={openReportIssue}
+                  />
+                </>
+              ) : null}
 
               {pending && !isTrainer ? (
                 <View style={styles.waitingBox}>
@@ -387,8 +450,29 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
         visible={detailsOpen}
         session={viewSession}
         isTrainer={isTrainer}
+        accountType={accountType}
         viewerTimezone={viewerTz}
         onClose={() => setDetailsOpen(false)}
+        onReportIssue={openReportIssue}
+        onRateSession={() => setRatingsOpen(true)}
+      />
+      <RatingsModal
+        visible={ratingsOpen}
+        bookingId={sessionId}
+        accountType={accountType}
+        isFromCall={false}
+        onClose={() => {
+          setRatingsOpen(false);
+          void fetchSessionDetail(sessionId).then((data) => {
+            if (data?.session) {
+              setLocalSession((prev: any) => ({
+                ...(prev ?? session),
+                ...data.session,
+                _refund: data.refund,
+              }));
+            }
+          });
+        }}
       />
     </Modal>
   );

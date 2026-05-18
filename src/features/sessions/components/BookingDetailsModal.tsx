@@ -9,23 +9,32 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { ImageWithSkeleton } from "../../../components/ui";
+import { Button, ImageWithSkeleton } from "../../../components/ui";
 import { fetchSessionDetail } from "../../home/api/homeApi";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import {
   formatSessionWhen,
   getOtherParty,
   isInstantLesson,
+  normalizeSessionStatus,
 } from "../../../lib/sessions/sessionUtils";
 import { formatDualTimezoneLine } from "../../../lib/sessions/formatDualTimezone";
+import { formatRefundTransferLabel } from "../../../lib/sessions/refundTransferLabel";
+import {
+  getViewerRatingSummary,
+  hasViewerRated,
+} from "../../../lib/sessions/sessionRatingUtils";
 import { colors, radii, space, typography } from "../../../theme";
 
 type Props = {
   visible: boolean;
   session: any;
   isTrainer: boolean;
+  accountType?: string | null;
   viewerTimezone?: string;
   onClose: () => void;
+  onReportIssue?: () => void;
+  onRateSession?: () => void;
 };
 
 function fmtDate(v: string | Date | null | undefined) {
@@ -48,6 +57,8 @@ export function BookingDetailsModal({
   isTrainer,
   viewerTimezone,
   onClose,
+  onReportIssue,
+  onRateSession,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState<any | null>(null);
@@ -85,6 +96,7 @@ export function BookingDetailsModal({
         ? { ...session?.trainee_info, ...detail.trainee }
         : session?.trainee_info,
       _escrow: detail?.escrow ?? session?._escrow,
+      _refund: detail?.refund ?? session?._refund,
     };
   }, [session, detail]);
 
@@ -105,6 +117,17 @@ export function BookingDetailsModal({
   );
   const instant = isInstantLesson(merged);
   const escrow = merged._escrow;
+  const completed = normalizeSessionStatus(merged.status) === "completed";
+  const viewerRated = hasViewerRated(merged, isTrainer);
+  const ratingSummary = getViewerRatingSummary(merged, isTrainer);
+  const refundTransferLabel = formatRefundTransferLabel(merged._refund?.transfer);
+  const extensions = Array.isArray(merged.extensions) ? merged.extensions : [];
+
+  const ratings = merged.ratings;
+  const trainerRating =
+    ratings?.trainer?.sessionRating ?? ratings?.trainer_rating ?? null;
+  const traineeRating =
+    ratings?.trainee?.sessionRating ?? ratings?.trainee_rating ?? null;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -180,35 +203,79 @@ export function BookingDetailsModal({
               </Section>
             )}
 
-            <Section title="Payment">
-              <Row label="Amount" value={fmtMoney(merged.amount)} />
-              {merged.coupon_code ? <Row label="Coupon" value={merged.coupon_code} /> : null}
-              {merged.refund_status ? (
-                <Row label="Refund status" value={String(merged.refund_status)} />
-              ) : null}
-              {merged.refund_reason_label || merged.refund_reason ? (
-                <Row
-                  label="Refund reason"
-                  value={String(merged.refund_reason_label || merged.refund_reason)}
-                />
-              ) : null}
-              {escrow ? (
-                <Row label="Escrow" value={String(escrow.status ?? "—")} />
-              ) : null}
-            </Section>
-
-            {merged.ratings ? (
-              <Section title="Ratings">
-                {merged.ratings.trainer_rating != null ? (
-                  <Row label="Coach rating" value={`${merged.ratings.trainer_rating}/5`} />
-                ) : null}
-                {merged.ratings.trainee_rating != null ? (
-                  <Row label="Trainee rating" value={`${merged.ratings.trainee_rating}/5`} />
+            {extensions.length > 0 ? (
+              <Section title="Extensions">
+                {extensions.map((ext: any, idx: number) => (
+                  <View key={`ext-${idx}`} style={styles.extensionRow}>
+                    <Text style={styles.extensionTitle}>+{ext.minutes} min</Text>
+                    <Text style={styles.extensionMeta}>
+                      {fmtMoney(ext.amount)} · {String(ext.status ?? "—")} ·{" "}
+                      {fmtDate(ext.applied_at || ext.requested_at)}
+                    </Text>
+                  </View>
+                ))}
+                {merged.total_extended_minutes ? (
+                  <Text style={styles.extensionTotal}>
+                    Total extended: {merged.total_extended_minutes} min
+                  </Text>
                 ) : null}
               </Section>
             ) : null}
 
+            <Section title="Payment">
+              <Row label="Amount" value={fmtMoney(merged.amount)} />
+              {merged.coupon_code ? <Row label="Coupon" value={merged.coupon_code} /> : null}
+              {merged._refund?.status || merged.refund_status ? (
+                <Row
+                  label="Refund status"
+                  value={String(merged._refund?.status ?? merged.refund_status)}
+                />
+              ) : null}
+              {merged._refund?.reason_label || merged.refund_reason_label || merged.refund_reason ? (
+                <Row
+                  label="Refund reason"
+                  value={String(
+                    merged._refund?.reason_label ??
+                      merged.refund_reason_label ??
+                      merged.refund_reason
+                  )}
+                />
+              ) : null}
+              {refundTransferLabel ? (
+                <Row label="Refund transfer" value={refundTransferLabel} />
+              ) : null}
+              {escrow ? <Row label="Escrow" value={String(escrow.status ?? "—")} /> : null}
+            </Section>
+
+            {ratings ? (
+              <Section title="Ratings">
+                {trainerRating != null ? (
+                  <Row label="Coach rating" value={`${trainerRating}/5`} />
+                ) : null}
+                {traineeRating != null ? (
+                  <Row label="Trainee rating" value={`${traineeRating}/5`} />
+                ) : null}
+                {ratingSummary ? <Row label="Your rating" value={ratingSummary} /> : null}
+              </Section>
+            ) : null}
+
             <Text style={styles.bookingId}>Booking ID: {sessionId}</Text>
+
+            {completed ? (
+              <View style={styles.footerActions}>
+                {!viewerRated && onRateSession ? (
+                  <Button label="Rate session" leftIcon="star-outline" onPress={onRateSession} />
+                ) : null}
+                {onReportIssue ? (
+                  <Button
+                    label="Report an issue"
+                    variant="secondary"
+                    leftIcon="flag-outline"
+                    onPress={onReportIssue}
+                  />
+                ) : null}
+              </View>
+            ) : null}
           </ScrollView>
         </Pressable>
       </Pressable>
@@ -283,10 +350,19 @@ const styles = StyleSheet.create({
   rowKey: { width: 120, ...typography.bodyMd, fontWeight: "600", color: colors.iconPrimary },
   rowVal: { flex: 1, ...typography.bodyMd, color: colors.text },
   tzLine: { ...typography.caption, color: colors.textMuted },
+  extensionRow: { marginBottom: 6 },
+  extensionTitle: { ...typography.bodyMd, fontWeight: "700", color: colors.text },
+  extensionMeta: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+  extensionTotal: {
+    ...typography.caption,
+    color: colors.brandNavy,
+    fontWeight: "600",
+    marginTop: 4,
+  },
   bookingId: {
     ...typography.caption,
     color: colors.textMuted,
     marginTop: space.lg,
-    marginBottom: space.sm,
   },
+  footerActions: { gap: space.sm, marginTop: space.md, marginBottom: space.sm },
 });

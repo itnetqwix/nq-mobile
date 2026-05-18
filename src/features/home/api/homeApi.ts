@@ -93,6 +93,13 @@ export type SessionDetailResponse = {
   trainee: Record<string, unknown> | null;
   escrow: Record<string, unknown> | null;
   payment?: Record<string, unknown>;
+  refund?: {
+    status?: string | null;
+    reason?: string | null;
+    reason_label?: string | null;
+    transfer?: Record<string, unknown> | null;
+  };
+  ops_events?: Array<Record<string, unknown>>;
 };
 
 /** Full session payload for booking detail modals (trainer + trainee). */
