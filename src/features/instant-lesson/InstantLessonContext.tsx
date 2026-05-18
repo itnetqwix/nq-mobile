@@ -15,7 +15,10 @@ import {
   NOTIFICATION_TYPES,
   useNotifications,
 } from "../notifications/NotificationContext";
-import { INSTANT_ACCEPT_WINDOW_MS } from "../../lib/sessions/instantLessonConstants";
+import {
+  INSTANT_ACCEPT_WINDOW_MS,
+  INSTANT_JOIN_AFTER_ACCEPT_MS,
+} from "../../lib/sessions/instantLessonConstants";
 import { INSTANT_LESSON_SOCKET as EVENTS } from "./instantLessonSocketEvents";
 
 /** Short "session confirmed" haptic — two quick taps. Vibration is the
@@ -38,6 +41,8 @@ export type TraineeBooking = {
   traineeId: string;
   trainerName: string;
   step: "waiting" | "accepted" | "declined" | "expired";
+  acceptDeadlineAt?: number;
+  joinDeadlineAt?: number;
   /**
    * When true, the full-screen waiting modal is hidden and only a small floating
    * pill remains so the trainee can keep using the app while waiting.
@@ -153,18 +158,42 @@ export function InstantLessonProvider({
     };
 
     const handleAccept = (payload: any) => {
-      const { lessonId } = payload || {};
+      const { lessonId, joinDeadlineAt } = payload || {};
+      const joinMs = joinDeadlineAt
+        ? new Date(joinDeadlineAt).getTime()
+        : Date.now() + INSTANT_JOIN_AFTER_ACCEPT_MS;
       setTraineeBooking((prev) => {
         if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
-        /** Restore from minimized — the user explicitly needs to see the
-         *  success state and tap "Join now", so flip the modal back open. */
         try {
           Vibration.vibrate(ACCEPT_HAPTIC_PATTERN);
         } catch {
           /** Vibration may be unavailable (simulator); ignore. */
         }
-        return { ...prev, step: "accepted" as const, minimized: false };
+        return {
+          ...prev,
+          step: "accepted" as const,
+          minimized: false,
+          joinDeadlineAt: joinMs,
+        };
       });
+    };
+
+    const handlePhase = (payload: any) => {
+      const { lessonId, phase, refundReason } = payload || {};
+      if (phase === "cancelled") {
+        setTraineeBooking((prev) => {
+          if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
+          return {
+            ...prev,
+            step: refundReason === "declined" ? ("declined" as const) : ("expired" as const),
+            minimized: false,
+          };
+        });
+        setTrainerIncoming((prev) => {
+          if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
+          return null;
+        });
+      }
     };
 
     const handleDecline = (payload: any) => {
@@ -201,6 +230,7 @@ export function InstantLessonProvider({
     socket.on(EVENTS.ACCEPT, handleAccept);
     socket.on(EVENTS.DECLINE, handleDecline);
     socket.on(EVENTS.EXPIRE, handleExpire);
+    socket.on(EVENTS.PHASE, handlePhase);
     socket.on(EVENTS.TRAINEE_CANCELLED, handleTraineeCancelled);
 
     return () => {
@@ -208,6 +238,7 @@ export function InstantLessonProvider({
       socket.off(EVENTS.ACCEPT, handleAccept);
       socket.off(EVENTS.DECLINE, handleDecline);
       socket.off(EVENTS.EXPIRE, handleExpire);
+      socket.off(EVENTS.PHASE, handlePhase);
       socket.off(EVENTS.TRAINEE_CANCELLED, handleTraineeCancelled);
     };
   }, [socket, clearExpiryTimer]);
@@ -295,16 +326,17 @@ export function InstantLessonProvider({
       const coachId = String(booking.coachId);
       const traineeId = String(booking.traineeId || userId);
 
+      const acceptDeadlineAt = Date.now() + INSTANT_ACCEPT_WINDOW_MS;
       setTraineeBooking({
         ...booking,
         lessonId,
         coachId,
         traineeId,
         step: "waiting",
+        acceptDeadlineAt,
       });
 
-      /** Align with web `InstantLessonTimeLine` socket emit (ISO `expiresAt`, minutes, `lessonType`). */
-      const expiresAt = new Date(Date.now() + INSTANT_ACCEPT_WINDOW_MS).toISOString();
+      const expiresAt = new Date(acceptDeadlineAt).toISOString();
       const payload = {
         lessonId,
         coachId,

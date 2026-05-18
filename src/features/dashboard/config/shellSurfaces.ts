@@ -88,7 +88,7 @@ export const SHELL_SURFACES: readonly ShellSurfaceMeta[] = [
   },
   {
     id: "trainerSchedule",
-    title: "My schedule",
+    title: "My availability",
     subtitle: "Weekly availability",
     webContext: "Left sidebar → Schedule Inventory (`POST /trainer/update-slots`).",
     allowedRoles: [AccountType.TRAINER],

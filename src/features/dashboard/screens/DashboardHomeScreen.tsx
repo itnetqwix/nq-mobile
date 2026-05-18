@@ -58,7 +58,8 @@ import ReviewAnalysisCard from "../../ai/ReviewAnalysisCard";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { useSessionBooking } from "../../sessions/SessionBookingContext";
-import { isPendingBooking } from "../../../lib/sessions/sessionUtils";
+import { isPendingBooking, normalizeSessionStatus, getOtherParty } from "../../../lib/sessions/sessionUtils";
+import { PostLessonConcernBanner } from "../../sessions/components/PostLessonConcernBanner";
 import { TrainerProfileModal } from "../../bookexpert/components/TrainerProfileModal";
 import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
 import { ScheduledBookingModal } from "../../bookings/screens/ScheduledBookingModal";
@@ -457,6 +458,28 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
     staleTime: 60_000,
   });
 
+  const { data: completedSessions = [] } = useQuery({
+    queryKey: ["sessions", "completed"],
+    queryFn: () => fetchScheduledMeetings("completed"),
+    staleTime: 120_000,
+  });
+
+  const recentCompletedForConcern = useMemo(() => {
+    const completed = completedSessions.filter(
+      (s: any) => normalizeSessionStatus(s?.status) === "completed"
+    );
+    if (!completed.length) return null;
+    const sorted = [...completed].sort((a, b) => {
+      const ta = new Date(a.updatedAt || a.end_time || a.booked_date).getTime();
+      const tb = new Date(b.updatedAt || b.end_time || b.booked_date).getTime();
+      return tb - ta;
+    });
+    const latest = sorted[0];
+    const endedAt = new Date(latest.updatedAt || latest.end_time || latest.booked_date).getTime();
+    if (Date.now() - endedAt > 7 * 24 * 60 * 60 * 1000) return null;
+    return latest;
+  }, [completedSessions]);
+
   const { data: friendRequests = [], isLoading: loadingFriends } = useQuery({
     queryKey: ["friendRequests"],
     queryFn: fetchFriendRequests,
@@ -723,6 +746,16 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
 
         {/* AI Recommended Trainers */}
         {isTrainee && <AIRecommendedSection onView={setProfileTrainer} />}
+
+        {recentCompletedForConcern ? (
+          <PostLessonConcernBanner
+            sessionId={String(recentCompletedForConcern._id ?? recentCompletedForConcern.id)}
+            otherPartyName={
+              getOtherParty(recentCompletedForConcern, isTrainer)?.fullname ||
+              getOtherParty(recentCompletedForConcern, isTrainer)?.fullName
+            }
+          />
+        ) : null}
 
         {/* Trainer: pending session requests (realtime via socket) */}
         {isTrainer && (loadingSessions || pendingSessions.length > 0) && (

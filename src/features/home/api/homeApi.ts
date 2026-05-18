@@ -30,6 +30,25 @@ function normalizeOnlineTrainerRows(raw: unknown): any[] {
   return out;
 }
 
+export type InstantEligibilityResult = {
+  eligible: boolean;
+  reasons: string[];
+  durationMinutes: number;
+  totalWindowMinutes: number;
+  acceptDeadlinePreview?: string;
+  trainerTimezone?: string;
+};
+
+export async function fetchInstantLessonEligibility(
+  trainerId: string,
+  durationMinutes: number
+): Promise<InstantEligibilityResult> {
+  const res = await apiClient.get(API_ROUTES.trainee.instantLessonEligibility, {
+    params: { trainerId, durationMinutes },
+  });
+  return res.data?.data ?? res.data;
+}
+
 export async function fetchOnlineUsers(): Promise<any[]> {
   const res = await apiClient.get(API_ROUTES.user.allOnlineUser);
   const body = res.data as Record<string, unknown>;
@@ -66,6 +85,20 @@ export async function updateBookedSessionStatus(
     booked_status,
   });
   return data?.result ?? data;
+}
+
+export type SessionDetailResponse = {
+  session: Record<string, unknown>;
+  trainer: Record<string, unknown> | null;
+  trainee: Record<string, unknown> | null;
+  escrow: Record<string, unknown> | null;
+  payment?: Record<string, unknown>;
+};
+
+/** Full session payload for booking detail modals (trainer + trainee). */
+export async function fetchSessionDetail(bookingId: string): Promise<SessionDetailResponse> {
+  const res = await apiClient.get(API_ROUTES.user.sessionDetail(bookingId));
+  return res.data?.data ?? res.data;
 }
 
 export async function fetchFriendRequests(): Promise<any[]> {

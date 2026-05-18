@@ -49,6 +49,8 @@ export function InstantLessonBookingWizardModal({ visible, trainer, onDismiss }:
               onRemovePromo={w.handleRemovePromo}
               visiblePromos={w.visiblePromos}
               expectedPrice={w.expectedPrice}
+              eligibility={w.eligibility}
+              eligibilityLoading={w.eligibilityLoading}
             />
           )}
 

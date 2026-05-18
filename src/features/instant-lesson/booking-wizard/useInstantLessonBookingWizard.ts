@@ -19,6 +19,7 @@ import { MAX_CLIPS, WIZARD_STEPS, wizardStepIndex } from "./constants";
 import { parseInstantBookingLessonId } from "./parseInstantBookingLessonId";
 import type { WizardStep, WizardTrainer } from "./types";
 import { fetchWalletBalance } from "../../wallet/walletApi";
+import { fetchInstantLessonEligibility } from "../../home/api/homeApi";
 
 function trainerIdOf(t: WizardTrainer): string {
   if (!t) return "";
@@ -113,6 +114,13 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
   useEffect(() => {
     if (!visible) resetWizard();
   }, [visible, resetWizard]);
+
+  const eligibilityQuery = useQuery({
+    queryKey: ["instantEligibility", tid, durationMinutes],
+    queryFn: () => fetchInstantLessonEligibility(tid, durationMinutes),
+    enabled: visible && !!tid && durationMinutes > 0,
+    staleTime: 15_000,
+  });
 
   const clipsQuery = useQuery({
     queryKey: ["instantBookingWizardClips"],
@@ -271,6 +279,13 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
 
   const handleSendRequest = useCallback(() => {
     if (!validateCoupon()) return;
+    if (eligibilityQuery.data && !eligibilityQuery.data.eligible) {
+      Alert.alert(
+        "Cannot book now",
+        eligibilityQuery.data.reasons.join("\n") || "This coach is not available for an instant lesson."
+      );
+      return;
+    }
     const promoMadeFree = requiresPayment && chargingPrice === 0 && !paymentIntentId;
     if (requiresPayment && !paymentIntentId && !promoMadeFree) {
       Alert.alert(
@@ -280,7 +295,15 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
       return;
     }
     submitMutation.mutate();
-  }, [validateCoupon, submitMutation, requiresPayment, paymentIntentId, trainerHourlyRate, chargingPrice]);
+  }, [
+    validateCoupon,
+    submitMutation,
+    requiresPayment,
+    paymentIntentId,
+    trainerHourlyRate,
+    chargingPrice,
+    eligibilityQuery.data,
+  ]);
 
   const stepNum = wizardStepIndex(step) + 1;
   const totalSteps = WIZARD_STEPS.length;
@@ -315,5 +338,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     handleRemovePromo,
     visiblePromos,
     expectedPrice,
+    eligibility: eligibilityQuery.data,
+    eligibilityLoading: eligibilityQuery.isLoading,
   };
 }

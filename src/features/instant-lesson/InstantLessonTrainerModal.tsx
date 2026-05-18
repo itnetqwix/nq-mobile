@@ -61,7 +61,7 @@ export function InstantLessonTrainerModal() {
 
   const trainee = trainerIncoming.traineeInfo;
   const traineeName = trainee?.fullname || "Trainee";
-  const urgency = secondsLeft <= 10;
+  const urgency = secondsLeft <= 30;
 
   return (
     <Modal visible transparent animationType="fade" statusBarTranslucent>

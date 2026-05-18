@@ -48,6 +48,11 @@ export const NOTIFICATION_TITLES = {
   sessionEnded: "Session Ended",
   clipShared: "Clip Shared",
   bookingReminder: "Session Reminder",
+  instantLessonAccepted: "Instant lesson accepted",
+  instantLessonDeclined: "Instant lesson declined",
+  instantLessonExpired: "Instant lesson expired",
+  instantLessonJoinExpired: "Lesson did not start",
+  refundProcessed: "Refund processed",
 } as const;
 
 export const NOTIFICATION_TYPES = {
@@ -249,10 +254,14 @@ export function NotificationProvider({
       if (
         t.includes("booking") ||
         t.includes("session") ||
-        t.includes("confirm")
+        t.includes("confirm") ||
+        t.includes("instant") ||
+        t.includes("refund") ||
+        t.includes("lesson")
       ) {
         queryClient.invalidateQueries({ queryKey: ["scheduledMeetings"] });
         queryClient.invalidateQueries({ queryKey: ["sessions"] });
+        queryClient.invalidateQueries({ queryKey: ["wallet"] });
       }
       if (t.includes("friend")) {
         queryClient.invalidateQueries({ queryKey: ["friends"] });
@@ -305,13 +314,54 @@ export function NotificationProvider({
       }
     };
 
+    const onInstantPhase = (data: {
+      lessonId?: string;
+      phase?: string;
+      refundReason?: string;
+    }) => {
+      queryClient.invalidateQueries({ queryKey: ["scheduledMeetings"] });
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["wallet"] });
+
+      const phase = data?.phase;
+      const reason = data?.refundReason;
+      if (phase === "cancelled") {
+        const title =
+          reason === "join_expired"
+            ? NOTIFICATION_TITLES.instantLessonJoinExpired
+            : reason === "declined"
+              ? NOTIFICATION_TITLES.instantLessonDeclined
+              : NOTIFICATION_TITLES.instantLessonExpired;
+        pushToQueue({
+          title,
+          description:
+            reason === "join_expired"
+              ? "The join window closed. Check your wallet for a refund."
+              : reason === "declined"
+                ? "The coach declined your instant lesson request."
+                : "The instant lesson request expired or was cancelled.",
+          isRead: false,
+          bookingInfo: { bookingId: data.lessonId, lessonId: data.lessonId },
+        } as IncomingNotification);
+      } else if (phase === "pending_join") {
+        pushToQueue({
+          title: NOTIFICATION_TITLES.instantLessonAccepted,
+          description: "Join within 2 minutes to start your lesson.",
+          isRead: false,
+          bookingInfo: { bookingId: data.lessonId, lessonId: data.lessonId },
+        } as IncomingNotification);
+      }
+    };
+
     socket.on("BOOKING_CREATED", onBookingCreated);
     socket.on("BOOKING_STATUS_UPDATED", onBookingStatusUpdated);
+    socket.on("INSTANT_LESSON_PHASE", onInstantPhase);
 
     return () => {
       socket.off(SOCKET_EVENT_RECEIVE, onReceive);
       socket.off("BOOKING_CREATED", onBookingCreated);
       socket.off("BOOKING_STATUS_UPDATED", onBookingStatusUpdated);
+      socket.off("INSTANT_LESSON_PHASE", onInstantPhase);
     };
   }, [socket, queryClient, pushToQueue, refreshInbox]);
 

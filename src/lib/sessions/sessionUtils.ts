@@ -94,6 +94,12 @@ export function canJoinSession(session: any, now = new Date()): boolean {
   const nowMs = now.getTime();
 
   if (isInstantLesson(session)) {
+    const joinDeadline = session?.join_deadline_at
+      ? new Date(session.join_deadline_at).getTime()
+      : NaN;
+    if (Number.isFinite(joinDeadline)) {
+      return nowMs <= joinDeadline;
+    }
     const acceptedAt = session?.accepted_at
       ? new Date(session.accepted_at).getTime()
       : NaN;

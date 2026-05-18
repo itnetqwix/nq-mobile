@@ -78,10 +78,19 @@ export function PushNotificationBridge() {
 
 function handlePushTap(title: string, data: Record<string, unknown>) {
   const kind = String(data.kind ?? "").toLowerCase();
-  const lessonId = (data.lessonId as string) ?? (data.booking_id as string) ?? null;
+  const lessonId =
+    (data.lessonId as string) ??
+    (data.bookingId as string) ??
+    (data.booking_id as string) ??
+    null;
 
   /** Meeting deep link — primary action when a confirmed lesson is ready. */
-  if (kind === "meeting" || (data.isInstant && data.outcome === "accepted")) {
+  if (
+    kind === "meeting" ||
+    kind === "instant_lesson_accept" ||
+    kind === "instant_lesson_accepted" ||
+    (data.isInstant && data.outcome === "accepted")
+  ) {
     if (lessonId && navigationRef.isReady()) {
       (navigationRef as any).navigate("Meeting", { lessonId });
       return;

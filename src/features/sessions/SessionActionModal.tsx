@@ -14,7 +14,7 @@ import {
 import { Button, ImageWithSkeleton, Pill } from "../../components/ui";
 import { AccountType } from "../../constants/accountType";
 import { useAuth } from "../auth/context/AuthContext";
-import { updateBookedSessionStatus } from "../home/api/homeApi";
+import { fetchSessionDetail, updateBookedSessionStatus } from "../home/api/homeApi";
 import { getS3ImageUrl } from "../../lib/imageUtils";
 import {
   canJoinSession,
@@ -32,6 +32,8 @@ import {
 } from "../notifications/NotificationContext";
 import { navigationRef } from "../../navigation/navigationRef";
 import { colors, radii, space, typography } from "../../theme";
+import { BookingDetailsModal } from "./components/BookingDetailsModal";
+import { formatDualTimezoneLine } from "../../lib/sessions/formatDualTimezone";
 
 type Props = {
   visible: boolean;
@@ -47,6 +49,7 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
 
   const [busy, setBusy] = useState<"confirm" | "decline" | null>(null);
   const [localSession, setLocalSession] = useState<any | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
     setLocalSession(session);
@@ -56,12 +59,52 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
 
   const isTrainer = accountType === AccountType.TRAINER;
   const sessionId = String(viewSession?._id ?? viewSession?.id ?? "");
+
+  useEffect(() => {
+    if (!visible || !sessionId) return;
+    let cancelled = false;
+    void fetchSessionDetail(sessionId)
+      .then((data) => {
+        if (cancelled || !data?.session) return;
+        setLocalSession((prev: any) => ({
+          ...(prev ?? session),
+          ...data.session,
+          trainer_info: data.trainer
+            ? { ...(prev ?? session)?.trainer_info, ...data.trainer }
+            : (prev ?? session)?.trainer_info,
+          trainee_info: data.trainee
+            ? { ...(prev ?? session)?.trainee_info, ...data.trainee }
+            : (prev ?? session)?.trainee_info,
+          _escrow: data.escrow,
+        }));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, sessionId, session]);
   const status = normalizeSessionStatus(viewSession?.status);
   const pending = isPendingBooking(viewSession);
   const instant = isInstantLesson(viewSession);
   const other = getOtherParty(viewSession, isTrainer);
   const otherName = other?.fullname || other?.fullName || (isTrainer ? "Trainee" : "Coach");
   const { dateLabel, timeLabel } = formatSessionWhen(viewSession);
+  const viewerTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const coachTz =
+    viewSession?.trainer_info?.extraInfo?.availabilityInfo?.timeZone ||
+    viewSession?.trainer_info?.time_zone ||
+    viewSession?.trainer_timezone;
+  const dualTz = formatDualTimezoneLine(
+    viewSession?.start_time || viewSession?.booked_date,
+    coachTz,
+    viewerTz
+  );
+  const requestedLabel = viewSession?.requested_at || viewSession?.createdAt
+    ? new Date(viewSession.requested_at || viewSession.createdAt).toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : null;
   const price =
     viewSession?.charging_price != null
       ? `$${Number(viewSession.charging_price).toFixed(2)}`
@@ -236,7 +279,30 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
             <View style={styles.detailCard}>
               <DetailRow icon="calendar-outline" label="Date" value={dateLabel} />
               {!!timeLabel && <DetailRow icon="time-outline" label="Time" value={timeLabel} />}
+              {requestedLabel ? (
+                <DetailRow icon="time-outline" label="Requested" value={requestedLabel} />
+              ) : null}
+              {dualTz ? (
+                <Text style={styles.dualTz}>{dualTz}</Text>
+              ) : null}
               {!!price && <DetailRow icon="card-outline" label="Price" value={price} />}
+              {viewSession?.refund_status ? (
+                <DetailRow
+                  icon="return-down-back-outline"
+                  label="Refund"
+                  value={String(viewSession.refund_status)}
+                />
+              ) : null}
+              {viewSession?.instant_phase ? (
+                <DetailRow
+                  icon="pulse-outline"
+                  label="Phase"
+                  value={String(viewSession.instant_phase).replace(/_/g, " ")}
+                />
+              ) : null}
+              {viewSession?._escrow?.status ? (
+                <DetailRow icon="shield-outline" label="Escrow" value={String(viewSession._escrow.status)} />
+              ) : null}
               <DetailRow
                 icon={instant ? "flash-outline" : "bookmark-outline"}
                 label="Type"
@@ -308,10 +374,22 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
                   </Text>
                 </View>
               ) : null}
+
+              <Pressable style={styles.detailsLink} onPress={() => setDetailsOpen(true)}>
+                <Text style={styles.detailsLinkText}>View full booking details</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.brandNavy} />
+              </Pressable>
             </View>
           </ScrollView>
         </Pressable>
       </Pressable>
+      <BookingDetailsModal
+        visible={detailsOpen}
+        session={viewSession}
+        isTrainer={isTrainer}
+        viewerTimezone={viewerTz}
+        onClose={() => setDetailsOpen(false)}
+      />
     </Modal>
   );
 }
@@ -429,4 +507,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   waitingText: { ...typography.bodySm, color: colors.textMuted, flex: 1 },
+  dualTz: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 4,
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  detailsLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    marginTop: space.md,
+    paddingVertical: space.sm,
+  },
+  detailsLinkText: { ...typography.bodySm, fontWeight: "600", color: colors.brandNavy },
 });

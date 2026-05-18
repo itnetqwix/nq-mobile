@@ -43,6 +43,8 @@ type Props = {
   onRemovePromo?: () => void;
   visiblePromos?: VisiblePromo[];
   expectedPrice?: number;
+  eligibility?: { eligible: boolean; reasons: string[]; totalWindowMinutes?: number } | null;
+  eligibilityLoading?: boolean;
 };
 
 export function WizardStepDuration({
@@ -59,6 +61,8 @@ export function WizardStepDuration({
   onRemovePromo,
   visiblePromos = [],
   expectedPrice = 0,
+  eligibility,
+  eligibilityLoading,
 }: Props) {
   const c = useThemeColors();
   const sharedStepStyles = useSharedStepStyles();
@@ -80,6 +84,24 @@ export function WizardStepDuration({
           );
         })}
       </View>
+
+      {eligibilityLoading ? (
+        <ActivityIndicator color={c.brandNavy} style={{ marginVertical: space.sm }} />
+      ) : eligibility && !eligibility.eligible ? (
+        <View style={styles.eligibilityBox}>
+          <Text style={styles.eligibilityTitle}>Not available right now</Text>
+          {eligibility.reasons.map((r) => (
+            <Text key={r} style={styles.eligibilityReason}>
+              • {r}
+            </Text>
+          ))}
+        </View>
+      ) : eligibility?.eligible && eligibility.totalWindowMinutes ? (
+        <Text style={styles.eligibilityOk}>
+          Coach is available. This request reserves about {eligibility.totalWindowMinutes} minutes
+          (lesson + accept + join + buffer).
+        </Text>
+      ) : null}
 
       <Text style={[sharedStepStyles.sectionTitle, styles.promoTitle]}>Promo code (optional)</Text>
       <View style={styles.promoRow}>
@@ -264,6 +286,22 @@ function useDurationStyles() {
       },
       promoChipActive: { backgroundColor: palette.brandSubtle },
       promoChipText: { fontSize: 13, fontWeight: "600", color: palette.iconPrimary },
+      eligibilityBox: {
+        marginTop: space.md,
+        padding: space.md,
+        borderRadius: radii.md,
+        backgroundColor: palette.dangerSubtle ?? "#FEE2E2",
+        borderWidth: 1,
+        borderColor: palette.danger,
+      },
+      eligibilityTitle: { fontWeight: "700", color: palette.danger, marginBottom: 6 },
+      eligibilityReason: { fontSize: 13, color: palette.text, marginBottom: 4 },
+      eligibilityOk: {
+        marginTop: space.md,
+        fontSize: 13,
+        color: palette.success,
+        fontWeight: "600",
+      },
     })
   );
 }
