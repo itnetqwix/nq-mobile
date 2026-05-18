@@ -5,6 +5,13 @@ import { useAuth } from "../auth/context/AuthContext";
 import { API_BASE_URL } from "../../config/env";
 import { getAccessToken } from "../auth/session/tokenStorage";
 
+/** JWT for Socket.IO — must match what `JWT.verifyAuthToken` expects (no `Bearer ` prefix). */
+function normalizeSocketAuthToken(raw: string): string {
+  const t = raw.trim().replace(/^\uFEFF/, "");
+  if (t.toLowerCase().startsWith("bearer ")) return t.slice(7).trim();
+  return t;
+}
+
 type SocketContextValue = {
   socket: Socket | null;
   isConnected: boolean;
@@ -32,19 +39,25 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     let createdSocket: Socket | null = null;
 
     (async () => {
-      const token = await getAccessToken();
-      if (!token || cancelled) return;
+      const tokenRaw = await getAccessToken();
+      if (!tokenRaw || cancelled) return;
+      const token = normalizeSocketAuthToken(tokenRaw);
+      if (!token) return;
 
       /**
-       * Must match web `app/components/socket/index.jsx`: JWT in **query** `authorization`.
-       * `nq-backend` `socket/init.ts` reads `socket.handshake.query.authorization` only.
+       * Match web `app/components/socket/SocketProvider.jsx`: JWT in handshake **`auth`**
+       * (not only query). Long `?authorization=…` on the WS upgrade URL is rejected by some
+       * CDNs/proxies; backend reads `handshake.auth.authorization` first (`socket/init.ts`).
        */
       createdSocket = io(API_BASE_URL, {
-        query: { authorization: token },
+        auth: { authorization: token },
         transports: ["websocket", "polling"],
         reconnection: true,
         reconnectionAttempts: 10,
         reconnectionDelay: 2000,
+        reconnectionDelayMax: 10_000,
+        timeout: 30_000,
+        upgrade: true,
       });
 
       if (cancelled) {
@@ -56,6 +69,13 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
       createdSocket.on("connect", () => {
         if (!cancelled) setIsConnected(true);
+      });
+
+      createdSocket.on("connect_error", (err) => {
+        if (__DEV__) {
+          // eslint-disable-next-line no-console
+          console.warn("[socket] connect_error", err?.message ?? err);
+        }
       });
 
       /** Same cadence as web `portrait-calling` heartbeat (10s). */
