@@ -1,6 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -42,7 +40,6 @@ import {
   hasViewerRated,
 } from "../../lib/sessions/sessionRatingUtils";
 import { formatRefundTransferLabel } from "../../lib/sessions/refundTransferLabel";
-import type { RootStackParamList } from "../../navigation/types";
 
 type Props = {
   visible: boolean;
@@ -55,8 +52,6 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
   const { user, accountType } = useAuth();
   const { emitNotification } = useNotifications();
   const queryClient = useQueryClient();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-
   const [busy, setBusy] = useState<"confirm" | "decline" | null>(null);
   const [localSession, setLocalSession] = useState<any | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -139,7 +134,8 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
 
   const openReportIssue = useCallback(() => {
     onClose();
-    navigation.navigate("Main", {
+    if (!navigationRef.isReady()) return;
+    navigationRef.navigate("Main", {
       screen: "Tabs",
       params: {
         screen: "Home",
@@ -149,7 +145,7 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
         },
       },
     } as never);
-  }, [navigation, onClose, sessionId]);
+  }, [onClose, sessionId]);
 
   useEffect(() => {
     if (!viewSession) return;
