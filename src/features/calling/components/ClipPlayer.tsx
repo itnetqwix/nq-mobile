@@ -27,13 +27,14 @@ type Props = {
   seekTargetMs?: number | null;
   /** Local control should suppress synced seeks for a moment (e.g. trainer). */
   isControlling?: boolean;
-  onProgressSeconds?: (progress: number) => void;
+  onProgressSeconds?: (seconds: number) => void;
+  onDurationSeconds?: (seconds: number) => void;
   onEnded?: () => void;
 };
 
 export const ClipPlayer = React.forwardRef<ClipPlayerHandle, Props>(
   function ClipPlayer(
-    { uri, isPlaying, seekTargetMs, onProgressSeconds, onEnded },
+    { uri, isPlaying, seekTargetMs, onProgressSeconds, onDurationSeconds, onEnded },
     ref
   ) {
     const videoRef = useRef<Video>(null);
@@ -83,6 +84,9 @@ export const ClipPlayer = React.forwardRef<ClipPlayerHandle, Props>(
           onPlaybackStatusUpdate={(status: AVPlaybackStatus) => {
             if (!status.isLoaded) return;
             if (status.didJustFinish) onEnded?.();
+            if (typeof status.durationMillis === "number" && status.durationMillis > 0) {
+              onDurationSeconds?.(status.durationMillis / 1000);
+            }
             if (onProgressSeconds && typeof status.positionMillis === "number") {
               onProgressSeconds(status.positionMillis / 1000);
             }

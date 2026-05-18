@@ -1,37 +1,69 @@
-import React, { Suspense } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import React, { Suspense, useEffect, useState } from "react";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import type { RootStackParamList } from "../../../navigation/types";
-import { MeetingScreen } from "../../meeting/screens/MeetingScreen";
-import { shouldUseNativeMeeting } from "../featureFlag";
+import { allowWebMeetingFallback, shouldUseNativeMeeting } from "../featureFlag";
+import { NativeCallRequiredScreen } from "./NativeCallRequiredScreen";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Meeting">;
 
 const LazyNativeMeetingScreen = React.lazy(() =>
-  import("./NativeMeetingScreen").then((mod) => ({
-    default: mod.NativeMeetingScreen,
+  import("./NativeMeetingScreen")
+    .then((mod) => {
+      const Component = mod.NativeMeetingScreen;
+      if (!Component) {
+        throw new Error("NativeMeetingScreen export missing");
+      }
+      return { default: Component };
+    })
+    .catch((err) => {
+      if (__DEV__) {
+        console.warn(
+          "[MeetingRouter] Native meeting failed to load:",
+          err?.message ?? err
+        );
+      }
+      return { default: NativeCallRequiredScreen };
+    })
+);
+
+/** QA-only WebView path — lazy so Expo Go does not load WebView meeting by default. */
+const LazyWebMeetingScreen = React.lazy(() =>
+  import("../../meeting/screens/MeetingScreen").then((mod) => ({
+    default: mod.MeetingScreen,
   }))
 );
 
+/**
+ * Mobile lessons use native WebRTC only (NativeMeetingScreen).
+ * Expo Go → NativeCallRequiredScreen (no embedded web meeting).
+ */
 export function MeetingRouter(props: Props) {
-  if (shouldUseNativeMeeting()) {
+  const [useNative, setUseNative] = useState(shouldUseNativeMeeting());
+  const webFallback = allowWebMeetingFallback();
+
+  useEffect(() => {
+    setUseNative(shouldUseNativeMeeting());
+  }, []);
+
+  if (useNative) {
     return (
       <Suspense fallback={<LoaderFallback />}>
         <LazyNativeMeetingScreen {...props} />
       </Suspense>
     );
   }
-  return (
-    <View style={styles.legacyWrap}>
-      <MeetingScreen {...props} />
-      <View style={styles.legacyBanner} pointerEvents="none">
-        <Text style={styles.legacyBannerText}>
-          Legacy web meeting — enable native calls in settings or rebuild with WebRTC.
-        </Text>
-      </View>
-    </View>
-  );
+
+  if (webFallback) {
+    return (
+      <Suspense fallback={<LoaderFallback />}>
+        <LazyWebMeetingScreen {...props} />
+      </Suspense>
+    );
+  }
+
+  return <NativeCallRequiredScreen {...props} />;
 }
 
 function LoaderFallback() {
@@ -49,15 +81,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  legacyWrap: { flex: 1 },
-  legacyBanner: {
-    position: "absolute",
-    top: 48,
-    left: 12,
-    right: 12,
-    backgroundColor: "rgba(0,0,128,0.85)",
-    padding: 8,
-    borderRadius: 8,
-  },
-  legacyBannerText: { color: "#fff", fontSize: 12, textAlign: "center" },
 });

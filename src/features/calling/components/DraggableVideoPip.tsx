@@ -38,6 +38,8 @@ export type DraggableVideoPipProps = {
   /** Safe-area padding inside bounds. */
   safeTop?: number;
   safeBottom?: number;
+  /** Bottom reserve for action bar + clip timeline (PIPs cannot drag below). */
+  pipReservedBottom?: number;
   position: { x: number; y: number };
   isHidden: boolean;
   hiddenEdge: PipEdge;
@@ -48,17 +50,32 @@ export type DraggableVideoPipProps = {
   disabled?: boolean;
 };
 
+function clampPipPosition(
+  x: number,
+  y: number,
+  bounds: Pick<LayoutRectangle, "width" | "height">,
+  safeTop: number,
+  reservedBottom: number
+): { x: number; y: number } {
+  const maxX = Math.max(0, bounds.width - PIP_WIDTH);
+  const maxY = Math.max(safeTop, bounds.height - reservedBottom - PIP_HEIGHT);
+  return {
+    x: Math.min(Math.max(0, x), maxX),
+    y: Math.min(Math.max(safeTop, y), maxY),
+  };
+}
+
 function detectHideEdge(
   x: number,
   y: number,
   bounds: Pick<LayoutRectangle, "width" | "height">,
   safeTop: number,
-  safeBottom: number
+  reservedBottom: number
 ): PipEdge | null {
   const w = bounds.width;
   const h = bounds.height;
   const visibleW = Math.min(x + PIP_WIDTH, w) - Math.max(x, 0);
-  const visibleH = Math.min(y + PIP_HEIGHT, h - safeBottom) - Math.max(y, safeTop);
+  const visibleH = Math.min(y + PIP_HEIGHT, h - reservedBottom) - Math.max(y, safeTop);
   const ratioW = visibleW / PIP_WIDTH;
   const ratioH = visibleH / PIP_HEIGHT;
   if (ratioW >= HIDE_VISIBLE_RATIO && ratioH >= HIDE_VISIBLE_RATIO) return null;
@@ -66,7 +83,7 @@ function detectHideEdge(
   const distLeft = x;
   const distRight = w - (x + PIP_WIDTH);
   const distTop = y - safeTop;
-  const distBottom = h - safeBottom - (y + PIP_HEIGHT);
+  const distBottom = h - reservedBottom - (y + PIP_HEIGHT);
   const min = Math.min(distLeft, distRight, distTop, distBottom);
   if (min === distLeft) return "left";
   if (min === distRight) return "right";
@@ -78,9 +95,9 @@ export function defaultPipPosition(
   tileId: "local" | "remote",
   bounds: Pick<LayoutRectangle, "width" | "height">,
   safeTop: number,
-  safeBottom: number
+  reservedBottom: number
 ): { x: number; y: number } {
-  const y = Math.max(safeTop + 8, bounds.height - safeBottom - PIP_HEIGHT - 88);
+  const y = Math.max(safeTop + 8, bounds.height - reservedBottom - PIP_HEIGHT);
   if (tileId === "local") {
     return { x: bounds.width - PIP_WIDTH - 16, y };
   }
@@ -97,6 +114,7 @@ export function DraggableVideoPip({
   bounds,
   safeTop = 0,
   safeBottom = 0,
+  pipReservedBottom,
   position,
   isHidden,
   hiddenEdge,
@@ -106,6 +124,7 @@ export function DraggableVideoPip({
   onRestore,
   disabled,
 }: DraggableVideoPipProps) {
+  const reservedBottom = pipReservedBottom ?? safeBottom + 160;
   const pan = useRef(new Animated.ValueXY(position)).current;
   const dragStart = useRef({ x: 0, y: 0 });
   const releasePos = useRef(position);
@@ -150,15 +169,23 @@ export function DraggableVideoPip({
             return;
           }
 
-          const edge = detectHideEdge(x, y, bounds, safeTop, safeBottom);
+          const clamped = clampPipPosition(x, y, bounds, safeTop, reservedBottom);
+          const edge = detectHideEdge(
+            clamped.x,
+            clamped.y,
+            bounds,
+            safeTop,
+            reservedBottom
+          );
           if (edge) {
             onHide(edge, releasePos.current);
             pan.setValue({ x: releasePos.current.x, y: releasePos.current.y });
             return;
           }
 
-          releasePos.current = { x, y };
-          onPositionChange({ x, y });
+          releasePos.current = clamped;
+          pan.setValue(clamped);
+          onPositionChange(clamped);
         },
       }),
     [
@@ -170,7 +197,7 @@ export function DraggableVideoPip({
       pan,
       position.x,
       position.y,
-      safeBottom,
+      reservedBottom,
       safeTop,
     ]
   );
@@ -185,7 +212,7 @@ export function DraggableVideoPip({
           ? { right: 4, top: bounds.height * 0.38 }
           : hiddenEdge === "top"
             ? { top: safeTop + 6, left: (bounds.width - 96) / 2 }
-            : { bottom: safeBottom + 76, left: (bounds.width - 96) / 2 };
+            : { bottom: reservedBottom + 8, left: (bounds.width - 96) / 2 };
 
     return (
       <Pressable
@@ -234,7 +261,7 @@ const styles = StyleSheet.create({
     top: 0,
     width: PIP_WIDTH,
     height: PIP_HEIGHT,
-    zIndex: 55,
+    zIndex: 60,
   },
   tileInner: {
     flex: 1,

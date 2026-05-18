@@ -500,16 +500,23 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
     staleTime: 120_000,
   });
 
-  const isRefreshing =
-    queryClient.isFetching({ queryKey: ["onlineUsers"] }) > 0 ||
-    queryClient.isFetching({ queryKey: ["sessions", "upcoming"] }) > 0;
+  /** Only true during an explicit pull-to-refresh — not background refetches
+   *  (binding to isFetching breaks iOS scrolling / UIRefreshControl). */
+  const [pullRefreshing, setPullRefreshing] = useState(false);
 
-  const onRefresh = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ["onlineUsers"] });
-    queryClient.invalidateQueries({ queryKey: ["sessions", "upcoming"] });
-    queryClient.invalidateQueries({ queryKey: ["friendRequests"] });
-    queryClient.invalidateQueries({ queryKey: ["recentTrainees"] });
-    queryClient.invalidateQueries({ queryKey: ["recentTrainers"] });
+  const onRefresh = useCallback(async () => {
+    setPullRefreshing(true);
+    try {
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ["onlineUsers"] }),
+        queryClient.refetchQueries({ queryKey: ["sessions", "upcoming"] }),
+        queryClient.refetchQueries({ queryKey: ["friendRequests"] }),
+        queryClient.refetchQueries({ queryKey: ["recentTrainees"] }),
+        queryClient.refetchQueries({ queryKey: ["recentTrainers"] }),
+      ]);
+    } finally {
+      setPullRefreshing(false);
+    }
   }, [queryClient]);
 
   const openFeature = (id: DashboardRouteId, extra?: Partial<{ bookLessonTrainerId: string }>) => {
@@ -620,9 +627,11 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
     <ScrollView
       style={[styles.root, { backgroundColor: themeColors.background }]}
       contentContainerStyle={[styles.content, { paddingBottom: space.xl * 2 + insets.bottom }]}
+      nestedScrollEnabled
+      keyboardShouldPersistTaps="handled"
       refreshControl={
         <RefreshControl
-          refreshing={isRefreshing}
+          refreshing={pullRefreshing}
           onRefresh={onRefresh}
           tintColor={themeColors.brandNavy}
         />

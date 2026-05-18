@@ -40,6 +40,9 @@ import { useAuth } from "../../auth/context/AuthContext";
 import { useSocket } from "../../socket/SocketContext";
 import { fetchScheduledMeetings } from "../../home/api/homeApi";
 import { getClipPlaybackUrl } from "../../../lib/clipMediaUrl";
+import { clipsFromSession, resolveClipPlayback } from "../clipSyncUtils";
+import { useDrawingSync } from "../useDrawingSync";
+import { useMeetingScreenshot } from "../useMeetingScreenshot";
 
 import { CallProvider, useCall } from "../CallContext";
 import { ensureCallPermissions } from "../permissions";
@@ -62,6 +65,7 @@ import { ClipPickerModal } from "../components/ClipPickerModal";
 import { ClipPlayer } from "../components/ClipPlayer";
 import { ClipPlaybackControls } from "../components/ClipPlaybackControls";
 import { DrawingOverlay } from "../components/DrawingOverlay";
+import { MeetingClipToolbar } from "../components/MeetingClipToolbar";
 import { RatingsModal } from "../components/RatingsModal";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Meeting">;
@@ -119,9 +123,13 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
       setPermState(result.allGranted ? "granted" : "denied");
     });
     return () => {
-      cancelled = false;
+      cancelled = true;
     };
   }, []);
+
+  const goHome = useCallback(() => {
+    navigation.reset({ index: 0, routes: [{ name: "Main" }] });
+  }, [navigation]);
 
   const role: SessionRole =
     accountType === AccountType.TRAINER ? "Trainer" : "Trainee";
@@ -181,10 +189,6 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
 
   const peerDisplayName =
     peer?.fullname ?? peer?.fullName ?? "Your partner";
-
-  const goHome = useCallback(() => {
-    navigation.reset({ index: 0, routes: [{ name: "Main" }] });
-  }, [navigation]);
 
   return (
     <CallProvider
@@ -293,6 +297,21 @@ function MeetingSurface({
     bounds: meetingBounds,
     safeTop: chrome.insets.top,
     safeBottom: chrome.insets.bottom,
+    pipReservedBottom: chrome.pipSafeBottom,
+  });
+
+  const drawingSync = useDrawingSync({
+    socket,
+    userInfo: { from_user: myId, to_user: peerId },
+    sessionId: lessonId,
+    isTrainer,
+  });
+
+  const screenshot = useMeetingScreenshot({
+    sessionId: lessonId,
+    trainerId: isTrainer ? myId : peerId,
+    traineeId: isTrainer ? peerId : myId,
+    isTrainer,
   });
 
   const peerUser = session
@@ -304,9 +323,20 @@ function MeetingSurface({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [ratingsOpen, setRatingsOpen] = useState(false);
   const [activeClipUri, setActiveClipUri] = useState<string | null>(null);
-  const [drawingMode, setDrawingMode] = useState(false);
+  const [clipDuration, setClipDuration] = useState(0);
+  const [clipProgress, setClipProgress] = useState(0);
+  const [drawingOverlayKey, setDrawingOverlayKey] = useState(0);
   const clipProgressRef = useRef(0);
   const lessonStartedNotifiedRef = useRef(false);
+
+  useEffect(() => {
+    if (!session) return;
+    const bookingClips = clipsFromSession(session);
+    if (bookingClips.length > 0) {
+      clipSync.preloadBookingClips(bookingClips);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- preload once per session
+  }, [session]);
 
   useEffect(() => {
     if (!bothJoined) {
@@ -334,19 +364,41 @@ function MeetingSurface({
         return;
       }
       setActiveClipUri(uri);
-      clipSync.selectClip(String(clip._id), uri);
+      clipSync.selectClip(String(clip._id), uri, clip);
     },
     [clipSync]
   );
 
   useEffect(() => {
-    if (clipSync.activeClipUrl && !isTrainer) {
+    if (clipSync.activeClipUrl) {
       setActiveClipUri(clipSync.activeClipUrl);
-    }
-    if (!clipSync.activeClipId) {
+    } else if (!clipSync.activeClipId) {
       setActiveClipUri(null);
+      setClipDuration(0);
+      setClipProgress(0);
     }
-  }, [clipSync.activeClipId, clipSync.activeClipUrl, isTrainer]);
+  }, [clipSync.activeClipId, clipSync.activeClipUrl]);
+
+  const secondaryClipUri = useMemo(() => {
+    if (clipSync.selectedClips.length < 2) return null;
+    return resolveClipPlayback(clipSync.selectedClips[1]).url;
+  }, [clipSync.selectedClips]);
+
+  const dualClip = clipSync.selectedClips.length >= 2 && !!secondaryClipUri;
+  const showDualLayout =
+    dualClip && (clipSync.lockMode || clipSync.layoutMode === "stacked");
+
+  const clipPlayerProps = {
+    isPlaying: clipSync.isPlaying,
+    seekTargetMs: clipSync.seekHint
+      ? Math.floor(clipSync.seekHint.progress * 1000)
+      : null,
+    onProgressSeconds: (seconds: number) => {
+      clipProgressRef.current = seconds;
+      setClipProgress(seconds);
+    },
+    onDurationSeconds: setClipDuration,
+  };
 
   /** Show ratings after the call ends — `endCall()` will pop us back, so we
    *  wrap that path: open the modal first, then exit on dismiss. */
@@ -422,6 +474,7 @@ function MeetingSurface({
   return (
     <View
       style={styles.root}
+      pointerEvents="box-none"
       onLayout={(e) => {
         const { width, height } = e.nativeEvent.layout;
         setMeetingBounds({ width, height });
@@ -430,34 +483,58 @@ function MeetingSurface({
       <StatusBar barStyle="light-content" />
 
       {/* Remote video / clip pane */}
-      <View style={[styles.mainPane, { paddingTop: chrome.mainPaneTop }]}>
+      <View
+        ref={screenshot.captureTargetRef}
+        collapsable={false}
+        style={[
+          styles.mainPane,
+          { paddingTop: chrome.mainPaneTop },
+          clipSync.clipFullscreen && styles.mainPaneFullscreen,
+        ]}
+      >
         {activeClipUri ? (
-          <View style={styles.clipFrame}>
-            <ClipPlayer
-              uri={activeClipUri}
-              isPlaying={clipSync.isPlaying}
-              seekTargetMs={
-                clipSync.seekHint
-                  ? Math.floor(clipSync.seekHint.progress * 1000)
-                  : null
+          <View
+            style={[
+              styles.clipFrame,
+              showDualLayout && styles.clipFrameDual,
+            ]}
+          >
+            <View style={showDualLayout ? styles.dualRow : styles.singleClip}>
+              <View style={showDualLayout ? styles.dualPane : styles.singleClip}>
+                <ClipPlayer uri={activeClipUri} {...clipPlayerProps} />
+              </View>
+              {showDualLayout && secondaryClipUri ? (
+                <View style={styles.dualPane}>
+                  <ClipPlayer uri={secondaryClipUri} {...clipPlayerProps} />
+                </View>
+              ) : null}
+            </View>
+            {isTrainer ? (
+              <ClipPlaybackControls
+                isPlaying={clipSync.isPlaying}
+                onTogglePlay={() => clipSync.togglePlay()}
+                progressSeconds={clipProgress}
+                durationSeconds={clipDuration}
+                onSeek={(sec) => {
+                  clipProgressRef.current = sec;
+                  setClipProgress(sec);
+                  clipSync.seek(sec, { forceEmit: true });
+                }}
+                disabled={!activeClipUri}
+                bottomOffset={chrome.clipControlsBottom}
+              />
+            ) : null}
+            <DrawingOverlay
+              key={drawingOverlayKey}
+              enabled={isTrainer && drawingSync.drawingEnabled}
+              remoteStrokes={drawingSync.remoteStrokes}
+              onStrokeComplete={(points, size) =>
+                drawingSync.emitStroke(
+                  { points, color: "#ff3b30", width: 4 },
+                  size
+                )
               }
-              onProgressSeconds={(seconds) => {
-                clipProgressRef.current = seconds;
-                if (isTrainer) clipSync.seek(seconds);
-              }}
             />
-            <ClipPlaybackControls
-              isPlaying={clipSync.isPlaying}
-              onTogglePlay={() => clipSync.togglePlay()}
-              progressSeconds={clipProgressRef.current}
-              onStepFrame={(next) => {
-                clipProgressRef.current = next;
-                clipSync.seek(next);
-              }}
-              disabled={!activeClipUri}
-              bottomOffset={chrome.clipControlsBottom}
-            />
-            <DrawingOverlay enabled={isTrainer && drawingMode} />
           </View>
         ) : (
           <UserBox
@@ -490,6 +567,7 @@ function MeetingSurface({
             bounds={meetingBounds}
             safeTop={chrome.insets.top}
             safeBottom={chrome.insets.bottom}
+            pipReservedBottom={chrome.pipSafeBottom}
             position={pipLayout.pipLayout.local.position}
             isHidden={pipLayout.pipLayout.local.isHidden}
             hiddenEdge={pipLayout.pipLayout.local.hiddenEdge}
@@ -506,6 +584,7 @@ function MeetingSurface({
             bounds={meetingBounds}
             safeTop={chrome.insets.top}
             safeBottom={chrome.insets.bottom}
+            pipReservedBottom={chrome.pipSafeBottom}
             position={pipLayout.pipLayout.remote.position}
             isHidden={pipLayout.pipLayout.remote.isHidden}
             hiddenEdge={pipLayout.pipLayout.remote.hiddenEdge}
@@ -532,11 +611,28 @@ function MeetingSurface({
         onCrossThreshold={onTimerCrossThreshold}
       />
 
-      {/* Trainer-only drawing toggle */}
       {isTrainer && activeClipUri ? (
-        <DrawingModeToggle
-          enabled={drawingMode}
-          onToggle={() => setDrawingMode((d) => !d)}
+        <MeetingClipToolbar
+          hasClip
+          dualClip={dualClip}
+          layoutMode={clipSync.layoutMode}
+          lockMode={clipSync.lockMode}
+          drawingEnabled={drawingSync.drawingEnabled}
+          onToggleFullscreen={() => clipSync.toggleClipFullscreen()}
+          onToggleStacked={() => {
+            const next =
+              clipSync.layoutMode === "stacked" ? "default" : "stacked";
+            clipSync.setLayout(next);
+          }}
+          onToggleLock={() => clipSync.toggleLockMode()}
+          onToggleDrawing={() =>
+            drawingSync.setTrainerDrawingEnabled(!drawingSync.drawingEnabled)
+          }
+          onClearDrawing={() => {
+            drawingSync.clearCanvas();
+            setDrawingOverlayKey((k) => k + 1);
+          }}
+          bottomOffset={chrome.bottomChrome + 88}
         />
       ) : null}
 
@@ -545,6 +641,7 @@ function MeetingSurface({
         isTrainer={isTrainer}
         bottomInset={chrome.bottomChrome}
         onOpenClipPicker={isTrainer ? () => setPickerOpen(true) : undefined}
+        onScreenshot={isTrainer ? () => void screenshot.takeScreenshot() : undefined}
       />
 
       {lastError ? (
@@ -579,25 +676,6 @@ function MeetingSurface({
   );
 }
 
-function DrawingModeToggle({
-  enabled,
-  onToggle,
-}: {
-  enabled: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <View style={styles.drawingToggle}>
-      <Text
-        style={[styles.drawingToggleText, enabled && styles.drawingActive]}
-        onPress={onToggle}
-      >
-        {enabled ? "Drawing ON" : "Tap to draw"}
-      </Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   root: {
     flex: 1,
@@ -608,11 +686,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingBottom: 100,
   },
+  mainPaneFullscreen: {
+    paddingHorizontal: 0,
+    paddingBottom: 120,
+  },
   clipFrame: {
     flex: 1,
     overflow: "hidden",
     borderRadius: 20,
     backgroundColor: "#111",
+  },
+  clipFrameDual: {
+    borderRadius: 12,
+  },
+  singleClip: {
+    flex: 1,
+  },
+  dualRow: {
+    flex: 1,
+    flexDirection: "row",
+    gap: 6,
+  },
+  dualPane: {
+    flex: 1,
+    overflow: "hidden",
+    borderRadius: 12,
+    backgroundColor: "#0a0a0a",
   },
   center: {
     flex: 1,
@@ -633,15 +732,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   errorText: { color: "#fff", fontSize: 13 },
-  drawingToggle: {
-    position: "absolute",
-    right: 14,
-    bottom: 120,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-  drawingToggleText: { color: "#fff", fontSize: 12, fontWeight: "600" },
-  drawingActive: { color: "#ff3b30" },
 });

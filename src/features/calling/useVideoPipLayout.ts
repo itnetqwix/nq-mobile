@@ -26,6 +26,7 @@ type Args = {
   bounds: Bounds | null;
   safeTop: number;
   safeBottom: number;
+  pipReservedBottom: number;
 };
 
 function roleForTile(tile: PipTileId, isTrainer: boolean): VideoHideType {
@@ -52,6 +53,7 @@ export function useVideoPipLayout({
   bounds,
   safeTop,
   safeBottom,
+  pipReservedBottom,
 }: Args) {
   const [local, setLocal] = useState<TileState>({
     position: null,
@@ -69,13 +71,15 @@ export function useVideoPipLayout({
     const layoutRect = { width: bounds.width, height: bounds.height, x: 0, y: 0 };
     setLocal((prev) => ({
       ...prev,
-      position: prev.position ?? defaultPipPosition("local", layoutRect, safeTop, safeBottom),
+      position:
+        prev.position ?? defaultPipPosition("local", layoutRect, safeTop, pipReservedBottom),
     }));
     setRemote((prev) => ({
       ...prev,
-      position: prev.position ?? defaultPipPosition("remote", layoutRect, safeTop, safeBottom),
+      position:
+        prev.position ?? defaultPipPosition("remote", layoutRect, safeTop, pipReservedBottom),
     }));
-  }, [bounds, safeTop, safeBottom]);
+  }, [bounds, safeTop, pipReservedBottom]);
 
   const getTileState = useCallback(
     (tile: PipTileId) => (tile === "local" ? local : remote),

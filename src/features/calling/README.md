@@ -1,93 +1,62 @@
 # Mobile portrait-calling
 
-Two parallel call paths now live side by side and can be toggled at runtime
-via `featureFlag.ts → shouldUseNativeMeeting()`:
+Native instant/scheduled lessons run in `NativeMeetingScreen` (WebRTC + socket
+clip sync). `MeetingRouter` blocks Expo Go unless QA enables web fallback.
 
-1. **Native** (default `true` on iOS/Android) — pure `react-native-webrtc` stack
-   orchestrated by `screens/NativeMeetingScreen.tsx`. Instant and scheduled
-   lessons use this path. Mobile ↔ mobile works end-to-end with no WebView.
-   Mobile ↔ web does **not** work directly because the web client speaks PeerJS.
-2. **WebView fallback** (deprecated on mobile) — set
-   `globalThis.NETQWIX_NATIVE_CALLS = false` for QA only. Loads the production
-   web meeting page inside a `<WebView />`.
+## Clip sync (web parity)
 
-`MeetingRouter.tsx` is the navigator-level switch that picks one or the
-other.
+`useClipSync` handles **both** payload shapes:
 
-## Native stack components
+| Emitter | `ON_VIDEO_SELECT` shape |
+|---------|-------------------------|
+| Web trainer | `type: "clips"`, `videos: Clip[]` |
+| Mobile trainer | same (preferred) + legacy `type: "clip"`, `id`, `playbackUrl` |
+
+On join, booking clips from `session.trainee_clips` / `trainee_clip` preload for
+the trainer (same as web `VideoCallUI`).
+
+Trainer-only: play/pause, timeline scrub (`ClipPlaybackControls`), lock mode,
+fullscreen clip, drawing, screenshot → game plan.
+
+Trainee: follows socket for clip playback and hide/show; no transport controls.
+
+## Cross-platform QA matrix
+
+| Trainer | Trainee | Clip sync | Live video |
+|---------|---------|-----------|------------|
+| Web | Mobile | Web `clips[]` → mobile plays | PeerJS vs WebRTC — verify separately |
+| Mobile | Web | Mobile emits `clips[]` | same |
+| Mobile | Mobile | Full native | Native WebRTC |
+| Web | Web | Web only | PeerJS |
+
+### Manual checks
+
+1. Trainee selects clips on web → trainer on mobile sees clip in main pane.
+2. Trainer picks clip on mobile → trainee on web enters clip mode.
+3. Instant lesson with pre-attached clips → trainer sees video without re-opening picker.
+4. Trainer play/pause + scrub → trainee video follows (no controls on trainee).
+5. PIPs drag above bottom bar; both sides can park tiles on left/right walls.
+6. Trainer screenshot button → upload succeeds → appears in session report.
+
+## Key files
 
 | File | Purpose |
 |------|---------|
-| `NativeCallEngine.ts` | RTCPeerConnection + getUserMedia + offer/answer/ICE over the same socket event names the backend already uses (`nq-backend-main/src/config/constance.ts → EVENTS.VIDEO_CALL`). |
-| `CallContext.tsx` | React provider that surfaces local/remote streams, peer info, mute/camera state, and peer-joined events. |
-| `permissions.ts` | Wraps `react-native-permissions` so callers can `await ensureCallPermissions()` and forget about iOS / Android specifics. |
-| `useCallSignaling.ts` | Pure socket-event hook (used by the engine and by tests). Now emits with the correct web-parity `{ userInfo }` envelope. |
-| `useLessonTimer.ts` | RN port of `app/components/video/hooks/useLessonTimer.js`. Listens to `LESSON_*` events from the backend. |
-| `useLessonCountdown.ts` | Tiny "remaining label" hook used by the WebView overlay. |
-| `useClipSync.ts` | Trainer/trainee clip selection + play/pause/seek synchronisation over `ON_VIDEO_SELECT`, `ON_VIDEO_PLAY_PAUSE`, `ON_VIDEO_TIME`. |
-| `clipEvents.ts` | Shared clip socket event names (matches `helpers/events.ts`). |
-| `featureFlag.ts` | `shouldUseNativeMeeting()` runtime flag — flip via `globalThis.NETQWIX_NATIVE_CALLS = true` for QA. |
-| `postSessionApi.ts` | REST wrappers for ratings, extend-session, saved-lessons upload URL, game-plan report (web parity). |
-| `iceServers.ts` | Same ICE config builder as web `callEngine.js → buildIceConfig`. |
-| `screens/NativeMeetingScreen.tsx` | Orchestrator — mirrors the web `VideoCallUI` block. |
-| `screens/MeetingRouter.tsx` | Navigator-level switch (native vs WebView). |
-| `components/UserBox.tsx` | `RTCView` tile for the main remote/clip pane. |
-| `components/DraggableVideoPip.tsx` | Draggable local + remote live camera PIPs; drag off-screen to hide, edge tab to restore. |
-| `useVideoPipLayout.ts` | PIP position/hide state; maps `teacher`/`student` roles for socket sync. |
-| `components/ActionButtons.tsx` | Bottom control bar: mute, camera, flip, clip picker, screenshot, end call. |
-| `components/TimeRemaining.tsx` | RN port of the web `time-remaining.jsx` pill with coach controls and 5-min / 30-s warnings. |
-| `components/PeerJoinedModal.tsx` | Native modal triggered when `CallContext.peerJoined` fires (web parity with `showPartnerJoinedPrompt`). |
-| `components/ClipPickerModal.tsx` | Trainer-only clip picker backed by `/common/get-clips` + `/common/trainee-clips`. |
-| `components/ClipPlayer.tsx` | `expo-av` Video wrapper synced via `useClipSync`. |
-| `components/DrawingOverlay.tsx` | Skia-based annotation overlay on top of the clip pane. |
-| `components/RecordingBar.tsx` | Deferred — not mounted in native meetings. |
-| `components/RatingsModal.tsx` | Post-session rating modal mirroring `bookings/ratings/index.jsx`. |
-| `components/PortraitCallOverlay.tsx` | Slim native overlay placed on top of the WebView when running the fallback. |
-| `components/PortraitCallChrome.tsx` | Older scaffold for full chrome (kept for compatibility). |
+| `useClipSync.ts` | Clip select / play / seek / hide / lock / fullscreen |
+| `clipSyncUtils.ts` | Booking clip extraction + URL resolution |
+| `useDrawingSync.ts` | `EMIT_DRAWING_CORDS` stroke broadcast |
+| `useMeetingScreenshot.ts` | Capture frame → `/report/add-image` |
+| `ClipPlaybackControls.tsx` | Play/pause + timeline (trainer only) |
+| `MeetingClipToolbar.tsx` | Fullscreen, lock, draw, clear |
+| `DraggableVideoPip.tsx` | Draggable PIPs with safe-zone clamping |
+| `useMeetingChromeInsets.ts` | `pipSafeBottom` reserves space above controls |
 
-## Required project setup
-
-This stack will **not** run inside Expo Go. The repo now ships native code
-generated by `expo prebuild --clean`. To run locally:
+## Dev build
 
 ```bash
-# iOS
 npx expo run:ios
-# Android
+# or
 npx expo run:android
 ```
 
-For TestFlight / Play Store delivery use EAS Build.
-
-### Permissions
-
-These are declared in `app.json` and surfaced at runtime via the
-`@config-plugins/react-native-webrtc` plugin:
-
-- iOS: `NSCameraUsageDescription`, `NSMicrophoneUsageDescription`,
-  `NSBluetoothPeripheralUsageDescription`, `UIBackgroundModes: audio, voip`.
-- Android: `CAMERA`, `RECORD_AUDIO`, `MODIFY_AUDIO_SETTINGS`,
-  `BLUETOOTH_CONNECT`, `FOREGROUND_SERVICE`,
-  `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `WAKE_LOCK`.
-
-## Draggable camera PIPs (hide / restore / sync)
-
-During a native lesson, **local** and **remote** live cameras render as draggable
-picture-in-picture tiles over the main pane (remote video or clip player).
-
-- **Drag off-screen** (less than ~25% visible) hides the tile and shows a small
-  edge tab (camera icon + label).
-- **Tap the edge tab** restores the tile at its last visible position.
-- **Trainer** drag-hide emits `ON_VIDEO_HIDE` / `ON_VIDEO_SHOW` with
-  `videoType: "teacher"` (coach camera) or `"student"` (trainee camera) — same as
-  web clip mode. The **trainee** UI applies the matching hide without emitting.
-- **Trainee** can still drag-hide tiles **locally** (no socket) to clear space for
-  clip controls and lesson chrome.
-
-## Mobile <→ Web interop note
-
-The web client uses PeerJS (which has its own SDP envelope). Until we ship a
-PeerJS-compatible shim (or migrate the web side to plain libwebrtc), the
-**native** path is only safe for mobile <→ mobile sessions. For mixed
-sessions keep `shouldUseNativeMeeting()` returning `false` and the WebView
-fallback will continue to talk PeerJS as before.
+Native video does not run in Expo Go.

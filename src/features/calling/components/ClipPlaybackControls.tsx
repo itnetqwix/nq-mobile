@@ -1,60 +1,86 @@
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useRef } from "react";
+import {
+  LayoutChangeEvent,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type GestureResponderEvent,
+} from "react-native";
 
-const FRAME_STEP_SEC = 1 / 30;
-const MIN_TOUCH = 44;
+function formatTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
 
 type Props = {
   isPlaying: boolean;
-  onTogglePlay: () => void;
   progressSeconds: number;
-  onStepFrame: (nextSeconds: number) => void;
+  durationSeconds: number;
+  onTogglePlay: () => void;
+  onSeek: (seconds: number) => void;
   disabled?: boolean;
   bottomOffset?: number;
 };
 
+/** Trainer-only clip timeline (play/pause + scrub). Trainee follows via socket. */
 export function ClipPlaybackControls({
   isPlaying,
-  onTogglePlay,
   progressSeconds,
-  onStepFrame,
+  durationSeconds,
+  onTogglePlay,
+  onSeek,
   disabled,
   bottomOffset = 108,
 }: Props) {
+  const trackWidth = useRef(1);
+  const max = Math.max(durationSeconds, 0.01);
+  const value = Math.min(Math.max(progressSeconds, 0), max);
+  const ratio = value / max;
+
+  const seekFromEvent = (e: GestureResponderEvent) => {
+    const x = e.nativeEvent.locationX;
+    const w = trackWidth.current || 1;
+    onSeek(Math.max(0, Math.min(max, (x / w) * max)));
+  };
+
   return (
     <View style={[styles.bar, { bottom: bottomOffset }]} pointerEvents="box-none">
-      <Pressable
-        style={[styles.frameBtn, disabled && styles.btnDisabled]}
-        onPress={() => onStepFrame(Math.max(0, progressSeconds - FRAME_STEP_SEC))}
-        disabled={disabled}
-        accessibilityLabel="Previous frame"
-        accessibilityHint="Step back one frame"
-      >
-        <Ionicons name="chevron-back" size={26} color="#fff" />
-        <Text style={styles.frameLabel}>−1 frame</Text>
-      </Pressable>
+      <View style={styles.timelineCard}>
+        <Pressable
+          style={[styles.playBtn, disabled && styles.btnDisabled]}
+          onPress={onTogglePlay}
+          disabled={disabled}
+          accessibilityLabel={isPlaying ? "Pause clip" : "Play clip"}
+        >
+          <Ionicons name={isPlaying ? "pause" : "play"} size={28} color="#fff" />
+        </Pressable>
 
-      <Pressable
-        style={[styles.playBtn, disabled && styles.btnDisabled]}
-        onPress={onTogglePlay}
-        disabled={disabled}
-        accessibilityLabel={isPlaying ? "Pause clip" : "Play clip"}
-      >
-        <Ionicons name={isPlaying ? "pause" : "play"} size={34} color="#fff" />
-        <Text style={styles.playLabel}>{isPlaying ? "Pause" : "Play"}</Text>
-      </Pressable>
-
-      <Pressable
-        style={[styles.frameBtn, disabled && styles.btnDisabled]}
-        onPress={() => onStepFrame(progressSeconds + FRAME_STEP_SEC)}
-        disabled={disabled}
-        accessibilityLabel="Next frame"
-        accessibilityHint="Step forward one frame"
-      >
-        <Ionicons name="chevron-forward" size={26} color="#fff" />
-        <Text style={styles.frameLabel}>+1 frame</Text>
-      </Pressable>
+        <View style={styles.timelineCol}>
+          <Pressable
+            onLayout={(e: LayoutChangeEvent) => {
+              trackWidth.current = e.nativeEvent.layout.width;
+            }}
+            onPress={seekFromEvent}
+            disabled={disabled}
+            style={styles.trackHit}
+            accessibilityRole="adjustable"
+            accessibilityLabel="Clip timeline"
+          >
+            <View style={styles.track}>
+              <View style={[styles.fill, { width: `${ratio * 100}%` }]} />
+              <View style={[styles.thumb, { left: `${ratio * 100}%` }]} />
+            </View>
+          </Pressable>
+          <View style={styles.timeRow}>
+            <Text style={styles.timeText}>{formatTime(value)}</Text>
+            <Text style={styles.timeText}>{formatTime(max)}</Text>
+          </View>
+        </View>
+      </View>
     </View>
   );
 }
@@ -64,43 +90,59 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 12,
     right: 12,
-    flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "center",
-    gap: 16,
-    zIndex: 20,
+    zIndex: 24,
   },
-  frameBtn: {
+  timelineCard: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    minWidth: MIN_TOUCH,
-    minHeight: MIN_TOUCH,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 12,
-    backgroundColor: "rgba(0,0,0,0.55)",
+    gap: 12,
+    backgroundColor: "rgba(0,0,0,0.72)",
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   playBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(0,0,128,0.95)",
     alignItems: "center",
     justifyContent: "center",
-    minWidth: 72,
-    minHeight: 72,
-    borderRadius: 36,
-    backgroundColor: "rgba(0,0,128,0.9)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
   },
   btnDisabled: { opacity: 0.4 },
-  frameLabel: {
-    color: "rgba(255,255,255,0.9)",
-    fontSize: 11,
-    fontWeight: "600",
+  timelineCol: { flex: 1 },
+  trackHit: { paddingVertical: 8 },
+  track: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    overflow: "visible",
+  },
+  fill: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: "#4fc3f7",
+    borderRadius: 2,
+  },
+  thumb: {
+    position: "absolute",
+    top: -6,
+    marginLeft: -8,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#fff",
+  },
+  timeRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginTop: 2,
   },
-  playLabel: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "700",
-    marginTop: 2,
+  timeText: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 11,
+    fontWeight: "600",
   },
 });

@@ -64,39 +64,72 @@ Server state uses **TanStack Query**; session and user summary use **`AuthContex
 ```bash
 npm install
 npm start
-# same as: npm run expo   or   npx expo start
 ```
 
-Then press `i` / `a` for iOS simulator or Android emulator.
+Default is **`expo start --dev-client`** (for the NetQwix development build with native video).
 
-### “No usable data found” on the phone (almost always iOS)
+| Command | Use when |
+|---------|----------|
+| `npm start` | NetQwix **dev client** app is installed (native lessons) |
+| `npm run start:go` | Testing in **Expo Go** only (no native video lessons) |
+| `npm run ios` | Build + install + launch on simulator/device (best for native video) |
 
-**Do not use the iPhone Camera app** (or Control Center QR scanner) on the QR from the terminal. Apple often shows **“No usable data found”** because `exp://` is not a normal web link and Camera will not hand off to Expo Go.
+Press `i` / `a` in Metro for simulator after `npm run ios` once.
 
-**Do this:**
+### Instant / video lessons (native only — not Expo Go)
 
-1. Install **[Expo Go](https://expo.dev/go)** from the App Store.
-2. Open the **Expo Go app** (orange icon) — stay inside that app.
-3. Either:
-   - **Scan with Expo’s scanner:** on the **Home** tab, use **Scan QR code** / camera icon **inside Expo Go** (not the system Camera), **or**
-   - **Paste the URL:** use **Enter URL manually** (or the URL field / **+** on Home — label varies by Expo Go version).
+Lessons use **fully native in-app video** (`NativeMeetingScreen` + `react-native-webrtc`), like Google Meet — **not** a web page in the app.
 
-**Paste URL (same Wi‑Fi as your Mac, no QR needed):**
+| How you run the app | Video lessons |
+|---------------------|---------------|
+| **Expo Go** (`npm run start:go` + QR) | Not supported |
+| **Development build** (`npm run ios` / EAS dev IPA) | Full native UI |
+| **Store build** (TestFlight / Play) | Full native UI |
+
+### Install the development build (required once)
+
+**Scanning the Metro QR code does not install the app.** It only tells an already-installed app where Metro is. iPhone **Camera** often shows **“No usable data found”** — that is normal; never use Camera for this QR.
+
+**Best path (Mac + iPhone, no QR):**
+
+```bash
+npx expo prebuild   # first time only
+npx expo run:ios --device
+```
+
+Use a USB cable if the phone does not find Metro over Wi‑Fi. This installs **NetQwix** with WebRTC and opens it connected to Metro.
+
+**If you already installed a dev build (EAS or `run:ios`):**
+
+```bash
+npm start
+```
+
+On the phone:
+
+1. Open the **NetQwix** app (your app icon) — **not** Expo Go.
+2. On the expo-dev-client screen, use **Fetch development servers** or the **in-app** QR scanner (not iPhone Camera).
+3. Or paste the URL from `npm run print:expo-url` into the dev client’s manual URL field.
+
+**EAS development IPA:** install from the EAS build link / TestFlight first, then `npm start` and open NetQwix as above.
+
+### “No usable data found” when scanning
+
+| Scanner | Result |
+|---------|--------|
+| **iPhone Camera** on terminal QR | Usually **“No usable data found”** — wrong tool |
+| **Expo Go** after `npm start` (dev-client mode) | Wrong app — use NetQwix dev build |
+| **NetQwix app** dev launcher (in-app scan) | Correct |
+| **`npx expo run:ios --device`** | No QR needed |
 
 ```bash
 npm run print:expo-url
 ```
 
-Copy the printed `exp://…` line into Expo Go. If Metro uses a port other than **8081**, use the exact **“Metro waiting on exp://…”** line from the terminal where `npm start` is running.
-
-**Different Wi‑Fi / VPN / tunnel:**
+**Different Wi‑Fi / VPN:**
 
 ```bash
 npm run start:tunnel
 ```
 
-When Metro is up, **copy the full `exp://…` URL** from the terminal (select text) and paste it into Expo Go — still **not** the iPhone Camera.
-
-**In the Metro terminal:** press `s` to switch LAN / Tunnel / Local if needed.
-
-**Android:** the system camera often offers “Open with Expo Go”; iOS usually does not — use Expo Go’s scanner or paste URL only.
+Copy the full URL from the Metro terminal into the **NetQwix** dev client, not Camera.

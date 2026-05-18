@@ -1,10 +1,7 @@
 #!/usr/bin/env node
 /**
- * Prints an exp:// URL to paste into Expo Go ("Enter URL manually").
- * iPhone Camera cannot open exp:// — do not scan the QR with Camera.
- *
- * Default Metro port 8081 — if Metro chose another port, use the exact
- * "Metro waiting on exp://..." line from the terminal instead.
+ * Prints connection URLs for Expo Go or the NetQwix development client.
+ * iPhone Camera cannot open exp:// — never scan the terminal QR with Camera.
  */
 const os = require("os");
 
@@ -24,23 +21,46 @@ function firstLanIPv4() {
 const ip = firstLanIPv4();
 if (!ip) {
   console.log(
-    "Could not detect a LAN IP. After `npm start`, copy the full `exp://...` line from the terminal into Expo Go."
+    "Could not detect a LAN IP. After `npm start`, copy the full URL from the Metro terminal."
   );
   process.exit(0);
 }
 
+const expUrl = `exp://${ip}:${port}`;
+const schemeUrl = `netqwix://expo-development-client/?url=${encodeURIComponent(expUrl)}`;
+
 console.log(`
---- Paste into Expo Go (not iPhone Camera) ---
+=== NetQwix development build (native video lessons) ===
 
-  exp://${ip}:${port}
+A QR code does NOT install the app. You need the NetQwix dev app on your phone first.
 
-Steps:
-  1. Install "Expo Go" from the App Store.
-  2. Open the Expo Go app (orange icon).
-  3. On the Home tab, use "Enter URL manually" or tap + / "Scan QR code"
-     and use the IN-APP scanner only — never the iOS Camera app.
-  4. Paste the URL above (same Wi‑Fi as this Mac).
+Recommended (Mac + iPhone, no QR):
+  npx expo run:ios --device
+  (installs NetQwix, starts Metro, opens the app — use a USB cable if Wi‑Fi fails)
 
-If connection fails, run: npm run start:tunnel
-Then copy the "Metro waiting on exp://..." URL from that terminal output.
+If the NetQwix dev app is already installed, start Metro for dev client:
+  npm start
+  (runs: expo start --dev-client)
+
+Then on the phone:
+  1. Open the NetQwix app (your icon) — NOT Expo Go, NOT iPhone Camera.
+  2. On the development launcher screen, tap "Fetch development servers"
+     or scan QR using the scanner INSIDE that app only.
+  3. Or paste this URL in the dev client's manual entry field:
+
+     ${expUrl}
+
+  Deep link (some builds): ${schemeUrl}
+
+=== Expo Go only (no native video lessons) ===
+
+  npm run start:go
+  Open Expo Go app → Enter URL manually → ${expUrl}
+  (Do not use iPhone Camera — "No usable data found" is expected.)
+
+=== Same Wi‑Fi / VPN issues ===
+
+  npm run start:tunnel
+  Then copy the "Metro waiting on …" line from the terminal into the dev client.
+
 `);
