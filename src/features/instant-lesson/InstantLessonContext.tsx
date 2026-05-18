@@ -11,11 +11,6 @@ import { Vibration } from "react-native";
 import { useSocket } from "../socket/SocketContext";
 import { useAuth } from "../auth/context/AuthContext";
 import {
-  NOTIFICATION_TITLES,
-  NOTIFICATION_TYPES,
-  useNotifications,
-} from "../notifications/NotificationContext";
-import {
   INSTANT_ACCEPT_WINDOW_MS,
   INSTANT_JOIN_AFTER_ACCEPT_MS,
 } from "../../lib/sessions/instantLessonConstants";
@@ -87,7 +82,6 @@ export function InstantLessonProvider({
 }) {
   const { socket } = useSocket();
   const { user, status: authStatus } = useAuth();
-  const { emitNotification } = useNotifications();
   const [trainerIncoming, setTrainerIncoming] = useState<TrainerIncoming | null>(null);
   const [traineeBooking, setTraineeBooking] = useState<TraineeBooking | null>(null);
   const expiryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -252,32 +246,12 @@ export function InstantLessonProvider({
       (response?: { ok?: boolean; error?: string; message?: string }) => {
         if (!response?.ok) return;
 
-        const trainerName = String(
-          (user as Record<string, unknown>)?.fullname ??
-            (user as Record<string, unknown>)?.fullName ??
-            "Your coach"
-        );
-        emitNotification({
-          title: NOTIFICATION_TITLES.sessionConfirmation,
-          description: `${trainerName} accepted your instant lesson. Tap Join to enter the session.`,
-          receiverId: traineeId,
-          type: NOTIFICATION_TYPES.TRANSCATIONAL,
-          bookingInfo: { lessonId, isInstant: true },
-        });
-
         clearExpiryTimer();
         setTrainerIncoming(null);
         onNavigateToMeeting(lessonId);
       }
     );
-  }, [
-    trainerIncoming,
-    socket,
-    clearExpiryTimer,
-    onNavigateToMeeting,
-    emitNotification,
-    user,
-  ]);
+  }, [trainerIncoming, socket, clearExpiryTimer, onNavigateToMeeting]);
 
   const expireRequest = useCallback(() => {
     if (!trainerIncoming || !socket) return;
@@ -297,27 +271,9 @@ export function InstantLessonProvider({
       coachId: trainerIncoming.coachId,
       traineeId: trainerIncoming.traineeId,
     });
-    /** Persist an inbox entry on the trainee side — without this, declined
-     *  requests vanish silently once the trainee dismisses the modal. */
-    const trainerName = String(
-      (user as Record<string, unknown>)?.fullname ??
-        (user as Record<string, unknown>)?.fullName ??
-        "Your coach"
-    );
-    emitNotification({
-      title: NOTIFICATION_TITLES.sessionCancellation,
-      description: `${trainerName} cannot take this lesson right now. Tap to pick another coach.`,
-      receiverId: trainerIncoming.traineeId,
-      type: NOTIFICATION_TYPES.TRANSCATIONAL,
-      bookingInfo: {
-        lessonId: trainerIncoming.lessonId,
-        isInstant: true,
-        outcome: "declined",
-      },
-    });
     clearExpiryTimer();
     setTrainerIncoming(null);
-  }, [trainerIncoming, socket, clearExpiryTimer, emitNotification, user]);
+  }, [trainerIncoming, socket, clearExpiryTimer]);
 
   const startBooking = useCallback(
     (booking: Omit<TraineeBooking, "step"> & { durationMinutes?: number }) => {

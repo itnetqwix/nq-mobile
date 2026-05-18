@@ -162,6 +162,18 @@ export function NotificationProvider({
   const [unreadCount, setUnreadCount] = useState(0);
 
   const TOAST_STACK_LIMIT = 3;
+  const TOAST_DEDUPE_MS = 90_000;
+  const recentToastKeysRef = useRef<Map<string, number>>(new Map());
+
+  const toastFingerprint = useCallback((n: IncomingNotification) => {
+    const bid =
+      n.bookingInfo?.bookingId ??
+      n.bookingInfo?.lessonId ??
+      n.bookingInfo?.booking_id ??
+      "";
+    const kind = n.bookingInfo?.kind ?? "";
+    return `${n.title}:${kind}:${bid}`;
+  }, []);
 
   /** Generate a stable id for client-only toasts (which never come back with
    *  a server `_id`). Used as the React key + dismiss handle. */
@@ -172,6 +184,14 @@ export function NotificationProvider({
   }, []);
 
   const pushToQueue = useCallback((next: IncomingNotification) => {
+    const fp = toastFingerprint(next);
+    const now = Date.now();
+    const last = recentToastKeysRef.current.get(fp);
+    if (last && now - last < TOAST_DEDUPE_MS) {
+      return;
+    }
+    recentToastKeysRef.current.set(fp, now);
+
     setToastQueue((prev) => {
       /** Drop earlier toasts that share the same _id to prevent flicker
        *  duplicates from a reconnecting socket. */
@@ -182,7 +202,7 @@ export function NotificationProvider({
       /** Trim to the configured max so the stack never runs off-screen. */
       return merged.slice(-TOAST_STACK_LIMIT);
     });
-  }, []);
+  }, [toastFingerprint]);
 
   /** Keep the auth user id in a ref so socket callbacks always see the latest value. */
   const userIdRef = useRef<string | null>(null);
@@ -231,19 +251,25 @@ export function NotificationProvider({
     const onReceive = (payload: IncomingNotification) => {
       if (!payload || !payload.title) return;
 
+      let isNewInInbox = true;
       /** Mirror the web reducer: prepend to cache so the inbox stays sorted by recency. */
       queryClient.setQueryData<IncomingNotification[]>(
         ["notifications"],
         (prev) => {
           const list = prev ?? [];
           /** De-dupe by `_id` — backend may re-deliver on reconnect. */
-          if (payload._id && list.some((n) => n._id === payload._id)) return list;
+          if (payload._id && list.some((n) => n._id === payload._id)) {
+            isNewInInbox = false;
+            return list;
+          }
           return [{ ...payload, isRead: false }, ...list];
         }
       );
 
-      setUnreadCount((c) => c + 1);
-      pushToQueue({ ...payload, isRead: false });
+      if (isNewInInbox) {
+        setUnreadCount((c) => c + 1);
+        pushToQueue({ ...payload, isRead: false });
+      }
 
       /**
        * Side-effects driven by the notification *title* — same approach as web
@@ -281,40 +307,14 @@ export function NotificationProvider({
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
       queryClient.invalidateQueries({ queryKey: ["sessions", "upcoming"] });
       queryClient.invalidateQueries({ queryKey: ["trainerAvailability"] });
-      void refreshInbox();
-
-      const uid = userIdRef.current;
-      if (uid && data?.trainerId && String(data.trainerId) === String(uid)) {
-        pushToQueue({
-          title: NOTIFICATION_TITLES.newBookingRequest,
-          description:
-            "You have a new session request. Open Session requests to confirm.",
-          isRead: false,
-        });
-      }
     };
     const onBookingStatusUpdated = (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["scheduledMeetings"] });
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
       queryClient.invalidateQueries({ queryKey: ["trainerAvailability"] });
-
-      const status = data?.status ?? data?.booking?.status;
-      if (status === "confirmed") {
-        pushToQueue({
-          title: "Session Confirmed",
-          description: "Your booking has been confirmed by the trainer.",
-          isRead: false,
-        } as IncomingNotification);
-      } else if (status === "canceled") {
-        pushToQueue({
-          title: "Session Cancelled",
-          description: "A booking has been cancelled.",
-          isRead: false,
-        } as IncomingNotification);
-      }
     };
 
-    const onInstantPhase = (data: {
+    const onInstantPhase = (_data: {
       lessonId?: string;
       phase?: string;
       refundReason?: string;
@@ -322,35 +322,6 @@ export function NotificationProvider({
       queryClient.invalidateQueries({ queryKey: ["scheduledMeetings"] });
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
       queryClient.invalidateQueries({ queryKey: ["wallet"] });
-
-      const phase = data?.phase;
-      const reason = data?.refundReason;
-      if (phase === "cancelled") {
-        const title =
-          reason === "join_expired"
-            ? NOTIFICATION_TITLES.instantLessonJoinExpired
-            : reason === "declined"
-              ? NOTIFICATION_TITLES.instantLessonDeclined
-              : NOTIFICATION_TITLES.instantLessonExpired;
-        pushToQueue({
-          title,
-          description:
-            reason === "join_expired"
-              ? "The join window closed. Check your wallet for a refund."
-              : reason === "declined"
-                ? "The coach declined your instant lesson request."
-                : "The instant lesson request expired or was cancelled.",
-          isRead: false,
-          bookingInfo: { bookingId: data.lessonId, lessonId: data.lessonId },
-        } as IncomingNotification);
-      } else if (phase === "pending_join") {
-        pushToQueue({
-          title: NOTIFICATION_TITLES.instantLessonAccepted,
-          description: "Join within 2 minutes to start your lesson.",
-          isRead: false,
-          bookingInfo: { bookingId: data.lessonId, lessonId: data.lessonId },
-        } as IncomingNotification);
-      }
     };
 
     socket.on("BOOKING_CREATED", onBookingCreated);
@@ -363,7 +334,7 @@ export function NotificationProvider({
       socket.off("BOOKING_STATUS_UPDATED", onBookingStatusUpdated);
       socket.off("INSTANT_LESSON_PHASE", onInstantPhase);
     };
-  }, [socket, queryClient, pushToQueue, refreshInbox]);
+  }, [socket, queryClient, pushToQueue]);
 
   const emitNotification = useCallback(
     (payload: EmitNotificationPayload): boolean => {
