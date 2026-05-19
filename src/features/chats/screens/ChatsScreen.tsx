@@ -14,7 +14,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { apiClient } from "../../../api/client";
@@ -324,7 +323,6 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
   },
   inviteDeclineText: { color: palette.textMuted, fontSize: 13, fontWeight: "600" },
 }));
-  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const currentUserId = String((user as any)?._id ?? (user as any)?.id ?? "");
@@ -586,9 +584,6 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
 
   return (
     <View style={styles.root}>
-      <View style={[styles.listHeader, { paddingTop: insets.top + 4 }]}>
-        <Text style={styles.listTitle}>Chats</Text>
-      </View>
       <View style={styles.searchBar}>
         <Ionicons name="search-outline" size={18} color={c.textMuted} />
         <TextInput

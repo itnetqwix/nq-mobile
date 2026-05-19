@@ -197,18 +197,25 @@ export function TrainerOnlineToggle({ value, onToggle }: Props) {
           </Animated.Text>
         </Pressable>
 
-        <Switch
-          value={displayOnline}
-          onValueChange={handleChange}
-          disabled={syncing}
-          trackColor={{
-            false: OFFLINE.switchTrack,
-            true: ONLINE.switchTrack,
-          }}
-          thumbColor="#fff"
-          ios_backgroundColor={OFFLINE.switchTrack}
-          style={styles.switch}
-        />
+        <View
+          style={[
+            styles.switchWrap,
+            { backgroundColor: displayOnline ? ONLINE.switchTrack : OFFLINE.switchTrack },
+          ]}
+        >
+          <Switch
+            value={displayOnline}
+            onValueChange={handleChange}
+            disabled={syncing}
+            trackColor={{
+              false: OFFLINE.switchTrack,
+              true: ONLINE.switchTrack,
+            }}
+            thumbColor="#fff"
+            ios_backgroundColor={displayOnline ? ONLINE.switchTrack : OFFLINE.switchTrack}
+            style={styles.switch}
+          />
+        </View>
       </View>
     </Animated.View>
   );
@@ -270,7 +277,14 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     opacity: 0.92,
   },
+  switchWrap: {
+    borderRadius: 16,
+    overflow: "hidden",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   switch: {
     transform: Platform.OS === "ios" ? [{ scaleX: 0.92 }, { scaleY: 0.92 }] : [],
+    margin: Platform.OS === "ios" ? -2 : 0,
   },
 });

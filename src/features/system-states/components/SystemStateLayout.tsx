@@ -49,7 +49,7 @@ export function SystemStateLayout({
     >
       <View style={styles.inner}>
         {showBrand ? (
-          <NetqwixLogo maxWidth={160} height={40} compact />
+          <NetqwixLogo variant="pin" maxWidth={56} height={56} compact />
         ) : null}
         <SystemStateHero icon={preset.icon} variant={preset.variant} />
         <Text style={[typography.titleMd, styles.title, { color: c.text }]}>

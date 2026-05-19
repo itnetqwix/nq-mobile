@@ -12,18 +12,28 @@ import { space } from "../../theme";
 import { useThemeColors } from "../../theme";
 
 type Props = {
-  /** Max width; height scales with aspect ratio. */
+  /** `pin` = assets/netqwix_logo.png (home header). `wordmark` = login banner. */
+  variant?: "pin" | "wordmark";
   maxWidth?: number;
   height?: number;
   style?: StyleProp<ImageStyle>;
-  /** Hide bottom margin (e.g. nav header). */
   compact?: boolean;
 };
 
-/** Header logo — `netquix_logo_v1.png` (web login / sign-up asset). */
-export function NetqwixLogo({ maxWidth = 220, height = 72, style, compact }: Props) {
+export function NetqwixLogo({
+  variant = "wordmark",
+  maxWidth,
+  height,
+  style,
+  compact,
+}: Props) {
   const c = useThemeColors();
   const [failed, setFailed] = useState(false);
+
+  const isPin = variant === "pin";
+  const width = maxWidth ?? (isPin ? 52 : 220);
+  const imgHeight = height ?? (isPin ? 52 : 72);
+  const source = isPin ? brandImages.netqwixPin : brandImages.netqwixWordmark;
 
   if (failed) {
     return (
@@ -38,9 +48,9 @@ export function NetqwixLogo({ maxWidth = 220, height = 72, style, compact }: Pro
       <Image
         accessibilityRole="image"
         accessibilityLabel="NetQwix"
-        source={brandImages.netquixLogo}
+        source={source}
         contentFit="contain"
-        style={[{ width: maxWidth, height }, style]}
+        style={[{ width, height: imgHeight }, style]}
         onError={() => setFailed(true)}
       />
     </View>

@@ -17,8 +17,8 @@ type Props = {
   containerStyle?: StyleProp<ViewStyle>;
 };
 
-/** Compact app mark (icon only) — for headers / drawer toggle. */
-export function NetqwixMark({ size = 32, style, containerStyle }: Props) {
+/** Pin / Q mark (`assets/netqwix_logo.png`) — drawer toggle. */
+export function NetqwixMark({ size = 34, style, containerStyle }: Props) {
   const c = useThemeColors();
   const [failed, setFailed] = useState(false);
 
@@ -37,18 +37,28 @@ export function NetqwixMark({ size = 32, style, containerStyle }: Props) {
   }
 
   return (
-    <Image
-      accessibilityRole="image"
-      accessibilityLabel="NetQwix"
-      source={brandImages.netqwixMark}
-      contentFit="contain"
-      style={[{ width: size, height: size }, style]}
-      onError={() => setFailed(true)}
-    />
+    <View style={[styles.frame, { width: size, height: size }, containerStyle]}>
+      <Image
+        accessibilityRole="image"
+        accessibilityLabel="Open menu"
+        source={brandImages.netqwixMark}
+        contentFit="contain"
+        style={[styles.image, { width: size, height: size }, style]}
+        onError={() => setFailed(true)}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  frame: {
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "visible",
+  },
+  image: {
+    backgroundColor: "transparent",
+  },
   fallback: {
     borderRadius: 8,
     alignItems: "center",

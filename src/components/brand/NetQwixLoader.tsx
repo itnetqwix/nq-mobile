@@ -258,12 +258,12 @@ export function NetQwixLoader({
 
           <View style={styles.logoClip}>
             <Animated.Image
-              source={brandImages.netquixLogo}
+              source={brandImages.netqwixWordmark}
               resizeMode="contain"
               style={[styles.logoGhost, ghostStyle]}
             />
             <Animated.Image
-              source={brandImages.netquixLogo}
+              source={brandImages.netqwixWordmark}
               resizeMode="contain"
               style={[styles.logo, logoStyle]}
             />

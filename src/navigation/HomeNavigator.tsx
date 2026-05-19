@@ -1,7 +1,5 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { DrawerMarkButton } from "./DrawerMarkButton";
 import React from "react";
-import { NetqwixLogo } from "../components/brand/NetqwixLogo";
 import { useThemeColors } from "../theme";
 import { dashboardRouteById } from "../features/dashboard/config/dashboardRoutes";
 import { shellSurfaceById } from "../features/dashboard/config/shellSurfaces";
@@ -11,6 +9,7 @@ import { ShellSurfaceScreen } from "../features/dashboard/screens/ShellSurfaceSc
 import { TransactionDetailScreen } from "../features/dashboard/screens/TransactionDetailScreen";
 import { ReportIssueScreen } from "../features/dashboard/screens/ReportIssueScreen";
 import { ActiveSessionsScreen } from "../features/auth/screens/ActiveSessionsScreen";
+import { mainStackHeaderOptions } from "./mainTabHeaderOptions";
 import type { HomeStackParamList, ShellSurfaceRouteId } from "./types";
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -21,35 +20,20 @@ function shellHeaderShown(surfaceId: ShellSurfaceRouteId): boolean {
 
 export function HomeNavigator() {
   const c = useThemeColors();
+  const header = mainStackHeaderOptions(c);
 
   return (
     <Stack.Navigator
       initialRouteName="DashboardHome"
-      screenOptions={({ navigation }) => ({
-        headerTintColor: c.headerTint,
-        headerTitleStyle: { fontWeight: "700", color: c.headerTitle, fontSize: 17 },
-        headerStyle: {
-          backgroundColor: c.background,
-          borderBottomColor: c.border,
-          borderBottomWidth: 1,
-        },
-        headerShadowVisible: false,
-        headerBackTitleVisible: false,
-        contentStyle: { backgroundColor: c.background },
-        gestureEnabled: true,
-        gestureDirection: "horizontal",
-        animation: "slide_from_right",
-        headerLeft: navigation.canGoBack()
-          ? undefined
-          : () => <DrawerMarkButton />,
-      })}
+      screenOptions={{
+        ...header,
+        headerShown: true,
+      }}
     >
       <Stack.Screen
         name="DashboardHome"
         component={DashboardHomeScreen}
-        options={{
-          headerTitle: () => <NetqwixLogo maxWidth={140} height={36} compact />,
-        }}
+        options={{ title: "Dashboard" }}
       />
       <Stack.Screen
         name="DashboardFeature"

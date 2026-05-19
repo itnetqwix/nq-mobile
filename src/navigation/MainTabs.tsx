@@ -7,11 +7,29 @@ import { ChatsScreen } from "../features/chats/screens/ChatsScreen";
 import { ScheduleScreen } from "../features/schedule/screens/ScheduleScreen";
 import { useThemeColors } from "../theme";
 import { HomeNavigator } from "./HomeNavigator";
+import { TabSwipeShell } from "./TabSwipeShell";
 import type { MainTabParamList } from "./types";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 const SESSIONS_TAB_LABEL = "Sessions";
+
+function tabHeaderOptions(c: ReturnType<typeof useThemeColors>, title: string) {
+  return {
+    headerShown: true as const,
+    headerTitle: title,
+    headerTitleAlign: "center" as const,
+    headerStyle: {
+      backgroundColor: c.background,
+      borderBottomColor: c.border,
+      borderBottomWidth: 1,
+    },
+    headerTitleStyle: { fontWeight: "700" as const, color: c.headerTitle, fontSize: 17 },
+    headerShadowVisible: false,
+    headerBackVisible: false,
+    headerLeft: () => <DrawerMarkButton />,
+  };
+}
 
 export function MainTabs() {
   const insets = useSafeAreaInsets();
@@ -41,51 +59,59 @@ export function MainTabs() {
           fontSize: 11,
         },
         tabBarHideOnKeyboard: true,
+        animation: "shift",
       }}
     >
       <Tab.Screen
         name="Home"
-        component={HomeNavigator}
         options={{
           title: "Dashboard",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" color={color} size={size} />
           ),
           tabBarLabel: "Dashboard",
+          headerShown: false,
         }}
-      />
+      >
+        {() => (
+          <TabSwipeShell tabIndex={0}>
+            <HomeNavigator />
+          </TabSwipeShell>
+        )}
+      </Tab.Screen>
       <Tab.Screen
         name="Schedule"
-        component={ScheduleScreen}
         options={{
           title: SESSIONS_TAB_LABEL,
-          headerShown: true,
-          headerTitle: SESSIONS_TAB_LABEL,
-          headerTitleAlign: "center",
-          headerStyle: {
-            backgroundColor: c.background,
-            borderBottomColor: c.border,
-            borderBottomWidth: 1,
-          },
-          headerTitleStyle: { fontWeight: "700", color: c.headerTitle, fontSize: 17 },
-          headerLeft: () => <DrawerMarkButton />,
+          ...tabHeaderOptions(c, SESSIONS_TAB_LABEL),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="time-outline" color={color} size={size} />
           ),
           tabBarLabel: SESSIONS_TAB_LABEL,
         }}
-      />
+      >
+        {(props) => (
+          <TabSwipeShell tabIndex={1}>
+            <ScheduleScreen {...props} />
+          </TabSwipeShell>
+        )}
+      </Tab.Screen>
       <Tab.Screen
         name="Chats"
-        component={ChatsScreen}
         options={{
           title: "Chats",
-          headerShown: false,
+          ...tabHeaderOptions(c, "Chats"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubbles-outline" color={color} size={size} />
           ),
         }}
-      />
+      >
+        {(props) => (
+          <TabSwipeShell tabIndex={2}>
+            <ChatsScreen {...props} />
+          </TabSwipeShell>
+        )}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 }

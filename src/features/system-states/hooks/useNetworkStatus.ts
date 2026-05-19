@@ -1,65 +1,82 @@
-import { useEffect, useState } from "react";
+import * as Network from "expo-network";
+import { useEffect, useRef, useState } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 
-type NetInfoState = {
-  isConnected: boolean | null;
-  isInternetReachable: boolean | null;
+type NetworkSnapshot = {
+  isConnected?: boolean;
+  isInternetReachable?: boolean;
 };
 
-type NetInfoApi = {
-  addEventListener: (listener: (state: NetInfoState) => void) => () => void;
-  fetch: () => Promise<NetInfoState>;
-};
-
-function loadNetInfo(): NetInfoApi | null {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require("@react-native-community/netinfo").default;
-  } catch {
-    return null;
-  }
+function isOfflineState(state: NetworkSnapshot): boolean {
+  if (state.isConnected === false) return true;
+  if (state.isInternetReachable === false) return true;
+  return false;
 }
 
 /**
- * Online/offline signal for global gates. Uses NetInfo when installed;
- * otherwise assumes connected (API errors still surface offline preset).
+ * Online/offline for global gates. Uses `expo-network` (Expo module — no separate
+ * NetInfo native link). If the module is unavailable, assumes online (API errors
+ * can still show the offline preset).
  */
 export function useNetworkStatus() {
-  const [isConnected, setIsConnected] = useState(true);
-  const [isInternetReachable, setIsInternetReachable] = useState<boolean | null>(
-    true
-  );
+  const [offline, setOffline] = useState(false);
+  const [monitoring, setMonitoring] = useState(false);
+  const monitoringRef = useRef(false);
 
   useEffect(() => {
-    const NetInfo = loadNetInfo();
-    if (!NetInfo) return;
+    let active = true;
+    let subscription: { remove: () => void } | null = null;
 
-    const apply = (state: {
-      isConnected: boolean | null;
-      isInternetReachable: boolean | null;
-    }) => {
-      setIsConnected(state.isConnected !== false);
-      setIsInternetReachable(
-        state.isInternetReachable === false ? false : true
-      );
+    const apply = (state: NetworkSnapshot) => {
+      if (!active) return;
+      setOffline(isOfflineState(state));
     };
 
-    const unsub = NetInfo.addEventListener(apply);
-    void NetInfo.fetch().then(apply);
+    void (async () => {
+      try {
+        const initial = await Network.getNetworkStateAsync();
+        if (!active) return;
+        apply(initial);
+        monitoringRef.current = true;
+        setMonitoring(true);
+
+        subscription = Network.addNetworkStateListener((event) => {
+          apply(event);
+        });
+      } catch (err) {
+        if (__DEV__) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            "[useNetworkStatus] expo-network unavailable; offline overlay disabled. Rebuild dev client if you added expo-network recently.",
+            err
+          );
+        }
+        if (active) {
+          setOffline(false);
+          monitoringRef.current = false;
+          setMonitoring(false);
+        }
+      }
+    })();
 
     const onAppState = (next: AppStateStatus) => {
-      if (next === "active") void NetInfo.fetch().then(apply);
+      if (next !== "active" || !monitoringRef.current) return;
+      void Network.getNetworkStateAsync().then(apply).catch(() => undefined);
     };
-    const sub = AppState.addEventListener("change", onAppState);
+    const appSub = AppState.addEventListener("change", onAppState);
 
     return () => {
-      unsub();
-      sub.remove();
+      active = false;
+      monitoringRef.current = false;
+      subscription?.remove();
+      appSub.remove();
     };
   }, []);
 
-  const offline =
-    !isConnected || isInternetReachable === false;
-
-  return { isConnected, isInternetReachable, offline };
+  const isConnected = !offline;
+  return {
+    isConnected,
+    isInternetReachable: monitoring ? !offline : true,
+    offline: monitoring ? offline : false,
+  };
 }

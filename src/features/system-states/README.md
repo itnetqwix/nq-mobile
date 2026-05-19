@@ -31,4 +31,4 @@ All presets live in `presets/systemStateRegistry.ts` (`offline`, `session_expire
 
 ## Dependencies
 
-Run `npx expo install @react-native-community/netinfo` after pulling (listed in `package.json`).
+Offline detection uses `expo-network` (included with Expo SDK). After adding it, rebuild the dev client once: `npx expo run:ios` or `npx expo run:android`.
