@@ -9,6 +9,7 @@ import { CLIP_EVENTS, type ClipUserInfo } from "./clipEvents";
 import {
   clipIdOf,
   clipsFromSelectPayload,
+  normalizeClipsFromSocket,
   primaryClipFromList,
   resolveClipPlayback,
   type ClipRecord,
@@ -106,7 +107,7 @@ export function useClipSync({
       const type = payload?.type;
 
       if (type === "clips") {
-        const clips = clipsFromSelectPayload(payload);
+        const clips = normalizeClipsFromSocket(clipsFromSelectPayload(payload));
         applyClipsToState(
           clips,
           setSelectedClips,
@@ -209,8 +210,9 @@ export function useClipSync({
     (clips: ClipRecord[], options?: { emitSocket?: boolean }) => {
       // Either side may drive clip selection (trainee shares booking clips to trainer on mobile).
       const shouldEmit = options?.emitSocket !== false && !!socket;
+      const normalized = normalizeClipsFromSocket(clips);
       applyClipsToState(
-        clips,
+        normalized,
         setSelectedClips,
         setActiveClipId,
         setActiveClipUrl,
@@ -219,7 +221,7 @@ export function useClipSync({
       if (!shouldEmit) return;
       socket!.emit(CLIP_EVENTS.ON_VIDEO_SELECT, {
         type: "clips",
-        videos: clips,
+        videos: normalized,
         userInfo,
         sessionId,
       });

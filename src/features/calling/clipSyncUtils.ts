@@ -39,6 +39,19 @@ export function resolveClipPlayback(clip: ClipRecord | null | undefined): {
   return { id, url };
 }
 
+/** Normalize clips from socket so each item carries a resolvable playback URL. */
+export function normalizeClipsFromSocket(videos: ClipRecord[]): ClipRecord[] {
+  return videos.map((clip) => {
+    const url = getClipPlaybackUrl(clip);
+    if (!url) return clip;
+    return {
+      ...clip,
+      playbackUrl: clip.playbackUrl ?? url,
+      video_url: clip.video_url ?? url,
+    };
+  });
+}
+
 export function clipsFromSelectPayload(payload: any): ClipRecord[] {
   const videos = payload?.videos;
   if (Array.isArray(videos)) return videos.filter(Boolean);

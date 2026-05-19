@@ -77,7 +77,7 @@ export function ClipPlayer({
         }}
         onError={(e) => {
           // eslint-disable-next-line no-console
-          console.warn("[ClipPlayer] error", e);
+          console.warn("[ClipPlayer] playback failed", { uri, error: e });
         }}
       />
     </View>
