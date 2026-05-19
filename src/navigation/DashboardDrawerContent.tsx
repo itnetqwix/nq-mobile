@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { NetqwixMark } from "../components/brand/NetqwixMark";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radii, space, typography, useThemeColors } from "../theme";
 import { useAuth } from "../features/auth/context/AuthContext";
@@ -98,8 +99,8 @@ export function DashboardDrawerContent(props: DrawerContentComponentProps) {
       style={[styles.scroll, { backgroundColor: colors.background }]}
     >
       <View style={[styles.brandBlock, { borderBottomColor: colors.border }]}>
-        <Text style={[styles.brandTitle, { color: colors.headerTitle }]}>NetQwix</Text>
-        <Text style={[styles.brandSub, { color: colors.textMuted }]}>Dashboard</Text>
+        <NetqwixMark size={40} />
+        <Text style={[styles.brandSub, { color: colors.textMuted, marginTop: 4 }]}>Dashboard</Text>
         {!!displayName && (
           <Text style={[styles.userLine, { color: colors.textSecondary }]} numberOfLines={1}>
             {displayName}

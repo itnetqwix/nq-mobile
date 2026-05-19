@@ -1,5 +1,5 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { DrawerToggleButton } from "@react-navigation/drawer";
+import { DrawerMarkButton } from "./DrawerMarkButton";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -68,7 +68,7 @@ export function MainTabs() {
             borderBottomWidth: 1,
           },
           headerTitleStyle: { fontWeight: "700", color: c.headerTitle, fontSize: 17 },
-          headerLeft: () => <DrawerToggleButton tintColor={c.headerTint} />,
+          headerLeft: () => <DrawerMarkButton />,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="time-outline" color={color} size={size} />
           ),

@@ -4,4 +4,6 @@
  */
 export const brandImages = {
   netquixLogo: require("../../assets/netquix_logo_v1.png"),
+  /** Square app icon — use in headers / drawer toggle (not the full wordmark). */
+  netqwixMark: require("../../assets/icon.png"),
 } as const;

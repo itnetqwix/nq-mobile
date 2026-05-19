@@ -37,7 +37,8 @@ import {
   resolveChatMediaUri,
 } from "../lib/chatMediaUtils";
 import { ChatDaySeparator } from "../components/ChatDaySeparator";
-import { deleteChatMessage, editChatMessage } from "../api/chatActionsApi";
+import { deleteChatMessage, editChatMessage, fetchGroupMembers } from "../api/chatActionsApi";
+import { GroupMembersSheet } from "../components/GroupMembersSheet";
 import {
   findMessageSectionLocation,
   formatChatDayLabel,
@@ -59,13 +60,20 @@ type Props = {
     _id: string;
     fullname?: string;
     profile_picture?: string;
+    isGroup?: boolean;
   };
+  isGroup?: boolean;
+  memberCount?: number;
+  groupAdminId?: string;
+  groupDescription?: string;
   onGoBack: () => void;
 };
 
+type SenderRef = string | { _id?: string; fullname?: string; profile_picture?: string };
+
 type Message = {
   _id: string;
-  senderId: string;
+  senderId: SenderRef;
   receiverId: string;
   content: string;
   type: string;
@@ -280,6 +288,18 @@ function useChatRoomStyles() {
     opacity: 0.85,
   },
   replyQuoteText: { fontSize: 12, color: themeColors.textMuted },
+  senderName: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: themeColors.brandNavy,
+    marginBottom: 4,
+    marginLeft: 4,
+  },
+  senderNameMine: {
+    alignSelf: "flex-end",
+    marginRight: 4,
+    color: themeColors.textMuted,
+  },
   bubbleText: { ...typography.bodyMd, color: themeColors.text, lineHeight: 20 },
   bubbleTextMine: { color: "#fff" },
   bubbleFooter: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", marginTop: 2 },
@@ -531,7 +551,14 @@ const voiceStyles = StyleSheet.create({
 
 // ─── Main component ─────────────────────────────────────────────────────────
 
-export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
+export function ChatRoomScreen({
+  conversationId,
+  partner,
+  isGroup = false,
+  memberCount,
+  groupDescription: groupDescriptionProp,
+  onGoBack,
+}: Props) {
   const themeColors = useThemeColors();
   const styles = useChatRoomStyles();
   const insets = useSafeAreaInsets();
@@ -559,7 +586,29 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
   const [partnerOnline, setPartnerOnline] = useState(false);
   const [partnerLastSeen, setPartnerLastSeen] = useState<string | null>(null);
   const currentUserId = String((authUser as any)?._id ?? (authUser as any)?.id ?? "");
-  const chatE2E = useChatE2E(partner?._id);
+  const chatE2E = useChatE2E(isGroup ? undefined : partner?._id);
+  const [showGroupSheet, setShowGroupSheet] = useState(false);
+  const [liveMemberCount, setLiveMemberCount] = useState(memberCount ?? 0);
+
+  const { data: groupMembersData } = useQuery({
+    queryKey: ["groupMembers", conversationId],
+    queryFn: () => fetchGroupMembers(conversationId),
+    enabled: isGroup,
+    staleTime: 30_000,
+  });
+
+  const resolveSenderId = (sender: SenderRef): string =>
+    typeof sender === "object" && sender?._id ? String(sender._id) : String(sender);
+
+  const groupAvatarUrl = isGroup
+    ? getS3ImageUrl(groupMembersData?.groupAvatar ?? partner?.profile_picture)
+    : null;
+
+  useEffect(() => {
+    if (groupMembersData?.members?.length) {
+      setLiveMemberCount(groupMembersData.members.length);
+    }
+  }, [groupMembersData]);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [chatPolicy, setChatPolicy] = useState<{
@@ -573,7 +622,7 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
   const [editDraft, setEditDraft] = useState("");
 
   useEffect(() => {
-    if (!partner?._id) return;
+    if (isGroup || !partner?._id) return;
     (async () => {
       try {
         const res = await apiClient.get(API_ROUTES.chat.policy(partner._id));
@@ -581,19 +630,19 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
         if (data) setChatPolicy(data);
       } catch { /* non-critical */ }
     })();
-  }, [partner?._id]);
+  }, [partner?._id, isGroup]);
 
   useEffect(() => {
     didInitialScrollRef.current = false;
   }, [conversationId]);
 
   useEffect(() => {
-    if (partner?._id) setPartnerOnline(isUserOnline(partner._id));
-  }, [partner?._id, isUserOnline]);
+    if (!isGroup && partner?._id) setPartnerOnline(isUserOnline(partner._id));
+  }, [partner?._id, isUserOnline, isGroup]);
 
-  // Fetch partner's online status / lastSeen
+  // Fetch partner's online status / lastSeen (1:1 only)
   useEffect(() => {
-    if (!socket || !partner?._id) return;
+    if (isGroup || !socket || !partner?._id) return;
 
     const handleUserStatus = (data: any) => {
       if (String(data?.userId) === partner._id) {
@@ -614,7 +663,7 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
       socket.off("userStatus", handleUserStatus);
       socket.off("onlineUser", handleOnlineUser);
     };
-  }, [socket, partner?._id]);
+  }, [socket, partner?._id, isGroup]);
 
   // Typing indicators
   useEffect(() => {
@@ -677,14 +726,28 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
     return sortMessagesAsc(merged);
   }, [serverMessages, localMessages]);
 
+  const senderNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const m of groupMembersData?.members ?? []) {
+      map.set(String(m._id), m.fullname ?? "Member");
+    }
+    for (const m of allMessages) {
+      const s = m.senderId;
+      if (s && typeof s === "object" && s.fullname) {
+        map.set(String(s._id), s.fullname);
+      }
+    }
+    return map;
+  }, [groupMembersData, allMessages]);
+
   const displayMessages = useMemo(
     () =>
       allMessages.map((m) => ({
         ...m,
-        content: chatE2E.decryptForDisplay(m.content),
-        _encrypted: isEncryptedChatContent(m.content),
+        content: isGroup ? m.content : chatE2E.decryptForDisplay(m.content),
+        _encrypted: !isGroup && isEncryptedChatContent(m.content),
       })),
-    [allMessages, chatE2E.decryptForDisplay]
+    [allMessages, chatE2E.decryptForDisplay, isGroup]
   );
 
   const messageSections = useMemo(
@@ -811,7 +874,8 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
 
   const sendMessage = useCallback(async () => {
     const plain = text.trim();
-    if (!plain || !partner?._id || isSendingMessage) return;
+    if (!plain || isSendingMessage) return;
+    if (!isGroup && !partner?._id) return;
     const content = chatE2E.canEncrypt ? chatE2E.encryptForSend(plain) : plain;
     setText("");
     setShowEmoji(false);
@@ -821,13 +885,19 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
     if (socket) socket.emit("CHAT_STOP_TYPING", { conversationId, userId: currentUserId });
     const tempId = `temp_${Date.now()}`;
     const tempMsg: Message = {
-      _id: tempId, senderId: currentUserId, receiverId: partner._id,
-      content, type: "text", status: "sending", pending: true, createdAt: new Date().toISOString(),
+      _id: tempId,
+      senderId: currentUserId,
+      receiverId: isGroup ? "" : partner._id,
+      content,
+      type: "text",
+      status: "sending",
+      pending: true,
+      createdAt: new Date().toISOString(),
     };
     setLocalMessages((prev) => [...prev, tempMsg]);
     try {
       const res = await apiClient.post(API_ROUTES.chat.send, {
-        receiverId: partner._id,
+        ...(isGroup ? {} : { receiverId: partner._id }),
         content,
         type: "text",
         conversationId,
@@ -863,6 +933,7 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
   }, [
     text,
     partner,
+    isGroup,
     currentUserId,
     socket,
     conversationId,
@@ -877,20 +948,30 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
 
   const sendMediaMessage = useCallback(
     async (fileUri: string, fileName: string, mimeType: string, type: "image" | "video" | "voice") => {
-      if (!partner?._id) return;
+      if (!isGroup && !partner?._id) return;
       setUploading(true);
       const tempId = `temp_${Date.now()}`;
       const label = type === "image" ? "📷 Photo" : type === "video" ? "🎬 Video" : "🎤 Voice note";
       setLocalMessages((prev) => [...prev, {
-        _id: tempId, senderId: currentUserId, receiverId: partner._id,
-        content: label, type, mediaUrl: fileUri, status: "sending", pending: true,
+        _id: tempId,
+        senderId: currentUserId,
+        receiverId: isGroup ? "" : partner._id,
+        content: label,
+        type,
+        mediaUrl: fileUri,
+        status: "sending",
+        pending: true,
         createdAt: new Date().toISOString(),
       }]);
       try {
         const { uploadUrl, mediaUrl } = await getPresignedUploadUrl(fileName, mimeType);
         await uploadToS3(uploadUrl, fileUri, mimeType);
         const res = await apiClient.post(API_ROUTES.chat.send, {
-          receiverId: partner._id, content: label, type, mediaUrl, conversationId,
+          ...(isGroup ? {} : { receiverId: partner._id }),
+          content: label,
+          type,
+          mediaUrl,
+          conversationId,
         });
         const data = (res as any)?.data?.data ?? (res as any)?.data;
         if (data?.message) {
@@ -911,7 +992,7 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
         setUploading(false);
       }
     },
-    [partner, currentUserId, socket, conversationId, queryClient]
+    [partner, isGroup, currentUserId, socket, conversationId, queryClient]
   );
 
   // ─── Pick/capture media ─────────────────────────────────────────────────────
@@ -1024,6 +1105,10 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
   // ─── Profile actions ──────────────────────────────────────────────────────
 
   const handleProfileAction = useCallback(() => {
+    if (isGroup) {
+      setShowGroupSheet(true);
+      return;
+    }
     const options = ["Block User", "Report User", "Cancel"];
     if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
@@ -1144,7 +1229,13 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
 
   const renderMessage = useCallback(
     ({ item }: { item: Message }) => {
-      const isMine = item.senderId === currentUserId;
+      const senderId = resolveSenderId(item.senderId);
+      const isMine = senderId === currentUserId;
+      const senderLabel = isGroup
+        ? isMine
+          ? "You"
+          : senderNameById.get(senderId) ?? "Member"
+        : null;
       const mediaUri = resolveChatMediaUri(item.mediaUrl);
       const mediaKind = inferChatMediaKind(item.type, item.mediaUrl);
       const isHighlighted = item._id === highlightedMessageId;
@@ -1203,10 +1294,14 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
       };
 
       return (
-        <Pressable
-          style={[styles.messageRow, isMine ? styles.messageRowMine : styles.messageRowTheirs]}
-          onLongPress={onLongPressMsg}
-        >
+        <View style={[styles.messageRow, isMine ? styles.messageRowMine : styles.messageRowTheirs]}>
+          {senderLabel ? (
+            <Text style={[styles.senderName, isMine && styles.senderNameMine]}>{senderLabel}</Text>
+          ) : null}
+          <Pressable
+            style={{ maxWidth: "82%" }}
+            onLongPress={onLongPressMsg}
+          >
           <View
             style={[
               styles.bubble,
@@ -1252,7 +1347,8 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
             )}
           </View>
           </View>
-        </Pressable>
+          </Pressable>
+        </View>
       );
     },
     [
@@ -1260,15 +1356,18 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
       currentUserId,
       displayMessages,
       highlightedMessageId,
+      isGroup,
       openMediaViewer,
       queryClient,
       chatE2E,
+      senderNameById,
+      resolveSenderId,
     ]
   );
 
   const partnerName = partner?.fullname ?? "Chat";
   const partnerAvatar = getS3ImageUrl(partner?.profile_picture);
-  const showPolicyBanner = !!(chatPolicy && !chatPolicy.hasPaidSession);
+  const showPolicyBanner = !isGroup && !!(chatPolicy && !chatPolicy.hasPaidSession);
   const composerBottomInset = Math.max(insets.bottom, 8);
   const keyboardVerticalOffset =
     insets.top + 56 + (showPolicyBanner ? 48 : 0);
@@ -1288,21 +1387,27 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
     [searchHits]
   );
 
-  const headerSubtitle = partnerTyping
-    ? "typing..."
-    : chatE2E.isE2EActive
-      ? "🔒 End-to-end encrypted"
-      : partnerOnline
-        ? "online"
-        : partnerLastSeen
-          ? `last seen ${formatLastSeen(partnerLastSeen)}`
-          : "";
+  const headerSubtitle = isGroup
+    ? `${liveMemberCount || memberCount || 0} member${(liveMemberCount || memberCount || 0) === 1 ? "" : "s"}`
+    : partnerTyping
+      ? "typing..."
+      : chatE2E.isE2EActive
+        ? "🔒 End-to-end encrypted"
+        : partnerOnline
+          ? "online"
+          : partnerLastSeen
+            ? `last seen ${formatLastSeen(partnerLastSeen)}`
+            : "";
 
   const openPartnerProfile = useCallback(() => {
+    if (isGroup) {
+      setShowGroupSheet(true);
+      return;
+    }
     setProfileTab("info");
     setProfileSearch("");
     setShowProfile(true);
-  }, []);
+  }, [isGroup]);
 
   return (
     <View style={[styles.root, { backgroundColor: themeColors.background }]}>
@@ -1327,14 +1432,22 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
           accessibilityLabel={`${partnerName} profile`}
         >
           <View>
-            {partnerAvatar ? (
+            {isGroup ? (
+              groupAvatarUrl ? (
+                <Image source={{ uri: groupAvatarUrl }} style={styles.headerAvatar} />
+              ) : (
+                <View style={[styles.headerAvatar, styles.headerAvatarFb]}>
+                  <Ionicons name="people" size={20} color="#fff" />
+                </View>
+              )
+            ) : partnerAvatar ? (
               <Image source={{ uri: partnerAvatar }} style={styles.headerAvatar} />
             ) : (
               <View style={[styles.headerAvatar, styles.headerAvatarFb]}>
                 <Text style={styles.headerAvatarInitial}>{partnerName[0]?.toUpperCase()}</Text>
               </View>
             )}
-            {partnerOnline && <View style={styles.onlineDot} />}
+            {!isGroup && partnerOnline && <View style={styles.onlineDot} />}
           </View>
           <View style={styles.headerInfo}>
             <Text style={styles.headerName} numberOfLines={1}>{partnerName}</Text>
@@ -1749,6 +1862,17 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
           </View>
         </View>
       </Modal>
+
+      {isGroup ? (
+        <GroupMembersSheet
+          visible={showGroupSheet}
+          conversationId={conversationId}
+          groupName={partnerName}
+          currentUserId={currentUserId}
+          onClose={() => setShowGroupSheet(false)}
+          onLeftGroup={onGoBack}
+        />
+      ) : null}
     </View>
   );
 }

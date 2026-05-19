@@ -1,3 +1,4 @@
+import * as ImagePicker from "expo-image-picker";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -7,6 +8,7 @@ import {
   Modal,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -32,6 +34,10 @@ import {
 } from "../api/chatActionsApi";
 import type { MainTabScreenProps } from "../../../navigation/types";
 import { ChatRoomScreen } from "./ChatRoomScreen";
+import {
+  getPresignedChatUploadUrl,
+  uploadChatFileToS3,
+} from "../lib/chatMediaUpload";
 
 async function fetchConversations(): Promise<any[]> {
   try {
@@ -325,7 +331,11 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
   const [search, setSearch] = useState("");
   const [activeChat, setActiveChat] = useState<{
     conversationId: string;
-    partner: ChatPartner;
+    partner: ChatPartner & { isGroup?: boolean };
+    isGroup?: boolean;
+    memberCount?: number;
+    groupAdminId?: string;
+    groupDescription?: string;
   } | null>(null);
   const [showNewChat, setShowNewChat] = useState(false);
   const [friendSearch, setFriendSearch] = useState("");
@@ -334,6 +344,9 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
   const [groupName, setGroupName] = useState("");
   const [selectedGroupMembers, setSelectedGroupMembers] = useState<Set<string>>(new Set());
   const [creatingGroup, setCreatingGroup] = useState(false);
+  const [groupDescription, setGroupDescription] = useState("");
+  const [groupAvatarUri, setGroupAvatarUri] = useState<string | null>(null);
+  const [showAllSelectedMembers, setShowAllSelectedMembers] = useState(false);
   const { isOnline } = useOnlinePresence();
 
   const { data: conversations = [], isLoading, isRefetching, refetch } = useQuery({
@@ -354,7 +367,7 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
     queryKey: ["friends"],
     queryFn: fetchFriends,
     staleTime: 120_000,
-    enabled: showNewChat,
+    enabled: showNewChat || showGroupCreate,
   });
 
   const getPartner = useCallback(
@@ -399,44 +412,6 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
     });
   }, []);
 
-  const createGroup = useCallback(async () => {
-    if (!groupName.trim() || selectedGroupMembers.size < 2) {
-      Alert.alert("Error", "Please enter a group name and select at least 2 members.");
-      return;
-    }
-    setCreatingGroup(true);
-    try {
-      const res = await createGroupWithInvites({
-        participantIds: Array.from(selectedGroupMembers),
-        groupName: groupName.trim(),
-        groupDescription: "",
-      });
-      const body = res as any;
-      const conversation = body?.data ?? body?.result ?? body;
-      const convId = conversation?._id;
-      if (convId) {
-        setShowGroupCreate(false);
-        setShowNewChat(false);
-        setGroupName("");
-        setSelectedGroupMembers(new Set());
-        queryClient.invalidateQueries({ queryKey: ["conversations"] });
-        setActiveChat({
-          conversationId: convId,
-          partner: {
-            _id: convId,
-            fullname: groupName.trim(),
-          },
-        });
-      } else {
-        Alert.alert("Error", "Could not create group.");
-      }
-    } catch (e: any) {
-      Alert.alert("Error", e?.response?.data?.error ?? e?.message ?? "Could not create group.");
-    } finally {
-      setCreatingGroup(false);
-    }
-  }, [groupName, selectedGroupMembers, queryClient]);
-
   const filtered = useMemo(() => {
     if (!search.trim()) return conversations;
     const q = search.toLowerCase();
@@ -480,6 +455,92 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
     return items.filter((fp) => (fp.fullname ?? "").toLowerCase().includes(q));
   }, [friends, currentUserId, friendSearch]);
 
+  const selectedMemberList = useMemo(
+    () => friendsList.filter((f) => selectedGroupMembers.has(f._id)),
+    [friendsList, selectedGroupMembers]
+  );
+
+  const pickGroupAvatar = useCallback(async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("Permission needed", "Allow photo access to set a group image.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]?.uri) {
+      setGroupAvatarUri(result.assets[0].uri);
+    }
+  }, []);
+
+  const createGroup = useCallback(async () => {
+    if (!groupName.trim() || selectedGroupMembers.size < 2) {
+      Alert.alert("Error", "Please enter a group name and select at least 2 friends.");
+      return;
+    }
+    setCreatingGroup(true);
+    const desc = groupDescription.trim();
+    try {
+      let groupAvatar: string | null = null;
+      if (groupAvatarUri) {
+        const fileName = `group-${Date.now()}.jpg`;
+        const { uploadUrl, mediaUrl } = await getPresignedChatUploadUrl(fileName, "image/jpeg");
+        await uploadChatFileToS3(uploadUrl, groupAvatarUri, "image/jpeg");
+        groupAvatar = mediaUrl;
+      }
+      const res = await createGroupWithInvites({
+        participantIds: Array.from(selectedGroupMembers),
+        groupName: groupName.trim(),
+        groupDescription: desc,
+        groupAvatar,
+      });
+      const body = res as any;
+      const conversation = body?.data ?? body?.result ?? body;
+      const convId = conversation?._id;
+      if (convId) {
+        setShowGroupCreate(false);
+        setShowNewChat(false);
+        setGroupName("");
+        setGroupDescription("");
+        setGroupAvatarUri(null);
+        setSelectedGroupMembers(new Set());
+        queryClient.invalidateQueries({ queryKey: ["conversations"] });
+        Alert.alert(
+          "Group created",
+          "Your friends will receive an invite. They must accept before joining."
+        );
+        setActiveChat({
+          conversationId: convId,
+          isGroup: true,
+          memberCount: 1,
+          groupAdminId: currentUserId,
+          groupDescription: desc,
+          partner: {
+            _id: String(convId),
+            fullname: groupName.trim(),
+            profile_picture: groupAvatar ?? undefined,
+            isGroup: true,
+          },
+        });
+      } else {
+        Alert.alert("Error", "Could not create group.");
+      }
+    } catch (e: any) {
+      Alert.alert("Error", e?.response?.data?.error ?? e?.message ?? "Could not create group.");
+    } finally {
+      setCreatingGroup(false);
+    }
+  }, [
+    groupName,
+    groupDescription,
+    groupAvatarUri,
+    selectedGroupMembers,
+    queryClient,
+    currentUserId,
+  ]);
+
   const openChatWithFriend = useCallback(async (friend: ChatPartner) => {
     setCreatingChat(true);
     try {
@@ -511,6 +572,10 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
       <ChatRoomScreen
         conversationId={activeChat.conversationId}
         partner={activeChat.partner}
+        isGroup={!!activeChat.isGroup}
+        memberCount={activeChat.memberCount}
+        groupAdminId={activeChat.groupAdminId}
+        groupDescription={activeChat.groupDescription}
         onGoBack={() => {
           setActiveChat(null);
           refetch();
@@ -616,7 +681,16 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
                 onPress={() =>
                   setActiveChat({
                     conversationId: item._id,
-                    partner: { _id: partner._id, fullname: partner.fullname, profile_picture: partner.profile_picture },
+                    isGroup,
+                    memberCount: participants.length,
+                    groupAdminId: item.groupAdmin ? String(item.groupAdmin) : undefined,
+                    groupDescription: item.groupDescription ?? "",
+                    partner: {
+                      _id: partner._id,
+                      fullname: partner.fullname,
+                      profile_picture: partner.profile_picture,
+                      isGroup,
+                    },
                   })
                 }
                 onLongPress={() => {
@@ -644,9 +718,17 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
               >
                 <View style={styles.avatarWrap}>
                   {isGroup ? (
-                    <View style={[styles.avatarFallback, { width: 48, height: 48, borderRadius: 24 }]}>
-                      <Ionicons name="people" size={22} color="#fff" />
-                    </View>
+                    getS3ImageUrl(item.groupAvatar ?? partner.profile_picture) ? (
+                      <Avatar
+                        uri={item.groupAvatar ?? partner.profile_picture}
+                        name={partner.fullname}
+                        size={48}
+                      />
+                    ) : (
+                      <View style={[styles.avatarFallback, { width: 48, height: 48, borderRadius: 24 }]}>
+                        <Ionicons name="people" size={22} color="#fff" />
+                      </View>
+                    )
                   ) : (
                     <>
                       <Avatar uri={partner.profile_picture} name={partner.fullname} />
@@ -712,7 +794,15 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
         visible={showNewChat}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => { setShowNewChat(false); setShowGroupCreate(false); setFriendSearch(""); setGroupName(""); setSelectedGroupMembers(new Set()); }}
+        onRequestClose={() => {
+          setShowNewChat(false);
+          setShowGroupCreate(false);
+          setFriendSearch("");
+          setGroupName("");
+          setGroupDescription("");
+          setGroupAvatarUri(null);
+          setSelectedGroupMembers(new Set());
+        }}
       >
         <View style={styles.modalRoot}>
           <View style={styles.modalHeader}>
@@ -746,23 +836,63 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
 
           {/* Group name input */}
           {showGroupCreate && (
-            <View style={styles.groupNameRow}>
-              <View style={styles.groupIconCircle}>
-                <Ionicons name="people" size={22} color="#fff" />
+            <>
+              <View style={[styles.groupNameRow, { alignItems: "flex-start" }]}>
+                <View style={{ alignItems: "center", width: 56 }}>
+                  <Pressable onPress={pickGroupAvatar} style={styles.groupIconCircle}>
+                    {groupAvatarUri ? (
+                      <Image source={{ uri: groupAvatarUri }} style={{ width: 44, height: 44, borderRadius: 22 }} />
+                    ) : (
+                      <Ionicons name="camera-outline" size={22} color="#fff" />
+                    )}
+                  </Pressable>
+                  <Text style={{ fontSize: 11, color: c.textMuted, marginTop: 4, textAlign: "center" }}>
+                    Group photo
+                  </Text>
+                </View>
+                <View style={{ flex: 1, gap: 8 }}>
+                  <TextInput
+                    style={styles.groupNameInput}
+                    placeholder="Group name"
+                    placeholderTextColor={c.textMuted}
+                    value={groupName}
+                    onChangeText={setGroupName}
+                    autoFocus
+                  />
+                  <TextInput
+                    style={[styles.groupNameInput, { borderBottomColor: c.border }]}
+                    placeholder="Description (optional)"
+                    placeholderTextColor={c.textMuted}
+                    value={groupDescription}
+                    onChangeText={setGroupDescription}
+                  />
+                </View>
               </View>
-              <TextInput
-                style={styles.groupNameInput}
-                placeholder="Group name"
-                placeholderTextColor={c.textMuted}
-                value={groupName}
-                onChangeText={setGroupName}
-                autoFocus
-              />
-            </View>
-          )}
-
-          {showGroupCreate && selectedGroupMembers.size > 0 && (
-            <Text style={styles.selectedCount}>{selectedGroupMembers.size} member{selectedGroupMembers.size > 1 ? "s" : ""} selected</Text>
+              {selectedGroupMembers.size > 0 && (
+                <View style={{ paddingHorizontal: space.md, paddingTop: 8 }}>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                    <Text style={styles.selectedCount}>
+                      {selectedGroupMembers.size} friend{selectedGroupMembers.size > 1 ? "s" : ""} selected
+                    </Text>
+                    {selectedGroupMembers.size > 10 ? (
+                      <Pressable onPress={() => setShowAllSelectedMembers(true)}>
+                        <Text style={styles.modalCreateBtn}>See all</Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                    {selectedMemberList.slice(0, 10).map((m) => (
+                      <View key={m._id} style={{ alignItems: "center", marginRight: 10, width: 56 }}>
+                        <Avatar uri={m.profile_picture} name={m.fullname} size={44} />
+                        <Text style={{ fontSize: 10, color: c.textMuted, marginTop: 4 }} numberOfLines={1}>
+                          {(m.fullname ?? "").split(" ")[0]}
+                        </Text>
+                      </View>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+            </>
           )}
 
           <View style={styles.modalSearch}>
@@ -832,6 +962,34 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
               }
             />
           )}
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showAllSelectedMembers}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowAllSelectedMembers(false)}
+      >
+        <View style={styles.modalRoot}>
+          <View style={styles.modalHeader}>
+            <Pressable onPress={() => setShowAllSelectedMembers(false)} hitSlop={12}>
+              <Ionicons name="close" size={24} color={c.text} />
+            </Pressable>
+            <Text style={styles.modalTitle}>Selected members</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          <FlatList
+            data={selectedMemberList}
+            keyExtractor={(item) => item._id}
+            renderItem={({ item }) => (
+              <View style={styles.friendRow}>
+                <Avatar uri={item.profile_picture} name={item.fullname} size={44} />
+                <Text style={styles.friendName}>{item.fullname}</Text>
+              </View>
+            )}
+            contentContainerStyle={{ padding: space.md, gap: space.xs }}
+          />
         </View>
       </Modal>
     </View>

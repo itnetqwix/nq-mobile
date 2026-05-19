@@ -214,6 +214,18 @@ export const API_ROUTES = {
     clearConversation: "/common/chat-clear",
     groupInvites: "/common/chat-group-invites",
     respondGroupInvite: "/common/chat-group-invite-respond",
+    groupDetail: (conversationId: string) => `/common/chat-group/${conversationId}` as const,
+    groupMembers: (conversationId: string) =>
+      `/common/chat-group/${conversationId}/members` as const,
+    groupInvite: (conversationId: string) =>
+      `/common/chat-group/${conversationId}/invite` as const,
+    groupRemoveMember: (conversationId: string) =>
+      `/common/chat-group/${conversationId}/remove-member` as const,
+    groupExit: (conversationId: string) => `/common/chat-group/${conversationId}/exit` as const,
+    groupDelete: (conversationId: string) =>
+      `/common/chat-group/${conversationId}/delete` as const,
+    groupUpdate: (conversationId: string) =>
+      `/common/chat-group/${conversationId}/update` as const,
     policy: (otherUserId: string) =>
       `/common/chat-policy?otherUserId=${encodeURIComponent(otherUserId)}` as const,
   },

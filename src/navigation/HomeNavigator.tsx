@@ -1,5 +1,5 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { DrawerToggleButton } from "@react-navigation/drawer";
+import { DrawerMarkButton } from "./DrawerMarkButton";
 import React from "react";
 import { useThemeColors } from "../theme";
 import { dashboardRouteById } from "../features/dashboard/config/dashboardRoutes";
@@ -40,7 +40,7 @@ export function HomeNavigator() {
         animation: "slide_from_right",
         headerLeft: navigation.canGoBack()
           ? undefined
-          : () => <DrawerToggleButton tintColor={c.headerTint} />,
+          : () => <DrawerMarkButton />,
       })}
     >
       <Stack.Screen
