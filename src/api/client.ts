@@ -1,7 +1,8 @@
 import axios from "axios";
 import { Platform } from "react-native";
 import { API_BASE_URL, WEB_APP_ORIGIN } from "../config/env";
-import { emitUnauthorized } from "../lib/auth/sessionEvents";
+import { emitSessionExpired, emitUnauthorized } from "../lib/auth/sessionEvents";
+import { isMaintenanceResponse } from "../features/system-states/hooks/useSystemStateFromError";
 import { assertCertificatePinningAllowed } from "../lib/security/certPinning";
 import { getAccessToken, getSessionId } from "../features/auth/session/tokenStorage";
 import { getClientSessionHeaders } from "../features/auth/session/clientSessionHeaders";
@@ -81,7 +82,11 @@ apiClient.interceptors.response.use(
     logHttpErrorDebug(error);
     if (error?.response?.status === 401) {
       error.isUnauthorized = true;
+      emitSessionExpired();
       emitUnauthorized();
+    }
+    if (isMaintenanceResponse(error)) {
+      error.isMaintenance = true;
     }
     return Promise.reject(error);
   }

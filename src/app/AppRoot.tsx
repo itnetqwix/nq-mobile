@@ -6,6 +6,12 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { STRIPE_PUBLISHABLE_KEY } from "../config/env";
 import { AuthProvider } from "../features/auth/context/AuthContext";
+import {
+  SystemGateProvider,
+  SystemStateProvider,
+} from "../features/system-states";
+import { useSessionExpiredNavigation } from "../features/system-states/hooks/useSessionExpiredNavigation";
+import { useUpdateRequiredGate } from "../features/system-states/hooks/useUpdateRequiredGate";
 import { SocketProvider } from "../features/socket/SocketContext";
 import { InstantLessonProvider } from "../features/instant-lesson/InstantLessonContext";
 import { NotificationProvider } from "../features/notifications/NotificationContext";
@@ -19,6 +25,12 @@ import { ThemedNavigationContainer } from "./ThemedNavigationContainer";
 import i18n from "../i18n";
 import { normalizeAppLocale } from "../i18n/languages";
 import { loadPersistedAppLocale } from "../i18n/localeStorage";
+
+function SystemStateHooks() {
+  useSessionExpiredNavigation();
+  useUpdateRequiredGate(true);
+  return null;
+}
 
 export function AppRoot() {
   const queryClient = useMemo(
@@ -66,16 +78,21 @@ export function AppRoot() {
             <LoaderProvider>
             <QueryClientProvider client={queryClient}>
               <AuthProvider>
-                <SocketProvider>
-                  <NotificationProvider>
-                    <SessionBookingProvider>
-                      <InstantLessonProvider onNavigateToMeeting={navigateToMeeting}>
-                        <PushNotificationBridge />
-                        <ThemedNavigationContainer />
-                      </InstantLessonProvider>
-                    </SessionBookingProvider>
-                  </NotificationProvider>
-                </SocketProvider>
+                <SystemStateProvider>
+                  <SystemGateProvider>
+                    <SystemStateHooks />
+                    <SocketProvider>
+                      <NotificationProvider>
+                        <SessionBookingProvider>
+                          <InstantLessonProvider onNavigateToMeeting={navigateToMeeting}>
+                            <PushNotificationBridge />
+                            <ThemedNavigationContainer />
+                          </InstantLessonProvider>
+                        </SessionBookingProvider>
+                      </NotificationProvider>
+                    </SocketProvider>
+                  </SystemGateProvider>
+                </SystemStateProvider>
               </AuthProvider>
             </QueryClientProvider>
             </LoaderProvider>

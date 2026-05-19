@@ -221,13 +221,7 @@ export function NotificationsScreen() {
       refreshControl={
         <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.iconPrimary} />
       }
-      ListEmptyComponent={
-        <EmptyState
-          icon="notifications-off-outline"
-          title="No notifications"
-          description="Booking updates, messages, and alerts will appear here."
-        />
-      }
+      ListEmptyComponent={<EmptyState preset="no_notifications" />}
     />
   );
 }

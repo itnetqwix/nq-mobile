@@ -47,6 +47,7 @@ import {
   useWebHomeStyles,
 } from "../components/webHome";
 import {
+  DashboardEmptyWelcome,
   LockerHub,
   SessionListSection,
   TraineeProfileSection,
@@ -604,6 +605,12 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
     return Array.from(map.values());
   }, [onlineUsers]);
 
+  const showEmptyDashboard =
+    !loadingSessions &&
+    nowSessions.length === 0 &&
+    pendingSessions.length === 0 &&
+    upcomingConfirmed.length === 0;
+
   return (
     <>
       <InstantLessonBookingWizardModal
@@ -756,6 +763,19 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
 
         {/* AI Recommended Trainers */}
         {isTrainee && <AIRecommendedSection onView={setProfileTrainer} />}
+
+        {showEmptyDashboard ? (
+          <HomeMainCont testID="home-empty-dashboard">
+            <DashboardEmptyWelcome
+              onBookLesson={() =>
+                isTrainer
+                  ? openFeature("upcoming-sessions")
+                  : (navigation as { navigate: (name: string) => void }).navigate("Schedule")
+              }
+              onOpenClips={() => openShell("clips")}
+            />
+          </HomeMainCont>
+        ) : null}
 
         {recentCompletedForConcern ? (
           <PostLessonConcernBanner

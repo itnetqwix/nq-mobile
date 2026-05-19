@@ -3,6 +3,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { DashboardRouteId } from "../features/dashboard/config/dashboardRoutes";
 import type { ShellSurfaceMeta } from "../features/dashboard/config/shellSurfaces";
+import type { SystemStateId } from "../features/system-states/presets/types";
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -54,6 +55,7 @@ export type RootStackParamList = {
   Auth: undefined;
   Main: undefined;
   Meeting: { lessonId: string };
+  SystemState: { stateId: SystemStateId; message?: string };
 };
 
 export type AuthScreenProps<T extends keyof AuthStackParamList> = NativeStackScreenProps<

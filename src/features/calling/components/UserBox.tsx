@@ -24,8 +24,16 @@ import {
 } from "react-native";
 import { RTCView, type MediaStream } from "react-native-webrtc";
 
+import { getS3ImageUrl } from "../../../lib/imageUtils";
 import type { CallParticipant } from "../types";
 import { meetingTheme } from "../meetingTheme";
+
+function resolveAvatarUri(profilePicture?: string | null): string | null {
+  const uri = getS3ImageUrl(profilePicture);
+  if (!uri) return null;
+  if (uri.startsWith("http://") || uri.startsWith("https://")) return uri;
+  return null;
+}
 
 export type UserBoxProps = {
   user: CallParticipant | null;
@@ -53,6 +61,10 @@ export function UserBox({
   const streamId = (stream as any)?.toURL?.() ?? null;
   const displayName =
     user?.fullname || user?.fullName || fallbackLabel || "Waiting…";
+  const avatarUri = useMemo(
+    () => resolveAvatarUri(user?.profile_picture),
+    [user?.profile_picture]
+  );
 
   const content = (
     <View style={[styles.box, style]}>
@@ -66,11 +78,8 @@ export function UserBox({
         />
       ) : (
         <View style={styles.avatarWrap}>
-          {user?.profile_picture ? (
-            <Image
-              source={{ uri: user.profile_picture }}
-              style={styles.avatar}
-            />
+          {avatarUri ? (
+            <Image source={{ uri: avatarUri }} style={styles.avatar} />
           ) : (
             <View style={[styles.avatar, styles.avatarPlaceholder]}>
               <Text style={styles.avatarInitial}>

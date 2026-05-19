@@ -1,25 +1,49 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { getSystemStatePreset } from "../../features/system-states/presets/systemStateRegistry";
+import type { SystemStateId } from "../../features/system-states/presets/types";
+import { runSystemStateAction } from "../../features/system-states/navigation/linkActions";
 import { space, typography, useThemeColors, useThemedStyles } from "../../theme";
 import { Button } from "./Button";
 
 export type EmptyStateProps = {
   icon?: keyof typeof Ionicons.glyphMap;
-  title: string;
+  title?: string;
   description?: string;
+  /** Shorthand for list/search empty copy from the system-state registry. */
+  preset?: SystemStateId;
   actionLabel?: string;
   onAction?: () => void;
 };
 
 /** Universal empty-state for lists. Drop in wherever a screen shows nothing. */
 export function EmptyState({
-  icon = "leaf-outline",
-  title,
-  description,
-  actionLabel,
-  onAction,
+  icon: iconProp,
+  title: titleProp,
+  description: descriptionProp,
+  preset,
+  actionLabel: actionLabelProp,
+  onAction: onActionProp,
 }: EmptyStateProps) {
+  const presetConfig = preset ? getSystemStatePreset(preset) : null;
+  const icon = iconProp ?? presetConfig?.icon ?? "leaf-outline";
+  const title =
+    (titleProp && titleProp.length > 0 ? titleProp : undefined) ??
+    presetConfig?.title ??
+    "Nothing here";
+  const description =
+    descriptionProp !== undefined && descriptionProp !== ""
+      ? descriptionProp
+      : presetConfig?.description;
+  const actionLabel =
+    actionLabelProp ?? presetConfig?.primary?.label;
+  const onAction =
+    onActionProp ??
+    (presetConfig?.primary
+      ? () => void runSystemStateAction(presetConfig.primary!.action)
+      : undefined);
+
   const c = useThemeColors();
   const styles = useThemedStyles((colors) =>
     StyleSheet.create({

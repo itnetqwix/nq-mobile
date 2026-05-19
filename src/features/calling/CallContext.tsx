@@ -128,19 +128,39 @@ export function CallProvider({
   const [remoteCameraOff, setRemoteCameraOff] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
 
+  const iceServersKey = useMemo(
+    () => JSON.stringify(startArgs.iceServers ?? []),
+    [startArgs.iceServers]
+  );
+
+  const fromUserRef = useRef(startArgs.fromUser);
+  const toUserRef = useRef(startArgs.toUser);
+  fromUserRef.current = startArgs.fromUser;
+  toUserRef.current = startArgs.toUser;
+
+  const onEndedRef = useRef(onEnded);
+  const onPeerLeftRef = useRef(onPeerLeft);
+  const onPeerJoinedRef = useRef(onPeerJoinedCb);
+  onEndedRef.current = onEnded;
+  onPeerLeftRef.current = onPeerLeft;
+  onPeerJoinedRef.current = onPeerJoinedCb;
+
   /** Memoise primitive identifiers so the engine effect doesn't re-run on
-   *  every parent render. */
+   *  every parent render (unstable object refs were recreating the engine ~5s). */
   const stableArgs = useMemo<NativeCallEngineConfig | null>(() => {
-    if (!socket || !startArgs.sessionId || !startArgs.fromUser?._id || !startArgs.toUser?._id) {
+    const fromUser = fromUserRef.current;
+    const toUser = toUserRef.current;
+    if (!socket || !startArgs.sessionId || !fromUser?._id || !toUser?._id) {
       return null;
     }
+    const iceServers = startArgs.iceServers;
     return {
       socket,
       sessionId: startArgs.sessionId,
-      fromUser: startArgs.fromUser,
-      toUser: startArgs.toUser,
+      fromUser,
+      toUser,
       role: startArgs.role,
-      iceServers: startArgs.iceServers,
+      iceServers,
     };
   }, [
     socket,
@@ -148,9 +168,7 @@ export function CallProvider({
     startArgs.fromUser?._id,
     startArgs.toUser?._id,
     startArgs.role,
-    startArgs.iceServers,
-    startArgs.fromUser,
-    startArgs.toUser,
+    iceServersKey,
   ]);
 
   useEffect(() => {
@@ -164,19 +182,21 @@ export function CallProvider({
       onPeerJoined: (info) => {
         if (!active) return;
         setPeerJoined(info);
-        onPeerJoinedCb?.(info);
+        /** Partner announced via socket — unlock lesson UI even before video tracks. */
+        setBothJoined(true);
+        onPeerJoinedRef.current?.(info);
       },
       onBothJoined: () => active && setBothJoined(true),
       onRemoteMute: (isMuted) => active && setRemoteMicMuted(isMuted),
       onRemoteStopFeed: (videoOn) => active && setRemoteCameraOff(!videoOn),
       onPeerLeft: () => {
         if (!active) return;
-        onPeerLeft?.();
+        onPeerLeftRef.current?.();
       },
       onClose: () => {
         if (!active) return;
         setStatus("ended");
-        onEnded?.();
+        onEndedRef.current?.();
       },
       onError: (err) => active && setLastError(err.message),
     });
@@ -191,7 +211,7 @@ export function CallProvider({
       engineRef.current = null;
       engine.dispose();
     };
-  }, [stableArgs, onEnded, onPeerLeft, onPeerJoinedCb]);
+  }, [stableArgs]);
 
   const toggleMute = useCallback(() => {
     const engine = engineRef.current;

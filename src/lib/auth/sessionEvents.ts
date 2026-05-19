@@ -18,3 +18,24 @@ export function emitUnauthorized() {
     }
   }
 }
+
+/** Fired when API returns 401 — show session expired UI before sign-out. */
+type SessionExpiredListener = () => void;
+const sessionExpiredListeners = new Set<SessionExpiredListener>();
+
+export function onSessionExpired(listener: SessionExpiredListener) {
+  sessionExpiredListeners.add(listener);
+  return () => {
+    sessionExpiredListeners.delete(listener);
+  };
+}
+
+export function emitSessionExpired() {
+  for (const l of sessionExpiredListeners) {
+    try {
+      l();
+    } catch {
+      /* ignore */
+    }
+  }
+}

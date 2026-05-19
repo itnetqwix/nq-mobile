@@ -4,13 +4,12 @@
  *
  *   • Uses `expo-av` Video which has native HW decoding for mp4/h264 on iOS &
  *     Android (no extra deps).
- *   • The trainer drives playback via socket events handled by `useClipSync`;
- *     this player applies them via the ref imperative API.
+ *   • Playback is driven via props (`isPlaying`, `seekTargetMs`) and callbacks.
  *   • Trainees on web side this same lifecycle works because the socket
  *     payloads are identical.
  */
 
-import React, { useEffect, useImperativeHandle, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 import { ResizeMode, Video, type AVPlaybackStatus } from "expo-av";
 
@@ -32,74 +31,58 @@ type Props = {
   onEnded?: () => void;
 };
 
-export const ClipPlayer = React.forwardRef<ClipPlayerHandle, Props>(
-  function ClipPlayer(
-    { uri, isPlaying, seekTargetMs, onProgressSeconds, onDurationSeconds, onEnded },
-    ref
-  ) {
-    const videoRef = useRef<Video>(null);
+export function ClipPlayer({
+  uri,
+  isPlaying,
+  seekTargetMs,
+  onProgressSeconds,
+  onDurationSeconds,
+  onEnded,
+}: Props) {
+  const videoRef = useRef<Video>(null);
 
-    useImperativeHandle(
-      ref,
-      () => ({
-        play: () => {
-          videoRef.current?.playAsync().catch(() => undefined);
-        },
-        pause: () => {
-          videoRef.current?.pauseAsync().catch(() => undefined);
-        },
-        seekTo: (seconds: number) => {
-          videoRef.current
-            ?.setPositionAsync(Math.max(0, seconds * 1000))
-            .catch(() => undefined);
-        },
-      }),
-      []
-    );
+  useEffect(() => {
+    const player = videoRef.current;
+    if (!player) return;
+    if (isPlaying) player.playAsync().catch(() => undefined);
+    else player.pauseAsync().catch(() => undefined);
+  }, [isPlaying]);
 
-    useEffect(() => {
-      const ref = videoRef.current;
-      if (!ref) return;
-      if (isPlaying) ref.playAsync().catch(() => undefined);
-      else ref.pauseAsync().catch(() => undefined);
-    }, [isPlaying]);
+  useEffect(() => {
+    if (seekTargetMs == null) return;
+    videoRef.current
+      ?.setPositionAsync(Math.max(0, seekTargetMs))
+      .catch(() => undefined);
+  }, [seekTargetMs]);
 
-    useEffect(() => {
-      if (seekTargetMs == null) return;
-      videoRef.current
-        ?.setPositionAsync(Math.max(0, seekTargetMs))
-        .catch(() => undefined);
-    }, [seekTargetMs]);
-
-    return (
-      <View style={styles.wrap}>
-        <Video
-          ref={videoRef}
-          source={{ uri }}
-          style={styles.player}
-          resizeMode={ResizeMode.CONTAIN}
-          shouldPlay={isPlaying}
-          isLooping={false}
-          useNativeControls={false}
-          onPlaybackStatusUpdate={(status: AVPlaybackStatus) => {
-            if (!status.isLoaded) return;
-            if (status.didJustFinish) onEnded?.();
-            if (typeof status.durationMillis === "number" && status.durationMillis > 0) {
-              onDurationSeconds?.(status.durationMillis / 1000);
-            }
-            if (onProgressSeconds && typeof status.positionMillis === "number") {
-              onProgressSeconds(status.positionMillis / 1000);
-            }
-          }}
-          onError={(e) => {
-            // eslint-disable-next-line no-console
-            console.warn("[ClipPlayer] error", e);
-          }}
-        />
-      </View>
-    );
-  }
-);
+  return (
+    <View style={styles.wrap}>
+      <Video
+        ref={videoRef}
+        source={{ uri }}
+        style={styles.player}
+        resizeMode={ResizeMode.CONTAIN}
+        shouldPlay={isPlaying}
+        isLooping={false}
+        useNativeControls={false}
+        onPlaybackStatusUpdate={(status: AVPlaybackStatus) => {
+          if (!status.isLoaded) return;
+          if (status.didJustFinish) onEnded?.();
+          if (typeof status.durationMillis === "number" && status.durationMillis > 0) {
+            onDurationSeconds?.(status.durationMillis / 1000);
+          }
+          if (onProgressSeconds && typeof status.positionMillis === "number") {
+            onProgressSeconds(status.positionMillis / 1000);
+          }
+        }}
+        onError={(e) => {
+          // eslint-disable-next-line no-console
+          console.warn("[ClipPlayer] error", e);
+        }}
+      />
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
   wrap: {

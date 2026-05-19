@@ -38,6 +38,7 @@ import {
 } from "../../auth/security/appUnlock";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
+import { runSystemStateAction } from "../../system-states/navigation/linkActions";
 import {
   patchUserNotificationSettings,
   postAccountPrivacy,
@@ -237,6 +238,16 @@ export function SettingsScreen() {
         icon: "document-text-outline",
         label: "Help & policies",
         onPress: () => void openWeb(WebRoutes.dashboardContactUs),
+      },
+      {
+        icon: "shield-checkmark-outline",
+        label: "Privacy policy",
+        onPress: () => void runSystemStateAction("open_privacy"),
+      },
+      {
+        icon: "reader-outline",
+        label: "Terms & conditions",
+        onPress: () => void runSystemStateAction("open_terms"),
       },
     ];
     if (isTrainer) {

@@ -300,7 +300,12 @@ export function GroupMembersSheet({
             data={members}
             keyExtractor={(item) => item._id}
             contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
-            ListEmptyComponent={<EmptyState title="No members" subtitle="Invite friends to join." />}
+            ListEmptyComponent={
+              <EmptyState
+                title="No members"
+                description="Invite friends to join."
+              />
+            }
             renderItem={({ item }) => {
               const avatar = getS3ImageUrl(item.profile_picture);
               const canRemove =

@@ -14,6 +14,7 @@ import { NotificationToast } from "../features/notifications/NotificationToast";
 import { OnboardingWalkthrough } from "../features/onboarding/OnboardingWalkthrough";
 import { AuthNavigator } from "./AuthNavigator";
 import { DashboardDrawerShell } from "./DashboardDrawerShell";
+import { SystemStateScreen } from "../features/system-states/screens/SystemStateScreen";
 import type { RootStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -82,9 +83,29 @@ export function RootNavigator() {
                 gestureEnabled: false,
               }}
             />
+            <Stack.Screen
+              name="SystemState"
+              component={SystemStateScreen}
+              options={{
+                presentation: "modal",
+                animation: "fade",
+                headerShown: false,
+              }}
+            />
           </>
         ) : (
-          <Stack.Screen name="Auth" component={AuthNavigator} />
+          <>
+            <Stack.Screen name="Auth" component={AuthNavigator} />
+            <Stack.Screen
+              name="SystemState"
+              component={SystemStateScreen}
+              options={{
+                presentation: "modal",
+                animation: "fade",
+                headerShown: false,
+              }}
+            />
+          </>
         )}
       </Stack.Navigator>
 

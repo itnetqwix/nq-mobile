@@ -85,15 +85,6 @@ const log = (...args: any[]) => {
   console.log("[NativeCallEngine]", ...args);
 };
 
-/**
- * Decide who creates the SDP offer to avoid glare. The trainer offers; trainee
- * answers. This mirrors the web's implicit role-based offer logic without
- * needing a server-side coordination round.
- */
-function shouldOfferFirst(role: SessionRole): boolean {
-  return role === "Trainer";
-}
-
 export class NativeCallEngine {
   private socket: Socket;
   private sessionId: string;
@@ -121,6 +112,8 @@ export class NativeCallEngine {
   private pendingRemoteIce: RTCIceCandidateInit[] = [];
   private socketBindings: Array<() => void> = [];
   private disposed = false;
+  private offerInFlight = false;
+  private lastHandledJoinPeerId: string | null = null;
 
   constructor(cfg: NativeCallEngineConfig, events: NativeCallEngineEvents = {}) {
     this.socket = cfg.socket;
@@ -350,7 +343,9 @@ export class NativeCallEngine {
       else if (state === "connecting") this.setStatus("connecting");
       else if (state === "disconnected" || state === "failed")
         this.setStatus("reconnecting");
-      else if (state === "closed") this.setStatus("ended");
+      else if (state === "closed" && !this.disposed) {
+        this.setStatus("reconnecting");
+      }
     };
   }
 
@@ -360,6 +355,16 @@ export class NativeCallEngine {
     const offCallJoin = (payload: { userInfo?: any }) => {
       const ui = payload?.userInfo || {};
       if (String(ui?.from_user) !== String(this.toUser._id)) return;
+
+      const joinPeerId =
+        ui.peerId != null && String(ui.peerId).trim() !== ""
+          ? String(ui.peerId).trim()
+          : null;
+      if (joinPeerId && joinPeerId === this.lastHandledJoinPeerId) {
+        return;
+      }
+      if (joinPeerId) this.lastHandledJoinPeerId = joinPeerId;
+
       log("ON_CALL_JOIN received from peer", ui);
       this.remoteJoined = true;
       this.events.onPeerJoined?.({
@@ -368,8 +373,11 @@ export class NativeCallEngine {
         sessionId: ui.sessionId ?? this.sessionId,
         peerId: ui.peerId,
       });
-      // Caller (trainer) creates the offer once the callee announces.
-      if (shouldOfferFirst(this.role)) {
+
+      /** Callee (the `to_user` of the join) sends the SDP offer — works for
+       *  trainer↔trainee on native and when the web peer uses socket signaling. */
+      const weAreCallee = String(ui.to_user) === String(this.fromUser._id);
+      if (weAreCallee) {
         void this.createAndSendOffer();
       }
     };
@@ -496,16 +504,24 @@ export class NativeCallEngine {
   }
 
   private async createAndSendOffer() {
-    if (!this.pc) return;
+    if (!this.pc || this.disposed || this.offerInFlight) return;
+    const pc = this.pc;
+    if (pc.localDescription) return;
+
+    this.offerInFlight = true;
     try {
-      const offer = await this.pc.createOffer({});
-      await this.pc.setLocalDescription(offer);
+      const offer = await pc.createOffer({});
+      if (this.disposed || this.pc !== pc) return;
+      await pc.setLocalDescription(offer);
+      if (this.disposed || this.pc !== pc) return;
       this.socket.emit(CALL_EVENTS.ON_OFFER, {
         offer,
         userInfo: this.buildUserInfo(),
       });
     } catch (err) {
       this.events.onError?.(err as Error);
+    } finally {
+      this.offerInFlight = false;
     }
   }
 
@@ -528,6 +544,8 @@ export class NativeCallEngine {
       to_user: this.toUser._id,
       sessionId: this.sessionId,
       peerId: this.peerId,
+      /** Web skips PeerJS `peer.call` and uses ON_OFFER/ON_ANSWER when set. */
+      signalingMode: "socket-webrtc" as const,
     };
   }
 

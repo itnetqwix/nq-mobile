@@ -1,3 +1,4 @@
+export { DashboardEmptyWelcome } from "./DashboardEmptyWelcome";
 export { HomeSection } from "./HomeSection";
 export { HomeUserAvatar } from "./HomeUserAvatar";
 export { LockerHub } from "./LockerHub";

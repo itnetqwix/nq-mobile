@@ -20,6 +20,7 @@
   "dependencies": {
     "@config-plugins/react-native-webrtc": "13.0.0",
     "@expo/vector-icons": "^15.1.1",
+    "@react-native-community/netinfo": "^11.4.1",
     "@react-navigation/bottom-tabs": "^7.15.13",
     "@react-navigation/drawer": "^7.9.11",
     "@react-navigation/native": "^7.2.4",

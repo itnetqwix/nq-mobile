@@ -24,8 +24,8 @@ Trainee: follows socket for clip playback and hide/show; no transport controls.
 
 | Trainer | Trainee | Clip sync | Live video |
 |---------|---------|-----------|------------|
-| Web | Mobile | Web `clips[]` → mobile plays | PeerJS vs WebRTC — verify separately |
-| Mobile | Web | Mobile emits `clips[]` | same |
+| Web | Mobile | Web `clips[]` → mobile plays | Web uses `socketNativeWebRtc.js` when mobile sends `signalingMode: socket-webrtc` |
+| Mobile | Web | Mobile emits `clips[]` | Mobile emits `ON_OFFER` / `ON_ANSWER` on socket (not PeerJS) |
 | Mobile | Mobile | Full native | Native WebRTC |
 | Web | Web | Web only | PeerJS |
 

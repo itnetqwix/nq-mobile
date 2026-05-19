@@ -44,6 +44,7 @@ import { useSocket } from "../../socket/SocketContext";
 import { fetchMeetingSession, fetchScheduledMeetings } from "../../home/api/homeApi";
 import { parseIceServersFromSession } from "../meetingIceServers";
 import { getClipPlaybackUrl } from "../../../lib/clipMediaUrl";
+import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { clipsFromSession, resolveClipPlayback } from "../clipSyncUtils";
 import { useDrawingSync } from "../useDrawingSync";
 import { useMeetingScreenshot } from "../useMeetingScreenshot";
@@ -159,7 +160,7 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
       _id: String(u._id ?? u.id ?? ""),
       fullname: u.fullname ?? u.fullName,
       fullName: u.fullName ?? u.fullname,
-      profile_picture: u.profile_picture,
+      profile_picture: getS3ImageUrl(u.profile_picture) || undefined,
     };
   }, [user]);
 
@@ -172,7 +173,7 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
       _id: String(other._id),
       fullname: other.fullname,
       fullName: other.fullName,
-      profile_picture: other.profile_picture,
+      profile_picture: getS3ImageUrl(other.profile_picture) || undefined,
     };
   }, [session, role]);
 
@@ -296,11 +297,15 @@ function MeetingSurface({
     localStream,
     remoteStream,
     bothJoined,
+    peerJoined,
     cameraEnabled,
     remoteCameraOff,
     endCall,
     lastError,
   } = useCall();
+
+  /** Signaling-level join (socket) — distinct from WebRTC media connected. */
+  const partnerInSession = bothJoined || !!peerJoined;
   const { socket } = useSocket();
   const { pushLocalToast } = useNotifications();
 
@@ -308,15 +313,15 @@ function MeetingSurface({
    *  same as the web. Lets both sides settle their connection. */
   const [timerBufferElapsed, setTimerBufferElapsed] = useState(false);
   useEffect(() => {
-    if (!bothJoined) return;
+    if (!partnerInSession) return;
     const id = setTimeout(() => setTimerBufferElapsed(true), 5000);
     return () => clearTimeout(id);
-  }, [bothJoined]);
+  }, [partnerInSession]);
 
   const lessonTimer = useLessonTimer({
     socket,
     sessionId: lessonId,
-    bothUsersJoined: bothJoined,
+    bothUsersJoined: partnerInSession,
     timerBufferElapsed,
     accountType,
     session,
@@ -645,10 +650,10 @@ function MeetingSurface({
           <View style={styles.liveStage}>
             <View style={styles.livePlaceholder}>
               <Text style={styles.livePlaceholderTitle}>
-                {bothJoined ? "Live lesson" : "Waiting for your partner"}
+                {partnerInSession ? "Live lesson" : "Waiting for your partner"}
               </Text>
               <Text style={styles.livePlaceholderSub}>
-                {bothJoined
+                {partnerInSession
                   ? "Use the video tiles to view cameras. Clips open from the toolbar below."
                   : `${peerDisplayName} will appear when they join.`}
               </Text>
@@ -669,7 +674,7 @@ function MeetingSurface({
         )}
       </View>
 
-      {joinBanner && !bothJoined ? (
+      {joinBanner && !partnerInSession ? (
         <MeetingJoinBanner
           message={joinBanner}
           topOffset={chrome.insets.top + 48}
@@ -677,14 +682,14 @@ function MeetingSurface({
         />
       ) : null}
 
-      {!bothJoined && !joinBanner ? (
+      {!partnerInSession && !joinBanner ? (
         <MeetingJoinBanner
           message={`Waiting for ${peerDisplayName} to join the session…`}
           topOffset={chrome.insets.top + 48}
         />
       ) : null}
 
-      {bothJoined && !remoteStream ? (
+      {partnerInSession && !remoteStream ? (
         <MeetingJoinBanner
           message="Connecting video…"
           variant="info"
@@ -750,7 +755,7 @@ function MeetingSurface({
         remainingSeconds={lessonTimer.remainingSeconds}
         isAuthoritative={lessonTimer.isAuthoritative}
         status={lessonTimer.status}
-        bothUsersJoined={bothJoined}
+        bothUsersJoined={partnerInSession}
         showCoachControls={isTrainer}
         variant={isInstant ? "instant" : "scheduled"}
         timerLabel={isInstant ? "Lesson time" : "Time remaining"}
