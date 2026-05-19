@@ -22,8 +22,10 @@ export const CALL_EVENTS = {
   MUTE_ME: "MUTE_ME",
   STOP_FEED: "STOP_FEED",
 
-  /** Peer hung up. */
+  /** Peer hung up intentionally (End session). */
   ON_CLOSE: "close",
+  /** Partner left the session room after disconnect grace (may rejoin). */
+  ON_CALL_LEAVE: "ON_CALL_LEAVE",
   /** Backend-level end (timer expired, admin closed). */
   CALL_END: "CALL_END",
 } as const;

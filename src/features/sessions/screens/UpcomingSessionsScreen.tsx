@@ -22,6 +22,7 @@ import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { fetchScheduledMeetings } from "../../home/api/homeApi";
 import { INSTANT_JOIN_AFTER_ACCEPT_MS } from "../../../lib/sessions/instantLessonConstants";
 import {
+  canEnterLesson,
   canJoinSession,
   formatSessionWhen,
   getInstantAcceptDeadlineMs,
@@ -121,7 +122,8 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
   const { openSession } = useSessionBooking();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { dateLabel, timeLabel } = formatSessionWhen(session);
-  const joinEnabled = canJoinSession(session);
+  const joinEnabled = canEnterLesson(session);
+  const isRejoin = joinEnabled && !canJoinSession(session);
   const acceptDeadlineMs = getInstantAcceptDeadlineMs(session);
   const joinDeadlineMs = getInstantJoinDeadlineMs(session);
 
@@ -215,7 +217,7 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
         ) : null}
         {!pending && (
           <Button
-            label={t("sessions.joinSession")}
+            label={isRejoin ? t("sessions.rejoinSession", "Rejoin session") : t("sessions.joinSession")}
             leftIcon="videocam-outline"
             onPress={handleJoin}
             size="md"

@@ -54,6 +54,8 @@ type Props = {
   alignRight?: boolean;
   /** Icons placed on the left of the timer row (lock, screenshot, …). */
   leadingTools?: React.ReactNode;
+  /** Shown under the timer when paused/running due to partner disconnect. */
+  statusHint?: string | null;
 };
 
 export function TimeRemaining({
@@ -71,6 +73,7 @@ export function TimeRemaining({
   timerLabel = "Time remaining",
   alignRight = false,
   leadingTools,
+  statusHint,
 }: Props) {
   const [color, setColor] = useState("#28a745");
   const [warning, setWarning] = useState<Warning>(null);
@@ -127,6 +130,7 @@ export function TimeRemaining({
         {!isAuthoritative && remainingSeconds != null && (
           <Text style={styles.syncHint}>syncing…</Text>
         )}
+        {statusHint ? <Text style={styles.statusHint}>{statusHint}</Text> : null}
 
         {showCoachControls && status === "waiting" && (
           <CoachBtn label="Start" color="#28a745" onPress={onStart} />
@@ -241,6 +245,12 @@ const styles = StyleSheet.create({
     color: "#9aa1ab",
     fontStyle: "italic",
     marginLeft: 4,
+  },
+  statusHint: {
+    fontSize: 10,
+    color: meetingTheme.textMuted,
+    marginLeft: 4,
+    maxWidth: 140,
   },
   coachBtn: {
     paddingVertical: 4,

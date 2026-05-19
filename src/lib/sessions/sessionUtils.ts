@@ -102,6 +102,24 @@ export function getInstantJoinDeadlineMs(session: any): number | null {
   return Number.isFinite(ms) ? ms : null;
 }
 
+/**
+ * Rejoin an in-progress lesson (same booking id) until the scheduled window ends.
+ * Used when a user dropped and needs to return before the server marks completed.
+ */
+export function canRejoinLesson(session: any, now = new Date()): boolean {
+  const status = normalizeSessionStatus(session?.status);
+  if (status === "cancelled" || status === "completed") return false;
+  if (canJoinSession(session, now)) return true;
+  if (session?.both_joined_at) return true;
+  const phase = String(session?.instant_phase ?? "").toUpperCase();
+  if (phase === "ACTIVE") return true;
+  const start = getSessionStart(session);
+  if (!start) return false;
+  const end = getSessionEnd(session);
+  const endMs = (end ?? start).getTime() + LATE_JOIN_MS;
+  return now.getTime() <= endMs && (status === "confirmed" || status === "upcoming");
+}
+
 /** Whether the Join button should be enabled (web `meetingAvailability` parity). */
 export function canJoinSession(session: any, now = new Date()): boolean {
   const status = normalizeSessionStatus(session?.status);
@@ -137,6 +155,11 @@ export function canJoinSession(session: any, now = new Date()): boolean {
 
   const endMs = (end ?? start).getTime() + LATE_JOIN_MS;
   return nowMs >= start.getTime() - EARLY_JOIN_MS && nowMs <= endMs;
+}
+
+/** Join or rejoin — for session list / detail CTAs. */
+export function canEnterLesson(session: any, now = new Date()): boolean {
+  return canJoinSession(session, now) || canRejoinLesson(session, now);
 }
 
 /** User-facing reason Join is disabled (for hints under the button). */

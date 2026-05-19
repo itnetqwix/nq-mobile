@@ -152,6 +152,12 @@ export function useLessonTimer({
     useState<LessonTimerSnapshot | null>(null);
   const [status, setStatus] = useState<LessonTimerStatus>("waiting");
   const [participantsConnected, setParticipantsConnected] = useState(false);
+  const [trainerConnectedFromState, setTrainerConnectedFromState] = useState<
+    boolean | null
+  >(null);
+  const [traineeConnectedFromState, setTraineeConnectedFromState] = useState<
+    boolean | null
+  >(null);
   const [retryToken, setRetryToken] = useState(0);
   const [fallbackRemainingSeconds, setFallbackRemainingSeconds] = useState<
     number | null
@@ -238,6 +244,12 @@ export function useLessonTimer({
       if (!matches(state)) return;
       const { status: s, startedAt, duration, remainingSeconds, trainerConnected, traineeConnected } = state;
       setStatus(s || "waiting");
+      if (typeof trainerConnected === "boolean") {
+        setTrainerConnectedFromState(trainerConnected);
+      }
+      if (typeof traineeConnected === "boolean") {
+        setTraineeConnectedFromState(traineeConnected);
+      }
       setParticipantsConnected(!!trainerConnected && !!traineeConnected);
 
       if (s === "running" && startedAt && duration) {
@@ -471,6 +483,13 @@ export function useLessonTimer({
   const effectiveRemaining =
     authoritativeRemaining != null ? authoritativeRemaining : fallbackRemainingSeconds;
 
+  const bothConnectedFromSync =
+    participantsConnected ||
+    (trainerConnectedFromState != null &&
+      traineeConnectedFromState != null &&
+      trainerConnectedFromState &&
+      traineeConnectedFromState);
+
   return {
     /** What the UI should render — authoritative socket value when available,
      *  otherwise the local fallback we derived from session start/end. */
@@ -480,6 +499,10 @@ export function useLessonTimer({
     isAuthoritative: authoritativeRemaining != null,
     status,
     authoritativeTimer,
+    participantsConnected,
+    trainerConnected: trainerConnectedFromState,
+    traineeConnected: traineeConnectedFromState,
+    bothConnectedFromSync,
     requestStart,
     requestPause,
     requestResume,

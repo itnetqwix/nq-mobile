@@ -17,6 +17,7 @@ import { useAuth } from "../auth/context/AuthContext";
 import { fetchSessionDetail, updateBookedSessionStatus } from "../home/api/homeApi";
 import { getS3ImageUrl } from "../../lib/imageUtils";
 import {
+  canEnterLesson,
   canJoinSession,
   formatSessionWhen,
   getJoinDisabledReason,
@@ -130,8 +131,15 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
   const [joinHint, setJoinHint] = useState("");
 
   const joinEnabled = useMemo(
-    () => (viewSession && !completed ? canJoinSession(viewSession) : false),
+    () => (viewSession && !completed ? canEnterLesson(viewSession) : false),
     [viewSession, completed]
+  );
+  const isRejoin = useMemo(
+    () =>
+      viewSession && joinEnabled && !completed
+        ? !canJoinSession(viewSession)
+        : false,
+    [viewSession, joinEnabled, completed]
   );
 
   const openReportIssue = useCallback(() => {
@@ -400,7 +408,7 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
 
               {!pending && !completed && (
                 <Button
-                  label="Join session"
+                  label={isRejoin ? "Rejoin session" : "Join session"}
                   leftIcon="videocam-outline"
                   onPress={handleJoin}
                   disabled={!joinEnabled}

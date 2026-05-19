@@ -54,6 +54,8 @@ type CallContextValue = {
   peerJoined: PeerJoinedEvent | null;
   /** True once SDP + tracks have completed and we've seen a remote stream. */
   bothJoined: boolean;
+  /** Partner left session room but may rejoin (socket presence). */
+  partnerDisconnected: boolean;
   micEnabled: boolean;
   cameraEnabled: boolean;
   remoteMicMuted: boolean;
@@ -62,6 +64,7 @@ type CallContextValue = {
   toggleCamera: () => void;
   switchCamera: () => void;
   endCall: () => void;
+  reconnectPeer: () => void;
   /** Imperatively dismiss the peer-joined modal. */
   acknowledgePeerJoined: () => void;
   /** Last engine error, surfaced for toasts/banners. */
@@ -77,6 +80,7 @@ const CallContext = createContext<CallContextValue>({
   peer: null,
   peerJoined: null,
   bothJoined: false,
+  partnerDisconnected: false,
   micEnabled: true,
   cameraEnabled: true,
   remoteMicMuted: false,
@@ -85,6 +89,7 @@ const CallContext = createContext<CallContextValue>({
   toggleCamera: noop,
   switchCamera: noop,
   endCall: noop,
+  reconnectPeer: noop,
   acknowledgePeerJoined: noop,
   lastError: null,
 });
@@ -95,15 +100,13 @@ export function useCall(): CallContextValue {
 
 type ProviderProps = StartArgs & {
   children: React.ReactNode;
-  /** Called when the engine closes (locally or remotely). Screen uses this to
-   *  pop the navigation stack. */
+  /** Called when the call ends intentionally or session ends (not temp disconnect). */
   onEnded?: () => void;
-  /** Specifically fires when the remote peer left mid-call (their socket
-   *  emitted ON_CLOSE while we were still active). Lets the screen surface a
-   *  notification before the call tears down. */
+  /** Partner explicitly ended the call (ON_CLOSE). */
   onPeerLeft?: () => void;
-  /** Fires the first time `ON_CALL_JOIN` is received from the other side.
-   *  Used by the screen to surface a "User joined" notification. */
+  /** Partner disconnected from session room — may rejoin. */
+  onPeerDisconnected?: () => void;
+  /** Fires the first time `ON_CALL_JOIN` is received from the other side. */
   onPeerJoined?: (info: PeerJoinedEvent) => void;
 };
 
@@ -111,6 +114,7 @@ export function CallProvider({
   children,
   onEnded,
   onPeerLeft,
+  onPeerDisconnected,
   onPeerJoined: onPeerJoinedCb,
   ...startArgs
 }: ProviderProps) {
@@ -122,6 +126,7 @@ export function CallProvider({
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [peerJoined, setPeerJoined] = useState<PeerJoinedEvent | null>(null);
   const [bothJoined, setBothJoined] = useState(false);
+  const [partnerDisconnected, setPartnerDisconnected] = useState(false);
   const [micEnabled, setMicEnabled] = useState(true);
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [remoteMicMuted, setRemoteMicMuted] = useState(false);
@@ -140,13 +145,13 @@ export function CallProvider({
 
   const onEndedRef = useRef(onEnded);
   const onPeerLeftRef = useRef(onPeerLeft);
+  const onPeerDisconnectedRef = useRef(onPeerDisconnected);
   const onPeerJoinedRef = useRef(onPeerJoinedCb);
   onEndedRef.current = onEnded;
   onPeerLeftRef.current = onPeerLeft;
+  onPeerDisconnectedRef.current = onPeerDisconnected;
   onPeerJoinedRef.current = onPeerJoinedCb;
 
-  /** Memoise primitive identifiers so the engine effect doesn't re-run on
-   *  every parent render (unstable object refs were recreating the engine ~5s). */
   const stableArgs = useMemo<NativeCallEngineConfig | null>(() => {
     const fromUser = fromUserRef.current;
     const toUser = toUserRef.current;
@@ -177,18 +182,31 @@ export function CallProvider({
 
     const engine = new NativeCallEngine(stableArgs, {
       onLocalStream: (stream) => active && setLocalStream(stream),
-      onRemoteStream: (stream) => active && setRemoteStream(stream),
+      onRemoteStream: (stream) => {
+        if (!active) return;
+        setRemoteStream(stream);
+        if (stream) {
+          setPartnerDisconnected(false);
+          setBothJoined(true);
+        }
+      },
       onStatus: (s) => active && setStatus(s),
       onPeerJoined: (info) => {
         if (!active) return;
         setPeerJoined(info);
-        /** Partner announced via socket — unlock lesson UI even before video tracks. */
+        setPartnerDisconnected(false);
         setBothJoined(true);
         onPeerJoinedRef.current?.(info);
       },
       onBothJoined: () => active && setBothJoined(true),
       onRemoteMute: (isMuted) => active && setRemoteMicMuted(isMuted),
       onRemoteStopFeed: (videoOn) => active && setRemoteCameraOff(!videoOn),
+      onPeerDisconnected: () => {
+        if (!active) return;
+        setPartnerDisconnected(true);
+        setBothJoined(false);
+        onPeerDisconnectedRef.current?.();
+      },
       onPeerLeft: () => {
         if (!active) return;
         onPeerLeftRef.current?.();
@@ -237,6 +255,10 @@ export function CallProvider({
     engineRef.current?.endCall();
   }, []);
 
+  const reconnectPeer = useCallback(() => {
+    engineRef.current?.reconnectPeer();
+  }, []);
+
   const acknowledgePeerJoined = useCallback(() => setPeerJoined(null), []);
 
   const value = useMemo<CallContextValue>(
@@ -247,6 +269,7 @@ export function CallProvider({
       peer: startArgs.toUser,
       peerJoined,
       bothJoined,
+      partnerDisconnected,
       micEnabled,
       cameraEnabled,
       remoteMicMuted,
@@ -255,6 +278,7 @@ export function CallProvider({
       toggleCamera,
       switchCamera,
       endCall,
+      reconnectPeer,
       acknowledgePeerJoined,
       lastError,
     }),
@@ -265,6 +289,7 @@ export function CallProvider({
       startArgs.toUser,
       peerJoined,
       bothJoined,
+      partnerDisconnected,
       micEnabled,
       cameraEnabled,
       remoteMicMuted,
@@ -273,6 +298,7 @@ export function CallProvider({
       toggleCamera,
       switchCamera,
       endCall,
+      reconnectPeer,
       acknowledgePeerJoined,
       lastError,
     ]

@@ -72,9 +72,9 @@ export type NativeCallEngineEvents = {
   onRemoteStopFeed?: (videoOn: boolean) => void;
   /** Engine has hung up locally or remotely. */
   onClose?: () => void;
-  /** Specifically: the remote peer disconnected mid-call (their socket emitted
-   *  ON_CLOSE while we were still active). Distinct from `onClose`, which also
-   *  fires when the local user ended the call themselves. */
+  /** Partner left the session room (may rejoin) — stay in meeting UI. */
+  onPeerDisconnected?: () => void;
+  /** Partner explicitly ended the call or session ended. */
   onPeerLeft?: () => void;
   /** Non-fatal warning. */
   onError?: (err: Error) => void;
@@ -366,7 +366,20 @@ export class NativeCallEngine {
       if (joinPeerId) this.lastHandledJoinPeerId = joinPeerId;
 
       log("ON_CALL_JOIN received from peer", ui);
+      const wasReconnecting = this.status === "reconnecting";
       this.remoteJoined = true;
+      if (wasReconnecting && this.localStream) {
+        try {
+          this.pc?.close();
+        } catch {
+          /* noop */
+        }
+        this.pc = null;
+        this.pendingRemoteIce = [];
+        this.offerInFlight = false;
+        this.buildPeerConnection();
+        this.setStatus("connecting");
+      }
       this.events.onPeerJoined?.({
         from_user: ui.from_user,
         to_user: ui.to_user,
@@ -448,12 +461,23 @@ export class NativeCallEngine {
     };
 
     const onClose = () => {
-      /** ON_CLOSE coming over the socket means the remote peer left first;
-       *  surface that as a distinct event for UI notifications, then proceed
-       *  with the normal teardown. */
+      /** Remote peer tapped End — tear down for both sides. */
       this.events.onPeerLeft?.();
       this.events.onClose?.();
       this.dispose();
+    };
+
+    const onCallLeave = (payload: { userId?: string; sessionId?: string }) => {
+      if (
+        payload?.sessionId != null &&
+        String(payload.sessionId) !== String(this.sessionId)
+      ) {
+        return;
+      }
+      if (payload?.userId != null && String(payload.userId) !== String(this.toUser._id)) {
+        return;
+      }
+      this.handlePartnerDisconnected();
     };
 
     const onCallEnd = () => {
@@ -470,6 +494,7 @@ export class NativeCallEngine {
     socket.on(CALL_EVENTS.MUTE_ME, onMute);
     socket.on(CALL_EVENTS.STOP_FEED, onStopFeed);
     socket.on(CALL_EVENTS.ON_CLOSE, onClose);
+    socket.on(CALL_EVENTS.ON_CALL_LEAVE, onCallLeave);
     socket.on(CALL_EVENTS.CALL_END, onCallEnd);
 
     this.socketBindings.push(() =>
@@ -488,7 +513,46 @@ export class NativeCallEngine {
       socket.off(CALL_EVENTS.STOP_FEED, onStopFeed)
     );
     this.socketBindings.push(() => socket.off(CALL_EVENTS.ON_CLOSE, onClose));
+    this.socketBindings.push(() =>
+      socket.off(CALL_EVENTS.ON_CALL_LEAVE, onCallLeave)
+    );
     this.socketBindings.push(() => socket.off(CALL_EVENTS.CALL_END, onCallEnd));
+  }
+
+  /** Partner disconnected from session room — keep local media; allow re-offer on rejoin. */
+  private handlePartnerDisconnected(): void {
+    if (this.disposed) return;
+    this.remoteJoined = false;
+    this.remoteStream = null;
+    this.remoteTrackIds.clear();
+    this.pendingRemoteIce = [];
+    this.events.onRemoteStream?.(null);
+    this.setStatus("reconnecting");
+    this.events.onPeerDisconnected?.();
+  }
+
+  /** Rebuild WebRTC after partner returns (optional — also handled on ON_CALL_JOIN). */
+  reconnectPeer(): void {
+    if (this.disposed) return;
+    try {
+      this.pc?.close();
+    } catch {
+      /* noop */
+    }
+    this.pc = null;
+    this.remoteStream = null;
+    this.remoteTrackIds.clear();
+    this.pendingRemoteIce = [];
+    this.offerInFlight = false;
+    this.lastHandledJoinPeerId = null;
+    this.bothJoinedFired = false;
+    this.remoteJoined = false;
+    if (this.localStream) {
+      this.buildPeerConnection();
+      this.emitJoin();
+      this.setStatus("reconnecting");
+    }
+    this.events.onRemoteStream?.(null);
   }
 
   private async drainPendingIce() {

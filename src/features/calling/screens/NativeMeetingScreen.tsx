@@ -88,6 +88,7 @@ import {
 import { SessionGamePlanModal } from "../components/SessionGamePlanModal";
 import { RatingsModal } from "../components/RatingsModal";
 import { MeetingJoinBanner } from "../components/MeetingJoinBanner";
+import { useSessionPresence } from "../useSessionPresence";
 import { meetingTheme } from "../meetingTheme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Meeting">;
@@ -241,10 +242,17 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
           type: NOTIFICATION_TYPES.DEFAULT,
         });
       }}
+      onPeerDisconnected={() => {
+        pushLocalToast({
+          title: NOTIFICATION_TITLES.peerLeftCall,
+          description: `${peerDisplayName} disconnected. Waiting for them to rejoin…`,
+          type: NOTIFICATION_TYPES.TRANSCATIONAL,
+        });
+      }}
       onPeerLeft={() => {
         pushLocalToast({
           title: NOTIFICATION_TITLES.peerLeftCall,
-          description: `${peerDisplayName} left the lesson.`,
+          description: `${peerDisplayName} ended the lesson.`,
           type: NOTIFICATION_TYPES.TRANSCATIONAL,
           persistInInbox: true,
         });
@@ -293,15 +301,29 @@ function MeetingSurface({
     remoteStream,
     bothJoined,
     peerJoined,
+    partnerDisconnected,
     cameraEnabled,
     remoteCameraOff,
     endCall,
     lastError,
   } = useCall();
 
-  /** Signaling-level join (socket) — distinct from WebRTC media connected. */
-  const partnerInSession = bothJoined || !!peerJoined;
   const { socket } = useSocket();
+
+  const presence = useSessionPresence({
+    socket,
+    sessionId: lessonId,
+    peerId,
+    isTrainer,
+    peerDisplayName,
+    mediaPartnerJoined: bothJoined || !!peerJoined,
+  });
+
+  /** Socket presence when synced; otherwise fall back to WebRTC join signals. */
+  const partnerInSession =
+    presence.trainerConnected != null && presence.traineeConnected != null
+      ? presence.partnerConnected
+      : (bothJoined || !!peerJoined) && !partnerDisconnected;
   const { pushLocalToast } = useNotifications();
 
   /** Small client-side buffer (5 s) before the trainer auto-starts the timer —
@@ -313,14 +335,39 @@ function MeetingSurface({
     return () => clearTimeout(id);
   }, [partnerInSession]);
 
+  const bothUsersForTimer =
+    presence.trainerConnected != null && presence.traineeConnected != null
+      ? presence.trainerConnected && presence.traineeConnected
+      : partnerInSession;
+
   const lessonTimer = useLessonTimer({
     socket,
     sessionId: lessonId,
-    bothUsersJoined: partnerInSession,
+    bothUsersJoined: bothUsersForTimer,
     timerBufferElapsed,
     accountType,
     session,
   });
+
+  const timerStatusHint = useMemo(() => {
+    if (presence.partnerLeftKind === "trainer" && lessonTimer.status === "paused") {
+      return "Paused — coach disconnected";
+    }
+    if (
+      presence.partnerLeftKind === "trainee" &&
+      lessonTimer.status === "running"
+    ) {
+      return "Trainee disconnected — timer running";
+    }
+    if (presence.partnerReconnecting) {
+      return "Partner reconnecting…";
+    }
+    return null;
+  }, [
+    presence.partnerLeftKind,
+    presence.partnerReconnecting,
+    lessonTimer.status,
+  ]);
 
   const clipSync = useClipSync({
     socket,
@@ -406,7 +453,6 @@ function MeetingSurface({
   const [annotationTool, setAnnotationTool] = useState<AnnotationTool>("freehand");
   const [annotationArmed, setAnnotationArmed] = useState(false);
   const [annotationToolbarOpen, setAnnotationToolbarOpen] = useState(false);
-  const [joinBanner, setJoinBanner] = useState<string | null>(null);
   const clipProgressRefs = useRef<[number, number]>([0, 0]);
   const lessonStartedNotifiedRef = useRef(false);
 
@@ -420,47 +466,18 @@ function MeetingSurface({
   }, [session]);
 
   useEffect(() => {
-    if (!socket) return;
-    const onParticipant = (payload: {
-      sessionId?: string;
-      role?: string;
-      status?: string;
-    }) => {
-      if (String(payload?.sessionId) !== String(lessonId)) return;
-      if (payload?.status !== "connected") return;
-      const who =
-        payload.role === "trainer"
-          ? session?.trainer_info?.fullname ?? "Your coach"
-          : session?.trainee_info?.fullname ?? "Your trainee";
-      const msg = `${who} has joined the session. Please join if you haven't yet.`;
-      setJoinBanner(msg);
-      pushLocalToast({
-        title: NOTIFICATION_TITLES.peerJoinedCall,
-        description: msg,
-        type: NOTIFICATION_TYPES.TRANSCATIONAL,
-        persistInInbox: true,
-      });
-    };
-    socket.on("PARTICIPANT_STATUS_CHANGED", onParticipant);
-    return () => {
-      socket.off("PARTICIPANT_STATUS_CHANGED", onParticipant);
-    };
-  }, [socket, lessonId, session, pushLocalToast]);
-
-  useEffect(() => {
-    if (!bothJoined) {
+    if (!bothUsersForTimer) {
       lessonStartedNotifiedRef.current = false;
       return;
     }
     if (lessonStartedNotifiedRef.current) return;
     lessonStartedNotifiedRef.current = true;
-    setJoinBanner(null);
     pushLocalToast({
       title: NOTIFICATION_TITLES.sessionStarted,
       description: "Lesson started — you're both in the call.",
       type: NOTIFICATION_TYPES.TRANSCATIONAL,
     });
-  }, [bothJoined, pushLocalToast]);
+  }, [bothUsersForTimer, pushLocalToast]);
 
   /** When the trainer selects a clip we receive the clip metadata so we can
    *  compute the playback URL locally. The trainee receives only the id via
@@ -856,22 +873,20 @@ function MeetingSurface({
         )}
       </View>
 
-      {joinBanner && !partnerInSession ? (
+      {presence.presenceMessage ? (
         <MeetingJoinBanner
-          message={joinBanner}
+          message={presence.presenceMessage}
+          variant={presence.presenceVariant}
           topOffset={chrome.insets.top + 48}
-          onDismiss={() => setJoinBanner(null)}
         />
-      ) : null}
-
-      {!partnerInSession && !joinBanner ? (
+      ) : !partnerInSession ? (
         <MeetingJoinBanner
           message={`Waiting for ${peerDisplayName} to join the session…`}
           topOffset={chrome.insets.top + 48}
         />
       ) : null}
 
-      {partnerInSession && !remoteStream ? (
+      {partnerInSession && !remoteStream && !partnerDisconnected ? (
         <MeetingJoinBanner
           message="Connecting video…"
           variant="info"
@@ -994,7 +1009,8 @@ function MeetingSurface({
         remainingSeconds={lessonTimer.remainingSeconds}
         isAuthoritative={lessonTimer.isAuthoritative}
         status={lessonTimer.status}
-        bothUsersJoined={partnerInSession}
+        bothUsersJoined={bothUsersForTimer}
+        statusHint={timerStatusHint}
         showCoachControls={isTrainer && !isInstant}
         variant={isInstant ? "instant" : "scheduled"}
         timerLabel="Timer"

@@ -29,6 +29,27 @@ Thumbnails use `getClipThumbnailUrl` (S3 prod bucket for bare keys — same as w
 
 Trainee: follows socket for clip playback, layout, and hide/show; no transport controls.
 
+## Session presence and rejoin
+
+`useSessionPresence` listens for backend room events (same as web portrait-calling):
+
+- `PARTICIPANT_STATUS_CHANGED` (`connected` / `disconnected`)
+- `PARTICIPANT_LEFT` (after ~12s disconnect grace)
+- `PARTICIPANT_STALE` (partner may be reconnecting)
+- `LESSON_STATE_SYNC` (`trainerConnected` / `traineeConnected`)
+
+**Product rules:**
+
+| Event | Timer | Staying user |
+|-------|-------|--------------|
+| Trainee leaves (>12s) | Keeps running | Banner: trainee left — timer still running |
+| Trainer leaves (>12s) | Pauses (`trainerLeftPaused`) | Banner: coach left — waiting to rejoin |
+| Partner taps End (`close`) | Session ends for both | Navigate home + ratings |
+| Rejoin | Until timer hits 0 | Same `lessonId` from sessions list (**Rejoin session**) |
+
+`NativeCallEngine` treats `ON_CALL_LEAVE` as a temporary disconnect (stay in room).
+`close` / `CALL_END` still tear down the call.
+
 ## Cross-platform QA matrix
 
 | Trainer | Trainee | Clip sync | Live video | Layout sync |
@@ -56,6 +77,14 @@ Trainee: follows socket for clip playback, layout, and hide/show; no transport c
 13. No recording bar on mobile.
 14. Home button during call → OS PiP / background audio (dev build; rebuild after `app.json` PiP flags).
 
+### Rejoin / presence checks
+
+1. Trainee force-quits → trainer sees leave banner; timer runs; trainee **Rejoin session** → both back in call.
+2. Trainer force-quits → trainee sees paused timer + coach-left banner; trainer rejoins → timer resumes.
+3. Brief drop (&lt;12s) → no `PARTICIPANT_LEFT` banner.
+4. Instant + scheduled: same scenarios after auto-start / coach Start.
+5. Mobile + web mixed pair: `PARTICIPANT_LEFT` messaging visible on both.
+
 ## Key files
 
 | File | Purpose |
@@ -70,6 +99,7 @@ Trainee: follows socket for clip playback, layout, and hide/show; no transport c
 | `ClipPickerModal.tsx` | Multi-select clip picker (max 2) |
 | `DraggableVideoPip.tsx` | Drag, edge dock (40%), corner resize |
 | `useDrawingSync.ts` | `EMIT_DRAWING_CORDS` stroke broadcast |
+| `useSessionPresence.ts` | Join/leave/reconnect banners + socket presence |
 
 ## Dev build and video QA
 
@@ -98,3 +128,6 @@ npx expo run:android
 - `TOGGLE_LOCK_MODE` (`locked` + `isLockMode` + optional `lockPoint`)
 - `TOGGLE_DRAWING_MODE`, `EMIT_DRAWING_CORDS`
 - `MEETING_TILE_LAYOUT` (tile x/y/w/h, hidden, `focusedStreamId`)
+- `PARTICIPANT_STATUS_CHANGED`, `PARTICIPANT_LEFT`, `PARTICIPANT_STALE`
+- `LESSON_STATE_REQUEST` / `LESSON_STATE_SYNC`, `LESSON_TIME_PAUSED` / `LESSON_TIME_RESUMED`
+- `ON_CALL_LEAVE` (temporary disconnect) vs `close` (explicit end)

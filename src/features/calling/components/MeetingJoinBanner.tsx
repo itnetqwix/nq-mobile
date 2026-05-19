@@ -5,7 +5,7 @@ import { meetingTheme } from "../meetingTheme";
 
 type Props = {
   message: string;
-  variant?: "info" | "success";
+  variant?: "info" | "success" | "warning";
   onDismiss?: () => void;
   topOffset?: number;
 };
@@ -18,11 +18,29 @@ export function MeetingJoinBanner({
 }: Props) {
   return (
     <View style={[styles.wrap, { top: topOffset }]} pointerEvents="box-none">
-      <View style={[styles.card, variant === "success" && styles.cardSuccess]}>
+      <View
+        style={[
+          styles.card,
+          variant === "success" && styles.cardSuccess,
+          variant === "warning" && styles.cardWarning,
+        ]}
+      >
         <Ionicons
-          name={variant === "success" ? "checkmark-circle" : "people"}
+          name={
+            variant === "success"
+              ? "checkmark-circle"
+              : variant === "warning"
+                ? "alert-circle"
+                : "people"
+          }
           size={18}
-          color={variant === "success" ? meetingTheme.success : meetingTheme.navy}
+          color={
+            variant === "success"
+              ? meetingTheme.success
+              : variant === "warning"
+                ? "#e65100"
+                : meetingTheme.navy
+          }
         />
         <Text style={styles.text}>{message}</Text>
         {onDismiss ? (
@@ -60,6 +78,10 @@ const styles = StyleSheet.create({
   },
   cardSuccess: {
     borderColor: "rgba(22, 163, 74, 0.35)",
+  },
+  cardWarning: {
+    borderColor: "rgba(230, 81, 0, 0.4)",
+    backgroundColor: "rgba(255, 243, 224, 0.98)",
   },
   text: {
     flex: 1,
