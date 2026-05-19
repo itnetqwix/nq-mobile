@@ -87,7 +87,7 @@ export function SettingsScreen() {
 
   const { mode: themeMode, setMode: setThemeMode } = useTheme();
   const { user, accountType, signOut, patchUser } = useAuth();
-  const name = (user?.fullname as string) || (user?.fullName as string) || "User";
+  const name = (user?.fullname as string) || (user?.fullName as string) || t("settings.defaultUser");
   const email = (user?.email as string) ?? "";
   const profileUri = getS3ImageUrl((user as any)?.profile_picture);
   const isTrainer = accountType === AccountType.TRAINER;
@@ -133,7 +133,7 @@ export function SettingsScreen() {
 
   const saveRegional = async () => {
     if (!accountType) {
-      Alert.alert(t("settings.regionalError"), "Not signed in.");
+      Alert.alert(t("settings.regionalError"), t("settings.notSignedIn"));
       return;
     }
     const role = accountType === AccountType.TRAINER ? "Trainer" : "Trainee";
@@ -150,7 +150,7 @@ export function SettingsScreen() {
       if (needsRtlReload) {
         Alert.alert(
           t("settings.regionalSaved"),
-          "Please restart the app to apply the new layout direction."
+          t("settings.regionalRtlRestartBody")
         );
       } else {
         Alert.alert(t("settings.regionalSaved"), t("settings.regionalSavedBody"));
@@ -167,7 +167,7 @@ export function SettingsScreen() {
   const [privacyBusy, setPrivacyBusy] = useState(false);
   const [notifBusy, setNotifBusy] = useState<string | null>(null);
   const [appUnlockOn, setAppUnlockOn] = useState(false);
-  const [unlockLabel, setUnlockLabel] = useState("Biometrics");
+  const [unlockLabel, setUnlockLabel] = useState(() => t("settings.biometricsDefault"));
 
   useEffect(() => {
     void isAppUnlockEnabled().then(setAppUnlockOn);
@@ -183,8 +183,8 @@ export function SettingsScreen() {
     const url = `${WEB_APP_ORIGIN.replace(/\/$/, "")}${path}`;
     const supported = await Linking.canOpenURL(url);
     if (supported) await Linking.openURL(url);
-    else Alert.alert("Unable to open link", url);
-  }, []);
+    else Alert.alert(t("settings.linkOpenErrorTitle"), url);
+  }, [t]);
 
   const handlePrivacy = async (next: boolean) => {
     setIsPrivate(next);
@@ -194,7 +194,10 @@ export function SettingsScreen() {
       patchUser({ isPrivate: next });
     } catch (e: any) {
       setIsPrivate(!next);
-      Alert.alert("Privacy", e?.message ?? "Could not update private account setting.");
+      Alert.alert(
+        t("settings.privacyAlertTitle"),
+        e?.message ?? t("settings.privacyUpdateError")
+      );
     } finally {
       setPrivacyBusy(false);
     }
@@ -218,17 +221,20 @@ export function SettingsScreen() {
       patchUser({ notifications: updated });
     } catch (e: any) {
       setNotif(prev);
-      Alert.alert("Notifications", e?.message ?? "Could not save notification preferences.");
+      Alert.alert(
+        t("settings.notificationsAlertTitle"),
+        e?.message ?? t("settings.notificationsUpdateError")
+      );
     } finally {
       setNotifBusy(null);
     }
   };
 
   const handleSignOut = () => {
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("auth.signOut"), t("auth.signOutConfirm"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "Sign Out",
+        text: t("auth.signOut"),
         style: "destructive",
         onPress: () => signOut(),
       },
@@ -237,43 +243,43 @@ export function SettingsScreen() {
 
   const supportRows = useMemo(() => {
     const rows: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }[] = [
-      { icon: "mail-outline", label: "Contact us", onPress: () => openDashboard("contact-us") },
-      { icon: "help-circle-outline", label: "FAQ", onPress: () => openDashboard("faq") },
+      { icon: "mail-outline", label: t("settings.contactUs"), onPress: () => openDashboard("contact-us") },
+      { icon: "help-circle-outline", label: t("settings.faq"), onPress: () => openDashboard("faq") },
       {
         icon: "information-circle-outline",
-        label: "About",
+        label: t("settings.about"),
         onPress: () => openDashboard("about-us"),
       },
       {
         icon: "document-text-outline",
-        label: "Help & policies",
+        label: t("settings.helpPolicies"),
         onPress: () => void openWeb(WebRoutes.dashboardContactUs),
       },
       {
         icon: "shield-checkmark-outline",
-        label: "Privacy policy",
+        label: t("settings.privacyPolicy"),
         onPress: () => void runSystemStateAction("open_privacy"),
       },
       {
         icon: "reader-outline",
-        label: "Terms & conditions",
+        label: t("settings.termsConditions"),
         onPress: () => void runSystemStateAction("open_terms"),
       },
     ];
     if (isTrainer) {
       rows.push({
         icon: "card-outline",
-        label: "Trainer profile & billing",
+        label: t("settings.trainerProfileBilling"),
         onPress: () => void openWeb(WebRoutes.dashboardHome),
       });
     }
     rows.push({
       icon: "person-add-outline",
-      label: "Invite friends",
+      label: t("settings.inviteFriends"),
       onPress: () => openShell("invite"),
     });
     return rows;
-  }, [isTrainer, openWeb, openDashboard, openShell]);
+  }, [isTrainer, openWeb, openDashboard, openShell, t]);
 
   return (
     <ScreenContainer scroll padding="md" background={c.surface}>
@@ -290,33 +296,33 @@ export function SettingsScreen() {
             >
               {email}
             </Text>
-            <Pill label={accountType ?? "Member"} tone="brand" style={{ marginTop: 6 }} />
+            <Pill label={accountType ?? t("settings.member")} tone="brand" style={{ marginTop: 6 }} />
           </View>
           <Ionicons name="chevron-forward" size={20} color={c.textMuted} />
         </Card>
       </Pressable>
 
-      <SectionHeader label="Account" />
+      <SectionHeader label={t("settings.account")} />
       <Card variant="outlined" padding={0} style={styles.sectionCard}>
         <ListRow
           icon="person-outline"
-          title="Name"
+          title={t("settings.name")}
           subtitle={name}
           onPress={() => openShell("editProfile")}
         />
         <Divider />
-        <ListRow icon="mail-outline" title="Email" subtitle={email} hideChevron />
+        <ListRow icon="mail-outline" title={t("settings.email")} subtitle={email} hideChevron />
         <Divider />
         <ListRow
           icon="shield-outline"
-          title="Account type"
+          title={t("settings.accountType")}
           subtitle={accountType ?? ""}
           hideChevron
         />
         <Divider />
         <ListRow
           icon="create-outline"
-          title="Edit profile"
+          title={t("settings.editProfile")}
           onPress={() => openShell("editProfile")}
         />
         {isTrainer && (
@@ -324,20 +330,20 @@ export function SettingsScreen() {
             <Divider />
             <ListRow
               icon="calendar-outline"
-              title="My schedule"
+              title={t("settings.mySchedule")}
               onPress={() => openShell("trainerSchedule")}
             />
           </>
         )}
       </Card>
 
-      <SectionHeader label="Appearance" />
+      <SectionHeader label={t("settings.appearance")} />
       <Card variant="outlined" padding={0} style={styles.sectionCard}>
         {(
           [
-            ["system", "Match system", "phone-portrait-outline"],
-            ["light", "Light mode", "sunny-outline"],
-            ["dark", "Dark mode", "moon-outline"],
+            ["system", t("settings.themeMatchSystem"), "phone-portrait-outline"],
+            ["light", t("settings.themeLight"), "sunny-outline"],
+            ["dark", t("settings.themeDark"), "moon-outline"],
           ] as const
         ).map(([id, label, icon], i) => (
           <React.Fragment key={id}>
@@ -345,7 +351,10 @@ export function SettingsScreen() {
             <ListRow
               icon={icon}
               title={label}
-              accessibilityLabel={`Theme: ${label}${themeMode === id ? " (selected)" : ""}`}
+              accessibilityLabel={t("settings.themeAccessibility", {
+                label,
+                selected: themeMode === id ? t("settings.themeSelectedSuffix") : "",
+              })}
               rightAdornment={
                 themeMode === id ? (
                   <Ionicons name="checkmark-circle" size={22} color={c.brandAccent} />
@@ -360,12 +369,12 @@ export function SettingsScreen() {
         ))}
       </Card>
 
-      <SectionHeader label="Storage" />
+      <SectionHeader label={t("settings.storage")} />
       <Card variant="outlined" padding={0} style={styles.sectionCard}>
         <ListRow
           icon="cloud-outline"
-          title="Storage plan"
-          subtitle="Manage clip storage and upgrades"
+          title={t("settings.storagePlan")}
+          subtitle={t("settings.storagePlanSubtitle")}
           onPress={() => navigation.navigate("StoragePlan")}
         />
       </Card>
@@ -413,12 +422,12 @@ export function SettingsScreen() {
         onConfirm={(iana) => setTzDraft(iana)}
       />
 
-      <SectionHeader label="Security" />
+      <SectionHeader label={t("settings.security")} />
       <Card variant="outlined" padding={0} style={styles.sectionCard}>
         <ListRow
           icon="finger-print-outline"
-          title={`${unlockLabel} app unlock`}
-          subtitle="Require biometrics when opening NetQwix"
+          title={t("settings.appUnlockTitle", { label: unlockLabel })}
+          subtitle={t("settings.appUnlockSubtitle")}
           rightAdornment={
             <Switch
               value={appUnlockOn}
@@ -434,23 +443,23 @@ export function SettingsScreen() {
         <Divider />
         <ListRow
           icon="laptop-outline"
-          title="Active sessions"
-          subtitle="Devices and browsers signed in to your account"
+          title={t("settings.activeSessions")}
+          subtitle={t("settings.activeSessionsSubtitle")}
           onPress={() => navigation.navigate("ActiveSessions")}
         />
         <Divider />
         <ListRow
           icon="wallet-outline"
-          title="Wallet security"
+          title={t("settings.walletSecurity")}
           onPress={() => navigation.navigate("ShellSurface", { surfaceId: "wallet" })}
         />
       </Card>
 
-      <SectionHeader label="Privacy" />
+      <SectionHeader label={t("settings.privacy")} />
       <Card variant="outlined" padding={0} style={styles.sectionCard}>
         <ListRow
           icon="eye-off-outline"
-          title="Private account"
+          title={t("settings.privateAccount")}
           rightAdornment={
             privacyBusy ? (
               <ActivityIndicator size="small" color={c.brandAccent} />
@@ -469,14 +478,14 @@ export function SettingsScreen() {
         </Text> */}
       </Card>
 
-      <SectionHeader label="Email & SMS preferences" />
+      <SectionHeader label={t("settings.emailSmsPreferences")} />
       <Card variant="outlined" padding={0} style={styles.sectionCard}>
         {(
           [
-            ["promotional", "email", "Promotional email"],
-            ["promotional", "sms", "Promotional SMS"],
-            ["transactional", "email", "Transactional email"],
-            ["transactional", "sms", "Transactional SMS"],
+            ["promotional", "email", t("settings.promotionalEmail")],
+            ["promotional", "sms", t("settings.promotionalSms")],
+            ["transactional", "email", t("settings.transactionalEmail")],
+            ["transactional", "sms", t("settings.transactionalSms")],
           ] as const
         ).map(([cat, ch, label], i) => {
           const busy = notifBusy === `${cat}.${ch}`;
@@ -509,7 +518,7 @@ export function SettingsScreen() {
         </Text>  */}
       </Card>
 
-      <SectionHeader label="Support & invites" />
+      <SectionHeader label={t("settings.supportInvites")} />
       <Card variant="outlined" padding={0} style={styles.sectionCard}>
         {supportRows.map((row, idx) => (
           <React.Fragment key={row.label}>
@@ -522,7 +531,7 @@ export function SettingsScreen() {
       <Card variant="outlined" padding={0} style={styles.sectionCard}>
         <ListRow
           icon="log-out-outline"
-          title="Sign Out"
+          title={t("settings.signOut")}
           destructive
           onPress={handleSignOut}
           hideChevron
@@ -537,7 +546,7 @@ export function SettingsScreen() {
           paddingVertical: space.sm,
         }}
       >
-        NetQwix Mobile · v1.0.0
+        {t("settings.footerVersion")}
       </Text>
     </ScreenContainer>
   );

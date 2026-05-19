@@ -18,6 +18,7 @@ import {
   Stack,
 } from "../../../components/ui";
 import { AccountType } from "../../../constants/accountType";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { colors, radii, space, typography } from "../../../theme";
 import { postSignUp } from "../api/authApi";
@@ -40,11 +41,16 @@ const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 type SignUpStep = "contact" | "password";
 
 export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
+  const { t } = useAppTranslation();
   const { completeSessionFromTokens } = useAuth();
   const { showLoader, hideLoader } = useLoader();
   const isSsoSignup = Boolean(route.params?.isGoogleRegister || route.params?.ssoProvider);
   const ssoLabel =
-    route.params?.ssoProvider === "apple" ? "Apple" : route.params?.ssoProvider === "google" ? "Google" : "SSO";
+    route.params?.ssoProvider === "apple"
+      ? t("auth.ssoApple")
+      : route.params?.ssoProvider === "google"
+        ? t("auth.ssoGoogle")
+        : t("auth.ssoGeneric");
 
   const [step, setStep] = useState<SignUpStep>("contact");
   const [fullname, setFullname] = useState("");
@@ -83,34 +89,36 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
     onSuccess: () => {
       const body =
         accountType === AccountType.TRAINER
-          ? "Sign in to complete trainer verification (contact, profile, and face check) in the app."
-          : "You can sign in now.";
-      Alert.alert("Account created", body, [{ text: "OK", onPress: () => navigation.navigate("Login") }]);
+          ? t("auth.accountCreatedTrainerBody")
+          : t("auth.accountCreatedTraineeBody");
+      Alert.alert(t("auth.accountCreatedTitle"), body, [
+        { text: t("auth.ok"), onPress: () => navigation.navigate("Login") },
+      ]);
     },
     onError: (err) => {
-      Alert.alert("Sign up failed", getApiErrorMessage(err));
+      Alert.alert(t("auth.signUpFailed"), getApiErrorMessage(err));
     },
   });
 
   const contactError = (): string | null => {
     if (!fullname.trim() || !/^[A-Za-z\s]+$/.test(fullname.trim())) {
-      return "Enter your full name (letters only).";
+      return t("auth.fullNameInvalid");
     }
-    if (!EMAIL_RE.test(email.trim())) return "Enter a valid email.";
-    if (!isSsoSignup && !emailVerified) return "Verify your email with the OTP we send.";
+    if (!EMAIL_RE.test(email.trim())) return t("auth.emailInvalidShort");
+    if (!isSsoSignup && !emailVerified) return t("auth.verifyEmailOtp");
     if (!mobile.trim() || mobile.replace(/\D/g, "").length < 10) {
-      return "Enter a valid phone number.";
+      return t("auth.phoneInvalid");
     }
-    if (!phoneVerified) return "Verify your phone with the SMS OTP.";
-    if (accountType === AccountType.TRAINER && !category) return "Choose a trainer category.";
-    if (!tcpa) return "Please accept SMS/email notifications to continue.";
+    if (!phoneVerified) return t("auth.verifyPhoneOtp");
+    if (accountType === AccountType.TRAINER && !category) return t("auth.chooseTrainerCategory");
+    if (!tcpa) return t("auth.tcpaRequired");
     return null;
   };
 
   const passwordError = (): string | null => {
     const err = signupPasswordError(password);
-    if (err) return `Password must include: ${err.toLowerCase()}.`;
-    if (password !== confirmPassword) return "Passwords do not match.";
+    if (err) return t("auth.passwordMustInclude", { detail: err.toLowerCase() });
+    if (password !== confirmPassword) return t("auth.passwordsMismatch");
     return null;
   };
 
@@ -128,7 +136,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
   const onContinueToPassword = () => {
     const err = contactError();
     if (err) {
-      Alert.alert("Check form", err);
+      Alert.alert(t("auth.checkFormTitle"), err);
       return;
     }
     if (isSsoSignup) {
@@ -141,14 +149,14 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
   const onSubmit = () => {
     const err = passwordError();
     if (err) {
-      Alert.alert("Check password", err);
+      Alert.alert(t("auth.checkPasswordTitle"), err);
       return;
     }
     mutation.mutate(buildPayload(password, false));
   };
 
   const onSocialTokens = async (tokens: { access_token: string; account_type: string }) => {
-    showLoader("Signing you in…");
+    showLoader(t("auth.signingIn"));
     try {
       await completeSessionFromTokens(tokens);
       await promptEnableAppUnlock();
@@ -163,13 +171,13 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
         <NetqwixLogo maxWidth={220} />
       </View>
       <Text style={[typography.titleLg, { color: colors.text, marginTop: space.md }]}>
-        Create account
+        {t("auth.createAccount")}
       </Text>
       <View style={styles.stepRow}>
-        <StepPill label="1. Contact" active={step === "contact"} done={step === "password"} />
+        <StepPill label={t("auth.stepContact")} active={step === "contact"} done={step === "password"} />
         <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
         <StepPill
-          label={isSsoSignup ? "2. Finish" : "2. Password"}
+          label={isSsoSignup ? t("auth.stepFinish") : t("auth.stepPassword")}
           active={step === "password"}
           done={false}
         />
@@ -180,7 +188,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
           <SocialAuthButtons navigation={navigation} onTokens={onSocialTokens} mode="signup" />
 
           <FormField
-            label="Full name"
+            label={t("auth.fullName")}
             value={fullname}
             onChangeText={setFullname}
             autoCapitalize="words"
@@ -188,10 +196,10 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
           />
 
           <FormField
-            label="Email"
+            label={t("auth.email")}
             value={email}
-            onChangeText={(t) => {
-              setEmail(t);
+            onChangeText={(text) => {
+              setEmail(text);
               setEmailVerified(false);
             }}
             autoCapitalize="none"
@@ -202,7 +210,9 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
           {isSsoSignup && emailVerified ? (
             <View style={styles.ssoVerified}>
               <Ionicons name="checkmark-circle" size={18} color={colors.success} />
-              <Text style={styles.ssoVerifiedText}>Email verified with {ssoLabel}</Text>
+              <Text style={styles.ssoVerifiedText}>
+                {t("auth.emailVerifiedWith", { provider: ssoLabel })}
+              </Text>
             </View>
           ) : (
             <SignupInlineOtp
@@ -214,10 +224,10 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
           )}
 
           <FormField
-            label="Phone"
+            label={t("auth.phone")}
             value={mobile}
-            onChangeText={(t) => {
-              setMobile(t);
+            onChangeText={(text) => {
+              setMobile(text);
               setPhoneVerified(false);
             }}
             keyboardType="phone-pad"
@@ -232,10 +242,10 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
             onVerified={() => setPhoneVerified(true)}
           />
 
-          <Text style={styles.sectionLabel}>Account type</Text>
+          <Text style={styles.sectionLabel}>{t("auth.accountTypeLabel")}</Text>
           <View style={styles.row}>
             <TypeChip
-              label="Trainee"
+              label={t("auth.trainee")}
               selected={accountType === AccountType.TRAINEE}
               onPress={() => {
                 setAccountType(AccountType.TRAINEE);
@@ -243,7 +253,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
               }}
             />
             <TypeChip
-              label="Trainer"
+              label={t("auth.trainer")}
               selected={accountType === AccountType.TRAINER}
               onPress={() => setAccountType(AccountType.TRAINER)}
             />
@@ -251,9 +261,9 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
 
           {accountType === AccountType.TRAINER ? (
             <>
-              <Text style={styles.sectionLabel}>Category</Text>
+              <Text style={styles.sectionLabel}>{t("auth.category")}</Text>
               {masterQuery.isLoading ? (
-                <Text style={styles.muted}>Loading categories…</Text>
+                <Text style={styles.muted}>{t("auth.loadingCategories")}</Text>
               ) : (
                 <View style={styles.wrapChips}>
                   {categories.map((c) => (
@@ -266,13 +276,11 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
 
           <View style={styles.tcpaRow}>
             <Switch value={tcpa} onValueChange={setTcpa} />
-            <Text style={styles.tcpaText}>
-              I agree to receive SMS and emails from NetQwix for alerts and notifications.
-            </Text>
+            <Text style={styles.tcpaText}>{t("auth.tcpaConsent")}</Text>
           </View>
 
           <Button
-            label={isSsoSignup ? "Create account" : "Continue"}
+            label={isSsoSignup ? t("auth.createAccount") : t("auth.continue")}
             size="lg"
             loading={mutation.isPending}
             onPress={onContinueToPassword}
@@ -282,13 +290,13 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
         <Stack gap="md">
           <Pressable onPress={() => setStep("contact")} style={styles.backLink}>
             <Ionicons name="arrow-back" size={18} color={colors.brandAccent} />
-            <Text style={styles.link}>Edit contact details</Text>
+            <Text style={styles.link}>{t("auth.editContactDetails")}</Text>
           </Pressable>
 
           <PasswordRequirements password={password} />
 
           <FormField
-            label="Password"
+            label={t("auth.password")}
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
@@ -300,7 +308,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
             }
           />
           <FormField
-            label="Confirm password"
+            label={t("auth.confirmPassword")}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry={!showConfirm}
@@ -313,7 +321,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
           />
 
           <Button
-            label="Create account"
+            label={t("auth.createAccount")}
             loading={mutation.isPending}
             onPress={onSubmit}
             size="lg"
@@ -323,7 +331,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
       )}
 
       <Pressable onPress={() => navigation.navigate("Login")} style={styles.back}>
-        <Text style={styles.link}>Already have an account? Sign in</Text>
+        <Text style={styles.link}>{t("auth.alreadyHaveAccountSignIn")}</Text>
       </Pressable>
     </ScreenContainer>
   );

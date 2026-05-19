@@ -16,10 +16,12 @@ import { MeetingRoomScreen } from "./MeetingRoomScreen";
 import { PracticeSessionScreen } from "./PracticeSessionScreen";
 import { InstantBookingScreen } from "./InstantBookingScreen";
 import { StackSwipeBackShell } from "../../../navigation/StackSwipeBackShell";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 export type DashboardFeatureScreenProps = NativeStackScreenProps<MenuStackParamList, "DashboardFeature">;
 
 export function DashboardFeatureScreen({ route }: DashboardFeatureScreenProps) {
+  const { t } = useAppTranslation();
   const { featureId, bookLessonTrainerId } = route.params;
   const { accountType } = useAuth();
 
@@ -28,8 +30,8 @@ export function DashboardFeatureScreen({ route }: DashboardFeatureScreenProps) {
       <StackSwipeBackShell>
         <EmptyState
           icon="lock-closed-outline"
-          title="Not available"
-          description="This section is only available for trainee accounts."
+          title={t("dashboard.notAvailable")}
+          description={t("dashboard.notAvailableTraineeOnly")}
         />
       </StackSwipeBackShell>
     );

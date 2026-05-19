@@ -31,6 +31,7 @@ import { putFileToPresignedUrl } from "../../../../lib/presignedPut";
 import { apiClient } from "../../../../api/client";
 import { API_ROUTES } from "../../../../config/apiRoutes";
 import { colors, radii, space } from "../../../../theme";
+import { useAppTranslation } from "../../../../i18n/useAppTranslation";
 
 const SHARE_MY_CLIPS = "My Clips";
 const SHARE_FRIENDS = "Friends";
@@ -44,6 +45,7 @@ type Props = {
 };
 
 export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
+  const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const { user, accountType } = useAuth();
   const isTrainer = accountType === AccountType.TRAINER;
@@ -111,7 +113,7 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
   const pickVideo = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert("Permission needed", "Allow access to your photo library to choose a video.");
+      Alert.alert(t("locker.permissionTitle"), t("locker.permissionLibrary"));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -123,7 +125,7 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
     const asset = result.assets[0];
     setVideoAsset(asset);
     const base = (asset.fileName ?? "clip").replace(/\.[^/.]+$/, "");
-    setTitle(base || "Clip");
+    setTitle(base || t("locker.clipDefault"));
     setThumbUri(null);
     setThumbBusy(true);
     try {
@@ -138,7 +140,10 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
       });
       setThumbUri(uri);
     } catch (e) {
-      Alert.alert("Preview", getApiErrorMessage(e, "Could not create a thumbnail for this video."));
+      Alert.alert(
+        t("locker.previewErrorTitle"),
+        getApiErrorMessage(e, t("locker.previewError"))
+      );
       setVideoAsset(null);
       setTitle("");
     } finally {
@@ -169,9 +174,9 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
         const fileBytes = videoAsset.fileSize ?? 0;
         if (storage.usedBytes + fileBytes > storage.quotaBytes) {
           Alert.alert(
-            "Storage full",
-            "You have reached your storage limit. Upgrade your plan in Settings → Storage plan.",
-            [{ text: "OK" }]
+            t("locker.storageFullTitle"),
+            t("locker.storageFullBody"),
+            [{ text: t("common.ok") }]
           );
           return;
         }
@@ -220,11 +225,11 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
         apiClient.post(API_ROUTES.ai.tagClip(String(clipId))).catch(() => {});
       }
 
-      Alert.alert("Uploaded", "Your clip has been uploaded and AI is auto-tagging it for better searchability.");
+      Alert.alert(t("locker.uploadedTitle"), t("locker.uploadedBody"));
       onUploaded();
       onClose();
     } catch (e) {
-      Alert.alert("Upload failed", getApiErrorMessage(e));
+      Alert.alert(t("locker.uploadFailedTitle"), getApiErrorMessage(e));
     } finally {
       setUploadBusy(false);
       setUploadPhase("idle");
@@ -241,17 +246,14 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
         keyboardVerticalOffset={insets.top + 8}
       >
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-          <Text style={styles.headerTitle}>Upload clip</Text>
+          <Text style={styles.headerTitle}>{t("locker.uploadTitle")}</Text>
           <Pressable onPress={onClose} hitSlop={12} disabled={uploadBusy}>
             <Ionicons name="close" size={28} color={colors.text} />
           </Pressable>
         </View>
 
         <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-          <Text style={styles.lead}>
-            Pick a video from your device, add a title and sport, then we upload the file and
-            a thumbnail to your locker.
-          </Text>
+          <Text style={styles.lead}>{t("locker.uploadLead")}</Text>
 
           <Pressable
             style={({ pressed }) => [styles.pickBtn, pressed && { opacity: 0.9 }]}
@@ -259,13 +261,15 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
             disabled={thumbBusy || uploadBusy}
           >
             <Ionicons name="folder-open-outline" size={22} color={colors.brandNavy} />
-            <Text style={styles.pickBtnText}>{videoAsset ? "Replace video" : "Choose video"}</Text>
+            <Text style={styles.pickBtnText}>
+              {videoAsset ? t("locker.replaceVideo") : t("locker.chooseVideo")}
+            </Text>
           </Pressable>
 
           {thumbBusy && (
             <View style={styles.rowCenter}>
               <ActivityIndicator color={colors.brandNavy} />
-              <Text style={styles.muted}>Preparing preview…</Text>
+              <Text style={styles.muted}>{t("locker.preparingPreview")}</Text>
             </View>
           )}
 
@@ -278,26 +282,26 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
             </View>
           )}
 
-          <Text style={styles.label}>Title</Text>
+          <Text style={styles.label}>{t("locker.titleLabel")}</Text>
           <TextInput
             style={styles.input}
             value={title}
             onChangeText={setTitle}
-            placeholder="Clip title"
+            placeholder={t("locker.titlePlaceholder")}
             placeholderTextColor={colors.textMuted}
             editable={!uploadBusy}
           />
 
           {isTrainer && !!profileCategory && (
             <View style={styles.categoryReadonly}>
-              <Text style={styles.label}>Sport (from your profile)</Text>
+              <Text style={styles.label}>{t("locker.sportFromProfile")}</Text>
               <Text style={styles.profileCat}>{profileCategory}</Text>
             </View>
           )}
 
           {showCategoryPicker && (
             <>
-              <Text style={styles.label}>Sport / category</Text>
+              <Text style={styles.label}>{t("locker.sportCategory")}</Text>
               {catLoading ? (
                 <ActivityIndicator color={colors.brandNavy} style={{ marginVertical: space.sm }} />
               ) : (
@@ -322,7 +326,7 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
             </>
           )}
 
-          <Text style={styles.label}>Share to</Text>
+          <Text style={styles.label}>{t("locker.shareTo")}</Text>
           <View style={styles.shareTargetRow}>
             <Pressable
               style={[styles.shareTargetBtn, shareTarget === SHARE_MY_CLIPS && styles.shareTargetBtnOn]}
@@ -330,7 +334,9 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
               disabled={uploadBusy}
             >
               <Ionicons name="folder-outline" size={16} color={shareTarget === SHARE_MY_CLIPS ? colors.brandNavy : colors.textMuted} />
-              <Text style={[styles.shareTargetText, shareTarget === SHARE_MY_CLIPS && styles.shareTargetTextOn]}>My Clips</Text>
+              <Text style={[styles.shareTargetText, shareTarget === SHARE_MY_CLIPS && styles.shareTargetTextOn]}>
+                {t("locker.shareMyClips")}
+              </Text>
             </Pressable>
             <Pressable
               style={[styles.shareTargetBtn, shareTarget === SHARE_FRIENDS && styles.shareTargetBtnOn]}
@@ -338,15 +344,17 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
               disabled={uploadBusy}
             >
               <Ionicons name="people-outline" size={16} color={shareTarget === SHARE_FRIENDS ? colors.brandNavy : colors.textMuted} />
-              <Text style={[styles.shareTargetText, shareTarget === SHARE_FRIENDS && styles.shareTargetTextOn]}>Friends</Text>
+              <Text style={[styles.shareTargetText, shareTarget === SHARE_FRIENDS && styles.shareTargetTextOn]}>
+                {t("locker.shareFriends")}
+              </Text>
             </Pressable>
           </View>
 
           {shareTarget === SHARE_FRIENDS && (
             <View style={styles.friendPickerBox}>
-              <Text style={styles.label}>Select friends to share with</Text>
+              <Text style={styles.label}>{t("locker.selectFriends")}</Text>
               {friendsList.length === 0 ? (
-                <Text style={styles.muted}>No friends found. Add friends from My Community.</Text>
+                <Text style={styles.muted}>{t("locker.noFriendsForShare")}</Text>
               ) : (
                 <View style={styles.friendChips}>
                   {friendsList.map((f: any) => {
@@ -368,7 +376,9 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
                 </View>
               )}
               {selectedFriendEmails.length > 0 && (
-                <Text style={styles.muted}>{selectedFriendEmails.length} friend{selectedFriendEmails.length === 1 ? "" : "s"} selected</Text>
+                <Text style={styles.muted}>
+                  {t("locker.friendsSelected", { count: selectedFriendEmails.length })}
+                </Text>
               )}
             </View>
           )}
@@ -378,10 +388,10 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
               <View style={styles.progressRow}>
                 <Text style={styles.progressLabel}>
                   {uploadPhase === "video"
-                    ? "Uploading video…"
+                    ? t("locker.uploadingVideo")
                     : uploadPhase === "thumb"
-                    ? "Uploading thumbnail…"
-                    : "Preparing upload…"}
+                    ? t("locker.uploadingThumbnail")
+                    : t("locker.preparingUpload")}
                 </Text>
                 <Text style={styles.progressPercent}>
                   {uploadPhase === "video"
@@ -407,9 +417,7 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
                   ]}
                 />
               </View>
-              <Text style={styles.progressHint}>
-                Keep the app open until the upload completes.
-              </Text>
+              <Text style={styles.progressHint}>{t("locker.keepAppOpen")}</Text>
             </View>
           )}
 
@@ -426,7 +434,7 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
             ) : (
               <>
                 <Ionicons name="cloud-upload-outline" size={20} color={colors.brandTextOn} />
-                <Text style={styles.submitText}>Upload to locker</Text>
+                <Text style={styles.submitText}>{t("locker.uploadToLocker")}</Text>
               </>
             )}
           </Pressable>

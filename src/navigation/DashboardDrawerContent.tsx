@@ -79,9 +79,9 @@ export function DashboardDrawerContent(props: DrawerContentComponentProps) {
   };
 
   const onLogout = () => {
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Sign Out", style: "destructive", onPress: () => void signOut() },
+    Alert.alert(t("auth.signOut"), t("auth.signOutConfirm"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("auth.signOut"), style: "destructive", onPress: () => void signOut() },
     ]);
   };
 
@@ -141,7 +141,7 @@ export function DashboardDrawerContent(props: DrawerContentComponentProps) {
         <View style={styles.iconWrap}>
           <Ionicons name="log-out-outline" size={22} color={colors.danger} />
         </View>
-        <Text style={[styles.rowLabel, { color: colors.danger }]}>Sign out</Text>
+        <Text style={[styles.rowLabel, { color: colors.danger }]}>{t("auth.signOutLower")}</Text>
       </Pressable>
     </DrawerContentScrollView>
   );

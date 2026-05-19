@@ -17,8 +17,21 @@ import { fetchRecentTrainees } from "../../home/api/homeApi";
 import { useOnlinePresence } from "../../socket/useOnlinePresence";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
-function Avatar({ uri, name, size = 52 }: { uri?: string; name?: string; size?: number }) {
+function Avatar({
+  uri,
+  name,
+  size = 52,
+  photoLabel,
+  profilePhotoLabel,
+}: {
+  uri?: string;
+  name?: string;
+  size?: number;
+  photoLabel: string;
+  profilePhotoLabel: string;
+}) {
   const [failed, setFailed] = React.useState(false);
   const url = getS3ImageUrl(uri);
 
@@ -43,14 +56,15 @@ function Avatar({ uri, name, size = 52 }: { uri?: string; name?: string; size?: 
       borderRadius={size / 2}
       resizeMode="cover"
       onLoadError={() => setFailed(true)}
-      accessibilityLabel={name ? `Photo of ${name}` : "Profile photo"}
+      accessibilityLabel={name ? photoLabel : profilePhotoLabel}
     />
   );
 }
 
 function StudentCard({ student }: { student: any }) {
+  const { t } = useAppTranslation();
   const { isOnline } = useOnlinePresence();
-  const name = student?.fullname || student?.fullName || "Student";
+  const name = student?.fullname || student?.fullName || t("trainees.studentDefault");
   const userId = String(student?._id ?? "");
   const email = student?.email ?? "";
   const joined = student?.createdAt
@@ -59,14 +73,20 @@ function StudentCard({ student }: { student: any }) {
 
   return (
     <View style={styles.card}>
-      <Avatar uri={student?.profile_picture} name={name} size={52} />
+      <Avatar
+        uri={student?.profile_picture}
+        name={name}
+        size={52}
+        photoLabel={t("trainees.photoOf", { name })}
+        profilePhotoLabel={t("trainees.profilePhoto")}
+      />
       <View style={styles.cardInfo}>
         <Text style={styles.studentName}>{name}</Text>
         {!!email && <Text style={styles.studentEmail}>{email}</Text>}
         {!!joined && (
           <View style={styles.metaRow}>
             <Ionicons name="calendar-outline" size={12} color={colors.textMuted} />
-            <Text style={styles.metaText}>Joined {joined}</Text>
+            <Text style={styles.metaText}>{t("trainees.joined", { date: joined })}</Text>
           </View>
         )}
       </View>
@@ -78,6 +98,7 @@ function StudentCard({ student }: { student: any }) {
 }
 
 export function StudentsScreen() {
+  const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const gutter = useHorizontalGutter("md");
   const { accountType } = useAuth();
@@ -105,8 +126,8 @@ export function StudentsScreen() {
       <View style={listPad}>
         <EmptyState
           icon="lock-closed-outline"
-          title="Not available"
-          description="This section is only available for trainer accounts."
+          title={t("trainees.notAvailableTitle")}
+          description={t("trainees.notAvailableDescription")}
         />
       </View>
     );
@@ -143,8 +164,8 @@ export function StudentsScreen() {
       ListEmptyComponent={
         <EmptyState
           icon="people-outline"
-          title="No trainees yet"
-          description="Trainees you have booked sessions with will appear here — not the full NetQwix directory."
+          title={t("trainees.emptyTitle")}
+          description={t("trainees.emptyDescription")}
         />
       }
     />

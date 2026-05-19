@@ -18,6 +18,7 @@ import {
   revokeOtherAuthSessions,
   type AuthSessionRow,
 } from "../api/authSessionsApi";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { useAuth } from "../context/AuthContext";
 
 function formatWhen(iso: string): string {
@@ -47,6 +48,7 @@ function loginMethodLabel(method: string): string {
 }
 
 export function ActiveSessionsScreen() {
+  const { t } = useAppTranslation();
   const c = useThemeColors();
   const { signOut } = useAuth();
   const [sessions, setSessions] = useState<AuthSessionRow[]>([]);
@@ -64,7 +66,7 @@ export function ActiveSessionsScreen() {
       const rows = await fetchAuthSessions();
       setSessions(rows);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Could not load sessions.");
+      setError(e instanceof Error ? e.message : t("activeSessions.loadError"));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -77,14 +79,14 @@ export function ActiveSessionsScreen() {
 
   const handleRevoke = (session: AuthSessionRow) => {
     Alert.alert(
-      session.isCurrent ? "Sign out this device?" : "Remove session?",
+      session.isCurrent ? t("activeSessions.signOutDeviceTitle") : t("activeSessions.removeSessionTitle"),
       session.isCurrent
-        ? "You will be signed out of NetQwix on this device."
-        : `Stop access for ${session.deviceLabel}?`,
+        ? t("activeSessions.signOutDeviceBody")
+        : t("activeSessions.removeSessionBody", { device: session.deviceLabel }),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: session.isCurrent ? "Sign out" : "Remove",
+          text: session.isCurrent ? t("activeSessions.signOut") : t("activeSessions.remove"),
           style: "destructive",
           onPress: async () => {
             setBusyId(session.id);
@@ -97,8 +99,8 @@ export function ActiveSessionsScreen() {
               await load(true);
             } catch (e: unknown) {
               Alert.alert(
-                "Session",
-                e instanceof Error ? e.message : "Could not remove session."
+                t("auth.activeSessions"),
+                e instanceof Error ? e.message : t("activeSessions.sessionError")
               );
             } finally {
               setBusyId(null);
@@ -112,16 +114,16 @@ export function ActiveSessionsScreen() {
   const handleRevokeOthers = () => {
     const others = sessions.filter((s) => !s.isCurrent);
     if (others.length === 0) {
-      Alert.alert("Sessions", "No other active sessions to remove.");
+      Alert.alert(t("auth.activeSessions"), t("activeSessions.noOthers"));
       return;
     }
     Alert.alert(
-      "Sign out everywhere else?",
-      `This will end ${others.length} other session${others.length === 1 ? "" : "s"}. This device stays signed in.`,
+      t("activeSessions.signOutOthersTitle"),
+      t("activeSessions.signOutOthersBody", { count: others.length }),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Sign out others",
+          text: t("activeSessions.signOutOthers"),
           style: "destructive",
           onPress: async () => {
             setRevokingOthers(true);

@@ -15,10 +15,12 @@ import { Banner, Button, Skeleton } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { postInviteFriendEmail, fetchMyReferrals } from "../../home/api/homeApi";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function InviteFriendsScreen() {
+  const { t } = useAppTranslation();
   const c = useThemeColors();
   const styles = useInviteStyles();
   const queryClient = useQueryClient();
@@ -42,7 +44,7 @@ export function InviteFriendsScreen() {
         setErr("");
         return;
       } else if (raw && !emailRegex.test(raw)) {
-        setErr(`"${raw}" is not a valid email.`);
+        setErr(t("invites.invalidEmail", { email: raw }));
       }
       setText("");
       return;
@@ -58,7 +60,7 @@ export function InviteFriendsScreen() {
       setText("");
       setErr("");
     } else if (raw && !emailRegex.test(raw)) {
-      setErr(`"${raw}" is not a valid email.`);
+      setErr(t("invites.invalidEmail", { email: raw }));
     }
   };
 
@@ -77,11 +79,11 @@ export function InviteFriendsScreen() {
   const sendInvites = useCallback(async () => {
     setErr("");
     if (allEmails.length === 0) {
-      setErr("Enter at least one valid email address.");
+      setErr(t("invites.needOneEmail"));
       return;
     }
     if (allEmails.length > 10) {
-      setErr("You can invite a maximum of 10 friends at a time.");
+      setErr(t("invites.maxTen"));
       return;
     }
 
@@ -100,20 +102,26 @@ export function InviteFriendsScreen() {
 
     if (failed.length && ok.length) {
       Alert.alert(
-        "Some invites failed",
-        `Sent: ${ok.length}\nFailed: ${failed.map((f) => `${f.email} (${f.reason})`).join(", ")}`
+        t("invites.someFailedTitle"),
+        t("invites.someFailedBody", {
+          sent: ok.length,
+          failed: failed.map((f) => `${f.email} (${f.reason})`).join(", "),
+        })
       );
       setChips(failed.map((f) => f.email));
     } else if (failed.length) {
-      setErr(`Failed for: ${failed.map((f) => f.email).join(", ")}.`);
+      setErr(t("invites.failedFor", { emails: failed.map((f) => f.email).join(", ") }));
     } else {
       setChips([]);
       setText("");
       setErr("");
-      Alert.alert("Invitations sent", `Sent ${ok.length} invitation${ok.length === 1 ? "" : "s"}.`);
+      Alert.alert(
+        t("invites.sentTitle"),
+        t("invites.sentBody", { count: ok.length })
+      );
     }
     queryClient.invalidateQueries({ queryKey: ["myReferrals"] });
-  }, [allEmails, queryClient]);
+  }, [allEmails, queryClient, t]);
 
   return (
     <ScrollView
@@ -122,12 +130,10 @@ export function InviteFriendsScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.card}>
-        <Text style={styles.title}>Invite friends</Text>
-        <Text style={styles.sub}>
-          Enter email addresses to send invitations. Press space, comma, or return after each email.
-        </Text>
+        <Text style={styles.title}>{t("invites.title")}</Text>
+        <Text style={styles.sub}>{t("invites.subtitle")}</Text>
 
-        <Text style={styles.label}>Email addresses</Text>
+        <Text style={styles.label}>{t("invites.emailLabel")}</Text>
         <View style={styles.chipContainer}>
           {chips.map((email) => (
             <View key={email} style={styles.chip}>
@@ -139,7 +145,7 @@ export function InviteFriendsScreen() {
           ))}
           <TextInput
             style={styles.chipInput}
-            placeholder={chips.length === 0 ? "friend@example.com" : "Add more..."}
+            placeholder={chips.length === 0 ? t("invites.emailPlaceholder") : t("invites.addMorePlaceholder")}
             placeholderTextColor={c.textMuted}
             value={text}
             onChangeText={handleTextChange}
@@ -154,15 +160,19 @@ export function InviteFriendsScreen() {
 
         <View style={styles.metaRow}>
           <Text style={styles.meta}>
-            {allEmails.length} email{allEmails.length === 1 ? "" : "s"} ready
+            {t("invites.emailsReady", { count: allEmails.length })}
           </Text>
-          <Text style={styles.metaMuted}>Max 10 per send</Text>
+          <Text style={styles.metaMuted}>{t("invites.maxPerSend")}</Text>
         </View>
 
-        {!!err && <Banner tone="danger" title="Error" description={err} />}
+        {!!err && <Banner tone="danger" title={t("common.error")} description={err} />}
 
         <Button
-          label={`Send ${allEmails.length > 0 ? `${allEmails.length} ` : ""}invite${allEmails.length === 1 ? "" : "s"}`}
+          label={
+            allEmails.length > 0
+              ? t("invites.sendInvites", { count: allEmails.length })
+              : t("invites.sendInvites", { count: 0 })
+          }
           onPress={sendInvites}
           disabled={loading || allEmails.length === 0}
           loading={loading}
@@ -172,7 +182,7 @@ export function InviteFriendsScreen() {
 
       {/* Invite History */}
       <View style={styles.historySection}>
-        <Text style={styles.historyTitle}>Past invitations</Text>
+        <Text style={styles.historyTitle}>{t("invites.pastInvitations")}</Text>
         {loadingHistory ? (
           <View style={{ gap: 8 }}>
             {[0, 1, 2].map((i) => (
@@ -182,7 +192,7 @@ export function InviteFriendsScreen() {
         ) : referrals.length === 0 ? (
           <View style={styles.emptyHistory}>
             <Ionicons name="mail-outline" size={28} color={c.textMuted} />
-            <Text style={styles.emptyHistoryText}>No invitations sent yet</Text>
+            <Text style={styles.emptyHistoryText}>{t("invites.noInvitationsYet")}</Text>
           </View>
         ) : (
           referrals.map((ref: any) => (

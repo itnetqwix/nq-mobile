@@ -11,6 +11,9 @@ import { ReportIssueScreen } from "../features/dashboard/screens/ReportIssueScre
 import { ActiveSessionsScreen } from "../features/auth/screens/ActiveSessionsScreen";
 import { StoragePlanScreen } from "../features/settings/screens/StoragePlanScreen";
 import { ArchivedChatsScreen } from "../features/chats/screens/ArchivedChatsScreen";
+import i18n from "../i18n";
+import { localizedDashboardTitle } from "../i18n/dashboardRouteI18n";
+import { localizedShellTitle } from "../i18n/shellSurfaceI18n";
 import { mainStackHeaderOptions } from "./mainTabHeaderOptions";
 import type { HomeStackParamList } from "./types";
 
@@ -31,14 +34,17 @@ export function HomeNavigator() {
       <Stack.Screen
         name="DashboardHome"
         component={DashboardHomeScreen}
-        options={{ title: "Dashboard" }}
+        options={{ title: i18n.t("nav.dashboard") }}
       />
       <Stack.Screen
         name="DashboardFeature"
         component={DashboardFeatureScreen}
-        options={({ route }) => ({
-          title: dashboardRouteById(route.params.featureId)?.title ?? "Dashboard",
-        })}
+        options={({ route }) => {
+          const meta = dashboardRouteById(route.params.featureId);
+          return {
+            title: meta ? localizedDashboardTitle(i18n.t, meta) : i18n.t("nav.dashboard"),
+          };
+        }}
       />
       <Stack.Screen
         name="ShellSurface"
@@ -46,7 +52,7 @@ export function HomeNavigator() {
         options={({ route }) => {
           const meta = shellSurfaceById(route.params.surfaceId);
           return {
-            title: meta?.title ?? "NetQwix",
+            title: meta ? localizedShellTitle(i18n.t, meta) : "NetQwix",
             headerShown: true,
           };
         }}
@@ -54,27 +60,27 @@ export function HomeNavigator() {
       <Stack.Screen
         name="TransactionDetail"
         component={TransactionDetailScreen}
-        options={{ title: "Transaction" }}
+        options={{ title: i18n.t("wallet.transaction") }}
       />
       <Stack.Screen
         name="ReportIssue"
         component={ReportIssueScreen}
-        options={{ title: "Report an issue" }}
+        options={{ title: i18n.t("nav.reportIssue") }}
       />
       <Stack.Screen
         name="ActiveSessions"
         component={ActiveSessionsScreen}
-        options={{ title: "Active sessions" }}
+        options={{ title: i18n.t("auth.activeSessions") }}
       />
       <Stack.Screen
         name="StoragePlan"
         component={StoragePlanScreen}
-        options={{ title: "Storage" }}
+        options={{ title: i18n.t("storage.title") }}
       />
       <Stack.Screen
         name="ArchivedChats"
         component={ArchivedChatsScreen}
-        options={{ title: "Archived chats" }}
+        options={{ title: i18n.t("chats.archivedTitle") }}
       />
     </Stack.Navigator>
   );

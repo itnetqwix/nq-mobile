@@ -2,17 +2,19 @@ import React from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
-const FEATURES = [
-  { icon: "videocam-outline" as const, title: "Live Video Sessions", desc: "HD video calls with screen sharing for immersive coaching experiences." },
-  { icon: "calendar-outline" as const, title: "Smart Scheduling", desc: "Flexible booking system — schedule instant or recurring sessions." },
-  { icon: "cloud-upload-outline" as const, title: "Clip Sharing", desc: "Upload, share, and review training clips directly in the platform." },
-  { icon: "people-outline" as const, title: "Community", desc: "Connect with coaches and learners across every sport and skill." },
-  { icon: "wallet-outline" as const, title: "Secure Payments", desc: "Transparent pricing and secure transactions via Stripe." },
-  { icon: "trophy-outline" as const, title: "Track Progress", desc: "Session reports and ratings to measure and showcase improvement." },
+const FEATURE_KEYS = [
+  { icon: "videocam-outline" as const, key: "liveVideo" },
+  { icon: "calendar-outline" as const, key: "scheduling" },
+  { icon: "cloud-upload-outline" as const, key: "clips" },
+  { icon: "people-outline" as const, key: "community" },
+  { icon: "wallet-outline" as const, key: "payments" },
+  { icon: "trophy-outline" as const, key: "progress" },
 ];
 
 export function AboutUsScreen() {
+  const { t } = useAppTranslation();
   const c = useThemeColors();
   const styles = useThemedStyles((palette) =>
     StyleSheet.create({
@@ -85,50 +87,42 @@ export function AboutUsScreen() {
         <View style={styles.logoBox}>
           <Text style={styles.logoText}>NetQwix</Text>
         </View>
-        <Text style={styles.tagline}>The Platform for Expert Coaching</Text>
-        <Text style={styles.description}>
-          NetQwix connects athletes and learners with world-class coaches for live,
-          personalized training sessions. Whether you are an aspiring professional
-          or a dedicated enthusiast, NetQwix brings expert guidance to your screen.
-        </Text>
+        <Text style={styles.tagline}>{t("about.tagline")}</Text>
+        <Text style={styles.description}>{t("about.description")}</Text>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>What We Offer</Text>
-        {FEATURES.map((feature) => (
-          <View key={feature.title} style={styles.featureRow}>
+        <Text style={styles.sectionTitle}>{t("about.whatWeOffer")}</Text>
+        {FEATURE_KEYS.map((feature) => (
+          <View key={feature.key} style={styles.featureRow}>
             <View style={styles.featureIcon}>
               <Ionicons name={feature.icon} size={22} color={c.iconPrimary} />
             </View>
             <View style={styles.featureText}>
-              <Text style={styles.featureTitle}>{feature.title}</Text>
-              <Text style={styles.featureDesc}>{feature.desc}</Text>
+              <Text style={styles.featureTitle}>
+                {t(`about.features.${feature.key}.title`)}
+              </Text>
+              <Text style={styles.featureDesc}>
+                {t(`about.features.${feature.key}.desc`)}
+              </Text>
             </View>
           </View>
         ))}
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>How it works</Text>
-        <Text style={styles.description}>
-          1. Trainees book instant or scheduled lessons with verified coaches.{"\n"}
-          2. Both join the native video room — review clips, draw, and record progress.{"\n"}
-          3. Coaches deliver game plans and feedback stored in your locker.
-        </Text>
+        <Text style={styles.sectionTitle}>{t("about.howItWorks")}</Text>
+        <Text style={styles.description}>{t("about.howItWorksBody")}</Text>
       </View>
 
       <View style={styles.missionCard}>
-        <Text style={styles.missionTitle}>Our Mission</Text>
-        <Text style={styles.missionText}>
-          To democratize access to expert coaching by making world-class guidance available
-          to everyone, everywhere — through technology that feels as natural as being in the
-          same room as your coach.
-        </Text>
+        <Text style={styles.missionTitle}>{t("about.missionTitle")}</Text>
+        <Text style={styles.missionText}>{t("about.missionText")}</Text>
       </View>
 
       <View style={styles.versionCard}>
-        <Text style={styles.versionText}>NetQwix Mobile App</Text>
-        <Text style={styles.versionSub}>© 2024 NetQwix. All rights reserved.</Text>
+        <Text style={styles.versionText}>{t("about.mobileApp")}</Text>
+        <Text style={styles.versionSub}>{t("about.copyright")}</Text>
       </View>
     </ScrollView>
   );

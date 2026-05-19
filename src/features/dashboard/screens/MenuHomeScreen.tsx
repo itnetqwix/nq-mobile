@@ -35,7 +35,7 @@ export function MenuHomeScreen() {
     (user?.fullName as string) ||
     (user?.name as string) ||
     (user?.email as string) ||
-    "Member";
+    t("menu.member");
 
   const dashboardEntries = useMemo(
     () => navMatrixFor("more", accountType, "dashboard"),
@@ -59,9 +59,9 @@ export function MenuHomeScreen() {
   );
 
   const handleLogout = () => {
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Sign Out", style: "destructive", onPress: () => void signOut() },
+    Alert.alert(t("auth.signOut"), t("auth.signOutConfirm"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("auth.signOut"), style: "destructive", onPress: () => void signOut() },
     ]);
   };
 
@@ -76,13 +76,13 @@ export function MenuHomeScreen() {
           <Text style={[typography.titleSm, { color: colors.text }]} numberOfLines={1}>
             {name}
           </Text>
-          <Pill label={accountType ?? "Member"} tone="brand" style={styles.rolePill} />
+          <Pill label={accountType ?? t("menu.member")} tone="brand" style={styles.rolePill} />
         </View>
         <Pressable
           onPress={openSettings}
           style={styles.settingsBtn}
           accessibilityRole="button"
-          accessibilityLabel="Open settings"
+          accessibilityLabel={t("menu.openSettings")}
           hitSlop={8}
         >
           <Ionicons name="settings-outline" size={22} color={colors.textMuted} />
@@ -91,7 +91,7 @@ export function MenuHomeScreen() {
 
       {dashboardEntries.length > 0 && (
         <Card variant="outlined" padding={0} style={styles.sectionCard}>
-          <Text style={styles.sectionLabel}>Dashboard</Text>
+          <Text style={styles.sectionLabel}>{t("menu.dashboard")}</Text>
           {dashboardEntries.map((entry, idx) => (
             <View
               key={entry.id}
@@ -109,7 +109,7 @@ export function MenuHomeScreen() {
 
       {toolEntries.length > 0 && (
         <Card variant="outlined" padding={0} style={styles.sectionCard}>
-          <Text style={styles.sectionLabel}>Tools</Text>
+          <Text style={styles.sectionLabel}>{t("menu.tools")}</Text>
           {toolEntries.map((entry, idx) => (
             <View
               key={entry.id}
@@ -129,10 +129,10 @@ export function MenuHomeScreen() {
         style={({ pressed }) => [styles.logoutBtn, pressed && { opacity: 0.8 }]}
         onPress={handleLogout}
         accessibilityRole="button"
-        accessibilityLabel="Sign out"
+        accessibilityLabel={t("auth.signOutLower")}
       >
         <Ionicons name="log-out-outline" size={20} color={colors.danger} />
-        <Text style={styles.logoutText}>Sign Out</Text>
+        <Text style={styles.logoutText}>{t("auth.signOut")}</Text>
       </Pressable>
     </ScreenContainer>
   );

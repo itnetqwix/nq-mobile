@@ -3,7 +3,8 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NetqwixLogo } from "../../../components/brand/NetqwixLogo";
 import { space, typography, useThemeColors } from "../../../theme";
-import { getSystemStatePreset } from "../presets/systemStateRegistry";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import { getLocalizedSystemStatePreset } from "../../../i18n/systemStateI18n";
 import type { SystemStateId } from "../presets/types";
 import type { ActionContext } from "../navigation/linkActions";
 import { SystemStateActions } from "./SystemStateActions";
@@ -28,7 +29,8 @@ export function SystemStateLayout({
   busy,
   testID,
 }: SystemStateLayoutProps) {
-  const preset = getSystemStatePreset(stateId);
+  const { t } = useAppTranslation();
+  const preset = getLocalizedSystemStatePreset(stateId, t);
   const title = titleOverride ?? preset.title;
   const description = descriptionOverride ?? preset.description;
   const insets = useSafeAreaInsets();

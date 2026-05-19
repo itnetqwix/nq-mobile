@@ -18,6 +18,7 @@ import { useAuth } from "../../auth/context/AuthContext";
 import { postWriteUs } from "../../home/api/homeApi";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import type { MenuStackParamList } from "../../../navigation/types";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 /**
  * Web parity: this is the trainee/trainer "Contact Us" hub. It has TWO entries (same as
@@ -27,6 +28,7 @@ import type { MenuStackParamList } from "../../../navigation/types";
  *      which then posts to `/user/raise-concern`.
  */
 export function ContactUsScreen() {
+  const { t } = useAppTranslation();
   const c = useThemeColors();
   const styles = useContactStyles();
   const navigation = useNavigation<NativeStackNavigationProp<MenuStackParamList>>();
@@ -45,7 +47,7 @@ export function ContactUsScreen() {
 
   const handleSubmit = async () => {
     if (!subject.trim() || !description.trim()) {
-      Alert.alert("Required", "Please fill in both subject and description.");
+      Alert.alert(t("support.requiredTitle"), t("support.requiredBody"));
       return;
     }
     setLoading(true);
@@ -57,14 +59,11 @@ export function ContactUsScreen() {
         subject: subject.trim(),
         description: description.trim(),
       });
-      Alert.alert(
-        "Sent!",
-        "Your message has been sent. We'll get back to you soon."
-      );
+      Alert.alert(t("support.sentTitle"), t("support.sentBody"));
       setSubject("");
       setDescription("");
     } catch (e) {
-      Alert.alert("Error", getApiErrorMessage(e, "Failed to send message. Please try again."));
+      Alert.alert(t("common.error"), getApiErrorMessage(e, t("support.sendFailed")));
     } finally {
       setLoading(false);
     }
@@ -78,20 +77,13 @@ export function ContactUsScreen() {
       <ScrollView style={styles.root} contentContainerStyle={styles.content}>
         <View style={styles.heroCard}>
           <Ionicons name="mail-outline" size={36} color={c.iconPrimary} />
-          <Text style={styles.heroTitle}>Contact NetQwix</Text>
-          <Text style={styles.heroSub}>
-            Have a question about booking, lessons, payments, or your account? Our support team
-            typically replies within one business day (Mon–Fri).
-          </Text>
+          <Text style={styles.heroTitle}>{t("support.heroTitle")}</Text>
+          <Text style={styles.heroSub}>{t("support.heroSub")}</Text>
         </View>
 
         <View style={styles.tipsCard}>
-          <Text style={styles.tipsTitle}>Before you write</Text>
-          <Text style={styles.tipsBody}>
-            • Instant lessons: both sides must tap Join within 2 minutes.{"\n"}
-            • Scheduled lessons: use the in-app timer Start when both are connected.{"\n"}
-            • Refunds or session issues: use Report a technical issue below and pick the session.
-          </Text>
+          <Text style={styles.tipsTitle}>{t("support.tipsTitle")}</Text>
+          <Text style={styles.tipsBody}>{t("support.tipsBody")}</Text>
         </View>
 
         <Pressable
@@ -104,52 +96,55 @@ export function ContactUsScreen() {
             <Ionicons name="alert-circle-outline" size={24} color={c.warning} />
           </View>
           <View style={styles.altText}>
-            <Text style={styles.altTitle}>Report a Technical issue / Request a refund</Text>
-            <Text style={styles.altSub}>
-              Pick a session and tell us what went wrong.
-            </Text>
+            <Text style={styles.altTitle}>{t("support.altTitle")}</Text>
+            <Text style={styles.altSub}>{t("support.altSub")}</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={c.textMuted} />
         </Pressable>
 
         <View style={styles.form}>
-          <Text style={styles.formTitle}>Write us</Text>
+          <Text style={styles.formTitle}>{t("support.formTitle")}</Text>
 
-          <FormField label="Name" value={name} onChangeText={setName} placeholder="Your name" />
           <FormField
-            label="Email"
+            label={t("support.nameLabel")}
+            value={name}
+            onChangeText={setName}
+            placeholder={t("support.namePlaceholder")}
+          />
+          <FormField
+            label={t("support.emailLabel")}
             value={email}
             onChangeText={setEmail}
-            placeholder="you@example.com"
+            placeholder={t("support.emailPlaceholder")}
             autoCapitalize="none"
             keyboardType="email-address"
           />
           <FormField
-            label="Phone (optional)"
+            label={t("support.phoneLabel")}
             value={phone}
             onChangeText={setPhone}
-            placeholder="+1 555 0100"
+            placeholder={t("support.phonePlaceholder")}
             keyboardType="phone-pad"
           />
           <FormField
-            label="Subject"
+            label={t("support.subjectLabel")}
             value={subject}
             onChangeText={setSubject}
-            placeholder="What is this about?"
+            placeholder={t("support.subjectPlaceholder")}
             returnKeyType="next"
           />
           <FormField
-            label="Description"
+            label={t("support.descriptionLabel")}
             value={description}
             onChangeText={setDescription}
-            placeholder="Describe your question or issue in detail..."
+            placeholder={t("support.descriptionPlaceholder")}
             multiline
             numberOfLines={6}
             inputStyle={styles.textarea}
           />
 
           <Button
-            label={loading ? "Sending..." : "Send Message"}
+            label={loading ? t("support.sending") : t("support.sendMessage")}
             onPress={handleSubmit}
             disabled={loading}
             loading={loading}

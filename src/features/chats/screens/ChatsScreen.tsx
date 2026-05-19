@@ -37,6 +37,8 @@ import {
   getPresignedChatUploadUrl,
   uploadChatFileToS3,
 } from "../lib/chatMediaUpload";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import type { TFunction } from "i18next";
 
 async function fetchConversations(): Promise<any[]> {
   try {
@@ -48,11 +50,11 @@ async function fetchConversations(): Promise<any[]> {
   }
 }
 
-function formatLastMessagePreview(raw: string): string {
+function formatLastMessagePreview(raw: string, t: TFunction): string {
   const s = String(raw ?? "").trim();
-  if (s === "[video]" || s === "[clip]") return "Video";
-  if (s === "[image]") return "Photo";
-  if (s === "[voice]") return "Voice message";
+  if (s === "[video]" || s === "[clip]") return t("chats.video");
+  if (s === "[image]") return t("chats.photo");
+  if (s === "[voice]") return t("chats.voiceMessage");
   return s;
 }
 
@@ -109,6 +111,7 @@ type ChatPartner = {
 };
 
 export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
+  const { t } = useAppTranslation();
   const c = useThemeColors();
   const styles = useThemedStyles((palette) => StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.surfaceElevated },
@@ -373,7 +376,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
       if (conv?.isGroup) {
         return {
           _id: String(conv._id),
-          fullname: conv.groupName ?? "Group",
+          fullname: conv.groupName ?? t("chats.group"),
           profile_picture: conv.groupAvatar,
           isGroup: true,
         };
@@ -394,11 +397,11 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
       const p = trainer ?? trainee;
       return {
         _id: String(p?._id ?? ""),
-        fullname: p?.fullname ?? p?.fullName ?? "User",
+        fullname: p?.fullname ?? p?.fullName ?? t("chats.unknownUser"),
         profile_picture: p?.profile_picture,
       };
     },
-    [currentUserId]
+    [currentUserId, t]
   );
 
   const toggleGroupMember = useCallback((id: string) => {
@@ -443,7 +446,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
         seen.add(id);
         items.push({
           _id: id,
-          fullname: other.fullname ?? other.fullName ?? "Friend",
+          fullname: other.fullname ?? other.fullName ?? t("chats.friendDefault"),
           profile_picture: other.profile_picture,
         });
       }
@@ -451,7 +454,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
     if (!friendSearch.trim()) return items;
     const q = friendSearch.toLowerCase();
     return items.filter((fp) => (fp.fullname ?? "").toLowerCase().includes(q));
-  }, [friends, currentUserId, friendSearch]);
+  }, [friends, currentUserId, friendSearch, t]);
 
   const selectedMemberList = useMemo(
     () => friendsList.filter((f) => selectedGroupMembers.has(f._id)),
@@ -461,7 +464,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
   const pickGroupAvatar = useCallback(async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert("Permission needed", "Allow photo access to set a group image.");
+      Alert.alert(t("locker.permissionTitle"), t("chats.permissionPhoto"));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -471,11 +474,11 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
     if (!result.canceled && result.assets[0]?.uri) {
       setGroupAvatarUri(result.assets[0].uri);
     }
-  }, []);
+  }, [t]);
 
   const createGroup = useCallback(async () => {
     if (!groupName.trim() || selectedGroupMembers.size < 2) {
-      Alert.alert("Error", "Please enter a group name and select at least 2 friends.");
+      Alert.alert(t("common.error"), t("chats.groupNameAndMembersError"));
       return;
     }
     setCreatingGroup(true);
@@ -505,10 +508,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
         setGroupAvatarUri(null);
         setSelectedGroupMembers(new Set());
         queryClient.invalidateQueries({ queryKey: ["conversations"] });
-        Alert.alert(
-          "Group created",
-          "Your friends will receive an invite. They must accept before joining."
-        );
+        Alert.alert(t("chats.groupCreatedTitle"), t("chats.groupCreatedBody"));
         setActiveChat({
           conversationId: convId,
           isGroup: true,
@@ -523,10 +523,13 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
           },
         });
       } else {
-        Alert.alert("Error", "Could not create group.");
+        Alert.alert(t("common.error"), t("chats.groupCreateError"));
       }
     } catch (e: any) {
-      Alert.alert("Error", e?.response?.data?.error ?? e?.message ?? "Could not create group.");
+      Alert.alert(
+        t("common.error"),
+        e?.response?.data?.error ?? e?.message ?? t("chats.groupCreateError")
+      );
     } finally {
       setCreatingGroup(false);
     }
@@ -537,6 +540,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
     selectedGroupMembers,
     queryClient,
     currentUserId,
+    t,
   ]);
 
   const openChatWithFriend = useCallback(async (friend: ChatPartner) => {
@@ -555,15 +559,15 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
         queryClient.invalidateQueries({ queryKey: ["conversations"] });
         setActiveChat({ conversationId: convId, partner: friend });
       } else {
-        Alert.alert("Error", "Could not open chat. Please try again.");
+        Alert.alert(t("common.error"), t("chats.openChatError"));
       }
     } catch (e: any) {
-      const msg = e?.response?.data?.error ?? e?.message ?? "Could not open chat.";
-      Alert.alert("Error", msg);
+      const msg = e?.response?.data?.error ?? e?.message ?? t("chats.openChatGenericError");
+      Alert.alert(t("common.error"), msg);
     } finally {
       setCreatingChat(false);
     }
-  }, [queryClient]);
+  }, [queryClient, t]);
 
   if (activeChat) {
     return (
@@ -588,7 +592,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
         <Ionicons name="search-outline" size={18} color={c.textMuted} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search conversations..."
+          placeholder={t("chats.searchPlaceholder")}
           placeholderTextColor={c.textMuted}
           value={search}
           onChangeText={setSearch}
@@ -600,7 +604,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
         )}
         <Pressable
           onPress={() => navigation.navigate("Home", { screen: "ArchivedChats" })}
-          accessibilityLabel="Archived chats"
+          accessibilityLabel={t("chats.archivedChatsA11y")}
           hitSlop={8}
         >
           <Ionicons name="archive-outline" size={22} color={c.brandNavy} />
@@ -609,10 +613,10 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
 
       {groupInvites.length > 0 ? (
         <View style={styles.inviteSection}>
-          <Text style={styles.inviteTitle}>Group requests</Text>
+          <Text style={styles.inviteTitle}>{t("chats.groupRequests")}</Text>
           {groupInvites.map((inv: any) => {
             const convId = String(inv.conversationId ?? inv._id ?? "");
-            const name = inv.groupName ?? "Group";
+            const name = inv.groupName ?? t("chats.group");
             return (
               <View key={convId} style={styles.inviteRow}>
                 <Ionicons name="people-outline" size={22} color={c.brandNavy} />
@@ -628,7 +632,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
                     });
                   }}
                 >
-                  <Text style={styles.inviteDeclineText}>Decline</Text>
+                  <Text style={styles.inviteDeclineText}>{t("chats.decline")}</Text>
                 </Pressable>
                 <Pressable
                   style={styles.inviteBtn}
@@ -639,7 +643,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
                     });
                   }}
                 >
-                  <Text style={styles.inviteBtnText}>Accept</Text>
+                  <Text style={styles.inviteBtnText}>{t("chats.accept")}</Text>
                 </Pressable>
               </View>
             );
@@ -696,9 +700,9 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
                   })
                 }
                 onLongPress={() => {
-                  Alert.alert(partner.fullname ?? "Chat", undefined, [
+                  Alert.alert(partner.fullname ?? t("chats.chat"), undefined, [
                     {
-                      text: "Archive",
+                      text: t("chats.archive"),
                       onPress: () => {
                         void archiveChatConversation(String(item._id)).then(() =>
                           queryClient.invalidateQueries({ queryKey: ["conversations"] })
@@ -706,7 +710,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
                       },
                     },
                     {
-                      text: "Delete chat",
+                      text: t("chats.deleteChat"),
                       style: "destructive",
                       onPress: () => {
                         void deleteChatConversation(String(item._id)).then(() =>
@@ -714,7 +718,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
                         );
                       },
                     },
-                    { text: "Cancel", style: "cancel" },
+                    { text: t("common.cancel"), style: "cancel" },
                   ]);
                 }}
               >
@@ -741,17 +745,17 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
                 <View style={styles.rowContent}>
                   <View style={styles.rowTop}>
                     <Text style={styles.rowName} numberOfLines={1}>
-                      {partner.fullname ?? "User"}
+                      {partner.fullname ?? t("chats.unknownUser")}
                     </Text>
                     {!!time && <Text style={styles.rowTime}>{time}</Text>}
                   </View>
                   <View style={styles.rowBottom}>
                     <View style={styles.rowPreviewWrap}>
                       {partnerOnline && (
-                        <Text style={styles.rowOnline}>Online</Text>
+                        <Text style={styles.rowOnline}>{t("chats.online")}</Text>
                       )}
                       <Text style={styles.rowPreview} numberOfLines={1}>
-                        {formatLastMessagePreview(lastMsg) || "Tap to start chatting"}
+                        {formatLastMessagePreview(lastMsg, t) || t("chats.tapToChat")}
                       </Text>
                     </View>
                     {unread > 0 && (
@@ -772,12 +776,8 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
           ListEmptyComponent={
             <EmptyState
               icon="chatbubbles-outline"
-              title={search ? "No matching conversations" : "No chats yet"}
-              description={
-                search
-                  ? "Try a different search term."
-                  : "Tap the + button to start chatting with your friends."
-              }
+              title={search ? t("chats.noMatchingConversations") : t("chats.noConversations")}
+              description={search ? t("chats.noMatchingDescription") : t("chats.emptyDescription")}
             />
           }
         />
@@ -820,13 +820,17 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
             }} hitSlop={12}>
               <Ionicons name={showGroupCreate ? "arrow-back" : "close"} size={24} color={c.text} />
             </Pressable>
-            <Text style={styles.modalTitle}>{showGroupCreate ? "New Group" : "New Chat"}</Text>
+            <Text style={styles.modalTitle}>
+              {showGroupCreate ? t("chats.newGroup") : t("chats.newChat")}
+            </Text>
             {showGroupCreate ? (
               <Pressable onPress={createGroup} disabled={creatingGroup} hitSlop={12}>
                 {creatingGroup ? (
                   <ActivityIndicator size="small" color={c.iconPrimary} />
                 ) : (
-                  <Text style={[styles.modalCreateBtn, selectedGroupMembers.size < 2 && { opacity: 0.4 }]}>Create</Text>
+                  <Text style={[styles.modalCreateBtn, selectedGroupMembers.size < 2 && { opacity: 0.4 }]}>
+                    {t("chats.create")}
+                  </Text>
                 )}
               </Pressable>
             ) : (
@@ -849,13 +853,13 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
                     )}
                   </Pressable>
                   <Text style={{ fontSize: 11, color: c.textMuted, marginTop: 4, textAlign: "center" }}>
-                    Group photo
+                    {t("chats.groupPhoto")}
                   </Text>
                 </View>
                 <View style={{ flex: 1, gap: 8 }}>
                   <TextInput
                     style={styles.groupNameInput}
-                    placeholder="Group name"
+                    placeholder={t("chats.groupNamePlaceholder")}
                     placeholderTextColor={c.textMuted}
                     value={groupName}
                     onChangeText={setGroupName}
@@ -863,7 +867,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
                   />
                   <TextInput
                     style={[styles.groupNameInput, { borderBottomColor: c.border }]}
-                    placeholder="Description (optional)"
+                    placeholder={t("chats.descriptionOptional")}
                     placeholderTextColor={c.textMuted}
                     value={groupDescription}
                     onChangeText={setGroupDescription}
@@ -874,11 +878,11 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
                 <View style={{ paddingHorizontal: space.md, paddingTop: 8 }}>
                   <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                     <Text style={styles.selectedCount}>
-                      {selectedGroupMembers.size} friend{selectedGroupMembers.size > 1 ? "s" : ""} selected
+                      {t("chats.friendsSelected", { count: selectedGroupMembers.size })}
                     </Text>
                     {selectedGroupMembers.size > 10 ? (
                       <Pressable onPress={() => setShowAllSelectedMembers(true)}>
-                        <Text style={styles.modalCreateBtn}>See all</Text>
+                        <Text style={styles.modalCreateBtn}>{t("chats.seeAll")}</Text>
                       </Pressable>
                     ) : null}
                   </View>
@@ -901,7 +905,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
             <Ionicons name="search-outline" size={18} color={c.textMuted} />
             <TextInput
               style={styles.modalSearchInput}
-              placeholder={showGroupCreate ? "Add participants..." : "Search friends..."}
+              placeholder={showGroupCreate ? t("chats.addParticipants") : t("chats.searchFriends")}
               placeholderTextColor={c.textMuted}
               value={friendSearch}
               onChangeText={setFriendSearch}
@@ -954,11 +958,9 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
               ListEmptyComponent={
                 <EmptyState
                   icon="people-outline"
-                  title="No friends found"
+                  title={t("chats.noFriendsFound")}
                   description={
-                    friendSearch
-                      ? "No friends match your search."
-                      : "Add friends from the Community page to start chatting."
+                    friendSearch ? t("chats.noFriendsMatch") : t("chats.addFriendsFromCommunity")
                   }
                 />
               }
@@ -978,7 +980,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
             <Pressable onPress={() => setShowAllSelectedMembers(false)} hitSlop={12}>
               <Ionicons name="close" size={24} color={c.text} />
             </Pressable>
-            <Text style={styles.modalTitle}>Selected members</Text>
+            <Text style={styles.modalTitle}>{t("chats.selectedMembers")}</Text>
             <View style={{ width: 24 }} />
           </View>
           <FlatList

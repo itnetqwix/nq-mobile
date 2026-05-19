@@ -18,6 +18,7 @@ import { AccountType } from "../../../constants/accountType";
 import { useAuth } from "../../auth/context/AuthContext";
 import { fetchBookingTransactions } from "../../home/api/homeApi";
 import type { MenuStackParamList } from "../../../navigation/types";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 const PAGE_SIZE = 25;
 
@@ -58,10 +59,11 @@ function TransactionRow({
   isTrainer: boolean;
   onPress: () => void;
 }) {
+  const { t } = useAppTranslation();
   const c = useThemeColors();
   const styles = useTransactionStyles();
   const other = isTrainer ? booking?.trainee_info : booking?.trainer_info;
-  const name = other?.fullName ?? other?.fullname ?? "Session";
+  const name = other?.fullName ?? other?.fullname ?? t("transactions.sessionDefault");
   const status = booking?.refund_status ?? booking?.status ?? "—";
   const dateLabel = formatBookedDate(booking?.booked_date);
   const timeRange =
@@ -80,7 +82,7 @@ function TransactionRow({
       </View>
       <View style={styles.rowInfo}>
         <Text style={styles.rowDesc} numberOfLines={2}>
-          Session with {name}
+          {t("transactions.sessionWith", { name })}
         </Text>
         <Text style={styles.rowDate}>
           {[dateLabel, timeRange].filter(Boolean).join(" · ")}
@@ -137,6 +139,7 @@ function useTransactionStyles() {
 }
 
 export function TransactionsScreen() {
+  const { t } = useAppTranslation();
   const c = useThemeColors();
   const styles = useTransactionStyles();
   const { accountType } = useAuth();
@@ -197,10 +200,8 @@ export function TransactionsScreen() {
       contentContainerStyle={styles.list}
       ListHeaderComponent={
         <View style={styles.listHeader}>
-          <Text style={styles.pageTitle}>Booking history</Text>
-          <Text style={styles.pageSub}>
-            Session payments and receipts. Manage your wallet from the wallet icon on Home.
-          </Text>
+          <Text style={styles.pageTitle}>{t("transactions.bookingHistory")}</Text>
+          <Text style={styles.pageSub}>{t("transactions.pageSub")}</Text>
         </View>
       }
       refreshControl={
@@ -218,8 +219,8 @@ export function TransactionsScreen() {
       ListEmptyComponent={
         <EmptyState
           icon="receipt-outline"
-          title="No booking history"
-          description="Sessions you book or teach will appear here with payment details."
+          title={t("transactions.emptyTitle")}
+          description={t("transactions.emptyDescription")}
         />
       }
     />

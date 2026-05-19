@@ -10,6 +10,7 @@ import { postMyClipsGrouped, postSharedClipsGrouped } from "../../home/api/homeA
 import { LockerListShell } from "../components/locker/LockerListShell";
 import { LockerViewerModal, type LockerViewerMode } from "../components/locker/LockerViewerModal";
 import { ClipUploadModal } from "../components/locker/ClipUploadModal";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 type ClipTab = "mine" | "shared";
 
@@ -26,8 +27,8 @@ function dedupeClipsById<T extends { _id?: unknown }>(list: T[]): T[] {
   return out;
 }
 
-function formatCategoryLabel(raw: unknown): string {
-  if (raw == null || raw === "") return "Uncategorized";
+function formatCategoryLabel(raw: unknown, uncategorizedLabel: string): string {
+  if (raw == null || raw === "") return uncategorizedLabel;
   if (typeof raw === "string") return raw;
   if (typeof raw === "object" && raw !== null) {
     const o = raw as Record<string, unknown>;
@@ -110,6 +111,7 @@ function CategorySection({
 }
 
 export function ClipsScreen() {
+  const { t } = useAppTranslation();
   const queryClient = useQueryClient();
   const c = useThemeColors();
   const [tab, setTab] = useState<ClipTab>("mine");
@@ -205,7 +207,7 @@ export function ClipsScreen() {
       sharer?.fullname ?? sharer?.fullName ?? clip.shared_by_name ?? null;
     setViewer({
       uri,
-      title: String(clip?.title ?? clip?.file_name ?? "Clip"),
+      title: String(clip?.title ?? clip?.file_name ?? t("locker.clipDefault")),
       mode: "video",
       sharedBy: sharerName ? String(sharerName) : undefined,
     });
@@ -219,13 +221,13 @@ export function ClipsScreen() {
             style={[styles.segBtn, tab === "mine" && styles.segBtnOn]}
             onPress={() => setTab("mine")}
           >
-            <Text style={[styles.segLabel, tab === "mine" && styles.segLabelOn]}>My clips</Text>
+            <Text style={[styles.segLabel, tab === "mine" && styles.segLabelOn]}>{t("locker.myClips")}</Text>
           </Pressable>
           <Pressable
             style={[styles.segBtn, tab === "shared" && styles.segBtnOn]}
             onPress={() => setTab("shared")}
           >
-            <Text style={[styles.segLabel, tab === "shared" && styles.segLabelOn]}>Shared clips</Text>
+            <Text style={[styles.segLabel, tab === "shared" && styles.segLabelOn]}>{t("locker.sharedClips")}</Text>
           </Pressable>
         </View>
         {tab === "mine" ? (
@@ -233,14 +235,14 @@ export function ClipsScreen() {
             style={({ pressed }) => [styles.uploadFab, pressed && { opacity: 0.88 }]}
             onPress={() => setUploadVisible(true)}
             accessibilityRole="button"
-            accessibilityLabel="Upload clip"
+            accessibilityLabel={t("locker.uploadClip")}
           >
             <Ionicons name="cloud-upload-outline" size={20} color={c.brandTextOn} />
           </Pressable>
         ) : null}
       </View>
     ),
-    [tab, styles, c]
+    [tab, styles, c, t]
   );
 
   const renderClipRow = (clip: Record<string, unknown>, key: string, showSharer?: boolean) => {
@@ -257,7 +259,7 @@ export function ClipsScreen() {
               height={64}
               borderRadius={radii.sm}
               resizeMode="cover"
-              accessibilityLabel={String(clip.title ?? clip.file_name ?? "Clip")}
+              accessibilityLabel={String(clip.title ?? clip.file_name ?? t("locker.clipDefault"))}
             />
           ) : (
             <View style={styles.thumbPh}>
@@ -267,16 +269,17 @@ export function ClipsScreen() {
         </View>
         <View style={styles.clipMeta}>
           <Text style={styles.clipTitle} numberOfLines={2}>
-            {String(clip.title ?? clip.file_name ?? "Clip")}
+            {String(clip.title ?? clip.file_name ?? t("locker.clipDefault"))}
           </Text>
           {showSharer ? (
             <Text style={styles.clipDate} numberOfLines={1}>
-              Shared by{" "}
-              {String(
-                (clip.sharer as any)?.fullname ??
-                  (clip.sharer as any)?.fullName ??
-                  "Friend"
-              )}
+              {t("locker.sharedBy", {
+                name: String(
+                  (clip.sharer as any)?.fullname ??
+                    (clip.sharer as any)?.fullName ??
+                    t("locker.friendDefault")
+                ),
+              })}
             </Text>
           ) : null}
           {clip.createdAt || clip.shared_at ? (
@@ -306,9 +309,9 @@ export function ClipsScreen() {
             {(myQ.data ?? []).length === 0 ? (
               <EmptyState
                 icon="film-outline"
-                title="No clips yet"
-                description="Upload a clip here or add videos from the web locker — they appear by category."
-                actionLabel="Upload clip"
+                title={t("locker.noClips")}
+                description={t("locker.noClipsDescription")}
+                actionLabel={t("locker.uploadClip")}
                 onAction={() => setUploadVisible(true)}
               />
             ) : (
@@ -317,7 +320,7 @@ export function ClipsScreen() {
                 return (
                   <CategorySection
                     key={`mine-grp-${i}-${String(grp._id ?? "uncat")}`}
-                    title={formatCategoryLabel(grp._id)}
+                    title={formatCategoryLabel(grp._id, t("locker.uncategorized"))}
                     count={clips.length}
                     defaultOpen={i === 0}
                   >
@@ -336,8 +339,8 @@ export function ClipsScreen() {
             {(sharedQ.data ?? []).length === 0 ? (
               <EmptyState
                 icon="share-social-outline"
-                title="No shared clips"
-                description="Clips friends share with you appear here with who sent them."
+                title={t("locker.noShared")}
+                description={t("locker.noSharedDescription")}
               />
             ) : (
               (sharedQ.data ?? []).map((grp: { _id?: unknown; clips?: unknown[] }, i: number) => {
@@ -345,7 +348,7 @@ export function ClipsScreen() {
                 return (
                   <CategorySection
                     key={`shared-grp-${i}-${String(grp._id ?? "uncat")}`}
-                    title={formatCategoryLabel(grp._id)}
+                    title={formatCategoryLabel(grp._id, t("locker.uncategorized"))}
                     count={clips.length}
                     defaultOpen={i === 0}
                   >

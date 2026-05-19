@@ -16,9 +16,13 @@ import { isLikelyPdf } from "../../../lib/clipMediaUrl";
 import { postReportsGetAll } from "../../home/api/homeApi";
 import { LockerListShell } from "../components/locker/LockerListShell";
 import { LockerViewerModal, type LockerViewerMode } from "../components/locker/LockerViewerModal";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
-function formatReportDate(id: { month?: number; day?: number; year?: number } | null | undefined): string {
-  if (!id?.year) return "Reports";
+function formatReportDate(
+  id: { month?: number; day?: number; year?: number } | null | undefined,
+  reportsFallback: string
+): string {
+  if (!id?.year) return reportsFallback;
   const m = id.month ?? 1;
   const d = id.day ?? 1;
   const y = id.year;
@@ -34,6 +38,7 @@ function formatReportDate(id: { month?: number; day?: number; year?: number } | 
 }
 
 export function GamePlansScreen() {
+  const { t } = useAppTranslation();
   const c = useThemeColors();
   const { width: windowWidth } = useWindowDimensions();
   const planThumbWidth = Math.max(140, windowWidth - space.md * 4);
@@ -94,16 +99,17 @@ export function GamePlansScreen() {
 
   const reportSections = useMemo(() => {
     const rows = reportsQ.data ?? [];
+    const reportsFallback = t("gamePlans.reportsFallback");
     return rows.map((grp: { _id?: { month?: number; day?: number; year?: number }; report?: unknown[] }) => ({
-      title: formatReportDate(grp._id),
+      title: formatReportDate(grp._id, reportsFallback),
       data: (grp.report ?? []) as Record<string, unknown>[],
     }));
-  }, [reportsQ.data]);
+  }, [reportsQ.data, t]);
 
   const openPlan = (item: Record<string, unknown>) => {
     const reportData = (item.reportData as { imageUrl?: string; title?: string }[] | undefined)?.[0];
     const img = reportData?.imageUrl;
-    const title = reportData?.title ?? String(item.title ?? "Game plan");
+    const title = reportData?.title ?? String(item.title ?? t("gamePlans.planDefault"));
     const session = item.session as { report?: string; sessionRecordingUrl?: string } | undefined;
     const pdfName = session?.report;
     const recording =
@@ -117,8 +123,8 @@ export function GamePlansScreen() {
     const uri = fromImg || fromPdf || fromRec;
     if (!uri) {
       Alert.alert(
-        "Nothing to preview",
-        "This game plan doesn't have an attached image, PDF, or recording yet."
+        t("gamePlans.nothingToPreviewTitle"),
+        t("gamePlans.nothingToPreviewBody")
       );
       return;
     }
@@ -156,8 +162,8 @@ export function GamePlansScreen() {
         {reportSections.length === 0 ? (
           <EmptyState
             icon="document-text-outline"
-            title="No game plans yet"
-            description="After sessions, reports you save on the web appear here grouped by date."
+            title={t("gamePlans.emptyTitle")}
+            description={t("gamePlans.emptyDescription")}
           />
         ) : (
           reportSections.map((section, si) => (
@@ -168,7 +174,7 @@ export function GamePlansScreen() {
               </View>
               {section.data.map((item, index) => {
                 const reportData = (item.reportData as { imageUrl?: string; title?: string }[] | undefined)?.[0];
-                const title = reportData?.title ?? String(item.title ?? "Game plan");
+                const title = reportData?.title ?? String(item.title ?? t("gamePlans.planDefault"));
                 const uri = reportData?.imageUrl ? getS3ImageUrl(reportData.imageUrl) : "";
                 const kind = planKind(item);
                 return (
@@ -219,11 +225,15 @@ export function GamePlansScreen() {
                             color={c.textMuted}
                           />
                           <Text style={styles.badgeText}>
-                            {kind === "pdf" ? "PDF" : kind === "video" ? "Recording" : "Image"}
+                            {kind === "pdf"
+                              ? t("gamePlans.badgePdf")
+                              : kind === "video"
+                                ? t("gamePlans.badgeRecording")
+                                : t("gamePlans.badgeImage")}
                           </Text>
                         </View>
                       ) : null}
-                      <Text style={styles.planHint}>Tap to preview</Text>
+                      <Text style={styles.planHint}>{t("gamePlans.tapToPreview")}</Text>
                     </View>
                   </Pressable>
                 );

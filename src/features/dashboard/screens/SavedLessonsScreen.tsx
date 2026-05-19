@@ -8,8 +8,10 @@ import { getClipPlaybackUrl, isLikelyPdf } from "../../../lib/clipMediaUrl";
 import { postGetAllSavedSessions } from "../../home/api/homeApi";
 import { LockerListShell } from "../components/locker/LockerListShell";
 import { LockerViewerModal, type LockerViewerMode } from "../components/locker/LockerViewerModal";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 export function SavedLessonsScreen() {
+  const { t } = useAppTranslation();
   const c = useThemeColors();
   const styles = useThemedStyles((palette) =>
     StyleSheet.create({
@@ -63,7 +65,7 @@ export function SavedLessonsScreen() {
     const mode: LockerViewerMode = isLikelyPdf(nameHint) || isLikelyPdf(uri) ? "pdf" : "video";
     setViewer({
       uri,
-      title: String(row?.title ?? row?.file_name ?? "Saved lesson"),
+      title: String(row?.title ?? row?.file_name ?? t("savedLessons.lessonDefault")),
       mode,
     });
   };
@@ -81,8 +83,8 @@ export function SavedLessonsScreen() {
         {(savedQ.data ?? []).length === 0 ? (
           <EmptyState
             icon="bookmark-outline"
-            title="No saved lessons"
-            description="When you save a session recording on the web, it will show up here."
+            title={t("savedLessons.emptyTitle")}
+            description={t("savedLessons.emptyDescription")}
           />
         ) : (
           (savedQ.data ?? []).map((s: Record<string, unknown>) => {
@@ -99,7 +101,7 @@ export function SavedLessonsScreen() {
                 </View>
                 <View style={styles.cardBody}>
                   <Text style={styles.cardTitle}>
-                    {String(s.title ?? s.file_name ?? "Saved session")}
+                    {String(s.title ?? s.file_name ?? t("savedLessons.sessionDefault"))}
                   </Text>
                   {!!s.description && (
                     <Text style={styles.cardDesc} numberOfLines={3}>
@@ -111,7 +113,7 @@ export function SavedLessonsScreen() {
                     {s.createdAt ? ` · ${new Date(String(s.createdAt)).toLocaleDateString()}` : ""}
                   </Text>
                   {!playable ? (
-                    <Text style={styles.unavailable}>Preview not available for this file.</Text>
+                    <Text style={styles.unavailable}>{t("savedLessons.previewUnavailable")}</Text>
                   ) : null}
                 </View>
                 {playable ? (

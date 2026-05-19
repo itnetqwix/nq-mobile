@@ -1,5 +1,6 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { Button } from "../../../components/ui/Button";
 import { space, typography, useThemeColors } from "../../../theme";
 import type { SystemStateActionId, SystemStatePreset } from "../presets/types";
@@ -20,6 +21,7 @@ export function SystemStateActions({
   actionContext,
   busy,
 }: Props) {
+  const { t } = useAppTranslation();
   const c = useThemeColors();
 
   const run = (action: SystemStateActionId) => {
@@ -52,7 +54,7 @@ export function SystemStateActions({
           accessibilityRole="link"
         >
           <Text style={[typography.bodySm, { color: c.brandAccent }]}>
-            Contact support
+            {t("systemActions.contactSupport")}
           </Text>
         </Pressable>
       ) : null}

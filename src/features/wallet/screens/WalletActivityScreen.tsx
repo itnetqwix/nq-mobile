@@ -3,6 +3,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   FlatList,
@@ -22,7 +23,8 @@ import { formatLedgerAmount, ledgerReferenceLabel } from "../lib/ledgerLabels";
 const PAGE_SIZE = 25;
 
 export function WalletActivityScreen() {
-  useShellHeaderTitle("Activity");
+  const { t } = useTranslation();
+  useShellHeaderTitle(t("wallet.activity"));
   const c = useThemeColors();
   const styles = useThemedStyles((c) => StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
@@ -130,8 +132,8 @@ export function WalletActivityScreen() {
       ListEmptyComponent={
         <EmptyState
           icon="time-outline"
-          title="No activity yet"
-          description="Top-ups and wallet payments will show here."
+          title={t("wallet.noActivityYet")}
+          description={t("wallet.noActivityDescription")}
         />
       }
     />

@@ -16,6 +16,7 @@ import { radii, space, typography, useThemedStyles } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
 import { postWriteUs } from "../../home/api/homeApi";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { FAQ_SECTIONS } from "../content/faqContent";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -25,6 +26,7 @@ if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental
 const SUPPORT_EMAIL = "support@netqwix.com";
 
 export function FaqScreen() {
+  const { t } = useAppTranslation();
   const styles = useFaqStyles();
   const { user } = useAuth();
   const [openId, setOpenId] = useState<string | null>(null);
@@ -42,7 +44,7 @@ export function FaqScreen() {
 
   const submit = async () => {
     if (!topic.trim() || !question.trim()) {
-      Alert.alert("Missing fields", "Please add a topic and your question.");
+      Alert.alert(t("faq.missingFieldsTitle"), t("faq.missingFieldsBody"));
       return;
     }
     setSubmitting(true);
@@ -53,14 +55,11 @@ export function FaqScreen() {
         subject: `FAQ: ${topic.trim()}`,
         description: question.trim(),
       });
-      Alert.alert(
-        "Question received",
-        "Thanks — our team will get back to you as soon as possible."
-      );
+      Alert.alert(t("faq.receivedTitle"), t("faq.receivedBody"));
       setTopic("");
       setQuestion("");
     } catch (e) {
-      Alert.alert("Could not send", getApiErrorMessage(e));
+      Alert.alert(t("faq.couldNotSend"), getApiErrorMessage(e));
     } finally {
       setSubmitting(false);
     }
@@ -68,10 +67,8 @@ export function FaqScreen() {
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
-      <Text style={styles.heroTitle}>Help & FAQ</Text>
-      <Text style={styles.heroSub}>
-        Answers to common questions about lessons, video calls, payments, and chat.
-      </Text>
+      <Text style={styles.heroTitle}>{t("faq.heroTitle")}</Text>
+      <Text style={styles.heroSub}>{t("faq.heroSub")}</Text>
 
       {FAQ_SECTIONS.map((section) => (
         <View key={section.title} style={styles.section}>
@@ -100,20 +97,20 @@ export function FaqScreen() {
       ))}
 
       <View style={styles.askBox}>
-        <Text style={styles.askTitle}>Still left with a question?</Text>
+        <Text style={styles.askTitle}>{t("faq.askTitle")}</Text>
         <Text style={styles.askSub}>
-          Ask us on {SUPPORT_EMAIL} — fill in the form below and we will email you back.
+          {t("faq.askSub", { email: SUPPORT_EMAIL })}
         </Text>
-        <FormField label="Topic" value={topic} onChangeText={setTopic} placeholder="Brief topic" />
+        <FormField label={t("faq.topic")} value={topic} onChangeText={setTopic} placeholder={t("faq.topicPlaceholder")} />
         <FormField
-          label="Your question"
+          label={t("faq.yourQuestion")}
           value={question}
           onChangeText={setQuestion}
-          placeholder="Describe your question in detail"
+          placeholder={t("faq.questionPlaceholder")}
           multiline
           numberOfLines={5}
         />
-        <Button title="Submit question" onPress={() => void submit()} loading={submitting} />
+        <Button title={t("faq.sendQuestion")} onPress={() => void submit()} loading={submitting} />
       </View>
     </ScrollView>
   );

@@ -34,6 +34,7 @@ import {
   useNotifications,
 } from "../../notifications/NotificationContext";
 import { ChatRoomScreen } from "../../chats/screens/ChatRoomScreen";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 async function fetchCommunityUsers(search?: string): Promise<any[]> {
   const res = await apiClient.get(API_ROUTES.user.getAllUsers, {
@@ -84,8 +85,9 @@ function MemberCard({
   actionBusy: boolean;
   messageBusy: boolean;
 }) {
+  const { t } = useAppTranslation();
   const { isOnline } = useOnlinePresence();
-  const name = user?.fullname || user?.fullName || "Member";
+  const name = user?.fullname || user?.fullName || t("community.memberDefault");
   const role = user?.account_type || user?.accountType || "";
   const userId = String(user?._id ?? "");
   const showOnline = isOnline(userId) || !!user?.is_online;
@@ -112,7 +114,7 @@ function MemberCard({
             disabled={actionBusy}
           >
             <Ionicons name="person-add" size={14} color={colors.brandTextOn} />
-            <Text style={styles.addBtnText}>Add</Text>
+            <Text style={styles.addBtnText}>{t("community.add")}</Text>
           </Pressable>
         )}
         {status === "request_sent" && (
@@ -122,7 +124,7 @@ function MemberCard({
             disabled={actionBusy}
           >
             <Ionicons name="time-outline" size={14} color={colors.warning} />
-            <Text style={styles.pendingBtnText}>Pending</Text>
+            <Text style={styles.pendingBtnText}>{t("community.pending")}</Text>
           </Pressable>
         )}
         {status === "friends" && (
@@ -133,7 +135,7 @@ function MemberCard({
               disabled={actionBusy}
             >
               <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-              <Text style={styles.friendsBadgeText}>Friends</Text>
+              <Text style={styles.friendsBadgeText}>{t("community.friends")}</Text>
             </Pressable>
             <Pressable
               style={styles.chatBtn}
@@ -145,7 +147,7 @@ function MemberCard({
               ) : (
                 <Ionicons name="chatbubble-outline" size={12} color={colors.brandTextOn} />
               )}
-              <Text style={styles.chatBtnText}>Chat</Text>
+              <Text style={styles.chatBtnText}>{t("community.chat")}</Text>
             </Pressable>
           </>
         )}
@@ -155,6 +157,7 @@ function MemberCard({
 }
 
 export function CommunityScreen() {
+  const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const gutter = useHorizontalGutter("md");
   const { user } = useAuth();
@@ -261,15 +264,15 @@ export function CommunityScreen() {
             receiverId: userId,
             type: NOTIFICATION_TYPES.TRANSCATIONAL,
           });
-          Alert.alert("Sent", "Friend request sent.");
+          Alert.alert(t("community.sentTitle"), t("community.sentBody"));
         } else if (action === "cancel") {
           await postCancelFriendRequest(userId);
-          Alert.alert("Cancelled", "Friend request cancelled.");
+          Alert.alert(t("community.cancelledTitle"), t("community.cancelledBody"));
         } else if (action === "remove") {
-          Alert.alert("Remove friend?", "Are you sure?", [
-            { text: "No", style: "cancel" },
+          Alert.alert(t("community.removeTitle"), t("community.removeBody"), [
+            { text: t("community.no"), style: "cancel" },
             {
-              text: "Remove",
+              text: t("community.remove"),
               style: "destructive",
               onPress: async () => {
                 await postRemoveFriend(userId);
@@ -283,14 +286,14 @@ export function CommunityScreen() {
         invalidateAll();
       } catch (e: any) {
         Alert.alert(
-          "Error",
-          e?.response?.data?.message ?? e?.message ?? "Something went wrong."
+          t("common.error"),
+          e?.response?.data?.message ?? e?.message ?? t("community.errorGeneric")
         );
       } finally {
         setActionBusy(false);
       }
     },
-    [emitNotification, queryClient]
+    [emitNotification, queryClient, t]
   );
 
   const handleMessage = useCallback(
@@ -316,13 +319,13 @@ export function CommunityScreen() {
           e?.response?.data?.message ??
           e?.response?.data?.error ??
           e?.message ??
-          "Could not open chat.";
-        Alert.alert("Error", String(msg));
+          t("community.openChatError");
+        Alert.alert(t("common.error"), String(msg));
       } finally {
         setMessageBusy(false);
       }
     },
-    [queryClient]
+    [queryClient, t]
   );
 
   if (activeChat) {
@@ -363,7 +366,7 @@ export function CommunityScreen() {
         <Ionicons name="search-outline" size={18} color={colors.textMuted} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search community..."
+          placeholder={t("community.searchPlaceholder")}
           placeholderTextColor={colors.textMuted}
           value={search}
           onChangeText={setSearch}
@@ -396,20 +399,18 @@ export function CommunityScreen() {
         ListHeaderComponent={
           <View style={styles.headerCard}>
             <Ionicons name="globe-outline" size={28} color={colors.brandNavy} />
-            <Text style={styles.headerText}>Your NetQwix Community</Text>
-            <Text style={styles.headerSub}>
-              Connect with trainers and trainees. Tap Add to send a friend request.
-            </Text>
+            <Text style={styles.headerText}>{t("community.headerTitle")}</Text>
+            <Text style={styles.headerSub}>{t("community.headerSub")}</Text>
           </View>
         }
         ListEmptyComponent={
           <EmptyState
             icon="people-outline"
-            title="No members found"
+            title={t("community.emptyTitle")}
             description={
               trimmedSearch
-                ? `No results for "${trimmedSearch}". Try another name.`
-                : "Members will appear here as your network grows."
+                ? t("community.emptySearchDescription", { query: trimmedSearch })
+                : t("community.emptyDescription")
             }
           />
         }

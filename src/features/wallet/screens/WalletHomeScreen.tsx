@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import React from "react";
+import React, { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AccountType } from "../../../constants/accountType";
@@ -10,29 +11,6 @@ import { useWalletBalance } from "../hooks/useWalletBalance";
 import type { WalletStackParamList } from "../navigation/WalletNavigator";
 import { TrainerWalletHome } from "../components/TrainerWalletHome";
 import { useShellHeaderTitle } from "../../../navigation/useShellHeaderTitle";
-
-const BENEFITS = [
-  {
-    icon: "flash-outline" as const,
-    title: "Book in one tap",
-    text: "Pay for lessons from your balance without entering card details every time.",
-  },
-  {
-    icon: "time-outline" as const,
-    title: "Faster checkout",
-    text: "Instant lessons confirm quicker when your wallet has enough funds.",
-  },
-  {
-    icon: "shield-checkmark-outline" as const,
-    title: "Secure spending",
-    text: "A 6-digit PIN protects larger payments and withdrawals.",
-  },
-  {
-    icon: "list-outline" as const,
-    title: "Clear history",
-    text: "See every top-up and payment in your activity feed.",
-  },
-];
 
 type Props = NativeStackScreenProps<WalletStackParamList, "WalletHome">;
 
@@ -113,10 +91,37 @@ function useWalletHomeStyles() {
 }
 
 function TraineeWalletHome({ navigation }: Props) {
+  const { t } = useTranslation();
   const c = useThemeColors();
   const styles = useWalletHomeStyles();
   const { data: balance, isLoading, isRefetching, refetch } = useWalletBalance();
   const available = balance?.balances?.available ?? 0;
+
+  const benefits = useMemo(
+    () => [
+      {
+        icon: "flash-outline" as const,
+        title: t("wallet.benefitBookOneTap"),
+        text: t("wallet.benefitBookOneTapText"),
+      },
+      {
+        icon: "time-outline" as const,
+        title: t("wallet.benefitFasterCheckout"),
+        text: t("wallet.benefitFasterCheckoutText"),
+      },
+      {
+        icon: "shield-checkmark-outline" as const,
+        title: t("wallet.benefitSecureSpending"),
+        text: t("wallet.benefitSecureSpendingText"),
+      },
+      {
+        icon: "list-outline" as const,
+        title: t("wallet.benefitClearHistory"),
+        text: t("wallet.benefitClearHistoryText"),
+      },
+    ],
+    [t]
+  );
 
   return (
     <ScrollView
@@ -126,7 +131,7 @@ function TraineeWalletHome({ navigation }: Props) {
       }
     >
       <View style={styles.balanceCard}>
-        <Text style={styles.balanceLabel}>Available balance</Text>
+        <Text style={styles.balanceLabel}>{t("wallet.availableBalance")}</Text>
         {isLoading && !balance ? (
           <View style={styles.balanceSkeleton} />
         ) : (
@@ -134,7 +139,9 @@ function TraineeWalletHome({ navigation }: Props) {
         )}
         {(balance?.balances?.pending_topup ?? 0) > 0 && (
           <Text style={styles.pendingText}>
-            ${balance!.balances.pending_topup.toFixed(2)} pending top-up
+            {t("wallet.pendingTopUp", {
+              amount: balance!.balances.pending_topup.toFixed(2),
+            })}
           </Text>
         )}
         <Pressable
@@ -142,12 +149,12 @@ function TraineeWalletHome({ navigation }: Props) {
           onPress={() => navigation.navigate("WalletTopUp", undefined)}
         >
           <Ionicons name="add-circle" size={20} color={c.brandTextOn} />
-          <Text style={styles.addFundsText}>Add funds</Text>
+          <Text style={styles.addFundsText}>{t("wallet.addFunds")}</Text>
         </Pressable>
       </View>
 
-      <Text style={styles.sectionTitle}>Why use your wallet?</Text>
-      {BENEFITS.map((b) => (
+      <Text style={styles.sectionTitle}>{t("wallet.whyUseWallet")}</Text>
+      {benefits.map((b) => (
         <View key={b.title} style={styles.benefitRow}>
           <View style={styles.benefitIcon}>
             <Ionicons name={b.icon} size={22} color={c.iconPrimary} />
@@ -162,14 +169,14 @@ function TraineeWalletHome({ navigation }: Props) {
       <View style={styles.menuSection}>
         <MenuRow
           icon="time-outline"
-          label="Activity"
-          sub="Top-ups and payments"
+          label={t("wallet.activity")}
+          sub={t("wallet.activitySub")}
           onPress={() => navigation.navigate("WalletActivity")}
         />
         <MenuRow
           icon="lock-closed-outline"
-          label="Security"
-          sub={balance?.pinSet ? "PIN is set" : "Set your wallet PIN"}
+          label={t("wallet.security")}
+          sub={balance?.pinSet ? t("wallet.pinSet") : t("wallet.pinNotSet")}
           onPress={() => navigation.navigate("WalletSecurity")}
         />
       </View>
@@ -204,7 +211,8 @@ function MenuRow({
 }
 
 export function WalletHomeScreen(props: Props) {
-  useShellHeaderTitle("Wallet");
+  const { t } = useTranslation();
+  useShellHeaderTitle(t("wallet.title"));
   const { accountType } = useAuth();
   const insets = useSafeAreaInsets();
   const isTrainer = accountType === AccountType.TRAINER;

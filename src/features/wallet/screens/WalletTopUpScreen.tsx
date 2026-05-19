@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -30,7 +31,8 @@ const PRESETS = [25, 50, 100, 200];
 type Props = NativeStackScreenProps<WalletStackParamList, "WalletTopUp">;
 
 export function WalletTopUpScreen({ navigation, route }: Props) {
-  useShellHeaderTitle("Add funds");
+  const { t } = useTranslation();
+  useShellHeaderTitle(t("wallet.addFunds"));
   const c = useThemeColors();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
@@ -125,12 +127,19 @@ export function WalletTopUpScreen({ navigation, route }: Props) {
   const maxDollars = (config?.maxTopUpMinor ?? 50000) / 100;
   const topUpEnabled = config?.enabled !== false;
 
-  const validateAmount = (dollars: number): string | undefined => {
-    if (!Number.isFinite(dollars)) return "Enter a valid amount";
-    if (dollars < minDollars) return `Minimum is $${minDollars.toFixed(2)}`;
-    if (dollars > maxDollars) return `Maximum is $${maxDollars.toFixed(2)}`;
-    return undefined;
-  };
+  const validateAmount = useCallback(
+    (dollars: number): string | undefined => {
+      if (!Number.isFinite(dollars)) return t("wallet.validAmount");
+      if (dollars < minDollars) {
+        return t("wallet.minAmount", { amount: minDollars.toFixed(2) });
+      }
+      if (dollars > maxDollars) {
+        return t("wallet.maxAmount", { amount: maxDollars.toFixed(2) });
+      }
+      return undefined;
+    },
+    [t, minDollars, maxDollars]
+  );
 
   const handleSubmit = async () => {
     const dollars = parseFloat(amount);
@@ -146,9 +155,9 @@ export function WalletTopUpScreen({ navigation, route }: Props) {
       await queryClient.invalidateQueries({ queryKey: ["wallet"] });
       await refetchBalance();
       Alert.alert(
-        "Funds added",
-        `$${result.amountDollars.toFixed(2)} was added to your wallet. You can use it for bookings right away.`,
-        [{ text: "Done", onPress: () => navigation.goBack() }]
+        t("wallet.fundsAdded"),
+        t("wallet.fundsAddedBody", { amount: result.amountDollars.toFixed(2) }),
+        [{ text: t("common.done"), onPress: () => navigation.goBack() }]
       );
       return;
     }
@@ -157,30 +166,27 @@ export function WalletTopUpScreen({ navigation, route }: Props) {
 
     if (result.code === "timeout") {
       await queryClient.invalidateQueries({ queryKey: ["wallet"] });
-      Alert.alert("Processing payment", result.message, [
-        { text: "OK", onPress: () => navigation.goBack() },
+      Alert.alert(t("wallet.processingPayment"), result.message, [
+        { text: t("systemActions.ok"), onPress: () => navigation.goBack() },
       ]);
       return;
     }
 
-    Alert.alert("Top-up failed", result.message);
+    Alert.alert(t("wallet.topUpFailed"), result.message);
   };
 
   const shortfallHint = useMemo(() => {
     if (suggested == null || suggested <= 0) return null;
-    return `Add at least $${Math.ceil(suggested)} to cover your booking.`;
-  }, [suggested]);
+    return t("wallet.shortfallHint", { amount: Math.ceil(suggested) });
+  }, [suggested, t]);
 
   if (!isTrainee) {
     return (
       <View style={[styles.root, { padding: space.lg, justifyContent: "center" }]}>
         <Card variant="outlined" padding="lg">
-          <Text style={styles.heroTitle}>Trainer wallet</Text>
-          <Text style={styles.heroSub}>
-            Earnings from sessions are paid to your connected Stripe account. Trainees add funds
-            here to pay for lessons with debit or credit card.
-          </Text>
-          <Button label="Go back" onPress={() => navigation.goBack()} fullWidth style={{ marginTop: space.lg }} />
+          <Text style={styles.heroTitle}>{t("wallet.trainerWallet")}</Text>
+          <Text style={styles.heroSub}>{t("wallet.trainerWalletSub")}</Text>
+          <Button label={t("wallet.goBack")} onPress={() => navigation.goBack()} fullWidth style={{ marginTop: space.lg }} />
         </Card>
       </View>
     );
@@ -190,11 +196,9 @@ export function WalletTopUpScreen({ navigation, route }: Props) {
     return (
       <View style={[styles.root, { padding: space.lg, justifyContent: "center" }]}>
         <Card variant="outlined" padding="lg">
-          <Text style={styles.heroTitle}>Top-up unavailable</Text>
-          <Text style={styles.heroSub}>
-            Wallet top-up is not available in your region yet. You can still pay with card at checkout.
-          </Text>
-          <Button label="Go back" onPress={() => navigation.goBack()} fullWidth style={{ marginTop: space.lg }} />
+          <Text style={styles.heroTitle}>{t("wallet.topUpUnavailable")}</Text>
+          <Text style={styles.heroSub}>{t("wallet.topUpUnavailableSub")}</Text>
+          <Button label={t("wallet.goBack")} onPress={() => navigation.goBack()} fullWidth style={{ marginTop: space.lg }} />
         </Card>
       </View>
     );
@@ -212,10 +216,8 @@ export function WalletTopUpScreen({ navigation, route }: Props) {
             <Ionicons name="card-outline" size={24} color={c.iconPrimary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.heroTitle}>Add funds securely</Text>
-            <Text style={styles.heroSub}>
-              Pay with debit or credit card via Stripe. Funds appear in your wallet for faster checkout.
-            </Text>
+            <Text style={styles.heroTitle}>{t("wallet.addFundsSecurely")}</Text>
+            <Text style={styles.heroSub}>{t("wallet.addFundsSecurelySub")}</Text>
           </View>
         </View>
 
@@ -227,7 +229,7 @@ export function WalletTopUpScreen({ navigation, route }: Props) {
           </Card>
         )}
 
-        <Text style={styles.label}>Amount (USD)</Text>
+        <Text style={styles.label}>{t("wallet.amountUsd")}</Text>
         <View style={styles.presets}>
           {PRESETS.filter((p) => p >= minDollars && p <= maxDollars).map((p) => (
             <Pressable
@@ -261,27 +263,35 @@ export function WalletTopUpScreen({ navigation, route }: Props) {
           <Text style={styles.error}>{amountError}</Text>
         ) : (
           <Text style={styles.hint}>
-            Min ${minDollars.toFixed(2)} · Max ${maxDollars.toFixed(2)}
-            {balance != null ? ` · Current balance $${(balance.balances?.available ?? 0).toFixed(2)}` : ""}
+            {t("wallet.minMaxHint", {
+              min: minDollars.toFixed(2),
+              max: maxDollars.toFixed(2),
+            })}
+            {balance != null
+              ? t("wallet.currentBalanceHint", {
+                  balance: (balance.balances?.available ?? 0).toFixed(2),
+                })
+              : ""}
           </Text>
         )}
 
         <View style={styles.methods}>
           <Ionicons name="lock-closed-outline" size={18} color={c.textMuted} />
           <Text style={styles.methodsText}>
-            Secured by Stripe · Visa, Mastercard, Amex, and more
-            {Platform.OS === "ios" ? " · Apple Pay when available" : ""}
-            {Platform.OS === "android" ? " · Google Pay when available" : ""}
+            {t("wallet.securedByStripe", {
+              applePay: Platform.OS === "ios" ? t("wallet.applePaySuffix") : "",
+              googlePay: Platform.OS === "android" ? t("wallet.googlePaySuffix") : "",
+            })}
           </Text>
         </View>
 
         <Button
           label={
             phase === "presenting"
-              ? "Opening secure payment…"
+              ? t("wallet.openingPayment")
               : phase === "confirming"
-                ? "Confirming…"
-                : "Continue to payment"
+                ? t("wallet.confirming")
+                : t("wallet.continueToPayment")
           }
           onPress={handleSubmit}
           fullWidth
@@ -295,7 +305,9 @@ export function WalletTopUpScreen({ navigation, route }: Props) {
       {busy && (
         <View style={styles.overlay} pointerEvents="auto">
           <NetQwixLoader
-            message={phase === "confirming" ? "Updating your balance…" : "Opening secure checkout…"}
+            message={
+              phase === "confirming" ? t("wallet.updatingBalance") : t("wallet.openingCheckout")
+            }
             variant="inline"
             size="lg"
           />

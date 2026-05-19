@@ -8,11 +8,10 @@ import { useThemeColors } from "../theme";
 import { AppScreenHeader } from "./AppScreenHeader";
 import { HomeNavigator } from "./HomeNavigator";
 import { TabSwipeShell } from "./TabSwipeShell";
+import i18n from "../i18n";
 import type { MainTabParamList } from "./types";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
-
-const SESSIONS_TAB_LABEL = "Sessions";
 
 function tabHeaderOptions(title: string) {
   return {
@@ -60,11 +59,11 @@ export function MainTabs() {
       <Tab.Screen
         name="Home"
         options={{
-          title: "Dashboard",
+          title: i18n.t("tabs.home"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" color={color} size={size} />
           ),
-          tabBarLabel: "Dashboard",
+          tabBarLabel: i18n.t("tabs.home"),
           headerShown: false,
         }}
       >
@@ -77,11 +76,11 @@ export function MainTabs() {
       <Tab.Screen
         name="Schedule"
         options={{
-          ...tabHeaderOptions(SESSIONS_TAB_LABEL),
+          ...tabHeaderOptions(i18n.t("tabs.sessions")),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="time-outline" color={color} size={size} />
           ),
-          tabBarLabel: SESSIONS_TAB_LABEL,
+          tabBarLabel: i18n.t("tabs.sessions"),
         }}
       >
         {(props) => (
@@ -93,7 +92,7 @@ export function MainTabs() {
       <Tab.Screen
         name="Chats"
         options={{
-          ...tabHeaderOptions("Chats"),
+          ...tabHeaderOptions(i18n.t("tabs.chats")),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubbles-outline" color={color} size={size} />
           ),

@@ -17,6 +17,7 @@ import type { RootStackParamList, ShellSurfaceRouteId } from "../../../navigatio
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { fetchNotifications } from "../../home/api/homeApi";
 import { useNotifications } from "../NotificationContext";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 function getNotificationIcon(title?: string): keyof typeof Ionicons.glyphMap {
   const t = (title ?? "").toLowerCase();
@@ -28,17 +29,20 @@ function getNotificationIcon(title?: string): keyof typeof Ionicons.glyphMap {
   return "notifications-outline";
 }
 
-function timeAgo(dateStr?: string): string {
+function timeAgo(
+  dateStr: string | undefined,
+  t: (key: string, opts?: Record<string, unknown>) => string
+): string {
   if (!dateStr) return "";
   try {
     const diff = Date.now() - new Date(dateStr).getTime();
     const minutes = Math.floor(diff / 60000);
-    if (minutes < 1) return "just now";
-    if (minutes < 60) return `${minutes}m ago`;
+    if (minutes < 1) return t("notifications.justNow");
+    if (minutes < 60) return t("notifications.minutesAgo", { count: minutes });
     const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
+    if (hours < 24) return t("notifications.hoursAgo", { count: hours });
     const days = Math.floor(hours / 24);
-    return `${days}d ago`;
+    return t("notifications.daysAgo", { count: days });
   } catch {
     return "";
   }
@@ -51,6 +55,7 @@ function NotificationItem({
   item: any;
   onPress: () => void;
 }) {
+  const { t } = useAppTranslation();
   const c = useThemeColors();
   const styles = useNotificationItemStyles();
   const icon = getNotificationIcon(item?.title);
@@ -66,7 +71,9 @@ function NotificationItem({
       ]}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`Open ${item?.title ?? "notification"}`}
+      accessibilityLabel={t("notifications.openA11y", {
+        title: item?.title ?? t("notifications.notificationDefault"),
+      })}
     >
       <View style={styles.iconWrap}>
         <Ionicons name={icon} size={22} color={c.iconPrimary} />
@@ -83,7 +90,7 @@ function NotificationItem({
           </Text>
         )}
         {!!item?.createdAt && (
-          <Text style={styles.itemTime}>{timeAgo(item.createdAt)}</Text>
+          <Text style={styles.itemTime}>{timeAgo(item.createdAt, t)}</Text>
         )}
       </View>
       {!isRead && <View style={styles.unreadDot} />}

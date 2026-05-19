@@ -16,6 +16,7 @@ import { colors, radii, space, typography } from "../../../theme";
 import { fetchOnlineUsers } from "../../home/api/homeApi";
 import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 function Avatar({ uri, name, size = 56 }: { uri?: string; name?: string; size?: number }) {
   const [failed, setFailed] = React.useState(false);
@@ -39,6 +40,7 @@ function Avatar({ uri, name, size = 56 }: { uri?: string; name?: string; size?: 
 }
 
 export function InstantBookingScreen() {
+  const { t } = useAppTranslation();
   const [wizardTrainer, setWizardTrainer] = useState<Record<string, unknown> | null>(null);
 
   const { data: onlineUsers = [], isLoading, isRefetching, refetch } = useQuery({
@@ -76,7 +78,7 @@ export function InstantBookingScreen() {
           data={onlineTrainers}
           keyExtractor={(item, i) => item?._id ?? String(i)}
           renderItem={({ item }) => {
-            const name = item?.fullname ?? item?.fullName ?? "Trainer";
+            const name = item?.fullname ?? item?.fullName ?? t("instantBooking.trainerDefault");
             return (
               <View style={styles.trainerCard}>
                 <Avatar uri={item?.profile_picture} name={name} size={56} />
@@ -84,14 +86,14 @@ export function InstantBookingScreen() {
                   <Text style={styles.trainerName}>{name}</Text>
                   <View style={styles.onlineRow}>
                     <View style={styles.onlineDot} />
-                    <Text style={styles.onlineText}>Online Now</Text>
+                    <Text style={styles.onlineText}>{t("instantBooking.onlineNow")}</Text>
                   </View>
                   {!!item?.category && (
                     <Text style={styles.trainerCat} numberOfLines={1}>{item.category}</Text>
                   )}
                 </View>
                 <Button
-                  label="Book Now"
+                  label={t("instantBooking.bookNow")}
                   leftIcon="flash"
                   size="sm"
                   fullWidth={false}
@@ -108,15 +110,15 @@ export function InstantBookingScreen() {
             <View style={styles.listHeader}>
               <Ionicons name="people" size={18} color={colors.brandNavy} />
               <Text style={styles.listHeaderText}>
-                {onlineTrainers.length} trainer{onlineTrainers.length !== 1 ? "s" : ""} online
+                {t("instantBooking.trainersOnline", { count: onlineTrainers.length })}
               </Text>
             </View>
           }
           ListEmptyComponent={
             <EmptyState
               icon="wifi-outline"
-              title="No trainers online"
-              description="Check back soon or book a scheduled session instead."
+              title={t("instantBooking.emptyTitle")}
+              description={t("instantBooking.emptyDescription")}
             />
           }
         />

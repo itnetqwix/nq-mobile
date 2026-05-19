@@ -36,6 +36,7 @@ import { InstantLessonDeadlineChip } from "../../instant-lesson/components/Insta
 import { useSessionBooking } from "../SessionBookingContext";
 import { SessionsCalendar } from "../components/SessionsCalendar";
 import type { RootStackParamList } from "../../../navigation/types";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 const CALENDAR_COLLAPSED_KEY = "nq.sessions-calendar-collapsed";
 
@@ -48,13 +49,19 @@ function isInstantLessonExpired(session: any, nowMs: number): boolean {
   return nowMs - acceptedAt > INSTANT_JOIN_AFTER_ACCEPT_MS;
 }
 
-const STATUS_TABS = [
-  { key: "upcoming", label: "Upcoming" },
-  { key: "confirmed", label: "Confirmed" },
-  { key: "completed", label: "Completed" },
+const STATUS_TAB_KEYS = [
+  { key: "upcoming", labelKey: "sessions.tabUpcoming" },
+  { key: "confirmed", labelKey: "sessions.tabConfirmed" },
+  { key: "completed", labelKey: "sessions.tabCompleted" },
 ] as const;
 
-type StatusTab = (typeof STATUS_TABS)[number]["key"];
+type StatusTab = (typeof STATUS_TAB_KEYS)[number]["key"];
+
+const TAB_LABEL_KEYS: Record<StatusTab, "sessions.tabUpcoming" | "sessions.tabConfirmed" | "sessions.tabCompleted"> = {
+  upcoming: "sessions.tabUpcoming",
+  confirmed: "sessions.tabConfirmed",
+  completed: "sessions.tabCompleted",
+};
 
 function Avatar({ uri, name, size = 52 }: { uri?: string; name?: string; size?: number }) {
   const [failed, setFailed] = React.useState(false);
@@ -103,10 +110,11 @@ function getBadgeTone(status?: string): React.ComponentProps<typeof Pill>["tone"
 }
 
 function SessionCard({ session, accountType }: { session: any; accountType: string | null }) {
+  const { t } = useAppTranslation();
   const isTrainer = accountType === AccountType.TRAINER;
   const other = getOtherParty(session, isTrainer);
-  const name = other?.fullname || other?.fullName || "Unknown";
-  const theirRole = isTrainer ? "Student" : "Trainer";
+  const name = other?.fullname || other?.fullName || t("sessions.unknown");
+  const theirRole = isTrainer ? t("sessions.student") : t("sessions.trainer");
   const instant = isInstantLesson(session);
   const pending = isPendingBooking(session);
   const status = normalizeSessionStatus(session.status);
@@ -149,19 +157,19 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
       {instant && acceptDeadlineMs && isTrainer && pending ? (
         <InstantLessonDeadlineChip
           deadlineMs={acceptDeadlineMs}
-          label="Respond within"
+          label={t("sessions.respondWithin")}
         />
       ) : null}
       {instant && joinDeadlineMs && !pending ? (
         <InstantLessonDeadlineChip
           deadlineMs={joinDeadlineMs}
-          label={isTrainer ? "Trainee must join within" : "Join within"}
+          label={isTrainer ? t("sessions.traineeMustJoinWithin") : t("sessions.joinWithin")}
         />
       ) : null}
       {!isTrainer && instant && acceptDeadlineMs && pending ? (
         <InstantLessonDeadlineChip
           deadlineMs={acceptDeadlineMs}
-          label="Coach has"
+          label={t("sessions.coachHas")}
         />
       ) : null}
 
@@ -171,7 +179,7 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
             <>
               <Ionicons name="flash" size={13} color={colors.brandAccent} />
               <Text style={[styles.categoryText, { color: colors.brandAccent, fontWeight: "700" }]}>
-                Instant lesson
+                {t("sessions.instantLesson")}
               </Text>
               {!!session.category && (
                 <Text style={styles.categoryText}>· {session.category}</Text>
@@ -189,7 +197,7 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
       <View style={styles.cardFooter}>
         {isTrainer && pending && instant ? (
           <Button
-            label="Open instant request"
+            label={t("sessions.openInstantRequest")}
             leftIcon="flash-outline"
             onPress={() => openSession(session)}
             size="md"
@@ -198,7 +206,7 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
         ) : null}
         {isTrainer && pending && !instant ? (
           <Button
-            label="Review & confirm"
+            label={t("sessions.reviewAndConfirm")}
             leftIcon="checkmark-circle-outline"
             onPress={() => openSession(session)}
             size="md"
@@ -207,7 +215,7 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
         ) : null}
         {!pending && (
           <Button
-            label="Join Session"
+            label={t("sessions.joinSession")}
             leftIcon="videocam-outline"
             onPress={handleJoin}
             size="md"
@@ -217,7 +225,7 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
         )}
         {!pending && !joinEnabled ? (
           <Text style={styles.joinHint}>
-            {getJoinDisabledReason(session) || "Join opens closer to session time"}
+            {getJoinDisabledReason(session) || t("sessions.joinOpensLater")}
           </Text>
         ) : null}
       </View>
@@ -236,6 +244,7 @@ function isSameDay(dateStr: string | undefined, target: string): boolean {
 }
 
 export function UpcomingSessionsScreen() {
+  const { t } = useAppTranslation();
   const { accountType } = useAuth();
   const [activeTab, setActiveTab] = useState<StatusTab>("upcoming");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -306,14 +315,14 @@ export function UpcomingSessionsScreen() {
   return (
     <View style={styles.root}>
       <View style={styles.tabs}>
-        {STATUS_TABS.map((tab) => (
+        {STATUS_TAB_KEYS.map((tab) => (
           <Pressable
             key={tab.key}
             style={[styles.tab, activeTab === tab.key && styles.tabActive]}
             onPress={() => { setActiveTab(tab.key); setSelectedDate(null); }}
           >
             <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
-              {tab.label}
+              {t(tab.labelKey)}
             </Text>
           </Pressable>
         ))}
@@ -355,13 +364,17 @@ export function UpcomingSessionsScreen() {
           {sessions.length === 0 ? (
             <EmptyState
               icon="calendar-outline"
-              title={selectedDate ? `No sessions on ${selectedDate}` : `No ${activeTab} sessions`}
+              title={
+                selectedDate
+                  ? t("sessions.emptyOnDate", { date: selectedDate })
+                  : t("sessions.emptyTab", { tab: t(TAB_LABEL_KEYS[activeTab]) })
+              }
               description={
                 selectedDate
-                  ? "Tap a different date or 'All' to see all sessions."
+                  ? t("sessions.emptyDateHint")
                   : activeTab === "upcoming"
-                  ? "Your booked sessions will appear here."
-                  : `No ${activeTab} sessions found.`
+                    ? t("sessions.emptyUpcomingDescription")
+                    : t("sessions.emptyTabDescription", { tab: t(TAB_LABEL_KEYS[activeTab]) })
               }
             />
           ) : (

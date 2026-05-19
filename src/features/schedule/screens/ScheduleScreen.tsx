@@ -3,6 +3,7 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useQuery } from "@tanstack/react-query";
 import React, { useCallback, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Pressable,
@@ -36,9 +37,12 @@ function normDay(d: string): string {
     .toLowerCase();
 }
 
-function titleDay(day: string): string {
+function titleDay(day: string, t: (key: string) => string): string {
   const n = normDay(day);
-  return n ? n.charAt(0).toUpperCase() + n.slice(1) : "Day";
+  if (!n) return t("schedule.dayFallback");
+  const key = `schedule.days.${n}`;
+  const translated = t(key);
+  return translated !== key ? translated : n.charAt(0).toUpperCase() + n.slice(1);
 }
 
 type DaySection = {
@@ -47,6 +51,7 @@ type DaySection = {
 };
 
 function TrainerSchedule() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { data: inventory = [], isLoading, isRefetching, refetch } = useQuery({
     queryKey: ["trainerSlots"],
@@ -59,9 +64,9 @@ function TrainerSchedule() {
     return WEEK_ORDER.map((day) => {
       const row = avail.find((d: any) => normDay(d?.day) === day);
       const slots = Array.isArray(row?.slots) ? row!.slots : [];
-      return { title: titleDay(day), data: slots };
+      return { title: titleDay(day, t), data: slots };
     }).filter((s) => s.data.length > 0);
-  }, [inventory]);
+  }, [inventory, t]);
 
   const openScheduleEditor = useCallback(() => {
     try {
@@ -86,10 +91,10 @@ function TrainerSchedule() {
     <View style={styles.root}>
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>My Schedule</Text>
+          <Text style={styles.headerTitle}>{t("schedule.mySchedule")}</Text>
         </View>
         <Button
-          label="Edit schedule"
+          label={t("schedule.editSchedule")}
           leftIcon="create-outline"
           onPress={openScheduleEditor}
           size="sm"
@@ -113,17 +118,20 @@ function TrainerSchedule() {
           <View style={styles.slotCard}>
             <Ionicons name="time-outline" size={20} color={colors.brandNavy} />
             <Text style={styles.slotTime}>
-              {item.start_time ?? "—"} – {item.end_time ?? "—"}
+              {t("schedule.timeRange", {
+                start: item.start_time ?? t("schedule.timePlaceholder"),
+                end: item.end_time ?? t("schedule.timePlaceholder"),
+              })}
             </Text>
-            <Pill label="Available" tone="success" />
+            <Pill label={t("schedule.available")} tone="success" />
           </View>
         )}
         ListEmptyComponent={
           <EmptyState
             icon="calendar-outline"
-            title="No weekly slots yet"
-            description="Tap 'Edit schedule' to set your weekly availability."
-            actionLabel="Edit schedule"
+            title={t("schedule.noWeeklySlots")}
+            description={t("schedule.noWeeklySlotsDescription")}
+            actionLabel={t("schedule.editSchedule")}
             onAction={openScheduleEditor}
           />
         }
@@ -135,6 +143,7 @@ function TrainerSchedule() {
 type TrainerSegment = "sessions" | "availability";
 
 function TrainerScheduleTabs() {
+  const { t } = useTranslation();
   const [segment, setSegment] = useState<TrainerSegment>("sessions");
 
   return (
@@ -145,7 +154,7 @@ function TrainerScheduleTabs() {
           onPress={() => setSegment("sessions")}
         >
           <Text style={[styles.segmentText, segment === "sessions" && styles.segmentTextActive]}>
-            My sessions
+            {t("schedule.mySessions")}
           </Text>
         </Pressable>
         <Pressable
@@ -153,7 +162,7 @@ function TrainerScheduleTabs() {
           onPress={() => setSegment("availability")}
         >
           <Text style={[styles.segmentText, segment === "availability" && styles.segmentTextActive]}>
-            Availability
+            {t("schedule.availability")}
           </Text>
         </Pressable>
       </View>

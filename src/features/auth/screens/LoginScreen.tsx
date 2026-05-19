@@ -3,6 +3,7 @@ import React, { useMemo, useState } from "react";
 import { Alert, Pressable, StyleSheet, Text } from "react-native";
 import { useLoader } from "../../../components/brand/LoaderProvider";
 import { Button, FormField, PasswordVisibilityToggle, Stack } from "../../../components/ui";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { space, useThemeColors } from "../../../theme";
 import { useAuth } from "../context/AuthContext";
@@ -14,6 +15,7 @@ import { promptEnableAppUnlock } from "../security/appUnlock";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
+  const { t } = useAppTranslation();
   const c = useThemeColors();
   const { signIn, completeSessionFromTokens } = useAuth();
   const { showLoader, hideLoader } = useLoader();
@@ -31,11 +33,11 @@ export function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
   const validate = () => {
     let ok = true;
     if (!EMAIL_RE.test(email.trim())) {
-      setEmailError("Enter a valid email address");
+      setEmailError(t("auth.emailInvalid"));
       ok = false;
     } else setEmailError(undefined);
     if (!password) {
-      setPasswordError("Password is required");
+      setPasswordError(t("auth.passwordRequired"));
       ok = false;
     } else setPasswordError(undefined);
     return ok;
@@ -44,20 +46,23 @@ export function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
   const mutation = useMutation({
     mutationFn: async () => {
       if (!validate()) throw new Error("validation");
-      showLoader("Signing you in…");
+      showLoader(t("auth.signingIn"));
       await signIn(email.trim(), password);
       await promptEnableAppUnlock();
     },
     onError: (err) => {
       if ((err as Error).message === "validation") return;
-      Alert.alert("Sign in failed", getApiErrorMessage(err, "Check your email and password."));
+      Alert.alert(
+        t("auth.signInFailed"),
+        getApiErrorMessage(err, t("auth.signInFailedBody"))
+      );
     },
     onSettled: () => hideLoader(),
   });
 
   const onSocialTokens = useMemo(
     () => async (tokens: { access_token: string; account_type: string }) => {
-      showLoader("Signing you in…");
+      showLoader(t("auth.signingIn"));
       try {
         await completeSessionFromTokens(tokens);
         await promptEnableAppUnlock();
@@ -65,13 +70,13 @@ export function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
         hideLoader();
       }
     },
-    [completeSessionFromTokens, showLoader, hideLoader]
+    [completeSessionFromTokens, showLoader, hideLoader, t]
   );
 
   return (
     <AuthScreenLayout
-      title="Welcome back"
-      subtitle="Sign in to continue training on NetQwix."
+      title={t("auth.welcomeBack")}
+      subtitle={t("auth.signInSubtitle")}
       footer={
         <>
           <Pressable
@@ -79,40 +84,40 @@ export function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
             style={styles.linkWrap}
             accessibilityRole="link"
           >
-            <Text style={styles.link}>Forgot password?</Text>
+            <Text style={styles.link}>{t("auth.forgotPassword")}</Text>
           </Pressable>
           <Pressable
             onPress={() => navigation.navigate("SignUp")}
             style={styles.linkWrap}
             accessibilityRole="link"
           >
-            <Text style={styles.link}>Create an account</Text>
+            <Text style={styles.link}>{t("auth.createAccountLink")}</Text>
           </Pressable>
         </>
       }
     >
       <Stack gap="md">
         <FormField
-          label="Email"
+          label={t("auth.email")}
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="email-address"
           value={email}
-          onChangeText={(t) => {
-            setEmail(t);
+          onChangeText={(text) => {
+            setEmail(text);
             if (emailError) setEmailError(undefined);
           }}
           error={emailError}
           required
         />
         <FormField
-          label="Password"
+          label={t("auth.password")}
           secureTextEntry={!showPassword}
           autoCapitalize="none"
           autoCorrect={false}
           value={password}
-          onChangeText={(t) => {
-            setPassword(t);
+          onChangeText={(text) => {
+            setPassword(text);
             if (passwordError) setPasswordError(undefined);
           }}
           error={passwordError}
@@ -125,7 +130,7 @@ export function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
           }
         />
         <Button
-          label="Sign in"
+          label={t("auth.signIn")}
           loading={mutation.isPending}
           onPress={() => mutation.mutate()}
           disabled={!email.trim() || !password}

@@ -36,6 +36,7 @@ import {
   getTrainerHourlyRate,
   getTrainerName,
 } from "../lib/trainerUtils";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 function Avatar({
   uri,
@@ -83,6 +84,7 @@ function TrainerCard({
   styles: ReturnType<typeof makeStyles>;
   themeColors: AppColors;
 }) {
+  const { t } = useAppTranslation();
   const { isOnline } = useOnlinePresence();
   const trainerId = String(trainer?._id ?? "");
   const name = getTrainerName(trainer);
@@ -98,7 +100,7 @@ function TrainerCard({
         style={({ pressed }) => [pressed && { opacity: 0.92 }]}
         onPress={() => onPress(trainer)}
         accessibilityRole="button"
-        accessibilityLabel={`View profile for ${name}`}
+        accessibilityLabel={t("bookExpert.viewProfileA11y", { name })}
       >
         <View style={styles.cardRow}>
           <Avatar uri={trainer?.profile_picture as string} name={name} size={64} styles={styles} />
@@ -123,7 +125,7 @@ function TrainerCard({
             {hourly != null && <Text style={styles.rateText}>${hourly.toFixed(0)}/hr</Text>}
             {slotsCount !== null && (
               <Text style={styles.slotsText}>
-                {slotsCount} slot{slotsCount !== 1 ? "s" : ""} available
+                {t("bookExpert.slotsAvailable", { count: slotsCount })}
               </Text>
             )}
           </View>
@@ -133,17 +135,19 @@ function TrainerCard({
         <View style={styles.btnRow}>
           <Pressable style={styles.actionBtn} onPress={() => onBook(trainer)}>
             <Ionicons name="flash" size={16} color={themeColors.brandTextOn} />
-            <Text style={styles.actionBtnText}>Instant</Text>
+            <Text style={styles.actionBtnText}>{t("bookExpert.instant")}</Text>
           </Pressable>
           <Pressable style={[styles.actionBtn, styles.actionBtnOutline]} onPress={() => onSchedule(trainer)}>
             <Ionicons name="calendar-outline" size={16} color={themeColors.brandNavy} />
-            <Text style={[styles.actionBtnText, styles.actionBtnTextOutline]}>Schedule</Text>
+            <Text style={[styles.actionBtnText, styles.actionBtnTextOutline]}>
+              {t("bookExpert.schedule")}
+            </Text>
           </Pressable>
         </View>
         {showOnline && (
           <View style={styles.onlineBadge}>
             <View style={styles.onlineDot} />
-            <Text style={styles.onlineText}>Online</Text>
+            <Text style={styles.onlineText}>{t("bookExpert.online")}</Text>
           </View>
         )}
       </View>
@@ -154,6 +158,7 @@ function TrainerCard({
 type Props = { bookLessonTrainerId?: string };
 
 export function BookExpertScreen({ bookLessonTrainerId }: Props) {
+  const { t } = useAppTranslation();
   const themeColors = useThemeColors();
   const styles = useMemo(() => makeStyles(themeColors), [themeColors]);
 
@@ -248,17 +253,15 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
       />
 
       <View style={styles.hero}>
-        <Text style={styles.heroTitle}>Book a coach</Text>
-        <Text style={styles.heroSub}>
-          Browse coaches, filter by sport, rating, and price — tap a coach for full profile and reviews.
-        </Text>
+        <Text style={styles.heroTitle}>{t("bookExpert.heroTitle")}</Text>
+        <Text style={styles.heroSub}>{t("bookExpert.heroSub")}</Text>
       </View>
 
       <View style={styles.searchBar}>
         <Ionicons name="search-outline" size={18} color={themeColors.textMuted} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search by name…"
+          placeholder={t("bookExpert.searchPlaceholder")}
           placeholderTextColor={themeColors.textMuted}
           value={search}
           onChangeText={setSearch}
@@ -266,14 +269,14 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
           autoCorrect={false}
         />
         {!!search && (
-          <Pressable onPress={() => setSearch("")} accessibilityLabel="Clear search">
+          <Pressable onPress={() => setSearch("")} accessibilityLabel={t("bookExpert.clearSearchA11y")}>
             <Ionicons name="close-circle" size={18} color={themeColors.textMuted} />
           </Pressable>
         )}
         <Pressable
           style={[styles.filterBtn, activeFilterCount > 0 && styles.filterBtnActive]}
           onPress={() => setFiltersOpen(true)}
-          accessibilityLabel="Open filters"
+          accessibilityLabel={t("bookExpert.openFiltersA11y")}
         >
           <Ionicons
             name="options-outline"
@@ -291,14 +294,14 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
       {activeFilterCount > 0 && (
         <Pressable style={styles.activeFiltersHint} onPress={() => setFiltersOpen(true)}>
           <Text style={styles.activeFiltersText}>
-            {activeFilterCount} filter{activeFilterCount > 1 ? "s" : ""} applied · Tap to edit
+            {t("bookExpert.filtersApplied", { count: activeFilterCount })}
           </Text>
           <Ionicons name="chevron-forward" size={16} color={themeColors.brandNavy} />
         </Pressable>
       )}
 
       {search.trim().length > 0 && search.trim().length < 2 && (
-        <Text style={styles.searchHint}>Enter at least 2 characters to narrow search.</Text>
+        <Text style={styles.searchHint}>{t("bookExpert.searchMinHint")}</Text>
       )}
 
       {directoryLoading ? (
@@ -336,16 +339,16 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
               <Ionicons name="people-outline" size={16} color={themeColors.brandNavy} />
               <Text style={styles.listBannerText}>
                 {searchActive
-                  ? `Results for "${trimmed}"`
-                  : `${mergedRows.length} coach${mergedRows.length !== 1 ? "es" : ""}`}
+                  ? t("bookExpert.resultsFor", { query: trimmed })
+                  : t("bookExpert.coachCount", { count: mergedRows.length })}
               </Text>
             </View>
           }
           ListEmptyComponent={
             <EmptyState
               icon="people-outline"
-              title="No coaches match your filters"
-              description="Try adjusting categories, price, or rating in Filters."
+              title={t("bookExpert.emptyTitle")}
+              description={t("bookExpert.emptyDescription")}
             />
           }
         />

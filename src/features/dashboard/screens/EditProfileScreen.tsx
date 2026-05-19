@@ -25,8 +25,10 @@ import {
   putProfile,
   type ProfileUpdate,
 } from "../../home/api/homeApi";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 export function EditProfileScreen() {
+  const { t } = useAppTranslation();
   const c = useThemeColors();
   const styles = useThemedStyles((palette) => StyleSheet.create({
   avatarSection: {
@@ -87,7 +89,7 @@ export function EditProfileScreen() {
   const pickAndUploadAvatar = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission needed", "Please allow access to your photo library.");
+      Alert.alert(t("profile.permissionTitle"), t("profile.permissionLibrary"));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -114,7 +116,7 @@ export function EditProfileScreen() {
       setLocalAvatar(asset.uri);
       await refreshUser();
     } catch (e) {
-      Alert.alert("Upload failed", getApiErrorMessage(e, "Could not update profile picture."));
+      Alert.alert(t("profile.uploadFailedTitle"), getApiErrorMessage(e, t("profile.uploadFailedBody")));
     } finally {
       setAvatarUploading(false);
     }
@@ -151,7 +153,7 @@ export function EditProfileScreen() {
 
   const save = async () => {
     if (!fullname.trim()) {
-      Alert.alert("Name is required", "Please enter your full name before saving.");
+      Alert.alert(t("profile.nameRequiredTitle"), t("profile.nameRequiredBody"));
       return;
     }
     setBusy(true);
@@ -168,20 +170,20 @@ export function EditProfileScreen() {
         try {
           await postUpdateMobileNumber(mobile.trim());
         } catch (e) {
-          Alert.alert("Mobile not updated", getApiErrorMessage(e, "Could not update mobile number."));
+          Alert.alert(t("profile.mobileNotUpdatedTitle"), getApiErrorMessage(e, t("profile.mobileNotUpdatedBody")));
         }
       }
       await refreshUser();
-      Alert.alert("Profile saved", "Your changes are live.");
+      Alert.alert(t("profile.savedTitle"), t("profile.savedBody"));
       navigation.goBack();
     } catch (e) {
-      Alert.alert("Save failed", getApiErrorMessage(e));
+      Alert.alert(t("profile.saveFailedTitle"), getApiErrorMessage(e));
     } finally {
       setBusy(false);
     }
   };
 
-  const displayName = initial.fullname || "User";
+  const displayName = initial.fullname || t("profile.userDefault");
 
   return (
     <ScreenContainer scroll padding="md" background={c.surface}>
@@ -205,26 +207,26 @@ export function EditProfileScreen() {
         </Pressable>
         <Pressable onPress={pickAndUploadAvatar} disabled={avatarUploading}>
           <Text style={styles.changePhotoText}>
-            {avatarUploading ? "Uploading…" : "Change photo"}
+            {avatarUploading ? t("profile.uploadingPhoto") : t("profile.changePhoto")}
           </Text>
         </Pressable>
       </View>
 
-      <SectionHeader label="Identity" />
+      <SectionHeader label={t("profile.identitySection")} />
       <Card variant="outlined" padding="md" style={styles.sectionCard}>
         <View style={styles.fieldStack}>
           <FormField
-            label="Full name"
+            label={t("profile.fullNameLabel")}
             value={fullname}
             onChangeText={setFullname}
-            placeholder="Your full name"
+            placeholder={t("profile.fullNamePlaceholder")}
             required
           />
           <FormField
-            label="Mobile number"
+            label={t("profile.mobileLabel")}
             value={mobile}
             onChangeText={setMobile}
-            placeholder="Phone number"
+            placeholder={t("profile.mobilePlaceholder")}
             keyboardType="phone-pad"
           />
         </View>
@@ -232,21 +234,21 @@ export function EditProfileScreen() {
 
       {isTrainer && (
         <>
-          <SectionHeader label="Trainer profile" />
+          <SectionHeader label={t("profile.trainerSection")} />
           <Card variant="outlined" padding="md" style={styles.sectionCard}>
             <View style={styles.fieldStack}>
               <FormField
-                label="Hourly rate"
+                label={t("profile.hourlyRateLabel")}
                 value={hourlyRate}
                 onChangeText={setHourlyRate}
-                placeholder="e.g. 20"
+                placeholder={t("profile.hourlyRatePlaceholder")}
                 keyboardType="numeric"
               />
               <FormField
-                label="Bio"
+                label={t("profile.bioLabel")}
                 value={bio}
                 onChangeText={setBio}
-                placeholder="Tell trainees about yourself"
+                placeholder={t("profile.bioPlaceholder")}
                 multiline
                 inputStyle={{ minHeight: 110, textAlignVertical: "top" }}
               />
@@ -258,16 +260,16 @@ export function EditProfileScreen() {
                     const r = res.data?.result;
                     if (r?.enhancedBio) {
                       Alert.alert(
-                        "AI-Enhanced Bio",
+                        t("profile.aiBioTitle"),
                         r.enhancedBio,
                         [
-                          { text: "Cancel", style: "cancel" },
-                          { text: "Apply", onPress: () => setBio(r.enhancedBio) },
+                          { text: t("common.cancel"), style: "cancel" },
+                          { text: t("profile.apply"), onPress: () => setBio(r.enhancedBio) },
                         ]
                       );
                     }
                   } catch {
-                    Alert.alert("Error", "Could not enhance profile right now.");
+                    Alert.alert(t("common.error"), t("profile.enhanceError"));
                   } finally {
                     setEnhancing(false);
                   }
@@ -281,7 +283,7 @@ export function EditProfileScreen() {
                   <Ionicons name="sparkles" size={16} color={c.brandAccent} />
                 )}
                 <Text style={styles.enhanceBtnText}>
-                  {enhancing ? "Enhancing..." : "Enhance with AI"}
+                  {enhancing ? t("profile.enhancing") : t("profile.enhanceWithAi")}
                 </Text>
               </Pressable>
             </View>
@@ -290,7 +292,7 @@ export function EditProfileScreen() {
       )}
 
       <Button
-        label="Save changes"
+        label={t("profile.saveChanges")}
         leftIcon="checkmark"
         loading={busy}
         disabled={!dirty}

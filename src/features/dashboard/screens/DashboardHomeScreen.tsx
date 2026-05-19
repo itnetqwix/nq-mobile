@@ -65,6 +65,7 @@ import { TrainerProfileModal } from "../../bookexpert/components/TrainerProfileM
 import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
 import { ScheduledBookingWizardModal } from "../../scheduled-booking/ScheduledBookingWizardModal";
 import { getTrainerCategories } from "../../bookexpert/lib/trainerUtils";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 function useDashboardHomeStyles() {
   return useThemedStyles((palette) => StyleSheet.create({
@@ -188,6 +189,7 @@ function Avatar({
   size?: number;
   onlineStatus?: "online" | "offline";
 }) {
+  const { t } = useAppTranslation();
   const styles = useDashboardHomeStyles();
   const [failed, setFailed] = React.useState(false);
   const url = getS3ImageUrl(uri);
@@ -211,7 +213,9 @@ function Avatar({
         borderRadius={size / 2}
         resizeMode="cover"
         onLoadError={() => setFailed(true)}
-        accessibilityLabel={name ? `Photo of ${name}` : "Profile photo"}
+        accessibilityLabel={
+          name ? t("dashboardHome.photoOf", { name }) : t("dashboardHome.profilePhoto")
+        }
       />
     );
 
@@ -241,22 +245,23 @@ function CoachCard({
   trainer: any;
   onView: (trainer: any) => void;
 }) {
+  const { t } = useAppTranslation();
   const styles = useDashboardHomeStyles();
-  const name = trainer?.fullname || trainer?.fullName || "Coach";
+  const name = trainer?.fullname || trainer?.fullName || t("dashboardHome.coachDefault");
   const cats = getTrainerCategories(trainer).slice(0, 2).join(", ");
   return (
     <Pressable
       style={({ pressed }) => [pressed && { opacity: 0.9 }]}
       onPress={() => onView(trainer)}
       accessibilityRole="button"
-      accessibilityLabel={`View coach ${name}`}
+      accessibilityLabel={t("dashboardHome.viewCoachA11y", { name })}
     >
       <TrainerBoxCard style={{ width: 132, flexShrink: 0 }}>
         <Avatar uri={trainer?.profile_picture} name={name} size={70} onlineStatus="online" />
         <Text style={styles.coachName} numberOfLines={1}>{name}</Text>
         {!!cats && <Text style={styles.coachCat} numberOfLines={1}>{cats}</Text>}
         <View style={styles.bookBtn}>
-          <Text style={styles.bookBtnText}>View profile</Text>
+          <Text style={styles.bookBtnText}>{t("dashboardHome.viewProfile")}</Text>
         </View>
       </TrainerBoxCard>
     </Pressable>
@@ -264,8 +269,9 @@ function CoachCard({
 }
 
 function RecentUserChip({ user, label }: { user: any; label?: string }) {
+  const { t } = useAppTranslation();
   const styles = useDashboardHomeStyles();
-  const name = user?.fullname || user?.fullName || label || "User";
+  const name = user?.fullname || user?.fullName || label || t("dashboardHome.userDefault");
   return (
     <View style={styles.recentChip}>
       <Avatar uri={user?.profile_picture} name={name} size={44} />
@@ -284,11 +290,12 @@ function FriendRequestWebTile({
   onAccept: (id: string) => void;
   onReject: (id: string) => void;
 }) {
+  const { t } = useAppTranslation();
   const styles = useDashboardHomeStyles();
   const themeColors = useThemeColors();
   const webHomeStyles = useWebHomeStyles();
   const sender = request?.senderId;
-  const name = sender?.fullname || sender?.fullName || "User";
+  const name = sender?.fullname || sender?.fullName || t("dashboardHome.userDefault");
   return (
     <View style={webHomeStyles.friendRequestTile}>
       <Avatar uri={sender?.profile_picture} name={name} size={72} />
@@ -300,17 +307,17 @@ function FriendRequestWebTile({
           style={[styles.friendBtn, { backgroundColor: themeColors.success }]}
           onPress={() => onAccept(request._id)}
           accessibilityRole="button"
-          accessibilityLabel={`Accept friend request from ${name}`}
+          accessibilityLabel={t("dashboardHome.acceptRequestA11y", { name })}
         >
-          <Text style={styles.friendBtnText}>Accept</Text>
+          <Text style={styles.friendBtnText}>{t("dashboardHome.accept")}</Text>
         </Pressable>
         <Pressable
           style={[styles.friendBtn, { backgroundColor: themeColors.danger }]}
           onPress={() => onReject(request._id)}
           accessibilityRole="button"
-          accessibilityLabel={`Reject friend request from ${name}`}
+          accessibilityLabel={t("dashboardHome.rejectRequestA11y", { name })}
         >
-          <Text style={styles.friendBtnText}>Reject</Text>
+          <Text style={styles.friendBtnText}>{t("dashboardHome.reject")}</Text>
         </Pressable>
       </View>
     </View>
@@ -342,6 +349,7 @@ function QuickActionButton({
 }
 
 function AIRecommendedSection({ onView }: { onView: (t: any) => void }) {
+  const { t } = useAppTranslation();
   const styles = useDashboardHomeStyles();
   const themeColors = useThemeColors();
   const { data, isLoading } = useQuery({
@@ -356,7 +364,7 @@ function AIRecommendedSection({ onView }: { onView: (t: any) => void }) {
 
   if (isLoading) {
     return (
-      <HomeMainCont title="Recommended For You ✨" testID="card ai-recommended">
+      <HomeMainCont title={t("dashboardHome.recommendedForYou")} testID="card ai-recommended">
         <View style={{ flexDirection: "row", gap: space.sm }}>
           {[0, 1, 2].map((i) => (
             <Skeleton key={i} width={160} height={180} radius={radii.md} />
@@ -369,7 +377,7 @@ function AIRecommendedSection({ onView }: { onView: (t: any) => void }) {
   if (!data?.length) return null;
 
   return (
-    <HomeMainCont title="Recommended For You ✨" testID="card ai-recommended">
+    <HomeMainCont title={t("dashboardHome.recommendedForYou")} testID="card ai-recommended">
       <FlatList
         horizontal
         nestedScrollEnabled
@@ -382,7 +390,9 @@ function AIRecommendedSection({ onView }: { onView: (t: any) => void }) {
           >
             <TrainerBoxCard style={{ width: 150, flexShrink: 0 }}>
               <Avatar uri={item.trainer?.profile_picture} name={item.trainer?.fullname} size={60} />
-              <Text style={styles.coachName} numberOfLines={1}>{item.trainer?.fullname || "Coach"}</Text>
+              <Text style={styles.coachName} numberOfLines={1}>
+                {item.trainer?.fullname || t("dashboardHome.coachDefault")}
+              </Text>
               <Text style={[styles.coachCat, { fontSize: 11 }]} numberOfLines={1}>
                 {item.trainer?.category || ""}
               </Text>
@@ -392,11 +402,11 @@ function AIRecommendedSection({ onView }: { onView: (t: any) => void }) {
               <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4, gap: 2 }}>
                 <Ionicons name="star" size={12} color="#f59e0b" />
                 <Text style={{ fontSize: 11, color: themeColors.text, fontWeight: "600" }}>
-                  {item.trainer?.avgRating || "New"}
+                  {item.trainer?.avgRating || t("dashboardHome.newRating")}
                 </Text>
               </View>
               <View style={styles.bookBtn}>
-                <Text style={styles.bookBtnText}>View profile</Text>
+                <Text style={styles.bookBtnText}>{t("dashboardHome.viewProfile")}</Text>
               </View>
             </TrainerBoxCard>
           </Pressable>
@@ -414,6 +424,7 @@ type DashboardHomeProps = CompositeScreenProps<
 >;
 
 export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
+  const { t } = useAppTranslation();
   const themeColors = useThemeColors();
   const styles = useDashboardHomeStyles();
   const webHomeStyles = useWebHomeStyles();
@@ -434,7 +445,7 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
     (user?.fullname as string) ||
     (user?.fullName as string) ||
     (user?.name as string) ||
-    "there";
+    t("dashboardHome.userDefault");
 
   const handleAvailabilityToggle = useCallback(
     async (next: boolean) => {
@@ -549,7 +560,7 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
             onPress={() => openShell("wallet")}
             hitSlop={12}
             style={{ padding: 4 }}
-            accessibilityLabel="Wallet"
+            accessibilityLabel={t("dashboardHome.walletA11y")}
             accessibilityRole="button"
           >
             <Ionicons name="wallet-outline" size={24} color={themeColors.brandNavy} />
@@ -558,7 +569,7 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
             onPress={() => openShell("notifications")}
             hitSlop={12}
             style={{ padding: 4, marginLeft: 4 }}
-            accessibilityLabel="Notifications"
+            accessibilityLabel={t("dashboardHome.notificationsA11y")}
             accessibilityRole="button"
           >
             <Ionicons name="notifications-outline" size={24} color={themeColors.brandNavy} />
@@ -566,7 +577,7 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
         </View>
       ),
     });
-  }, [navigation]);
+  }, [navigation, t, themeColors.brandNavy]);
 
   const handleAccept = useCallback(async (requestId: string) => {
     await postAcceptFriendRequest(requestId);
@@ -638,8 +649,10 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
       {/* Header — greeting row (app bar = native header + drawer) */}
       <View style={[styles.header, gutter]}>
         <View>
-          <Text style={[styles.greeting, { color: themeColors.headerTitle }]}>Hello, {name}</Text>
-          <Text style={styles.roleTag}>{accountType ?? "Member"}</Text>
+          <Text style={[styles.greeting, { color: themeColors.headerTitle }]}>
+            {t("dashboardHome.greeting", { name })}
+          </Text>
+          <Text style={styles.roleTag}>{accountType ?? t("menu.member")}</Text>
         </View>
       </View>
 
@@ -649,12 +662,12 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
           <>
             <QuickActionButton
               icon="calendar-outline"
-              label="Sessions"
+              label={t("dashboardHome.quickSessions")}
               onPress={() => openFeature("upcoming-sessions")}
             />
             <QuickActionButton
               icon="book-outline"
-              label="Book Expert"
+              label={t("dashboardHome.quickBookExpert")}
               onPress={() => openFeature("book-lesson")}
             />
           </>
@@ -663,19 +676,19 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
           <>
             <QuickActionButton
               icon="calendar-outline"
-              label="Schedule"
+              label={t("dashboardHome.quickSchedule")}
               onPress={() => navigation.navigate("Schedule")}
             />
             <QuickActionButton
               icon="time-outline"
-              label="Sessions"
+              label={t("dashboardHome.quickSessions")}
               onPress={() => openFeature("upcoming-sessions")}
             />
           </>
         )}
         <QuickActionButton
           icon="chatbubbles-outline"
-          label="Chats"
+          label={t("dashboardHome.quickChats")}
           onPress={() => navigation.navigate("Chats")}
         />
       </View>
@@ -704,7 +717,7 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
         {/* Web `NavHomePage` — Recent Friend Requests card */}
         {friendRequests.length > 0 && (
           <HomeMainCont
-            title="Recent Friend Requests"
+            title={t("dashboardHome.recentFriendRequests")}
             testID="card trainer-profile-card Home-main-Cont friend-requests"
           >
             <View
@@ -729,7 +742,7 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
 
         {/* Coaches Online Now — trainee; tiles use `Trainer-box-1` */}
         {isTrainee && (loadingCoaches || coaches.length > 0) && (
-          <HomeMainCont title="Coaches Online Now" testID="card trainer-profile-card Home-main-Cont coaches-online">
+          <HomeMainCont title={t("dashboardHome.coachesOnlineNow")} testID="card trainer-profile-card Home-main-Cont coaches-online">
             {loadingCoaches ? (
               <View style={[styles.loadingRow, { flexDirection: "row", gap: space.sm }]}>
                 {[0, 1, 2].map((i) => (
@@ -781,14 +794,14 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
         {/* Trainer: pending session requests (realtime via socket) */}
         {isTrainer && (loadingSessions || pendingSessions.length > 0) && (
           <SessionListSection
-            title="Session requests"
-            subtitle="Confirm or decline new bookings"
+            title={t("dashboardHome.sessionRequests")}
+            subtitle={t("dashboardHome.sessionRequestsSub")}
             sessions={pendingSessions}
             accountType={accountType}
             loading={loadingSessions}
             count={pendingSessions.length}
             maxPreview={3}
-            seeAllLabel={`Review all ${pendingSessions.length} requests`}
+            seeAllLabel={t("dashboardHome.reviewAllRequests", { count: pendingSessions.length })}
             onSeeAll={() => openFeature("upcoming-sessions")}
             onSessionPress={openSession}
             testID="home-session-requests"
@@ -797,8 +810,8 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
 
         {(loadingSessions || nowSessions.length > 0) && (
           <SessionListSection
-            title="Active sessions"
-            subtitle="Happening now or starting soon"
+            title={t("dashboardHome.activeSessions")}
+            subtitle={t("dashboardHome.activeSessionsSub")}
             sessions={nowSessions}
             accountType={accountType}
             loading={loadingSessions}
@@ -810,12 +823,12 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
 
         {upcomingConfirmed.length > 0 && nowSessions.length === 0 && (
           <SessionListSection
-            title="Upcoming sessions"
-            subtitle="Your confirmed schedule"
+            title={t("dashboardHome.upcomingSessions")}
+            subtitle={t("dashboardHome.upcomingSessionsSub")}
             sessions={upcomingConfirmed}
             accountType={accountType}
             maxPreview={3}
-            seeAllLabel={`See all ${upcomingConfirmed.length} sessions`}
+            seeAllLabel={t("dashboardHome.seeAllSessions", { count: upcomingConfirmed.length })}
             onSeeAll={() => openFeature("upcoming-sessions")}
             onSessionPress={openSession}
             testID="home-upcoming-sessions"
@@ -825,7 +838,7 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
         {/* Recent Users — `recent-users-grid` / `trainer-students-grid` vs `single-row-experts` */}
         {isTrainer && recentTrainees.length > 0 && (
           <HomeMainCont
-            title="Recent Trainees"
+            title={t("dashboardHome.recentTrainees")}
             testID="card rounded trainer-profile-card Select Recent Student"
           >
             <RecentUsersGrid accountIsTrainer>
@@ -840,7 +853,7 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
 
         {isTrainee && recentTrainers.length > 0 && (
           <HomeMainCont
-            title="Recent Trainers"
+            title={t("dashboardHome.recentTrainers")}
             testID="card rounded trainer-profile-card Select Recent Student"
           >
             <RecentUsersGrid accountIsTrainer={false}>

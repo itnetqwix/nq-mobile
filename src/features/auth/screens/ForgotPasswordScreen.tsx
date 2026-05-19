@@ -3,23 +3,25 @@ import React, { useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import { NetqwixLogo } from "../../../components/brand/NetqwixLogo";
 import { Button, FormField, ScreenContainer, Stack } from "../../../components/ui";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { colors, space, typography } from "../../../theme";
 import { postForgotPassword } from "../api/authApi";
 import type { AuthScreenProps } from "../../../navigation/types";
 
 export function ForgotPasswordScreen({ navigation }: AuthScreenProps<"ForgotPassword">) {
+  const { t } = useAppTranslation();
   const [email, setEmail] = useState("");
 
   const mutation = useMutation({
     mutationFn: () => postForgotPassword(email.trim()),
     onSuccess: () => {
-      Alert.alert("Check your email", "If an account exists, reset instructions were sent.", [
-        { text: "OK", onPress: () => navigation.navigate("Login") },
+      Alert.alert(t("auth.checkEmailTitle"), t("auth.resetEmailSentBody"), [
+        { text: t("auth.ok"), onPress: () => navigation.navigate("Login") },
       ]);
     },
     onError: (err) => {
-      Alert.alert("Request failed", getApiErrorMessage(err));
+      Alert.alert(t("auth.requestFailed"), getApiErrorMessage(err));
     },
   });
 
@@ -29,15 +31,15 @@ export function ForgotPasswordScreen({ navigation }: AuthScreenProps<"ForgotPass
         <NetqwixLogo maxWidth={220} />
       </View>
       <Text style={[typography.titleLg, { color: colors.text, marginTop: space.md }]}>
-        Reset password
+        {t("auth.resetPassword")}
       </Text>
       <Text style={[typography.bodyMd, { color: colors.textMuted, marginBottom: space.lg }]}>
-        We will email a link if this address is registered.
+        {t("auth.resetPasswordSubtitle")}
       </Text>
 
       <Stack gap="md">
         <FormField
-          label="Email"
+          label={t("auth.email")}
           autoCapitalize="none"
           keyboardType="email-address"
           value={email}
@@ -45,7 +47,7 @@ export function ForgotPasswordScreen({ navigation }: AuthScreenProps<"ForgotPass
           required
         />
         <Button
-          label="Send reset link"
+          label={t("auth.sendResetLink")}
           loading={mutation.isPending}
           disabled={!email.trim()}
           onPress={() => mutation.mutate()}

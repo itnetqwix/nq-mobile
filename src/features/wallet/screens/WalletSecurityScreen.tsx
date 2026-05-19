@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../../components/ui";
 import { space, typography, useThemedStyles } from "../../../theme";
@@ -17,7 +18,8 @@ import { savePinSession } from "../security/pinSessionStore";
 import { useShellHeaderTitle } from "../../../navigation/useShellHeaderTitle";
 
 export function WalletSecurityScreen() {
-  useShellHeaderTitle("Security");
+  const { t } = useTranslation();
+  useShellHeaderTitle(t("wallet.security"));
   const styles = useThemedStyles((c) =>
     StyleSheet.create({
       root: { flex: 1, backgroundColor: c.surface },
@@ -33,7 +35,7 @@ export function WalletSecurityScreen() {
   const [confirmPin, setConfirmPin] = useState("");
   const [mode, setMode] = useState<"set" | "confirm" | "verify">("verify");
   const [biometricOn, setBiometricOn] = useState(false);
-  const [bioLabel, setBioLabel] = useState("Biometrics");
+  const [bioLabel, setBioLabel] = useState(() => t("wallet.biometricsDefault"));
   const [busy, setBusy] = useState(false);
 
   const pinSet = balance?.pinSet;
@@ -43,16 +45,19 @@ export function WalletSecurityScreen() {
     void biometricWalletLabel().then(setBioLabel);
     void checkDeviceIntegrity().then((r) => {
       if (r.compromised) {
-        Alert.alert("Device security", r.reason ?? "This device may not be secure for wallet actions.");
+        Alert.alert(
+          t("wallet.deviceSecurity"),
+          r.reason ?? t("wallet.deviceSecurityCompromised")
+        );
       }
     });
     setMode(pinSet ? "verify" : "set");
-  }, [pinSet]);
+  }, [pinSet, t]);
 
   const handleSetFlow = async () => {
     if (mode === "set") {
       if (pin.length !== 6) {
-        Alert.alert("PIN", "Enter a 6-digit PIN");
+        Alert.alert(t("wallet.pinAlertTitle"), t("wallet.pinEnter6"));
         return;
       }
       setMode("confirm");
@@ -61,7 +66,7 @@ export function WalletSecurityScreen() {
     }
     if (mode === "confirm") {
       if (confirmPin !== pin) {
-        Alert.alert("PIN", "PINs do not match. Try again.");
+        Alert.alert(t("wallet.pinAlertTitle"), t("wallet.pinMismatch"));
         setPin("");
         setConfirmPin("");
         setMode("set");
@@ -70,13 +75,17 @@ export function WalletSecurityScreen() {
       setBusy(true);
       try {
         await setWalletPin(pin);
-        Alert.alert("PIN set", "Your wallet PIN is active.");
+        Alert.alert(t("wallet.pinSetAlertTitle"), t("wallet.pinSetSuccess"));
         setPin("");
         setConfirmPin("");
         setMode("verify");
         void queryClient.invalidateQueries({ queryKey: ["wallet"] });
       } catch (e: unknown) {
-        Alert.alert("Error", (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? (e as Error).message);
+        Alert.alert(
+          t("wallet.errorTitle"),
+          (e as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+            (e as Error).message
+        );
       } finally {
         setBusy(false);
       }
@@ -85,19 +94,25 @@ export function WalletSecurityScreen() {
 
   const handleVerify = async () => {
     if (pin.length !== 6) {
-      Alert.alert("PIN", "Enter your 6-digit PIN");
+      Alert.alert(t("wallet.pinAlertTitle"), t("wallet.pinEnterYour6"));
       return;
     }
-    const okBio = await requireBiometricForWallet("Verify wallet PIN", { failClosed: false });
+    const okBio = await requireBiometricForWallet(t("wallet.verifyWalletPinPrompt"), {
+      failClosed: false,
+    });
     if (!okBio) return;
     setBusy(true);
     try {
       const res = await verifyWalletPin(pin);
       if (res.pinSessionToken) await savePinSession(res.pinSessionToken);
-      Alert.alert("Verified", "PIN session active for 15 minutes.");
+      Alert.alert(t("wallet.verified"), t("wallet.verifiedBody"));
       setPin("");
     } catch (e: unknown) {
-      Alert.alert("Error", (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? (e as Error).message);
+      Alert.alert(
+        t("wallet.errorTitle"),
+        (e as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+          (e as Error).message
+      );
     } finally {
       setBusy(false);
     }
@@ -109,17 +124,17 @@ export function WalletSecurityScreen() {
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
       <Text style={styles.sub}>
-        {pinSet
-          ? "Your PIN protects larger payments. Verify before booking or withdrawing."
-          : "Create a 6-digit PIN to secure wallet payments."}
+        {pinSet ? t("wallet.pinProtects") : t("wallet.createPin")}
       </Text>
 
       {!pinSet ? (
         <>
-          <Text style={styles.step}>{mode === "set" ? "Step 1 of 2 — Choose PIN" : "Step 2 of 2 — Confirm PIN"}</Text>
+          <Text style={styles.step}>
+            {mode === "set" ? t("wallet.stepChoosePin") : t("wallet.stepConfirmPin")}
+          </Text>
           <PinPad value={activePin} onChange={onPinChange} disabled={busy} />
           <Button
-            label={mode === "set" ? "Continue" : "Set PIN"}
+            label={mode === "set" ? t("wallet.continue") : t("wallet.setPin")}
             onPress={handleSetFlow}
             loading={busy}
             fullWidth
@@ -128,9 +143,14 @@ export function WalletSecurityScreen() {
       ) : (
         <>
           <PinPad value={pin} onChange={setPin} disabled={busy} />
-          <Button label="Verify PIN (15 min session)" onPress={handleVerify} loading={busy} fullWidth />
           <Button
-            label="Change PIN"
+            label={t("wallet.verifyPinSession")}
+            onPress={handleVerify}
+            loading={busy}
+            fullWidth
+          />
+          <Button
+            label={t("wallet.changePin")}
             variant="secondary"
             onPress={() => {
               setMode("set");
@@ -144,12 +164,19 @@ export function WalletSecurityScreen() {
 
       <View style={{ marginTop: space.md }}>
         <Button
-          label={biometricOn ? `${bioLabel} protection: On` : `Enable ${bioLabel} for wallet`}
+          label={
+            biometricOn
+              ? t("wallet.biometricProtectionOn", { label: bioLabel })
+              : t("wallet.enableBiometricForWallet", { label: bioLabel })
+          }
           variant="secondary"
           onPress={async () => {
             const next = !biometricOn;
             if (next) {
-              const ok = await requireBiometricForWallet(`Enable ${bioLabel}`, { failClosed: true });
+              const ok = await requireBiometricForWallet(
+                t("wallet.enableBiometricPrompt", { label: bioLabel }),
+                { failClosed: true }
+              );
               if (!ok) return;
             }
             await setBiometricWalletEnabled(next);

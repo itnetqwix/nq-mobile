@@ -31,14 +31,23 @@ import {
 
 import { ShareClipsPanel } from "../components/ShareClipsPanel";
 import { ChatRoomScreen } from "../../chats/screens/ChatRoomScreen";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 const TABS = [
-  { key: "friends", label: "Friends" },
-  { key: "requests", label: "Requests" },
-  { key: "sent", label: "Sent" },
-  { key: "share", label: "Share clips" },
+  { key: "friends", labelKey: "friends.tabs.friends" },
+  { key: "requests", labelKey: "friends.tabs.requests" },
+  { key: "sent", labelKey: "friends.tabs.sent" },
+  { key: "share", labelKey: "friends.tabs.shareClips" },
 ] as const;
 type Tab = (typeof TABS)[number]["key"];
+
+const REPORT_REASON_KEYS = [
+  "friends.reportReasons.harassment",
+  "friends.reportReasons.spam",
+  "friends.reportReasons.inappropriate",
+  "friends.reportReasons.fake",
+  "friends.reportReasons.other",
+] as const;
 
 function Avatar({ uri, name, size = 48 }: { uri?: string; name?: string; size?: number }) {
   const [failed, setFailed] = React.useState(false);
@@ -61,14 +70,6 @@ function Avatar({ uri, name, size = 48 }: { uri?: string; name?: string; size?: 
   );
 }
 
-const REPORT_REASONS = [
-  "Harassment or bullying",
-  "Spam or scam",
-  "Inappropriate content",
-  "Fake account",
-  "Other",
-];
-
 function FriendCard({
   friend,
   onMessage,
@@ -84,14 +85,20 @@ function FriendCard({
   onBlock: (userId: string, name: string) => void;
   onReport: (userId: string, name: string) => void;
 }) {
+  const { t } = useAppTranslation();
   const { isOnline } = useOnlinePresence();
   const user = friend?.receiverId ?? friend?.senderId ?? friend;
-  const name = user?.fullname || user?.fullName || "Friend";
+  const name = user?.fullname || user?.fullName || t("friends.friendDefault");
   const userId = String(user?._id ?? "");
   const showOnline = isOnline(userId) || !!user?.is_online;
 
   const showActions = () => {
-    const options = ["Remove Friend", "Block User", "Report User", "Cancel"];
+    const options = [
+      t("friends.removeFriend"),
+      t("friends.blockUser"),
+      t("friends.reportUser"),
+      t("common.cancel"),
+    ];
     const destructiveIndex = [0, 1];
 
     if (Platform.OS === "ios") {
@@ -104,11 +111,11 @@ function FriendCard({
         }
       );
     } else {
-      Alert.alert(name, "Choose an action", [
-        { text: "Remove Friend", onPress: () => onRemove(userId, name), style: "destructive" },
-        { text: "Block User", onPress: () => onBlock(userId, name), style: "destructive" },
-        { text: "Report User", onPress: () => onReport(userId, name) },
-        { text: "Cancel", style: "cancel" },
+      Alert.alert(name, t("friends.chooseAction"), [
+        { text: t("friends.removeFriend"), onPress: () => onRemove(userId, name), style: "destructive" },
+        { text: t("friends.blockUser"), onPress: () => onBlock(userId, name), style: "destructive" },
+        { text: t("friends.reportUser"), onPress: () => onReport(userId, name) },
+        { text: t("common.cancel"), style: "cancel" },
       ]);
     }
   };
@@ -133,7 +140,7 @@ function FriendCard({
             ) : (
               <Ionicons name="chatbubble-outline" size={14} color={colors.brandTextOn} />
             )}
-            <Text style={styles.msgBtnText}>Message</Text>
+            <Text style={styles.msgBtnText}>{t("friends.message")}</Text>
           </Pressable>
           <Pressable onPress={showActions} hitSlop={8} style={styles.moreBtn}>
             <Ionicons name="ellipsis-vertical" size={18} color={colors.textMuted} />
@@ -153,24 +160,25 @@ function RequestCard({
   onAccept: (id: string) => void;
   onReject: (id: string) => void;
 }) {
+  const { t } = useAppTranslation();
   const sender = request?.senderId;
-  const name = sender?.fullname || sender?.fullName || "User";
+  const name = sender?.fullname || sender?.fullName || t("friends.userDefault");
   return (
     <View style={styles.row}>
       <Avatar uri={sender?.profile_picture} name={name} />
       <View style={styles.rowInfo}>
         <Text style={styles.rowName}>{name}</Text>
-        <Text style={styles.rowSub}>Sent you a friend request</Text>
+        <Text style={styles.rowSub}>{t("friends.sentYouRequest")}</Text>
       </View>
       <View style={styles.reqActions}>
         <Button
-          label="Accept"
+          label={t("friends.accept")}
           size="sm"
           fullWidth={false}
           onPress={() => onAccept(request._id)}
         />
         <Button
-          label="Reject"
+          label={t("friends.reject")}
           size="sm"
           variant="danger"
           fullWidth={false}
@@ -190,8 +198,9 @@ function SentRequestCard({
   onCancel: (receiverId: string) => void;
   cancelBusy: boolean;
 }) {
+  const { t } = useAppTranslation();
   const receiver = request?.receiverId;
-  const name = receiver?.fullname || receiver?.fullName || "User";
+  const name = receiver?.fullname || receiver?.fullName || t("friends.userDefault");
   const status: string = request?.status ?? "pending";
   const isPending = status === "pending";
 
@@ -203,13 +212,13 @@ function SentRequestCard({
         <View style={styles.statusRow}>
           <View style={[styles.statusDot, isPending ? styles.statusPending : styles.statusAccepted]} />
           <Text style={[styles.rowSub, { marginTop: 0 }]}>
-            {isPending ? "Pending" : "Accepted"}
+            {isPending ? t("friends.pending") : t("friends.accepted")}
           </Text>
         </View>
       </View>
       {isPending && (
         <Button
-          label="Cancel"
+          label={t("friends.cancel")}
           size="sm"
           variant="danger"
           fullWidth={false}
@@ -222,6 +231,7 @@ function SentRequestCard({
 }
 
 export function FriendsScreen() {
+  const { t } = useAppTranslation();
   const pagerRef = useRef<PagerView>(null);
   const [tab, setTab] = useState<Tab>("friends");
   const [messageBusy, setMessageBusy] = useState(false);
@@ -267,80 +277,88 @@ export function FriendsScreen() {
       await apiClient.post(API_ROUTES.user.cancelFriendRequest, { receiverId });
       queryClient.invalidateQueries({ queryKey: ["sentFriendRequests"] });
     } catch (e: any) {
-      Alert.alert("Error", e?.response?.data?.error ?? "Could not cancel request.");
+      Alert.alert(t("common.error"), e?.response?.data?.error ?? t("friends.couldNotCancel"));
     } finally {
       setCancelBusy(false);
     }
   };
 
   const handleRemoveFriend = useCallback(async (friendId: string, name: string) => {
-    Alert.alert("Remove Friend", `Remove ${name} from your friends?`, [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("friends.removeConfirmTitle"), t("friends.removeConfirmBody", { name }), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "Remove", style: "destructive",
+        text: t("friends.remove"), style: "destructive",
         onPress: async () => {
           try {
             await apiClient.post(API_ROUTES.user.removeFriend, { friendId });
             queryClient.invalidateQueries({ queryKey: ["friends"] });
-            Alert.alert("Done", `${name} has been removed.`);
+            Alert.alert(t("common.done"), t("friends.removedBody", { name }));
           } catch (e: any) {
-            Alert.alert("Error", e?.response?.data?.error ?? "Could not remove friend.");
+            Alert.alert(t("common.error"), e?.response?.data?.error ?? t("friends.couldNotRemove"));
           }
         },
       },
     ]);
-  }, [queryClient]);
+  }, [queryClient, t]);
 
   const handleBlockUser = useCallback(async (userId: string, name: string) => {
-    Alert.alert("Block User", `Block ${name}? They will be removed from your friends and won't be able to contact you.`, [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("friends.blockConfirmTitle"), t("friends.blockConfirmBody", { name }), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "Block", style: "destructive",
+        text: t("friends.block"), style: "destructive",
         onPress: async () => {
           try {
             await apiClient.post(API_ROUTES.user.blockUser, { userId });
             queryClient.invalidateQueries({ queryKey: ["friends"] });
             queryClient.invalidateQueries({ queryKey: ["conversations"] });
-            Alert.alert("Done", `${name} has been blocked.`);
+            Alert.alert(t("common.done"), t("friends.blockedBody", { name }));
           } catch (e: any) {
-            Alert.alert("Error", e?.response?.data?.error ?? "Could not block user.");
+            Alert.alert(t("common.error"), e?.response?.data?.error ?? t("friends.couldNotBlock"));
           }
         },
       },
     ]);
-  }, [queryClient]);
+  }, [queryClient, t]);
 
   const handleReportUser = useCallback((userId: string, name: string) => {
+    const reportReasons = REPORT_REASON_KEYS.map((key) => t(key));
     if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
-        { options: [...REPORT_REASONS, "Cancel"], cancelButtonIndex: REPORT_REASONS.length, title: `Report ${name}` },
+        {
+          options: [...reportReasons, t("common.cancel")],
+          cancelButtonIndex: reportReasons.length,
+          title: t("friends.reportTitle", { name }),
+        },
         async (idx) => {
-          if (idx >= REPORT_REASONS.length) return;
+          if (idx >= reportReasons.length) return;
           try {
-            await apiClient.post(API_ROUTES.user.reportUser, { userId, reason: REPORT_REASONS[idx] });
-            Alert.alert("Report Submitted", "Thank you. We will review your report.");
+            await apiClient.post(API_ROUTES.user.reportUser, {
+              userId,
+              reason: reportReasons[idx],
+            });
+            Alert.alert(t("friends.reportSubmittedTitle"), t("friends.reportSubmittedBody"));
           } catch (e: any) {
-            Alert.alert("Error", e?.response?.data?.error ?? "Could not submit report.");
+            Alert.alert(t("common.error"), e?.response?.data?.error ?? t("friends.couldNotReport"));
           }
         }
       );
     } else {
-      Alert.alert(`Report ${name}`, "Select a reason", [
-        ...REPORT_REASONS.map((r) => ({
+      Alert.alert(t("friends.reportTitle", { name }), t("friends.reportSelectReason"), [
+        ...reportReasons.map((r) => ({
           text: r,
           onPress: async () => {
             try {
               await apiClient.post(API_ROUTES.user.reportUser, { userId, reason: r });
-              Alert.alert("Report Submitted", "Thank you. We will review your report.");
+              Alert.alert(t("friends.reportSubmittedTitle"), t("friends.reportSubmittedBody"));
             } catch (e: any) {
-              Alert.alert("Error", e?.response?.data?.error ?? "Could not submit report.");
+              Alert.alert(t("common.error"), e?.response?.data?.error ?? t("friends.couldNotReport"));
             }
           },
         })),
-        { text: "Cancel", style: "cancel" as const },
+        { text: t("common.cancel"), style: "cancel" as const },
       ]);
     }
-  }, []);
+  }, [t]);
 
   const handleMessage = useCallback(
     async (userId: string, name: string, picture?: string) => {
@@ -360,20 +378,20 @@ export function FriendsScreen() {
             partner: { _id: userId, fullname: name, profile_picture: picture },
           });
         } else {
-          Alert.alert("Error", "Could not open chat — no conversation returned.");
+          Alert.alert(t("common.error"), t("friends.couldNotOpenChat"));
         }
       } catch (e: any) {
         const msg =
           e?.response?.data?.message ??
           e?.response?.data?.error ??
           e?.message ??
-          "Could not open chat.";
-        Alert.alert("Error", String(msg));
+          t("friends.couldNotOpenChat");
+        Alert.alert(t("common.error"), String(msg));
       } finally {
         setMessageBusy(false);
       }
     },
-    [queryClient]
+    [queryClient, t]
   );
 
   const renderTabBody = (tabKey: Tab) => {
@@ -450,16 +468,18 @@ export function FriendsScreen() {
               "person-add-outline"
             }
             title={
-              tabKey === "friends" ? "No friends yet" :
-              tabKey === "sent" ? "No sent requests" :
-              "No pending requests"
+              tabKey === "friends"
+                ? t("friends.emptyFriends")
+                : tabKey === "sent"
+                ? t("friends.emptySent")
+                : t("friends.emptyRequests")
             }
             description={
               tabKey === "friends"
-                ? "Connect with trainers and trainees to build your network."
+                ? t("friends.emptyFriendsDescription")
                 : tabKey === "sent"
-                ? "Friend requests you send will appear here with their status."
-                : "Friend requests you receive will appear here."
+                ? t("friends.emptySentDescription")
+                : t("friends.emptyRequestsDescription")
             }
           />
         }
@@ -483,18 +503,18 @@ export function FriendsScreen() {
   return (
     <View style={styles.root}>
       <View style={styles.tabs}>
-        {TABS.map((t, index) => (
+        {TABS.map((tabItem, index) => (
           <Pressable
-            key={t.key}
-            style={[styles.tabBtn, tab === t.key && styles.tabBtnActive]}
+            key={tabItem.key}
+            style={[styles.tabBtn, tab === tabItem.key && styles.tabBtnActive]}
             onPress={() => {
-              setTab(t.key);
+              setTab(tabItem.key);
               pagerRef.current?.setPage(index);
             }}
           >
-            <Text style={[styles.tabText, tab === t.key && styles.tabTextActive]}>
-              {t.label}
-              {t.key === "requests" && requests.length > 0 && (
+            <Text style={[styles.tabText, tab === tabItem.key && styles.tabTextActive]}>
+              {t(tabItem.labelKey)}
+              {tabItem.key === "requests" && requests.length > 0 && (
                 <Text style={styles.badge}> {requests.length}</Text>
               )}
             </Text>
@@ -511,9 +531,9 @@ export function FriendsScreen() {
           if (next) setTab(next.key);
         }}
       >
-        {TABS.map((t) => (
-          <View key={t.key} style={{ flex: 1 }}>
-            {renderTabBody(t.key)}
+        {TABS.map((tabItem) => (
+          <View key={tabItem.key} style={{ flex: 1 }}>
+            {renderTabBody(tabItem.key)}
           </View>
         ))}
       </PagerView>
