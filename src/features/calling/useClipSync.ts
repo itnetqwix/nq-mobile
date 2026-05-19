@@ -93,6 +93,8 @@ export function useClipSync({
   const [hiddenVideos, setHiddenVideos] = useState<HiddenVideosMap>(EMPTY_HIDDEN);
   const [seekHint, setSeekHint] = useState<SeekHint>(null);
   const [lockMode, setLockMode] = useState(false);
+  /** Shared timeline anchor when dual clips are locked (seconds). */
+  const [lockPoint, setLockPoint] = useState(0);
   const [layoutMode, setLayoutMode] = useState<ClipLayoutMode>("default");
   const [clipFullscreen, setClipFullscreen] = useState(false);
   /** Which dual-clip pane is expanded (0 | 1), or null for split view. */
@@ -109,7 +111,7 @@ export function useClipSync({
       const type = payload?.type;
 
       if (type === "clips") {
-        const clips = normalizeClipsFromSocket(clipsFromSelectPayload(payload));
+        const clips = normalizeClipsFromSocket(clipsFromSelectPayload(payload)).slice(0, 2);
         applyClipsToState(
           clips,
           setSelectedClips,
@@ -117,6 +119,9 @@ export function useClipSync({
           setActiveClipUrl,
           setIsPlaying
         );
+        if (clips.length < 2) {
+          setLockMode(false);
+        }
         return;
       }
 
@@ -186,7 +191,10 @@ export function useClipSync({
     };
 
     const onLockMode = (payload: any) => {
-      setLockMode(!!payload?.locked);
+      setLockMode(!!(payload?.locked ?? payload?.isLockMode));
+      if (typeof payload?.lockPoint === "number" && Number.isFinite(payload.lockPoint)) {
+        setLockPoint(payload.lockPoint);
+      }
     };
 
     const onFullscreen = (payload: any) => {
@@ -227,11 +235,26 @@ export function useClipSync({
     };
   }, [socket, activeClipId]);
 
+  const clearLockMode = useCallback(
+    (emitSocket: boolean) => {
+      setLockMode(false);
+      if (!emitSocket || !socket || !isTrainer) return;
+      socket.emit(CLIP_EVENTS.TOGGLE_LOCK_MODE, {
+        locked: false,
+        isLockMode: false,
+        lockPoint: 0,
+        userInfo,
+        sessionId,
+      });
+    },
+    [isTrainer, sessionId, socket, userInfo]
+  );
+
   const emitSelectClips = useCallback(
     (clips: ClipRecord[], options?: { emitSocket?: boolean }) => {
       // Either side may drive clip selection (trainee shares booking clips to trainer on mobile).
       const shouldEmit = options?.emitSocket !== false && !!socket;
-      const normalized = normalizeClipsFromSocket(clips);
+      const normalized = normalizeClipsFromSocket(clips).slice(0, 2);
       applyClipsToState(
         normalized,
         setSelectedClips,
@@ -239,6 +262,9 @@ export function useClipSync({
         setActiveClipUrl,
         setIsPlaying
       );
+      if (normalized.length < 2) {
+        clearLockMode(shouldEmit);
+      }
       if (!shouldEmit) return;
       socket!.emit(CLIP_EVENTS.ON_VIDEO_SELECT, {
         type: "clips",
@@ -247,7 +273,7 @@ export function useClipSync({
         sessionId,
       });
     },
-    [socket, userInfo, sessionId]
+    [clearLockMode, socket, userInfo, sessionId]
   );
 
   const selectClip = useCallback(
@@ -272,7 +298,7 @@ export function useClipSync({
     (clips: ClipRecord[]) => {
       if (bookingPreloadedRef.current || clips.length === 0) return;
       bookingPreloadedRef.current = true;
-      const playable = clips.filter((c) => resolveClipPlayback(c).url);
+      const playable = clips.filter((c) => resolveClipPlayback(c).url).slice(0, 2);
       if (playable.length === 0) return;
       emitSelectClips(playable, { emitSocket: true });
     },
@@ -281,29 +307,34 @@ export function useClipSync({
 
   const togglePlay = useCallback(
     (next?: boolean, videoIdOverride?: string | null) => {
-      const vid = videoIdOverride ?? activeClipId;
-      if (!vid) return;
+      const bothLocked = lockMode && selectedClips.length >= 2;
+      const vid =
+        videoIdOverride ??
+        activeClipId ??
+        (selectedClips[0] ? clipIdOf(selectedClips[0]) : null);
+      if (!vid && !bothLocked) return;
       const nextState = typeof next === "boolean" ? next : !isPlaying;
       setIsPlaying(nextState);
       if (!isTrainer || !socket) return;
       socket.emit(CLIP_EVENTS.ON_VIDEO_PLAY_PAUSE, {
-        videoId: vid,
+        videoId: vid ?? undefined,
         isPlaying: nextState,
-        both: lockMode,
+        both: bothLocked,
         userInfo,
         sessionId,
       });
     },
-    [activeClipId, isPlaying, isTrainer, lockMode, sessionId, socket, userInfo]
+    [activeClipId, isPlaying, isTrainer, lockMode, selectedClips, sessionId, socket, userInfo]
   );
 
   const seek = useCallback(
     (progressSeconds: number, options?: { forceEmit?: boolean; videoId?: string }) => {
+      const bothLocked = lockMode && selectedClips.length >= 2;
       const vid = options?.videoId ?? activeClipId;
-      if (!vid) return;
+      if (!vid && !bothLocked) return;
       const now = Date.now();
       setSeekHint({
-        videoId: vid,
+        videoId: bothLocked ? "" : (vid ?? ""),
         progress: progressSeconds,
         receivedAt: now,
       });
@@ -311,14 +342,14 @@ export function useClipSync({
       if (!options?.forceEmit && now - lastSeekEmit.current < 200) return;
       lastSeekEmit.current = now;
       socket.emit(CLIP_EVENTS.ON_VIDEO_TIME, {
-        videoId: vid,
+        videoId: vid ?? undefined,
         progress: progressSeconds,
-        both: lockMode,
+        both: bothLocked,
         userInfo,
         sessionId,
       });
     },
-    [activeClipId, isTrainer, lockMode, sessionId, socket, userInfo]
+    [activeClipId, isTrainer, lockMode, selectedClips.length, sessionId, socket, userInfo]
   );
 
   const setVideoHidden = useCallback(
@@ -334,16 +365,44 @@ export function useClipSync({
     [isTrainer, socket, userInfo, sessionId]
   );
 
-  const toggleLockMode = useCallback(() => {
-    const next = !lockMode;
-    setLockMode(next);
-    if (!isTrainer || !socket) return;
-    socket.emit(CLIP_EVENTS.TOGGLE_LOCK_MODE, {
-      locked: next,
-      userInfo,
-      sessionId,
-    });
-  }, [isTrainer, lockMode, socket, userInfo, sessionId]);
+  const toggleLockMode = useCallback(
+    (opts?: {
+      lockPoint?: number;
+      progresses?: [number, number];
+      durations?: [number, number];
+    }) => {
+      const next = !lockMode;
+      let nextLockPoint = lockPoint;
+      if (next && opts) {
+        if (typeof opts.lockPoint === "number") {
+          nextLockPoint = opts.lockPoint;
+        } else if (opts.progresses && opts.durations) {
+          const [p0, p1] = opts.progresses;
+          const [d0, d1] = opts.durations;
+          nextLockPoint = d0 > d1 ? p0 : p1;
+        }
+        setLockPoint(nextLockPoint);
+        setSeekHint({
+          videoId: "",
+          progress: nextLockPoint,
+          receivedAt: Date.now(),
+        });
+      }
+      setLockMode(next);
+      if (!next) {
+        setClipFocusIndex(null);
+      }
+      if (!isTrainer || !socket) return;
+      socket.emit(CLIP_EVENTS.TOGGLE_LOCK_MODE, {
+        locked: next,
+        isLockMode: next,
+        lockPoint: nextLockPoint,
+        userInfo,
+        sessionId,
+      });
+    },
+    [isTrainer, lockMode, lockPoint, socket, userInfo, sessionId]
+  );
 
   const setClipFocus = useCallback(
     (index: 0 | 1 | null) => {
@@ -423,6 +482,7 @@ export function useClipSync({
     hideLocalCamera,
     seekHint,
     lockMode,
+    lockPoint,
     layoutMode,
     clipFullscreen,
     clipFocusIndex,

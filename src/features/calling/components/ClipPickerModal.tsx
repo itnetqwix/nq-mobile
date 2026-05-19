@@ -1,22 +1,12 @@
 /**
- * ClipPickerModal — trainer-only sheet to pick a clip to broadcast.
- *
- * Web reference: `nq-frontend-main/app/components/portrait-calling/clip-mode.jsx`
- * uses two endpoints depending on role:
- *   • `/common/get-clips`            → trainer's own locker clips
- *   • `/common/trainee-clips`        → clips the trainee has uploaded that
- *                                      the trainer should be able to review
- *
- * Mobile reuses the existing `fetchMyClipsGrouped` helper for trainer clips
- * and `apiClient` directly for trainee clips so the call signatures stay 1:1
- * with the web.
+ * ClipPickerModal — trainer sheet to pick up to 2 clips to broadcast.
  */
 
-import React, { useEffect, useMemo, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   Modal,
   Pressable,
   StyleSheet,
@@ -25,38 +15,43 @@ import {
 } from "react-native";
 
 import { apiClient } from "../../../api/client";
+import { ImageWithSkeleton } from "../../../components/ui";
 import { API_ROUTES } from "../../../config/apiRoutes";
-import { getClipPlaybackUrl } from "../../../lib/clipMediaUrl";
+import { getClipPlaybackUrl, getClipThumbnailUrl } from "../../../lib/clipMediaUrl";
 import {
   flattenGroupedClips,
   fetchMyClipsGrouped,
   type ClipRow,
 } from "../../instant-lesson/instantLessonClipsApi";
 
+const MAX_CLIPS = 2;
+
 type Props = {
   visible: boolean;
   onClose: () => void;
-  onSelect: (clip: ClipRow) => void;
-  /** Pass the trainee id to also include their uploaded clips. */
+  /** Called when trainer confirms selection (1–2 clips). */
+  onDone: (clips: ClipRow[]) => void;
   traineeId?: string;
-  /** Pre-selected (so the modal can re-highlight) clip id. */
-  activeClipId?: string | null;
+  /** Currently broadcast clip ids (for highlight). */
+  selectedClipIds?: string[];
 };
 
 export function ClipPickerModal({
   visible,
   onClose,
-  onSelect,
+  onDone,
   traineeId,
-  activeClipId,
+  selectedClipIds = [],
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [trainerClips, setTrainerClips] = useState<ClipRow[]>([]);
   const [traineeClips, setTraineeClips] = useState<ClipRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!visible) return;
+    setPicked(new Set(selectedClipIds.map(String)));
     let active = true;
     setLoading(true);
     setError(null);
@@ -74,16 +69,15 @@ export function ClipPickerModal({
           const res = await apiClient.post(API_ROUTES.common.traineeClips, {
             id: traineeId,
           });
-          const raw =
-            res.data?.data ?? res.data?.result ?? res.data ?? [];
+          const raw = res.data?.data ?? res.data?.result ?? res.data ?? [];
           const flat: ClipRow[] = Array.isArray(raw)
-            ? raw.flatMap((g: any) =>
-                Array.isArray(g?.clips) ? g.clips : []
-              )
+            ? raw.flatMap((g: any) => (Array.isArray(g?.clips) ? g.clips : []))
             : [];
           if (active) setTraineeClips(flat);
         } catch (err: any) {
-          if (active && !error) setError(err?.message ?? "Failed to load trainee clips");
+          if (active && !error) {
+            setError(err?.message ?? "Failed to load trainee clips");
+          }
         }
       }
       if (active) setLoading(false);
@@ -92,7 +86,38 @@ export function ClipPickerModal({
     return () => {
       active = false;
     };
-  }, [visible, traineeId, error]);
+  }, [visible, traineeId]);
+
+  const allClips = useMemo(
+    () => [...trainerClips, ...traineeClips],
+    [trainerClips, traineeClips]
+  );
+
+  const toggleClip = useCallback((clip: ClipRow) => {
+    const id = String(clip._id);
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+        return next;
+      }
+      if (next.size >= MAX_CLIPS) return prev;
+      next.add(id);
+      return next;
+    });
+  }, []);
+
+  const confirm = useCallback(() => {
+    const selected = allClips.filter((c) => picked.has(String(c._id))).slice(0, MAX_CLIPS);
+    if (selected.length === 0) return;
+    const playable = selected.filter((c) => getClipPlaybackUrl(c));
+    if (playable.length === 0) {
+      setError("Selected clips cannot be played.");
+      return;
+    }
+    onDone(playable);
+    onClose();
+  }, [allClips, onClose, onDone, picked]);
 
   const data = useMemo(() => {
     const out: Array<{ key: string; title: string; clips: ClipRow[] }> = [];
@@ -102,6 +127,8 @@ export function ClipPickerModal({
     return out;
   }, [trainerClips, traineeClips]);
 
+  const selectionLabel = `${picked.size}/${MAX_CLIPS} selected`;
+
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={styles.root}>
@@ -109,20 +136,28 @@ export function ClipPickerModal({
           <Pressable onPress={onClose} hitSlop={12}>
             <Text style={styles.close}>Close</Text>
           </Pressable>
-          <Text style={styles.title}>Select a clip</Text>
-          <View style={{ width: 60 }} />
+          <View style={styles.headerCenter}>
+            <Text style={styles.title}>Select clips</Text>
+            <Text style={styles.subtitle}>{selectionLabel}</Text>
+          </View>
+          <Pressable
+            onPress={confirm}
+            hitSlop={12}
+            disabled={picked.size === 0}
+            style={picked.size === 0 ? styles.doneDisabled : undefined}
+          >
+            <Text style={[styles.done, picked.size === 0 && styles.doneMuted]}>Done</Text>
+          </Pressable>
         </View>
 
         {loading ? (
           <View style={styles.center}>
-            <ActivityIndicator size="large" color="#000080" />
+            <ActivityIndicator size="large" color="#111" />
             <Text style={styles.muted}>Loading clips…</Text>
           </View>
         ) : data.length === 0 ? (
           <View style={styles.center}>
-            <Text style={styles.muted}>
-              {error ?? "No clips available yet."}
-            </Text>
+            <Text style={styles.muted}>{error ?? "No clips available yet."}</Text>
           </View>
         ) : (
           <FlatList
@@ -133,44 +168,56 @@ export function ClipPickerModal({
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>{item.title}</Text>
                 <View style={styles.grid}>
-                  {item.clips.map((clip) => (
-                    <Pressable
-                      key={clip._id}
-                      style={[
-                        styles.clipCard,
-                        activeClipId === clip._id && styles.clipCardActive,
-                      ]}
-                      onPress={() => {
-                        onSelect(clip);
-                        onClose();
-                      }}
-                    >
-                      {clip.thumbnail ? (
-                        <Image
-                          source={{ uri: clip.thumbnail }}
-                          style={styles.thumb}
-                        />
-                      ) : (
-                        <View style={[styles.thumb, styles.thumbFallback]}>
-                          <Text style={{ color: "#fff" }}>VIDEO</Text>
+                  {item.clips.map((clip) => {
+                    const id = String(clip._id);
+                    const selected = picked.has(id);
+                    const atMax = picked.size >= MAX_CLIPS && !selected;
+                    const thumb = getClipThumbnailUrl(clip);
+                    return (
+                      <Pressable
+                        key={id}
+                        style={[
+                          styles.clipCard,
+                          selected && styles.clipCardActive,
+                          atMax && styles.clipCardDisabled,
+                        ]}
+                        onPress={() => toggleClip(clip)}
+                        disabled={atMax}
+                      >
+                        <View style={styles.thumbWrap}>
+                          {thumb ? (
+                            <ImageWithSkeleton
+                              uri={thumb}
+                              width={160}
+                              height={100}
+                              borderRadius={8}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <View style={[styles.thumb, styles.thumbFallback]}>
+                              <Ionicons name="film-outline" size={28} color="#888" />
+                            </View>
+                          )}
+                          <View style={styles.checkWrap}>
+                            <Ionicons
+                              name={selected ? "checkbox" : "square-outline"}
+                              size={22}
+                              color={selected ? "#fff" : "rgba(255,255,255,0.9)"}
+                            />
+                          </View>
                         </View>
-                      )}
-                      <Text style={styles.clipTitle} numberOfLines={2}>
-                        {clip.title || clip.name || "Untitled clip"}
-                      </Text>
-                      {clip.category ? (
-                        <Text style={styles.clipMeta}>{clip.category}</Text>
-                      ) : null}
-                      {/* Forces the playback URL resolution to fail fast at
-                          render time so we don't broadcast a clip that can't
-                          actually play on the trainee's device. */}
-                      {!getClipPlaybackUrl(clip) ? (
-                        <Text style={styles.clipWarning}>
-                          Unable to resolve playback URL
+                        <Text style={styles.clipTitle} numberOfLines={2}>
+                          {clip.title || clip.name || "Untitled clip"}
                         </Text>
-                      ) : null}
-                    </Pressable>
-                  ))}
+                        {clip.category ? (
+                          <Text style={styles.clipMeta}>{clip.category}</Text>
+                        ) : null}
+                        {!getClipPlaybackUrl(clip) ? (
+                          <Text style={styles.clipWarning}>Cannot play this clip</Text>
+                        ) : null}
+                      </Pressable>
+                    );
+                  })}
                 </View>
               </View>
             )}
@@ -194,8 +241,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
   },
-  close: { color: "#000080", fontSize: 15, fontWeight: "600" },
+  headerCenter: { flex: 1, alignItems: "center" },
+  close: { color: "#111", fontSize: 15, fontWeight: "600", width: 60 },
+  done: { color: "#111", fontSize: 15, fontWeight: "700", width: 60, textAlign: "right" },
+  doneMuted: { color: "#aaa" },
+  doneDisabled: { opacity: 0.5 },
   title: { fontSize: 16, fontWeight: "700", color: "#111" },
+  subtitle: { fontSize: 12, color: "#666", marginTop: 2 },
   center: {
     flex: 1,
     alignItems: "center",
@@ -219,17 +271,32 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   clipCardActive: {
-    borderColor: "#000080",
+    borderColor: "#111",
+  },
+  clipCardDisabled: {
+    opacity: 0.45,
+  },
+  thumbWrap: {
+    position: "relative",
+    borderRadius: 8,
+    overflow: "hidden",
   },
   thumb: {
     height: 100,
     borderRadius: 8,
     width: "100%",
     backgroundColor: "#222",
-  },
-  thumbFallback: {
     alignItems: "center",
     justifyContent: "center",
+  },
+  thumbFallback: {},
+  checkWrap: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    borderRadius: 4,
+    padding: 2,
   },
   clipTitle: { marginTop: 6, fontSize: 13, fontWeight: "600", color: "#111" },
   clipMeta: { marginTop: 2, fontSize: 11, color: "#666" },

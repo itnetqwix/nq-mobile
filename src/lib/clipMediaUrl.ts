@@ -57,6 +57,25 @@ export function getClipPlaybackUrl(clip: any): string {
   return "";
 }
 
+/**
+ * Thumbnail URL — mirrors web `Utils.generateThumbnailURL` (always S3 prod bucket
+ * for stored keys, not `data.netqwix.com`).
+ */
+export function getClipThumbnailUrl(clip: any): string {
+  if (!clip) return "";
+
+  const raw =
+    clip.thumbnail ??
+    clip.thumbnail_url ??
+    clip.thumbnailUrl ??
+    clip.poster ??
+    clip.poster_url;
+  if (raw == null || String(raw).trim() === "") return "";
+  const thumb = String(raw).trim();
+  if (isHttpUrl(thumb)) return thumb;
+  return prodS3UrlFromFileKey(thumb);
+}
+
 export function isLikelyPdf(pathOrName?: string | null): boolean {
   if (!pathOrName) return false;
   return /\.pdf(\?|$)/i.test(String(pathOrName));

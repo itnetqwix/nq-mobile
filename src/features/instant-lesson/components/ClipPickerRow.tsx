@@ -3,7 +3,7 @@ import React from "react";
 import { ImageWithSkeleton } from "../../../components/ui";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, radii, typography } from "../../../theme";
-import { getS3ImageUrl } from "../../../lib/imageUtils";
+import { getClipThumbnailUrl } from "../../../lib/clipMediaUrl";
 import type { ClipRow } from "../instantLessonClipsApi";
 
 type Props = {
@@ -21,7 +21,7 @@ type Props = {
  * shows the locker thumbnail + title + category, with a checkbox indicator.
  */
 export function ClipPickerRow({ clip, selected, onToggle }: Props) {
-  const thumb = getS3ImageUrl(clip.thumbnail) || "";
+  const thumb = getClipThumbnailUrl(clip);
   const label = clip.title || clip.name || "Untitled clip";
 
   return (

@@ -77,6 +77,7 @@ import { ActionButtons } from "../components/ActionButtons";
 import { TimeRemaining } from "../components/TimeRemaining";
 import { PeerJoinedModal } from "../components/PeerJoinedModal";
 import { ClipPickerModal } from "../components/ClipPickerModal";
+import { LockedDualClipStage } from "../components/LockedDualClipStage";
 import { ClipPlayer } from "../components/ClipPlayer";
 import { ClipPlaybackControls } from "../components/ClipPlaybackControls";
 import { DrawingOverlay } from "../components/DrawingOverlay";
@@ -465,15 +466,17 @@ function MeetingSurface({
    *  compute the playback URL locally. The trainee receives only the id via
    *  socket and looks up the clip object through the same `getClipPlaybackUrl`
    *  helper used elsewhere. */
-  const handleClipPicked = useCallback(
-    (clip: any) => {
-      const uri = getClipPlaybackUrl(clip);
-      if (!uri) {
-        Alert.alert("Clip unavailable", "Could not resolve a playback URL for this clip.");
+  const handleClipsPicked = useCallback(
+    (clips: any[]) => {
+      const playable = clips.filter((c) => getClipPlaybackUrl(c));
+      if (playable.length === 0) {
+        Alert.alert("Clip unavailable", "Could not resolve playback URLs for the selected clips.");
         return;
       }
-      setActiveClipUri(uri);
-      clipSync.selectClip(String(clip._id), uri, clip);
+      const primary = playable[0];
+      const uri = getClipPlaybackUrl(primary);
+      if (uri) setActiveClipUri(uri);
+      clipSync.emitSelectClips(playable);
     },
     [clipSync]
   );
@@ -496,7 +499,11 @@ function MeetingSurface({
   }, [clipSync.selectedClips]);
 
   const dualClip = clipPaneUris.length >= 2;
-  const clipFocusIndex = clipSync.clipFocusIndex;
+  const lockedDualClip = dualClip && clipSync.lockMode;
+  const clipFocusIndex = lockedDualClip ? null : clipSync.clipFocusIndex;
+
+  const lockedProgress = Math.max(clipProgresses[0], clipProgresses[1]);
+  const lockedDuration = Math.max(clipDurations[0], clipDurations[1], clipSync.lockPoint);
 
   const makeClipPlayerProps = (paneIndex: 0 | 1) => {
     const clip = clipSync.selectedClips[paneIndex];
@@ -552,6 +559,12 @@ function MeetingSurface({
 
   const handleClipSeek = useCallback(
     (paneIndex: 0 | 1, sec: number) => {
+      if (clipSync.lockMode && clipSync.selectedClips.length >= 2) {
+        clipProgressRefs.current = [sec, sec];
+        setClipProgresses([sec, sec]);
+        clipSync.seek(sec, { forceEmit: true });
+        return;
+      }
       clipProgressRefs.current[paneIndex] = sec;
       setClipProgresses((prev) => {
         const next: [number, number] = [...prev];
@@ -571,6 +584,20 @@ function MeetingSurface({
     },
     [clipSync]
   );
+
+  const handleToggleLock = useCallback(() => {
+    if (clipSync.lockMode) {
+      clipSync.toggleLockMode();
+      return;
+    }
+    if (clipSync.clipFocusIndex != null) {
+      clipSync.setClipFocus(null);
+    }
+    clipSync.toggleLockMode({
+      progresses: clipProgresses,
+      durations: clipDurations,
+    });
+  }, [clipDurations, clipProgresses, clipSync]);
 
   /** Show ratings after the call ends — `endCall()` will pop us back, so we
    *  wrap that path: open the modal first, then exit on dismiss. */
@@ -721,7 +748,19 @@ function MeetingSurface({
               dualClip && styles.clipFrameDual,
             ]}
           >
-            {dualClip ? (
+            {lockedDualClip && clipPaneUris[0] && clipPaneUris[1] ? (
+              <LockedDualClipStage
+                uris={[clipPaneUris[0], clipPaneUris[1]]}
+                makePaneProps={makeClipPlayerProps}
+                isTrainer={isTrainer}
+                isPlaying={clipSync.isPlaying}
+                progressSeconds={lockedProgress}
+                durationSeconds={lockedDuration}
+                onTogglePlay={() => clipSync.togglePlay()}
+                onSeek={(sec) => handleClipSeek(0, sec)}
+                controlsBottomOffset={chrome.clipControlsBottom}
+              />
+            ) : dualClip ? (
               <View style={styles.dualColumn}>
                 {([0, 1] as const).map((paneIndex) => {
                   const uri = clipPaneUris[paneIndex];
@@ -968,17 +1007,19 @@ function MeetingSurface({
         leadingTools={
           isTrainer && inClipMode ? (
             <>
-              <TopToolButton
-                onPress={() => clipSync.toggleLockMode()}
-                label={clipSync.lockMode ? "Unlock clips" : "Lock clips"}
-                active={clipSync.lockMode}
-              >
-                <Ionicons
-                  name={clipSync.lockMode ? "lock-closed" : "lock-open-outline"}
-                  size={18}
-                  color={meetingTheme.text}
-                />
-              </TopToolButton>
+              {clipSync.selectedClips.length === 2 ? (
+                <TopToolButton
+                  onPress={handleToggleLock}
+                  label={clipSync.lockMode ? "Unlock clips" : "Lock clips"}
+                  active={clipSync.lockMode}
+                >
+                  <Ionicons
+                    name={clipSync.lockMode ? "lock-closed" : "lock-open-outline"}
+                    size={18}
+                    color={meetingTheme.text}
+                  />
+                </TopToolButton>
+              ) : null}
               <TopToolButton
                 onPress={() => void screenshot.takeScreenshot()}
                 label="Screenshot"
@@ -1037,11 +1078,11 @@ function MeetingSurface({
       <ClipPickerModal
         visible={pickerOpen}
         onClose={() => setPickerOpen(false)}
-        onSelect={handleClipPicked}
+        onDone={handleClipsPicked}
         traineeId={
           isTrainer ? String(session?.trainee_info?._id ?? "") : undefined
         }
-        activeClipId={clipSync.activeClipId}
+        selectedClipIds={clipSync.selectedClips.map((c) => String(c._id))}
       />
 
       {isTrainer ? (

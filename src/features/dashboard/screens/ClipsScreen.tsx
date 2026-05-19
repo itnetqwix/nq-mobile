@@ -4,8 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { EmptyState, ImageWithSkeleton } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
-import { getS3ImageUrl } from "../../../lib/imageUtils";
-import { getClipPlaybackUrl } from "../../../lib/clipMediaUrl";
+import { getClipPlaybackUrl, getClipThumbnailUrl } from "../../../lib/clipMediaUrl";
 import { postMyClipsGrouped, postSharedClipsGrouped } from "../../home/api/homeApi";
 import { LockerListShell } from "../components/locker/LockerListShell";
 import { LockerViewerModal, type LockerViewerMode } from "../components/locker/LockerViewerModal";
@@ -246,9 +245,7 @@ export function ClipsScreen() {
   );
 
   const renderClipRow = (clip: Record<string, unknown>, key: string, showSharer?: boolean) => {
-    const thumb = getS3ImageUrl(
-      String(clip.thumbnail ?? clip.thumbnail_url ?? clip.poster ?? "")
-    );
+    const thumb = getClipThumbnailUrl(clip);
     return (
       <Pressable key={key} style={styles.clipCard} onPress={() => openClip(clip)}>
         <View style={styles.thumbWrap}>
