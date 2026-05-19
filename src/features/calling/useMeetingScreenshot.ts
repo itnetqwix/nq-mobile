@@ -11,6 +11,7 @@ type Args = {
   trainerId: string;
   traineeId: string;
   isTrainer: boolean;
+  onSaved?: () => void;
 };
 
 export function useMeetingScreenshot({
@@ -18,6 +19,7 @@ export function useMeetingScreenshot({
   trainerId,
   traineeId,
   isTrainer,
+  onSaved,
 }: Args) {
   const captureTargetRef = useRef<View>(null);
   const [capturing, setCapturing] = useState(false);
@@ -46,13 +48,14 @@ export function useMeetingScreenshot({
       }
       await putFileToPresignedUrl(uploadUrl, uri, "image/png");
       await FileSystem.deleteAsync(uri, { idempotent: true });
+      onSaved?.();
       Alert.alert("Screenshot saved", "Added to the session game plan.");
     } catch (e: any) {
       Alert.alert("Screenshot failed", e?.message ?? "Could not save screenshot.");
     } finally {
       setCapturing(false);
     }
-  }, [isTrainer, sessionId, traineeId, trainerId]);
+  }, [isTrainer, onSaved, sessionId, traineeId, trainerId]);
 
   return { captureTargetRef, takeScreenshot, capturing };
 }

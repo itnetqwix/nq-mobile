@@ -77,7 +77,7 @@ export function SettingsScreen() {
   );
 
   const openDashboard = useCallback(
-    (featureId: "contact-us" | "about-us") => {
+    (featureId: "contact-us" | "about-us" | "faq") => {
       navigation.navigate("DashboardFeature", { featureId });
     },
     [navigation]
@@ -227,10 +227,11 @@ export function SettingsScreen() {
   const supportRows = useMemo(() => {
     const rows: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }[] = [
       { icon: "mail-outline", label: "Contact us", onPress: () => openDashboard("contact-us") },
+      { icon: "help-circle-outline", label: "FAQ", onPress: () => openDashboard("faq") },
       {
         icon: "information-circle-outline",
         label: "About",
-        onPress: () => void openWeb(WebRoutes.dashboardAboutUs),
+        onPress: () => openDashboard("about-us"),
       },
       {
         icon: "document-text-outline",

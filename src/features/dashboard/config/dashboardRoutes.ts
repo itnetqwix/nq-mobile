@@ -15,6 +15,7 @@ export const DASHBOARD_ROUTE_IDS = [
   "my-community",
   "contact-us",
   "about-us",
+  "faq",
   "friends",
   "students",
   "meeting-room",
@@ -88,6 +89,13 @@ export const DASHBOARD_ROUTES: readonly DashboardRouteMeta[] = [
     title: "About us",
     subtitle: "Product and company information.",
     webPath: "/dashboard/about-us",
+    allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
+  },
+  {
+    id: "faq",
+    title: "FAQ",
+    subtitle: "Help, common questions, and contact support.",
+    webPath: "/dashboard/faq",
     allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
   },
   {

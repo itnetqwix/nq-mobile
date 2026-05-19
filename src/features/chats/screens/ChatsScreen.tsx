@@ -23,6 +23,13 @@ import { radii, space, typography, useThemeColors, useThemedStyles } from "../..
 import { useAuth } from "../../auth/context/AuthContext";
 import { useOnlinePresence } from "../../socket/useOnlinePresence";
 import { fetchFriends } from "../../home/api/homeApi";
+import {
+  archiveChatConversation,
+  createGroupWithInvites,
+  deleteChatConversation,
+  fetchGroupInvites,
+  respondGroupInvite,
+} from "../api/chatActionsApi";
 import type { MainTabScreenProps } from "../../../navigation/types";
 import { ChatRoomScreen } from "./ChatRoomScreen";
 
@@ -272,6 +279,44 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
     color: palette.brandNavy,
     fontWeight: "600",
   },
+  inviteSection: {
+    paddingHorizontal: space.md,
+    paddingBottom: space.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: palette.border,
+  },
+  inviteTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: palette.brandNavy,
+    marginBottom: 8,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  inviteRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.sm,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: palette.border,
+  },
+  inviteName: { ...typography.subtitle, color: palette.text, flex: 1 },
+  inviteBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radii.sm,
+    backgroundColor: palette.brandNavy,
+  },
+  inviteBtnText: { color: palette.brandTextOn, fontSize: 13, fontWeight: "600" },
+  inviteDecline: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  inviteDeclineText: { color: palette.textMuted, fontSize: 13, fontWeight: "600" },
 }));
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -296,6 +341,13 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
     queryFn: fetchConversations,
     staleTime: 15_000,
     refetchInterval: 25_000,
+  });
+
+  const { data: groupInvites = [], refetch: refetchGroupInvites } = useQuery({
+    queryKey: ["groupInvites"],
+    queryFn: fetchGroupInvites,
+    staleTime: 20_000,
+    refetchInterval: 30_000,
   });
 
   const { data: friends = [], isLoading: loadingFriends } = useQuery({
@@ -354,11 +406,12 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
     }
     setCreatingGroup(true);
     try {
-      const res = await apiClient.post(API_ROUTES.chat.createGroup, {
+      const res = await createGroupWithInvites({
         participantIds: Array.from(selectedGroupMembers),
         groupName: groupName.trim(),
+        groupDescription: "",
       });
-      const body = (res as any)?.data ?? res;
+      const body = res as any;
       const conversation = body?.data ?? body?.result ?? body;
       const convId = conversation?._id;
       if (convId) {
@@ -487,6 +540,46 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
         )}
       </View>
 
+      {groupInvites.length > 0 ? (
+        <View style={styles.inviteSection}>
+          <Text style={styles.inviteTitle}>Group requests</Text>
+          {groupInvites.map((inv: any) => {
+            const convId = String(inv.conversationId ?? inv._id ?? "");
+            const name = inv.groupName ?? "Group";
+            return (
+              <View key={convId} style={styles.inviteRow}>
+                <Ionicons name="people-outline" size={22} color={c.brandNavy} />
+                <Text style={styles.inviteName} numberOfLines={1}>
+                  {name}
+                </Text>
+                <Pressable
+                  style={styles.inviteDecline}
+                  onPress={() => {
+                    void respondGroupInvite(convId, false).then(() => {
+                      void refetchGroupInvites();
+                      void refetch();
+                    });
+                  }}
+                >
+                  <Text style={styles.inviteDeclineText}>Decline</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.inviteBtn}
+                  onPress={() => {
+                    void respondGroupInvite(convId, true).then(() => {
+                      void refetchGroupInvites();
+                      void refetch();
+                    });
+                  }}
+                >
+                  <Text style={styles.inviteBtnText}>Accept</Text>
+                </Pressable>
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
+
       {isLoading ? (
         <View style={{ padding: space.md }}>
           {[0, 1, 2, 3].map((i) => (
@@ -526,6 +619,28 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
                     partner: { _id: partner._id, fullname: partner.fullname, profile_picture: partner.profile_picture },
                   })
                 }
+                onLongPress={() => {
+                  Alert.alert(partner.fullname ?? "Chat", undefined, [
+                    {
+                      text: "Archive",
+                      onPress: () => {
+                        void archiveChatConversation(String(item._id)).then(() =>
+                          queryClient.invalidateQueries({ queryKey: ["conversations"] })
+                        );
+                      },
+                    },
+                    {
+                      text: "Delete chat",
+                      style: "destructive",
+                      onPress: () => {
+                        void deleteChatConversation(String(item._id)).then(() =>
+                          queryClient.invalidateQueries({ queryKey: ["conversations"] })
+                        );
+                      },
+                    },
+                    { text: "Cancel", style: "cancel" },
+                  ]);
+                }}
               >
                 <View style={styles.avatarWrap}>
                   {isGroup ? (

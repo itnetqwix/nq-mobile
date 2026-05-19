@@ -23,8 +23,17 @@ import { InstantLessonDeadlineChip } from "./components/InstantLessonDeadlineChi
  */
 export function InstantLessonStatusBanner() {
   const insets = useSafeAreaInsets();
-  const { traineeBooking, restoreBooking, joinAcceptedLesson, clearTraineeBooking } =
-    useInstantLesson();
+  const {
+    traineeBooking,
+    trainerIncoming,
+    restoreBooking,
+    joinAcceptedLesson,
+    clearTraineeBooking,
+    joinTrainerLesson,
+    restoreTrainerAccepted,
+    restoreTrainerIncoming,
+    clearTrainerIncoming,
+  } = useInstantLesson();
 
   const fade = useRef(new Animated.Value(0)).current;
   const slide = useRef(new Animated.Value(-32)).current;
@@ -33,11 +42,16 @@ export function InstantLessonStatusBanner() {
   /** Show the floating accepted banner only when the user explicitly tapped
    *  "Join later" / minimized — otherwise the InstantLessonTraineeModal owns
    *  the success surface. Same gating for the waiting state. */
-  const minimized = !!traineeBooking?.minimized;
-  const accepted = traineeBooking?.step === "accepted" && minimized;
-  const waitingMinimized = traineeBooking?.step === "waiting" && minimized;
+  const traineeMinimized = !!traineeBooking?.minimized;
+  const traineeAccepted = traineeBooking?.step === "accepted" && traineeMinimized;
+  const traineeWaiting = traineeBooking?.step === "waiting" && traineeMinimized;
 
-  const visible = accepted || waitingMinimized;
+  const trainerAccepted =
+    trainerIncoming?.step === "accepted" && !!trainerIncoming.minimized;
+  const trainerWaiting =
+    trainerIncoming?.step === "incoming" && !!trainerIncoming.minimized;
+
+  const visible = traineeAccepted || traineeWaiting || trainerAccepted || trainerWaiting;
 
   useEffect(() => {
     if (visible) {
@@ -57,7 +71,7 @@ export function InstantLessonStatusBanner() {
   }, [visible, fade, slide]);
 
   useEffect(() => {
-    if (!accepted) {
+    if (!traineeAccepted && !trainerAccepted) {
       pulse.setValue(1);
       return;
     }
@@ -69,9 +83,9 @@ export function InstantLessonStatusBanner() {
     );
     loop.start();
     return () => loop.stop();
-  }, [accepted, pulse]);
+  }, [traineeAccepted, trainerAccepted, pulse]);
 
-  if (!visible || !traineeBooking) return null;
+  if (!visible) return null;
 
   return (
     <Animated.View
@@ -82,7 +96,34 @@ export function InstantLessonStatusBanner() {
         { opacity: fade, transform: [{ translateY: slide }] },
       ]}
     >
-      {accepted ? (
+      {trainerAccepted && trainerIncoming ? (
+        <Animated.View style={[styles.acceptedBanner, { transform: [{ scale: pulse }] }]}>
+          <View style={styles.acceptedIcon}>
+            <Ionicons name="checkmark" size={18} color={colors.brandTextOn} />
+          </View>
+          <View style={styles.acceptedText}>
+            <Text style={styles.acceptedTitle}>Instant lesson ready</Text>
+            <Text style={styles.acceptedSub} numberOfLines={2}>
+              {trainerIncoming.traineeInfo?.fullname ?? "Trainee"} is waiting — tap Join to enter.
+            </Text>
+          </View>
+          <View style={styles.acceptedActions}>
+            <InstantLessonDeadlineChip
+              deadlineMs={
+                trainerIncoming.joinDeadlineAt ?? trainerIncoming.expiresAt
+              }
+              label="Join within"
+              variant="urgent"
+            />
+            <Pressable style={styles.joinBtn} onPress={joinTrainerLesson}>
+              <Text style={styles.joinBtnText}>Join</Text>
+            </Pressable>
+          </View>
+          <Pressable hitSlop={8} onPress={clearTrainerIncoming} style={styles.closeIcon}>
+            <Ionicons name="close" size={16} color={colors.brandTextOn} />
+          </Pressable>
+        </Animated.View>
+      ) : traineeAccepted && traineeBooking ? (
         <Animated.View style={[styles.acceptedBanner, { transform: [{ scale: pulse }] }]}>
           <View style={styles.acceptedIcon}>
             <Ionicons name="checkmark" size={18} color={colors.brandTextOn} />
@@ -111,7 +152,21 @@ export function InstantLessonStatusBanner() {
             <Ionicons name="close" size={16} color={colors.brandTextOn} />
           </Pressable>
         </Animated.View>
-      ) : (
+      ) : trainerWaiting && trainerIncoming ? (
+        <Pressable style={styles.pillColumn} onPress={restoreTrainerIncoming}>
+          <View style={styles.pill}>
+            <Ionicons name="flash" size={16} color={colors.brandNavy} />
+            <Text style={styles.pillText} numberOfLines={1}>
+              Instant request from {trainerIncoming.traineeInfo?.fullname ?? "trainee"}…
+            </Text>
+            <Ionicons name="chevron-up" size={16} color={colors.brandNavy} />
+          </View>
+          <InstantLessonDeadlineChip
+            deadlineMs={trainerIncoming.expiresAt}
+            label="Respond within"
+          />
+        </Pressable>
+      ) : traineeWaiting && traineeBooking ? (
         <Pressable style={styles.pillColumn} onPress={restoreBooking}>
           <View style={styles.pill}>
             <Ionicons name="time-outline" size={16} color={colors.brandNavy} />
@@ -127,7 +182,7 @@ export function InstantLessonStatusBanner() {
             />
           ) : null}
         </Pressable>
-      )}
+      ) : null}
     </Animated.View>
   );
 }

@@ -80,7 +80,17 @@ export function ContactUsScreen() {
           <Ionicons name="mail-outline" size={36} color={c.iconPrimary} />
           <Text style={styles.heroTitle}>Contact NetQwix</Text>
           <Text style={styles.heroSub}>
-            Have a question or issue? Send us a message and we'll respond as soon as possible.
+            Have a question about booking, lessons, payments, or your account? Our support team
+            typically replies within one business day (Mon–Fri).
+          </Text>
+        </View>
+
+        <View style={styles.tipsCard}>
+          <Text style={styles.tipsTitle}>Before you write</Text>
+          <Text style={styles.tipsBody}>
+            • Instant lessons: both sides must tap Join within 2 minutes.{"\n"}
+            • Scheduled lessons: use the in-app timer Start when both are connected.{"\n"}
+            • Refunds or session issues: use Report a technical issue below and pick the session.
           </Text>
         </View>
 
@@ -178,6 +188,15 @@ function useContactStyles() {
       },
       heroTitle: { ...typography.titleMd, color: palette.iconPrimary },
       heroSub: { ...typography.bodyMd, color: palette.textMuted, textAlign: "center" },
+      tipsCard: {
+        backgroundColor: palette.surfaceMuted,
+        borderRadius: radii.md,
+        padding: space.md,
+        borderWidth: 1,
+        borderColor: palette.border,
+      },
+      tipsTitle: { ...typography.subtitle, color: palette.brandNavy, marginBottom: 6 },
+      tipsBody: { ...typography.bodySm, color: palette.textSecondary, lineHeight: 20 },
       altCard: {
         flexDirection: "row",
         alignItems: "center",

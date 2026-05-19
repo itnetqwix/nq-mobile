@@ -271,7 +271,7 @@ export function NetQwixLoader({
           </View>
         </View>
 
-        {!!message ? (
+        {!!message && !showTips ? (
           <Animated.Text style={[styles.message, messageStyle]}>{message}</Animated.Text>
         ) : null}
 

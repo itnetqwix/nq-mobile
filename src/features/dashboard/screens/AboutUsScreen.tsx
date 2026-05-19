@@ -108,6 +108,15 @@ export function AboutUsScreen() {
         ))}
       </View>
 
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>How it works</Text>
+        <Text style={styles.description}>
+          1. Trainees book instant or scheduled lessons with verified coaches.{"\n"}
+          2. Both join the native video room — review clips, draw, and record progress.{"\n"}
+          3. Coaches deliver game plans and feedback stored in your locker.
+        </Text>
+      </View>
+
       <View style={styles.missionCard}>
         <Text style={styles.missionTitle}>Our Mission</Text>
         <Text style={styles.missionText}>

@@ -8,10 +8,20 @@ import { SessionCountdownText } from "../sessions/components/SessionCountdownTex
 import { colors, radii, space, typography } from "../../theme";
 
 export function InstantLessonTrainerModal() {
-  const { trainerIncoming, acceptRequest, declineRequest, expireRequest } = useInstantLesson();
+  const {
+    trainerIncoming,
+    acceptRequest,
+    declineRequest,
+    expireRequest,
+    joinTrainerLesson,
+    minimizeTrainerAccepted,
+  } = useInstantLesson();
   const [avatarFailed, setAvatarFailed] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pulseRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  const showModal =
+    !!trainerIncoming && (trainerIncoming.step === "incoming" || !trainerIncoming.minimized);
 
   const avatarUrl = trainerIncoming
     ? getS3ImageUrl(trainerIncoming.traineeInfo?.profile_picture)
@@ -22,7 +32,7 @@ export function InstantLessonTrainerModal() {
   }, [avatarUrl]);
 
   useEffect(() => {
-    if (!trainerIncoming) {
+    if (!showModal) {
       pulseRef.current?.stop();
       return;
     }
@@ -38,68 +48,107 @@ export function InstantLessonTrainerModal() {
     return () => {
       pulseRef.current?.stop();
     };
-  }, [trainerIncoming, pulseAnim]);
+  }, [showModal, pulseAnim]);
 
-  if (!trainerIncoming) return null;
+  if (!trainerIncoming || !showModal) return null;
 
   const trainee = trainerIncoming.traineeInfo;
   const traineeName = trainee?.fullname || "Trainee";
+  const accepted = trainerIncoming.step === "accepted";
 
   return (
     <Modal visible transparent animationType="fade" statusBarTranslucent>
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <View style={styles.header}>
-            <Ionicons name="flash" size={22} color={colors.brandNavy} />
-            <Text style={styles.headerTitle}>Instant Lesson Request</Text>
-          </View>
-
-          <Animated.View style={[styles.avatarWrap, { transform: [{ scale: pulseAnim }] }]}>
-            {avatarUrl && !avatarFailed ? (
-              <ImageWithSkeleton
-                uri={avatarUrl}
-                width={88}
-                height={88}
-                borderRadius={44}
-                resizeMode="cover"
-                style={styles.avatarRing}
-                onLoadError={() => setAvatarFailed(true)}
-                accessibilityLabel={`${traineeName} profile photo`}
-              />
-            ) : (
-              <View style={styles.avatarFallback}>
-                <Text style={styles.avatarInitial}>{traineeName[0]?.toUpperCase()}</Text>
+          {accepted ? (
+            <>
+              <View style={styles.successBadge}>
+                <Ionicons name="checkmark-circle" size={64} color={colors.success} />
               </View>
-            )}
-            <View style={styles.onlineDot} />
-          </Animated.View>
+              <Text style={styles.title}>Session confirmed!</Text>
+              <Text style={styles.sub}>
+                <Text style={{ fontWeight: "700" }}>{traineeName}</Text> is waiting. Tap below to
+                enter the live lesson when you are ready.
+              </Text>
+              <SessionCountdownText
+                deadlineMs={
+                  trainerIncoming.joinDeadlineAt ??
+                  trainerIncoming.expiresAt
+                }
+                label="Join within"
+                onExpired={expireRequest}
+              />
+              <Pressable
+                style={({ pressed }) => [
+                  styles.joinNowBtn,
+                  pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] },
+                ]}
+                onPress={joinTrainerLesson}
+                accessibilityRole="button"
+                accessibilityLabel="Join the lesson now"
+              >
+                <Ionicons name="videocam" size={18} color={colors.brandTextOn} />
+                <Text style={styles.joinNowBtnText}>Join now</Text>
+              </Pressable>
+              <Pressable style={styles.secondaryBtn} onPress={minimizeTrainerAccepted}>
+                <Text style={styles.secondaryBtnText}>Join later</Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <View style={styles.header}>
+                <Ionicons name="flash" size={22} color={colors.brandNavy} />
+                <Text style={styles.headerTitle}>Instant Lesson Request</Text>
+              </View>
 
-          <Text style={styles.traineeName}>{traineeName}</Text>
-          <Text style={styles.subtitle}>wants an instant lesson with you</Text>
+              <Animated.View style={[styles.avatarWrap, { transform: [{ scale: pulseAnim }] }]}>
+                {avatarUrl && !avatarFailed ? (
+                  <ImageWithSkeleton
+                    uri={avatarUrl}
+                    width={88}
+                    height={88}
+                    borderRadius={44}
+                    resizeMode="cover"
+                    style={styles.avatarRing}
+                    onLoadError={() => setAvatarFailed(true)}
+                    accessibilityLabel={`${traineeName} profile photo`}
+                  />
+                ) : (
+                  <View style={styles.avatarFallback}>
+                    <Text style={styles.avatarInitial}>{traineeName[0]?.toUpperCase()}</Text>
+                  </View>
+                )}
+                <View style={styles.onlineDot} />
+              </Animated.View>
 
-          <SessionCountdownText
-            deadlineMs={trainerIncoming.expiresAt}
-            label="Respond within"
-            onExpired={expireRequest}
-          />
+              <Text style={styles.traineeName}>{traineeName}</Text>
+              <Text style={styles.subtitle}>wants an instant lesson with you</Text>
 
-          <View style={styles.btnRow}>
-            <Button
-              label="Decline"
-              leftIcon="close"
-              variant="danger"
-              onPress={declineRequest}
-              size="lg"
-              style={styles.flex1}
-            />
-            <Button
-              label="Accept"
-              leftIcon="checkmark"
-              onPress={acceptRequest}
-              size="lg"
-              style={styles.flex1}
-            />
-          </View>
+              <SessionCountdownText
+                deadlineMs={trainerIncoming.expiresAt}
+                label="Respond within"
+                onExpired={expireRequest}
+              />
+
+              <View style={styles.btnRow}>
+                <Button
+                  label="Decline"
+                  leftIcon="close"
+                  variant="danger"
+                  onPress={declineRequest}
+                  size="lg"
+                  style={styles.flex1}
+                />
+                <Button
+                  label="Accept"
+                  leftIcon="checkmark"
+                  onPress={acceptRequest}
+                  size="lg"
+                  style={styles.flex1}
+                />
+              </View>
+            </>
+          )}
         </View>
       </View>
     </Modal>
@@ -129,6 +178,16 @@ const styles = StyleSheet.create({
     marginBottom: space.md,
   },
   headerTitle: { ...typography.titleSm, color: colors.brandNavy, fontWeight: "800" },
+  successBadge: { marginBottom: space.sm },
+  title: { ...typography.titleMd, fontWeight: "800", color: colors.text, textAlign: "center" },
+  sub: {
+    ...typography.bodyMd,
+    color: colors.textMuted,
+    textAlign: "center",
+    marginTop: space.sm,
+    marginBottom: space.md,
+    lineHeight: 22,
+  },
   avatarWrap: { marginBottom: space.sm, position: "relative" },
   avatarRing: { borderWidth: 3, borderColor: colors.brandAccent },
   avatarFallback: {
@@ -155,4 +214,23 @@ const styles = StyleSheet.create({
   subtitle: { ...typography.bodyMd, color: colors.textMuted, marginTop: 4, marginBottom: space.sm },
   btnRow: { flexDirection: "row", gap: space.sm, marginTop: space.md, width: "100%" },
   flex1: { flex: 1 },
+  joinNowBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: colors.brandNavy,
+    borderRadius: radii.md,
+    paddingVertical: 14,
+    paddingHorizontal: space.lg,
+    width: "100%",
+    marginTop: space.sm,
+  },
+  joinNowBtnText: { ...typography.bodyMd, fontWeight: "800", color: colors.brandTextOn },
+  secondaryBtn: {
+    marginTop: space.md,
+    paddingVertical: space.sm,
+    paddingHorizontal: space.md,
+  },
+  secondaryBtnText: { ...typography.bodySm, fontWeight: "700", color: colors.brandNavy },
 });

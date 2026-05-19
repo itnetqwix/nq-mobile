@@ -25,6 +25,7 @@ import {
 import { RTCView, type MediaStream } from "react-native-webrtc";
 
 import type { CallParticipant } from "../types";
+import { meetingTheme } from "../meetingTheme";
 
 export type UserBoxProps = {
   user: CallParticipant | null;
@@ -148,16 +149,18 @@ const styles = StyleSheet.create({
   box: {
     flex: 1,
     width: "100%",
-    backgroundColor: "#111",
-    borderRadius: 20,
+    backgroundColor: meetingTheme.videoPlaceholder,
+    borderRadius: 16,
     overflow: "hidden",
+    borderWidth: 1,
+    borderColor: meetingTheme.border,
   },
   avatarWrap: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: meetingTheme.surface,
   },
   avatar: {
     width: 88,
@@ -165,7 +168,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   avatarPlaceholder: {
-    backgroundColor: "#000080",
+    backgroundColor: meetingTheme.navy,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -175,9 +178,9 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   fallbackName: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "500",
+    color: meetingTheme.text,
+    fontSize: 14,
+    fontWeight: "600",
     textAlign: "center",
     paddingHorizontal: 12,
   },

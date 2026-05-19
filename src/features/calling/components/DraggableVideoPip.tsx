@@ -17,12 +17,15 @@ import {
 import type { MediaStream } from "react-native-webrtc";
 
 import type { CallParticipant } from "../types";
+import { meetingTheme } from "../meetingTheme";
 import { UserBox } from "./UserBox";
 
 export type PipEdge = "left" | "right" | "top" | "bottom";
 
-export const PIP_WIDTH = 110;
-export const PIP_HEIGHT = 160;
+export const PIP_WIDTH = 88;
+export const PIP_HEIGHT = 124;
+export const PIP_MIN_WIDTH = 72;
+export const PIP_MAX_WIDTH = 140;
 const TAP_SLOP_PX = 8;
 const HIDE_VISIBLE_RATIO = 0.25;
 
@@ -48,6 +51,11 @@ export type DraggableVideoPipProps = {
   onHide: (edge: PipEdge, lastPosition: { x: number; y: number }) => void;
   onRestore: () => void;
   disabled?: boolean;
+  width?: number;
+  height?: number;
+  zIndex?: number;
+  /** Tap corner control to cycle small / default / large. */
+  onResize?: () => void;
 };
 
 function clampPipPosition(
@@ -55,10 +63,12 @@ function clampPipPosition(
   y: number,
   bounds: Pick<LayoutRectangle, "width" | "height">,
   safeTop: number,
-  reservedBottom: number
+  reservedBottom: number,
+  pipW = PIP_WIDTH,
+  pipH = PIP_HEIGHT
 ): { x: number; y: number } {
-  const maxX = Math.max(0, bounds.width - PIP_WIDTH);
-  const maxY = Math.max(safeTop, bounds.height - reservedBottom - PIP_HEIGHT);
+  const maxX = Math.max(0, bounds.width - pipW);
+  const maxY = Math.max(safeTop, bounds.height - reservedBottom - pipH);
   return {
     x: Math.min(Math.max(0, x), maxX),
     y: Math.min(Math.max(safeTop, y), maxY),
@@ -70,20 +80,22 @@ function detectHideEdge(
   y: number,
   bounds: Pick<LayoutRectangle, "width" | "height">,
   safeTop: number,
-  reservedBottom: number
+  reservedBottom: number,
+  pipW = PIP_WIDTH,
+  pipH = PIP_HEIGHT
 ): PipEdge | null {
   const w = bounds.width;
   const h = bounds.height;
-  const visibleW = Math.min(x + PIP_WIDTH, w) - Math.max(x, 0);
-  const visibleH = Math.min(y + PIP_HEIGHT, h - reservedBottom) - Math.max(y, safeTop);
-  const ratioW = visibleW / PIP_WIDTH;
-  const ratioH = visibleH / PIP_HEIGHT;
+  const visibleW = Math.min(x + pipW, w) - Math.max(x, 0);
+  const visibleH = Math.min(y + pipH, h - reservedBottom) - Math.max(y, safeTop);
+  const ratioW = visibleW / pipW;
+  const ratioH = visibleH / pipH;
   if (ratioW >= HIDE_VISIBLE_RATIO && ratioH >= HIDE_VISIBLE_RATIO) return null;
 
   const distLeft = x;
-  const distRight = w - (x + PIP_WIDTH);
+  const distRight = w - (x + pipW);
   const distTop = y - safeTop;
-  const distBottom = h - reservedBottom - (y + PIP_HEIGHT);
+  const distBottom = h - reservedBottom - (y + pipH);
   const min = Math.min(distLeft, distRight, distTop, distBottom);
   if (min === distLeft) return "left";
   if (min === distRight) return "right";
@@ -123,8 +135,12 @@ export function DraggableVideoPip({
   onHide,
   onRestore,
   disabled,
+  width = PIP_WIDTH,
+  height = PIP_HEIGHT,
+  zIndex = 45,
+  onResize,
 }: DraggableVideoPipProps) {
-  const reservedBottom = pipReservedBottom ?? safeBottom + 160;
+  const reservedBottom = pipReservedBottom ?? safeBottom + 80;
   const pan = useRef(new Animated.ValueXY(position)).current;
   const dragStart = useRef({ x: 0, y: 0 });
   const releasePos = useRef(position);
@@ -169,13 +185,23 @@ export function DraggableVideoPip({
             return;
           }
 
-          const clamped = clampPipPosition(x, y, bounds, safeTop, reservedBottom);
+          const clamped = clampPipPosition(
+            x,
+            y,
+            bounds,
+            safeTop,
+            reservedBottom,
+            width,
+            height
+          );
           const edge = detectHideEdge(
             clamped.x,
             clamped.y,
             bounds,
             safeTop,
-            reservedBottom
+            reservedBottom,
+            width,
+            height
           );
           if (edge) {
             onHide(edge, releasePos.current);
@@ -222,7 +248,7 @@ export function DraggableVideoPip({
         accessibilityLabel={`Show ${tabLabel} camera`}
       >
         <View style={styles.edgeTab}>
-          <Ionicons name="videocam" size={16} color="#fff" />
+          <Ionicons name="chevron-back" size={16} color="#fff" />
           <Text style={styles.edgeTabText} numberOfLines={1}>
             {tabLabel}
           </Text>
@@ -236,6 +262,9 @@ export function DraggableVideoPip({
       style={[
         styles.tile,
         {
+          width,
+          height,
+          zIndex,
           transform: [{ translateX: pan.x }, { translateY: pan.y }],
         },
       ]}
@@ -250,6 +279,17 @@ export function DraggableVideoPip({
         fallbackLabel={fallbackLabel}
         style={styles.tileInner}
       />
+      {onResize ? (
+        <Pressable
+          style={styles.resizeHandle}
+          onPress={onResize}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel="Resize camera preview"
+        >
+          <Ionicons name="resize-outline" size={14} color="#fff" />
+        </Pressable>
+      ) : null}
     </Animated.View>
   );
 }
@@ -259,15 +299,13 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     top: 0,
-    width: PIP_WIDTH,
-    height: PIP_HEIGHT,
-    zIndex: 60,
   },
   tileInner: {
     flex: 1,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.45)",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: meetingTheme.border,
+    backgroundColor: meetingTheme.videoPlaceholder,
   },
   edgeTabWrap: {
     position: "absolute",
@@ -277,7 +315,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "rgba(0,0,128,0.88)",
+    backgroundColor: meetingTheme.navy,
     paddingVertical: 8,
     paddingHorizontal: 10,
     borderRadius: 8,
@@ -287,5 +325,16 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 11,
     fontWeight: "700",
+  },
+  resizeHandle: {
+    position: "absolute",
+    right: 4,
+    bottom: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

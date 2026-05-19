@@ -62,7 +62,7 @@
         "android.permission.INTERNET",
         "android.permission.SYSTEM_ALERT_WINDOW"
       ],
-      "package": "com.netqwix.nqmobile"
+      "package": "com.netqwix.mobile"
     },
     "web": {
       "favicon": "./assets/favicon.png"

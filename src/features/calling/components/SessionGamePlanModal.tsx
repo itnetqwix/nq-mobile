@@ -1,0 +1,192 @@
+/**
+ * Post-call game plan — lists session screenshots and saves title/metadata
+ * (web `reportModal.jsx` simplified; images already uploaded via screenshot API).
+ */
+
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+
+import { apiClient } from "../../../api/client";
+import { API_ROUTES } from "../../../config/apiRoutes";
+import { getS3ImageUrl } from "../../../lib/clipMediaUrl";
+import { fetchSessionReport } from "../meetingReportApi";
+
+type Props = {
+  visible: boolean;
+  sessionId: string;
+  trainerId: string;
+  traineeId: string;
+  onClose: () => void;
+};
+
+export function SessionGamePlanModal({
+  visible,
+  sessionId,
+  trainerId,
+  traineeId,
+  onClose,
+}: Props) {
+  const [title, setTitle] = useState("");
+  const [topic, setTopic] = useState("");
+  const [images, setImages] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetchSessionReport({
+        sessions: sessionId,
+        trainer: trainerId,
+        trainee: traineeId,
+      });
+      const data = res?.data ?? res;
+      const raw = data?.reportData;
+      const list = Array.isArray(raw)
+        ? raw.map((x: any) => (typeof x === "string" ? x : x?.name ?? x?.key ?? "")).filter(Boolean)
+        : [];
+      setImages(list);
+      if (data?.title) setTitle(String(data.title));
+      if (data?.description) setTopic(String(data.description));
+    } catch {
+      setImages([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [sessionId, trainerId, traineeId]);
+
+  useEffect(() => {
+    if (visible) void load();
+  }, [visible, load]);
+
+  const save = async () => {
+    if (!title.trim()) {
+      Alert.alert("Title required", "Add a title for this game plan.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await apiClient.post(API_ROUTES.report.create, {
+        sessions: sessionId,
+        trainer: trainerId,
+        trainee: traineeId,
+        title: title.trim(),
+        topic: topic.trim() || title.trim(),
+        reportData: images,
+      });
+      Alert.alert("Game plan saved", "Screenshots are in your locker under Game plans.");
+      onClose();
+    } catch (e: any) {
+      Alert.alert("Could not save", e?.message ?? "Try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+      <View style={styles.root}>
+        <Text style={styles.heading}>Session game plan</Text>
+        <Text style={styles.sub}>
+          Review screenshots from this lesson, then save to your locker.
+        </Text>
+
+        <TextInput
+          style={styles.input}
+          placeholder="Game plan title"
+          placeholderTextColor="#888"
+          value={title}
+          onChangeText={setTitle}
+        />
+        <TextInput
+          style={[styles.input, styles.inputMulti]}
+          placeholder="Notes (optional)"
+          placeholderTextColor="#888"
+          value={topic}
+          onChangeText={setTopic}
+          multiline
+        />
+
+        {loading ? (
+          <ActivityIndicator style={{ marginTop: 24 }} />
+        ) : images.length === 0 ? (
+          <Text style={styles.empty}>
+            No screenshots yet. Use the camera button during the call to capture frames.
+          </Text>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.strip}>
+            {images.map((key) => (
+              <Image
+                key={key}
+                source={{ uri: getS3ImageUrl(key) }}
+                style={styles.thumb}
+              />
+            ))}
+          </ScrollView>
+        )}
+
+        <View style={styles.actions}>
+          <Pressable style={styles.btnSecondary} onPress={onClose}>
+            <Text style={styles.btnSecondaryText}>Skip</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.btnPrimary, saving && { opacity: 0.6 }]}
+            onPress={() => void save()}
+            disabled={saving}
+          >
+            <Text style={styles.btnPrimaryText}>{saving ? "Saving…" : "Save game plan"}</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, padding: 20, paddingTop: 48, backgroundColor: "#fff" },
+  heading: { fontSize: 22, fontWeight: "700", color: "#0b1f3a" },
+  sub: { marginTop: 8, fontSize: 14, color: "#555", lineHeight: 20 },
+  input: {
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: "#111",
+  },
+  inputMulti: { minHeight: 72, textAlignVertical: "top" },
+  empty: { marginTop: 20, color: "#666", fontSize: 14 },
+  strip: { marginTop: 16, maxHeight: 120 },
+  thumb: { width: 100, height: 100, borderRadius: 8, marginRight: 10, backgroundColor: "#eee" },
+  actions: { flexDirection: "row", gap: 12, marginTop: "auto", paddingBottom: 24 },
+  btnSecondary: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    alignItems: "center",
+  },
+  btnSecondaryText: { color: "#333", fontWeight: "600" },
+  btnPrimary: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 10,
+    backgroundColor: "#0b1f3a",
+    alignItems: "center",
+  },
+  btnPrimaryText: { color: "#fff", fontWeight: "600" },
+});

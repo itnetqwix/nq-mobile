@@ -37,6 +37,7 @@ import {
   resolveChatMediaUri,
 } from "../lib/chatMediaUtils";
 import { ChatDaySeparator } from "../components/ChatDaySeparator";
+import { deleteChatMessage, editChatMessage } from "../api/chatActionsApi";
 import {
   findMessageSectionLocation,
   formatChatDayLabel,
@@ -72,6 +73,8 @@ type Message = {
   status?: "sent" | "delivered" | "read" | "sending";
   pending?: boolean;
   createdAt: string;
+  replyToMessageId?: string | null;
+  editedAt?: string | null;
 };
 
 const EMOJI_LIST = [
@@ -257,6 +260,26 @@ function useChatRoomStyles() {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: themeColors.border,
   },
+  replyBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: themeColors.border,
+    backgroundColor: themeColors.surfaceMuted,
+  },
+  replyBarLabel: { fontSize: 11, fontWeight: "700", color: themeColors.brandNavy },
+  replyBarText: { fontSize: 13, color: themeColors.textMuted, marginTop: 2 },
+  replyQuote: {
+    borderLeftWidth: 3,
+    borderLeftColor: themeColors.brandNavy,
+    paddingLeft: 8,
+    marginBottom: 6,
+    opacity: 0.85,
+  },
+  replyQuoteText: { fontSize: 12, color: themeColors.textMuted },
   bubbleText: { ...typography.bodyMd, color: themeColors.text, lineHeight: 20 },
   bubbleTextMine: { color: "#fff" },
   bubbleFooter: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", marginTop: 2 },
@@ -314,6 +337,35 @@ function useChatRoomStyles() {
   recordSend: { width: 40, height: 40, borderRadius: 20, backgroundColor: themeColors.brandNavy, alignItems: "center", justifyContent: "center" },
   uploadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.3)", alignItems: "center", justifyContent: "center" },
   uploadingCard: { backgroundColor: "#fff", borderRadius: 16, padding: 32, alignItems: "center", gap: 12, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 },
+  editModalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    padding: space.lg,
+  },
+  editModalCard: {
+    backgroundColor: themeColors.surfaceElevated,
+    borderRadius: radii.md,
+    padding: space.md,
+    gap: space.sm,
+  },
+  editModalTitle: { ...typography.titleSm, color: themeColors.text },
+  editModalInput: {
+    minHeight: 80,
+    borderWidth: 1,
+    borderColor: themeColors.border,
+    borderRadius: radii.sm,
+    padding: space.sm,
+    color: themeColors.text,
+    textAlignVertical: "top",
+  },
+  editModalActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: space.md,
+  },
+  editModalCancel: { color: themeColors.textMuted, fontWeight: "600" },
+  editModalSave: { color: themeColors.brandNavy, fontWeight: "700" },
 
   profileTabs: {
     flexDirection: "row",
@@ -516,6 +568,9 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
     dailyLimit: number;
   } | null>(null);
   const [rateLimited, setRateLimited] = useState(false);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [editTarget, setEditTarget] = useState<Message | null>(null);
+  const [editDraft, setEditDraft] = useState("");
 
   useEffect(() => {
     if (!partner?._id) return;
@@ -760,6 +815,8 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
     const content = chatE2E.canEncrypt ? chatE2E.encryptForSend(plain) : plain;
     setText("");
     setShowEmoji(false);
+    const replyId = replyTo?._id ?? null;
+    setReplyTo(null);
     setIsSendingMessage(true);
     if (socket) socket.emit("CHAT_STOP_TYPING", { conversationId, userId: currentUserId });
     const tempId = `temp_${Date.now()}`;
@@ -770,7 +827,11 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
     setLocalMessages((prev) => [...prev, tempMsg]);
     try {
       const res = await apiClient.post(API_ROUTES.chat.send, {
-        receiverId: partner._id, content, type: "text", conversationId,
+        receiverId: partner._id,
+        content,
+        type: "text",
+        conversationId,
+        ...(replyId ? { replyToMessageId: replyId } : {}),
       });
       const data = (res as any)?.data?.data ?? (res as any)?.data;
       if (data?.message) {
@@ -799,7 +860,18 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
     } finally {
       setIsSendingMessage(false);
     }
-  }, [text, partner, currentUserId, socket, conversationId, queryClient, chatPolicy, isSendingMessage, chatE2E]);
+  }, [
+    text,
+    partner,
+    currentUserId,
+    socket,
+    conversationId,
+    queryClient,
+    chatPolicy,
+    isSendingMessage,
+    chatE2E,
+    replyTo,
+  ]);
 
   // ─── Send media ─────────────────────────────────────────────────────────────
 
@@ -1080,8 +1152,61 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
         !mediaUri ||
         (mediaKind === null && item.type !== "voice");
 
+      const replyPreview = item.replyToMessageId
+        ? displayMessages.find((m) => m._id === item.replyToMessageId)
+        : null;
+
+      const onLongPressMsg = () => {
+        const buttons: { text: string; style?: "destructive" | "cancel"; onPress?: () => void }[] =
+          [
+            {
+              text: "Reply",
+              onPress: () => setReplyTo(item),
+            },
+          ];
+        if (isMine && item.type === "text") {
+        const created = new Date(item.createdAt).getTime();
+        const canEdit = Date.now() - created < 30 * 60 * 1000;
+        if (canEdit) {
+          buttons.push({
+            text: "Edit",
+            onPress: () => {
+              const plain = chatE2E.decryptForDisplay(item.content);
+              if (Platform.OS === "ios") {
+                Alert.prompt("Edit message", undefined, (t) => {
+                  if (!t?.trim()) return;
+                  void editChatMessage(item._id, t.trim()).then(() =>
+                    queryClient.invalidateQueries({
+                      queryKey: ["chatMessages", conversationId],
+                    })
+                  );
+                }, "plain-text", plain);
+              } else {
+                setEditDraft(plain);
+                setEditTarget(item);
+              }
+            },
+          });
+        }
+        buttons.push({
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            void deleteChatMessage(item._id).then(() =>
+              queryClient.invalidateQueries({ queryKey: ["chatMessages", conversationId] })
+            );
+          },
+        });
+        }
+        buttons.push({ text: "Cancel", style: "cancel" });
+        Alert.alert("Message", undefined, buttons);
+      };
+
       return (
-        <View style={[styles.messageRow, isMine ? styles.messageRowMine : styles.messageRowTheirs]}>
+        <Pressable
+          style={[styles.messageRow, isMine ? styles.messageRowMine : styles.messageRowTheirs]}
+          onLongPress={onLongPressMsg}
+        >
           <View
             style={[
               styles.bubble,
@@ -1089,6 +1214,13 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
               isHighlighted && styles.bubbleHighlight,
             ]}
           >
+          {replyPreview ? (
+            <View style={styles.replyQuote}>
+              <Text style={styles.replyQuoteText} numberOfLines={2}>
+                {chatE2E.decryptForDisplay(replyPreview.content)}
+              </Text>
+            </View>
+          ) : null}
           {mediaKind === "image" && mediaUri ? (
             <Pressable onPress={() => openMediaViewer(item._id)}>
               <Image source={{ uri: mediaUri }} style={styles.mediaThumbnail} resizeMode="cover" />
@@ -1109,6 +1241,7 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
           ) : null}
           <View style={styles.bubbleFooter}>
             <Text style={[styles.bubbleTime, isMine && styles.bubbleTimeMine]}>
+              {item.editedAt ? "Edited · " : ""}
               {formatTime(item.createdAt)}
             </Text>
             {isMine && (
@@ -1119,10 +1252,18 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
             )}
           </View>
           </View>
-        </View>
+        </Pressable>
       );
     },
-    [currentUserId, highlightedMessageId, openMediaViewer]
+    [
+      conversationId,
+      currentUserId,
+      displayMessages,
+      highlightedMessageId,
+      openMediaViewer,
+      queryClient,
+      chatE2E,
+    ]
   );
 
   const partnerName = partner?.fullname ?? "Chat";
@@ -1255,6 +1396,19 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
         />
 
         <View style={styles.composer}>
+          {replyTo ? (
+            <View style={styles.replyBar}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.replyBarLabel}>Replying to</Text>
+                <Text style={styles.replyBarText} numberOfLines={1}>
+                  {chatE2E.decryptForDisplay(replyTo.content)}
+                </Text>
+              </View>
+              <Pressable onPress={() => setReplyTo(null)} hitSlop={8}>
+                <Ionicons name="close-circle" size={22} color={themeColors.textMuted} />
+              </Pressable>
+            </View>
+          ) : null}
           {showEmoji && !recording && (
             <View style={styles.emojiTray}>
               <ScrollView
@@ -1344,6 +1498,37 @@ export function ChatRoomScreen({ conversationId, partner, onGoBack }: Props) {
           )}
         </View>
       </KeyboardAvoidingView>
+
+      <Modal visible={!!editTarget} transparent animationType="fade" onRequestClose={() => setEditTarget(null)}>
+        <View style={styles.editModalBackdrop}>
+          <View style={styles.editModalCard}>
+            <Text style={styles.editModalTitle}>Edit message</Text>
+            <TextInput
+              style={styles.editModalInput}
+              value={editDraft}
+              onChangeText={setEditDraft}
+              multiline
+              autoFocus
+            />
+            <View style={styles.editModalActions}>
+              <Pressable onPress={() => setEditTarget(null)}>
+                <Text style={styles.editModalCancel}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  if (!editTarget || !editDraft.trim()) return;
+                  void editChatMessage(editTarget._id, editDraft.trim()).then(() => {
+                    queryClient.invalidateQueries({ queryKey: ["chatMessages", conversationId] });
+                    setEditTarget(null);
+                  });
+                }}
+              >
+                <Text style={styles.editModalSave}>Save</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Upload overlay */}
       {uploading && (

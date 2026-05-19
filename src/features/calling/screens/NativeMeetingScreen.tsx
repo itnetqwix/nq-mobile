@@ -25,9 +25,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Alert,
+  Linking,
+  Pressable,
   StatusBar,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { useMeetingChromeInsets } from "../useMeetingChromeInsets";
@@ -38,7 +41,8 @@ import type { RootStackParamList } from "../../../navigation/types";
 import { AccountType } from "../../../constants/accountType";
 import { useAuth } from "../../auth/context/AuthContext";
 import { useSocket } from "../../socket/SocketContext";
-import { fetchScheduledMeetings } from "../../home/api/homeApi";
+import { fetchMeetingSession, fetchScheduledMeetings } from "../../home/api/homeApi";
+import { parseIceServersFromSession } from "../meetingIceServers";
 import { getClipPlaybackUrl } from "../../../lib/clipMediaUrl";
 import { clipsFromSession, resolveClipPlayback } from "../clipSyncUtils";
 import { useDrawingSync } from "../useDrawingSync";
@@ -56,7 +60,13 @@ import {
 } from "../../notifications/NotificationContext";
 
 import { UserBox } from "../components/UserBox";
-import { DraggableVideoPip } from "../components/DraggableVideoPip";
+import {
+  DraggableVideoPip,
+  PIP_HEIGHT,
+  PIP_MAX_WIDTH,
+  PIP_MIN_WIDTH,
+  PIP_WIDTH,
+} from "../components/DraggableVideoPip";
 import { useVideoPipLayout } from "../useVideoPipLayout";
 import { ActionButtons } from "../components/ActionButtons";
 import { TimeRemaining } from "../components/TimeRemaining";
@@ -65,14 +75,21 @@ import { ClipPickerModal } from "../components/ClipPickerModal";
 import { ClipPlayer } from "../components/ClipPlayer";
 import { ClipPlaybackControls } from "../components/ClipPlaybackControls";
 import { DrawingOverlay } from "../components/DrawingOverlay";
-import { MeetingClipToolbar } from "../components/MeetingClipToolbar";
+import {
+  MeetingAnnotationToolbar,
+  type AnnotationTool,
+} from "../components/MeetingAnnotationToolbar";
+import { RecordingBar } from "../components/RecordingBar";
+import { SessionGamePlanModal } from "../components/SessionGamePlanModal";
 import { RatingsModal } from "../components/RatingsModal";
+import { MeetingJoinBanner } from "../components/MeetingJoinBanner";
+import { meetingTheme } from "../meetingTheme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Meeting">;
 
 type SessionRow = Record<string, any>;
 
-const NAVY = "#000080";
+const NAVY = meetingTheme.navy;
 
 /** Look up the booking record across the React Query caches we already
  *  populate in UpcomingSessionsScreen / HomeScreen. Falls back to a fresh
@@ -93,6 +110,8 @@ function useSessionLookup(lessonId: string) {
     queryKey: ["sessionLookup", lessonId],
     enabled: !cached && !!lessonId,
     queryFn: async () => {
+      const direct = await fetchMeetingSession(lessonId);
+      if (direct) return direct;
       const [upcoming, confirmed] = await Promise.all([
         fetchScheduledMeetings("upcoming").catch(() => []),
         fetchScheduledMeetings("confirmed").catch(() => []),
@@ -116,16 +135,15 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
     "checking" | "granted" | "denied"
   >("checking");
 
-  useEffect(() => {
-    let cancelled = false;
-    ensureCallPermissions().then((result) => {
-      if (cancelled) return;
-      setPermState(result.allGranted ? "granted" : "denied");
-    });
-    return () => {
-      cancelled = true;
-    };
+  const requestPermissions = useCallback(async () => {
+    setPermState("checking");
+    const result = await ensureCallPermissions();
+    setPermState(result.allGranted ? "granted" : "denied");
   }, []);
+
+  useEffect(() => {
+    void requestPermissions();
+  }, [requestPermissions]);
 
   const goHome = useCallback(() => {
     navigation.reset({ index: 0, routes: [{ name: "Main" }] });
@@ -158,6 +176,11 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
     };
   }, [session, role]);
 
+  const iceServers = useMemo(
+    () => parseIceServersFromSession(session),
+    [session]
+  );
+
   if (isLoading || permState === "checking" || !me) {
     return (
       <View style={styles.center}>
@@ -170,9 +193,17 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
   if (permState === "denied") {
     return (
       <View style={styles.center}>
-        <Text style={[styles.centerText, { color: "#f44336" }]}>
-          NetQwix needs camera and microphone access to start your lesson.
+        <Text style={styles.centerTitle}>Camera and microphone required</Text>
+        <Text style={styles.centerText}>
+          NetQwix needs camera and microphone access to start your lesson. Enable both in
+          Settings, then return here.
         </Text>
+        <Pressable style={styles.permBtn} onPress={() => void Linking.openSettings()}>
+          <Text style={styles.permBtnText}>Open Settings</Text>
+        </Pressable>
+        <Pressable style={[styles.permBtn, styles.permBtnSecondary]} onPress={requestPermissions}>
+          <Text style={[styles.permBtnText, styles.permBtnTextSecondary]}>Try again</Text>
+        </Pressable>
       </View>
     );
   }
@@ -196,6 +227,7 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
       fromUser={me}
       toUser={peer}
       role={role}
+      iceServers={iceServers}
       onEnded={goHome}
       onPeerJoined={() => {
         pushLocalToast({
@@ -247,6 +279,19 @@ function MeetingSurface({
   peerDisplayName: string;
 }) {
   const chrome = useMeetingChromeInsets();
+  const { width: winW, height: winH } = useWindowDimensions();
+  const [pipWidth, setPipWidth] = useState(PIP_WIDTH);
+  const pipHeight = useMemo(
+    () => Math.round((pipWidth / PIP_WIDTH) * PIP_HEIGHT),
+    [pipWidth]
+  );
+  const cyclePipSize = useCallback(() => {
+    setPipWidth((w) => {
+      if (w <= PIP_MIN_WIDTH) return PIP_WIDTH;
+      if (w < PIP_MAX_WIDTH) return PIP_MAX_WIDTH;
+      return PIP_MIN_WIDTH;
+    });
+  }, []);
   const {
     localStream,
     remoteStream,
@@ -312,6 +357,13 @@ function MeetingSurface({
     trainerId: isTrainer ? myId : peerId,
     traineeId: isTrainer ? peerId : myId,
     isTrainer,
+    onSaved: () => {
+      pushLocalToast({
+        title: "Screenshot saved",
+        description: "Added to the session game plan.",
+        type: NOTIFICATION_TYPES.DEFAULT,
+      });
+    },
   });
 
   const peerUser = session
@@ -320,12 +372,18 @@ function MeetingSurface({
       : session.trainer_info
     : null;
 
+  const isInstant = !!session?.is_instant;
+
   const [pickerOpen, setPickerOpen] = useState(false);
   const [ratingsOpen, setRatingsOpen] = useState(false);
+  const [gamePlanOpen, setGamePlanOpen] = useState(false);
   const [activeClipUri, setActiveClipUri] = useState<string | null>(null);
   const [clipDuration, setClipDuration] = useState(0);
   const [clipProgress, setClipProgress] = useState(0);
   const [drawingOverlayKey, setDrawingOverlayKey] = useState(0);
+  const [annotationTool, setAnnotationTool] = useState<AnnotationTool>("freehand");
+  const [recordingActive, setRecordingActive] = useState(false);
+  const [joinBanner, setJoinBanner] = useState<string | null>(null);
   const clipProgressRef = useRef(0);
   const lessonStartedNotifiedRef = useRef(false);
 
@@ -339,12 +397,41 @@ function MeetingSurface({
   }, [session]);
 
   useEffect(() => {
+    if (!socket) return;
+    const onParticipant = (payload: {
+      sessionId?: string;
+      role?: string;
+      status?: string;
+    }) => {
+      if (String(payload?.sessionId) !== String(lessonId)) return;
+      if (payload?.status !== "connected") return;
+      const who =
+        payload.role === "trainer"
+          ? session?.trainer_info?.fullname ?? "Your coach"
+          : session?.trainee_info?.fullname ?? "Your trainee";
+      const msg = `${who} has joined the session. Please join if you haven't yet.`;
+      setJoinBanner(msg);
+      pushLocalToast({
+        title: NOTIFICATION_TITLES.peerJoinedCall,
+        description: msg,
+        type: NOTIFICATION_TYPES.TRANSCATIONAL,
+        persistInInbox: true,
+      });
+    };
+    socket.on("PARTICIPANT_STATUS_CHANGED", onParticipant);
+    return () => {
+      socket.off("PARTICIPANT_STATUS_CHANGED", onParticipant);
+    };
+  }, [socket, lessonId, session, pushLocalToast]);
+
+  useEffect(() => {
     if (!bothJoined) {
       lessonStartedNotifiedRef.current = false;
       return;
     }
     if (lessonStartedNotifiedRef.current) return;
     lessonStartedNotifiedRef.current = true;
+    setJoinBanner(null);
     pushLocalToast({
       title: NOTIFICATION_TITLES.sessionStarted,
       description: "Lesson started — you're both in the call.",
@@ -413,14 +500,31 @@ function MeetingSurface({
           style: "destructive",
           onPress: () => {
             endCall();
-            setRatingsOpen(true);
+            if (isTrainer) setGamePlanOpen(true);
+            else setRatingsOpen(true);
           },
         },
       ]
     );
-  }, [endCall]);
+  }, [endCall, isTrainer]);
 
-  const isInstant = !!session?.is_instant;
+  const pipBounds = meetingBounds ?? { width: winW, height: winH };
+
+  const inClipMode = !!activeClipUri;
+
+  const exitClipMode = useCallback(() => {
+    setActiveClipUri(null);
+    clipSync.selectClip(null);
+    setClipDuration(0);
+    setClipProgress(0);
+  }, [clipSync]);
+
+  useEffect(() => {
+    if (isInstant && bothJoined && isTrainer) {
+      setRecordingActive(true);
+    }
+    if (!bothJoined) setRecordingActive(false);
+  }, [bothJoined, isInstant, isTrainer]);
 
   /** Surface time-warning toasts as the timer ticks past key thresholds. The
    *  callback is wired into `TimeRemaining` (which already detects the
@@ -480,7 +584,7 @@ function MeetingSurface({
         setMeetingBounds({ width, height });
       }}
     >
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" />
 
       {/* Remote video / clip pane */}
       <View
@@ -527,6 +631,7 @@ function MeetingSurface({
             <DrawingOverlay
               key={drawingOverlayKey}
               enabled={isTrainer && drawingSync.drawingEnabled}
+              tool={annotationTool}
               remoteStrokes={drawingSync.remoteStrokes}
               onStrokeComplete={(points, size) =>
                 drawingSync.emitStroke(
@@ -537,25 +642,58 @@ function MeetingSurface({
             />
           </View>
         ) : (
-          <UserBox
-            key={(remoteStream as { toURL?: () => string } | null)?.toURL?.() ?? "no-remote"}
-            user={
-              session
-                ? isTrainer
-                  ? session.trainee_info
-                  : session.trainer_info
-                : null
-            }
-            stream={remoteStream}
-            isStreamOff={!remoteStream || remoteCameraOff}
-            fallbackLabel="Waiting for your partner…"
-          />
+          <View style={styles.liveStage}>
+            <View style={styles.livePlaceholder}>
+              <Text style={styles.livePlaceholderTitle}>
+                {bothJoined ? "Live lesson" : "Waiting for your partner"}
+              </Text>
+              <Text style={styles.livePlaceholderSub}>
+                {bothJoined
+                  ? "Use the video tiles to view cameras. Clips open from the toolbar below."
+                  : `${peerDisplayName} will appear when they join.`}
+              </Text>
+            </View>
+            <DrawingOverlay
+              key={`live-${drawingOverlayKey}`}
+              enabled={isTrainer && drawingSync.drawingEnabled}
+              tool={annotationTool}
+              remoteStrokes={drawingSync.remoteStrokes}
+              onStrokeComplete={(points, size) =>
+                drawingSync.emitStroke(
+                  { points, color: "#ff3b30", width: 4 },
+                  size
+                )
+              }
+            />
+          </View>
         )}
       </View>
 
+      {joinBanner && !bothJoined ? (
+        <MeetingJoinBanner
+          message={joinBanner}
+          topOffset={chrome.insets.top + 48}
+          onDismiss={() => setJoinBanner(null)}
+        />
+      ) : null}
+
+      {!bothJoined && !joinBanner ? (
+        <MeetingJoinBanner
+          message={`Waiting for ${peerDisplayName} to join the session…`}
+          topOffset={chrome.insets.top + 48}
+        />
+      ) : null}
+
+      {bothJoined && !remoteStream ? (
+        <MeetingJoinBanner
+          message="Connecting video…"
+          variant="info"
+          topOffset={chrome.insets.top + 48}
+        />
+      ) : null}
+
       {/* Draggable live camera PIPs */}
-      {meetingBounds ? (
-        <>
+      <>
           <DraggableVideoPip
             tileId="local"
             user={null}
@@ -564,7 +702,7 @@ function MeetingSurface({
             muted
             fallbackLabel="You"
             tabLabel="You"
-            bounds={meetingBounds}
+            bounds={pipBounds}
             safeTop={chrome.insets.top}
             safeBottom={chrome.insets.bottom}
             pipReservedBottom={chrome.pipSafeBottom}
@@ -574,6 +712,9 @@ function MeetingSurface({
             onPositionChange={(pos) => pipLayout.updatePosition("local", pos)}
             onHide={(edge, last) => pipLayout.hideTile("local", edge, last)}
             onRestore={() => pipLayout.restoreTile("local")}
+            width={pipWidth}
+            height={pipHeight}
+            onResize={cyclePipSize}
           />
           <DraggableVideoPip
             tileId="remote"
@@ -581,7 +722,7 @@ function MeetingSurface({
             stream={remoteStream}
             isStreamOff={!remoteStream || remoteCameraOff}
             tabLabel={peerDisplayName.split(" ")[0] || "Partner"}
-            bounds={meetingBounds}
+            bounds={pipBounds}
             safeTop={chrome.insets.top}
             safeBottom={chrome.insets.bottom}
             pipReservedBottom={chrome.pipSafeBottom}
@@ -591,8 +732,17 @@ function MeetingSurface({
             onPositionChange={(pos) => pipLayout.updatePosition("remote", pos)}
             onHide={(edge, last) => pipLayout.hideTile("remote", edge, last)}
             onRestore={() => pipLayout.restoreTile("remote")}
+            width={pipWidth}
+            height={pipHeight}
+            onResize={cyclePipSize}
           />
-        </>
+      </>
+
+      {isInstant ? (
+        <RecordingBar
+          active={recordingActive}
+          onStop={() => setRecordingActive(false)}
+        />
       ) : null}
 
       {/* Top chrome */}
@@ -605,34 +755,26 @@ function MeetingSurface({
         variant={isInstant ? "instant" : "scheduled"}
         timerLabel={isInstant ? "Lesson time" : "Time remaining"}
         topInset={chrome.topChrome}
+        alignRight
         onStart={lessonTimer.requestStart}
         onPause={lessonTimer.requestPause}
         onResume={lessonTimer.requestResume}
         onCrossThreshold={onTimerCrossThreshold}
       />
 
-      {isTrainer && activeClipUri ? (
-        <MeetingClipToolbar
-          hasClip
-          dualClip={dualClip}
-          layoutMode={clipSync.layoutMode}
-          lockMode={clipSync.lockMode}
+      {isTrainer && drawingSync.drawingEnabled ? (
+        <MeetingAnnotationToolbar
+          tool={annotationTool}
+          onToolChange={setAnnotationTool}
           drawingEnabled={drawingSync.drawingEnabled}
-          onToggleFullscreen={() => clipSync.toggleClipFullscreen()}
-          onToggleStacked={() => {
-            const next =
-              clipSync.layoutMode === "stacked" ? "default" : "stacked";
-            clipSync.setLayout(next);
-          }}
-          onToggleLock={() => clipSync.toggleLockMode()}
           onToggleDrawing={() =>
             drawingSync.setTrainerDrawingEnabled(!drawingSync.drawingEnabled)
           }
-          onClearDrawing={() => {
+          onClear={() => {
             drawingSync.clearCanvas();
             setDrawingOverlayKey((k) => k + 1);
           }}
-          bottomOffset={chrome.bottomChrome + 88}
+          bottomOffset={chrome.bottomChrome + 96}
         />
       ) : null}
 
@@ -640,6 +782,27 @@ function MeetingSurface({
       <ActionButtons
         isTrainer={isTrainer}
         bottomInset={chrome.bottomChrome}
+        onEndCall={confirmExit}
+        inClipMode={inClipMode}
+        lockMode={clipSync.lockMode}
+        onToggleLock={isTrainer ? () => clipSync.toggleLockMode() : undefined}
+        onToggleLayout={
+          isTrainer
+            ? () => {
+                const next =
+                  clipSync.layoutMode === "stacked" ? "default" : "stacked";
+                clipSync.setLayout(next);
+              }
+            : undefined
+        }
+        onExitClipMode={isTrainer ? exitClipMode : undefined}
+        drawingEnabled={drawingSync.drawingEnabled}
+        onToggleDrawing={
+          isTrainer
+            ? () =>
+                drawingSync.setTrainerDrawingEnabled(!drawingSync.drawingEnabled)
+            : undefined
+        }
         onOpenClipPicker={isTrainer ? () => setPickerOpen(true) : undefined}
         onScreenshot={isTrainer ? () => void screenshot.takeScreenshot() : undefined}
       />
@@ -662,6 +825,19 @@ function MeetingSurface({
         activeClipId={clipSync.activeClipId}
       />
 
+      {isTrainer ? (
+        <SessionGamePlanModal
+          visible={gamePlanOpen}
+          sessionId={lessonId}
+          trainerId={myId}
+          traineeId={peerId}
+          onClose={() => {
+            setGamePlanOpen(false);
+            setRatingsOpen(true);
+          }}
+        />
+      ) : null}
+
       <RatingsModal
         visible={ratingsOpen}
         onClose={() => {
@@ -679,22 +855,50 @@ function MeetingSurface({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: meetingTheme.background,
   },
   mainPane: {
     flex: 1,
     paddingHorizontal: 12,
-    paddingBottom: 100,
+    paddingBottom: 72,
   },
   mainPaneFullscreen: {
     paddingHorizontal: 0,
-    paddingBottom: 120,
+    paddingBottom: 88,
   },
   clipFrame: {
     flex: 1,
     overflow: "hidden",
-    borderRadius: 20,
-    backgroundColor: "#111",
+    borderRadius: 16,
+    backgroundColor: meetingTheme.videoPlaceholder,
+    borderWidth: 1,
+    borderColor: meetingTheme.border,
+  },
+  liveStage: {
+    flex: 1,
+  },
+  livePlaceholder: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+    backgroundColor: meetingTheme.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: meetingTheme.border,
+  },
+  livePlaceholderTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: meetingTheme.text,
+    textAlign: "center",
+  },
+  livePlaceholderSub: {
+    marginTop: 8,
+    fontSize: 14,
+    color: meetingTheme.textMuted,
+    textAlign: "center",
+    lineHeight: 20,
   },
   clipFrameDual: {
     borderRadius: 12,
@@ -711,17 +915,37 @@ const styles = StyleSheet.create({
     flex: 1,
     overflow: "hidden",
     borderRadius: 12,
-    backgroundColor: "#0a0a0a",
+    backgroundColor: meetingTheme.surface,
   },
   center: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#000",
+    backgroundColor: meetingTheme.background,
     padding: 24,
     gap: 12,
   },
-  centerText: { color: "#fff", textAlign: "center", fontSize: 14 },
+  centerText: { color: meetingTheme.textMuted, textAlign: "center", fontSize: 14 },
+  centerTitle: {
+    color: meetingTheme.text,
+    fontSize: 18,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  permBtn: {
+    marginTop: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: NAVY,
+  },
+  permBtnSecondary: {
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.35)",
+  },
+  permBtnText: { color: "#fff", fontWeight: "600", fontSize: 15 },
+  permBtnTextSecondary: { color: "#ccc" },
   errorBanner: {
     position: "absolute",
     left: 16,

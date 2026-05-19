@@ -157,7 +157,7 @@ export function NotificationProvider({
   children: React.ReactNode;
 }) {
   const queryClient = useQueryClient();
-  const { user, status } = useAuth();
+  const { user, status, accountType } = useAuth();
   const { socket } = useSocket();
 
   const [toastQueue, setToastQueue] = useState<IncomingNotification[]>([]);
@@ -280,10 +280,11 @@ export function NotificationProvider({
       );
       const titleLower = payload.title?.toLowerCase() ?? "";
 
+      const isTraineeAccount = accountType === "Trainee";
       if (
-        kind === "instant_lesson_accepted" ||
-        titleLower.includes("instant lesson accepted") ||
-        titleLower.includes("session confirmed")
+        isTraineeAccount &&
+        (kind === "instant_lesson_accepted" ||
+          titleLower.includes("instant lesson accepted"))
       ) {
         if (lessonId && navigationRef.isReady()) {
           (navigationRef as { navigate: (name: string, params: object) => void }).navigate(

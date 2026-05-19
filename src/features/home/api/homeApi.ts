@@ -74,6 +74,27 @@ export async function fetchScheduledMeetings(status = "upcoming"): Promise<any[]
   return [];
 }
 
+/**
+ * Load a single booking row for the meeting screen (ICE servers, clips, participants).
+ * Mirrors web `MeetingPage` which reads `iceServers` from scheduled meeting details.
+ */
+export async function fetchMeetingSession(lessonId: string): Promise<any | null> {
+  if (!lessonId) return null;
+  for (const status of ["upcoming", "confirmed"] as const) {
+    try {
+      const res = await apiClient.get(API_ROUTES.user.scheduledMeetings, {
+        params: { id: lessonId, status, limit: 1 },
+      });
+      const body = res.data?.result ?? res.data;
+      const rows = Array.isArray(body) ? body : body?.data;
+      if (Array.isArray(rows) && rows.length > 0) return rows[0];
+    } catch {
+      /** try next status */
+    }
+  }
+  return null;
+}
+
 export type BookedSessionStatus = "booked" | "confirmed" | "canceled" | "completed" | "upcoming";
 
 /** PUT /user/update-booked-session/:id — trainer confirm / cancel (web parity). */

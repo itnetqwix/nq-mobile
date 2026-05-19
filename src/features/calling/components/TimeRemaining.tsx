@@ -16,6 +16,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { LessonTimerStatus } from "../useLessonTimer";
+import { meetingTheme } from "../meetingTheme";
 
 const FIVE_MIN = 5 * 60;
 const ONE_MIN = 60;
@@ -49,6 +50,8 @@ type Props = {
   topInset?: number;
   /** Pill label (default "Time remaining"; instant lessons use "Lesson time"). */
   timerLabel?: string;
+  /** When true, anchor pill to top-right (meeting screen). */
+  alignRight?: boolean;
 };
 
 export function TimeRemaining({
@@ -64,6 +67,7 @@ export function TimeRemaining({
   onCrossThreshold,
   topInset = 20,
   timerLabel = "Time remaining",
+  alignRight = false,
 }: Props) {
   const [color, setColor] = useState("#28a745");
   const [warning, setWarning] = useState<Warning>(null);
@@ -104,7 +108,14 @@ export function TimeRemaining({
       : format(remainingSeconds);
 
   return (
-    <View style={[styles.wrap, { top: topInset }]} pointerEvents="box-none">
+    <View
+      style={[
+        styles.wrap,
+        { top: topInset },
+        alignRight && styles.wrapRight,
+      ]}
+      pointerEvents="box-none"
+    >
       <View style={styles.pill}>
         <Text style={styles.label}>{timerLabel}</Text>
         <Text style={[styles.value, { color }]}>{display}</Text>
@@ -173,20 +184,32 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: "center",
-    zIndex: 30,
+    zIndex: 32,
+  },
+  wrapRight: {
+    alignItems: "flex-end",
+    paddingRight: 12,
   },
   pill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
     borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.95)",
+    backgroundColor: meetingTheme.barBg,
+    borderWidth: 1,
+    borderColor: meetingTheme.barBorder,
+    shadowColor: meetingTheme.pipShadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   label: {
-    fontSize: 13,
-    color: "#666",
+    fontSize: 12,
+    color: meetingTheme.textMuted,
+    fontWeight: "600",
   },
   value: {
     fontSize: 16,

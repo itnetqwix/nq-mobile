@@ -379,8 +379,11 @@ export function useLessonTimer({
     autoStartedRef.current = false;
   }, [sessionId]);
 
+  /** Instant lessons: trainer may request start once both are in (backend also auto-starts).
+   *  Scheduled lessons: trainer starts manually unless backend auto-starts (late trainee). */
   useEffect(() => {
     if (accountType !== AccountType.TRAINER) return;
+    if (!session?.is_instant) return;
     if (!socket?.connected || !sessionId) return;
     if (!(bothUsersJoined || participantsConnected) || !timerBufferElapsed) return;
     if (status !== "waiting") return;
@@ -390,6 +393,7 @@ export function useLessonTimer({
     requestStart();
   }, [
     accountType,
+    session?.is_instant,
     socket,
     sessionId,
     bothUsersJoined,

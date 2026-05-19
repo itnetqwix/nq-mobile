@@ -11,6 +11,7 @@ import { FriendsScreen } from "../../friends/screens/FriendsScreen";
 import { CommunityScreen } from "./CommunityScreen";
 import { ContactUsScreen } from "./ContactUsScreen";
 import { AboutUsScreen } from "./AboutUsScreen";
+import { FaqScreen } from "./FaqScreen";
 import { MeetingRoomScreen } from "./MeetingRoomScreen";
 import { PracticeSessionScreen } from "./PracticeSessionScreen";
 import { InstantBookingScreen } from "./InstantBookingScreen";
@@ -46,6 +47,8 @@ export function DashboardFeatureScreen({ route }: DashboardFeatureScreenProps) {
       return <ContactUsScreen />;
     case "about-us":
       return <AboutUsScreen />;
+    case "faq":
+      return <FaqScreen />;
     case "meeting-room":
       return <MeetingRoomScreen />;
     case "practice-session":

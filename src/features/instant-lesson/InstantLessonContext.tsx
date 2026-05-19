@@ -14,14 +14,13 @@ import {
   INSTANT_ACCEPT_WINDOW_MS,
   INSTANT_JOIN_AFTER_ACCEPT_MS,
 } from "../../lib/sessions/instantLessonConstants";
+import { isInstantLesson, normalizeSessionStatus } from "../../lib/sessions/sessionUtils";
 import { INSTANT_LESSON_SOCKET as EVENTS } from "./instantLessonSocketEvents";
 import {
   registerInstantLessonHandlers,
   type InstantLessonPhasePayload,
 } from "./instantLessonBridge";
 
-/** Short "session confirmed" haptic — two quick taps. Vibration is the
- *  cross-platform built-in; we'll layer expo-haptics on top in Phase 4b. */
 const ACCEPT_HAPTIC_PATTERN: number[] = [0, 40, 80, 40];
 
 export type TrainerIncoming = {
@@ -29,7 +28,11 @@ export type TrainerIncoming = {
   coachId: string;
   traineeId: string;
   traineeInfo: { _id: string; fullname: string; profile_picture?: string };
+  /** Accept-window deadline (incoming) or join-window deadline (accepted). */
   expiresAt: number;
+  joinDeadlineAt?: number;
+  step: "incoming" | "accepted";
+  minimized?: boolean;
   duration?: number;
   lessonType?: string;
 };
@@ -42,10 +45,6 @@ export type TraineeBooking = {
   step: "waiting" | "accepted" | "declined" | "expired";
   acceptDeadlineAt?: number;
   joinDeadlineAt?: number;
-  /**
-   * When true, the full-screen waiting modal is hidden and only a small floating
-   * pill remains so the trainee can keep using the app while waiting.
-   */
   minimized?: boolean;
 };
 
@@ -63,7 +62,11 @@ type InstantLessonContextValue = {
   minimizeBooking: () => void;
   restoreBooking: () => void;
   joinAcceptedLesson: () => void;
-  /** Re-open the trainer accept modal from a session row (e.g. upcoming list). */
+  joinTrainerLesson: () => void;
+  minimizeTrainerAccepted: () => void;
+  restoreTrainerAccepted: () => void;
+  restoreTrainerIncoming: () => void;
+  clearTrainerIncoming: () => void;
   focusTrainerRequestFromSession: (session: Record<string, unknown>) => void;
 };
 
@@ -73,12 +76,17 @@ const InstantLessonContext = createContext<InstantLessonContextValue>({
   acceptRequest: () => {},
   declineRequest: () => {},
   expireRequest: () => {},
-  startBooking: (_booking: Omit<TraineeBooking, "step"> & { durationMinutes?: number }) => {},
+  startBooking: () => {},
   cancelBooking: () => {},
   clearTraineeBooking: () => {},
   minimizeBooking: () => {},
   restoreBooking: () => {},
   joinAcceptedLesson: () => {},
+  joinTrainerLesson: () => {},
+  minimizeTrainerAccepted: () => {},
+  restoreTrainerAccepted: () => {},
+  restoreTrainerIncoming: () => {},
+  clearTrainerIncoming: () => {},
   focusTrainerRequestFromSession: () => {},
 });
 
@@ -94,10 +102,9 @@ export function InstantLessonProvider({
   const [trainerIncoming, setTrainerIncoming] = useState<TrainerIncoming | null>(null);
   const [traineeBooking, setTraineeBooking] = useState<TraineeBooking | null>(null);
   const expiryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** If the trainee books before the socket exists, emit REQUEST once the connection is ready. */
   const pendingInstantRequestRef = useRef<Record<string, unknown> | null>(null);
-  /** Avoid double navigation to Meeting when the coach accepts (Strict Mode / duplicate events). */
   const traineeAutoMeetingLessonRef = useRef<string | null>(null);
+  const trainerAutoMeetingLessonRef = useRef<string | null>(null);
 
   const userId = user ? String((user as any)?._id ?? (user as any)?.id ?? "") : "";
 
@@ -108,11 +115,21 @@ export function InstantLessonProvider({
     }
   }, []);
 
+  const scheduleExpiry = useCallback(
+    (deadlineMs: number, onFire: () => void) => {
+      clearExpiryTimer();
+      const ms = Math.max(0, deadlineMs - Date.now());
+      expiryTimerRef.current = setTimeout(onFire, ms);
+    },
+    [clearExpiryTimer]
+  );
+
   useEffect(() => {
     if (authStatus === "signedIn") return;
     clearExpiryTimer();
     pendingInstantRequestRef.current = null;
     traineeAutoMeetingLessonRef.current = null;
+    trainerAutoMeetingLessonRef.current = null;
     setTrainerIncoming(null);
     setTraineeBooking(null);
   }, [authStatus, clearExpiryTimer]);
@@ -124,16 +141,13 @@ export function InstantLessonProvider({
     socket.emit(EVENTS.REQUEST, payload);
   }, [socket]);
 
-  /**
-   * When the coach accepts, surface an in-app "Confirmed — tap to join" banner instead of
-   * auto-navigating. The trainee can be elsewhere in the app (because the waiting modal is
-   * dismissible now), so we keep the booking in `accepted` state until they tap Join.
-   */
   useEffect(() => {
-    if (!traineeBooking) {
-      traineeAutoMeetingLessonRef.current = null;
-    }
+    if (!traineeBooking) traineeAutoMeetingLessonRef.current = null;
   }, [traineeBooking]);
+
+  useEffect(() => {
+    if (!trainerIncoming) trainerAutoMeetingLessonRef.current = null;
+  }, [trainerIncoming]);
 
   useEffect(() => {
     if (!socket) return;
@@ -153,11 +167,12 @@ export function InstantLessonProvider({
         traineeId,
         traineeInfo,
         expiresAt: expiresMs,
+        step: "incoming",
+        minimized: false,
         duration,
         lessonType,
       });
-      const msUntilExpiry = Math.max(0, expiresMs - Date.now());
-      expiryTimerRef.current = setTimeout(() => setTrainerIncoming(null), msUntilExpiry);
+      scheduleExpiry(expiresMs, () => setTrainerIncoming(null));
     };
 
     const handleAccept = (payload: any) => {
@@ -170,7 +185,7 @@ export function InstantLessonProvider({
         try {
           Vibration.vibrate(ACCEPT_HAPTIC_PATTERN);
         } catch {
-          /** Vibration may be unavailable (simulator); ignore. */
+          /** ignore */
         }
         return {
           ...prev,
@@ -251,31 +266,53 @@ export function InstantLessonProvider({
       socket.off(EVENTS.PHASE, handlePhase);
       socket.off(EVENTS.TRAINEE_CANCELLED, handleTraineeCancelled);
     };
-  }, [socket, clearExpiryTimer]);
+  }, [socket, clearExpiryTimer, scheduleExpiry]);
 
   const acceptRequest = useCallback(() => {
-    if (!trainerIncoming || !socket) return;
+    if (!trainerIncoming || trainerIncoming.step !== "incoming" || !socket) return;
     const { lessonId, coachId, traineeId } = trainerIncoming;
     socket.emit(
       EVENTS.ACCEPT,
       { lessonId, coachId, traineeId },
-      (response?: { ok?: boolean; error?: string; message?: string }) => {
+      (response?: { ok?: boolean; joinDeadlineAt?: string | number }) => {
         if (!response?.ok) return;
 
         clearExpiryTimer();
-        setTrainerIncoming(null);
-        onNavigateToMeeting(lessonId);
+        const joinMs = response.joinDeadlineAt
+          ? new Date(response.joinDeadlineAt).getTime()
+          : Date.now() + INSTANT_JOIN_AFTER_ACCEPT_MS;
+
+        try {
+          Vibration.vibrate(ACCEPT_HAPTIC_PATTERN);
+        } catch {
+          /** ignore */
+        }
+
+        setTrainerIncoming((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            step: "accepted",
+            joinDeadlineAt: joinMs,
+            expiresAt: joinMs,
+            minimized: false,
+          };
+        });
+
+        scheduleExpiry(joinMs, () => setTrainerIncoming(null));
       }
     );
-  }, [trainerIncoming, socket, clearExpiryTimer, onNavigateToMeeting]);
+  }, [trainerIncoming, socket, clearExpiryTimer, scheduleExpiry]);
 
   const expireRequest = useCallback(() => {
     if (!trainerIncoming || !socket) return;
-    socket.emit(EVENTS.EXPIRE, {
-      lessonId: trainerIncoming.lessonId,
-      coachId: trainerIncoming.coachId,
-      traineeId: trainerIncoming.traineeId,
-    });
+    if (trainerIncoming.step === "incoming") {
+      socket.emit(EVENTS.EXPIRE, {
+        lessonId: trainerIncoming.lessonId,
+        coachId: trainerIncoming.coachId,
+        traineeId: trainerIncoming.traineeId,
+      });
+    }
     clearExpiryTimer();
     setTrainerIncoming(null);
   }, [trainerIncoming, socket, clearExpiryTimer]);
@@ -290,6 +327,39 @@ export function InstantLessonProvider({
     clearExpiryTimer();
     setTrainerIncoming(null);
   }, [trainerIncoming, socket, clearExpiryTimer]);
+
+  const joinTrainerLesson = useCallback(() => {
+    if (!trainerIncoming || trainerIncoming.step !== "accepted") return;
+    const lid = String(trainerIncoming.lessonId);
+    if (trainerAutoMeetingLessonRef.current === lid) return;
+    trainerAutoMeetingLessonRef.current = lid;
+    clearExpiryTimer();
+    onNavigateToMeeting(lid);
+    setTrainerIncoming(null);
+  }, [trainerIncoming, onNavigateToMeeting, clearExpiryTimer]);
+
+  const minimizeTrainerAccepted = useCallback(() => {
+    setTrainerIncoming((prev) =>
+      prev?.step === "accepted" ? { ...prev, minimized: true } : prev
+    );
+  }, []);
+
+  const restoreTrainerAccepted = useCallback(() => {
+    setTrainerIncoming((prev) =>
+      prev?.step === "accepted" ? { ...prev, minimized: false } : prev
+    );
+  }, []);
+
+  const restoreTrainerIncoming = useCallback(() => {
+    setTrainerIncoming((prev) =>
+      prev?.step === "incoming" ? { ...prev, minimized: false } : prev
+    );
+  }, []);
+
+  const clearTrainerIncoming = useCallback(() => {
+    clearExpiryTimer();
+    setTrainerIncoming(null);
+  }, [clearExpiryTimer]);
 
   const startBooking = useCallback(
     (
@@ -337,17 +407,15 @@ export function InstantLessonProvider({
         pendingInstantRequestRef.current = payload;
       }
 
-      clearExpiryTimer();
-      const msUntilExpiry = Math.max(0, acceptDeadlineAt - Date.now());
-      expiryTimerRef.current = setTimeout(() => {
+      scheduleExpiry(acceptDeadlineAt, () => {
         setTraineeBooking((prev) => {
           if (!prev || String(prev.lessonId) !== lessonId) return prev;
           if (prev.step !== "waiting") return prev;
           return { ...prev, step: "expired" as const };
         });
-      }, msUntilExpiry);
+      });
     },
-    [socket, userId, user, clearExpiryTimer]
+    [socket, userId, user, scheduleExpiry]
   );
 
   const cancelBooking = useCallback(() => {
@@ -363,8 +431,9 @@ export function InstantLessonProvider({
         traineeId: traineeBooking.traineeId,
       });
     }
+    clearExpiryTimer();
     setTraineeBooking(null);
-  }, [traineeBooking, socket]);
+  }, [traineeBooking, socket, clearExpiryTimer]);
 
   const clearTraineeBooking = useCallback(() => {
     setTraineeBooking(null);
@@ -383,20 +452,18 @@ export function InstantLessonProvider({
     const lid = String(traineeBooking.lessonId);
     if (traineeAutoMeetingLessonRef.current === lid) return;
     traineeAutoMeetingLessonRef.current = lid;
+    clearExpiryTimer();
     onNavigateToMeeting(lid);
     setTraineeBooking(null);
-  }, [traineeBooking, onNavigateToMeeting]);
+  }, [traineeBooking, onNavigateToMeeting, clearExpiryTimer]);
 
   const focusTrainerRequestFromSession = useCallback(
     (session: Record<string, unknown>) => {
       const lessonId = String(session._id ?? session.id ?? "");
       if (!lessonId) return;
-      const acceptRaw = session.accept_deadline_at ?? session.acceptDeadlineAt;
-      const acceptMs = acceptRaw
-        ? new Date(String(acceptRaw)).getTime()
-        : Date.now() + INSTANT_ACCEPT_WINDOW_MS;
+
       const traineeInfo = (session.trainee_info ?? {}) as TrainerIncoming["traineeInfo"];
-      setTrainerIncoming({
+      const base = {
         lessonId,
         coachId: String(session.trainer_id ?? userId),
         traineeId: String(session.trainee_id ?? ""),
@@ -405,12 +472,46 @@ export function InstantLessonProvider({
           fullname: traineeInfo.fullname ?? "Trainee",
           profile_picture: traineeInfo.profile_picture,
         },
-        expiresAt: Number.isFinite(acceptMs) ? acceptMs : Date.now() + INSTANT_ACCEPT_WINDOW_MS,
         duration: Number(session.duration_minutes) || 30,
         lessonType: `Instant Lesson - ${Number(session.duration_minutes) || 30} min`,
+        minimized: false,
+      };
+
+      const status = normalizeSessionStatus(session.status as string);
+      const instant = isInstantLesson(session);
+      const joinRaw = session.join_deadline_at ?? session.joinDeadlineAt;
+      const joinMs = joinRaw
+        ? new Date(String(joinRaw)).getTime()
+        : session.accepted_at
+          ? new Date(String(session.accepted_at)).getTime() + INSTANT_JOIN_AFTER_ACCEPT_MS
+          : Date.now() + INSTANT_JOIN_AFTER_ACCEPT_MS;
+
+      if (instant && (status === "confirmed" || status === "upcoming") && joinMs > Date.now()) {
+        setTrainerIncoming({
+          ...base,
+          step: "accepted",
+          joinDeadlineAt: joinMs,
+          expiresAt: joinMs,
+        });
+        scheduleExpiry(joinMs, () => setTrainerIncoming(null));
+        return;
+      }
+
+      const acceptRaw = session.accept_deadline_at ?? session.acceptDeadlineAt;
+      const acceptMs = acceptRaw
+        ? new Date(String(acceptRaw)).getTime()
+        : Date.now() + INSTANT_ACCEPT_WINDOW_MS;
+      setTrainerIncoming({
+        ...base,
+        step: "incoming",
+        expiresAt: Number.isFinite(acceptMs) ? acceptMs : Date.now() + INSTANT_ACCEPT_WINDOW_MS,
       });
+      scheduleExpiry(
+        Number.isFinite(acceptMs) ? acceptMs : Date.now() + INSTANT_ACCEPT_WINDOW_MS,
+        () => setTrainerIncoming(null)
+      );
     },
-    [userId]
+    [userId, scheduleExpiry]
   );
 
   const value = useMemo(
@@ -426,6 +527,11 @@ export function InstantLessonProvider({
       minimizeBooking,
       restoreBooking,
       joinAcceptedLesson,
+      joinTrainerLesson,
+      minimizeTrainerAccepted,
+      restoreTrainerAccepted,
+      restoreTrainerIncoming,
+      clearTrainerIncoming,
       focusTrainerRequestFromSession,
     }),
     [
@@ -440,6 +546,11 @@ export function InstantLessonProvider({
       minimizeBooking,
       restoreBooking,
       joinAcceptedLesson,
+      joinTrainerLesson,
+      minimizeTrainerAccepted,
+      restoreTrainerAccepted,
+      restoreTrainerIncoming,
+      clearTrainerIncoming,
       focusTrainerRequestFromSession,
     ]
   );

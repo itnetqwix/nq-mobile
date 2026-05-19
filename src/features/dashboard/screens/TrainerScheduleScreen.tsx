@@ -111,8 +111,8 @@ function validate(days: DayState[]): string | null {
   return null;
 }
 
-/** Web parity time grid: every 30 min, 5 AM through 10 PM. */
-const HOURS = Array.from({ length: 18 }, (_, i) => i + 5);
+/** Full-day grid: every 30 min, 12:00 AM (hour 0) through 11:30 PM (hour 23). */
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINUTES = [0, 30];
 
 function TimePickerModal({
@@ -303,14 +303,19 @@ export function TrainerScheduleScreen() {
     );
   };
 
-  const addSlot = (dayIdx: number) => {
+  const addSlot = (dayIdx: number, fullDay = false) => {
     setDays((prev) =>
       prev.map((d, di) =>
         di !== dayIdx
           ? d
           : {
               ...d,
-              slots: [...d.slots, { start_time: "9:00:00", end_time: "10:00:00" }],
+              slots: [
+                ...d.slots,
+                fullDay
+                  ? { start_time: "0:00:00", end_time: "23:30:00" }
+                  : { start_time: "9:00:00", end_time: "10:00:00" },
+              ],
             }
       )
     );
@@ -402,10 +407,16 @@ export function TrainerScheduleScreen() {
           <View key={d.day} style={styles.dayCard}>
             <View style={styles.dayHeader}>
               <Text style={styles.dayTitle}>{d.day}</Text>
-              <Pressable style={styles.addBtn} onPress={() => addSlot(dayIdx)}>
-                <Ionicons name="add" size={18} color={colors.brandNavy} />
-                <Text style={styles.addBtnText}>Add range</Text>
-              </Pressable>
+              <View style={styles.dayHeaderActions}>
+                <Pressable style={styles.addBtn} onPress={() => addSlot(dayIdx, true)}>
+                  <Ionicons name="sunny-outline" size={16} color={colors.brandNavy} />
+                  <Text style={styles.addBtnText}>24h</Text>
+                </Pressable>
+                <Pressable style={styles.addBtn} onPress={() => addSlot(dayIdx)}>
+                  <Ionicons name="add" size={18} color={colors.brandNavy} />
+                  <Text style={styles.addBtnText}>Add range</Text>
+                </Pressable>
+              </View>
             </View>
 
             {d.slots.length === 0 ? (
@@ -562,7 +573,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 4,
   },
-  pickerScroll: { maxHeight: 220, borderRadius: radii.sm, backgroundColor: colors.surface },
+  pickerScroll: { maxHeight: 280, borderRadius: radii.sm, backgroundColor: colors.surface },
+  dayHeaderActions: { flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 1 },
   pickerItem: { paddingVertical: 10, alignItems: "center" },
   pickerItemOn: { backgroundColor: colors.brandAccentSubtle },
   pickerItemText: { ...typography.bodyMd, color: colors.text },
