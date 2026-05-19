@@ -9,7 +9,7 @@
  *      `CallProvider` — fail fast with a clear screen state otherwise.
  *   3. Compose the call surface:
  *        ┌─────────────────────────────────────┐
- *        │ TimeRemaining          RecordingBar │   ← top chrome
+ *        │ TimeRemaining                       │   ← top chrome
  *        │                                     │
  *        │ remote video / clip player          │
  *        │                                     │
@@ -45,7 +45,7 @@ import { fetchMeetingSession, fetchScheduledMeetings } from "../../home/api/home
 import { parseIceServersFromSession } from "../meetingIceServers";
 import { getClipPlaybackUrl } from "../../../lib/clipMediaUrl";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
-import { clipsFromSession, resolveClipPlayback } from "../clipSyncUtils";
+import { clipIdOf, clipsFromSession, resolveClipPlayback } from "../clipSyncUtils";
 import { useDrawingSync } from "../useDrawingSync";
 import { useMeetingScreenshot } from "../useMeetingScreenshot";
 
@@ -64,11 +64,13 @@ import { UserBox } from "../components/UserBox";
 import {
   DraggableVideoPip,
   PIP_HEIGHT,
-  PIP_MAX_WIDTH,
-  PIP_MIN_WIDTH,
   PIP_WIDTH,
 } from "../components/DraggableVideoPip";
 import { useVideoPipLayout } from "../useVideoPipLayout";
+import { useMeetingLayout } from "../useMeetingLayout";
+import { useNativeMeetingPip } from "../hooks/useNativeMeetingPip";
+import { MeetingLiveStage } from "../components/MeetingLiveStage";
+import { MeetingMiniPip } from "../components/MeetingMiniPip";
 import { ActionButtons } from "../components/ActionButtons";
 import { TimeRemaining } from "../components/TimeRemaining";
 import { PeerJoinedModal } from "../components/PeerJoinedModal";
@@ -80,7 +82,6 @@ import {
   MeetingAnnotationToolbar,
   type AnnotationTool,
 } from "../components/MeetingAnnotationToolbar";
-import { RecordingBar } from "../components/RecordingBar";
 import { SessionGamePlanModal } from "../components/SessionGamePlanModal";
 import { RatingsModal } from "../components/RatingsModal";
 import { MeetingJoinBanner } from "../components/MeetingJoinBanner";
@@ -281,18 +282,8 @@ function MeetingSurface({
 }) {
   const chrome = useMeetingChromeInsets();
   const { width: winW, height: winH } = useWindowDimensions();
-  const [pipWidth, setPipWidth] = useState(PIP_WIDTH);
-  const pipHeight = useMemo(
-    () => Math.round((pipWidth / PIP_WIDTH) * PIP_HEIGHT),
-    [pipWidth]
-  );
-  const cyclePipSize = useCallback(() => {
-    setPipWidth((w) => {
-      if (w <= PIP_MIN_WIDTH) return PIP_WIDTH;
-      if (w < PIP_MAX_WIDTH) return PIP_MAX_WIDTH;
-      return PIP_MIN_WIDTH;
-    });
-  }, []);
+  const [localPipSize, setLocalPipSize] = useState({ w: PIP_WIDTH, h: PIP_HEIGHT });
+  const [remotePipSize, setRemotePipSize] = useState({ w: PIP_WIDTH, h: PIP_HEIGHT });
   const {
     localStream,
     remoteStream,
@@ -333,6 +324,19 @@ function MeetingSurface({
     toUserId: peerId,
     sessionId: lessonId,
     isTrainer,
+  });
+
+  const meetingLayout = useMeetingLayout({
+    socket,
+    sessionId: lessonId,
+    myId,
+    peerId,
+    isTrainer,
+  });
+
+  useNativeMeetingPip({
+    enabled: partnerInSession && !!localStream,
+    preferRemote: true,
   });
 
   const [meetingBounds, setMeetingBounds] = useState<{
@@ -383,13 +387,14 @@ function MeetingSurface({
   const [ratingsOpen, setRatingsOpen] = useState(false);
   const [gamePlanOpen, setGamePlanOpen] = useState(false);
   const [activeClipUri, setActiveClipUri] = useState<string | null>(null);
-  const [clipDuration, setClipDuration] = useState(0);
-  const [clipProgress, setClipProgress] = useState(0);
+  const [clipDurations, setClipDurations] = useState<[number, number]>([0, 0]);
+  const [clipProgresses, setClipProgresses] = useState<[number, number]>([0, 0]);
   const [drawingOverlayKey, setDrawingOverlayKey] = useState(0);
   const [annotationTool, setAnnotationTool] = useState<AnnotationTool>("freehand");
-  const [recordingActive, setRecordingActive] = useState(false);
+  const [annotationArmed, setAnnotationArmed] = useState(false);
+  const [annotationToolbarOpen, setAnnotationToolbarOpen] = useState(false);
   const [joinBanner, setJoinBanner] = useState<string | null>(null);
-  const clipProgressRef = useRef(0);
+  const clipProgressRefs = useRef<[number, number]>([0, 0]);
   const lessonStartedNotifiedRef = useRef(false);
 
   useEffect(() => {
@@ -466,31 +471,94 @@ function MeetingSurface({
       setActiveClipUri(clipSync.activeClipUrl);
     } else if (!clipSync.activeClipId) {
       setActiveClipUri(null);
-      setClipDuration(0);
-      setClipProgress(0);
+      setClipDurations([0, 0]);
+      setClipProgresses([0, 0]);
     }
   }, [clipSync.activeClipId, clipSync.activeClipUrl]);
 
-  const secondaryClipUri = useMemo(() => {
-    if (clipSync.selectedClips.length < 2) return null;
-    return resolveClipPlayback(clipSync.selectedClips[1]).url;
+  const clipPaneUris = useMemo(() => {
+    return clipSync.selectedClips
+      .slice(0, 2)
+      .map((c) => resolveClipPlayback(c).url)
+      .filter((u): u is string => !!u);
   }, [clipSync.selectedClips]);
 
-  const dualClip = clipSync.selectedClips.length >= 2 && !!secondaryClipUri;
-  const showDualLayout =
-    dualClip && (clipSync.lockMode || clipSync.layoutMode === "stacked");
+  const dualClip = clipPaneUris.length >= 2;
+  const clipFocusIndex = clipSync.clipFocusIndex;
 
-  const clipPlayerProps = {
-    isPlaying: clipSync.isPlaying,
-    seekTargetMs: clipSync.seekHint
-      ? Math.floor(clipSync.seekHint.progress * 1000)
-      : null,
-    onProgressSeconds: (seconds: number) => {
-      clipProgressRef.current = seconds;
-      setClipProgress(seconds);
-    },
-    onDurationSeconds: setClipDuration,
+  const makeClipPlayerProps = (paneIndex: 0 | 1) => {
+    const clip = clipSync.selectedClips[paneIndex];
+    const clipId = clip ? clipIdOf(clip) : null;
+    const seekForPane =
+      clipSync.seekHint &&
+      (!clipSync.seekHint.videoId ||
+        clipSync.seekHint.videoId === clipId ||
+        clipSync.lockMode)
+        ? Math.floor(clipSync.seekHint.progress * 1000)
+        : null;
+    return {
+      isPlaying: clipSync.isPlaying,
+      seekTargetMs: seekForPane,
+      onProgressSeconds: (seconds: number) => {
+        clipProgressRefs.current[paneIndex] = seconds;
+        setClipProgresses((prev) => {
+          const next: [number, number] = [...prev];
+          next[paneIndex] = seconds;
+          return next;
+        });
+      },
+      onDurationSeconds: (seconds: number) => {
+        setClipDurations((prev) => {
+          const next: [number, number] = [...prev];
+          next[paneIndex] = seconds;
+          return next;
+        });
+      },
+    };
   };
+
+  const handleClipTogglePlay = useCallback(
+    (paneIndex: 0 | 1) => {
+      const clip = clipSync.selectedClips[paneIndex];
+      const id = clip ? clipIdOf(clip) : null;
+      if (!id) return;
+      if (clipSync.lockMode) {
+        clipSync.togglePlay();
+        return;
+      }
+      if (clipSync.activeClipId !== id) {
+        const { url } = resolveClipPlayback(clip);
+        if (url) {
+          setActiveClipUri(url);
+          clipSync.selectClip(id, url, clip);
+        }
+      }
+      clipSync.togglePlay(undefined, id);
+    },
+    [clipSync]
+  );
+
+  const handleClipSeek = useCallback(
+    (paneIndex: 0 | 1, sec: number) => {
+      clipProgressRefs.current[paneIndex] = sec;
+      setClipProgresses((prev) => {
+        const next: [number, number] = [...prev];
+        next[paneIndex] = sec;
+        return next;
+      });
+      const clip = clipSync.selectedClips[paneIndex];
+      const id = clip ? clipIdOf(clip) : null;
+      if (id && clipSync.activeClipId !== id) {
+        const { url } = resolveClipPlayback(clip);
+        if (url) {
+          setActiveClipUri(url);
+          clipSync.selectClip(id, url, clip);
+        }
+      }
+      clipSync.seek(sec, { forceEmit: true, videoId: id ?? undefined });
+    },
+    [clipSync]
+  );
 
   /** Show ratings after the call ends — `endCall()` will pop us back, so we
    *  wrap that path: open the modal first, then exit on dismiss. */
@@ -516,20 +584,36 @@ function MeetingSurface({
   const pipBounds = meetingBounds ?? { width: winW, height: winH };
 
   const inClipMode = !!activeClipUri;
+  const inLiveFocus = meetingLayout.focusedStreamId != null;
+
+  const handleAnnotationToggle = useCallback(() => {
+    if (annotationToolbarOpen) {
+      setAnnotationToolbarOpen(false);
+      return;
+    }
+    if (annotationArmed) {
+      setAnnotationArmed(false);
+      setAnnotationToolbarOpen(false);
+      drawingSync.clearCanvas();
+      setDrawingOverlayKey((k) => k + 1);
+      drawingSync.setTrainerDrawingEnabled(false);
+      return;
+    }
+    setAnnotationArmed(true);
+    setAnnotationToolbarOpen(true);
+    drawingSync.setTrainerDrawingEnabled(true);
+  }, [annotationArmed, annotationToolbarOpen, drawingSync]);
+
+  const canDraw = isTrainer && annotationArmed;
+  const focusedIsLocal = inLiveFocus && String(meetingLayout.focusedStreamId) === String(myId);
+  const focusedIsRemote = inLiveFocus && String(meetingLayout.focusedStreamId) === String(peerId);
 
   const exitClipMode = useCallback(() => {
     setActiveClipUri(null);
     clipSync.selectClip(null);
-    setClipDuration(0);
-    setClipProgress(0);
+    setClipDurations([0, 0]);
+    setClipProgresses([0, 0]);
   }, [clipSync]);
-
-  useEffect(() => {
-    if (isInstant && bothJoined && isTrainer) {
-      setRecordingActive(true);
-    }
-    if (!bothJoined) setRecordingActive(false);
-  }, [bothJoined, isInstant, isTrainer]);
 
   /** Surface time-warning toasts as the timer ticks past key thresholds. The
    *  callback is wired into `TimeRemaining` (which already detects the
@@ -601,41 +685,85 @@ function MeetingSurface({
           clipSync.clipFullscreen && styles.mainPaneFullscreen,
         ]}
       >
-        {activeClipUri ? (
+        {inLiveFocus ? (
+          <MeetingLiveStage
+            user={focusedIsRemote ? peerUser : null}
+            stream={focusedIsLocal ? localStream : remoteStream}
+            isStreamOff={
+              focusedIsLocal
+                ? !cameraEnabled || !localStream
+                : !remoteStream || remoteCameraOff
+            }
+            muted={focusedIsLocal}
+            label={focusedIsLocal ? "You" : peerDisplayName}
+            isTrainer={isTrainer}
+            onClearFocus={isTrainer ? () => meetingLayout.clearFocus() : undefined}
+          />
+        ) : activeClipUri ? (
           <View
             style={[
               styles.clipFrame,
-              showDualLayout && styles.clipFrameDual,
+              dualClip && styles.clipFrameDual,
             ]}
           >
-            <View style={showDualLayout ? styles.dualRow : styles.singleClip}>
-              <View style={showDualLayout ? styles.dualPane : styles.singleClip}>
-                <ClipPlayer uri={activeClipUri} {...clipPlayerProps} />
+            {dualClip ? (
+              <View style={styles.dualColumn}>
+                {([0, 1] as const).map((paneIndex) => {
+                  const uri = clipPaneUris[paneIndex];
+                  if (!uri) return null;
+                  const focused =
+                    clipFocusIndex == null || clipFocusIndex === paneIndex;
+                  if (!focused) return null;
+                  return (
+                    <View
+                      key={paneIndex}
+                      style={[
+                        styles.dualPane,
+                        clipFocusIndex != null && styles.dualPaneFocused,
+                      ]}
+                    >
+                      <ClipPlayer uri={uri} {...makeClipPlayerProps(paneIndex)} />
+                      {isTrainer ? (
+                        <ClipPlaybackControls
+                          variant="inline"
+                          isPlaying={clipSync.isPlaying}
+                          onTogglePlay={() => handleClipTogglePlay(paneIndex)}
+                          progressSeconds={clipProgresses[paneIndex]}
+                          durationSeconds={clipDurations[paneIndex]}
+                          onSeek={(sec) => handleClipSeek(paneIndex, sec)}
+                          disabled={!uri}
+                          showExpand
+                          isExpanded={clipFocusIndex === paneIndex}
+                          onToggleExpand={() =>
+                            clipSync.setClipFocus(
+                              clipFocusIndex === paneIndex ? null : paneIndex
+                            )
+                          }
+                        />
+                      ) : null}
+                    </View>
+                  );
+                })}
               </View>
-              {showDualLayout && secondaryClipUri ? (
-                <View style={styles.dualPane}>
-                  <ClipPlayer uri={secondaryClipUri} {...clipPlayerProps} />
-                </View>
-              ) : null}
-            </View>
-            {isTrainer ? (
-              <ClipPlaybackControls
-                isPlaying={clipSync.isPlaying}
-                onTogglePlay={() => clipSync.togglePlay()}
-                progressSeconds={clipProgress}
-                durationSeconds={clipDuration}
-                onSeek={(sec) => {
-                  clipProgressRef.current = sec;
-                  setClipProgress(sec);
-                  clipSync.seek(sec, { forceEmit: true });
-                }}
-                disabled={!activeClipUri}
-                bottomOffset={chrome.clipControlsBottom}
-              />
-            ) : null}
+            ) : (
+              <View style={styles.singleClip}>
+                <ClipPlayer uri={activeClipUri} {...makeClipPlayerProps(0)} />
+                {isTrainer ? (
+                  <ClipPlaybackControls
+                    isPlaying={clipSync.isPlaying}
+                    onTogglePlay={() => clipSync.togglePlay()}
+                    progressSeconds={clipProgresses[0]}
+                    durationSeconds={clipDurations[0]}
+                    onSeek={(sec) => handleClipSeek(0, sec)}
+                    disabled={!activeClipUri}
+                    bottomOffset={chrome.clipControlsBottom}
+                  />
+                ) : null}
+              </View>
+            )}
             <DrawingOverlay
               key={drawingOverlayKey}
-              enabled={isTrainer && drawingSync.drawingEnabled}
+              enabled={canDraw}
               tool={annotationTool}
               remoteStrokes={drawingSync.remoteStrokes}
               onStrokeComplete={(points, size) =>
@@ -660,7 +788,7 @@ function MeetingSurface({
             </View>
             <DrawingOverlay
               key={`live-${drawingOverlayKey}`}
-              enabled={isTrainer && drawingSync.drawingEnabled}
+              enabled={canDraw}
               tool={annotationTool}
               remoteStrokes={drawingSync.remoteStrokes}
               onStrokeComplete={(points, size) =>
@@ -697,8 +825,26 @@ function MeetingSurface({
         />
       ) : null}
 
-      {/* Draggable live camera PIPs */}
-      <>
+      {inLiveFocus ? (
+        <MeetingMiniPip
+          user={focusedIsLocal ? peerUser : null}
+          stream={focusedIsLocal ? remoteStream : localStream}
+          isStreamOff={
+            focusedIsLocal
+              ? !remoteStream || remoteCameraOff
+              : !cameraEnabled || !localStream
+          }
+          muted={!focusedIsLocal}
+          label={focusedIsLocal ? peerDisplayName.split(" ")[0] || "Partner" : "You"}
+          onPress={
+            isTrainer
+              ? () =>
+                  meetingLayout.focusStream(focusedIsLocal ? peerId : myId)
+              : undefined
+          }
+        />
+      ) : (
+        <>
           <DraggableVideoPip
             tileId="local"
             user={null}
@@ -714,12 +860,30 @@ function MeetingSurface({
             position={pipLayout.pipLayout.local.position}
             isHidden={pipLayout.pipLayout.local.isHidden}
             hiddenEdge={pipLayout.pipLayout.local.hiddenEdge}
-            onPositionChange={(pos) => pipLayout.updatePosition("local", pos)}
-            onHide={(edge, last) => pipLayout.hideTile("local", edge, last)}
-            onRestore={() => pipLayout.restoreTile("local")}
-            width={pipWidth}
-            height={pipHeight}
-            onResize={cyclePipSize}
+            onPositionChange={(pos) => {
+              pipLayout.updatePosition("local", pos);
+              meetingLayout.updateTile("local", { x: pos.x, y: pos.y });
+            }}
+            onHide={(edge, last) => {
+              pipLayout.hideTile("local", edge, last);
+              meetingLayout.updateTile("local", {
+                hidden: true,
+                hiddenEdge: edge,
+                x: last.x,
+                y: last.y,
+              });
+            }}
+            onRestore={() => {
+              pipLayout.restoreTile("local");
+              meetingLayout.updateTile("local", { hidden: false });
+            }}
+            width={localPipSize.w}
+            height={localPipSize.h}
+            onSizeChange={(w, h) => {
+              setLocalPipSize({ w, h });
+              meetingLayout.updateTile("local", { w, h });
+            }}
+            onFocus={isTrainer ? () => meetingLayout.focusStream(myId) : undefined}
           />
           <DraggableVideoPip
             tileId="remote"
@@ -734,21 +898,33 @@ function MeetingSurface({
             position={pipLayout.pipLayout.remote.position}
             isHidden={pipLayout.pipLayout.remote.isHidden}
             hiddenEdge={pipLayout.pipLayout.remote.hiddenEdge}
-            onPositionChange={(pos) => pipLayout.updatePosition("remote", pos)}
-            onHide={(edge, last) => pipLayout.hideTile("remote", edge, last)}
-            onRestore={() => pipLayout.restoreTile("remote")}
-            width={pipWidth}
-            height={pipHeight}
-            onResize={cyclePipSize}
+            onPositionChange={(pos) => {
+              pipLayout.updatePosition("remote", pos);
+              meetingLayout.updateTile("remote", { x: pos.x, y: pos.y });
+            }}
+            onHide={(edge, last) => {
+              pipLayout.hideTile("remote", edge, last);
+              meetingLayout.updateTile("remote", {
+                hidden: true,
+                hiddenEdge: edge,
+                x: last.x,
+                y: last.y,
+              });
+            }}
+            onRestore={() => {
+              pipLayout.restoreTile("remote");
+              meetingLayout.updateTile("remote", { hidden: false });
+            }}
+            width={remotePipSize.w}
+            height={remotePipSize.h}
+            onSizeChange={(w, h) => {
+              setRemotePipSize({ w, h });
+              meetingLayout.updateTile("remote", { w, h });
+            }}
+            onFocus={isTrainer ? () => meetingLayout.focusStream(peerId) : undefined}
           />
-      </>
-
-      {isInstant ? (
-        <RecordingBar
-          active={recordingActive}
-          onStop={() => setRecordingActive(false)}
-        />
-      ) : null}
+        </>
+      )}
 
       {/* Top chrome */}
       <TimeRemaining
@@ -756,9 +932,9 @@ function MeetingSurface({
         isAuthoritative={lessonTimer.isAuthoritative}
         status={lessonTimer.status}
         bothUsersJoined={partnerInSession}
-        showCoachControls={isTrainer}
+        showCoachControls={isTrainer && !isInstant}
         variant={isInstant ? "instant" : "scheduled"}
-        timerLabel={isInstant ? "Lesson time" : "Time remaining"}
+        timerLabel="Timer"
         topInset={chrome.topChrome}
         alignRight
         onStart={lessonTimer.requestStart}
@@ -767,14 +943,12 @@ function MeetingSurface({
         onCrossThreshold={onTimerCrossThreshold}
       />
 
-      {isTrainer && drawingSync.drawingEnabled ? (
+      {isTrainer && annotationToolbarOpen ? (
         <MeetingAnnotationToolbar
           tool={annotationTool}
           onToolChange={setAnnotationTool}
-          drawingEnabled={drawingSync.drawingEnabled}
-          onToggleDrawing={() =>
-            drawingSync.setTrainerDrawingEnabled(!drawingSync.drawingEnabled)
-          }
+          drawingEnabled={annotationArmed}
+          onToggleDrawing={() => setAnnotationToolbarOpen(false)}
           onClear={() => {
             drawingSync.clearCanvas();
             setDrawingOverlayKey((k) => k + 1);
@@ -801,13 +975,9 @@ function MeetingSurface({
             : undefined
         }
         onExitClipMode={isTrainer ? exitClipMode : undefined}
+        annotationArmed={annotationArmed}
         drawingEnabled={drawingSync.drawingEnabled}
-        onToggleDrawing={
-          isTrainer
-            ? () =>
-                drawingSync.setTrainerDrawingEnabled(!drawingSync.drawingEnabled)
-            : undefined
-        }
+        onToggleDrawing={isTrainer ? handleAnnotationToggle : undefined}
         onOpenClipPicker={isTrainer ? () => setPickerOpen(true) : undefined}
         onScreenshot={isTrainer ? () => void screenshot.takeScreenshot() : undefined}
       />
@@ -911,9 +1081,9 @@ const styles = StyleSheet.create({
   singleClip: {
     flex: 1,
   },
-  dualRow: {
+  dualColumn: {
     flex: 1,
-    flexDirection: "row",
+    flexDirection: "column",
     gap: 6,
   },
   dualPane: {
@@ -921,6 +1091,10 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderRadius: 12,
     backgroundColor: meetingTheme.surface,
+    minHeight: 120,
+  },
+  dualPaneFocused: {
+    flex: 1,
   },
   center: {
     flex: 1,

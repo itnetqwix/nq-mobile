@@ -24,6 +24,12 @@ type Props = {
   onSeek: (seconds: number) => void;
   disabled?: boolean;
   bottomOffset?: number;
+  /** `inline` anchors to parent pane; `floating` uses absolute bottom on meeting surface. */
+  variant?: "floating" | "inline";
+  /** Per-pane expand (dual-clip mode). */
+  showExpand?: boolean;
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
 };
 
 /** Trainer-only clip timeline (play/pause + scrub). Trainee follows via socket. */
@@ -35,6 +41,10 @@ export function ClipPlaybackControls({
   onSeek,
   disabled,
   bottomOffset = 108,
+  variant = "floating",
+  showExpand,
+  isExpanded,
+  onToggleExpand,
 }: Props) {
   const trackWidth = useRef(1);
   const max = Math.max(durationSeconds, 0.01);
@@ -48,7 +58,13 @@ export function ClipPlaybackControls({
   };
 
   return (
-    <View style={[styles.bar, { bottom: bottomOffset }]} pointerEvents="box-none">
+    <View
+      style={[
+        styles.bar,
+        variant === "floating" ? { bottom: bottomOffset } : styles.barInline,
+      ]}
+      pointerEvents="box-none"
+    >
       <View style={styles.timelineCard}>
         <Pressable
           style={[styles.playBtn, disabled && styles.btnDisabled]}
@@ -80,6 +96,19 @@ export function ClipPlaybackControls({
             <Text style={styles.timeText}>{formatTime(max)}</Text>
           </View>
         </View>
+        {showExpand && onToggleExpand ? (
+          <Pressable
+            style={styles.expandBtn}
+            onPress={onToggleExpand}
+            accessibilityLabel={isExpanded ? "Exit expanded clip" : "Expand clip"}
+          >
+            <Ionicons
+              name={isExpanded ? "contract-outline" : "expand-outline"}
+              size={22}
+              color="#fff"
+            />
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
@@ -91,6 +120,14 @@ const styles = StyleSheet.create({
     left: 12,
     right: 12,
     zIndex: 24,
+  },
+  barInline: {
+    position: "relative",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    marginTop: 4,
+    paddingHorizontal: 4,
   },
   timelineCard: {
     flexDirection: "row",
@@ -144,5 +181,13 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.85)",
     fontSize: 11,
     fontWeight: "600",
+  },
+  expandBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

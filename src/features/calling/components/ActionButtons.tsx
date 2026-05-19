@@ -19,6 +19,7 @@ type Props = {
   onExitClipMode?: () => void;
   onToggleLayout?: () => void;
   drawingEnabled?: boolean;
+  annotationArmed?: boolean;
   onToggleDrawing?: () => void;
   onEndCall?: () => void;
   bottomInset?: number;
@@ -37,6 +38,7 @@ export function ActionButtons({
   onExitClipMode,
   onToggleLayout,
   drawingEnabled,
+  annotationArmed,
   onToggleDrawing,
   onEndCall,
   bottomInset = 20,
@@ -52,8 +54,7 @@ export function ActionButtons({
   const hangUp = onEndCall ?? endCall;
   const [moreOpen, setMoreOpen] = useState(false);
 
-  const trainerExtras =
-    isTrainer && (onScreenshot || onToggleDrawing || onOpenClipPicker);
+  const trainerExtras = isTrainer && onScreenshot;
 
   return (
     <View style={[styles.bar, { bottom: bottomInset }]} pointerEvents="box-none">
@@ -118,11 +119,11 @@ export function ActionButtons({
           </RoundButton>
         ) : null}
 
-        {isTrainer && !inClipMode && onToggleDrawing ? (
+        {isTrainer && onToggleDrawing ? (
           <RoundButton
             onPress={onToggleDrawing}
-            accessibilityLabel="Draw"
-            active={drawingEnabled}
+            accessibilityLabel="Annotate"
+            active={annotationArmed ?? drawingEnabled}
           >
             <MaterialCommunityIcons name="draw" size={20} color={meetingTheme.navy} />
           </RoundButton>

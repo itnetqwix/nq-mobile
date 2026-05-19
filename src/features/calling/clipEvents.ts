@@ -15,6 +15,8 @@ export const CLIP_EVENTS = {
   TOGGLE_LOCK_MODE: "TOGGLE_LOCK_MODE",
   ON_CLEAR_CANVAS: "ON_CLEAR_CANVAS",
   ON_VIDEO_ZOOM_PAN: "ON_VIDEO_ZOOM_PAN",
+  /** Trainer-driven PIP positions/sizes (mobile ↔ web). */
+  MEETING_TILE_LAYOUT: "MEETING_TILE_LAYOUT",
 } as const;
 
 export type ClipUserInfo = {

@@ -95,6 +95,8 @@ export function useClipSync({
   const [lockMode, setLockMode] = useState(false);
   const [layoutMode, setLayoutMode] = useState<ClipLayoutMode>("default");
   const [clipFullscreen, setClipFullscreen] = useState(false);
+  /** Which dual-clip pane is expanded (0 | 1), or null for split view. */
+  const [clipFocusIndex, setClipFocusIndex] = useState<0 | 1 | null>(null);
   const lastSeekEmit = useRef(0);
   const bookingPreloadedRef = useRef(false);
 
@@ -118,16 +120,11 @@ export function useClipSync({
         return;
       }
 
-      if (type === "swap" && !payload?.id) {
-        setSelectedClips([]);
-        setActiveClipId(null);
-        setActiveClipUrl(null);
-        setIsPlaying(false);
-        return;
-      }
+      // Live-stream focus (`type: "swap"`) is handled by useMeetingLayout — do not clear clips.
+      if (type === "swap") return;
 
       const id = payload?.id != null ? String(payload.id) : null;
-      if (id) {
+      if (id && type === "clip") {
         const url =
           typeof payload?.playbackUrl === "string" && payload.playbackUrl
             ? payload.playbackUrl
@@ -146,16 +143,34 @@ export function useClipSync({
     };
 
     const onPlayPause = (payload: any) => {
-      setIsPlaying(!!payload?.isPlaying);
+      if (payload?.both) {
+        setIsPlaying(!!payload?.isPlaying);
+        return;
+      }
+      const vid = payload?.videoId != null ? String(payload.videoId) : null;
+      if (!vid || vid === activeClipId) {
+        setIsPlaying(!!payload?.isPlaying);
+      }
     };
 
     const onTime = (payload: any) => {
       if (typeof payload?.progress !== "number") return;
-      setSeekHint({
-        videoId: String(payload.videoId ?? activeClipId ?? ""),
-        progress: payload.progress,
-        receivedAt: Date.now(),
-      });
+      if (payload?.both) {
+        setSeekHint({
+          videoId: String(payload.videoId ?? activeClipId ?? ""),
+          progress: payload.progress,
+          receivedAt: Date.now(),
+        });
+        return;
+      }
+      const vid = payload?.videoId != null ? String(payload.videoId) : null;
+      if (!vid || vid === activeClipId) {
+        setSeekHint({
+          videoId: vid ?? "",
+          progress: payload.progress,
+          receivedAt: Date.now(),
+        });
+      }
     };
 
     const onHide = (payload: any) => {
@@ -175,8 +190,14 @@ export function useClipSync({
     };
 
     const onFullscreen = (payload: any) => {
-      const on = !!payload?.isFullscreen;
+      const on = !!(payload?.isFullscreen ?? payload?.isMaximized);
       const mode = payload?.layoutMode as ClipLayoutMode | undefined;
+      const idx = payload?.clipIndex;
+      if (idx === 0 || idx === 1) {
+        setClipFocusIndex(on ? idx : null);
+      } else if (!on) {
+        setClipFocusIndex(null);
+      }
       setClipFullscreen(on);
       setLayoutMode(
         mode === "clipFullscreen" || mode === "stacked" || mode === "default"
@@ -259,27 +280,30 @@ export function useClipSync({
   );
 
   const togglePlay = useCallback(
-    (next?: boolean) => {
-      if (!activeClipId) return;
+    (next?: boolean, videoIdOverride?: string | null) => {
+      const vid = videoIdOverride ?? activeClipId;
+      if (!vid) return;
       const nextState = typeof next === "boolean" ? next : !isPlaying;
       setIsPlaying(nextState);
       if (!isTrainer || !socket) return;
       socket.emit(CLIP_EVENTS.ON_VIDEO_PLAY_PAUSE, {
-        videoId: activeClipId,
+        videoId: vid,
         isPlaying: nextState,
         both: lockMode,
         userInfo,
+        sessionId,
       });
     },
-    [activeClipId, isPlaying, isTrainer, lockMode, socket, userInfo]
+    [activeClipId, isPlaying, isTrainer, lockMode, sessionId, socket, userInfo]
   );
 
   const seek = useCallback(
-    (progressSeconds: number, options?: { forceEmit?: boolean }) => {
-      if (!activeClipId) return;
+    (progressSeconds: number, options?: { forceEmit?: boolean; videoId?: string }) => {
+      const vid = options?.videoId ?? activeClipId;
+      if (!vid) return;
       const now = Date.now();
       setSeekHint({
-        videoId: activeClipId,
+        videoId: vid,
         progress: progressSeconds,
         receivedAt: now,
       });
@@ -287,13 +311,14 @@ export function useClipSync({
       if (!options?.forceEmit && now - lastSeekEmit.current < 200) return;
       lastSeekEmit.current = now;
       socket.emit(CLIP_EVENTS.ON_VIDEO_TIME, {
-        videoId: activeClipId,
+        videoId: vid,
         progress: progressSeconds,
         both: lockMode,
         userInfo,
+        sessionId,
       });
     },
-    [activeClipId, isTrainer, lockMode, socket, userInfo]
+    [activeClipId, isTrainer, lockMode, sessionId, socket, userInfo]
   );
 
   const setVideoHidden = useCallback(
@@ -320,17 +345,46 @@ export function useClipSync({
     });
   }, [isTrainer, lockMode, socket, userInfo, sessionId]);
 
-  const toggleClipFullscreen = useCallback(() => {
-    const next = !clipFullscreen;
-    setClipFullscreen(next);
-    setLayoutMode(next ? "clipFullscreen" : "default");
-    if (!isTrainer || !socket) return;
-    socket.emit(CLIP_EVENTS.TOGGLE_FULL_SCREEN, {
-      isFullscreen: next,
-      userInfo,
-      sessionId,
-    });
-  }, [clipFullscreen, isTrainer, socket, userInfo, sessionId]);
+  const setClipFocus = useCallback(
+    (index: 0 | 1 | null) => {
+      const next = index;
+      const on = next != null;
+      setClipFocusIndex(next);
+      setClipFullscreen(on);
+      setLayoutMode(on ? "clipFullscreen" : "default");
+      if (!isTrainer || !socket) return;
+      socket.emit(CLIP_EVENTS.TOGGLE_FULL_SCREEN, {
+        isFullscreen: on,
+        isMaximized: on,
+        clipIndex: next,
+        userInfo,
+        sessionId,
+      });
+    },
+    [isTrainer, socket, userInfo, sessionId]
+  );
+
+  const toggleClipFullscreen = useCallback(
+    (clipIndex?: 0 | 1) => {
+      if (clipIndex === 0 || clipIndex === 1) {
+        const next = clipFocusIndex === clipIndex ? null : clipIndex;
+        setClipFocus(next);
+        return;
+      }
+      const next = !clipFullscreen;
+      setClipFullscreen(next);
+      setClipFocusIndex(null);
+      setLayoutMode(next ? "clipFullscreen" : "default");
+      if (!isTrainer || !socket) return;
+      socket.emit(CLIP_EVENTS.TOGGLE_FULL_SCREEN, {
+        isFullscreen: next,
+        isMaximized: next,
+        userInfo,
+        sessionId,
+      });
+    },
+    [clipFocusIndex, clipFullscreen, isTrainer, setClipFocus, socket, userInfo, sessionId]
+  );
 
   const setLayout = useCallback(
     (mode: ClipLayoutMode) => {
@@ -371,6 +425,8 @@ export function useClipSync({
     lockMode,
     layoutMode,
     clipFullscreen,
+    clipFocusIndex,
+    setClipFocus,
     selectClip,
     emitSelectClips,
     preloadBookingClips,

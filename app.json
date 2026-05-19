@@ -33,7 +33,8 @@
         "UIBackgroundModes": [
           "audio",
           "voip",
-          "remote-notification"
+          "remote-notification",
+          "picture-in-picture"
         ],
         "ITSAppUsesNonExemptEncryption": false
       },
@@ -42,6 +43,7 @@
     },
     "android": {
       "softwareKeyboardLayoutMode": "resize",
+      "supportsPictureInPicture": true,
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",

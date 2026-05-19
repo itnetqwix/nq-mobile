@@ -27,7 +27,7 @@ export const PIP_HEIGHT = 124;
 export const PIP_MIN_WIDTH = 72;
 export const PIP_MAX_WIDTH = 140;
 const TAP_SLOP_PX = 8;
-const HIDE_VISIBLE_RATIO = 0.25;
+const HIDE_VISIBLE_RATIO = 0.4;
 
 export type DraggableVideoPipProps = {
   tileId: "local" | "remote";
@@ -54,8 +54,12 @@ export type DraggableVideoPipProps = {
   width?: number;
   height?: number;
   zIndex?: number;
-  /** Tap corner control to cycle small / default / large. */
-  onResize?: () => void;
+  /** Short tap on tile (trainer focuses stream on main stage). */
+  onFocus?: () => void;
+  /** Drag bottom-right corner to resize. */
+  onSizeChange?: (width: number, height: number) => void;
+  minWidth?: number;
+  maxWidth?: number;
 };
 
 function clampPipPosition(
@@ -138,7 +142,10 @@ export function DraggableVideoPip({
   width = PIP_WIDTH,
   height = PIP_HEIGHT,
   zIndex = 45,
-  onResize,
+  onFocus,
+  onSizeChange,
+  minWidth = PIP_MIN_WIDTH,
+  maxWidth = PIP_MAX_WIDTH,
 }: DraggableVideoPipProps) {
   const reservedBottom = pipReservedBottom ?? safeBottom + 80;
   const pan = useRef(new Animated.ValueXY(position)).current;
@@ -177,6 +184,7 @@ export function DraggableVideoPip({
 
           if (moved < TAP_SLOP_PX) {
             pan.setValue({ x: position.x, y: position.y });
+            onFocus?.();
             return;
           }
 
@@ -219,13 +227,31 @@ export function DraggableVideoPip({
       disabled,
       isHidden,
       onHide,
+      onFocus,
       onPositionChange,
       pan,
       position.x,
       position.y,
       reservedBottom,
       safeTop,
+      width,
+      height,
     ]
+  );
+
+  const resizeResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => !!onSizeChange && !disabled && !isHidden,
+        onMoveShouldSetPanResponder: () => !!onSizeChange && !disabled && !isHidden,
+        onPanResponderMove: (_, g) => {
+          const nextW = Math.min(maxWidth, Math.max(minWidth, width + g.dx));
+          const aspect = PIP_HEIGHT / PIP_WIDTH;
+          const nextH = Math.round(nextW * aspect);
+          onSizeChange?.(nextW, nextH);
+        },
+      }),
+    [disabled, isHidden, maxWidth, minWidth, onSizeChange, width]
   );
 
   if (!bounds) return null;
@@ -279,16 +305,14 @@ export function DraggableVideoPip({
         fallbackLabel={fallbackLabel}
         style={styles.tileInner}
       />
-      {onResize ? (
-        <Pressable
+      {onSizeChange ? (
+        <View
           style={styles.resizeHandle}
-          onPress={onResize}
-          hitSlop={6}
-          accessibilityRole="button"
-          accessibilityLabel="Resize camera preview"
+          {...resizeResponder.panHandlers}
+          accessibilityLabel="Drag to resize camera preview"
         >
           <Ionicons name="resize-outline" size={14} color="#fff" />
-        </Pressable>
+        </View>
       ) : null}
     </Animated.View>
   );
