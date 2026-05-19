@@ -15,12 +15,14 @@ import {
 import { EmptyState } from "../../../components/ui";
 import { space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import type { MenuStackParamList } from "../../../navigation/types";
+import { useShellHeaderTitle } from "../../../navigation/useShellHeaderTitle";
 import { fetchWalletLedger } from "../walletApi";
 import { formatLedgerAmount, ledgerReferenceLabel } from "../lib/ledgerLabels";
 
 const PAGE_SIZE = 25;
 
 export function WalletActivityScreen() {
+  useShellHeaderTitle("Activity");
   const c = useThemeColors();
   const styles = useThemedStyles((c) => StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center" },

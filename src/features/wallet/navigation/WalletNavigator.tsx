@@ -29,29 +29,18 @@ export function WalletNavigator({
     <Stack.Navigator
       initialRouteName={initialRouteName ?? "WalletHome"}
       screenOptions={{
-        headerTintColor: c.headerTint,
-        headerTitleStyle: { fontWeight: "600", color: c.headerTitle },
-        headerStyle: { backgroundColor: c.background },
+        headerShown: false,
         contentStyle: { backgroundColor: c.background },
       }}
     >
-      <Stack.Screen name="WalletHome" component={WalletHomeScreen} options={{ title: "Wallet" }} />
+      <Stack.Screen name="WalletHome" component={WalletHomeScreen} />
       <Stack.Screen
         name="WalletTopUp"
         component={WalletTopUpScreen}
         initialParams={initialRouteName === "WalletTopUp" ? initialParams : undefined}
-        options={{ title: "Add funds" }}
       />
-      <Stack.Screen
-        name="WalletActivity"
-        component={WalletActivityScreen}
-        options={{ title: "Activity" }}
-      />
-      <Stack.Screen
-        name="WalletSecurity"
-        component={WalletSecurityScreen}
-        options={{ title: "Security" }}
-      />
+      <Stack.Screen name="WalletActivity" component={WalletActivityScreen} />
+      <Stack.Screen name="WalletSecurity" component={WalletSecurityScreen} />
     </Stack.Navigator>
   );
 }

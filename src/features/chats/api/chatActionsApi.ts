@@ -16,6 +16,17 @@ export async function archiveChatConversation(conversationId: string) {
   return res.data;
 }
 
+export async function unarchiveChatConversation(conversationId: string) {
+  const res = await apiClient.post(API_ROUTES.chat.unarchiveConversation, { conversationId });
+  return res.data;
+}
+
+export async function fetchArchivedConversations(): Promise<any[]> {
+  const res = await apiClient.get(API_ROUTES.chat.archivedConversations);
+  const body = (res as any)?.data ?? res;
+  return body?.data ?? body?.result ?? [];
+}
+
 export async function deleteChatConversation(conversationId: string) {
   const res = await apiClient.post(API_ROUTES.chat.deleteConversation, { conversationId });
   return res.data;

@@ -108,7 +108,7 @@ type ChatPartner = {
   profile_picture?: string;
 };
 
-export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
+export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
   const c = useThemeColors();
   const styles = useThemedStyles((palette) => StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.surfaceElevated },
@@ -598,6 +598,13 @@ export function ChatsScreen(_props: MainTabScreenProps<"Chats">) {
             <Ionicons name="close-circle" size={18} color={c.textMuted} />
           </Pressable>
         )}
+        <Pressable
+          onPress={() => navigation.navigate("Home", { screen: "ArchivedChats" })}
+          accessibilityLabel="Archived chats"
+          hitSlop={8}
+        >
+          <Ionicons name="archive-outline" size={22} color={c.brandNavy} />
+        </Pressable>
       </View>
 
       {groupInvites.length > 0 ? (

@@ -38,7 +38,7 @@ export function AuthScreenLayout({ title, subtitle, children, footer, style }: P
   return (
     <ScreenContainer scroll applyTopInset={false} padding="lg" background={c.background} style={style}>
       <View style={styles.brand}>
-        <NetqwixLogo maxWidth={220} />
+        <NetqwixLogo maxWidth={260} height={80} />
       </View>
       <Text style={styles.title}>{title}</Text>
       {!!subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}

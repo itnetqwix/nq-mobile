@@ -9,6 +9,7 @@ import { radii, space, typography, useThemeColors, useThemedStyles } from "../..
 import { useWalletBalance } from "../hooks/useWalletBalance";
 import type { WalletStackParamList } from "../navigation/WalletNavigator";
 import { TrainerWalletHome } from "../components/TrainerWalletHome";
+import { useShellHeaderTitle } from "../../../navigation/useShellHeaderTitle";
 
 const BENEFITS = [
   {
@@ -203,6 +204,7 @@ function MenuRow({
 }
 
 export function WalletHomeScreen(props: Props) {
+  useShellHeaderTitle("Wallet");
   const { accountType } = useAuth();
   const insets = useSafeAreaInsets();
   const isTrainer = accountType === AccountType.TRAINER;

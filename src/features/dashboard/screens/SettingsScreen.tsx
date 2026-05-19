@@ -46,7 +46,8 @@ import {
   type UserNotificationPrefs,
 } from "../../home/api/homeApi";
 import i18n from "../../../i18n";
-import { languageLabelForCode, normalizeAppLocale } from "../../../i18n/languages";
+import { applyRtlLocale } from "../../../i18n/applyRtlLocale";
+import { bcp47ForAppLocale, languageLabelForCode, normalizeAppLocale } from "../../../i18n/languages";
 import { persistAppLocale } from "../../../i18n/localeStorage";
 
 function readNotificationPrefs(user: Record<string, unknown> | null): UserNotificationPrefs {
@@ -140,11 +141,20 @@ export function SettingsScreen() {
     try {
       const nextLoc = normalizeAppLocale(localeDraft);
       const nextTz = tzDraft.trim() || defaultTz;
-      await putProfile(role, { preferred_locale: nextLoc, time_zone: nextTz });
+      const localeBcp47 = bcp47ForAppLocale(nextLoc);
+      await putProfile(role, { preferred_locale: localeBcp47, time_zone: nextTz });
       await i18n.changeLanguage(nextLoc);
       await persistAppLocale(nextLoc);
-      patchUser({ preferred_locale: nextLoc, time_zone: nextTz });
-      Alert.alert(t("settings.regionalSaved"), t("settings.regionalSavedBody"));
+      patchUser({ preferred_locale: localeBcp47, time_zone: nextTz });
+      const needsRtlReload = applyRtlLocale(nextLoc);
+      if (needsRtlReload) {
+        Alert.alert(
+          t("settings.regionalSaved"),
+          "Please restart the app to apply the new layout direction."
+        );
+      } else {
+        Alert.alert(t("settings.regionalSaved"), t("settings.regionalSavedBody"));
+      }
     } catch (e) {
       Alert.alert(t("settings.regionalError"), getApiErrorMessage(e));
     } finally {
@@ -348,6 +358,16 @@ export function SettingsScreen() {
             />
           </React.Fragment>
         ))}
+      </Card>
+
+      <SectionHeader label="Storage" />
+      <Card variant="outlined" padding={0} style={styles.sectionCard}>
+        <ListRow
+          icon="cloud-outline"
+          title="Storage plan"
+          subtitle="Manage clip storage and upgrades"
+          onPress={() => navigation.navigate("StoragePlan")}
+        />
       </Card>
 
       <SectionHeader label={t("settings.regionalTitle")} />

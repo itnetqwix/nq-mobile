@@ -22,6 +22,7 @@ import { radii, space, typography, useThemeColors, useThemedStyles } from "../..
 import { useWalletTopUpFlow } from "../hooks/useWalletTopUpFlow";
 import { useWalletBalance } from "../hooks/useWalletBalance";
 import type { WalletStackParamList } from "../navigation/WalletNavigator";
+import { useShellHeaderTitle } from "../../../navigation/useShellHeaderTitle";
 import { fetchWalletConfig } from "../walletApi";
 
 const PRESETS = [25, 50, 100, 200];
@@ -29,6 +30,7 @@ const PRESETS = [25, 50, 100, 200];
 type Props = NativeStackScreenProps<WalletStackParamList, "WalletTopUp">;
 
 export function WalletTopUpScreen({ navigation, route }: Props) {
+  useShellHeaderTitle("Add funds");
   const c = useThemeColors();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();

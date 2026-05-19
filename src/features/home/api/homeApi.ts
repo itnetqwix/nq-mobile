@@ -388,6 +388,45 @@ export async function postMyClipsGrouped(params?: {
   return extractApiArray(res.data);
 }
 
+/** POST `/common/get-shared-clips` — friend-shared clips grouped by category. */
+export async function postSharedClipsGrouped(): Promise<{ _id: string; clips: any[] }[]> {
+  const res = await apiClient.post(API_ROUTES.common.getSharedClips, {});
+  return extractApiArray(res.data);
+}
+
+export type StoragePlanInfo = {
+  planId: string;
+  planLabel: string;
+  quotaBytes: number;
+  usedBytes: number;
+  billingInterval: string | null;
+  plans: {
+    id: string;
+    label: string;
+    quotaBytes: number;
+    monthlyPrice: number;
+    yearlyPrice: number;
+    yearlySavingsPercent: number;
+  }[];
+};
+
+export async function fetchStorageInfo(): Promise<StoragePlanInfo> {
+  const res = await apiClient.get(API_ROUTES.user.storage);
+  return (res.data?.data ?? res.data?.result ?? res.data) as StoragePlanInfo;
+}
+
+export async function createStorageCheckout(
+  planId: string,
+  interval: "monthly" | "yearly" | "one_time"
+): Promise<{ client_secret: string; paymentIntentId?: string; subscriptionId?: string }> {
+  const res = await apiClient.post(API_ROUTES.user.storageCheckout, { planId, interval });
+  return (res.data?.data ?? res.data?.result ?? res.data) as {
+    client_secret: string;
+    paymentIntentId?: string;
+    subscriptionId?: string;
+  };
+}
+
 /** POST `/common/trainee-clips` — trainer: clips attached to bookings, grouped by trainee user. */
 export async function postTraineeClipsGrouped(): Promise<{ _id: any; clips: any[] }[]> {
   const res = await apiClient.post(API_ROUTES.common.traineeClips, {});
@@ -411,6 +450,7 @@ export type ClipUploadSignClip = {
   thumbnail: string;
   title: string;
   category: string;
+  fileSizeBytes?: number;
 };
 
 export type ClipUploadSignPayload = {

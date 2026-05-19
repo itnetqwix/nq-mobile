@@ -1,6 +1,8 @@
 import { DrawerContentScrollView, type DrawerContentComponentProps } from "@react-navigation/drawer";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { localizedNavLabel } from "../i18n/navLabels";
 import {
   Alert,
   Pressable,
@@ -18,9 +20,10 @@ import { navMatrixFor, type NavMatrixEntry } from "./navMatrix";
 import { getActiveNavState, isNavEntryActive } from "./activeNavState";
 
 export function DashboardDrawerContent(props: DrawerContentComponentProps) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
-  const { accountType, user, signOut } = useAuth();
+  const { accountType, signOut } = useAuth();
 
   const drawerEntries = useMemo(
     () => navMatrixFor("drawer", accountType),
@@ -75,13 +78,6 @@ export function DashboardDrawerContent(props: DrawerContentComponentProps) {
     close();
   };
 
-  const displayName =
-    (user?.fullname as string) ||
-    (user?.fullName as string) ||
-    (user?.name as string) ||
-    (user?.email as string) ||
-    "";
-
   const onLogout = () => {
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
       { text: "Cancel", style: "cancel" },
@@ -99,12 +95,7 @@ export function DashboardDrawerContent(props: DrawerContentComponentProps) {
       style={[styles.scroll, { backgroundColor: colors.background }]}
     >
       <View style={[styles.brandBlock, { borderBottomColor: colors.border }]}>
-        <NetqwixLogo variant="wordmark" maxWidth={200} height={56} compact />
-        {!!displayName && (
-          <Text style={[styles.userLine, { color: colors.textSecondary }]} numberOfLines={1}>
-            {displayName}
-          </Text>
-        )}
+        <NetqwixLogo variant="wordmark" maxWidth={240} height={68} compact align="start" />
       </View>
 
       {drawerEntries.map((entry) => {
@@ -138,7 +129,7 @@ export function DashboardDrawerContent(props: DrawerContentComponentProps) {
                 active && styles.rowLabelActive,
               ]}
             >
-              {entry.label}
+              {localizedNavLabel(t, entry)}
             </Text>
           </Pressable>
         );
@@ -165,9 +156,6 @@ const styles = StyleSheet.create({
     marginBottom: space.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  brandTitle: { ...typography.titleMd, fontWeight: "800" },
-  brandSub: { ...typography.caption, marginTop: 2 },
-  userLine: { ...typography.bodySm, marginTop: space.xs },
   row: {
     flexDirection: "row",
     alignItems: "center",

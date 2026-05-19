@@ -1,4 +1,5 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
+import PagerView from "react-native-pager-view";
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -221,6 +222,7 @@ function SentRequestCard({
 }
 
 export function FriendsScreen() {
+  const pagerRef = useRef<PagerView>(null);
   const [tab, setTab] = useState<Tab>("friends");
   const [messageBusy, setMessageBusy] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
@@ -234,7 +236,6 @@ export function FriendsScreen() {
     queryKey: ["friends"],
     queryFn: fetchFriends,
     staleTime: 120_000,
-    enabled: tab === "friends",
   });
 
   const { data: requests = [], isLoading: loadingReqs, isRefetching: refreshingReqs, refetch: refetchReqs } = useQuery({
@@ -247,7 +248,6 @@ export function FriendsScreen() {
     queryKey: ["sentFriendRequests"],
     queryFn: fetchSentFriendRequests,
     staleTime: 60_000,
-    enabled: tab === "sent",
   });
 
   const handleAccept = async (requestId: string) => {
@@ -376,22 +376,96 @@ export function FriendsScreen() {
     [queryClient]
   );
 
-  const isLoading =
-    tab === "friends" ? loadingFriends :
-    tab === "requests" ? loadingReqs :
-    tab === "sent" ? loadingSent : false;
-  const isRefetching =
-    tab === "friends" ? refreshingFriends :
-    tab === "requests" ? refreshingReqs :
-    tab === "sent" ? refreshingSent : false;
-  const refetch =
-    tab === "friends" ? refetchFriends :
-    tab === "requests" ? refetchReqs :
-    tab === "sent" ? refetchSent : () => {};
-  const data =
-    tab === "friends" ? friends :
-    tab === "requests" ? requests :
-    tab === "sent" ? sentRequests : [];
+  const renderTabBody = (tabKey: Tab) => {
+    const isLoading =
+      tabKey === "friends" ? loadingFriends :
+      tabKey === "requests" ? loadingReqs :
+      tabKey === "sent" ? loadingSent : false;
+    const isRefetching =
+      tabKey === "friends" ? refreshingFriends :
+      tabKey === "requests" ? refreshingReqs :
+      tabKey === "sent" ? refreshingSent : false;
+    const refetch =
+      tabKey === "friends" ? refetchFriends :
+      tabKey === "requests" ? refetchReqs :
+      tabKey === "sent" ? refetchSent : () => {};
+    const data =
+      tabKey === "friends" ? friends :
+      tabKey === "requests" ? requests :
+      tabKey === "sent" ? sentRequests : [];
+
+    if (isLoading) {
+      return (
+        <View style={styles.list}>
+          {[0, 1, 2].map((i) => (
+            <View key={i} style={{ marginBottom: space.md }}>
+              <Skeleton width="100%" height={68} radius={radii.md} />
+            </View>
+          ))}
+        </View>
+      );
+    }
+
+    if (tabKey === "share") {
+      return <ShareClipsPanel />;
+    }
+
+    return (
+      <FlatList
+        data={data}
+        keyExtractor={(item, i) => item?._id ?? String(i)}
+        renderItem={({ item }) =>
+          tabKey === "friends" ? (
+            <FriendCard
+              friend={item}
+              onMessage={handleMessage}
+              messageBusy={messageBusy}
+              onRemove={handleRemoveFriend}
+              onBlock={handleBlockUser}
+              onReport={handleReportUser}
+            />
+          ) : tabKey === "sent" ? (
+            <SentRequestCard
+              request={item}
+              onCancel={handleCancelRequest}
+              cancelBusy={cancelBusy}
+            />
+          ) : (
+            <RequestCard
+              request={item}
+              onAccept={handleAccept}
+              onReject={handleReject}
+            />
+          )
+        }
+        contentContainerStyle={styles.list}
+        refreshControl={
+          <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brandNavy} />
+        }
+        ListEmptyComponent={
+          <EmptyState
+            icon={
+              tabKey === "friends" ? "people-outline" :
+              tabKey === "sent" ? "paper-plane-outline" :
+              "person-add-outline"
+            }
+            title={
+              tabKey === "friends" ? "No friends yet" :
+              tabKey === "sent" ? "No sent requests" :
+              "No pending requests"
+            }
+            description={
+              tabKey === "friends"
+                ? "Connect with trainers and trainees to build your network."
+                : tabKey === "sent"
+                ? "Friend requests you send will appear here with their status."
+                : "Friend requests you receive will appear here."
+            }
+          />
+        }
+      />
+    );
+  };
 
   if (activeChat) {
     return (
@@ -409,11 +483,14 @@ export function FriendsScreen() {
   return (
     <View style={styles.root}>
       <View style={styles.tabs}>
-        {TABS.map((t) => (
+        {TABS.map((t, index) => (
           <Pressable
             key={t.key}
             style={[styles.tabBtn, tab === t.key && styles.tabBtnActive]}
-            onPress={() => setTab(t.key)}
+            onPress={() => {
+              setTab(t.key);
+              pagerRef.current?.setPage(index);
+            }}
           >
             <Text style={[styles.tabText, tab === t.key && styles.tabTextActive]}>
               {t.label}
@@ -425,71 +502,21 @@ export function FriendsScreen() {
         ))}
       </View>
 
-      {isLoading ? (
-        <View style={styles.list}>
-          {[0, 1, 2].map((i) => (
-            <View key={i} style={{ marginBottom: space.md }}>
-              <Skeleton width="100%" height={68} radius={radii.md} />
-            </View>
-          ))}
-        </View>
-      ) : tab === "share" ? (
-        <ShareClipsPanel />
-      ) : (
-        <FlatList
-          data={data}
-          keyExtractor={(item, i) => item?._id ?? String(i)}
-          renderItem={({ item }) =>
-            tab === "friends" ? (
-              <FriendCard
-                friend={item}
-                onMessage={handleMessage}
-                messageBusy={messageBusy}
-                onRemove={handleRemoveFriend}
-                onBlock={handleBlockUser}
-                onReport={handleReportUser}
-              />
-            ) : tab === "sent" ? (
-              <SentRequestCard
-                request={item}
-                onCancel={handleCancelRequest}
-                cancelBusy={cancelBusy}
-              />
-            ) : (
-              <RequestCard
-                request={item}
-                onAccept={handleAccept}
-                onReject={handleReject}
-              />
-            )
-          }
-          contentContainerStyle={styles.list}
-          refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brandNavy} />
-          }
-          ListEmptyComponent={
-            <EmptyState
-              icon={
-                tab === "friends" ? "people-outline" :
-                tab === "sent" ? "paper-plane-outline" :
-                "person-add-outline"
-              }
-              title={
-                tab === "friends" ? "No friends yet" :
-                tab === "sent" ? "No sent requests" :
-                "No pending requests"
-              }
-              description={
-                tab === "friends"
-                  ? "Connect with trainers and trainees to build your network."
-                  : tab === "sent"
-                  ? "Friend requests you send will appear here with their status."
-                  : "Friend requests you receive will appear here."
-              }
-            />
-          }
-        />
-      )}
+      <PagerView
+        ref={pagerRef}
+        style={{ flex: 1 }}
+        initialPage={0}
+        onPageSelected={(e) => {
+          const next = TABS[e.nativeEvent.position];
+          if (next) setTab(next.key);
+        }}
+      >
+        {TABS.map((t) => (
+          <View key={t.key} style={{ flex: 1 }}>
+            {renderTabBody(t.key)}
+          </View>
+        ))}
+      </PagerView>
     </View>
   );
 }

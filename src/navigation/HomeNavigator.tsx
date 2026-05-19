@@ -9,14 +9,12 @@ import { ShellSurfaceScreen } from "../features/dashboard/screens/ShellSurfaceSc
 import { TransactionDetailScreen } from "../features/dashboard/screens/TransactionDetailScreen";
 import { ReportIssueScreen } from "../features/dashboard/screens/ReportIssueScreen";
 import { ActiveSessionsScreen } from "../features/auth/screens/ActiveSessionsScreen";
+import { StoragePlanScreen } from "../features/settings/screens/StoragePlanScreen";
+import { ArchivedChatsScreen } from "../features/chats/screens/ArchivedChatsScreen";
 import { mainStackHeaderOptions } from "./mainTabHeaderOptions";
-import type { HomeStackParamList, ShellSurfaceRouteId } from "./types";
+import type { HomeStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
-
-function shellHeaderShown(surfaceId: ShellSurfaceRouteId): boolean {
-  return surfaceId !== "wallet";
-}
 
 export function HomeNavigator() {
   const c = useThemeColors();
@@ -49,7 +47,7 @@ export function HomeNavigator() {
           const meta = shellSurfaceById(route.params.surfaceId);
           return {
             title: meta?.title ?? "NetQwix",
-            headerShown: shellHeaderShown(route.params.surfaceId),
+            headerShown: true,
           };
         }}
       />
@@ -67,6 +65,16 @@ export function HomeNavigator() {
         name="ActiveSessions"
         component={ActiveSessionsScreen}
         options={{ title: "Active sessions" }}
+      />
+      <Stack.Screen
+        name="StoragePlan"
+        component={StoragePlanScreen}
+        options={{ title: "Storage" }}
+      />
+      <Stack.Screen
+        name="ArchivedChats"
+        component={ArchivedChatsScreen}
+        options={{ title: "Archived chats" }}
       />
     </Stack.Navigator>
   );

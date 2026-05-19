@@ -14,8 +14,10 @@ import { setWalletPin, verifyWalletPin } from "../walletApi";
 import { useWalletBalance } from "../hooks/useWalletBalance";
 import { PinPad } from "../security/PinPad";
 import { savePinSession } from "../security/pinSessionStore";
+import { useShellHeaderTitle } from "../../../navigation/useShellHeaderTitle";
 
 export function WalletSecurityScreen() {
+  useShellHeaderTitle("Security");
   const styles = useThemedStyles((c) =>
     StyleSheet.create({
       root: { flex: 1, backgroundColor: c.surface },

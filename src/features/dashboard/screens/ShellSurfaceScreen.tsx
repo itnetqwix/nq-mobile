@@ -12,40 +12,45 @@ import { SavedLessonsScreen } from "./SavedLessonsScreen";
 import { SettingsScreen } from "./SettingsScreen";
 import { TrainerScheduleScreen } from "./TrainerScheduleScreen";
 import { WalletNavigator } from "../../wallet/navigation/WalletNavigator";
+import { StackSwipeBackShell } from "../../../navigation/StackSwipeBackShell";
 
 export type ShellSurfaceScreenProps = NativeStackScreenProps<HomeStackParamList, "ShellSurface">;
 
 export function ShellSurfaceScreen({ route }: ShellSurfaceScreenProps) {
   const { surfaceId } = route.params;
 
+  const wrap = (node: React.ReactNode) => (
+    <StackSwipeBackShell>{node}</StackSwipeBackShell>
+  );
+
   switch (surfaceId) {
     case "notifications":
-      return <NotificationsScreen />;
+      return wrap(<NotificationsScreen />);
     case "wallet":
-      return (
+      return wrap(
         <WalletNavigator
           initialRouteName={route.params.walletScreen}
           initialParams={route.params.walletParams}
         />
       );
     case "transactions":
-      return <TransactionsScreen />;
+      return wrap(<TransactionsScreen />);
     case "clips":
-      return <ClipsScreen />;
+      return wrap(<ClipsScreen />);
     case "gamePlans":
-      return <GamePlansScreen />;
+      return wrap(<GamePlansScreen />);
     case "savedLessons":
-      return <SavedLessonsScreen />;
+      return wrap(<SavedLessonsScreen />);
     case "invite":
-      return <InviteFriendsScreen />;
+      return wrap(<InviteFriendsScreen />);
     case "settings":
-      return <SettingsScreen />;
+      return wrap(<SettingsScreen />);
     case "trainerSchedule":
-      return <TrainerScheduleScreen />;
+      return wrap(<TrainerScheduleScreen />);
     case "editProfile":
-      return <EditProfileScreen />;
+      return wrap(<EditProfileScreen />);
     case "reportIssue":
-      return <ReportIssueScreen />;
+      return wrap(<ReportIssueScreen />);
     default:
       return null;
   }

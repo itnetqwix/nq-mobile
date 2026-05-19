@@ -1,11 +1,11 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { DrawerMarkButton } from "./DrawerMarkButton";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChatsScreen } from "../features/chats/screens/ChatsScreen";
 import { ScheduleScreen } from "../features/schedule/screens/ScheduleScreen";
 import { useThemeColors } from "../theme";
+import { AppScreenHeader } from "./AppScreenHeader";
 import { HomeNavigator } from "./HomeNavigator";
 import { TabSwipeShell } from "./TabSwipeShell";
 import type { MainTabParamList } from "./types";
@@ -14,20 +14,15 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 
 const SESSIONS_TAB_LABEL = "Sessions";
 
-function tabHeaderOptions(c: ReturnType<typeof useThemeColors>, title: string) {
+function tabHeaderOptions(title: string) {
   return {
     headerShown: true as const,
-    headerTitle: title,
-    headerTitleAlign: "center" as const,
-    headerStyle: {
-      backgroundColor: c.background,
-      borderBottomColor: c.border,
-      borderBottomWidth: 1,
-    },
-    headerTitleStyle: { fontWeight: "700" as const, color: c.headerTitle, fontSize: 17 },
+    title,
+    header: (props: React.ComponentProps<typeof AppScreenHeader>) => (
+      <AppScreenHeader {...props} />
+    ),
     headerShadowVisible: false,
     headerBackVisible: false,
-    headerLeft: () => <DrawerMarkButton />,
   };
 }
 
@@ -82,8 +77,7 @@ export function MainTabs() {
       <Tab.Screen
         name="Schedule"
         options={{
-          title: SESSIONS_TAB_LABEL,
-          ...tabHeaderOptions(c, SESSIONS_TAB_LABEL),
+          ...tabHeaderOptions(SESSIONS_TAB_LABEL),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="time-outline" color={color} size={size} />
           ),
@@ -99,8 +93,7 @@ export function MainTabs() {
       <Tab.Screen
         name="Chats"
         options={{
-          title: "Chats",
-          ...tabHeaderOptions(c, "Chats"),
+          ...tabHeaderOptions("Chats"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubbles-outline" color={color} size={size} />
           ),

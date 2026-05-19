@@ -15,6 +15,7 @@ import { FaqScreen } from "./FaqScreen";
 import { MeetingRoomScreen } from "./MeetingRoomScreen";
 import { PracticeSessionScreen } from "./PracticeSessionScreen";
 import { InstantBookingScreen } from "./InstantBookingScreen";
+import { StackSwipeBackShell } from "../../../navigation/StackSwipeBackShell";
 
 export type DashboardFeatureScreenProps = NativeStackScreenProps<MenuStackParamList, "DashboardFeature">;
 
@@ -24,37 +25,41 @@ export function DashboardFeatureScreen({ route }: DashboardFeatureScreenProps) {
 
   if (!isDashboardRouteAllowed(featureId, accountType)) {
     return (
-      <EmptyState
-        icon="lock-closed-outline"
-        title="Not available"
-        description="This section is only available for trainee accounts."
-      />
+      <StackSwipeBackShell>
+        <EmptyState
+          icon="lock-closed-outline"
+          title="Not available"
+          description="This section is only available for trainee accounts."
+        />
+      </StackSwipeBackShell>
     );
   }
 
+  const wrap = (node: React.ReactNode) => <StackSwipeBackShell>{node}</StackSwipeBackShell>;
+
   switch (featureId) {
     case "upcoming-sessions":
-      return <UpcomingSessionsScreen />;
+      return wrap(<UpcomingSessionsScreen />);
     case "book-lesson":
-      return <BookExpertScreen bookLessonTrainerId={bookLessonTrainerId} />;
+      return wrap(<BookExpertScreen bookLessonTrainerId={bookLessonTrainerId} />);
     case "students":
-      return <StudentsScreen />;
+      return wrap(<StudentsScreen />);
     case "friends":
-      return <FriendsScreen />;
+      return wrap(<FriendsScreen />);
     case "my-community":
-      return <CommunityScreen />;
+      return wrap(<CommunityScreen />);
     case "contact-us":
-      return <ContactUsScreen />;
+      return wrap(<ContactUsScreen />);
     case "about-us":
-      return <AboutUsScreen />;
+      return wrap(<AboutUsScreen />);
     case "faq":
-      return <FaqScreen />;
+      return wrap(<FaqScreen />);
     case "meeting-room":
-      return <MeetingRoomScreen />;
+      return wrap(<MeetingRoomScreen />);
     case "practice-session":
-      return <PracticeSessionScreen />;
+      return wrap(<PracticeSessionScreen />);
     case "instant-booking":
-      return <InstantBookingScreen />;
+      return wrap(<InstantBookingScreen />);
     default:
       return null;
   }

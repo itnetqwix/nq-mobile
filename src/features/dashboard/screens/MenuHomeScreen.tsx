@@ -2,7 +2,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import React, { useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { localizedNavLabel } from "../../../i18n/navLabels";
 import {
   Avatar,
   Card,
@@ -24,6 +26,7 @@ import { useAuth } from "../../auth/context/AuthContext";
  * with two different targets again.
  */
 export function MenuHomeScreen() {
+  const { t } = useTranslation();
   const { user, accountType, signOut } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<MenuStackParamList>>();
 
@@ -96,7 +99,7 @@ export function MenuHomeScreen() {
             >
               <ListRow
                 icon={entry.icon}
-                title={entry.label}
+                title={localizedNavLabel(t, entry)}
                 onPress={() => goEntry(entry)}
               />
             </View>
@@ -114,7 +117,7 @@ export function MenuHomeScreen() {
             >
               <ListRow
                 icon={entry.icon}
-                title={entry.label}
+                title={localizedNavLabel(t, entry)}
                 onPress={() => goEntry(entry)}
               />
             </View>

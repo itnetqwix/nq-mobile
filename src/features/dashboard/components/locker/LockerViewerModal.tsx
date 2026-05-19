@@ -24,6 +24,8 @@ type Props = {
   uri: string;
   title?: string;
   mode: LockerViewerMode;
+  /** When set, shows a chip for friend-shared clips. */
+  sharedBy?: string;
 };
 
 function buildVideoHtml(src: string): string {
@@ -66,7 +68,7 @@ function buildImageHtml(src: string): string {
 </html>`;
 }
 
-export function LockerViewerModal({ visible, onClose, uri, title, mode }: Props) {
+export function LockerViewerModal({ visible, onClose, uri, title, mode, sharedBy }: Props) {
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -122,9 +124,19 @@ export function LockerViewerModal({ visible, onClose, uri, title, mode }: Props)
     >
       <View style={[styles.chrome, { paddingTop: insets.top + 8 }]}>
         <View style={styles.topBar}>
-          <Text style={styles.title} numberOfLines={1}>
-            {title ?? "Preview"}
-          </Text>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.title} numberOfLines={1}>
+              {title ?? "Preview"}
+            </Text>
+            {sharedBy ? (
+              <View style={styles.sharedChip}>
+                <Ionicons name="person-outline" size={12} color="#fff" />
+                <Text style={styles.sharedChipText} numberOfLines={1}>
+                  Shared by {sharedBy}
+                </Text>
+              </View>
+            ) : null}
+          </View>
 
           {/* Web parity: an explicit "open externally" affordance — many PDFs and S3 videos
               render better in Safari / Chrome / a system PDF reader than embedded. */}
@@ -197,7 +209,20 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
     gap: space.sm,
   },
-  title: { flex: 1, fontSize: 16, fontWeight: "700", color: "#fff" },
+  title: { fontSize: 16, fontWeight: "700", color: "#fff" },
+  sharedChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 4,
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.15)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    maxWidth: "100%",
+  },
+  sharedChipText: { color: "#e5e7eb", fontSize: 11, fontWeight: "600", flexShrink: 1 },
   iconBtn: { padding: 4 },
   hint: {
     fontSize: 11,

@@ -18,6 +18,8 @@ type Props = {
   height?: number;
   style?: StyleProp<ImageStyle>;
   compact?: boolean;
+  /** Horizontal alignment inside the wrapper */
+  align?: "center" | "start";
 };
 
 export function NetqwixLogo({
@@ -26,6 +28,7 @@ export function NetqwixLogo({
   height,
   style,
   compact,
+  align = "center",
 }: Props) {
   const c = useThemeColors();
   const [failed, setFailed] = useState(false);
@@ -44,7 +47,13 @@ export function NetqwixLogo({
   }
 
   return (
-    <View style={[styles.wrap, compact && styles.wrapCompact]}>
+    <View
+      style={[
+        styles.wrap,
+        compact && styles.wrapCompact,
+        align === "start" && styles.wrapStart,
+      ]}
+    >
       <Image
         accessibilityRole="image"
         accessibilityLabel="NetQwix"
@@ -66,6 +75,10 @@ const styles = StyleSheet.create({
   wrapCompact: {
     marginBottom: 0,
     marginTop: 0,
+  },
+  wrapStart: {
+    alignItems: "flex-start",
+    alignSelf: "stretch",
   },
   fallbackWordmark: {
     fontSize: 22,

@@ -23,6 +23,7 @@ import { fetchSportCategories } from "../../../auth/api/masterApi";
 import { useAuth } from "../../../auth/context/AuthContext";
 import {
   fetchFriends,
+  fetchStorageInfo,
   postClipUploadSignUrls,
 } from "../../../home/api/homeApi";
 import { getApiErrorMessage } from "../../../../lib/http/getApiErrorMessage";
@@ -162,6 +163,22 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
 
   const submit = async () => {
     if (!videoAsset || !thumbUri || !canSubmit) return;
+    if (shareTarget === SHARE_MY_CLIPS) {
+      try {
+        const storage = await fetchStorageInfo();
+        const fileBytes = videoAsset.fileSize ?? 0;
+        if (storage.usedBytes + fileBytes > storage.quotaBytes) {
+          Alert.alert(
+            "Storage full",
+            "You have reached your storage limit. Upgrade your plan in Settings → Storage plan.",
+            [{ text: "OK" }]
+          );
+          return;
+        }
+      } catch {
+        /* proceed if storage endpoint unavailable */
+      }
+    }
     setUploadBusy(true);
     setVideoProgress(0);
     setThumbProgress(0);
@@ -175,6 +192,7 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
             thumbnail: "image/jpeg",
             title: title.trim(),
             category: effectiveCategory,
+            fileSizeBytes: videoAsset.fileSize ?? 0,
           },
         ],
         shareOptions:

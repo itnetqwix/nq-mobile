@@ -6,14 +6,12 @@ import { EmptyState, ImageWithSkeleton } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { getClipPlaybackUrl } from "../../../lib/clipMediaUrl";
-import { useAuth } from "../../auth/context/AuthContext";
-import { AccountType } from "../../../constants/accountType";
-import { postMyClipsGrouped, postTraineeClipsGrouped } from "../../home/api/homeApi";
+import { postMyClipsGrouped, postSharedClipsGrouped } from "../../home/api/homeApi";
 import { LockerListShell } from "../components/locker/LockerListShell";
 import { LockerViewerModal, type LockerViewerMode } from "../components/locker/LockerViewerModal";
 import { ClipUploadModal } from "../components/locker/ClipUploadModal";
 
-type ClipTab = "mine" | "trainees";
+type ClipTab = "mine" | "shared";
 
 function dedupeClipsById<T extends { _id?: unknown }>(list: T[]): T[] {
   const seen = new Set<string>();
@@ -114,14 +112,13 @@ function CategorySection({
 export function ClipsScreen() {
   const queryClient = useQueryClient();
   const c = useThemeColors();
-  const { accountType } = useAuth();
-  const isTrainer = accountType === AccountType.TRAINER;
   const [tab, setTab] = useState<ClipTab>("mine");
   const [uploadVisible, setUploadVisible] = useState(false);
   const [viewer, setViewer] = useState<{
     uri: string;
     title: string;
     mode: LockerViewerMode;
+    sharedBy?: string;
   } | null>(null);
 
   const styles = useThemedStyles((palette) =>
@@ -186,53 +183,51 @@ export function ClipsScreen() {
     staleTime: 30_000,
   });
 
-  const traineeQ = useQuery({
-    queryKey: ["locker", "traineeClips"],
-    queryFn: () => postTraineeClipsGrouped(),
-    enabled: tab === "trainees" && isTrainer,
+  const sharedQ = useQuery({
+    queryKey: ["locker", "sharedClips"],
+    queryFn: () => postSharedClipsGrouped(),
+    enabled: tab === "shared",
     staleTime: 30_000,
   });
 
-  const active = tab === "mine" ? myQ : traineeQ;
+  const active = tab === "mine" ? myQ : sharedQ;
 
   const onRefresh = useCallback(() => {
     void myQ.refetch();
-    void traineeQ.refetch();
-  }, [myQ, traineeQ]);
+    void sharedQ.refetch();
+  }, [myQ, sharedQ]);
 
   const openClip = (clip: Record<string, unknown>) => {
     const uri = getClipPlaybackUrl(clip);
     if (!uri) return;
+    const sharer = clip.sharer as Record<string, unknown> | undefined;
+    const sharerName =
+      sharer?.fullname ?? sharer?.fullName ?? clip.shared_by_name ?? null;
     setViewer({
       uri,
       title: String(clip?.title ?? clip?.file_name ?? "Clip"),
       mode: "video",
+      sharedBy: sharerName ? String(sharerName) : undefined,
     });
   };
 
   const toolbar = useMemo(
     () => (
       <View style={styles.toolbarRow}>
-        {isTrainer ? (
-          <View style={styles.segment}>
-            <Pressable
-              style={[styles.segBtn, tab === "mine" && styles.segBtnOn]}
-              onPress={() => setTab("mine")}
-            >
-              <Text style={[styles.segLabel, tab === "mine" && styles.segLabelOn]}>My clips</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.segBtn, tab === "trainees" && styles.segBtnOn]}
-              onPress={() => setTab("trainees")}
-            >
-              <Text style={[styles.segLabel, tab === "trainees" && styles.segLabelOn]}>Trainees</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <Text style={[typography.bodySm, { flex: 1, color: c.textMuted }]}>
-            Videos grouped by category
-          </Text>
-        )}
+        <View style={styles.segment}>
+          <Pressable
+            style={[styles.segBtn, tab === "mine" && styles.segBtnOn]}
+            onPress={() => setTab("mine")}
+          >
+            <Text style={[styles.segLabel, tab === "mine" && styles.segLabelOn]}>My clips</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.segBtn, tab === "shared" && styles.segBtnOn]}
+            onPress={() => setTab("shared")}
+          >
+            <Text style={[styles.segLabel, tab === "shared" && styles.segLabelOn]}>Shared clips</Text>
+          </Pressable>
+        </View>
         {tab === "mine" ? (
           <Pressable
             style={({ pressed }) => [styles.uploadFab, pressed && { opacity: 0.88 }]}
@@ -245,10 +240,10 @@ export function ClipsScreen() {
         ) : null}
       </View>
     ),
-    [isTrainer, tab, styles, c]
+    [tab, styles, c]
   );
 
-  const renderClipRow = (clip: Record<string, unknown>, key: string) => {
+  const renderClipRow = (clip: Record<string, unknown>, key: string, showSharer?: boolean) => {
     const thumb = getS3ImageUrl(
       String(clip.thumbnail ?? clip.thumbnail_url ?? clip.poster ?? "")
     );
@@ -274,9 +269,19 @@ export function ClipsScreen() {
           <Text style={styles.clipTitle} numberOfLines={2}>
             {String(clip.title ?? clip.file_name ?? "Clip")}
           </Text>
-          {clip.createdAt ? (
+          {showSharer ? (
+            <Text style={styles.clipDate} numberOfLines={1}>
+              Shared by{" "}
+              {String(
+                (clip.sharer as any)?.fullname ??
+                  (clip.sharer as any)?.fullName ??
+                  "Friend"
+              )}
+            </Text>
+          ) : null}
+          {clip.createdAt || clip.shared_at ? (
             <Text style={styles.clipDate}>
-              {new Date(String(clip.createdAt)).toLocaleDateString()}
+              {new Date(String(clip.shared_at ?? clip.createdAt)).toLocaleDateString()}
             </Text>
           ) : null}
         </View>
@@ -326,33 +331,29 @@ export function ClipsScreen() {
           </>
         )}
 
-        {tab === "trainees" && isTrainer && (
+        {tab === "shared" && (
           <>
-            {(traineeQ.data ?? []).length === 0 ? (
+            {(sharedQ.data ?? []).length === 0 ? (
               <EmptyState
-                icon="people-outline"
-                title="No trainee clips"
-                description="When trainees attach clips to bookings, they show here by trainee."
+                icon="share-social-outline"
+                title="No shared clips"
+                description="Clips friends share with you appear here with who sent them."
               />
             ) : (
-              (traineeQ.data ?? []).map((grp: { _id?: { fullname?: string; fullName?: string; _id?: string }; clips?: unknown[] }, i: number) => {
-                const trainee = grp._id;
-                const name = trainee?.fullname ?? trainee?.fullName ?? "Trainee";
-                const normalized = ((grp.clips ?? []) as { clips?: unknown }[]).map(
-                  (wrap) => (wrap?.clips ?? wrap) as Record<string, unknown>
-                );
-                const clips = dedupeClipsById(normalized as { _id?: unknown }[]);
+              (sharedQ.data ?? []).map((grp: { _id?: unknown; clips?: unknown[] }, i: number) => {
+                const clips = dedupeClipsById((grp.clips ?? []) as { _id?: unknown }[]);
                 return (
                   <CategorySection
-                    key={`tr-grp-${i}-${String(trainee?._id ?? "x")}`}
-                    title={name}
+                    key={`shared-grp-${i}-${String(grp._id ?? "uncat")}`}
+                    title={formatCategoryLabel(grp._id)}
                     count={clips.length}
                     defaultOpen={i === 0}
                   >
-                    {clips.map((clip, idx) =>
+                    {clips.map((clip, ci) =>
                       renderClipRow(
                         clip as Record<string, unknown>,
-                        `tr-${i}-${String((clip as { _id?: unknown })._id ?? idx)}`
+                        `shared-${i}-${String(clip._id ?? ci)}`,
+                        true
                       )
                     )}
                   </CategorySection>
@@ -369,6 +370,7 @@ export function ClipsScreen() {
         uri={viewer?.uri ?? ""}
         title={viewer?.title}
         mode={viewer?.mode ?? "video"}
+        sharedBy={viewer?.sharedBy}
       />
 
       <ClipUploadModal

@@ -35,6 +35,8 @@ export type HomeStackParamList = {
     prefillDescription?: string;
   };
   ActiveSessions: undefined;
+  StoragePlan: undefined;
+  ArchivedChats: undefined;
 };
 
 /** @deprecated Use HomeStackParamList */

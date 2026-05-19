@@ -3,7 +3,41 @@
     "cancel": "Cancel",
     "done": "Done",
     "close": "Close",
+    "back": "Back",
+    "loading": "Loading…",
+    "save": "Save",
     "timezonePickerTitle": "Timezone"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "sessions": "Sessions",
+    "chats": "Chats",
+    "friends": "Friends",
+    "clips": "Clips",
+    "gamePlans": "Game plans",
+    "savedLessons": "Saved lessons",
+    "wallet": "Wallet",
+    "notifications": "Notifications",
+    "settings": "Settings",
+    "instantBooking": "Instant booking",
+    "bookLesson": "Book a lesson",
+    "manageAvailability": "Manage availability",
+    "myCommunity": "My community",
+    "inviteFriends": "Invite friends",
+    "myTrainees": "My trainees",
+    "upcomingSessions": "Upcoming sessions",
+    "transactions": "Transactions",
+    "reportIssue": "Report an issue",
+    "contactUs": "Contact us",
+    "aboutUs": "About us"
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot password?",
+    "createAccount": "Create account"
   },
   "settings": {
     "regionalTitle": "Region & language",
@@ -12,14 +46,62 @@
     "saveRegional": "Save region & language",
     "regionalSaved": "Preferences saved",
     "regionalSavedBody": "Language and timezone are updated on your account.",
-    "regionalError": "Could not save preferences."
+    "regionalError": "Could not save preferences.",
+    "storagePlan": "Storage plan",
+    "storagePlanSubtitle": "Manage clip storage and upgrades"
+  },
+  "storage": {
+    "title": "Storage",
+    "usage": "Storage used",
+    "currentPlan": "Current plan: {{plan}}",
+    "subscribe": "Subscribe",
+    "currentBadge": "Current plan",
+    "upgradedTitle": "Plan updated",
+    "upgradedBody": "Your storage plan is being activated. It may take a moment to reflect.",
+    "checkoutError": "Checkout failed",
+    "yearlySavings": "Save 10% with yearly billing",
+    "perMonth": "/mo",
+    "perYear": "/yr",
+    "interval": {
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "one_time": "One month"
+    }
+  },
+  "locker": {
+    "myClips": "My clips",
+    "sharedClips": "Shared clips",
+    "sharedBy": "Shared by {{name}}",
+    "noClips": "No clips yet",
+    "noShared": "No shared clips",
+    "uploadClip": "Upload clip"
+  },
+  "chats": {
+    "archived": "Archived",
+    "archivedEmptyTitle": "No archived chats",
+    "archivedEmptyBody": "Archived conversations appear here.",
+    "unarchive": "Unarchive",
+    "unarchivedTitle": "Restored",
+    "unarchivedBody": "This chat is back in your inbox.",
+    "unarchiveError": "Could not unarchive",
+    "unknownUser": "User"
+  },
+  "wallet": {
+    "title": "Wallet",
+    "addFunds": "Add funds",
+    "activity": "Activity",
+    "security": "Security"
   },
   "trainerAvailability": {
     "timezoneTitle": "Availability timezone",
-    "timezoneSubtitle": "Weekly hours are stored with this zone on your profile. Pick the zone you use when planning sessions.",
+    "timezoneSubtitle": "Weekly hours are stored with this zone on your profile.",
     "saveTimezone": "Save timezone",
     "timezoneSaved": "Timezone updated",
     "timezoneSavedBody": "Your profile timezone is saved.",
     "timezoneError": "Could not save timezone."
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "network": "Network error. Check your connection."
   }
 }

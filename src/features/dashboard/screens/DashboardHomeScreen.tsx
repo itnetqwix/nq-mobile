@@ -563,15 +563,6 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
           >
             <Ionicons name="notifications-outline" size={24} color={themeColors.brandNavy} />
           </Pressable>
-          <Pressable
-            onPress={() => openShell("settings")}
-            hitSlop={12}
-            style={{ padding: 4, marginLeft: 4 }}
-            accessibilityLabel="Settings"
-            accessibilityRole="button"
-          >
-            <Ionicons name="settings-outline" size={24} color={themeColors.brandNavy} />
-          </Pressable>
         </View>
       ),
     });
