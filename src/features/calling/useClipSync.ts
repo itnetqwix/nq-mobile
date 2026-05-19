@@ -207,7 +207,8 @@ export function useClipSync({
 
   const emitSelectClips = useCallback(
     (clips: ClipRecord[], options?: { emitSocket?: boolean }) => {
-      const shouldEmit = options?.emitSocket !== false && isTrainer && !!socket;
+      // Either side may drive clip selection (trainee shares booking clips to trainer on mobile).
+      const shouldEmit = options?.emitSocket !== false && !!socket;
       applyClipsToState(
         clips,
         setSelectedClips,
@@ -223,7 +224,7 @@ export function useClipSync({
         sessionId,
       });
     },
-    [isTrainer, socket, userInfo, sessionId]
+    [socket, userInfo, sessionId]
   );
 
   const selectClip = useCallback(
@@ -250,9 +251,9 @@ export function useClipSync({
       bookingPreloadedRef.current = true;
       const playable = clips.filter((c) => resolveClipPlayback(c).url);
       if (playable.length === 0) return;
-      emitSelectClips(playable, { emitSocket: isTrainer });
+      emitSelectClips(playable, { emitSocket: true });
     },
-    [emitSelectClips, isTrainer]
+    [emitSelectClips]
   );
 
   const togglePlay = useCallback(
