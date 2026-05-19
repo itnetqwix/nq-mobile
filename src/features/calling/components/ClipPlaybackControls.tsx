@@ -72,7 +72,7 @@ export function ClipPlaybackControls({
           disabled={disabled}
           accessibilityLabel={isPlaying ? "Pause clip" : "Play clip"}
         >
-          <Ionicons name={isPlaying ? "pause" : "play"} size={28} color="#fff" />
+          <Ionicons name={isPlaying ? "pause" : "play"} size={22} color="#fff" />
         </Pressable>
 
         <View style={styles.timelineCol}>
@@ -132,25 +132,25 @@ const styles = StyleSheet.create({
   timelineCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    backgroundColor: "rgba(0,0,0,0.72)",
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    gap: 8,
+    backgroundColor: "rgba(0,0,0,0.78)",
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
   },
   playBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "rgba(0,0,128,0.95)",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.18)",
     alignItems: "center",
     justifyContent: "center",
   },
   btnDisabled: { opacity: 0.4 },
   timelineCol: { flex: 1 },
-  trackHit: { paddingVertical: 8 },
+  trackHit: { paddingVertical: 4 },
   track: {
-    height: 4,
+    height: 3,
     borderRadius: 2,
     backgroundColor: "rgba(255,255,255,0.25)",
     overflow: "visible",
@@ -165,10 +165,10 @@ const styles = StyleSheet.create({
   },
   thumb: {
     position: "absolute",
-    top: -6,
-    marginLeft: -8,
-    width: 16,
-    height: 16,
+    top: -5,
+    marginLeft: -6,
+    width: 12,
+    height: 12,
     borderRadius: 8,
     backgroundColor: "#fff",
   },
@@ -183,9 +183,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   expandBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: "rgba(255,255,255,0.15)",
     alignItems: "center",
     justifyContent: "center",

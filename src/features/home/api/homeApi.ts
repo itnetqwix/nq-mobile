@@ -30,6 +30,23 @@ function normalizeOnlineTrainerRows(raw: unknown): any[] {
   return out;
 }
 
+/** Drop duplicate Mongo rows so list `key={_id}` stays stable (API/cache may repeat ids). */
+export function dedupeRowsById<T extends { _id?: unknown }>(rows: T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const row of rows) {
+    const id = row?._id != null ? String(row._id) : "";
+    if (!id) {
+      out.push(row);
+      continue;
+    }
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(row);
+  }
+  return out;
+}
+
 export type InstantEligibilityResult = {
   eligible: boolean;
   reasons: string[];
@@ -69,9 +86,8 @@ export async function fetchScheduledMeetings(status = "upcoming"): Promise<any[]
     params: { status },
   });
   const body = res.data?.result ?? res.data;
-  if (Array.isArray(body)) return body;
-  if (body && Array.isArray(body.data)) return body.data;
-  return [];
+  const rows = Array.isArray(body) ? body : body && Array.isArray(body.data) ? body.data : [];
+  return dedupeRowsById(rows);
 }
 
 /**
@@ -181,7 +197,7 @@ export async function fetchNotifications(page = 1, limit = 20): Promise<any[]> {
   const body = res.data as Record<string, unknown>;
   /** Backend: `{ status, data: Notification[] }` — see `notificationsController.getNotifications`. */
   const list = body?.data ?? body?.result ?? body?.notifications;
-  if (Array.isArray(list)) return list;
+  if (Array.isArray(list)) return dedupeRowsById(list);
   return [];
 }
 
@@ -200,7 +216,7 @@ export async function fetchBookingTransactions(params?: {
   });
   const inner = (res.data as any)?.data;
   const rows = inner?.result ?? inner?.data ?? res.data?.result;
-  if (Array.isArray(rows)) return rows;
+  if (Array.isArray(rows)) return dedupeRowsById(rows);
   return [];
 }
 

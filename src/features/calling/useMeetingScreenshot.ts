@@ -47,10 +47,19 @@ export function useMeetingScreenshot({
         throw new Error("No upload URL returned");
       }
       await putFileToPresignedUrl(uploadUrl, uri, "image/png");
-      await FileSystem.deleteAsync(uri, { idempotent: true });
+      try {
+        const normalized = uri.split("?")[0];
+        const info = await FileSystem.getInfoAsync(normalized);
+        if (info.exists) {
+          await FileSystem.deleteAsync(normalized, { idempotent: true });
+        }
+      } catch {
+        /** Temp cleanup is best-effort — upload already succeeded. */
+      }
       onSaved?.();
       Alert.alert("Screenshot saved", "Added to the session game plan.");
     } catch (e: any) {
+      if (__DEV__) console.warn("[meeting] screenshot failed", e);
       Alert.alert("Screenshot failed", e?.message ?? "Could not save screenshot.");
     } finally {
       setCapturing(false);

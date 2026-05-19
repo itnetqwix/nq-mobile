@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -16,7 +16,7 @@ import { EmptyState, Pill, Skeleton } from "../../../components/ui";
 import { space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { AccountType } from "../../../constants/accountType";
 import { useAuth } from "../../auth/context/AuthContext";
-import { fetchBookingTransactions } from "../../home/api/homeApi";
+import { dedupeRowsById, fetchBookingTransactions } from "../../home/api/homeApi";
 import type { MenuStackParamList } from "../../../navigation/types";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
@@ -164,7 +164,10 @@ export function TransactionsScreen() {
     staleTime: 60_000,
   });
 
-  const rows = data?.pages.flat() ?? [];
+  const rows = useMemo(
+    () => dedupeRowsById(data?.pages.flat() ?? []),
+    [data?.pages]
+  );
 
   const openDetail = useCallback(
     (bookingId: string) => {

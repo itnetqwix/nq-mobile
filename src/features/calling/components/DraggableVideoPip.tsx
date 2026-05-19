@@ -27,7 +27,8 @@ export const PIP_HEIGHT = 124;
 export const PIP_MIN_WIDTH = 72;
 export const PIP_MAX_WIDTH = 140;
 const TAP_SLOP_PX = 8;
-const HIDE_VISIBLE_RATIO = 0.4;
+/** Dock to edge when more than 40% of the tile is off-screen (< 60% visible). */
+const HIDE_VISIBLE_RATIO = 0.6;
 
 export type DraggableVideoPipProps = {
   tileId: "local" | "remote";
@@ -339,7 +340,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: meetingTheme.navy,
+    backgroundColor: "rgba(0,0,0,0.82)",
     paddingVertical: 8,
     paddingHorizontal: 10,
     borderRadius: 8,

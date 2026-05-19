@@ -1,70 +1,64 @@
 /**
- * Compact bottom-bar controls for native portrait calls (light theme).
+ * Compact bottom-bar controls for native portrait calls (monochrome theme).
  */
 
-import React, { useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import React from "react";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { useCall } from "../CallContext";
 import { meetingTheme } from "../meetingTheme";
+import { ACTION_BAR_HEIGHT } from "../useMeetingChromeInsets";
 
 type Props = {
   onOpenClipPicker?: () => void;
   isTrainer?: boolean;
-  onScreenshot?: () => void;
   inClipMode?: boolean;
-  lockMode?: boolean;
-  onToggleLock?: () => void;
   onExitClipMode?: () => void;
   onToggleLayout?: () => void;
-  drawingEnabled?: boolean;
   annotationArmed?: boolean;
   onToggleDrawing?: () => void;
   onEndCall?: () => void;
   bottomInset?: number;
 };
 
-const BTN = 40;
-const BTN_END = 46;
+const BTN = 36;
+const BTN_END = 40;
+const ICON = 18;
 
 export function ActionButtons({
   onOpenClipPicker,
   isTrainer,
-  onScreenshot,
   inClipMode,
-  lockMode,
-  onToggleLock,
   onExitClipMode,
   onToggleLayout,
-  drawingEnabled,
   annotationArmed,
   onToggleDrawing,
   onEndCall,
-  bottomInset = 20,
+  bottomInset = 12,
 }: Props) {
-  const {
-    micEnabled,
-    cameraEnabled,
-    toggleMute,
-    toggleCamera,
-    switchCamera,
-    endCall,
-  } = useCall();
+  const { micEnabled, cameraEnabled, toggleMute, toggleCamera, switchCamera, endCall } =
+    useCall();
   const hangUp = onEndCall ?? endCall;
-  const [moreOpen, setMoreOpen] = useState(false);
-
-  const trainerExtras = isTrainer && onScreenshot;
 
   return (
     <View style={[styles.bar, { bottom: bottomInset }]} pointerEvents="box-none">
-      <View style={styles.row}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.row}
+        centerContent
+      >
         <RoundButton
           onPress={toggleMute}
-          accessibilityLabel={micEnabled ? "Mute mic" : "Unmute mic"}
+          accessibilityLabel={micEnabled ? "Mute microphone" : "Unmute microphone"}
           danger={!micEnabled}
         >
-          <Ionicons name={micEnabled ? "mic" : "mic-off"} size={20} color={meetingTheme.navy} />
+          <Ionicons
+            name={micEnabled ? "mic" : "mic-off"}
+            size={ICON}
+            color={micEnabled ? meetingTheme.text : "#fff"}
+          />
         </RoundButton>
 
         <RoundButton
@@ -74,90 +68,59 @@ export function ActionButtons({
         >
           <Ionicons
             name={cameraEnabled ? "videocam" : "videocam-off"}
-            size={20}
-            color={meetingTheme.navy}
+            size={ICON}
+            color={cameraEnabled ? meetingTheme.text : "#fff"}
           />
         </RoundButton>
 
-        <RoundButton onPress={switchCamera} accessibilityLabel="Flip camera">
-          <MaterialCommunityIcons name="camera-switch" size={20} color={meetingTheme.navy} />
+        <RoundButton onPress={switchCamera} accessibilityLabel="Switch camera">
+          <Ionicons name="camera-reverse-outline" size={ICON} color={meetingTheme.text} />
         </RoundButton>
 
-        {isTrainer && inClipMode && onToggleLock ? (
-          <RoundButton
-            onPress={onToggleLock}
-            accessibilityLabel={lockMode ? "Unlock clips" : "Lock clips"}
-            active={lockMode}
-          >
-            <Ionicons
-              name={lockMode ? "lock-closed" : "lock-open"}
-              size={20}
-              color={meetingTheme.navy}
-            />
-          </RoundButton>
-        ) : null}
-
         {isTrainer && inClipMode && onToggleLayout ? (
-          <RoundButton onPress={onToggleLayout} accessibilityLabel="Toggle layout">
+          <RoundButton onPress={onToggleLayout} accessibilityLabel="Toggle clip layout">
             <MaterialCommunityIcons
               name="view-split-vertical"
-              size={20}
-              color={meetingTheme.navy}
+              size={ICON}
+              color={meetingTheme.text}
             />
           </RoundButton>
         ) : null}
 
         {isTrainer && inClipMode && onExitClipMode ? (
-          <RoundButton onPress={onExitClipMode} accessibilityLabel="Exit clips">
-            <Ionicons name="close-circle-outline" size={20} color={meetingTheme.navy} />
+          <RoundButton onPress={onExitClipMode} accessibilityLabel="Close clips">
+            <Ionicons name="close" size={ICON} color={meetingTheme.text} />
           </RoundButton>
         ) : null}
 
         {isTrainer && !inClipMode && onOpenClipPicker ? (
-          <RoundButton onPress={onOpenClipPicker} accessibilityLabel="Clips">
-            <MaterialCommunityIcons name="video-vintage" size={20} color={meetingTheme.navy} />
+          <RoundButton onPress={onOpenClipPicker} accessibilityLabel="Open clip library">
+            <MaterialCommunityIcons
+              name="play-box-multiple-outline"
+              size={ICON}
+              color={meetingTheme.text}
+            />
           </RoundButton>
         ) : null}
 
         {isTrainer && onToggleDrawing ? (
           <RoundButton
             onPress={onToggleDrawing}
-            accessibilityLabel="Annotate"
-            active={annotationArmed ?? drawingEnabled}
+            accessibilityLabel="Annotate on screen"
+            active={annotationArmed}
           >
-            <MaterialCommunityIcons name="draw" size={20} color={meetingTheme.navy} />
-          </RoundButton>
-        ) : null}
-
-        {trainerExtras ? (
-          <RoundButton onPress={() => setMoreOpen(true)} accessibilityLabel="More actions">
-            <Ionicons name="ellipsis-horizontal" size={20} color={meetingTheme.navy} />
+            <MaterialCommunityIcons
+              name="gesture"
+              size={ICON}
+              color={annotationArmed ? meetingTheme.onPrimary : meetingTheme.text}
+            />
           </RoundButton>
         ) : null}
 
         <RoundButton onPress={hangUp} accessibilityLabel="End call" danger large>
-          <Ionicons name="call" size={22} color="#fff" />
+          <MaterialCommunityIcons name="phone-hangup" size={ICON + 2} color="#fff" />
         </RoundButton>
-      </View>
-
-      <Modal visible={moreOpen} transparent animationType="fade">
-        <Pressable style={styles.moreBackdrop} onPress={() => setMoreOpen(false)}>
-          <View style={styles.moreSheet}>
-            {onScreenshot ? (
-              <Pressable
-                style={styles.moreRow}
-                onPress={() => {
-                  setMoreOpen(false);
-                  onScreenshot();
-                }}
-              >
-                <Ionicons name="camera-outline" size={20} color={meetingTheme.navy} />
-                <Text style={styles.moreText}>Screenshot</Text>
-              </Pressable>
-            ) : null}
-          </View>
-        </Pressable>
-      </Modal>
+      </ScrollView>
     </View>
   );
 }
@@ -187,7 +150,7 @@ function RoundButton({
         large && styles.btnLarge,
         danger ? styles.btnDanger : styles.btnDefault,
         active && styles.btnActive,
-        pressed && { opacity: 0.8 },
+        pressed && { opacity: 0.82 },
       ]}
     >
       {children}
@@ -200,72 +163,45 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    alignItems: "center",
     zIndex: 38,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    gap: 6,
     borderRadius: 999,
     backgroundColor: meetingTheme.barBg,
     borderWidth: 1,
     borderColor: meetingTheme.barBorder,
-    gap: 8,
-    shadowColor: meetingTheme.pipShadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 1,
-    shadowRadius: 8,
-    elevation: 4,
+    minHeight: ACTION_BAR_HEIGHT,
   },
   btn: {
     width: BTN,
     height: BTN,
-    borderRadius: 999,
+    borderRadius: BTN / 2,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: meetingTheme.surface,
+    backgroundColor: meetingTheme.surfaceElevated,
+    borderWidth: 1,
+    borderColor: meetingTheme.border,
   },
   btnLarge: {
     width: BTN_END,
     height: BTN_END,
+    borderRadius: BTN_END / 2,
     backgroundColor: meetingTheme.danger,
-    transform: [{ rotate: "135deg" }],
+    borderColor: meetingTheme.danger,
   },
   btnDefault: {},
   btnDanger: {
     backgroundColor: meetingTheme.danger,
+    borderColor: meetingTheme.danger,
   },
   btnActive: {
-    backgroundColor: "rgba(30, 64, 175, 0.15)",
-    borderWidth: 1,
-    borderColor: meetingTheme.accent,
-  },
-  moreBackdrop: {
-    flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.35)",
-  },
-  moreSheet: {
-    margin: 16,
-    marginBottom: 100,
-    backgroundColor: meetingTheme.surfaceElevated,
-    borderRadius: 14,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: meetingTheme.border,
-  },
-  moreRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 14,
-  },
-  moreText: {
-    fontSize: 16,
-    color: meetingTheme.text,
-    fontWeight: "600",
+    backgroundColor: meetingTheme.text,
+    borderColor: meetingTheme.text,
   },
 });

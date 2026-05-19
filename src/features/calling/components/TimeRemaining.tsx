@@ -52,6 +52,8 @@ type Props = {
   timerLabel?: string;
   /** When true, anchor pill to top-right (meeting screen). */
   alignRight?: boolean;
+  /** Icons placed on the left of the timer row (lock, screenshot, …). */
+  leadingTools?: React.ReactNode;
 };
 
 export function TimeRemaining({
@@ -68,6 +70,7 @@ export function TimeRemaining({
   topInset = 20,
   timerLabel = "Time remaining",
   alignRight = false,
+  leadingTools,
 }: Props) {
   const [color, setColor] = useState("#28a745");
   const [warning, setWarning] = useState<Warning>(null);
@@ -112,11 +115,13 @@ export function TimeRemaining({
       style={[
         styles.wrap,
         { top: topInset },
-        alignRight && styles.wrapRight,
+        alignRight && !leadingTools && styles.wrapRight,
+        leadingTools && styles.wrapSplit,
       ]}
       pointerEvents="box-none"
     >
-      <View style={styles.pill}>
+      {leadingTools ? <View style={styles.leading}>{leadingTools}</View> : null}
+      <View style={[styles.pill, leadingTools && alignRight && styles.pillRight]}>
         <Text style={styles.label}>{timerLabel}</Text>
         <Text style={[styles.value, { color }]}>{display}</Text>
         {!isAuthoritative && remainingSeconds != null && (
@@ -189,6 +194,20 @@ const styles = StyleSheet.create({
   wrapRight: {
     alignItems: "flex-end",
     paddingRight: 12,
+  },
+  wrapSplit: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    paddingHorizontal: 10,
+  },
+  leading: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  pillRight: {
+    marginLeft: "auto",
   },
   pill: {
     flexDirection: "row",

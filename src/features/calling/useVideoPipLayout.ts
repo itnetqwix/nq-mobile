@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { PipEdge } from "./components/DraggableVideoPip";
 import { defaultPipPosition } from "./components/DraggableVideoPip";
 import type { HiddenVideosMap, VideoHideType } from "./useClipSync";
+import type { TileLayout } from "./useMeetingLayout";
 
 export type PipTileId = "local" | "remote";
 
@@ -146,11 +147,43 @@ export function useVideoPipLayout({
     [isTileHidden, local, remote]
   );
 
+  /** Apply trainer-synced tile layout (trainee / reconnect). */
+  const applyRemoteTiles = useCallback(
+    (tiles: Record<PipTileId, TileLayout>) => {
+      (["local", "remote"] as PipTileId[]).forEach((tile) => {
+        const t = tiles[tile];
+        if (!t) return;
+        if (typeof t.x === "number" && typeof t.y === "number") {
+          setTileState(tile, { position: { x: t.x, y: t.y } });
+        }
+        if (t.hiddenEdge) {
+          setTileState(tile, { hiddenEdge: t.hiddenEdge });
+        }
+        if (t.hidden) {
+          setTileState(tile, {
+            locallyHidden: !isTrainer,
+            hiddenEdge: t.hiddenEdge ?? "right",
+          });
+          if (isTrainer) {
+            setVideoHidden(roleForTile(tile, isTrainer), true);
+          }
+        } else {
+          setTileState(tile, { locallyHidden: false });
+          if (isTrainer) {
+            setVideoHidden(roleForTile(tile, isTrainer), false);
+          }
+        }
+      });
+    },
+    [isTrainer, setTileState, setVideoHidden]
+  );
+
   return {
     pipLayout,
     hideTile,
     restoreTile,
     updatePosition,
     isTileHidden,
+    applyRemoteTiles,
   };
 }

@@ -33,6 +33,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useMeetingChromeInsets } from "../useMeetingChromeInsets";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -71,6 +72,7 @@ import { useMeetingLayout } from "../useMeetingLayout";
 import { useNativeMeetingPip } from "../hooks/useNativeMeetingPip";
 import { MeetingLiveStage } from "../components/MeetingLiveStage";
 import { MeetingMiniPip } from "../components/MeetingMiniPip";
+import { ClipMiniPip } from "../components/ClipMiniPip";
 import { ActionButtons } from "../components/ActionButtons";
 import { TimeRemaining } from "../components/TimeRemaining";
 import { PeerJoinedModal } from "../components/PeerJoinedModal";
@@ -280,7 +282,8 @@ function MeetingSurface({
   peerId: string;
   peerDisplayName: string;
 }) {
-  const chrome = useMeetingChromeInsets();
+  const [activeClipUri, setActiveClipUri] = useState<string | null>(null);
+  const chrome = useMeetingChromeInsets({ inClipMode: !!activeClipUri });
   const { width: winW, height: winH } = useWindowDimensions();
   const [localPipSize, setLocalPipSize] = useState({ w: PIP_WIDTH, h: PIP_HEIGHT });
   const [remotePipSize, setRemotePipSize] = useState({ w: PIP_WIDTH, h: PIP_HEIGHT });
@@ -354,6 +357,16 @@ function MeetingSurface({
     pipReservedBottom: chrome.pipSafeBottom,
   });
 
+  const { applyRemoteTiles } = pipLayout;
+  useEffect(() => {
+    if (isTrainer) return;
+    applyRemoteTiles(meetingLayout.tiles);
+    const lt = meetingLayout.tiles.local;
+    const rt = meetingLayout.tiles.remote;
+    if (lt.w > 0 && lt.h > 0) setLocalPipSize({ w: lt.w, h: lt.h });
+    if (rt.w > 0 && rt.h > 0) setRemotePipSize({ w: rt.w, h: rt.h });
+  }, [isTrainer, meetingLayout.tiles, applyRemoteTiles]);
+
   const drawingSync = useDrawingSync({
     socket,
     userInfo: { from_user: myId, to_user: peerId },
@@ -386,7 +399,6 @@ function MeetingSurface({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [ratingsOpen, setRatingsOpen] = useState(false);
   const [gamePlanOpen, setGamePlanOpen] = useState(false);
-  const [activeClipUri, setActiveClipUri] = useState<string | null>(null);
   const [clipDurations, setClipDurations] = useState<[number, number]>([0, 0]);
   const [clipProgresses, setClipProgresses] = useState<[number, number]>([0, 0]);
   const [drawingOverlayKey, setDrawingOverlayKey] = useState(0);
@@ -673,7 +685,7 @@ function MeetingSurface({
         setMeetingBounds({ width, height });
       }}
     >
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="light-content" />
 
       {/* Remote video / clip pane */}
       <View
@@ -681,7 +693,10 @@ function MeetingSurface({
         collapsable={false}
         style={[
           styles.mainPane,
-          { paddingTop: chrome.mainPaneTop },
+          {
+            paddingTop: chrome.mainPaneTop,
+            paddingBottom: chrome.mainPaneBottom,
+          },
           clipSync.clipFullscreen && styles.mainPaneFullscreen,
         ]}
       >
@@ -826,23 +841,32 @@ function MeetingSurface({
       ) : null}
 
       {inLiveFocus ? (
-        <MeetingMiniPip
-          user={focusedIsLocal ? peerUser : null}
-          stream={focusedIsLocal ? remoteStream : localStream}
-          isStreamOff={
-            focusedIsLocal
-              ? !remoteStream || remoteCameraOff
-              : !cameraEnabled || !localStream
-          }
-          muted={!focusedIsLocal}
-          label={focusedIsLocal ? peerDisplayName.split(" ")[0] || "Partner" : "You"}
-          onPress={
-            isTrainer
-              ? () =>
-                  meetingLayout.focusStream(focusedIsLocal ? peerId : myId)
-              : undefined
-          }
-        />
+        <>
+          <MeetingMiniPip
+            user={focusedIsLocal ? peerUser : null}
+            stream={focusedIsLocal ? remoteStream : localStream}
+            isStreamOff={
+              focusedIsLocal
+                ? !remoteStream || remoteCameraOff
+                : !cameraEnabled || !localStream
+            }
+            muted={!focusedIsLocal}
+            label={focusedIsLocal ? peerDisplayName.split(" ")[0] || "Partner" : "You"}
+            onPress={
+              isTrainer
+                ? () => meetingLayout.focusStream(focusedIsLocal ? peerId : myId)
+                : () => meetingLayout.clearFocus()
+            }
+          />
+          {inClipMode && activeClipUri ? (
+            <ClipMiniPip
+              uri={activeClipUri}
+              label="Clips"
+              bottomOffset={chrome.pipSafeBottom}
+              onPress={() => meetingLayout.clearFocus()}
+            />
+          ) : null}
+        </>
       ) : (
         <>
           <DraggableVideoPip
@@ -921,7 +945,7 @@ function MeetingSurface({
               setRemotePipSize({ w, h });
               meetingLayout.updateTile("remote", { w, h });
             }}
-            onFocus={isTrainer ? () => meetingLayout.focusStream(peerId) : undefined}
+            onFocus={() => meetingLayout.focusStream(peerId)}
           />
         </>
       )}
@@ -941,6 +965,30 @@ function MeetingSurface({
         onPause={lessonTimer.requestPause}
         onResume={lessonTimer.requestResume}
         onCrossThreshold={onTimerCrossThreshold}
+        leadingTools={
+          isTrainer && inClipMode ? (
+            <>
+              <TopToolButton
+                onPress={() => clipSync.toggleLockMode()}
+                label={clipSync.lockMode ? "Unlock clips" : "Lock clips"}
+                active={clipSync.lockMode}
+              >
+                <Ionicons
+                  name={clipSync.lockMode ? "lock-closed" : "lock-open-outline"}
+                  size={18}
+                  color={meetingTheme.text}
+                />
+              </TopToolButton>
+              <TopToolButton
+                onPress={() => void screenshot.takeScreenshot()}
+                label="Screenshot"
+                disabled={screenshot.capturing}
+              >
+                <Ionicons name="camera-outline" size={18} color={meetingTheme.text} />
+              </TopToolButton>
+            </>
+          ) : undefined
+        }
       />
 
       {isTrainer && annotationToolbarOpen ? (
@@ -963,8 +1011,6 @@ function MeetingSurface({
         bottomInset={chrome.bottomChrome}
         onEndCall={confirmExit}
         inClipMode={inClipMode}
-        lockMode={clipSync.lockMode}
-        onToggleLock={isTrainer ? () => clipSync.toggleLockMode() : undefined}
         onToggleLayout={
           isTrainer
             ? () => {
@@ -976,10 +1022,8 @@ function MeetingSurface({
         }
         onExitClipMode={isTrainer ? exitClipMode : undefined}
         annotationArmed={annotationArmed}
-        drawingEnabled={drawingSync.drawingEnabled}
         onToggleDrawing={isTrainer ? handleAnnotationToggle : undefined}
         onOpenClipPicker={isTrainer ? () => setPickerOpen(true) : undefined}
-        onScreenshot={isTrainer ? () => void screenshot.takeScreenshot() : undefined}
       />
 
       {lastError ? (
@@ -1027,6 +1071,53 @@ function MeetingSurface({
   );
 }
 
+function TopToolButton({
+  children,
+  onPress,
+  label,
+  active,
+  disabled,
+}: {
+  children: React.ReactNode;
+  onPress: () => void;
+  label: string;
+  active?: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [
+        topToolStyles.btn,
+        active && topToolStyles.btnActive,
+        pressed && { opacity: 0.85 },
+        disabled && { opacity: 0.45 },
+      ]}
+    >
+      {children}
+    </Pressable>
+  );
+}
+
+const topToolStyles = StyleSheet.create({
+  btn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: meetingTheme.barBg,
+    borderWidth: 1,
+    borderColor: meetingTheme.barBorder,
+  },
+  btnActive: {
+    borderColor: meetingTheme.text,
+  },
+});
+
 const styles = StyleSheet.create({
   root: {
     flex: 1,
@@ -1035,11 +1126,9 @@ const styles = StyleSheet.create({
   mainPane: {
     flex: 1,
     paddingHorizontal: 12,
-    paddingBottom: 72,
   },
   mainPaneFullscreen: {
     paddingHorizontal: 0,
-    paddingBottom: 88,
   },
   clipFrame: {
     flex: 1,

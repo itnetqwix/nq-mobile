@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
   wrap: {
     position: "absolute",
     right: 12,
-    top: 72,
+    top: 88,
     width: 100,
     height: 140,
     zIndex: 50,

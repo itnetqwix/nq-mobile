@@ -109,7 +109,7 @@ export function useMeetingLayout({
           sessionId,
         };
         socket.emit(CLIP_EVENTS.MEETING_TILE_LAYOUT, payload);
-      }, 100);
+      }, 180);
     },
     [focusedStreamId, isTrainer, sessionId, socket, tiles, userInfo]
   );

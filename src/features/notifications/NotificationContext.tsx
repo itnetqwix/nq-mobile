@@ -9,7 +9,11 @@ import React, {
   useState,
 } from "react";
 import { useAuth } from "../auth/context/AuthContext";
-import { fetchNotifications, patchNotificationsMarkRead } from "../home/api/homeApi";
+import {
+  dedupeRowsById,
+  fetchNotifications,
+  patchNotificationsMarkRead,
+} from "../home/api/homeApi";
 import { useSocket } from "../socket/SocketContext";
 import { emitInstantLessonPhase } from "../instant-lesson/instantLessonBridge";
 import { navigationRef } from "../../navigation/navigationRef";
@@ -213,7 +217,7 @@ export function NotificationProvider({
   const refreshInbox = useCallback(async () => {
     if (status !== "signedIn") return;
     try {
-      const list = await fetchNotifications(1, 50);
+      const list = dedupeRowsById(await fetchNotifications(1, 50));
       queryClient.setQueryData(["notifications"], list);
       const unread = list.filter(
         (n: any) => !(n?.isRead ?? n?.is_read ?? false)
@@ -264,7 +268,7 @@ export function NotificationProvider({
             isNewInInbox = false;
             return list;
           }
-          return [{ ...payload, isRead: false }, ...list];
+          return dedupeRowsById([{ ...payload, isRead: false }, ...list]);
         }
       );
 
@@ -429,7 +433,7 @@ export function NotificationProvider({
           ["notifications"],
           (prev) => {
             const list = prev ?? [];
-            return [next, ...list];
+            return dedupeRowsById([next, ...list]);
           }
         );
         setUnreadCount((c) => c + 1);
