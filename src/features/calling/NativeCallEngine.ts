@@ -486,6 +486,11 @@ export class NativeCallEngine {
       this.dispose();
     };
 
+    const onSocketReconnect = () => {
+      if (this.disposed) return;
+      this.reconnectPeer();
+    };
+
     socket.on(CALL_EVENTS.ON_CALL_JOIN, offCallJoin);
     socket.on(CALL_EVENTS.ON_BOTH_JOIN, onBothJoin);
     socket.on(CALL_EVENTS.ON_OFFER, onOffer);
@@ -496,6 +501,8 @@ export class NativeCallEngine {
     socket.on(CALL_EVENTS.ON_CLOSE, onClose);
     socket.on(CALL_EVENTS.ON_CALL_LEAVE, onCallLeave);
     socket.on(CALL_EVENTS.CALL_END, onCallEnd);
+    socket.on("connect", onSocketReconnect);
+    socket.on("reconnect", onSocketReconnect);
 
     this.socketBindings.push(() =>
       socket.off(CALL_EVENTS.ON_CALL_JOIN, offCallJoin)
@@ -517,6 +524,8 @@ export class NativeCallEngine {
       socket.off(CALL_EVENTS.ON_CALL_LEAVE, onCallLeave)
     );
     this.socketBindings.push(() => socket.off(CALL_EVENTS.CALL_END, onCallEnd));
+    this.socketBindings.push(() => socket.off("connect", onSocketReconnect));
+    this.socketBindings.push(() => socket.off("reconnect", onSocketReconnect));
   }
 
   /** Partner disconnected from session room — keep local media; allow re-offer on rejoin. */
@@ -526,6 +535,9 @@ export class NativeCallEngine {
     this.remoteStream = null;
     this.remoteTrackIds.clear();
     this.pendingRemoteIce = [];
+    this.offerInFlight = false;
+    this.lastHandledJoinPeerId = null;
+    this.bothJoinedFired = false;
     this.events.onRemoteStream?.(null);
     this.setStatus("reconnecting");
     this.events.onPeerDisconnected?.();

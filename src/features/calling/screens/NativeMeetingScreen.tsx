@@ -321,9 +321,9 @@ function MeetingSurface({
 
   /** Socket presence when synced; otherwise fall back to WebRTC join signals. */
   const partnerInSession =
-    presence.trainerConnected != null && presence.traineeConnected != null
+    (presence.trainerConnected != null && presence.traineeConnected != null
       ? presence.partnerConnected
-      : (bothJoined || !!peerJoined) && !partnerDisconnected;
+      : bothJoined || !!peerJoined) && !partnerDisconnected;
   const { pushLocalToast } = useNotifications();
 
   /** Small client-side buffer (5 s) before the trainer auto-starts the timer —
@@ -336,9 +336,9 @@ function MeetingSurface({
   }, [partnerInSession]);
 
   const bothUsersForTimer =
-    presence.trainerConnected != null && presence.traineeConnected != null
+    (presence.trainerConnected != null && presence.traineeConnected != null
       ? presence.trainerConnected && presence.traineeConnected
-      : partnerInSession;
+      : partnerInSession) && !partnerDisconnected;
 
   const lessonTimer = useLessonTimer({
     socket,
