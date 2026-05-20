@@ -110,7 +110,7 @@ export function TimeRemaining({
 
   const display =
     !bothUsersJoined && remainingSeconds == null && status === "waiting"
-      ? "Waiting for both…"
+      ? "00:00"
       : format(remainingSeconds);
 
   return (

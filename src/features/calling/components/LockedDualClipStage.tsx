@@ -36,7 +36,6 @@ export function LockedDualClipStage({
   durationSeconds,
   onTogglePlay,
   onSeek,
-  controlsBottomOffset = 108,
 }: Props) {
   return (
     <View style={styles.root}>
@@ -49,7 +48,7 @@ export function LockedDualClipStage({
       </View>
       {isTrainer ? (
         <ClipPlaybackControls
-          variant="floating"
+          variant="inline"
           size="compact"
           isPlaying={isPlaying}
           onTogglePlay={onTogglePlay}
@@ -57,7 +56,6 @@ export function LockedDualClipStage({
           durationSeconds={durationSeconds}
           onSeek={onSeek}
           disabled={!uris[0] || !uris[1]}
-          bottomOffset={controlsBottomOffset}
         />
       ) : null}
     </View>

@@ -16,11 +16,17 @@ import {
   TextInput,
   View,
 } from "react-native";
+import * as Print from "expo-print";
 
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { getS3ImageUrl } from "../../../lib/clipMediaUrl";
+import { putFileToPresignedUrl } from "../../../lib/presignedPut";
 import { fetchSessionReport } from "../meetingReportApi";
+import {
+  NOTIFICATION_TITLES,
+  useNotification,
+} from "../../notifications/NotificationContext";
 
 type Props = {
   visible: boolean;
@@ -37,11 +43,59 @@ export function SessionGamePlanModal({
   traineeId,
   onClose,
 }: Props) {
+  const { emitNotification } = useNotification();
   const [title, setTitle] = useState("");
   const [topic, setTopic] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const buildPdfHtml = useCallback(
+    (imgKeys: string[], heading: string, notes: string) => {
+      const imgs = imgKeys
+        .map((k) => getS3ImageUrl(k))
+        .filter(Boolean)
+        .map(
+          (src) => `
+            <div class="imgWrap">
+              <img src="${src}" />
+            </div>
+          `
+        )
+        .join("\n");
+
+      const esc = (s: string) =>
+        String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+
+      return `
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; padding: 16px; }
+      h1 { font-size: 20px; margin: 0 0 8px 0; color: #0b1f3a; }
+      .notes { font-size: 12px; color: #444; white-space: pre-wrap; margin: 0 0 12px 0; }
+      .imgWrap { margin: 10px 0; }
+      img { width: 100%; height: auto; border-radius: 10px; }
+    </style>
+  </head>
+  <body>
+    <h1>${esc(heading)}</h1>
+    ${notes ? `<div class="notes">${esc(notes)}</div>` : ""}
+    ${imgs}
+  </body>
+</html>
+`;
+    },
+    []
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -77,6 +131,20 @@ export function SessionGamePlanModal({
     }
     setSaving(true);
     try {
+      // Generate + upload PDF (web parity) when screenshots exist.
+      if (images.length > 0) {
+        const sign = await apiClient.post(API_ROUTES.common.pdfUploadUrl, {
+          session_id: sessionId,
+        });
+        const uploadUrl = sign?.data?.url;
+        if (!uploadUrl) throw new Error("Could not prepare PDF upload.");
+
+        const html = buildPdfHtml(images, title.trim(), topic.trim());
+        const pdf = await Print.printToFileAsync({ html, base64: false });
+        if (!pdf?.uri) throw new Error("Could not generate PDF.");
+        await putFileToPresignedUrl(uploadUrl, pdf.uri, "application/pdf");
+      }
+
       await apiClient.post(API_ROUTES.report.create, {
         sessions: sessionId,
         trainer: trainerId,
@@ -85,6 +153,15 @@ export function SessionGamePlanModal({
         topic: topic.trim() || title.trim(),
         reportData: images,
       });
+
+      emitNotification({
+        title: NOTIFICATION_TITLES.gamePlanReport,
+        description: "Your coach shared a game plan. Open Game plans in your locker.",
+        receiverId: traineeId,
+        senderId: trainerId,
+        bookingInfo: { sessionId },
+      });
+
       Alert.alert("Game plan saved", "Screenshots are in your locker under Game plans.");
       onClose();
     } catch (e: any) {
@@ -145,7 +222,13 @@ export function SessionGamePlanModal({
             onPress={() => void save()}
             disabled={saving}
           >
-            <Text style={styles.btnPrimaryText}>{saving ? "Saving…" : "Save game plan"}</Text>
+            <Text style={styles.btnPrimaryText}>
+              {saving
+                ? images.length > 0
+                  ? "Generating PDF…"
+                  : "Saving…"
+                : "Save game plan"}
+            </Text>
           </Pressable>
         </View>
       </View>

@@ -4,7 +4,9 @@ import { EmptyState } from "../../../components/ui";
 import { useAuth } from "../../auth/context/AuthContext";
 import type { MenuStackParamList } from "../../../navigation/types";
 import { isDashboardRouteAllowed } from "../config/dashboardRoutes";
+import { AccountType } from "../../../constants/accountType";
 import { UpcomingSessionsScreen } from "../../sessions/screens/UpcomingSessionsScreen";
+import { TrainerScheduleTabs } from "../../schedule/screens/ScheduleScreen";
 import { BookExpertScreen } from "../../bookexpert/screens/BookExpertScreen";
 import { StudentsScreen } from "../../students/screens/StudentsScreen";
 import { FriendsScreen } from "../../friends/screens/FriendsScreen";
@@ -41,7 +43,13 @@ export function DashboardFeatureScreen({ route }: DashboardFeatureScreenProps) {
 
   switch (featureId) {
     case "upcoming-sessions":
-      return wrap(<UpcomingSessionsScreen />);
+      return wrap(
+        accountType === AccountType.TRAINER ? (
+          <TrainerScheduleTabs />
+        ) : (
+          <UpcomingSessionsScreen />
+        )
+      );
     case "book-lesson":
       return wrap(<BookExpertScreen bookLessonTrainerId={bookLessonTrainerId} />);
     case "students":

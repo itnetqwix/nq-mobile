@@ -1,14 +1,22 @@
 /**
  * Skia annotation layer with optional socket sync (trainer → trainee).
- * Gesture handlers run on JS thread via runOnJS to avoid worklet/state crashes.
  */
 
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import { LayoutChangeEvent, StyleSheet, View } from "react-native";
+import {
+  LayoutChangeEvent,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import {
   Canvas,
   Path,
   Skia,
+  Text as SkiaText,
   type SkPath,
 } from "@shopify/react-native-skia";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -26,7 +34,7 @@ type Props = {
   strokeWidth?: number;
   remoteStrokes?: RemoteStroke[];
   onStrokeComplete?: (
-    points: StrokePoint[],
+    stroke: RemoteStroke,
     canvasSize: { width: number; height: number }
   ) => void;
 };
@@ -115,11 +123,16 @@ export function DrawingOverlay({
   onStrokeComplete,
 }: Props) {
   const [strokes, setStrokes] = useState<Stroke[]>([]);
+  const [textLabels, setTextLabels] = useState<RemoteStroke[]>([]);
   const [current, setCurrent] = useState<Stroke | null>(null);
   const pointsRef = useRef<StrokePoint[]>([]);
   const startRef = useRef<StrokePoint | null>(null);
   const canvasSizeRef = useRef({ width: 1, height: 1 });
   const [canvasSize, setCanvasSize] = useState({ width: 1, height: 1 });
+
+  const [textModalOpen, setTextModalOpen] = useState(false);
+  const [textDraft, setTextDraft] = useState("");
+  const [textAnchor, setTextAnchor] = useState<StrokePoint | null>(null);
 
   const toolRef = useRef(tool);
   const colorRef = useRef(color);
@@ -127,6 +140,17 @@ export function DrawingOverlay({
   toolRef.current = tool;
   colorRef.current = color;
   strokeWidthRef.current = strokeWidth;
+
+  const emitStroke = useCallback(
+    (stroke: RemoteStroke) => {
+      try {
+        onStrokeComplete?.(stroke, canvasSizeRef.current);
+      } catch {
+        /* ignore */
+      }
+    },
+    [onStrokeComplete]
+  );
 
   const commitStroke = useCallback((stroke: Stroke) => {
     setStrokes((s) => [...s, stroke]);
@@ -138,14 +162,13 @@ export function DrawingOverlay({
       const t = toolRef.current;
       const path = shapePath(t, x0, y0, x1, y1);
       commitStroke({ path, color: colorRef.current, width: strokeWidthRef.current });
-      const pts = shapePoints(t, x0, y0, x1, y1);
-      try {
-        onStrokeComplete?.(pts, canvasSizeRef.current);
-      } catch {
-        /* socket emit must not crash drawing */
-      }
+      emitStroke({
+        points: shapePoints(t, x0, y0, x1, y1),
+        color: colorRef.current,
+        width: strokeWidthRef.current,
+      });
     },
-    [commitStroke, onStrokeComplete]
+    [commitStroke, emitStroke]
   );
 
   const updateFreehand = useCallback((x: number, y: number) => {
@@ -165,16 +188,43 @@ export function DrawingOverlay({
         ...s,
         { path, color: colorRef.current, width: strokeWidthRef.current },
       ]);
-      try {
-        onStrokeComplete?.(pts, canvasSizeRef.current);
-      } catch {
-        /* ignore */
-      }
+      emitStroke({
+        points: pts,
+        color: colorRef.current,
+        width: strokeWidthRef.current,
+      });
     }
-  }, [onStrokeComplete]);
+  }, [emitStroke]);
+
+  const openTextModal = useCallback((x: number, y: number) => {
+    setTextAnchor({ x, y });
+    setTextDraft("");
+    setTextModalOpen(true);
+  }, []);
+
+  const confirmText = useCallback(() => {
+    const anchor = textAnchor;
+    const value = textDraft.trim();
+    setTextModalOpen(false);
+    setTextAnchor(null);
+    if (!anchor || !value) return;
+    const stroke: RemoteStroke = {
+      points: [anchor],
+      color: colorRef.current,
+      width: strokeWidthRef.current,
+      kind: "text",
+      text: value,
+    };
+    setTextLabels((s) => [...s, stroke]);
+    emitStroke(stroke);
+  }, [emitStroke, textAnchor, textDraft]);
 
   const onPanStart = useCallback(
     (x: number, y: number) => {
+      if (toolRef.current === "text") {
+        openTextModal(x, y);
+        return;
+      }
       startRef.current = { x, y };
       if (toolRef.current !== "freehand") {
         const path = shapePath(toolRef.current, x, y, x, y);
@@ -188,10 +238,11 @@ export function DrawingOverlay({
         width: strokeWidthRef.current,
       });
     },
-    []
+    [openTextModal]
   );
 
   const onPanUpdate = useCallback((x: number, y: number) => {
+    if (toolRef.current === "text") return;
     const start = startRef.current;
     if (!start) return;
     if (toolRef.current !== "freehand") {
@@ -204,6 +255,7 @@ export function DrawingOverlay({
 
   const onPanEnd = useCallback(
     (x: number, y: number) => {
+      if (toolRef.current === "text") return;
       const start = startRef.current;
       if (!start) return;
       if (toolRef.current !== "freehand") {
@@ -233,53 +285,162 @@ export function DrawingOverlay({
     [enabled, onPanEnd, onPanStart, onPanUpdate]
   );
 
-  if (!enabled && strokes.length === 0 && !current && remoteStrokes.length === 0) {
+  const allText = useMemo(
+    () => [
+      ...remoteStrokes.filter((r) => r.kind === "text" && r.text),
+      ...textLabels,
+    ],
+    [remoteStrokes, textLabels]
+  );
+
+  if (
+    !enabled &&
+    strokes.length === 0 &&
+    !current &&
+    remoteStrokes.length === 0 &&
+    textLabels.length === 0
+  ) {
     return null;
   }
 
   return (
-    <GestureDetector gesture={pan}>
-      <View
-        style={StyleSheet.absoluteFill}
-        pointerEvents={enabled ? "auto" : "box-none"}
-        onLayout={(e: LayoutChangeEvent) => {
-          const { width, height } = e.nativeEvent.layout;
-          if (width > 0 && height > 0) {
-            const size = { width, height };
-            canvasSizeRef.current = size;
-            setCanvasSize(size);
-          }
-        }}
-      >
-        <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
-          {remoteStrokes.map((rs, i) => (
-            <Path
-              key={`remote-${i}`}
-              path={pointsToPath(rs.points)}
-              style="stroke"
-              strokeWidth={rs.width}
-              color={rs.color}
+    <>
+      <GestureDetector gesture={pan}>
+        <View
+          style={StyleSheet.absoluteFill}
+          pointerEvents={enabled ? "auto" : "box-none"}
+          onLayout={(e: LayoutChangeEvent) => {
+            const { width, height } = e.nativeEvent.layout;
+            if (width > 0 && height > 0) {
+              const size = { width, height };
+              canvasSizeRef.current = size;
+              setCanvasSize(size);
+            }
+          }}
+        >
+          <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
+            {remoteStrokes
+              .filter((r) => r.kind !== "text")
+              .map((rs, i) => (
+                <Path
+                  key={`remote-${i}`}
+                  path={pointsToPath(rs.points)}
+                  style="stroke"
+                  strokeWidth={rs.width}
+                  color={rs.color}
+                />
+              ))}
+            {strokes.map((s, i) => (
+              <Path
+                key={`local-${i}`}
+                path={s.path}
+                style="stroke"
+                strokeWidth={s.width}
+                color={s.color}
+              />
+            ))}
+            {current ? (
+              <Path
+                path={current.path}
+                style="stroke"
+                strokeWidth={current.width}
+                color={current.color}
+              />
+            ) : null}
+            {allText.map((t, i) => {
+              const p = t.points[0];
+              if (!p || !t.text) return null;
+              return (
+                <SkiaText
+                  key={`text-${i}-${t.text}`}
+                  x={p.x}
+                  y={p.y}
+                  text={t.text}
+                  color={Skia.Color(t.color)}
+                  fontSize={18}
+                />
+              );
+            })}
+          </Canvas>
+        </View>
+      </GestureDetector>
+
+      <Modal visible={textModalOpen} transparent animationType="fade">
+        <View style={styles.textModalBackdrop}>
+          <View style={styles.textModalCard}>
+            <Text style={styles.textModalTitle}>Add label</Text>
+            <TextInput
+              style={styles.textInput}
+              value={textDraft}
+              onChangeText={setTextDraft}
+              placeholder="Type annotation text"
+              placeholderTextColor="#888"
+              autoFocus
             />
-          ))}
-          {strokes.map((s, i) => (
-            <Path
-              key={`local-${i}`}
-              path={s.path}
-              style="stroke"
-              strokeWidth={s.width}
-              color={s.color}
-            />
-          ))}
-          {current ? (
-            <Path
-              path={current.path}
-              style="stroke"
-              strokeWidth={current.width}
-              color={current.color}
-            />
-          ) : null}
-        </Canvas>
-      </View>
-    </GestureDetector>
+            <View style={styles.textModalActions}>
+              <Pressable
+                style={styles.textModalBtnSecondary}
+                onPress={() => {
+                  setTextModalOpen(false);
+                  setTextAnchor(null);
+                }}
+              >
+                <Text style={styles.textModalBtnSecondaryText}>Cancel</Text>
+              </Pressable>
+              <Pressable style={styles.textModalBtnPrimary} onPress={confirmText}>
+                <Text style={styles.textModalBtnPrimaryText}>Add</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }
+
+const styles = StyleSheet.create({
+  textModalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    justifyContent: "center",
+    padding: 24,
+  },
+  textModalCard: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+  },
+  textModalTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#0b1f3a",
+    marginBottom: 10,
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: "#111",
+  },
+  textModalActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 10,
+    marginTop: 14,
+  },
+  textModalBtnSecondary: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  textModalBtnSecondaryText: { color: "#555", fontWeight: "600" },
+  textModalBtnPrimary: {
+    backgroundColor: "#0b1f3a",
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  textModalBtnPrimaryText: { color: "#fff", fontWeight: "600" },
+});

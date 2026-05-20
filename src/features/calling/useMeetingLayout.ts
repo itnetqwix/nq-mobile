@@ -8,7 +8,12 @@ import type { Socket } from "socket.io-client";
 
 import type { PipEdge } from "./components/DraggableVideoPip";
 import { PIP_HEIGHT, PIP_WIDTH } from "./components/DraggableVideoPip";
-import { CLIP_EVENTS, type ClipUserInfo } from "./clipEvents";
+import {
+  buildFullscreenPayload,
+  CLIP_EVENTS,
+  shouldApplyRemoteSocketEvent,
+  type ClipUserInfo,
+} from "./clipEvents";
 
 export type PipTileId = "local" | "remote";
 
@@ -78,10 +83,33 @@ export function useMeetingLayout({
 
     const onLayout = (payload: MeetingLayoutPayload) => {
       if (isTrainer) return;
+      if (
+        !shouldApplyRemoteSocketEvent(payload, {
+          sessionId,
+          myUserId: myId,
+          isTrainer,
+        })
+      ) {
+        return;
+      }
       applyPayload(payload);
     };
 
-    const onSwap = (payload: { type?: string; id?: string }) => {
+    const onSwap = (payload: {
+      type?: string;
+      id?: string;
+      sessionId?: string;
+      userInfo?: ClipUserInfo;
+    }) => {
+      if (
+        !shouldApplyRemoteSocketEvent(payload, {
+          sessionId,
+          myUserId: myId,
+          isTrainer,
+        })
+      ) {
+        return;
+      }
       if (payload?.type !== "swap") return;
       const id = payload?.id != null ? String(payload.id) : null;
       setFocusedStreamId(id);
@@ -94,7 +122,7 @@ export function useMeetingLayout({
       socket.off(CLIP_EVENTS.MEETING_TILE_LAYOUT, onLayout);
       socket.off(CLIP_EVENTS.ON_VIDEO_SELECT, onSwap);
     };
-  }, [applyPayload, isTrainer, socket]);
+  }, [applyPayload, isTrainer, myId, sessionId, socket]);
 
   const emitLayout = useCallback(
     (patch: Partial<MeetingLayoutPayload>) => {
@@ -125,6 +153,11 @@ export function useMeetingLayout({
         sessionId,
       });
       emitLayout({ focusedStreamId: userId });
+      const on = userId != null;
+      socket.emit(
+        CLIP_EVENTS.TOGGLE_FULL_SCREEN,
+        buildFullscreenPayload({ on, userInfo, sessionId })
+      );
     },
     [emitLayout, isTrainer, sessionId, socket, userInfo]
   );

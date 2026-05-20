@@ -349,19 +349,27 @@ export function UpcomingSessionsScreen() {
 
   return (
     <View style={styles.root}>
-      <View style={styles.tabs}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tabs}
+        style={styles.tabsScroll}
+      >
         {STATUS_TAB_KEYS.map((tab) => (
           <Pressable
             key={tab.key}
             style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-            onPress={() => { setActiveTab(tab.key); setSelectedDate(null); }}
+            onPress={() => {
+              setActiveTab(tab.key);
+              setSelectedDate(null);
+            }}
           >
             <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
               {t(tab.labelKey)}
             </Text>
           </Pressable>
         ))}
-      </View>
+      </ScrollView>
 
       <SessionsCalendar
         monthAnchor={monthAnchor}
@@ -434,15 +442,19 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surface },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
 
-  tabs: {
-    flexDirection: "row",
+  tabsScroll: {
     backgroundColor: colors.surfaceElevated,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
+  tabs: {
+    flexDirection: "row",
+    paddingHorizontal: space.sm,
+    gap: 8,
+  },
   tab: {
-    flex: 1,
     paddingVertical: space.md,
+    paddingHorizontal: space.md,
     alignItems: "center",
     borderBottomWidth: 2,
     borderBottomColor: "transparent",

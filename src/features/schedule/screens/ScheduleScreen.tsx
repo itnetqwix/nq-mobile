@@ -142,7 +142,8 @@ function TrainerSchedule() {
 
 type TrainerSegment = "sessions" | "availability";
 
-function TrainerScheduleTabs() {
+/** Same UI as the Schedule bottom tab — use from dashboard deep links for parity. */
+export function TrainerScheduleTabs() {
   const { t } = useTranslation();
   const [segment, setSegment] = useState<TrainerSegment>("sessions");
 

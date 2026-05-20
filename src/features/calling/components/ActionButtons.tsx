@@ -3,7 +3,7 @@
  */
 
 import React from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { useCall } from "../CallContext";
@@ -15,7 +15,9 @@ type Props = {
   isTrainer?: boolean;
   inClipMode?: boolean;
   onExitClipMode?: () => void;
-  onToggleLayout?: () => void;
+  /** Trainer: expand live stream or clip to main stage (synced to trainee). */
+  onToggleBigVideo?: () => void;
+  bigVideoActive?: boolean;
   annotationArmed?: boolean;
   onToggleDrawing?: () => void;
   onEndCall?: () => void;
@@ -31,7 +33,8 @@ export function ActionButtons({
   isTrainer,
   inClipMode,
   onExitClipMode,
-  onToggleLayout,
+  onToggleBigVideo,
+  bigVideoActive,
   annotationArmed,
   onToggleDrawing,
   onEndCall,
@@ -43,12 +46,7 @@ export function ActionButtons({
 
   return (
     <View style={[styles.bar, { bottom: bottomInset }]} pointerEvents="box-none">
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.row}
-        centerContent
-      >
+      <View style={styles.row}>
         <RoundButton
           onPress={toggleMute}
           accessibilityLabel={micEnabled ? "Mute microphone" : "Unmute microphone"}
@@ -77,12 +75,16 @@ export function ActionButtons({
           <Ionicons name="camera-reverse-outline" size={ICON} color={meetingTheme.text} />
         </RoundButton>
 
-        {isTrainer && inClipMode && onToggleLayout ? (
-          <RoundButton onPress={onToggleLayout} accessibilityLabel="Toggle clip layout">
-            <MaterialCommunityIcons
-              name="view-split-vertical"
+        {isTrainer && onToggleBigVideo ? (
+          <RoundButton
+            onPress={onToggleBigVideo}
+            accessibilityLabel={bigVideoActive ? "Exit expanded view" : "Expand video"}
+            active={bigVideoActive}
+          >
+            <Ionicons
+              name={bigVideoActive ? "contract-outline" : "expand-outline"}
               size={ICON}
-              color={meetingTheme.text}
+              color={bigVideoActive ? meetingTheme.onPrimary : meetingTheme.text}
             />
           </RoundButton>
         ) : null}
@@ -120,7 +122,7 @@ export function ActionButtons({
         <RoundButton onPress={hangUp} accessibilityLabel="End call" danger large>
           <MaterialCommunityIcons name="phone-hangup" size={ICON + 2} color="#fff" />
         </RoundButton>
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -164,19 +166,22 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 38,
+    alignItems: "center",
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 8,
+    flexWrap: "wrap",
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    gap: 6,
+    gap: 8,
     borderRadius: 999,
     backgroundColor: meetingTheme.barBg,
     borderWidth: 1,
     borderColor: meetingTheme.barBorder,
     minHeight: ACTION_BAR_HEIGHT,
+    maxWidth: "96%",
   },
   btn: {
     width: BTN,

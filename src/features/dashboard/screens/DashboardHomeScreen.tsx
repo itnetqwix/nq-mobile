@@ -544,6 +544,23 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
   }, [queryClient]);
 
   const openFeature = (id: DashboardRouteId, extra?: Partial<{ bookLessonTrainerId: string }>) => {
+    // Some dashboard “features” map directly to bottom tabs for correct tab highlighting.
+    if (id === "upcoming-sessions") {
+      try {
+        navigation.getParent()?.navigate("Schedule" as never);
+        return;
+      } catch {
+        /* fall through */
+      }
+    }
+    if (id === "chats") {
+      try {
+        navigation.getParent()?.navigate("Chats" as never);
+        return;
+      } catch {
+        /* fall through */
+      }
+    }
     navigation.navigate("DashboardFeature", {
       featureId: id,
       ...extra,
@@ -695,7 +712,7 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
             <QuickActionButton
               icon="calendar-outline"
               label={t("dashboardHome.quickSchedule")}
-              onPress={() => navigation.navigate("Schedule")}
+              onPress={() => openFeature("upcoming-sessions")}
             />
             <QuickActionButton
               icon="time-outline"
@@ -707,7 +724,7 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
         <QuickActionButton
           icon="chatbubbles-outline"
           label={t("dashboardHome.quickChats")}
-          onPress={() => navigation.navigate("Chats")}
+          onPress={() => navigation.getParent()?.navigate("Chats" as never)}
         />
       </View>
 

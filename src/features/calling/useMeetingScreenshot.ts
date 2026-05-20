@@ -23,6 +23,7 @@ export function useMeetingScreenshot({
 }: Args) {
   const captureTargetRef = useRef<View>(null);
   const [capturing, setCapturing] = useState(false);
+  const [captureCount, setCaptureCount] = useState(0);
 
   const takeScreenshot = useCallback(async () => {
     if (!isTrainer) return;
@@ -33,8 +34,8 @@ export function useMeetingScreenshot({
     setCapturing(true);
     try {
       const uri = await captureRef(captureTargetRef, {
-        format: "png",
-        quality: 0.92,
+        format: "jpg",
+        quality: 0.85,
         result: "tmpfile",
       });
       const presign = await requestScreenshotUpload({
@@ -46,7 +47,7 @@ export function useMeetingScreenshot({
       if (!uploadUrl) {
         throw new Error("No upload URL returned");
       }
-      await putFileToPresignedUrl(uploadUrl, uri, "image/png");
+      await putFileToPresignedUrl(uploadUrl, uri, "image/jpeg");
       try {
         const normalized = uri.split("?")[0];
         const info = await FileSystem.getInfoAsync(normalized);
@@ -56,6 +57,7 @@ export function useMeetingScreenshot({
       } catch {
         /** Temp cleanup is best-effort — upload already succeeded. */
       }
+      setCaptureCount((n) => n + 1);
       onSaved?.();
       Alert.alert("Screenshot saved", "Added to the session game plan.");
     } catch (e: any) {
@@ -66,5 +68,11 @@ export function useMeetingScreenshot({
     }
   }, [isTrainer, onSaved, sessionId, traineeId, trainerId]);
 
-  return { captureTargetRef, takeScreenshot, capturing };
+  return {
+    captureTargetRef,
+    takeScreenshot,
+    capturing,
+    captureCount,
+    hasCaptures: captureCount > 0,
+  };
 }

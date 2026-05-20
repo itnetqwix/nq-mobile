@@ -24,6 +24,43 @@ export type ClipUserInfo = {
   to_user: string;
 };
 
+/** Normalized fullscreen payload — web uses `isMaximized`, mobile uses both. */
+export function buildFullscreenPayload(args: {
+  on: boolean;
+  userInfo: ClipUserInfo;
+  sessionId?: string;
+  clipIndex?: 0 | 1 | null;
+  layoutMode?: "clipFullscreen" | "stacked" | "default";
+}) {
+  const { on, userInfo, sessionId, clipIndex, layoutMode } = args;
+  return {
+    userInfo,
+    sessionId,
+    isFullscreen: on,
+    isMaximized: on,
+    ...(clipIndex === 0 || clipIndex === 1 ? { clipIndex } : {}),
+    ...(layoutMode ? { layoutMode } : {}),
+  };
+}
+
+/** Ignore socket echoes from the local trainer and foreign sessions. */
+export function shouldApplyRemoteSocketEvent(
+  payload: { sessionId?: string; userInfo?: ClipUserInfo } | null | undefined,
+  opts: { sessionId?: string; myUserId: string; isTrainer: boolean }
+): boolean {
+  if (!payload) return false;
+  if (
+    opts.sessionId &&
+    payload.sessionId != null &&
+    String(payload.sessionId) !== String(opts.sessionId)
+  ) {
+    return false;
+  }
+  const from = String(payload.userInfo?.from_user ?? "");
+  if (opts.isTrainer && from && from === String(opts.myUserId)) return false;
+  return true;
+}
+
 /** Payload that travels over `ON_VIDEO_SELECT`. */
 export type ClipSelectPayload = {
   type: "swap" | "clip" | string;

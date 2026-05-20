@@ -134,10 +134,10 @@ export function useSessionPresence({
           if (prev != null) {
             showSuccessThenClear(`${peerDisplayName} rejoined the session.`);
           } else {
-            setPresenceMessage(
-              `${peerDisplayName} joined the session. Please join if you haven't yet.`
+            showSuccessThenClear(
+              `${peerDisplayName} joined the session. Please join if you haven't yet.`,
+              3500
             );
-            setPresenceVariant("info");
           }
           return null;
         });
@@ -235,6 +235,29 @@ export function useSessionPresence({
     clearStaleTimer,
     showSuccessThenClear,
   ]);
+
+  const dismissPresenceBanner = useCallback(() => {
+    if (successDismissRef.current) {
+      clearTimeout(successDismissRef.current);
+      successDismissRef.current = null;
+    }
+    setPresenceMessage(null);
+  }, []);
+
+  // Authoritative sync: both roles connected → clear join / reconnect prompts.
+  useEffect(() => {
+    if (trainerConnected !== true || traineeConnected !== true) return;
+    setPartnerReconnecting(false);
+    setPartnerLeftKind(null);
+    dismissPresenceBanner();
+  }, [trainerConnected, traineeConnected, dismissPresenceBanner]);
+
+  // Media / partner socket connected → dismiss stale "please join" success banner.
+  useEffect(() => {
+    if (!partnerConnected) return;
+    if (presenceVariant !== "success") return;
+    dismissPresenceBanner();
+  }, [partnerConnected, presenceVariant, dismissPresenceBanner]);
 
   return {
     trainerConnected,

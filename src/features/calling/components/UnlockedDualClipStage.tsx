@@ -21,11 +21,10 @@ type Props = {
   makePaneProps: (paneIndex: 0 | 1) => ClipPlayerPaneProps;
   isTrainer: boolean;
   isPlaying: boolean;
-  progressSeconds: number;
-  durationSeconds: number;
-  onTogglePlay: () => void;
-  onSeek: (seconds: number) => void;
-  controlsBottomOffset?: number;
+  progressSecondsByPane: [number, number];
+  durationSecondsByPane: [number, number];
+  onTogglePlay: (paneIndex: 0 | 1) => void;
+  onSeek: (paneIndex: 0 | 1, seconds: number) => void;
   clipFocusIndex?: 0 | 1 | null;
   onToggleExpand?: (paneIndex: 0 | 1) => void;
 };
@@ -35,11 +34,10 @@ export function UnlockedDualClipStage({
   makePaneProps,
   isTrainer,
   isPlaying,
-  progressSeconds,
-  durationSeconds,
+  progressSecondsByPane,
+  durationSecondsByPane,
   onTogglePlay,
   onSeek,
-  controlsBottomOffset = 108,
   clipFocusIndex = null,
   onToggleExpand,
 }: Props) {
@@ -60,7 +58,25 @@ export function UnlockedDualClipStage({
                 clipFocusIndex != null && styles.paneFocused,
               ]}
             >
-              <ClipPlayer uri={uri} {...makePaneProps(paneIndex)} />
+              <View style={styles.paneInner}>
+                <View style={styles.player}>
+                  <ClipPlayer uri={uri} {...makePaneProps(paneIndex)} />
+                </View>
+                {isTrainer ? (
+                  <View style={styles.controlsDock}>
+                    <ClipPlaybackControls
+                      variant="inline"
+                      size="compact"
+                      isPlaying={isPlaying}
+                      onTogglePlay={() => onTogglePlay(paneIndex)}
+                      progressSeconds={progressSecondsByPane[paneIndex]}
+                      durationSeconds={durationSecondsByPane[paneIndex]}
+                      onSeek={(sec) => onSeek(paneIndex, sec)}
+                      disabled={!uri}
+                    />
+                  </View>
+                ) : null}
+              </View>
               {isTrainer && onToggleExpand ? (
                 <Pressable
                   style={styles.expandBtn}
@@ -86,19 +102,6 @@ export function UnlockedDualClipStage({
           );
         })}
       </View>
-      {isTrainer ? (
-        <ClipPlaybackControls
-          variant="floating"
-          size="compact"
-          isPlaying={isPlaying}
-          onTogglePlay={onTogglePlay}
-          progressSeconds={progressSeconds}
-          durationSeconds={durationSeconds}
-          onSeek={onSeek}
-          disabled={!uris[0] || !uris[1]}
-          bottomOffset={controlsBottomOffset}
-        />
-      ) : null}
     </View>
   );
 }
@@ -120,6 +123,16 @@ const styles = StyleSheet.create({
   },
   paneFocused: {
     flex: 1,
+  },
+  paneInner: {
+    flex: 1,
+  },
+  player: {
+    flex: 1,
+  },
+  controlsDock: {
+    paddingTop: 2,
+    paddingBottom: 2,
   },
   expandBtn: {
     position: "absolute",

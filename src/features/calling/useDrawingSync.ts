@@ -19,6 +19,8 @@ export type RemoteStroke = {
   points: StrokePoint[];
   color: string;
   width: number;
+  kind?: "stroke" | "text";
+  text?: string;
 };
 
 type Args = {

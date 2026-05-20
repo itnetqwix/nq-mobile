@@ -24,6 +24,8 @@ type Props = {
   isPlaying: boolean;
   /** Optional remote seek hint; applied imperatively when it changes. */
   seekTargetMs?: number | null;
+  zoom?: number;
+  pan?: { x: number; y: number };
   /** Local control should suppress synced seeks for a moment (e.g. trainer). */
   isControlling?: boolean;
   onProgressSeconds?: (seconds: number) => void;
@@ -35,6 +37,8 @@ export function ClipPlayer({
   uri,
   isPlaying,
   seekTargetMs,
+  zoom = 1,
+  pan,
   onProgressSeconds,
   onDurationSeconds,
   onEnded,
@@ -57,29 +61,42 @@ export function ClipPlayer({
 
   return (
     <View style={styles.wrap}>
-      <Video
-        ref={videoRef}
-        source={{ uri }}
-        style={styles.player}
-        resizeMode={ResizeMode.CONTAIN}
-        shouldPlay={isPlaying}
-        isLooping={false}
-        useNativeControls={false}
-        onPlaybackStatusUpdate={(status: AVPlaybackStatus) => {
-          if (!status.isLoaded) return;
-          if (status.didJustFinish) onEnded?.();
-          if (typeof status.durationMillis === "number" && status.durationMillis > 0) {
-            onDurationSeconds?.(status.durationMillis / 1000);
-          }
-          if (onProgressSeconds && typeof status.positionMillis === "number") {
-            onProgressSeconds(status.positionMillis / 1000);
-          }
-        }}
-        onError={(e) => {
-          // eslint-disable-next-line no-console
-          console.warn("[ClipPlayer] playback failed", { uri, error: e });
-        }}
-      />
+      <View
+        style={[
+          styles.transformLayer,
+          {
+            transform: [
+              { translateX: typeof pan?.x === "number" ? pan.x : 0 },
+              { translateY: typeof pan?.y === "number" ? pan.y : 0 },
+              { scale: Number.isFinite(zoom) ? zoom : 1 },
+            ],
+          },
+        ]}
+      >
+        <Video
+          ref={videoRef}
+          source={{ uri }}
+          style={styles.player}
+          resizeMode={ResizeMode.CONTAIN}
+          shouldPlay={isPlaying}
+          isLooping={false}
+          useNativeControls={false}
+          onPlaybackStatusUpdate={(status: AVPlaybackStatus) => {
+            if (!status.isLoaded) return;
+            if (status.didJustFinish) onEnded?.();
+            if (typeof status.durationMillis === "number" && status.durationMillis > 0) {
+              onDurationSeconds?.(status.durationMillis / 1000);
+            }
+            if (onProgressSeconds && typeof status.positionMillis === "number") {
+              onProgressSeconds(status.positionMillis / 1000);
+            }
+          }}
+          onError={(e) => {
+            // eslint-disable-next-line no-console
+            console.warn("[ClipPlayer] playback failed", { uri, error: e });
+          }}
+        />
+      </View>
     </View>
   );
 }
@@ -90,6 +107,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
     borderRadius: 16,
     overflow: "hidden",
+  },
+  transformLayer: {
+    flex: 1,
   },
   player: {
     flex: 1,

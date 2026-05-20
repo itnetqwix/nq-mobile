@@ -49,6 +49,7 @@ import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { clipIdOf, clipsFromSession, resolveClipPlayback } from "../clipSyncUtils";
 import { useDrawingSync } from "../useDrawingSync";
 import { useMeetingScreenshot } from "../useMeetingScreenshot";
+import { fetchSessionReport } from "../meetingReportApi";
 
 import { CallProvider, useCall } from "../CallContext";
 import { ensureCallPermissions } from "../permissions";
@@ -452,6 +453,7 @@ function MeetingSurface({
   const [clipProgresses, setClipProgresses] = useState<[number, number]>([0, 0]);
   const [drawingOverlayKey, setDrawingOverlayKey] = useState(0);
   const [annotationTool, setAnnotationTool] = useState<AnnotationTool>("freehand");
+  const [annotationColor, setAnnotationColor] = useState("#ff3b30");
   const [annotationArmed, setAnnotationArmed] = useState(false);
   const [annotationToolbarOpen, setAnnotationToolbarOpen] = useState(false);
   const clipProgressRefs = useRef<[number, number]>([0, 0]);
@@ -536,6 +538,7 @@ function MeetingSurface({
   const makeClipPlayerProps = (paneIndex: 0 | 1) => {
     const clip = clipSync.selectedClips[paneIndex];
     const clipId = clip ? clipIdOf(clip) : null;
+    const zoomPan = clipId ? clipSync.zoomPanByVideoId[String(clipId)] : undefined;
     const seekForPane =
       clipSync.seekHint &&
       (!clipSync.seekHint.videoId ||
@@ -546,6 +549,8 @@ function MeetingSurface({
     return {
       isPlaying: clipSync.isPlaying,
       seekTargetMs: seekForPane,
+      zoom: zoomPan?.zoom,
+      pan: zoomPan?.pan,
       onProgressSeconds: (seconds: number) => {
         clipProgressRefs.current[paneIndex] = seconds;
         setClipProgresses((prev) => {
@@ -563,6 +568,17 @@ function MeetingSurface({
       },
     };
   };
+
+  const bumpZoomForCurrentClips = useCallback(
+    (delta: number) => {
+      if (!isTrainer) return;
+      const ids = clipSync.lockMode
+        ? clipSync.selectedClips.map((c) => String(clipIdOf(c))).filter(Boolean)
+        : [String(clipSync.activeClipId ?? "")].filter(Boolean);
+      ids.forEach((id) => clipSync.bumpZoom(id, delta));
+    },
+    [clipSync, isTrainer]
+  );
 
   const handleClipTogglePlay = useCallback(
     (paneIndex: 0 | 1) => {
@@ -627,6 +643,34 @@ function MeetingSurface({
     });
   }, [clipDurations, clipProgresses, clipSync]);
 
+  const openPostCallFlow = useCallback(async () => {
+    if (!isTrainer) {
+      setRatingsOpen(true);
+      return;
+    }
+    let hasScreenshots = screenshot.hasCaptures;
+    if (!hasScreenshots) {
+      try {
+        const res = await fetchSessionReport({
+          sessions: lessonId,
+          trainer: myId,
+          trainee: peerId,
+        });
+        const data = res?.data ?? res;
+        const raw = data?.reportData;
+        hasScreenshots =
+          Array.isArray(raw) &&
+          raw.some((x: unknown) =>
+            typeof x === "string" ? x.length > 0 : !!(x as { name?: string })?.name
+          );
+      } catch {
+        hasScreenshots = false;
+      }
+    }
+    if (hasScreenshots) setGamePlanOpen(true);
+    else setRatingsOpen(true);
+  }, [isTrainer, lessonId, myId, peerId, screenshot.hasCaptures]);
+
   /** Show ratings after the call ends — `endCall()` will pop us back, so we
    *  wrap that path: open the modal first, then exit on dismiss. */
   const confirmExit = useCallback(() => {
@@ -640,13 +684,12 @@ function MeetingSurface({
           style: "destructive",
           onPress: () => {
             endCall();
-            if (isTrainer) setGamePlanOpen(true);
-            else setRatingsOpen(true);
+            void openPostCallFlow();
           },
         },
       ]
     );
-  }, [endCall, isTrainer]);
+  }, [endCall, openPostCallFlow]);
 
   const pipBounds = meetingBounds ?? { width: winW, height: winH };
 
@@ -672,7 +715,50 @@ function MeetingSurface({
   }, [annotationArmed, annotationToolbarOpen, drawingSync]);
 
   const canDraw = isTrainer && annotationArmed;
+  const bigVideoActive =
+    inClipMode
+      ? clipSync.clipFullscreen || clipFocusIndex != null
+      : inLiveFocus;
   const focusedIsLocal = inLiveFocus && String(meetingLayout.focusedStreamId) === String(myId);
+
+  const handleToggleBigVideo = useCallback(() => {
+    if (!isTrainer) return;
+    if (inClipMode) {
+      if (clipFocusIndex != null) {
+        clipSync.setClipFocus(null);
+        return;
+      }
+      clipSync.toggleClipFullscreen();
+      return;
+    }
+    if (inLiveFocus) {
+      meetingLayout.clearFocus();
+      return;
+    }
+    meetingLayout.focusStream(peerId);
+  }, [
+    clipFocusIndex,
+    clipSync,
+    inClipMode,
+    inLiveFocus,
+    isTrainer,
+    meetingLayout,
+    peerId,
+  ]);
+
+  const emitAnnotationStroke = useCallback(
+    (stroke: Parameters<typeof drawingSync.emitStroke>[0], size: { width: number; height: number }) => {
+      drawingSync.emitStroke(
+        {
+          ...stroke,
+          color: stroke.color ?? annotationColor,
+          width: stroke.width ?? 4,
+        },
+        size
+      );
+    },
+    [annotationColor, drawingSync]
+  );
   const focusedIsRemote = inLiveFocus && String(meetingLayout.focusedStreamId) === String(peerId);
 
   const exitClipMode = useCallback(() => {
@@ -755,6 +841,12 @@ function MeetingSurface({
           clipSync.clipFullscreen && styles.mainPaneFullscreen,
         ]}
       >
+        {screenshot.capturing ? (
+          <View style={styles.captureOverlay} pointerEvents="none">
+            <ActivityIndicator size="large" color="#fff" />
+            <Text style={styles.captureOverlayText}>Capturing…</Text>
+          </View>
+        ) : null}
         {inLiveFocus ? (
           <MeetingLiveStage
             user={focusedIsRemote ? peerUser : null}
@@ -794,11 +886,16 @@ function MeetingSurface({
                 makePaneProps={makeClipPlayerProps}
                 isTrainer={isTrainer}
                 isPlaying={clipSync.isPlaying}
-                progressSeconds={unlockedTimelineProgress}
-                durationSeconds={unlockedTimelineDuration}
-                onTogglePlay={() => handleClipTogglePlay(activePaneIndex)}
-                onSeek={(sec) => handleClipSeek(activePaneIndex, sec)}
-                controlsBottomOffset={chrome.clipControlsBottom}
+                progressSecondsByPane={[
+                  clipProgresses[0] ?? 0,
+                  clipProgresses[1] ?? 0,
+                ]}
+                durationSecondsByPane={[
+                  clipDurations[0] ?? 0,
+                  clipDurations[1] ?? 0,
+                ]}
+                onTogglePlay={(paneIndex) => handleClipTogglePlay(paneIndex)}
+                onSeek={(paneIndex, sec) => handleClipSeek(paneIndex, sec)}
                 clipFocusIndex={clipFocusIndex}
                 onToggleExpand={(paneIndex) =>
                   clipSync.setClipFocus(
@@ -827,13 +924,9 @@ function MeetingSurface({
               key={drawingOverlayKey}
               enabled={canDraw}
               tool={annotationTool}
+              color={annotationColor}
               remoteStrokes={drawingSync.remoteStrokes}
-              onStrokeComplete={(points, size) =>
-                drawingSync.emitStroke(
-                  { points, color: "#ff3b30", width: 4 },
-                  size
-                )
-              }
+              onStrokeComplete={emitAnnotationStroke}
             />
           </View>
         ) : (
@@ -852,13 +945,9 @@ function MeetingSurface({
               key={`live-${drawingOverlayKey}`}
               enabled={canDraw}
               tool={annotationTool}
+              color={annotationColor}
               remoteStrokes={drawingSync.remoteStrokes}
-              onStrokeComplete={(points, size) =>
-                drawingSync.emitStroke(
-                  { points, color: "#ff3b30", width: 4 },
-                  size
-                )
-              }
+              onStrokeComplete={emitAnnotationStroke}
             />
           </View>
         )}
@@ -1032,8 +1121,32 @@ function MeetingSurface({
                 label="Screenshot"
                 disabled={screenshot.capturing}
               >
-                <Ionicons name="camera-outline" size={18} color={meetingTheme.text} />
+                {screenshot.capturing ? (
+                  <ActivityIndicator size="small" color={meetingTheme.text} />
+                ) : (
+                  <Ionicons name="camera-outline" size={18} color={meetingTheme.text} />
+                )}
               </TopToolButton>
+              {activeClipUri ? (
+                <>
+                  <TopToolButton
+                    onPress={() => bumpZoomForCurrentClips(0.2)}
+                    label="Zoom in"
+                  >
+                    <Ionicons name="add-circle-outline" size={18} color={meetingTheme.text} />
+                  </TopToolButton>
+                  <TopToolButton
+                    onPress={() => bumpZoomForCurrentClips(-0.2)}
+                    label="Zoom out"
+                  >
+                    <Ionicons
+                      name="remove-circle-outline"
+                      size={18}
+                      color={meetingTheme.text}
+                    />
+                  </TopToolButton>
+                </>
+              ) : null}
             </>
           ) : undefined
         }
@@ -1042,7 +1155,9 @@ function MeetingSurface({
       {isTrainer && annotationToolbarOpen ? (
         <MeetingAnnotationToolbar
           tool={annotationTool}
+          strokeColor={annotationColor}
           onToolChange={setAnnotationTool}
+          onColorChange={setAnnotationColor}
           drawingEnabled={annotationArmed}
           onToggleDrawing={() => setAnnotationToolbarOpen(false)}
           onClear={() => {
@@ -1059,15 +1174,8 @@ function MeetingSurface({
         bottomInset={chrome.bottomChrome}
         onEndCall={confirmExit}
         inClipMode={inClipMode}
-        onToggleLayout={
-          isTrainer
-            ? () => {
-                const next =
-                  clipSync.layoutMode === "stacked" ? "default" : "stacked";
-                clipSync.setLayout(next);
-              }
-            : undefined
-        }
+        onToggleBigVideo={isTrainer ? handleToggleBigVideo : undefined}
+        bigVideoActive={bigVideoActive}
         onExitClipMode={isTrainer ? exitClipMode : undefined}
         annotationArmed={annotationArmed}
         onToggleDrawing={isTrainer ? handleAnnotationToggle : undefined}
@@ -1272,4 +1380,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   errorText: { color: "#fff", fontSize: 13 },
+  captureOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 20,
+    gap: 10,
+  },
+  captureOverlayText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
 });

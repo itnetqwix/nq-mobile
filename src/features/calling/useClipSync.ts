@@ -5,7 +5,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 
-import { CLIP_EVENTS, type ClipUserInfo } from "./clipEvents";
+import {
+  buildFullscreenPayload,
+  CLIP_EVENTS,
+  shouldApplyRemoteSocketEvent,
+  type ClipUserInfo,
+} from "./clipEvents";
 import {
   clipIdOf,
   clipsFromSelectPayload,
@@ -21,6 +26,8 @@ type SeekHint = {
   progress: number;
   receivedAt: number;
 } | null;
+
+type ZoomPan = { zoom: number; pan: { x: number; y: number } };
 
 export type HiddenVideosMap = {
   teacher: boolean;
@@ -99,6 +106,7 @@ export function useClipSync({
   const [clipFullscreen, setClipFullscreen] = useState(false);
   /** Which dual-clip pane is expanded (0 | 1), or null for split view. */
   const [clipFocusIndex, setClipFocusIndex] = useState<0 | 1 | null>(null);
+  const [zoomPanByVideoId, setZoomPanByVideoId] = useState<Record<string, ZoomPan>>({});
   const lastSeekEmit = useRef(0);
   const bookingPreloadedRef = useRef(false);
   const lockModeRef = useRef(false);
@@ -223,6 +231,15 @@ export function useClipSync({
     };
 
     const onFullscreen = (payload: any) => {
+      if (
+        !shouldApplyRemoteSocketEvent(payload, {
+          sessionId,
+          myUserId: fromUserId,
+          isTrainer,
+        })
+      ) {
+        return;
+      }
       const on = !!(payload?.isFullscreen ?? payload?.isMaximized);
       const mode = payload?.layoutMode as ClipLayoutMode | undefined;
       const idx = payload?.clipIndex;
@@ -241,6 +258,29 @@ export function useClipSync({
       );
     };
 
+    const onZoomPan = (payload: any) => {
+      const videoId = String(payload?.videoId ?? payload?.clipId ?? "");
+      if (!videoId) return;
+      if (payload?.sessionId != null && String(payload.sessionId) !== String(sessionId)) return;
+      const from = String(payload?.userInfo?.from_user ?? "");
+      if (from && from === String(fromUserId)) return; // ignore our own echo
+      const zoom = typeof payload?.zoom === "number" ? payload.zoom : NaN;
+      const pan = payload?.pan;
+      setZoomPanByVideoId((prev) => {
+        const cur = prev[videoId] ?? { zoom: 1, pan: { x: 0, y: 0 } };
+        return {
+          ...prev,
+          [videoId]: {
+            zoom: Number.isFinite(zoom) ? Math.max(1, Math.min(5, zoom)) : cur.zoom,
+            pan:
+              pan && typeof pan.x === "number" && typeof pan.y === "number"
+                ? { x: pan.x, y: pan.y }
+                : cur.pan,
+          },
+        };
+      });
+    };
+
     socket.on(CLIP_EVENTS.ON_VIDEO_SELECT, onSelect);
     socket.on(CLIP_EVENTS.ON_VIDEO_PLAY_PAUSE, onPlayPause);
     socket.on(CLIP_EVENTS.ON_VIDEO_TIME, onTime);
@@ -248,6 +288,7 @@ export function useClipSync({
     socket.on(CLIP_EVENTS.ON_VIDEO_SHOW, onShow);
     socket.on(CLIP_EVENTS.TOGGLE_LOCK_MODE, onLockMode);
     socket.on(CLIP_EVENTS.TOGGLE_FULL_SCREEN, onFullscreen);
+    socket.on(CLIP_EVENTS.ON_VIDEO_ZOOM_PAN, onZoomPan);
 
     return () => {
       socket.off(CLIP_EVENTS.ON_VIDEO_SELECT, onSelect);
@@ -257,8 +298,37 @@ export function useClipSync({
       socket.off(CLIP_EVENTS.ON_VIDEO_SHOW, onShow);
       socket.off(CLIP_EVENTS.TOGGLE_LOCK_MODE, onLockMode);
       socket.off(CLIP_EVENTS.TOGGLE_FULL_SCREEN, onFullscreen);
+      socket.off(CLIP_EVENTS.ON_VIDEO_ZOOM_PAN, onZoomPan);
     };
-  }, [socket, activeClipId]);
+  }, [socket, activeClipId, sessionId, fromUserId, isTrainer]);
+
+  const emitZoomPan = useCallback(
+    (videoId: string, zoom: number, pan: { x: number; y: number }) => {
+      if (!socket || !sessionId || !videoId) return;
+      socket.emit(CLIP_EVENTS.ON_VIDEO_ZOOM_PAN, {
+        videoId,
+        zoom,
+        pan,
+        userInfo,
+        sessionId,
+      });
+    },
+    [socket, sessionId, userInfo]
+  );
+
+  const bumpZoom = useCallback(
+    (videoId: string, delta: number) => {
+      if (!videoId) return;
+      setZoomPanByVideoId((prev) => {
+        const cur = prev[String(videoId)] ?? { zoom: 1, pan: { x: 0, y: 0 } };
+        const nextZoom = Math.max(1, Math.min(5, cur.zoom + delta));
+        const next = { ...prev, [String(videoId)]: { ...cur, zoom: nextZoom } };
+        if (isTrainer) emitZoomPan(String(videoId), nextZoom, cur.pan);
+        return next;
+      });
+    },
+    [emitZoomPan, isTrainer]
+  );
 
   const clearLockMode = useCallback(
     (emitSocket: boolean) => {
@@ -441,13 +511,16 @@ export function useClipSync({
       setClipFullscreen(on);
       setLayoutMode(on ? "clipFullscreen" : "default");
       if (!isTrainer || !socket) return;
-      socket.emit(CLIP_EVENTS.TOGGLE_FULL_SCREEN, {
-        isFullscreen: on,
-        isMaximized: on,
-        clipIndex: next,
-        userInfo,
-        sessionId,
-      });
+      socket.emit(
+        CLIP_EVENTS.TOGGLE_FULL_SCREEN,
+        buildFullscreenPayload({
+          on,
+          clipIndex: next,
+          userInfo,
+          sessionId,
+          layoutMode: on ? "clipFullscreen" : "default",
+        })
+      );
     },
     [isTrainer, socket, userInfo, sessionId]
   );
@@ -464,12 +537,10 @@ export function useClipSync({
       setClipFocusIndex(null);
       setLayoutMode(next ? "clipFullscreen" : "default");
       if (!isTrainer || !socket) return;
-      socket.emit(CLIP_EVENTS.TOGGLE_FULL_SCREEN, {
-        isFullscreen: next,
-        isMaximized: next,
-        userInfo,
-        sessionId,
-      });
+      socket.emit(
+        CLIP_EVENTS.TOGGLE_FULL_SCREEN,
+        buildFullscreenPayload({ on: next, userInfo, sessionId })
+      );
     },
     [clipFocusIndex, clipFullscreen, isTrainer, setClipFocus, socket, userInfo, sessionId]
   );
@@ -480,12 +551,15 @@ export function useClipSync({
       const fs = mode === "clipFullscreen";
       setClipFullscreen(fs);
       if (!isTrainer || !socket) return;
-      socket.emit(CLIP_EVENTS.TOGGLE_FULL_SCREEN, {
-        isFullscreen: fs,
-        layoutMode: mode,
-        userInfo,
-        sessionId,
-      });
+      socket.emit(
+        CLIP_EVENTS.TOGGLE_FULL_SCREEN,
+        buildFullscreenPayload({
+          on: fs,
+          layoutMode: mode,
+          userInfo,
+          sessionId,
+        })
+      );
     },
     [isTrainer, socket, userInfo, sessionId]
   );
@@ -507,6 +581,8 @@ export function useClipSync({
     activeClipId,
     activeClipUrl,
     isPlaying,
+    zoomPanByVideoId,
+    bumpZoom,
     hiddenVideos,
     hideLocalCamera,
     seekHint,
