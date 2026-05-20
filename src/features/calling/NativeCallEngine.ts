@@ -360,7 +360,11 @@ export class NativeCallEngine {
         ui.peerId != null && String(ui.peerId).trim() !== ""
           ? String(ui.peerId).trim()
           : null;
-      if (joinPeerId && joinPeerId === this.lastHandledJoinPeerId) {
+      if (
+        joinPeerId &&
+        joinPeerId === this.lastHandledJoinPeerId &&
+        this.status !== "reconnecting"
+      ) {
         return;
       }
       if (joinPeerId) this.lastHandledJoinPeerId = joinPeerId;
@@ -369,15 +373,7 @@ export class NativeCallEngine {
       const wasReconnecting = this.status === "reconnecting";
       this.remoteJoined = true;
       if (wasReconnecting && this.localStream) {
-        try {
-          this.pc?.close();
-        } catch {
-          /* noop */
-        }
-        this.pc = null;
-        this.pendingRemoteIce = [];
-        this.offerInFlight = false;
-        this.buildPeerConnection();
+        this.rebuildPeerConnection();
         this.setStatus("connecting");
       }
       this.events.onPeerJoined?.({
@@ -405,7 +401,15 @@ export class NativeCallEngine {
     const onOffer = async (payload: any) => {
       const offer: RTCSessionDescriptionInit | undefined =
         payload?.offer ?? (payload?.type ? payload : undefined);
-      if (!offer || !this.pc) return;
+      if (!offer) return;
+      if (
+        this.localStream &&
+        this.pc &&
+        (this.status === "reconnecting" || !!this.pc.localDescription)
+      ) {
+        this.rebuildPeerConnection();
+      }
+      if (!this.pc) return;
       try {
         await this.pc.setRemoteDescription(
           new RTCSessionDescription(offer as any)
@@ -488,7 +492,8 @@ export class NativeCallEngine {
 
     const onSocketReconnect = () => {
       if (this.disposed) return;
-      this.reconnectPeer();
+      this.lastHandledJoinPeerId = null;
+      this.emitJoin();
     };
 
     socket.on(CALL_EVENTS.ON_CALL_JOIN, offCallJoin);
@@ -546,6 +551,17 @@ export class NativeCallEngine {
   /** Rebuild WebRTC after partner returns (optional — also handled on ON_CALL_JOIN). */
   reconnectPeer(): void {
     if (this.disposed) return;
+    this.rebuildPeerConnection();
+    this.lastHandledJoinPeerId = null;
+    this.remoteJoined = false;
+    if (this.localStream) {
+      this.emitJoin();
+      this.setStatus("reconnecting");
+    }
+    this.events.onRemoteStream?.(null);
+  }
+
+  private rebuildPeerConnection(): void {
     try {
       this.pc?.close();
     } catch {
@@ -556,15 +572,10 @@ export class NativeCallEngine {
     this.remoteTrackIds.clear();
     this.pendingRemoteIce = [];
     this.offerInFlight = false;
-    this.lastHandledJoinPeerId = null;
     this.bothJoinedFired = false;
-    this.remoteJoined = false;
     if (this.localStream) {
       this.buildPeerConnection();
-      this.emitJoin();
-      this.setStatus("reconnecting");
     }
-    this.events.onRemoteStream?.(null);
   }
 
   private async drainPendingIce() {
