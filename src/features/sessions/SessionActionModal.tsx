@@ -22,10 +22,14 @@ import {
   formatSessionWhen,
   getJoinDisabledReason,
   getOtherParty,
+  getSessionOutcomeI18nKey,
   isInstantLesson,
   isPendingBooking,
+  isSessionTerminalForUI,
   normalizeSessionStatus,
 } from "../../lib/sessions/sessionUtils";
+import { useAppTranslation } from "../../i18n/useAppTranslation";
+import { getRefundReasonI18nKey } from "../../lib/sessions/refundReasonLabels";
 import {
   NOTIFICATION_TITLES,
   NOTIFICATION_TYPES,
@@ -51,6 +55,7 @@ type Props = {
 };
 
 export function SessionActionModal({ visible, session, onClose, onSessionUpdated }: Props) {
+  const { t } = useAppTranslation();
   const { user, accountType } = useAuth();
   const { emitNotification } = useNotifications();
   const queryClient = useQueryClient();
@@ -95,7 +100,16 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
   const status = normalizeSessionStatus(viewSession?.status);
   const pending = isPendingBooking(viewSession);
   const completed = status === "completed";
+  const terminal = viewSession ? isSessionTerminalForUI(viewSession) : false;
   const instant = isInstantLesson(viewSession);
+  const outcomeKey = viewSession ? getSessionOutcomeI18nKey(viewSession) : null;
+  const outcomeLabel = outcomeKey ? t(outcomeKey as any) : null;
+  const refundReasonKey = getRefundReasonI18nKey(
+    viewSession?._refund?.reason ?? viewSession?.refund_reason
+  );
+  const refundReasonLabel = refundReasonKey
+    ? t(refundReasonKey as any)
+    : viewSession?._refund?.reason_label ?? viewSession?.refund_reason_label ?? null;
   const viewerRated = hasViewerRated(viewSession, isTrainer);
   const ratingSummary = getViewerRatingSummary(viewSession, isTrainer);
   const refundTransferLabel = formatRefundTransferLabel(
@@ -130,8 +144,8 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
   const [joinHint, setJoinHint] = useState("");
 
   const joinEnabled = useMemo(
-    () => (viewSession && !completed ? canEnterLesson(viewSession) : false),
-    [viewSession, completed]
+    () => (viewSession && !completed && !terminal ? canEnterLesson(viewSession) : false),
+    [viewSession, completed, terminal]
   );
   const isRejoin = useMemo(
     () =>
@@ -293,6 +307,16 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
               </Pressable>
             </View>
 
+            {outcomeLabel ? (
+              <View style={styles.outcomeBanner}>
+                <Ionicons name="alert-circle-outline" size={20} color={colors.dangerText} />
+                <View style={styles.outcomeBannerText}>
+                  <Text style={styles.outcomeBannerTitle}>{t("sessions.outcomeLabel")}</Text>
+                  <Text style={styles.outcomeBannerBody}>{outcomeLabel}</Text>
+                </View>
+              </View>
+            ) : null}
+
             <View style={styles.profileRow}>
               {avatarUrl ? (
                 <ImageWithSkeleton
@@ -323,12 +347,15 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
                 <Text style={styles.dualTz}>{dualTz}</Text>
               ) : null}
               {!!price && <DetailRow icon="card-outline" label="Price" value={price} />}
-              {viewSession?.refund_status ? (
+              {viewSession?.refund_status || viewSession?._refund?.status ? (
                 <DetailRow
                   icon="return-down-back-outline"
-                  label="Refund"
-                  value={String(viewSession.refund_status)}
+                  label="Refund status"
+                  value={String(viewSession._refund?.status ?? viewSession.refund_status)}
                 />
+              ) : null}
+              {refundReasonLabel ? (
+                <DetailRow icon="information-circle-outline" label="Refund reason" value={refundReasonLabel} />
               ) : null}
               {viewSession?.instant_phase ? (
                 <DetailRow
@@ -357,17 +384,27 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
               />
             </View>
 
-            {pending && isTrainer ? (
+            {pending && isTrainer && !terminal ? (
               <Text style={styles.hint}>
                 Review the details below, then tap Confirm session. Join becomes available after
                 confirmation, starting 15 minutes before the scheduled time.
               </Text>
             ) : null}
 
-            {!joinEnabled && !!joinHint ? <Text style={styles.hint}>{joinHint}</Text> : null}
+            {!terminal && !joinEnabled && !!joinHint ? (
+              <Text style={styles.hint}>{joinHint}</Text>
+            ) : null}
 
             <View style={styles.actions}>
-              {isTrainer && pending && !instant ? (
+              {terminal ? (
+                <Button
+                  label={t("sessions.viewBookingDetails")}
+                  leftIcon="document-text-outline"
+                  onPress={() => setDetailsOpen(true)}
+                />
+              ) : null}
+
+              {isTrainer && pending && !instant && !terminal ? (
                 <>
                   <Button
                     label={busy === "confirm" ? "Confirming…" : "Confirm session"}
@@ -387,7 +424,7 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
                 </>
               ) : null}
 
-              {isTrainer && pending && instant ? (
+              {isTrainer && pending && instant && !terminal ? (
                 <InstantLessonSessionActions
                   session={viewSession}
                   layout="column"
@@ -399,7 +436,7 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
                 />
               ) : null}
 
-              {!pending && !completed && (
+              {!terminal && !pending && !completed && (
                 <Button
                   label={isRejoin ? "Rejoin session" : "Join session"}
                   leftIcon="videocam-outline"
@@ -408,7 +445,7 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
                 />
               )}
 
-              {completed ? (
+              {completed && !terminal ? (
                 <>
                   {ratingSummary ? (
                     <Text style={styles.hint}>Your rating: {ratingSummary}</Text>
@@ -429,7 +466,7 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
                 </>
               ) : null}
 
-              {pending && !isTrainer ? (
+              {pending && !isTrainer && !terminal ? (
                 <View style={styles.waitingBox}>
                   <ActivityIndicator color={colors.brandNavy} />
                   <Text style={styles.waitingText}>
@@ -438,10 +475,12 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
                 </View>
               ) : null}
 
+              {!terminal ? (
               <Pressable style={styles.detailsLink} onPress={() => setDetailsOpen(true)}>
                 <Text style={styles.detailsLinkText}>View full booking details</Text>
                 <Ionicons name="chevron-forward" size={16} color={colors.brandNavy} />
               </Pressable>
+              ) : null}
             </View>
           </ScrollView>
         </Pressable>
@@ -534,6 +573,25 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerCopy: { flex: 1, gap: 6 },
+  outcomeBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: space.sm,
+    marginHorizontal: space.lg,
+    marginBottom: space.md,
+    padding: space.md,
+    backgroundColor: colors.dangerSubtle,
+    borderRadius: radii.md,
+  },
+  outcomeBannerText: { flex: 1 },
+  outcomeBannerTitle: {
+    ...typography.caption,
+    fontWeight: "700",
+    color: colors.dangerText,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  outcomeBannerBody: { ...typography.bodyMd, color: colors.dangerText, marginTop: 2 },
   title: { ...typography.titleSm, color: colors.text },
   profileRow: {
     flexDirection: "row",

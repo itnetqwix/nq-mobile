@@ -20,7 +20,6 @@ import { Button, Card, EmptyState, Pill, Skeleton, Stack } from "../../../compon
 import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { fetchScheduledMeetings } from "../../home/api/homeApi";
-import { INSTANT_JOIN_AFTER_ACCEPT_MS } from "../../../lib/sessions/instantLessonConstants";
 import {
   canEnterLesson,
   canJoinSession,
@@ -29,8 +28,11 @@ import {
   getInstantJoinDeadlineMs,
   getJoinDisabledReason,
   getOtherParty,
+  getSessionOutcomeI18nKey,
+  isInstantExpiredForLists,
   isInstantLesson,
   isPendingBooking,
+  isSessionTerminalForUI,
   normalizeSessionStatus,
 } from "../../../lib/sessions/sessionUtils";
 import { InstantLessonDeadlineChip } from "../../instant-lesson/components/InstantLessonDeadlineChip";
@@ -42,27 +44,26 @@ import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 const CALENDAR_COLLAPSED_KEY = "nq.sessions-calendar-collapsed";
 
-function isInstantLessonExpired(session: any, nowMs: number): boolean {
-  if (!isInstantLesson(session)) return false;
-  const acceptedAt = session?.accepted_at
-    ? new Date(session.accepted_at).getTime()
-    : NaN;
-  if (!Number.isFinite(acceptedAt)) return false;
-  return nowMs - acceptedAt > INSTANT_JOIN_AFTER_ACCEPT_MS;
-}
-
 const STATUS_TAB_KEYS = [
   { key: "upcoming", labelKey: "sessions.tabUpcoming" },
   { key: "confirmed", labelKey: "sessions.tabConfirmed" },
   { key: "completed", labelKey: "sessions.tabCompleted" },
+  { key: "cancelled", labelKey: "sessions.tabCancelled" },
 ] as const;
 
 type StatusTab = (typeof STATUS_TAB_KEYS)[number]["key"];
 
-const TAB_LABEL_KEYS: Record<StatusTab, "sessions.tabUpcoming" | "sessions.tabConfirmed" | "sessions.tabCompleted"> = {
+type SessionsTabLabelKey =
+  | "sessions.tabUpcoming"
+  | "sessions.tabConfirmed"
+  | "sessions.tabCompleted"
+  | "sessions.tabCancelled";
+
+const TAB_LABEL_KEYS: Record<StatusTab, SessionsTabLabelKey> = {
   upcoming: "sessions.tabUpcoming",
   confirmed: "sessions.tabConfirmed",
   completed: "sessions.tabCompleted",
+  cancelled: "sessions.tabCancelled",
 };
 
 function Avatar({ uri, name, size = 52 }: { uri?: string; name?: string; size?: number }) {
@@ -111,7 +112,15 @@ function getBadgeTone(status?: string): React.ComponentProps<typeof Pill>["tone"
   }
 }
 
-function SessionCard({ session, accountType }: { session: any; accountType: string | null }) {
+function SessionCard({
+  session,
+  accountType,
+  activeTab,
+}: {
+  session: any;
+  accountType: string | null;
+  activeTab: StatusTab;
+}) {
   const { t } = useAppTranslation();
   const isTrainer = accountType === AccountType.TRAINER;
   const other = getOtherParty(session, isTrainer);
@@ -120,10 +129,14 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
   const instant = isInstantLesson(session);
   const pending = isPendingBooking(session);
   const status = normalizeSessionStatus(session.status);
+  const isCancelledTab = activeTab === "cancelled";
+  const terminal = isCancelledTab || isSessionTerminalForUI(session);
+  const outcomeKey = getSessionOutcomeI18nKey(session);
+  const outcomeLabel = outcomeKey ? t(outcomeKey as any) : null;
   const { openSession } = useSessionBooking();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { dateLabel, timeLabel } = formatSessionWhen(session);
-  const joinEnabled = canEnterLesson(session);
+  const joinEnabled = !terminal && canEnterLesson(session);
   const isRejoin = joinEnabled && !canJoinSession(session);
   const acceptDeadlineMs = getInstantAcceptDeadlineMs(session);
   const joinDeadlineMs = getInstantJoinDeadlineMs(session);
@@ -154,22 +167,29 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
             </View>
           )}
         </View>
-        <StatusBadge status={pending ? "booked" : status} />
+        <StatusBadge status={pending && !terminal ? "booked" : status} />
       </View>
 
-      {instant && acceptDeadlineMs && isTrainer && pending ? (
+      {outcomeLabel ? (
+        <View style={styles.outcomeRow}>
+          <Ionicons name="information-circle-outline" size={14} color={colors.danger} />
+          <Text style={styles.outcomeText}>{outcomeLabel}</Text>
+        </View>
+      ) : null}
+
+      {instant && acceptDeadlineMs && isTrainer && pending && !terminal ? (
         <InstantLessonDeadlineChip
           deadlineMs={acceptDeadlineMs}
           label={t("sessions.respondWithin")}
         />
       ) : null}
-      {instant && joinDeadlineMs && !pending ? (
+      {instant && joinDeadlineMs && !pending && !terminal ? (
         <InstantLessonDeadlineChip
           deadlineMs={joinDeadlineMs}
           label={isTrainer ? t("sessions.traineeMustJoinWithin") : t("sessions.joinWithin")}
         />
       ) : null}
-      {!isTrainer && instant && acceptDeadlineMs && pending ? (
+      {!isTrainer && instant && acceptDeadlineMs && pending && !terminal ? (
         <InstantLessonDeadlineChip
           deadlineMs={acceptDeadlineMs}
           label={t("sessions.coachHas")}
@@ -198,33 +218,48 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
       )}
 
       <View style={styles.cardFooter}>
-        {isTrainer && pending && instant ? (
-          <InstantLessonSessionActions session={session} layout="row" size="md" />
-        ) : null}
-        {isTrainer && pending && !instant ? (
+        {terminal ? (
           <Button
-            label={t("sessions.reviewAndConfirm")}
-            leftIcon="checkmark-circle-outline"
+            label={t("sessions.viewBookingDetails")}
+            variant="secondary"
+            leftIcon="document-text-outline"
             onPress={() => openSession(session)}
             size="md"
             fullWidth={false}
           />
-        ) : null}
-        {!pending && (
-          <Button
-            label={isRejoin ? t("sessions.rejoinSession", "Rejoin session") : t("sessions.joinSession")}
-            leftIcon="videocam-outline"
-            onPress={handleJoin}
-            size="md"
-            fullWidth={false}
-            disabled={!joinEnabled}
-          />
+        ) : (
+          <>
+            {isTrainer && pending && instant ? (
+              <InstantLessonSessionActions session={session} layout="row" size="md" />
+            ) : null}
+            {isTrainer && pending && !instant ? (
+              <Button
+                label={t("sessions.reviewAndConfirm")}
+                leftIcon="checkmark-circle-outline"
+                onPress={() => openSession(session)}
+                size="md"
+                fullWidth={false}
+              />
+            ) : null}
+            {!pending && (
+              <Button
+                label={
+                  isRejoin ? t("sessions.rejoinSession", "Rejoin session") : t("sessions.joinSession")
+                }
+                leftIcon="videocam-outline"
+                onPress={handleJoin}
+                size="md"
+                fullWidth={false}
+                disabled={!joinEnabled}
+              />
+            )}
+            {!pending && !joinEnabled ? (
+              <Text style={styles.joinHint}>
+                {getJoinDisabledReason(session) || t("sessions.joinOpensLater")}
+              </Text>
+            ) : null}
+          </>
         )}
-        {!pending && !joinEnabled ? (
-          <Text style={styles.joinHint}>
-            {getJoinDisabledReason(session) || t("sessions.joinOpensLater")}
-          </Text>
-        ) : null}
       </View>
     </Pressable>
   );
@@ -283,7 +318,10 @@ export function UpcomingSessionsScreen() {
 
   const sessions = useMemo(() => {
     const nowMs = Date.now();
-    let list = activeTab === "completed" ? rawSessions : rawSessions.filter((s: any) => !isInstantLessonExpired(s, nowMs));
+    let list = rawSessions;
+    if (activeTab === "upcoming" || activeTab === "confirmed") {
+      list = list.filter((s: any) => !isInstantExpiredForLists(s, new Date(nowMs)));
+    }
     if (selectedDate) {
       list = list.filter((s: any) => isSameDay(s.booked_date, selectedDate));
     }
@@ -371,12 +409,19 @@ export function UpcomingSessionsScreen() {
                   ? t("sessions.emptyDateHint")
                   : activeTab === "upcoming"
                     ? t("sessions.emptyUpcomingDescription")
-                    : t("sessions.emptyTabDescription", { tab: t(TAB_LABEL_KEYS[activeTab]) })
+                    : activeTab === "cancelled"
+                      ? t("sessions.emptyCancelledDescription")
+                      : t("sessions.emptyTabDescription", { tab: t(TAB_LABEL_KEYS[activeTab]) })
               }
             />
           ) : (
             sessions.map((session: any) => (
-              <SessionCard key={session._id} session={session} accountType={accountType} />
+              <SessionCard
+                key={session._id}
+                session={session}
+                accountType={accountType}
+                activeTab={activeTab}
+              />
             ))
           )}
         </ScrollView>
@@ -426,6 +471,17 @@ const styles = StyleSheet.create({
   cardRole: { ...typography.caption, color: colors.textMuted, marginTop: 2, marginBottom: space.xs },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
   metaText: { ...typography.bodySm, color: colors.textMuted },
+  outcomeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: space.sm,
+    paddingVertical: space.xs,
+    paddingHorizontal: space.sm,
+    backgroundColor: colors.dangerSubtle,
+    borderRadius: radii.sm,
+  },
+  outcomeText: { ...typography.caption, color: colors.danger, flex: 1 },
 
   categoryRow: {
     flexDirection: "row",

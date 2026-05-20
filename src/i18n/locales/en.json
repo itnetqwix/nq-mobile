@@ -881,6 +881,7 @@
     "tabUpcoming": "Upcoming",
     "tabConfirmed": "Confirmed",
     "tabCompleted": "Completed",
+    "tabCancelled": "Expired/Cancelled",
     "student": "Student",
     "trainer": "Trainer",
     "unknown": "Unknown",
@@ -897,7 +898,19 @@
     "emptyTab": "No {{tab}} sessions",
     "emptyUpcomingDescription": "Your booked sessions will appear here.",
     "emptyDateHint": "Tap a different date or 'All' to see all sessions.",
-    "emptyTabDescription": "No {{tab}} sessions found."
+    "emptyTabDescription": "No {{tab}} sessions found.",
+    "emptyCancelledDescription": "Expired, declined, and missed sessions appear here with refund details when you open them.",
+    "outcome": {
+      "acceptExpired": "Request expired",
+      "joinExpired": "Join window missed",
+      "declined": "Declined",
+      "noShow": "Session missed",
+      "trainerCancelled": "Cancelled by coach",
+      "traineeCancelled": "Cancelled by trainee",
+      "cancelled": "Cancelled"
+    },
+    "outcomeLabel": "Outcome",
+    "viewBookingDetails": "View full booking details"
   },
   "community": {
     "memberDefault": "Member",

@@ -4,6 +4,10 @@ export type InstantLessonPhasePayload = {
   lessonId?: string;
   phase?: string;
   refundReason?: string;
+  coachId?: string;
+  traineeId?: string;
+  joinDeadlineAt?: string;
+  acceptedAt?: string;
 };
 
 export type InstantLessonIncomingPayload = {

@@ -17,6 +17,7 @@ import {
   isInstantLesson,
   isNewBookingNotificationTitle,
   isPendingBooking,
+  shouldShowInDashboardRequests,
 } from "../../lib/sessions/sessionUtils";
 import { useSocket } from "../socket/SocketContext";
 import { SessionActionModal } from "./SessionActionModal";
@@ -57,7 +58,7 @@ export function SessionBookingProvider({ children }: { children: React.ReactNode
     }
     try {
       const rows = await fetchScheduledMeetings("upcoming");
-      const pending = rows.filter(isPendingBooking);
+      const pending = rows.filter((s) => shouldShowInDashboardRequests(s));
       setPendingSessions(pending);
       return pending;
     } catch {
@@ -107,7 +108,7 @@ export function SessionBookingProvider({ children }: { children: React.ReactNode
             )
           : pending[0];
 
-        if (match && isPendingBooking(match)) {
+        if (match && shouldShowInDashboardRequests(match)) {
           if (isInstantLesson(match)) return;
           knownPendingIdsRef.current.add(String(match._id));
           showSessionModal(match);

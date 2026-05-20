@@ -16,6 +16,7 @@ import { SocketProvider } from "../features/socket/SocketContext";
 import { InstantLessonProvider } from "../features/instant-lesson/InstantLessonContext";
 import { NotificationProvider } from "../features/notifications/NotificationContext";
 import { SessionBookingProvider } from "../features/sessions/SessionBookingContext";
+import { SessionLifecycleBridge } from "../features/sessions/SessionLifecycleBridge";
 import { PushNotificationBridge } from "../features/notifications/PushNotificationBridge";
 import { InstantLessonCallKeepBridge } from "../features/instant-lesson/InstantLessonCallKeepBridge";
 import { TrainerOnlinePresenceBridge } from "../features/instant-lesson/TrainerOnlinePresenceBridge";
@@ -90,6 +91,7 @@ export function AppRoot() {
                             <PushNotificationBridge />
                             <InstantLessonCallKeepBridge />
                             <TrainerOnlinePresenceBridge />
+                            <SessionLifecycleBridge />
                             <ThemedNavigationContainer />
                           </InstantLessonProvider>
                         </SessionBookingProvider>

@@ -1,4 +1,4 @@
-import React, { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -61,9 +61,10 @@ import { API_ROUTES } from "../../../config/apiRoutes";
 import { useSessionBooking } from "../../sessions/SessionBookingContext";
 import {
   getOtherParty,
-  isPendingBooking,
   isSessionInProgress,
   normalizeSessionStatus,
+  shouldShowInDashboardRequests,
+  shouldShowInDashboardUpcoming,
 } from "../../../lib/sessions/sessionUtils";
 import { PostLessonConcernBanner } from "../../sessions/components/PostLessonConcernBanner";
 import { TrainerProfileModal } from "../../bookexpert/components/TrainerProfileModal";
@@ -475,6 +476,12 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
     staleTime: 60_000,
   });
 
+  const [sessionListTick, setSessionListTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setSessionListTick((n) => n + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
   const { data: completedSessions = [] } = useQuery({
     queryKey: ["sessions", "completed"],
     queryFn: () => fetchScheduledMeetings("completed"),
@@ -594,14 +601,20 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
     queryClient.invalidateQueries({ queryKey: ["friendRequests"] });
   }, [queryClient]);
 
-  const nowSessions = sessions.filter((s: any) => isSessionInProgress(s));
+  const nowSessions = useMemo(
+    () => sessions.filter((s: any) => isSessionInProgress(s)),
+    [sessions]
+  );
   const pendingSessions = useMemo(
-    () => (isTrainer ? sessions.filter((s: any) => isPendingBooking(s)) : []),
-    [sessions, isTrainer]
+    () =>
+      isTrainer
+        ? sessions.filter((s: any) => shouldShowInDashboardRequests(s))
+        : [],
+    [sessions, isTrainer, sessionListTick]
   );
   const upcomingConfirmed = useMemo(
-    () => sessions.filter((s: any) => !isPendingBooking(s)),
-    [sessions]
+    () => sessions.filter((s: any) => shouldShowInDashboardUpcoming(s)),
+    [sessions, sessionListTick]
   );
   const coaches = useMemo(() => {
     const map = new Map<string, any>();

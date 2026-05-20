@@ -1,3 +1,12 @@
+import {
+  INSTANT_ACCEPT_WINDOW_MS,
+  INSTANT_JOIN_AFTER_ACCEPT_MS,
+} from "./instantLessonConstants";
+import { getRefundReasonI18nKey } from "./refundReasonLabels";
+
+const EARLY_JOIN_MS = 15 * 60 * 1000;
+const LATE_JOIN_MS = 15 * 60 * 1000;
+
 /** Normalize API status strings (`booked`, `confirmed`, `confirm`, …). */
 export function normalizeSessionStatus(status?: string | null): string {
   const s = (status ?? "").toLowerCase();
@@ -79,11 +88,6 @@ export function formatSessionWhen(session: any): { dateLabel: string; timeLabel:
   return { dateLabel, timeLabel };
 }
 
-import { INSTANT_JOIN_AFTER_ACCEPT_MS } from "./instantLessonConstants";
-
-const EARLY_JOIN_MS = 15 * 60 * 1000;
-const LATE_JOIN_MS = 15 * 60 * 1000;
-
 export function getInstantAcceptDeadlineMs(session: any): number | null {
   if (!isInstantLesson(session) || !isPendingBooking(session)) return null;
   const raw = session?.accept_deadline_at ?? session?.acceptDeadlineAt;
@@ -100,6 +104,110 @@ export function getInstantJoinDeadlineMs(session: any): number | null {
   if (!raw) return null;
   const ms = new Date(raw).getTime();
   return Number.isFinite(ms) ? ms : null;
+}
+
+function resolveAcceptDeadlineMs(session: any): number | null {
+  const fromApi = getInstantAcceptDeadlineMs(session);
+  if (fromApi != null) return fromApi;
+  const requested = session?.requested_at ?? session?.createdAt;
+  if (!requested) return null;
+  const ms = new Date(requested).getTime();
+  return Number.isFinite(ms) ? ms + INSTANT_ACCEPT_WINDOW_MS : null;
+}
+
+function resolveJoinDeadlineMs(session: any): number | null {
+  const fromApi = getInstantJoinDeadlineMs(session);
+  if (fromApi != null) return fromApi;
+  const acceptedAt = session?.accepted_at ? new Date(session.accepted_at).getTime() : NaN;
+  if (!Number.isFinite(acceptedAt)) return null;
+  return acceptedAt + INSTANT_JOIN_AFTER_ACCEPT_MS;
+}
+
+/** Instant request still within trainer accept window. */
+export function isInstantAcceptExpired(session: any, now = new Date()): boolean {
+  if (!isInstantLesson(session) || !isPendingBooking(session)) return false;
+  const deadline = resolveAcceptDeadlineMs(session);
+  if (deadline == null) return false;
+  return now.getTime() > deadline;
+}
+
+/** Instant lesson past join window after coach accepted. */
+export function isInstantJoinExpired(session: any, now = new Date()): boolean {
+  if (!isInstantLesson(session)) return false;
+  const status = normalizeSessionStatus(session?.status);
+  if (status !== "confirmed" && status !== "upcoming") return false;
+  const deadline = resolveJoinDeadlineMs(session);
+  if (deadline == null) return false;
+  return now.getTime() > deadline;
+}
+
+/** Hide from upcoming/confirmed lists (accept or join window elapsed). */
+export function isInstantExpiredForLists(session: any, now = new Date()): boolean {
+  return isInstantAcceptExpired(session, now) || isInstantJoinExpired(session, now);
+}
+
+/** Trainer dashboard “Session requests” — pending rows still actionable. */
+export function shouldShowInDashboardRequests(session: any, now = new Date()): boolean {
+  if (!isPendingBooking(session)) return false;
+  if (isInstantLesson(session) && isInstantAcceptExpired(session, now)) return false;
+  return true;
+}
+
+/** Trainer/trainee dashboard “Upcoming” preview (non-active, non-pending). */
+export function shouldShowInDashboardUpcoming(session: any, now = new Date()): boolean {
+  const status = normalizeSessionStatus(session?.status);
+  if (isPendingBooking(session)) return false;
+  if (status === "cancelled" || status === "completed") return false;
+  if (isInstantExpiredForLists(session, now)) return false;
+  if (isSessionInProgress(session, now)) return false;
+
+  if (!isInstantLesson(session)) {
+    const end = getSessionEnd(session);
+    const start = getSessionStart(session);
+    if (end || start) {
+      const endMs = (end ?? start)!.getTime() + LATE_JOIN_MS;
+      if (now.getTime() > endMs) return false;
+    }
+  }
+
+  return true;
+}
+
+/** Cancelled, completed, or client-detectable expired (before API refresh). */
+export function isSessionTerminalForUI(session: any, now = new Date()): boolean {
+  const status = normalizeSessionStatus(session?.status);
+  if (status === "cancelled" || status === "completed") return true;
+  return isInstantExpiredForLists(session, now);
+}
+
+/** i18n key for list cards and detail banners (`sessions.outcome.*`). */
+export function getSessionOutcomeI18nKey(session: any, now = new Date()): string | null {
+  const refundReason =
+    session?._refund?.reason ??
+    session?.refund_reason ??
+    session?.refundReason ??
+    null;
+  const fromReason = getRefundReasonI18nKey(refundReason);
+  if (fromReason) return fromReason;
+
+  const status = normalizeSessionStatus(session?.status);
+  if (status === "cancelled") {
+    return "sessions.outcome.cancelled";
+  }
+
+  if (isInstantAcceptExpired(session, now)) {
+    return "sessions.outcome.acceptExpired";
+  }
+  if (isInstantJoinExpired(session, now)) {
+    return "sessions.outcome.joinExpired";
+  }
+
+  const phase = String(session?.instant_phase ?? "").toLowerCase();
+  if (phase === "cancelled") {
+    return "sessions.outcome.cancelled";
+  }
+
+  return null;
 }
 
 /** Whether a session is currently in its live / rejoinable window (dashboard “Active”). */

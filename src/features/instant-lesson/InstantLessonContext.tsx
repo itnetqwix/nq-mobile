@@ -8,6 +8,7 @@ import React, {
   useState,
 } from "react";
 import { AppState, Vibration } from "react-native";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSocket } from "../socket/SocketContext";
 import { useAuth } from "../auth/context/AuthContext";
 import {
@@ -82,6 +83,10 @@ type InstantLessonContextValue = {
   restoreTrainerIncoming: () => void;
   clearTrainerIncoming: () => void;
   focusTrainerRequestFromSession: (session: Record<string, unknown>) => void;
+  restoreTraineeFlowFromSession: (
+    session: Record<string, unknown>,
+    step: "waiting" | "accepted"
+  ) => void;
   acceptInstantSession: (session: Record<string, unknown>) => Promise<void>;
   declineInstantSession: (session: Record<string, unknown>) => Promise<void>;
 };
@@ -104,6 +109,7 @@ const InstantLessonContext = createContext<InstantLessonContextValue>({
   restoreTrainerIncoming: () => {},
   clearTrainerIncoming: () => {},
   focusTrainerRequestFromSession: () => {},
+  restoreTraineeFlowFromSession: () => {},
   acceptInstantSession: async () => {},
   declineInstantSession: async () => {},
 });
@@ -116,6 +122,7 @@ export function InstantLessonProvider({
   onNavigateToMeeting: (lessonId: string) => void;
 }) {
   const { socket } = useSocket();
+  const queryClient = useQueryClient();
   const { user, status: authStatus } = useAuth();
   const [trainerIncoming, setTrainerIncoming] = useState<TrainerIncoming | null>(null);
   const [traineeBooking, setTraineeBooking] = useState<TraineeBooking | null>(null);
@@ -256,8 +263,10 @@ export function InstantLessonProvider({
     };
 
     const applyPhase = (payload: InstantLessonPhasePayload) => {
-      const { lessonId, phase, refundReason } = payload || {};
-      if (phase === "cancelled") {
+      const { lessonId, phase, refundReason, joinDeadlineAt, coachId, traineeId } = payload || {};
+      const phaseLower = String(phase ?? "").toLowerCase();
+
+      if (phaseLower === "cancelled") {
         setTraineeBooking((prev) => {
           if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
           return {
@@ -270,11 +279,67 @@ export function InstantLessonProvider({
           if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
           return null;
         });
+        return;
+      }
+
+      if (phaseLower === "pending_join" && lessonId) {
+        const joinMs = joinDeadlineAt
+          ? new Date(String(joinDeadlineAt)).getTime()
+          : Date.now() + INSTANT_JOIN_AFTER_ACCEPT_MS;
+        if (Number.isFinite(joinMs)) {
+          setTraineeBooking((prev) => {
+            if (prev && String(prev.lessonId) !== String(lessonId)) return prev;
+            return {
+              lessonId: String(lessonId),
+              coachId: String(coachId ?? prev?.coachId ?? ""),
+              traineeId: String(traineeId ?? prev?.traineeId ?? userId),
+              trainerName: prev?.trainerName ?? "Coach",
+              step: "accepted" as const,
+              joinDeadlineAt: joinMs,
+              minimized: false,
+            };
+          });
+          setTrainerIncoming((prev) => {
+            if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
+            return {
+              ...prev,
+              step: "accepted",
+              joinDeadlineAt: joinMs,
+              expiresAt: joinMs,
+              minimized: false,
+            };
+          });
+          scheduleExpiry(joinMs, () => {
+            setTrainerIncoming(null);
+            setTraineeBooking((prev) => {
+              if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
+              return { ...prev, step: "expired" as const };
+            });
+          });
+        }
+        return;
+      }
+
+      if (phaseLower === "active" || phaseLower === "completed") {
+        setTrainerIncoming((prev) => {
+          if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
+          return null;
+        });
+        if (phaseLower === "completed") {
+          setTraineeBooking((prev) => {
+            if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
+            return null;
+          });
+        }
       }
     };
 
     const handlePhase = (payload: InstantLessonPhasePayload) => {
       applyPhase(payload);
+    };
+
+    const invalidateSessionLists = () => {
+      void queryClient.invalidateQueries({ queryKey: ["sessions"] });
     };
 
     const handleDecline = (payload: any) => {
@@ -283,6 +348,7 @@ export function InstantLessonProvider({
         if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
         return { ...prev, step: "declined" as const, minimized: false };
       });
+      invalidateSessionLists();
     };
 
     const handleExpire = (payload: any) => {
@@ -297,6 +363,7 @@ export function InstantLessonProvider({
         if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
         return { ...prev, step: "expired" as const };
       });
+      invalidateSessionLists();
     };
 
     const handleTraineeCancelled = (payload: any) => {
@@ -329,7 +396,7 @@ export function InstantLessonProvider({
       socket.off(EVENTS.PHASE, handlePhase);
       socket.off(EVENTS.TRAINEE_CANCELLED, handleTraineeCancelled);
     };
-  }, [socket, clearExpiryTimer, scheduleExpiry, startRinging]);
+  }, [socket, clearExpiryTimer, scheduleExpiry, startRinging, queryClient]);
 
   useEffect(() => {
     if (
@@ -614,6 +681,66 @@ export function InstantLessonProvider({
     [userId, scheduleExpiry]
   );
 
+  const restoreTraineeFlowFromSession = useCallback(
+    (session: Record<string, unknown>, step: "waiting" | "accepted") => {
+      const lessonId = String(session._id ?? session.id ?? "");
+      if (!lessonId) return;
+
+      const coachId = String(session.trainer_id ?? "");
+      const traineeId = String(session.trainee_id ?? userId);
+      const trainerInfo = (session.trainer_info ?? {}) as { fullname?: string };
+      const trainerName = trainerInfo.fullname ?? "Coach";
+
+      const acceptRaw = session.accept_deadline_at ?? session.acceptDeadlineAt;
+      const acceptMs = acceptRaw
+        ? new Date(String(acceptRaw)).getTime()
+        : Date.now() + INSTANT_ACCEPT_WINDOW_MS;
+
+      if (step === "waiting") {
+        setTraineeBooking({
+          lessonId,
+          coachId,
+          traineeId,
+          trainerName,
+          step: "waiting",
+          acceptDeadlineAt: acceptMs,
+          minimized: false,
+        });
+        scheduleExpiry(acceptMs, () => {
+          setTraineeBooking((prev) => {
+            if (!prev || String(prev.lessonId) !== lessonId) return prev;
+            return { ...prev, step: "expired" as const };
+          });
+        });
+        return;
+      }
+
+      const joinRaw = session.join_deadline_at ?? session.joinDeadlineAt;
+      const joinMs = joinRaw
+        ? new Date(String(joinRaw)).getTime()
+        : session.accepted_at
+          ? new Date(String(session.accepted_at)).getTime() + INSTANT_JOIN_AFTER_ACCEPT_MS
+          : Date.now() + INSTANT_JOIN_AFTER_ACCEPT_MS;
+
+      setTraineeBooking({
+        lessonId,
+        coachId,
+        traineeId,
+        trainerName,
+        step: "accepted",
+        joinDeadlineAt: joinMs,
+        minimized: false,
+      });
+      scheduleExpiry(joinMs, () => {
+        setTraineeBooking((prev) => {
+          if (!prev || String(prev.lessonId) !== lessonId) return prev;
+          return { ...prev, step: "expired" as const };
+        });
+      });
+    },
+    [userId, scheduleExpiry]
+  );
+
   const buildIncomingFromSession = useCallback(
     (session: Record<string, unknown>): InstantLessonIncomingPayload | null => {
       const lessonId = String(session._id ?? session.id ?? "");
@@ -760,6 +887,7 @@ export function InstantLessonProvider({
       restoreTrainerIncoming,
       clearTrainerIncoming,
       focusTrainerRequestFromSession,
+      restoreTraineeFlowFromSession,
       acceptInstantSession,
       declineInstantSession,
     }),
@@ -781,6 +909,7 @@ export function InstantLessonProvider({
       restoreTrainerIncoming,
       clearTrainerIncoming,
       focusTrainerRequestFromSession,
+      restoreTraineeFlowFromSession,
       acceptInstantSession,
       declineInstantSession,
     ]

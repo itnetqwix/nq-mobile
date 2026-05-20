@@ -15,9 +15,12 @@ import { getS3ImageUrl } from "../../../lib/imageUtils";
 import {
   formatSessionWhen,
   getOtherParty,
+  getSessionOutcomeI18nKey,
   isInstantLesson,
   normalizeSessionStatus,
 } from "../../../lib/sessions/sessionUtils";
+import { getRefundReasonI18nKey } from "../../../lib/sessions/refundReasonLabels";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { formatDualTimezoneLine } from "../../../lib/sessions/formatDualTimezone";
 import { formatRefundTransferLabel } from "../../../lib/sessions/refundTransferLabel";
 import {
@@ -60,6 +63,7 @@ export function BookingDetailsModal({
   onReportIssue,
   onRateSession,
 }: Props) {
+  const { t } = useAppTranslation();
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState<any | null>(null);
 
@@ -118,6 +122,14 @@ export function BookingDetailsModal({
   const instant = isInstantLesson(merged);
   const escrow = merged._escrow;
   const completed = normalizeSessionStatus(merged.status) === "completed";
+  const outcomeKey = getSessionOutcomeI18nKey(merged);
+  const outcomeLabel = outcomeKey ? t(outcomeKey as any) : null;
+  const refundReasonRaw =
+    merged._refund?.reason ?? merged.refund_reason ?? merged.refundReason ?? null;
+  const refundReasonKey = getRefundReasonI18nKey(refundReasonRaw);
+  const refundReasonLabel = refundReasonKey
+    ? t(refundReasonKey as any)
+    : merged._refund?.reason_label ?? merged.refund_reason_label ?? refundReasonRaw;
   const viewerRated = hasViewerRated(merged, isTrainer);
   const ratingSummary = getViewerRatingSummary(merged, isTrainer);
   const refundTransferLabel = formatRefundTransferLabel(merged._refund?.transfer);
@@ -183,6 +195,12 @@ export function BookingDetailsModal({
               <Row label="Type" value={instant ? "Instant lesson" : "Scheduled"} />
             </Section>
 
+            {outcomeLabel ? (
+              <Section title={t("sessions.outcomeLabel")}>
+                <Text style={styles.outcomeBody}>{outcomeLabel}</Text>
+              </Section>
+            ) : null}
+
             {(merged.accept_deadline_at ||
               merged.join_deadline_at ||
               merged.accepted_at ||
@@ -231,15 +249,8 @@ export function BookingDetailsModal({
                   value={String(merged._refund?.status ?? merged.refund_status)}
                 />
               ) : null}
-              {merged._refund?.reason_label || merged.refund_reason_label || merged.refund_reason ? (
-                <Row
-                  label="Refund reason"
-                  value={String(
-                    merged._refund?.reason_label ??
-                      merged.refund_reason_label ??
-                      merged.refund_reason
-                  )}
-                />
+              {refundReasonLabel ? (
+                <Row label="Refund reason" value={String(refundReasonLabel)} />
               ) : null}
               {refundTransferLabel ? (
                 <Row label="Refund transfer" value={refundTransferLabel} />
@@ -346,6 +357,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
+  outcomeBody: { ...typography.bodyMd, color: colors.dangerText },
   row: { flexDirection: "row", gap: 12 },
   rowKey: { width: 120, ...typography.bodyMd, fontWeight: "600", color: colors.iconPrimary },
   rowVal: { flex: 1, ...typography.bodyMd, color: colors.text },
