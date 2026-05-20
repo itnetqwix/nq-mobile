@@ -78,6 +78,7 @@ import { TimeRemaining } from "../components/TimeRemaining";
 import { PeerJoinedModal } from "../components/PeerJoinedModal";
 import { ClipPickerModal } from "../components/ClipPickerModal";
 import { LockedDualClipStage } from "../components/LockedDualClipStage";
+import { UnlockedDualClipStage } from "../components/UnlockedDualClipStage";
 import { ClipPlayer } from "../components/ClipPlayer";
 import { ClipPlaybackControls } from "../components/ClipPlaybackControls";
 import { DrawingOverlay } from "../components/DrawingOverlay";
@@ -522,6 +523,16 @@ function MeetingSurface({
   const lockedProgress = Math.max(clipProgresses[0], clipProgresses[1]);
   const lockedDuration = Math.max(clipDurations[0], clipDurations[1], clipSync.lockPoint);
 
+  const activePaneIndex = useMemo((): 0 | 1 => {
+    const idx = clipSync.selectedClips.findIndex(
+      (c) => clipIdOf(c) === clipSync.activeClipId
+    );
+    return idx === 1 ? 1 : 0;
+  }, [clipSync.activeClipId, clipSync.selectedClips]);
+
+  const unlockedTimelineProgress = clipProgresses[activePaneIndex];
+  const unlockedTimelineDuration = clipDurations[activePaneIndex];
+
   const makeClipPlayerProps = (paneIndex: 0 | 1) => {
     const clip = clipSync.selectedClips[paneIndex];
     const clipId = clip ? clipIdOf(clip) : null;
@@ -777,50 +788,30 @@ function MeetingSurface({
                 onSeek={(sec) => handleClipSeek(0, sec)}
                 controlsBottomOffset={chrome.clipControlsBottom}
               />
-            ) : dualClip ? (
-              <View style={styles.dualColumn}>
-                {([0, 1] as const).map((paneIndex) => {
-                  const uri = clipPaneUris[paneIndex];
-                  if (!uri) return null;
-                  const focused =
-                    clipFocusIndex == null || clipFocusIndex === paneIndex;
-                  if (!focused) return null;
-                  return (
-                    <View
-                      key={paneIndex}
-                      style={[
-                        styles.dualPane,
-                        clipFocusIndex != null && styles.dualPaneFocused,
-                      ]}
-                    >
-                      <ClipPlayer uri={uri} {...makeClipPlayerProps(paneIndex)} />
-                      {isTrainer ? (
-                        <ClipPlaybackControls
-                          variant="inline"
-                          isPlaying={clipSync.isPlaying}
-                          onTogglePlay={() => handleClipTogglePlay(paneIndex)}
-                          progressSeconds={clipProgresses[paneIndex]}
-                          durationSeconds={clipDurations[paneIndex]}
-                          onSeek={(sec) => handleClipSeek(paneIndex, sec)}
-                          disabled={!uri}
-                          showExpand
-                          isExpanded={clipFocusIndex === paneIndex}
-                          onToggleExpand={() =>
-                            clipSync.setClipFocus(
-                              clipFocusIndex === paneIndex ? null : paneIndex
-                            )
-                          }
-                        />
-                      ) : null}
-                    </View>
-                  );
-                })}
-              </View>
+            ) : dualClip && clipPaneUris[0] && clipPaneUris[1] ? (
+              <UnlockedDualClipStage
+                uris={[clipPaneUris[0], clipPaneUris[1]]}
+                makePaneProps={makeClipPlayerProps}
+                isTrainer={isTrainer}
+                isPlaying={clipSync.isPlaying}
+                progressSeconds={unlockedTimelineProgress}
+                durationSeconds={unlockedTimelineDuration}
+                onTogglePlay={() => handleClipTogglePlay(activePaneIndex)}
+                onSeek={(sec) => handleClipSeek(activePaneIndex, sec)}
+                controlsBottomOffset={chrome.clipControlsBottom}
+                clipFocusIndex={clipFocusIndex}
+                onToggleExpand={(paneIndex) =>
+                  clipSync.setClipFocus(
+                    clipFocusIndex === paneIndex ? null : paneIndex
+                  )
+                }
+              />
             ) : (
               <View style={styles.singleClip}>
                 <ClipPlayer uri={activeClipUri} {...makeClipPlayerProps(0)} />
                 {isTrainer ? (
                   <ClipPlaybackControls
+                    size="compact"
                     isPlaying={clipSync.isPlaying}
                     onTogglePlay={() => clipSync.togglePlay()}
                     progressSeconds={clipProgresses[0]}

@@ -1,9 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { Pill } from "../../../../components/ui";
+import { Button, Pill } from "../../../../components/ui";
 import { AccountType } from "../../../../constants/accountType";
 import {
+  canEnterLesson,
+  canJoinSession,
   getInstantAcceptDeadlineMs,
   getInstantJoinDeadlineMs,
   isInstantLesson,
@@ -11,6 +13,8 @@ import {
   normalizeSessionStatus,
 } from "../../../../lib/sessions/sessionUtils";
 import { InstantLessonDeadlineChip } from "../../../instant-lesson/components/InstantLessonDeadlineChip";
+import { InstantLessonSessionActions } from "../../../instant-lesson/components/InstantLessonSessionActions";
+import { navigationRef } from "../../../../navigation/navigationRef";
 import { space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
 import { HomeUserAvatar } from "./HomeUserAvatar";
 
@@ -71,6 +75,9 @@ export function SessionPreviewRow({ session, accountType, onPress, isLast }: Pro
   const instant = isInstantLesson(session);
   const acceptDeadlineMs = getInstantAcceptDeadlineMs(session);
   const joinDeadlineMs = getInstantJoinDeadlineMs(session);
+  const joinEnabled = canEnterLesson(session);
+  const isRejoin = joinEnabled && !canJoinSession(session);
+  const lessonId = String(session._id ?? session.id ?? "");
 
   const content = (
     <>
@@ -101,6 +108,24 @@ export function SessionPreviewRow({ session, accountType, onPress, isLast }: Pro
             deadlineMs={joinDeadlineMs}
             label="Join within"
           />
+        ) : null}
+        {isTrainer && pending && instant ? (
+          <InstantLessonSessionActions session={session} />
+        ) : null}
+        {!pending && joinEnabled ? (
+          <View onStartShouldSetResponder={() => true}>
+            <Button
+              label={isRejoin ? "Rejoin session" : "Join session"}
+              leftIcon="videocam-outline"
+              size="sm"
+              fullWidth={false}
+              onPress={() => {
+                if (lessonId && navigationRef.isReady()) {
+                  navigationRef.navigate("Meeting", { lessonId });
+                }
+              }}
+            />
+          </View>
         ) : null}
       </View>
       <Ionicons name="chevron-forward" size={18} color={c.textMuted} />

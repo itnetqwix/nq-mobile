@@ -13,6 +13,8 @@ type Props = {
   style?: ViewStyle;
   /** Skip inner card wrapper for custom layouts (horizontal lists) */
   bare?: boolean;
+  /** Tighter header spacing for profile blocks */
+  compact?: boolean;
 };
 
 export function HomeSection({
@@ -23,15 +25,16 @@ export function HomeSection({
   headerRight,
   style,
   bare,
+  compact,
 }: Props) {
   const styles = useThemedStyles((palette) =>
     StyleSheet.create({
-      wrap: { marginBottom: space.md },
+      wrap: { marginBottom: compact ? space.sm : space.md },
       header: {
         flexDirection: "row",
         alignItems: "flex-start",
         justifyContent: "space-between",
-        marginBottom: space.sm,
+        marginBottom: compact ? space.xs : space.sm,
         gap: space.sm,
       },
       headerText: { flex: 1, minWidth: 0 },

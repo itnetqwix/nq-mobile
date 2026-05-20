@@ -89,12 +89,16 @@ export function useDrawingSync({
   const emitStroke = useCallback(
     (stroke: RemoteStroke, canvasSize: { width: number; height: number }) => {
       if (!isTrainer || !socket) return;
-      socket.emit(DRAWING_EVENTS.EMIT_DRAWING_CORDS, {
-        strikes: JSON.stringify({ stroke }),
-        canvasSize,
-        userInfo,
-        sessionId,
-      });
+      try {
+        socket.emit(DRAWING_EVENTS.EMIT_DRAWING_CORDS, {
+          strikes: JSON.stringify({ stroke }),
+          canvasSize,
+          userInfo,
+          sessionId,
+        });
+      } catch {
+        /* emit must not crash annotation UI */
+      }
     },
     [isTrainer, socket, userInfo, sessionId]
   );

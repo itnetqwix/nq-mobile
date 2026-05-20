@@ -50,6 +50,7 @@ export function TraineeProfileSection({
       title="Your profile"
       subtitle="Account and preferences"
       testID="home-trainee-profile"
+      compact
     >
       <View style={styles.row}>
         <HomeUserAvatar uri={profilePicture} name={name} size={64} />

@@ -17,6 +17,8 @@ import { InstantLessonProvider } from "../features/instant-lesson/InstantLessonC
 import { NotificationProvider } from "../features/notifications/NotificationContext";
 import { SessionBookingProvider } from "../features/sessions/SessionBookingContext";
 import { PushNotificationBridge } from "../features/notifications/PushNotificationBridge";
+import { InstantLessonCallKeepBridge } from "../features/instant-lesson/InstantLessonCallKeepBridge";
+import { TrainerOnlinePresenceBridge } from "../features/instant-lesson/TrainerOnlinePresenceBridge";
 import { navigationRef } from "../navigation/navigationRef";
 import { LoaderProvider } from "../components/brand/LoaderProvider";
 import { warmLoaderTipsCache } from "../components/brand/loaderTips/loaderTipsService";
@@ -86,6 +88,8 @@ export function AppRoot() {
                         <SessionBookingProvider>
                           <InstantLessonProvider onNavigateToMeeting={navigateToMeeting}>
                             <PushNotificationBridge />
+                            <InstantLessonCallKeepBridge />
+                            <TrainerOnlinePresenceBridge />
                             <ThemedNavigationContainer />
                           </InstantLessonProvider>
                         </SessionBookingProvider>

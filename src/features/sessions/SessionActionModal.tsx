@@ -41,7 +41,7 @@ import {
   hasViewerRated,
 } from "../../lib/sessions/sessionRatingUtils";
 import { formatRefundTransferLabel } from "../../lib/sessions/refundTransferLabel";
-import { useInstantLesson } from "../instant-lesson/InstantLessonContext";
+import { InstantLessonSessionActions } from "../instant-lesson/components/InstantLessonSessionActions";
 
 type Props = {
   visible: boolean;
@@ -53,7 +53,6 @@ type Props = {
 export function SessionActionModal({ visible, session, onClose, onSessionUpdated }: Props) {
   const { user, accountType } = useAuth();
   const { emitNotification } = useNotifications();
-  const { focusTrainerRequestFromSession } = useInstantLesson();
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState<"confirm" | "decline" | null>(null);
   const [localSession, setLocalSession] = useState<any | null>(null);
@@ -358,13 +357,6 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
               />
             </View>
 
-            {instant && pending && isTrainer ? (
-              <Text style={styles.hint}>
-                Use the instant lesson popup to accept or decline. This avoids duplicate confirm
-                actions.
-              </Text>
-            ) : null}
-
             {pending && isTrainer ? (
               <Text style={styles.hint}>
                 Review the details below, then tap Confirm session. Join becomes available after
@@ -396,11 +388,12 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
               ) : null}
 
               {isTrainer && pending && instant ? (
-                <Button
-                  label="Open instant request"
-                  leftIcon="flash-outline"
-                  onPress={() => {
-                    focusTrainerRequestFromSession(viewSession ?? {});
+                <InstantLessonSessionActions
+                  session={viewSession}
+                  layout="column"
+                  size="md"
+                  onActionComplete={async () => {
+                    await invalidateSessions();
                     onClose();
                   }}
                 />

@@ -58,7 +58,13 @@
         "android.permission.BLUETOOTH",
         "android.permission.BLUETOOTH_CONNECT",
         "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_PHONE_CALL",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.READ_PHONE_STATE",
+        "android.permission.READ_PHONE_NUMBERS",
+        "android.permission.CALL_PHONE",
+        "android.permission.MANAGE_OWN_CALLS",
+        "android.permission.BIND_TELECOM_CONNECTION_SERVICE",
         "android.permission.WAKE_LOCK",
         "android.permission.ACCESS_NETWORK_STATE",
         "android.permission.INTERNET",
@@ -100,9 +106,11 @@
         {
           "icon": "./assets/icon.png",
           "color": "#000080",
-          "defaultChannel": "default"
+          "defaultChannel": "default",
+          "sounds": ["./assets/sounds/instant-lesson-ring.wav"]
         }
       ],
+      "@config-plugins/react-native-callkeep",
       "expo-web-browser"
     ],
     "extra": {

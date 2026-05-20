@@ -7,22 +7,12 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchScheduledMeetings } from "../../home/api/homeApi";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
-
-function isSessionLiveNow(session: any): boolean {
-  if (!session?.booked_date || !session?.start_time || !session?.end_time) return false;
-  try {
-    const now = new Date();
-    const [sh, sm] = session.start_time.split(":").map(Number);
-    const [eh, em] = session.end_time.split(":").map(Number);
-    const [dy, dm, dd] = session.booked_date.split("-").map(Number);
-    const start = new Date(dy, dm - 1, dd, sh, sm);
-    const end = new Date(dy, dm - 1, dd, eh, em);
-    if (start > end) end.setDate(end.getDate() + 1);
-    return now >= start && now <= end;
-  } catch {
-    return false;
-  }
-}
+import {
+  canEnterLesson,
+  canJoinSession,
+  isSessionInProgress,
+} from "../../../lib/sessions/sessionUtils";
+import { navigationRef } from "../../../navigation/navigationRef";
 
 export function MeetingRoomScreen() {
   const { accountType } = useAuth();
@@ -33,7 +23,7 @@ export function MeetingRoomScreen() {
     staleTime: 30_000,
   });
 
-  const liveSessions = sessions.filter(isSessionLiveNow);
+  const liveSessions = sessions.filter((s) => isSessionInProgress(s));
 
   return (
     <View style={styles.root}>
@@ -65,10 +55,23 @@ export function MeetingRoomScreen() {
                   </Text>
                 </View>
                 <Button
-                  label="Join"
+                  label={
+                    canEnterLesson(session) && !canJoinSession(session)
+                      ? "Rejoin"
+                      : "Join"
+                  }
                   leftIcon="videocam-outline"
                   size="sm"
                   fullWidth={false}
+                  disabled={!canEnterLesson(session)}
+                  onPress={() => {
+                    const lessonId = session._id ?? session.id;
+                    if (lessonId && navigationRef.isReady()) {
+                      navigationRef.navigate("Meeting", {
+                        lessonId: String(lessonId),
+                      });
+                    }
+                  }}
                 />
               </View>
             );

@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useInstantLesson } from "./InstantLessonContext";
 import { getS3ImageUrl } from "../../lib/imageUtils";
 import { Button, ImageWithSkeleton } from "../../components/ui";
-import { SessionCountdownText } from "../sessions/components/SessionCountdownText";
+import { InstantLessonDeadlineChip } from "./components/InstantLessonDeadlineChip";
 import { colors, radii, space, typography } from "../../theme";
 
 export function InstantLessonTrainerModal() {
@@ -20,8 +20,11 @@ export function InstantLessonTrainerModal() {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pulseRef = useRef<Animated.CompositeAnimation | null>(null);
 
+  /** Incoming requests use InstantLessonIncomingCallOverlay; this modal is for post-accept. */
   const showModal =
-    !!trainerIncoming && (trainerIncoming.step === "incoming" || !trainerIncoming.minimized);
+    !!trainerIncoming &&
+    trainerIncoming.step === "accepted" &&
+    !trainerIncoming.minimized;
 
   const avatarUrl = trainerIncoming
     ? getS3ImageUrl(trainerIncoming.traineeInfo?.profile_picture)
@@ -70,13 +73,12 @@ export function InstantLessonTrainerModal() {
                 <Text style={{ fontWeight: "700" }}>{traineeName}</Text> is waiting. Tap below to
                 enter the live lesson when you are ready.
               </Text>
-              <SessionCountdownText
+              <InstantLessonDeadlineChip
                 deadlineMs={
-                  trainerIncoming.joinDeadlineAt ??
-                  trainerIncoming.expiresAt
+                  trainerIncoming.joinDeadlineAt ?? trainerIncoming.expiresAt
                 }
                 label="Join within"
-                onExpired={expireRequest}
+                variant="urgent"
               />
               <Pressable
                 style={({ pressed }) => [
@@ -124,26 +126,25 @@ export function InstantLessonTrainerModal() {
               <Text style={styles.traineeName}>{traineeName}</Text>
               <Text style={styles.subtitle}>wants an instant lesson with you</Text>
 
-              <SessionCountdownText
+              <InstantLessonDeadlineChip
                 deadlineMs={trainerIncoming.expiresAt}
                 label="Respond within"
-                onExpired={expireRequest}
               />
 
               <View style={styles.btnRow}>
                 <Button
                   label="Decline"
-                  leftIcon="close"
+                  leftIcon="close-circle-outline"
                   variant="danger"
                   onPress={declineRequest}
-                  size="lg"
+                  size="md"
                   style={styles.flex1}
                 />
                 <Button
                   label="Accept"
-                  leftIcon="checkmark"
+                  leftIcon="checkmark-circle-outline"
                   onPress={acceptRequest}
-                  size="lg"
+                  size="md"
                   style={styles.flex1}
                 />
               </View>

@@ -30,6 +30,8 @@ type Props = {
   showExpand?: boolean;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
+  /** Smaller play button, track, and labels for shared dual-clip bar. */
+  size?: "default" | "compact";
 };
 
 /** Trainer-only clip timeline (play/pause + scrub). Trainee follows via socket. */
@@ -45,7 +47,9 @@ export function ClipPlaybackControls({
   showExpand,
   isExpanded,
   onToggleExpand,
+  size = "default",
 }: Props) {
+  const compact = size === "compact";
   const trackWidth = useRef(1);
   const max = Math.max(durationSeconds, 0.01);
   const value = Math.min(Math.max(progressSeconds, 0), max);
@@ -65,14 +69,22 @@ export function ClipPlaybackControls({
       ]}
       pointerEvents="box-none"
     >
-      <View style={styles.timelineCard}>
+      <View style={[styles.timelineCard, compact && styles.timelineCardCompact]}>
         <Pressable
-          style={[styles.playBtn, disabled && styles.btnDisabled]}
+          style={[
+            styles.playBtn,
+            compact && styles.playBtnCompact,
+            disabled && styles.btnDisabled,
+          ]}
           onPress={onTogglePlay}
           disabled={disabled}
           accessibilityLabel={isPlaying ? "Pause clip" : "Play clip"}
         >
-          <Ionicons name={isPlaying ? "pause" : "play"} size={22} color="#fff" />
+          <Ionicons
+            name={isPlaying ? "pause" : "play"}
+            size={compact ? 16 : 22}
+            color="#fff"
+          />
         </Pressable>
 
         <View style={styles.timelineCol}>
@@ -82,29 +94,39 @@ export function ClipPlaybackControls({
             }}
             onPress={seekFromEvent}
             disabled={disabled}
-            style={styles.trackHit}
+            style={[styles.trackHit, compact && styles.trackHitCompact]}
             accessibilityRole="adjustable"
             accessibilityLabel="Clip timeline"
           >
-            <View style={styles.track}>
+            <View style={[styles.track, compact && styles.trackCompact]}>
               <View style={[styles.fill, { width: `${ratio * 100}%` }]} />
-              <View style={[styles.thumb, { left: `${ratio * 100}%` }]} />
+              <View
+                style={[
+                  styles.thumb,
+                  compact && styles.thumbCompact,
+                  { left: `${ratio * 100}%` },
+                ]}
+              />
             </View>
           </Pressable>
           <View style={styles.timeRow}>
-            <Text style={styles.timeText}>{formatTime(value)}</Text>
-            <Text style={styles.timeText}>{formatTime(max)}</Text>
+            <Text style={[styles.timeText, compact && styles.timeTextCompact]}>
+              {formatTime(value)}
+            </Text>
+            <Text style={[styles.timeText, compact && styles.timeTextCompact]}>
+              {formatTime(max)}
+            </Text>
           </View>
         </View>
         {showExpand && onToggleExpand ? (
           <Pressable
-            style={styles.expandBtn}
+            style={[styles.expandBtn, compact && styles.expandBtnCompact]}
             onPress={onToggleExpand}
             accessibilityLabel={isExpanded ? "Exit expanded clip" : "Expand clip"}
           >
             <Ionicons
               name={isExpanded ? "contract-outline" : "expand-outline"}
-              size={22}
+              size={compact ? 18 : 22}
               color="#fff"
             />
           </Pressable>
@@ -138,6 +160,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 6,
   },
+  timelineCardCompact: {
+    gap: 6,
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    maxWidth: "92%",
+    alignSelf: "center",
+  },
   playBtn: {
     width: 36,
     height: 36,
@@ -146,14 +176,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  playBtnCompact: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
   btnDisabled: { opacity: 0.4 },
   timelineCol: { flex: 1 },
   trackHit: { paddingVertical: 4 },
+  trackHitCompact: { paddingVertical: 2 },
   track: {
     height: 3,
     borderRadius: 2,
     backgroundColor: "rgba(255,255,255,0.25)",
     overflow: "visible",
+  },
+  trackCompact: {
+    height: 2,
   },
   fill: {
     position: "absolute",
@@ -172,6 +211,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: "#fff",
   },
+  thumbCompact: {
+    top: -4,
+    marginLeft: -5,
+    width: 10,
+    height: 10,
+  },
   timeRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -182,6 +227,9 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "600",
   },
+  timeTextCompact: {
+    fontSize: 9,
+  },
   expandBtn: {
     width: 32,
     height: 32,
@@ -189,5 +237,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.15)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  expandBtnCompact: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
   },
 });

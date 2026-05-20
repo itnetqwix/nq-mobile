@@ -50,6 +50,7 @@ export function LockedDualClipStage({
       {isTrainer ? (
         <ClipPlaybackControls
           variant="floating"
+          size="compact"
           isPlaying={isPlaying}
           onTogglePlay={onTogglePlay}
           progressSeconds={progressSeconds}

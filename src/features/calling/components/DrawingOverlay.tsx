@@ -1,8 +1,9 @@
 /**
  * Skia annotation layer with optional socket sync (trainer → trainee).
+ * Gesture handlers run on JS thread via runOnJS to avoid worklet/state crashes.
  */
 
-import React, { useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { LayoutChangeEvent, StyleSheet, View } from "react-native";
 import {
   Canvas,
@@ -11,6 +12,7 @@ import {
   type SkPath,
 } from "@shopify/react-native-skia";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { runOnJS } from "react-native-reanimated";
 
 import type { RemoteStroke, StrokePoint } from "../useDrawingSync";
 import type { AnnotationTool } from "./MeetingAnnotationToolbar";
@@ -94,6 +96,16 @@ function pointsToPath(points: StrokePoint[]): SkPath {
   return path;
 }
 
+function freehandPathFromPoints(points: StrokePoint[]): SkPath {
+  const path = Skia.Path.Make();
+  if (points.length === 0) return path;
+  path.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) {
+    path.lineTo(points[i].x, points[i].y);
+  }
+  return path;
+}
+
 export function DrawingOverlay({
   enabled,
   tool = "freehand",
@@ -109,55 +121,117 @@ export function DrawingOverlay({
   const canvasSizeRef = useRef({ width: 1, height: 1 });
   const [canvasSize, setCanvasSize] = useState({ width: 1, height: 1 });
 
-  const pan = Gesture.Pan()
-    .enabled(enabled)
-    .minDistance(0)
-    .onStart((event) => {
-      startRef.current = { x: event.x, y: event.y };
-      if (tool !== "freehand") {
-        const path = shapePath(tool, event.x, event.y, event.x, event.y);
-        setCurrent({ path, color, width: strokeWidth });
-        return;
-      }
-      const path = Skia.Path.Make();
-      path.moveTo(event.x, event.y);
-      pointsRef.current = [{ x: event.x, y: event.y }];
-      setCurrent({ path, color, width: strokeWidth });
-    })
-    .onUpdate((event) => {
-      const start = startRef.current;
-      if (!start) return;
-      if (tool !== "freehand") {
-        const path = shapePath(tool, start.x, start.y, event.x, event.y);
-        setCurrent({ path, color, width: strokeWidth });
-        return;
-      }
-      pointsRef.current.push({ x: event.x, y: event.y });
-      setCurrent((prev) => {
-        if (!prev) return prev;
-        const next = prev.path.copy();
-        next.lineTo(event.x, event.y);
-        return { ...prev, path: next };
-      });
-    })
-    .onEnd((event) => {
-      const start = startRef.current;
-      startRef.current = null;
-      setCurrent((prev) => {
-        if (prev) setStrokes((s) => [...s, prev]);
-        return null;
-      });
-      if (!start) return;
-      if (tool !== "freehand") {
-        const pts = shapePoints(tool, start.x, start.y, event.x, event.y);
+  const toolRef = useRef(tool);
+  const colorRef = useRef(color);
+  const strokeWidthRef = useRef(strokeWidth);
+  toolRef.current = tool;
+  colorRef.current = color;
+  strokeWidthRef.current = strokeWidth;
+
+  const commitStroke = useCallback((stroke: Stroke) => {
+    setStrokes((s) => [...s, stroke]);
+    setCurrent(null);
+  }, []);
+
+  const finishShape = useCallback(
+    (x0: number, y0: number, x1: number, y1: number) => {
+      const t = toolRef.current;
+      const path = shapePath(t, x0, y0, x1, y1);
+      commitStroke({ path, color: colorRef.current, width: strokeWidthRef.current });
+      const pts = shapePoints(t, x0, y0, x1, y1);
+      try {
         onStrokeComplete?.(pts, canvasSizeRef.current);
+      } catch {
+        /* socket emit must not crash drawing */
+      }
+    },
+    [commitStroke, onStrokeComplete]
+  );
+
+  const updateFreehand = useCallback((x: number, y: number) => {
+    pointsRef.current.push({ x, y });
+    const path = freehandPathFromPoints(pointsRef.current);
+    setCurrent({ path, color: colorRef.current, width: strokeWidthRef.current });
+  }, []);
+
+  const finishFreehand = useCallback(() => {
+    const pts = [...pointsRef.current];
+    pointsRef.current = [];
+    startRef.current = null;
+    setCurrent(null);
+    if (pts.length > 1) {
+      const path = freehandPathFromPoints(pts);
+      setStrokes((s) => [
+        ...s,
+        { path, color: colorRef.current, width: strokeWidthRef.current },
+      ]);
+      try {
+        onStrokeComplete?.(pts, canvasSizeRef.current);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [onStrokeComplete]);
+
+  const onPanStart = useCallback(
+    (x: number, y: number) => {
+      startRef.current = { x, y };
+      if (toolRef.current !== "freehand") {
+        const path = shapePath(toolRef.current, x, y, x, y);
+        setCurrent({ path, color: colorRef.current, width: strokeWidthRef.current });
         return;
       }
-      if (pointsRef.current.length > 1) {
-        onStrokeComplete?.(pointsRef.current, canvasSizeRef.current);
+      pointsRef.current = [{ x, y }];
+      setCurrent({
+        path: freehandPathFromPoints(pointsRef.current),
+        color: colorRef.current,
+        width: strokeWidthRef.current,
+      });
+    },
+    []
+  );
+
+  const onPanUpdate = useCallback((x: number, y: number) => {
+    const start = startRef.current;
+    if (!start) return;
+    if (toolRef.current !== "freehand") {
+      const path = shapePath(toolRef.current, start.x, start.y, x, y);
+      setCurrent({ path, color: colorRef.current, width: strokeWidthRef.current });
+      return;
+    }
+    updateFreehand(x, y);
+  }, [updateFreehand]);
+
+  const onPanEnd = useCallback(
+    (x: number, y: number) => {
+      const start = startRef.current;
+      if (!start) return;
+      if (toolRef.current !== "freehand") {
+        finishShape(start.x, start.y, x, y);
+        return;
       }
-      pointsRef.current = [];
-    });
+      updateFreehand(x, y);
+      finishFreehand();
+    },
+    [finishFreehand, finishShape, updateFreehand]
+  );
+
+  const pan = useMemo(
+    () =>
+      Gesture.Pan()
+        .enabled(enabled)
+        .minDistance(0)
+        .onStart((e) => {
+          runOnJS(onPanStart)(e.x, e.y);
+        })
+        .onUpdate((e) => {
+          runOnJS(onPanUpdate)(e.x, e.y);
+        })
+        .onEnd((e) => {
+          runOnJS(onPanEnd)(e.x, e.y);
+        }),
+    [enabled, onPanEnd, onPanStart, onPanUpdate]
+  );
 
   if (!enabled && strokes.length === 0 && !current && remoteStrokes.length === 0) {
     return null;

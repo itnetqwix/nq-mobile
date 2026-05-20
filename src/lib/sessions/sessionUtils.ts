@@ -102,6 +102,39 @@ export function getInstantJoinDeadlineMs(session: any): number | null {
   return Number.isFinite(ms) ? ms : null;
 }
 
+/** Whether a session is currently in its live / rejoinable window (dashboard “Active”). */
+export function isSessionInProgress(session: any, now = new Date()): boolean {
+  const status = normalizeSessionStatus(session?.status);
+  if (status === "cancelled" || status === "completed") return false;
+
+  if (isInstantLesson(session)) {
+    if (isPendingBooking(session)) return false;
+    const phase = String(session?.instant_phase ?? "").toUpperCase();
+    if (phase === "ACTIVE") return true;
+    if (session?.both_joined_at) return true;
+    if (canJoinSession(session, now)) return true;
+    return canRejoinLesson(session, now);
+  }
+
+  if (!session?.booked_date || !session?.start_time || !session?.end_time) {
+    return canRejoinLesson(session, now);
+  }
+
+  try {
+    const nowMs = now.getTime();
+    const [sh, sm] = String(session.start_time).split(":").map(Number);
+    const [eh, em] = String(session.end_time).split(":").map(Number);
+    const [dy, dm, dd] = String(session.booked_date).split("-").map(Number);
+    const start = new Date(dy, dm - 1, dd, sh, sm);
+    const end = new Date(dy, dm - 1, dd, eh, em);
+    if (start > end) end.setDate(end.getDate() + 1);
+    if (nowMs >= start.getTime() && nowMs <= end.getTime()) return true;
+    return canRejoinLesson(session, now);
+  } catch {
+    return canRejoinLesson(session, now);
+  }
+}
+
 /**
  * Rejoin an in-progress lesson (same booking id) until the scheduled window ends.
  * Used when a user dropped and needs to return before the server marks completed.
@@ -175,10 +208,10 @@ export function getJoinDisabledReason(session: any, now = new Date()): string {
   }
 
   if (isInstantLesson(session)) {
-    if (!session?.accepted_at) {
+    if (!session?.accepted_at && !session?.both_joined_at) {
       return "Instant lessons can be joined after the coach confirms.";
     }
-    if (!canJoinSession(session, now)) {
+    if (!canJoinSession(session, now) && !canRejoinLesson(session, now)) {
       return "The join window for this instant lesson has expired.";
     }
   }

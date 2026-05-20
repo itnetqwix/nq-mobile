@@ -9,7 +9,13 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useQuery } from "@tanstack/react-query";
 import { colors, radii, typography } from "../../theme";
+import { fetchScheduledMeetings } from "../home/api/homeApi";
+import { canRejoinLesson, isInstantLesson } from "../../lib/sessions/sessionUtils";
+import { navigationRef } from "../../navigation/navigationRef";
+import { useAuth } from "../auth/context/AuthContext";
+import { AccountType } from "../../constants/accountType";
 import { useInstantLesson } from "./InstantLessonContext";
 import { InstantLessonDeadlineChip } from "./components/InstantLessonDeadlineChip";
 
@@ -23,6 +29,8 @@ import { InstantLessonDeadlineChip } from "./components/InstantLessonDeadlineChi
  */
 export function InstantLessonStatusBanner() {
   const insets = useSafeAreaInsets();
+  const { accountType } = useAuth();
+  const isTrainer = accountType === AccountType.TRAINER;
   const {
     traineeBooking,
     trainerIncoming,
@@ -34,6 +42,19 @@ export function InstantLessonStatusBanner() {
     restoreTrainerIncoming,
     clearTrainerIncoming,
   } = useInstantLesson();
+
+  const { data: sessions = [] } = useQuery({
+    queryKey: ["sessions", "upcoming"],
+    queryFn: () => fetchScheduledMeetings("upcoming"),
+    staleTime: 30_000,
+  });
+  const rejoinSession = (sessions as Record<string, unknown>[]).find(
+    (s) => isInstantLesson(s) && canRejoinLesson(s)
+  );
+  const rejoinLessonId = rejoinSession
+    ? String(rejoinSession._id ?? rejoinSession.id ?? "")
+    : "";
+  const showRejoinPill = isTrainer && !!rejoinLessonId && !trainerIncoming;
 
   const fade = useRef(new Animated.Value(0)).current;
   const slide = useRef(new Animated.Value(-32)).current;
@@ -51,7 +72,8 @@ export function InstantLessonStatusBanner() {
   const trainerWaiting =
     trainerIncoming?.step === "incoming" && !!trainerIncoming.minimized;
 
-  const visible = traineeAccepted || traineeWaiting || trainerAccepted || trainerWaiting;
+  const visible =
+    traineeAccepted || traineeWaiting || trainerAccepted || trainerWaiting || showRejoinPill;
 
   useEffect(() => {
     if (visible) {
@@ -182,6 +204,28 @@ export function InstantLessonStatusBanner() {
             />
           ) : null}
         </Pressable>
+      ) : showRejoinPill ? (
+        <View style={styles.acceptedBanner}>
+          <View style={styles.acceptedIcon}>
+            <Ionicons name="videocam" size={18} color={colors.brandTextOn} />
+          </View>
+          <View style={styles.acceptedText}>
+            <Text style={styles.acceptedTitle}>Lesson in progress</Text>
+            <Text style={styles.acceptedSub} numberOfLines={2}>
+              You can rejoin your instant lesson.
+            </Text>
+          </View>
+          <Pressable
+            style={styles.joinBtn}
+            onPress={() => {
+              if (rejoinLessonId && navigationRef.isReady()) {
+                navigationRef.navigate("Meeting", { lessonId: rejoinLessonId });
+              }
+            }}
+          >
+            <Text style={styles.joinBtnText}>Rejoin lesson</Text>
+          </Pressable>
+        </View>
       ) : null}
     </Animated.View>
   );

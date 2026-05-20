@@ -1,14 +1,17 @@
 import React, { useCallback, useRef, useState } from "react";
-import PagerView from "react-native-pager-view";
 import {
   ActionSheetIOS,
   ActivityIndicator,
   Alert,
+  Dimensions,
   FlatList,
   Image,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Platform,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -230,9 +233,11 @@ function SentRequestCard({
   );
 }
 
+const SCREEN_WIDTH = Dimensions.get("window").width;
+
 export function FriendsScreen() {
   const { t } = useAppTranslation();
-  const pagerRef = useRef<PagerView>(null);
+  const scrollRef = useRef<ScrollView>(null);
   const [tab, setTab] = useState<Tab>("friends");
   const [messageBusy, setMessageBusy] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
@@ -509,7 +514,7 @@ export function FriendsScreen() {
             style={[styles.tabBtn, tab === tabItem.key && styles.tabBtnActive]}
             onPress={() => {
               setTab(tabItem.key);
-              pagerRef.current?.setPage(index);
+              scrollRef.current?.scrollTo({ x: index * SCREEN_WIDTH, animated: true });
             }}
           >
             <Text style={[styles.tabText, tab === tabItem.key && styles.tabTextActive]}>
@@ -522,21 +527,24 @@ export function FriendsScreen() {
         ))}
       </View>
 
-      <PagerView
-        ref={pagerRef}
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
         style={{ flex: 1 }}
-        initialPage={0}
-        onPageSelected={(e) => {
-          const next = TABS[e.nativeEvent.position];
+        onMomentumScrollEnd={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+          const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+          const next = TABS[index];
           if (next) setTab(next.key);
         }}
       >
         {TABS.map((tabItem) => (
-          <View key={tabItem.key} style={{ flex: 1 }}>
+          <View key={tabItem.key} style={{ width: SCREEN_WIDTH, flex: 1 }}>
             {renderTabBody(tabItem.key)}
           </View>
         ))}
-      </PagerView>
+      </ScrollView>
     </View>
   );
 }

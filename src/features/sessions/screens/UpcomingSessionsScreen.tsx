@@ -34,6 +34,7 @@ import {
   normalizeSessionStatus,
 } from "../../../lib/sessions/sessionUtils";
 import { InstantLessonDeadlineChip } from "../../instant-lesson/components/InstantLessonDeadlineChip";
+import { InstantLessonSessionActions } from "../../instant-lesson/components/InstantLessonSessionActions";
 import { useSessionBooking } from "../SessionBookingContext";
 import { SessionsCalendar } from "../components/SessionsCalendar";
 import type { RootStackParamList } from "../../../navigation/types";
@@ -198,13 +199,7 @@ function SessionCard({ session, accountType }: { session: any; accountType: stri
 
       <View style={styles.cardFooter}>
         {isTrainer && pending && instant ? (
-          <Button
-            label={t("sessions.openInstantRequest")}
-            leftIcon="flash-outline"
-            onPress={() => openSession(session)}
-            size="md"
-            fullWidth={false}
-          />
+          <InstantLessonSessionActions session={session} layout="row" size="md" />
         ) : null}
         {isTrainer && pending && !instant ? (
           <Button

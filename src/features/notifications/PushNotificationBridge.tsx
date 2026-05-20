@@ -8,44 +8,91 @@
  *   3. On sign-out, unregisters it.
  *   4. Routes notification taps to the correct deep link (meeting / inbox /
  *      booking) via the shared `navigationRef`.
- *
- * Mount it inside `AuthProvider` so it can read auth state, but outside the
- * NavigationContainer is fine — the ref is global.
+ *   5. Handles instant-lesson Accept / Decline notification actions.
  */
 
 import { useEffect } from "react";
 import * as Notifications from "expo-notifications";
+import { AppState } from "react-native";
 
 import { useAuth } from "../auth/context/AuthContext";
 import { navigationRef, navigateToNotifications } from "../../navigation/navigationRef";
+import { presentNativeInstantLessonIncoming } from "../instant-lesson/InstantLessonCallKeepBridge";
+import {
+  configureInstantLessonNotificationCategories,
+  dismissInstantLessonIncomingCall,
+  parseInstantLessonNotificationData,
+  INSTANT_LESSON_NOTIFICATION_ACTIONS,
+  presentInstantLessonIncomingCall,
+} from "../instant-lesson/instantLessonIncomingNotifications";
+import {
+  emitInstantLessonIncomingRequest,
+  getInstantLessonActionHandlers,
+} from "../instant-lesson/instantLessonBridge";
+import { stashInstantLessonNotificationAction } from "../instant-lesson/instantLessonPendingAction";
 import {
   configureAndroidChannels,
   registerDevicePushToken,
   unregisterDevicePushToken,
 } from "./pushTokens";
 
-/** Global handler — controls whether the OS displays an alert when a push
- *  arrives while the app is foregrounded. We always show alerts; the in-app
- *  toast still fires in parallel so the user gets the rich UI either way. */
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
+  handleNotification: async (notification) => {
+    const data = notification.request.content.data as Record<string, unknown> | undefined;
+    const isInstantCall = String(data?.kind ?? "") === "instant_lesson_request";
+    return {
+      shouldShowAlert: true,
+      shouldPlaySound: !isInstantCall,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    };
+  },
 });
+
+async function handleInstantLessonNotificationAction(
+  actionId: string,
+  data: Record<string, unknown>
+): Promise<void> {
+  const payload = parseInstantLessonNotificationData(data);
+  if (!payload) return;
+
+  const handlers = getInstantLessonActionHandlers();
+
+  if (actionId === INSTANT_LESSON_NOTIFICATION_ACTIONS.ACCEPT) {
+    if (handlers.acceptIncoming) {
+      await handlers.acceptIncoming(payload);
+    } else {
+      await stashInstantLessonNotificationAction(
+        INSTANT_LESSON_NOTIFICATION_ACTIONS.ACCEPT,
+        payload
+      );
+    }
+    await dismissInstantLessonIncomingCall(payload.lessonId);
+    return;
+  }
+
+  if (actionId === INSTANT_LESSON_NOTIFICATION_ACTIONS.DECLINE) {
+    if (handlers.declineIncoming) {
+      await handlers.declineIncoming(payload.lessonId);
+    } else {
+      await stashInstantLessonNotificationAction(
+        INSTANT_LESSON_NOTIFICATION_ACTIONS.DECLINE,
+        payload
+      );
+    }
+    await dismissInstantLessonIncomingCall(payload.lessonId);
+  }
+}
 
 export function PushNotificationBridge() {
   const { status } = useAuth();
 
-  /** One-time channel setup. */
   useEffect(() => {
     void configureAndroidChannels();
+    void configureInstantLessonNotificationCategories();
   }, []);
 
-  /** Register/unregister the device token whenever auth flips. */
   useEffect(() => {
     let cancelled = false;
     if (status === "signedIn") {
@@ -61,16 +108,48 @@ export function PushNotificationBridge() {
     };
   }, [status]);
 
-  /** Deep-link routing on tap. We look at the notification payload's
-   *  `data.kind` field if the backend supplies one, otherwise fall back to a
-   *  best-effort title-based router. */
   useEffect(() => {
-    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data ?? {};
-      const title = String(response.notification.request.content.title ?? "");
-      handlePushTap(title, data as Record<string, unknown>);
+    const received = Notifications.addNotificationReceivedListener((notification) => {
+      const data = notification.request.content.data as Record<string, unknown> | undefined;
+      const payload = parseInstantLessonNotificationData(data);
+      if (!payload) return;
+      emitInstantLessonIncomingRequest(payload);
+      void (async () => {
+        const nativeShown = await presentNativeInstantLessonIncoming(payload);
+        if (!nativeShown && AppState.currentState !== "active") {
+          void presentInstantLessonIncomingCall(payload);
+        }
+      })();
     });
-    return () => sub.remove();
+
+    const response = Notifications.addNotificationResponseReceivedListener((event) => {
+      const content = event.notification.request.content;
+      const data = (content.data ?? {}) as Record<string, unknown>;
+      const actionId = event.actionIdentifier;
+
+      if (
+        actionId === INSTANT_LESSON_NOTIFICATION_ACTIONS.ACCEPT ||
+        actionId === INSTANT_LESSON_NOTIFICATION_ACTIONS.DECLINE
+      ) {
+        void handleInstantLessonNotificationAction(actionId, data);
+        return;
+      }
+
+      if (Notifications.DEFAULT_ACTION_IDENTIFIER === actionId) {
+        const payload = parseInstantLessonNotificationData(data);
+        if (payload) {
+          emitInstantLessonIncomingRequest(payload);
+        }
+      }
+
+      const title = String(content.title ?? "");
+      handlePushTap(title, data);
+    });
+
+    return () => {
+      received.remove();
+      response.remove();
+    };
   }, []);
 
   return null;
@@ -85,6 +164,10 @@ function handlePushTap(title: string, data: Record<string, unknown>) {
     null;
 
   if (kind === "instant_lesson_request") {
+    const payload = parseInstantLessonNotificationData(data);
+    if (payload) {
+      emitInstantLessonIncomingRequest(payload);
+    }
     if (navigationRef.isReady()) {
       (navigationRef as any).navigate("Main", {
         screen: "Tabs",
@@ -100,7 +183,6 @@ function handlePushTap(title: string, data: Record<string, unknown>) {
     return;
   }
 
-  /** Meeting deep link — primary action when a confirmed lesson is ready. */
   if (
     kind === "meeting" ||
     kind === "instant_lesson_accept" ||
@@ -114,7 +196,6 @@ function handlePushTap(title: string, data: Record<string, unknown>) {
     }
   }
 
-  /** Booking-related → upcoming sessions. */
   const lower = title.toLowerCase();
   if (
     lower.includes("book") ||
@@ -137,6 +218,5 @@ function handlePushTap(title: string, data: Record<string, unknown>) {
     }
   }
 
-  /** Default: open the inbox. */
   navigateToNotifications();
 }

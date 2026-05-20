@@ -101,6 +101,8 @@ export function useClipSync({
   const [clipFocusIndex, setClipFocusIndex] = useState<0 | 1 | null>(null);
   const lastSeekEmit = useRef(0);
   const bookingPreloadedRef = useRef(false);
+  const lockModeRef = useRef(false);
+  const pendingPlayAfterLockRef = useRef<boolean | null>(null);
 
   const userInfo: ClipUserInfo = { from_user: fromUserId, to_user: toUserId };
 
@@ -148,8 +150,13 @@ export function useClipSync({
     };
 
     const onPlayPause = (payload: any) => {
-      if (payload?.both) {
-        setIsPlaying(!!payload?.isPlaying);
+      const both = !!(payload?.both || lockModeRef.current);
+      if (both) {
+        const nextPlaying = !!payload?.isPlaying;
+        if (lockModeRef.current && pendingPlayAfterLockRef.current == null) {
+          pendingPlayAfterLockRef.current = nextPlaying;
+        }
+        setIsPlaying(nextPlaying);
         return;
       }
       const vid = payload?.videoId != null ? String(payload.videoId) : null;
@@ -160,9 +167,10 @@ export function useClipSync({
 
     const onTime = (payload: any) => {
       if (typeof payload?.progress !== "number") return;
-      if (payload?.both) {
+      const both = !!(payload?.both || lockModeRef.current);
+      if (both) {
         setSeekHint({
-          videoId: String(payload.videoId ?? activeClipId ?? ""),
+          videoId: "",
           progress: payload.progress,
           receivedAt: Date.now(),
         });
@@ -191,9 +199,26 @@ export function useClipSync({
     };
 
     const onLockMode = (payload: any) => {
-      setLockMode(!!(payload?.locked ?? payload?.isLockMode));
+      const nextLocked = !!(payload?.locked ?? payload?.isLockMode);
+      lockModeRef.current = nextLocked;
+      setLockMode(nextLocked);
+      if (!nextLocked) {
+        setLockPoint(0);
+        pendingPlayAfterLockRef.current = null;
+        return;
+      }
       if (typeof payload?.lockPoint === "number" && Number.isFinite(payload.lockPoint)) {
         setLockPoint(payload.lockPoint);
+        setSeekHint({
+          videoId: "",
+          progress: payload.lockPoint,
+          receivedAt: Date.now(),
+        });
+      }
+      const pending = pendingPlayAfterLockRef.current;
+      if (pending != null) {
+        pendingPlayAfterLockRef.current = null;
+        setIsPlaying(pending);
       }
     };
 
@@ -237,7 +262,9 @@ export function useClipSync({
 
   const clearLockMode = useCallback(
     (emitSocket: boolean) => {
+      lockModeRef.current = false;
       setLockMode(false);
+      pendingPlayAfterLockRef.current = null;
       if (!emitSocket || !socket || !isTrainer) return;
       socket.emit(CLIP_EVENTS.TOGGLE_LOCK_MODE, {
         locked: false,
@@ -388,9 +415,11 @@ export function useClipSync({
           receivedAt: Date.now(),
         });
       }
+      lockModeRef.current = next;
       setLockMode(next);
       if (!next) {
         setClipFocusIndex(null);
+        pendingPlayAfterLockRef.current = null;
       }
       if (!isTrainer || !socket) return;
       socket.emit(CLIP_EVENTS.TOGGLE_LOCK_MODE, {

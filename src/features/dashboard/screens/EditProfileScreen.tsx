@@ -33,8 +33,8 @@ export function EditProfileScreen() {
   const styles = useThemedStyles((palette) => StyleSheet.create({
   avatarSection: {
     alignItems: "center",
-    paddingVertical: space.md,
-    marginBottom: space.sm,
+    paddingVertical: space.sm,
+    marginBottom: space.xs,
   },
   avatarWrap: { position: "relative" },
   avatarImg: { width: 96, height: 96, borderRadius: 48, backgroundColor: palette.surfaceMuted },

@@ -49,7 +49,8 @@ export function TrainerProfileSection({
       },
       toggleWrap: {
         paddingHorizontal: space.md,
-        paddingBottom: space.md,
+        paddingTop: space.xs,
+        paddingBottom: space.sm,
       },
     })
   );
@@ -59,6 +60,7 @@ export function TrainerProfileSection({
       title="Your profile"
       subtitle="Availability and account"
       testID="home-trainer-profile"
+      compact
     >
       <View style={styles.row}>
         <HomeUserAvatar

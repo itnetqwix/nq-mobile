@@ -59,7 +59,12 @@ import ReviewAnalysisCard from "../../ai/ReviewAnalysisCard";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { useSessionBooking } from "../../sessions/SessionBookingContext";
-import { isPendingBooking, normalizeSessionStatus, getOtherParty } from "../../../lib/sessions/sessionUtils";
+import {
+  getOtherParty,
+  isPendingBooking,
+  isSessionInProgress,
+  normalizeSessionStatus,
+} from "../../../lib/sessions/sessionUtils";
 import { PostLessonConcernBanner } from "../../sessions/components/PostLessonConcernBanner";
 import { TrainerProfileModal } from "../../bookexpert/components/TrainerProfileModal";
 import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
@@ -589,7 +594,7 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
     queryClient.invalidateQueries({ queryKey: ["friendRequests"] });
   }, [queryClient]);
 
-  const nowSessions = sessions.filter((s: any) => isSessionLiveNow(s));
+  const nowSessions = sessions.filter((s: any) => isSessionInProgress(s));
   const pendingSessions = useMemo(
     () => (isTrainer ? sessions.filter((s: any) => isPendingBooking(s)) : []),
     [sessions, isTrainer]
@@ -883,24 +888,4 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
     </>
   );
 }
-
-function isSessionLiveNow(session: any): boolean {
-  if (!session?.booked_date || !session?.start_time || !session?.end_time) return false;
-  try {
-    const now = new Date();
-    const [sh, sm] = session.start_time.split(":").map(Number);
-    const [eh, em] = session.end_time.split(":").map(Number);
-    const [dy, dm, dd] = session.booked_date.split("-").map(Number);
-
-    const start = new Date(dy, dm - 1, dd, sh, sm);
-    const end = new Date(dy, dm - 1, dd, eh, em);
-
-    if (start > end) end.setDate(end.getDate() + 1);
-
-    return now >= start && now <= end;
-  } catch {
-    return false;
-  }
-}
-
 

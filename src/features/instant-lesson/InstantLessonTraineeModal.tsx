@@ -24,7 +24,7 @@ import {
   flattenGroupedClips,
 } from "./instantLessonClipsApi";
 import { ClipPickerRow } from "./components/ClipPickerRow";
-import { SessionCountdownText } from "../sessions/components/SessionCountdownText";
+import { InstantLessonDeadlineChip } from "./components/InstantLessonDeadlineChip";
 import {
   INSTANT_ACCEPT_WINDOW_MS,
   INSTANT_JOIN_AFTER_ACCEPT_MS,
@@ -210,17 +210,13 @@ export function InstantLessonTraineeModal() {
               <Text style={styles.sub}>
                 Waiting for <Text style={{ fontWeight: "700" }}>{trainerName}</Text> to accept…
               </Text>
-              {traineeBooking.acceptDeadlineAt ? (
-                <SessionCountdownText
-                  deadlineMs={traineeBooking.acceptDeadlineAt}
-                  label="Accept within"
-                />
-              ) : (
-                <SessionCountdownText
-                  deadlineMs={Date.now() + INSTANT_ACCEPT_WINDOW_MS}
-                  label="Accept within"
-                />
-              )}
+              <InstantLessonDeadlineChip
+                deadlineMs={
+                  traineeBooking.acceptDeadlineAt ??
+                  Date.now() + INSTANT_ACCEPT_WINDOW_MS
+                }
+                label="Coach has"
+              />
               <Text style={styles.hint}>
                 Tap the down-arrow to keep browsing the app while you wait. You'll get a notification
                 when the coach confirms.
@@ -248,12 +244,13 @@ export function InstantLessonTraineeModal() {
                 <Text style={{ fontWeight: "700" }}>{trainerName}</Text> is ready. Tap below to enter
                 the live lesson now.
               </Text>
-              <SessionCountdownText
+              <InstantLessonDeadlineChip
                 deadlineMs={
                   traineeBooking.joinDeadlineAt ??
                   Date.now() + INSTANT_JOIN_AFTER_ACCEPT_MS
                 }
                 label="Join within"
+                variant="urgent"
               />
               <Pressable
                 style={({ pressed }) => [
