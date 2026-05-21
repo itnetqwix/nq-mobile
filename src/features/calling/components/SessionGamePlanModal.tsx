@@ -25,7 +25,7 @@ import { putFileToPresignedUrl } from "../../../lib/presignedPut";
 import { fetchSessionReport } from "../meetingReportApi";
 import {
   NOTIFICATION_TITLES,
-  useNotification,
+  useNotifications,
 } from "../../notifications/NotificationContext";
 
 type Props = {
@@ -43,7 +43,7 @@ export function SessionGamePlanModal({
   traineeId,
   onClose,
 }: Props) {
-  const { emitNotification } = useNotification();
+  const { emitNotification } = useNotifications();
   const [title, setTitle] = useState("");
   const [topic, setTopic] = useState("");
   const [images, setImages] = useState<string[]>([]);
