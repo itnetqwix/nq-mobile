@@ -19,6 +19,7 @@ import { fetchScheduledMeetings } from "../../home/api/homeApi";
 import { PortraitCallOverlay } from "../../calling/components/PortraitCallOverlay";
 import { SessionExtensionModal } from "../../calling/components/SessionExtensionModal";
 import { useLessonTimer } from "../../calling/useLessonTimer";
+import { useSessionExtensionFlow } from "../../calling/useSessionExtensionFlow";
 import { useSocket } from "../../socket/SocketContext";
 import { useAuth } from "../../auth/context/AuthContext";
 import type { CallParticipant } from "../../calling/types";
@@ -93,7 +94,7 @@ export function MeetingScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const { socket } = useSocket();
-  const { accountType: authAccountType } = useAuth();
+  const { accountType: authAccountType, user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState<string | null>(null);
   const [accountType, setAccountType] = useState<string | null>(null);
@@ -117,13 +118,21 @@ export function MeetingScreen({ navigation, route }: Props) {
 
   const { session, peer } = useSessionPeer(lessonId, accountType);
 
-  const { remainingSeconds, status } = useLessonTimer({
+  const { remainingSeconds, status, pendingExtensionRequest } = useLessonTimer({
     socket,
     sessionId: lessonId,
     bothUsersJoined: true,
     timerBufferElapsed,
     accountType,
     session,
+  });
+
+  const extensionFlow = useSessionExtensionFlow({
+    socket,
+    sessionId: lessonId,
+    isTrainer: accountType === AccountType.TRAINER,
+    myUserId: String((user as { _id?: string })?._id ?? ""),
+    pendingFromSync: pendingExtensionRequest,
   });
 
   useEffect(() => {
@@ -247,10 +256,8 @@ export function MeetingScreen({ navigation, route }: Props) {
         visible={extendModalOpen}
         sessionId={lessonId}
         remainingSeconds={remainingSeconds}
+        flow={extensionFlow}
         onDismiss={() => setExtendModalOpen(false)}
-        onExtended={() => {
-          void queryClient.invalidateQueries({ queryKey: ["sessionLookup", lessonId] });
-        }}
       />
 
       {loading && (

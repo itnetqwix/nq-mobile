@@ -99,6 +99,13 @@ import { MeetingJoinBanner } from "../components/MeetingJoinBanner";
 import { DualLiveStage } from "../components/DualLiveStage";
 import { useSessionPresence } from "../useSessionPresence";
 import { meetingTheme } from "../meetingTheme";
+import { useSessionExtensionFlow } from "../useSessionExtensionFlow";
+import { SessionExtensionModal } from "../components/SessionExtensionModal";
+import { TrainerExtensionRequestModal } from "../components/TrainerExtensionRequestModal";
+import {
+  SessionTimeWarningModal,
+  type SessionWarningKind,
+} from "../components/SessionTimeWarningModal";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Meeting">;
 
@@ -376,7 +383,56 @@ function MeetingSurface({
     session,
   });
 
+  /** Two-party paid extension flow. Single hook drives both the trainee
+   *  picker/payment modal and the trainer accept/reject modal — the relevant
+   *  modal opens itself based on `flow.state.phase`. */
+  const extensionFlow = useSessionExtensionFlow({
+    socket,
+    sessionId: lessonId,
+    isTrainer,
+    myUserId: String(myId),
+    pendingFromSync: lessonTimer.pendingExtensionRequest,
+  });
+
+  /** Trainee-side modal visibility. Auto-opened by warning modal "Extend" CTA
+   *  or whenever the server flips us into an active extension phase. */
+  const [traineeExtendOpen, setTraineeExtendOpen] = useState(false);
+  useEffect(() => {
+    if (isTrainer) return;
+    if (
+      extensionFlow.state.phase === "awaiting_trainer" ||
+      extensionFlow.state.phase === "awaiting_payment" ||
+      extensionFlow.state.phase === "paying"
+    ) {
+      setTraineeExtendOpen(true);
+    } else if (
+      extensionFlow.state.phase === "applied" ||
+      extensionFlow.state.phase === "rejected" ||
+      extensionFlow.state.phase === "expired" ||
+      extensionFlow.state.phase === "cancelled"
+    ) {
+      // Let the modal show its terminal message briefly before auto-closing.
+      const id = setTimeout(() => setTraineeExtendOpen(false), 2500);
+      return () => clearTimeout(id);
+    }
+    return undefined;
+  }, [isTrainer, extensionFlow.state.phase]);
+
+  /** 5/2-minute warning modals. We keep them lightweight so the rest of the
+   *  meeting UI stays unobstructed. */
+  const [activeWarning, setActiveWarning] = useState<SessionWarningKind | null>(
+    null
+  );
+  const seenWarningsRef = useRef<Set<SessionWarningKind>>(new Set());
+
   const timerStatusHint = useMemo(() => {
+    if (
+      lessonTimer.status === "paused" &&
+      (lessonTimer.pauseReason === "extension_pending" ||
+        lessonTimer.pauseReason === "extension_accepted")
+    ) {
+      return "Paused — extension in progress";
+    }
     if (presence.partnerLeftKind === "trainer" && lessonTimer.status === "paused") {
       return "Paused — coach disconnected";
     }
@@ -394,6 +450,7 @@ function MeetingSurface({
     presence.partnerLeftKind,
     presence.partnerReconnecting,
     lessonTimer.status,
+    lessonTimer.pauseReason,
   ]);
 
   const clipSync = useClipSync({
@@ -910,19 +967,19 @@ function MeetingSurface({
     clipSync.setClipFocus(null);
   }, [clipSync, meetingLayout]);
 
-  /** Surface time-warning toasts as the timer ticks past key thresholds. The
-   *  callback is wired into `TimeRemaining` (which already detects the
-   *  crossing) so we don't duplicate the math here. */
+  /** Surface time-warning modals/toasts as the timer ticks past key
+   *  thresholds. The 5-min and 2-min hits open a modal (trainee gets an
+   *  inline "Extend" CTA); 1-min / 30s remain as informational toasts. */
   const onTimerCrossThreshold = useCallback(
-    (key: "five" | "one" | "thirty") => {
+    (key: "five" | "two" | "one" | "thirty") => {
       const partner = peerDisplayName;
-      if (key === "five") {
-        pushLocalToast({
-          title: NOTIFICATION_TITLES.fiveMinutesRemaining,
-          description: `Only 5 minutes left in your lesson with ${partner}.`,
-          type: NOTIFICATION_TYPES.TRANSCATIONAL,
-        });
-      } else if (key === "one") {
+      if (key === "five" || key === "two") {
+        if (seenWarningsRef.current.has(key)) return;
+        seenWarningsRef.current.add(key);
+        setActiveWarning(key);
+        return;
+      }
+      if (key === "one") {
         pushLocalToast({
           title: NOTIFICATION_TITLES.oneMinuteRemaining,
           description: `1 minute remaining. Wrap up gracefully.`,
@@ -931,13 +988,27 @@ function MeetingSurface({
       } else if (key === "thirty") {
         pushLocalToast({
           title: NOTIFICATION_TITLES.oneMinuteRemaining,
-          description: `30 seconds remaining.`,
+          description: `30 seconds remaining with ${partner}.`,
           type: NOTIFICATION_TYPES.TRANSCATIONAL,
         });
       }
     },
     [pushLocalToast, peerDisplayName]
   );
+
+  /** Reset the "already shown" guards whenever the timer is extended so the
+   *  next 5/2-min crossing re-opens the modal for the trainee. */
+  useEffect(() => {
+    if (!socket) return;
+    const onExtended = (data: any) => {
+      if (!data || String(data.sessionId) !== String(lessonId)) return;
+      seenWarningsRef.current = new Set();
+    };
+    socket.on("LESSON_TIMER_EXTENDED", onExtended);
+    return () => {
+      socket.off("LESSON_TIMER_EXTENDED", onExtended);
+    };
+  }, [socket, lessonId]);
 
   /** Fire an inbox + toast when the lesson timer hits 0 (status "ended"),
    *  matching the web "Session Ended → Rate your coach" prompt. */
@@ -1435,6 +1506,35 @@ function MeetingSurface({
           />
         </>
       ) : null}
+
+      {/* Two-party paid extension flow. The hook drives which modal renders;
+          mounted once for both roles. */}
+      {!isTrainer ? (
+        <SessionExtensionModal
+          visible={traineeExtendOpen}
+          sessionId={lessonId}
+          remainingSeconds={lessonTimer.remainingSeconds}
+          flow={extensionFlow}
+          onDismiss={() => setTraineeExtendOpen(false)}
+        />
+      ) : null}
+      {isTrainer ? (
+        <TrainerExtensionRequestModal
+          flow={extensionFlow}
+          traineeName={peerDisplayName}
+        />
+      ) : null}
+
+      <SessionTimeWarningModal
+        visible={activeWarning != null}
+        kind={activeWarning ?? "five"}
+        canExtend={!isTrainer && activeWarning === "two"}
+        onExtend={() => {
+          setActiveWarning(null);
+          setTraineeExtendOpen(true);
+        }}
+        onDismiss={() => setActiveWarning(null)}
+      />
 
       <RatingsModal
         visible={ratingsOpen}

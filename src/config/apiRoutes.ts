@@ -110,6 +110,7 @@ export const API_ROUTES = {
     profile: "/trainer/profile",
     createMoneyRequest: "/trainer/create-money-request",
     getMoneyRequest: "/trainer/get-money-request",
+    sessionExtensionRespond: "/trainer/session-extension/respond",
   },
   trainee: {
     getTrainersWithSlots: "/trainee/get-trainers-with-slots",
@@ -120,6 +121,8 @@ export const API_ROUTES = {
     checkSlot: "/trainee/check-slot",
     recentTrainers: "/trainee/recent-trainers",
     sessionExtensionQuote: "/trainee/session-extension/quote",
+    sessionExtensionRequest: "/trainee/session-extension/request",
+    sessionExtensionCancel: "/trainee/session-extension/cancel-request",
     sessionExtensionPaymentIntent: "/trainee/session-extension/create-payment-intent",
     sessionExtensionConfirm: "/trainee/session-extension/confirm",
   },

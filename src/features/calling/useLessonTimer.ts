@@ -47,6 +47,18 @@ export type LessonTimerSnapshot = {
   remainingSeconds: number;
 };
 
+/** Snapshot of any in-flight paid extension request, pushed through
+ *  `LESSON_STATE_SYNC` so a reconnecting client can rebuild its UI. */
+export type PendingExtensionRequestSnapshot = {
+  requestId: string;
+  status: "pending" | "accepted" | "rejected" | "paid" | "cancelled" | "expired";
+  minutes: number;
+  amount: number;
+  requestedAt: string;
+  expiresAt: string | null;
+  requestedBy: string;
+};
+
 /** Minimal shape of a booked-session row we read for the fallback countdown.
  *  Matches what the backend returns on `/sessions/*` lookups — every field is
  *  optional so we can degrade gracefully whatever the caller has in hand. */
@@ -162,6 +174,11 @@ export function useLessonTimer({
   const [fallbackRemainingSeconds, setFallbackRemainingSeconds] = useState<
     number | null
   >(null);
+  /** Last `LESSON_TIME_PAUSED.reason` we received. Used by the meeting UI to
+   *  distinguish a manual trainer pause from an extension-driven pause. */
+  const [pauseReason, setPauseReason] = useState<string | null>(null);
+  const [pendingExtensionRequest, setPendingExtensionRequest] =
+    useState<PendingExtensionRequestSnapshot | null>(null);
 
   const stopInterval = useCallback(() => {
     if (intervalRef.current) {
@@ -242,7 +259,16 @@ export function useLessonTimer({
 
     const handleStateSync = (state: any) => {
       if (!matches(state)) return;
-      const { status: s, startedAt, duration, remainingSeconds, trainerConnected, traineeConnected } = state;
+      const {
+        status: s,
+        startedAt,
+        duration,
+        remainingSeconds,
+        trainerConnected,
+        traineeConnected,
+        pauseReason: nextPauseReason,
+        pendingExtensionRequest: nextPending,
+      } = state;
       setStatus(s || "waiting");
       if (typeof trainerConnected === "boolean") {
         setTrainerConnectedFromState(trainerConnected);
@@ -251,6 +277,17 @@ export function useLessonTimer({
         setTraineeConnectedFromState(traineeConnected);
       }
       setParticipantsConnected(!!trainerConnected && !!traineeConnected);
+
+      if (s === "paused") {
+        setPauseReason(nextPauseReason ?? null);
+      } else if (s === "running") {
+        setPauseReason(null);
+      }
+      if (nextPending !== undefined) {
+        setPendingExtensionRequest(
+          nextPending as PendingExtensionRequestSnapshot | null
+        );
+      }
 
       if (s === "running" && startedAt && duration) {
         startLessonTimer({ sessionId, startedAt, duration, remainingSeconds });
@@ -291,6 +328,7 @@ export function useLessonTimer({
     const handlePaused = (data: any) => {
       if (!matches(data)) return;
       setStatus("paused");
+      setPauseReason(data?.reason ?? null);
       stopInterval();
       setAuthoritativeTimer((prev) => ({
         sessionId,
@@ -303,6 +341,7 @@ export function useLessonTimer({
     const handleResumed = (data: any) => {
       if (!matches(data)) return;
       setStatus("running");
+      setPauseReason(null);
       startLessonTimer({
         sessionId,
         startedAt: data.startedAt,
@@ -326,6 +365,8 @@ export function useLessonTimer({
     const handleExtended = (data: any) => {
       if (!matches(data)) return;
       setStatus("running");
+      setPauseReason(null);
+      setPendingExtensionRequest(null);
       if (data.startedAt != null && data.duration != null) {
         startLessonTimer({
           sessionId,
@@ -503,6 +544,8 @@ export function useLessonTimer({
     trainerConnected: trainerConnectedFromState,
     traineeConnected: traineeConnectedFromState,
     bothConnectedFromSync,
+    pauseReason,
+    pendingExtensionRequest,
     requestStart,
     requestPause,
     requestResume,

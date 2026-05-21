@@ -19,6 +19,7 @@ import type { LessonTimerStatus } from "../useLessonTimer";
 import { meetingTheme } from "../meetingTheme";
 
 const FIVE_MIN = 5 * 60;
+const TWO_MIN = 2 * 60;
 const ONE_MIN = 60;
 const ALMOST_DONE = 30;
 
@@ -29,7 +30,7 @@ function format(seconds: number | null): string {
   return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }
 
-type Warning = null | "five" | "one" | "thirty";
+type Warning = null | "five" | "two" | "one" | "thirty";
 
 type Props = {
   remainingSeconds: number | null;
@@ -43,9 +44,9 @@ type Props = {
   onStart?: () => void;
   onPause?: () => void;
   onResume?: () => void;
-  /** Optional callback fired when the timer crosses 5 / 1 / 0.5 minute marks.
-   *  Wired by the meeting screen so we can emit in-app notifications. */
-  onCrossThreshold?: (key: "five" | "one" | "thirty") => void;
+  /** Optional callback fired when the timer crosses 5 / 2 / 1 / 0.5 minute marks.
+   *  Wired by the meeting screen so we can emit in-app notifications or modals. */
+  onCrossThreshold?: (key: "five" | "two" | "one" | "thirty") => void;
   /** Safe-area top offset for floating chrome. */
   topInset?: number;
   /** Pill label (default "Time remaining"; instant lessons use "Lesson time"). */
@@ -97,6 +98,10 @@ export function TimeRemaining({
       setWarning("five");
       onCrossThreshold?.("five");
       setTimeout(() => setWarning(null), 5000);
+    } else if (prev != null && prev > TWO_MIN && s <= TWO_MIN && s > 0) {
+      setWarning("two");
+      onCrossThreshold?.("two");
+      setTimeout(() => setWarning(null), 5000);
     } else if (prev != null && prev > ONE_MIN && s <= ONE_MIN && s > 0) {
       setWarning("one");
       onCrossThreshold?.("one");
@@ -147,16 +152,6 @@ export function TimeRemaining({
         )}
       </View>
 
-      {warning === "five" && (
-        <View style={[styles.toast, { backgroundColor: "#1e88e5" }]}>
-          <Text style={styles.toastText}>Only 5 minutes left in this session.</Text>
-        </View>
-      )}
-      {warning === "one" && (
-        <View style={[styles.toast, { backgroundColor: "#ff9800" }]}>
-          <Text style={styles.toastText}>1 minute remaining.</Text>
-        </View>
-      )}
       {warning === "thirty" && (
         <View style={[styles.toast, { backgroundColor: "#f44336" }]}>
           <Text style={styles.toastText}>Session ending in about 30 seconds.</Text>

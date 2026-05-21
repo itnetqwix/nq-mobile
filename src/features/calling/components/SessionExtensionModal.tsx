@@ -1,6 +1,18 @@
+/**
+ * SessionExtensionModal (trainee)
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Three-state modal driven by `useSessionExtensionFlow`:
+ *
+ *   1. "Request"    — chip picker (5/10/15/30) + price preview + "Ask coach"
+ *   2. "Awaiting"   — spinner + countdown to trainer auto-decline, cancel CTA
+ *   3. "Payment"    — wallet vs. card + amount, kicks off Stripe sheet
+ *
+ * Phase transitions arrive via socket events through the hook; this component
+ * never holds the source of truth for the request itself.
+ */
+
 import { Ionicons } from "@expo/vector-icons";
-import { useStripe } from "@stripe/stripe-react-native";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,218 +24,331 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "../../../components/ui";
-import { INSTANT_LESSON_DURATIONS } from "../../instant-lesson/booking-wizard/constants";
 import { useAuth } from "../../auth/context/AuthContext";
 import { colors, radii, space, typography } from "../../../theme";
-import {
-  confirmSessionExtension,
-  createSessionExtensionPaymentIntent,
-  fetchSessionExtensionQuote,
-} from "../sessionExtensionApi";
-import { fetchWalletBalance, verifyWalletPin } from "../../wallet/walletApi";
+import type { ExtensionQuote } from "../sessionExtensionApi";
+import type { UseSessionExtensionFlow } from "../useSessionExtensionFlow";
 
-const EXTEND_PROMPT_SECONDS = 120;
+/** Mobile UI surfaces only the most common picks; the backend still accepts
+ *  60/120 for parity with legacy clients. */
+const EXTENSION_DURATIONS = [5, 10, 15, 30] as const;
 
 type Props = {
   visible: boolean;
   sessionId: string;
   remainingSeconds: number | null;
+  /** Initial chip selection when the modal opens (defaults to 10 min). */
+  defaultMinutes?: number;
+  flow: UseSessionExtensionFlow;
   onDismiss: () => void;
-  onExtended: () => void;
 };
+
+function formatCountdown(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function useCountdownToIso(iso: string | null): number {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!iso) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [iso]);
+  if (!iso) return 0;
+  const target = new Date(iso).getTime();
+  return Math.max(0, Math.floor((target - now) / 1000));
+}
 
 export function SessionExtensionModal({
   visible,
   sessionId,
   remainingSeconds,
+  defaultMinutes = 10,
+  flow,
   onDismiss,
-  onExtended,
 }: Props) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { initPaymentSheet, presentPaymentSheet } = useStripe();
-  const [minutes, setMinutes] = useState(15);
-  const [quoteAmount, setQuoteAmount] = useState<number | null>(null);
+
+  const [minutes, setMinutes] = useState<number>(defaultMinutes);
+  const [quote, setQuote] = useState<ExtensionQuote | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
-  const [paying, setPaying] = useState(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
-  const [payWithWallet, setPayWithWallet] = useState(true);
-  const [pinSessionToken, setPinSessionToken] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"wallet" | "card">("wallet");
 
-  const userStripeId = String((user as Record<string, unknown>)?.stripe_account_id ?? "");
+  const userStripeId = String(
+    (user as Record<string, unknown>)?.stripe_account_id ?? ""
+  );
 
-  const loadQuote = useCallback(async () => {
-    if (!sessionId || !visible) return;
+  const { state, fetchQuote, requestExtension, cancelRequest, payAndConfirm } = flow;
+  const { phase, request, message } = state;
+
+  const expiryCountdown = useCountdownToIso(request?.expiresAt ?? null);
+
+  /** Refresh the price preview whenever the chip changes (only matters in the
+   *  request phase; the server snapshot already carries the locked-in price
+   *  during awaiting/paying). */
+  useEffect(() => {
+    if (!visible) return;
+    if (phase !== "idle" && phase !== "error" && phase !== "rejected" && phase !== "cancelled" && phase !== "expired") return;
+    let cancelled = false;
     setQuoteLoading(true);
     setQuoteError(null);
-    try {
-      const quote = await fetchSessionExtensionQuote(sessionId, minutes);
-      if (!quote.allowed) {
-        setQuoteError(quote.reason ?? "Extension not available right now.");
-        setQuoteAmount(null);
-      } else {
-        setQuoteAmount(quote.amount);
-      }
-    } catch (e: any) {
-      setQuoteError(
-        e?.response?.data?.error ?? e?.message ?? "Could not load extension price."
-      );
-      setQuoteAmount(null);
-    } finally {
-      setQuoteLoading(false);
-    }
-  }, [sessionId, minutes, visible]);
-
-  useEffect(() => {
-    if (visible) void loadQuote();
-  }, [visible, loadQuote]);
-
-  const handlePayAndExtend = async () => {
-    if (!sessionId) return;
-    setPaying(true);
-    try {
-      let paymentIntentId: string | null = null;
-
-      if (quoteAmount != null && quoteAmount > 0 && payWithWallet) {
-        const bal = await fetchWalletBalance();
-        const availableMinor = bal.balances?.available_minor ?? 0;
-        const needMinor = Math.round(quoteAmount * 100);
-        if (availableMinor >= needMinor) {
-          await confirmSessionExtension({
-            sessionId,
-            minutes,
-            payment_method: "wallet",
-            pin_session_token: pinSessionToken,
-          });
-          Alert.alert("Session extended", `Added ${minutes} more minutes (paid from wallet).`);
-          onExtended();
-          onDismiss();
-          return;
-        }
-      }
-
-      if (quoteAmount != null && quoteAmount > 0 && !payWithWallet) {
-        const intentData = await createSessionExtensionPaymentIntent({
-          sessionId,
-          minutes,
-          customer: userStripeId || undefined,
-        });
-
-        if (!intentData?.skip) {
-          const clientSecret = intentData.client_secret;
-          if (!clientSecret) throw new Error("No payment client secret returned.");
-          const { error: initErr } = await initPaymentSheet({
-            paymentIntentClientSecret: clientSecret,
-            merchantDisplayName: "NetQwix",
-          });
-          if (initErr) throw new Error(initErr.message);
-          const { error: payErr } = await presentPaymentSheet();
-          if (payErr) {
-            if (payErr.code !== "Canceled") throw new Error(payErr.message);
-            setPaying(false);
-            return;
-          }
-          paymentIntentId = intentData.id ?? null;
-        }
-      }
-
-      await confirmSessionExtension({
-        sessionId,
-        minutes,
-        payment_intent_id: paymentIntentId,
-        payment_method: paymentIntentId ? "card" : undefined,
+    fetchQuote(minutes)
+      .then((q) => {
+        if (cancelled) return;
+        setQuote(q);
+        if (!q.allowed) setQuoteError(q.reason ?? "Not available right now.");
+      })
+      .catch((e: any) => {
+        if (cancelled) return;
+        setQuoteError(
+          e?.response?.data?.error ?? e?.message ?? "Could not load price."
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setQuoteLoading(false);
       });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, minutes, phase, fetchQuote]);
 
-      Alert.alert("Session extended", `Added ${minutes} more minutes to your lesson.`);
-      onExtended();
-      onDismiss();
-    } catch (e: any) {
+  /** When the trainee dismisses while still pending/awaiting payment, surface
+   *  a confirm step instead of silently abandoning a server-side row. */
+  const handleClose = useCallback(() => {
+    if (phase === "awaiting_trainer" || phase === "awaiting_payment") {
       Alert.alert(
-        "Extension failed",
-        e?.response?.data?.error ??
-          e?.response?.data?.message ??
-          e?.message ??
-          "Could not extend the session."
+        "Cancel extension?",
+        "Closing now will cancel your request and resume the timer.",
+        [
+          { text: "Keep waiting", style: "cancel" },
+          {
+            text: "Cancel request",
+            style: "destructive",
+            onPress: async () => {
+              await cancelRequest("user_dismissed_modal");
+              onDismiss();
+            },
+          },
+        ]
       );
-    } finally {
-      setPaying(false);
+      return;
     }
-  };
+    onDismiss();
+  }, [cancelRequest, onDismiss, phase]);
 
-  const inWindow =
-    remainingSeconds != null &&
-    (remainingSeconds <= EXTEND_PROMPT_SECONDS || remainingSeconds <= 0);
+  const handleRequest = useCallback(async () => {
+    const req = await requestExtension(minutes);
+    if (!req) {
+      // requestExtension already set an error message; modal stays open.
+    }
+  }, [minutes, requestExtension]);
 
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
-      <View style={[styles.backdrop, { paddingBottom: insets.bottom + space.md }]}>
-        <View style={styles.sheet}>
-          <View style={styles.header}>
-            <Ionicons name="time-outline" size={22} color={colors.brandNavy} />
-            <Text style={styles.title}>Extend this lesson</Text>
-            <Pressable onPress={onDismiss} hitSlop={12}>
-              <Ionicons name="close" size={22} color={colors.textMuted} />
+  const handlePay = useCallback(async () => {
+    const ok = await payAndConfirm({
+      method: paymentMethod,
+      customer: userStripeId || undefined,
+    });
+    if (ok) {
+      // SESSION_EXTENSION_APPLIED will flip phase to "applied" -> auto close.
+    }
+  }, [payAndConfirm, paymentMethod, userStripeId]);
+
+  // Auto-dismiss on terminal success.
+  useEffect(() => {
+    if (!visible) return;
+    if (phase === "applied") {
+      const id = setTimeout(() => onDismiss(), 1200);
+      return () => clearTimeout(id);
+    }
+    return undefined;
+  }, [phase, visible, onDismiss]);
+
+  const inExtendWindow = useMemo(() => {
+    if (remainingSeconds == null) return true;
+    return remainingSeconds <= 120 || remainingSeconds <= 0;
+  }, [remainingSeconds]);
+
+  const renderHeader = (label: string) => (
+    <View style={styles.header}>
+      <Ionicons name="time-outline" size={22} color={colors.brandNavy} />
+      <Text style={styles.title}>{label}</Text>
+      <Pressable onPress={handleClose} hitSlop={12}>
+        <Ionicons name="close" size={22} color={colors.textMuted} />
+      </Pressable>
+    </View>
+  );
+
+  let body: React.ReactNode;
+
+  if (phase === "awaiting_trainer") {
+    body = (
+      <>
+        {renderHeader("Waiting for coach")}
+        <Text style={styles.sub}>
+          We sent your request to extend by {request?.minutes ?? minutes} minutes.
+          We'll resume the timer if your coach doesn't answer in time.
+        </Text>
+        <View style={styles.awaitBlock}>
+          <ActivityIndicator color={colors.brandNavy} size="large" />
+          <Text style={styles.awaitCountdown}>
+            {formatCountdown(expiryCountdown)}
+          </Text>
+          <Text style={styles.awaitHint}>auto-decline if no response</Text>
+        </View>
+        <Button
+          label="Cancel request"
+          onPress={() => cancelRequest("user_cancelled")}
+          variant="ghost"
+          fullWidth
+        />
+      </>
+    );
+  } else if (phase === "awaiting_payment" || phase === "paying") {
+    body = (
+      <>
+        {renderHeader("Pay to extend")}
+        <Text style={styles.sub}>
+          Coach approved. Complete payment in the next {formatCountdown(expiryCountdown)} to add{" "}
+          {request?.minutes ?? minutes} minutes to your lesson.
+        </Text>
+        <View style={styles.priceBlock}>
+          <Text style={styles.priceLabel}>Total</Text>
+          <Text style={styles.priceValue}>
+            ${Number(request?.amount ?? 0).toFixed(2)}
+          </Text>
+        </View>
+        {request && request.amount > 0 ? (
+          <View style={styles.payRow}>
+            <Pressable
+              style={[styles.payChip, paymentMethod === "wallet" && styles.payChipActive]}
+              onPress={() => setPaymentMethod("wallet")}
+            >
+              <Text style={styles.payChipText}>Wallet</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.payChip, paymentMethod === "card" && styles.payChipActive]}
+              onPress={() => setPaymentMethod("card")}
+            >
+              <Text style={styles.payChipText}>Card</Text>
             </Pressable>
           </View>
+        ) : null}
+        {message ? <Text style={styles.error}>{message}</Text> : null}
+        <Button
+          label={
+            phase === "paying"
+              ? "Processing…"
+              : `Pay $${Number(request?.amount ?? 0).toFixed(2)}`
+          }
+          onPress={handlePay}
+          disabled={phase === "paying"}
+          fullWidth
+        />
+        <Button
+          label="Cancel"
+          onPress={() => cancelRequest("user_cancelled_payment")}
+          variant="ghost"
+          fullWidth
+        />
+      </>
+    );
+  } else if (phase === "applied") {
+    body = (
+      <>
+        {renderHeader("Lesson extended")}
+        <Text style={styles.sub}>
+          Time has been added to your lesson. You can keep going.
+        </Text>
+      </>
+    );
+  } else {
+    /** Request view: shown for idle / error / terminal-but-fresh phases. */
+    const terminalMessage =
+      phase === "rejected"
+        ? "Coach declined this extension."
+        : phase === "expired"
+        ? "No response in time, but you can try again."
+        : phase === "cancelled"
+        ? "Previous request cancelled."
+        : null;
 
-          <Text style={styles.sub}>
-            {inWindow
-              ? "Add more time without leaving the call. Payment is charged now."
-              : "Extension unlocks when 2 minutes or less remain."}
-          </Text>
+    body = (
+      <>
+        {renderHeader("Extend this lesson")}
+        <Text style={styles.sub}>
+          {inExtendWindow
+            ? "Pick how much extra time you need. Your coach has to approve, then you can pay."
+            : "You can extend when 2 minutes or less remain on the lesson."}
+        </Text>
 
-          <View style={styles.chipRow}>
-            {INSTANT_LESSON_DURATIONS.map((opt) => (
-              <Pressable
-                key={opt.minutes}
-                style={[styles.chip, minutes === opt.minutes && styles.chipActive]}
-                onPress={() => setMinutes(opt.minutes)}
+        {terminalMessage ? (
+          <Text style={styles.notice}>{terminalMessage}</Text>
+        ) : null}
+
+        <View style={styles.chipRow}>
+          {EXTENSION_DURATIONS.map((opt) => (
+            <Pressable
+              key={opt}
+              style={[styles.chip, minutes === opt && styles.chipActive]}
+              onPress={() => setMinutes(opt)}
+            >
+              <Text
+                style={[styles.chipText, minutes === opt && styles.chipTextActive]}
               >
-                <Text
-                  style={[styles.chipText, minutes === opt.minutes && styles.chipTextActive]}
-                >
-                  +{opt.minutes}m
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          {quoteAmount != null && quoteAmount > 0 ? (
-            <View style={styles.payRow}>
-              <Pressable
-                style={[styles.payChip, payWithWallet && styles.payChipActive]}
-                onPress={() => setPayWithWallet(true)}
-              >
-                <Text style={styles.payChipText}>Wallet</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.payChip, !payWithWallet && styles.payChipActive]}
-                onPress={() => setPayWithWallet(false)}
-              >
-                <Text style={styles.payChipText}>Card</Text>
-              </Pressable>
-            </View>
-          ) : null}
-
-          {quoteLoading ? (
-            <ActivityIndicator color={colors.brandNavy} style={{ marginVertical: space.md }} />
-          ) : quoteError ? (
-            <Text style={styles.error}>{quoteError}</Text>
-          ) : (
-            <Text style={styles.price}>
-              {quoteAmount != null && quoteAmount > 0
-                ? `$${quoteAmount.toFixed(2)}`
-                : "Free"}
-            </Text>
-          )}
-
-          <Button
-            label={paying ? "Processing…" : `Pay & add ${minutes} min`}
-            onPress={handlePayAndExtend}
-            disabled={!inWindow || paying || quoteLoading || !!quoteError}
-            fullWidth
-          />
+                +{opt}m
+              </Text>
+            </Pressable>
+          ))}
         </View>
+
+        {quoteLoading ? (
+          <ActivityIndicator
+            color={colors.brandNavy}
+            style={{ marginVertical: space.md }}
+          />
+        ) : quoteError ? (
+          <Text style={styles.error}>{quoteError}</Text>
+        ) : (
+          <Text style={styles.price}>
+            {quote?.amount != null && quote.amount > 0
+              ? `$${quote.amount.toFixed(2)}`
+              : "Free"}
+          </Text>
+        )}
+
+        {message ? <Text style={styles.error}>{message}</Text> : null}
+
+        <Button
+          label={
+            phase === "requesting" ? "Asking coach…" : `Ask coach to add ${minutes} min`
+          }
+          onPress={handleRequest}
+          disabled={
+            !inExtendWindow ||
+            phase === "requesting" ||
+            quoteLoading ||
+            (!!quoteError && !quote?.allowed)
+          }
+          fullWidth
+        />
+      </>
+    );
+  }
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={handleClose}
+    >
+      <View style={[styles.backdrop, { paddingBottom: insets.bottom + space.md }]}>
+        <View style={styles.sheet}>{body}</View>
       </View>
     </Modal>
   );
@@ -258,6 +383,18 @@ const styles = StyleSheet.create({
   chipTextActive: { color: colors.brandTextOn },
   price: { ...typography.titleMd, color: colors.brandNavy, textAlign: "center" },
   error: { ...typography.bodySm, color: colors.danger, textAlign: "center" },
+  notice: { ...typography.bodySm, color: colors.textMuted, textAlign: "center" },
+  awaitBlock: { alignItems: "center", gap: 6, marginVertical: space.md },
+  awaitCountdown: { ...typography.titleMd, color: colors.text },
+  awaitHint: { ...typography.label, color: colors.textMuted },
+  priceBlock: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: space.sm,
+  },
+  priceLabel: { ...typography.label, color: colors.textMuted },
+  priceValue: { ...typography.titleMd, color: colors.brandNavy },
   payRow: { flexDirection: "row", gap: 8, marginVertical: space.sm },
   payChip: {
     flex: 1,
