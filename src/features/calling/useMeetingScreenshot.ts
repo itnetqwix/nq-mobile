@@ -181,11 +181,22 @@ export function useMeetingScreenshot({
       if (!isTrainer) return;
       setCapturing(true);
       try {
+        /** Give React a frame to remove `capturing`-gated overlays
+         *  (timeline, zoom buttons) before view-shot snapshots the tree. */
         await delay(CAPTURE_FRAME_DELAY_MS);
-        let localUri = await captureViewShot();
 
-        if (!localUri) {
+        let localUri: string | null = null;
+
+        /** When clips are loaded, prefer the native video thumbnail because
+         *  `react-native-view-shot` + `expo-av` typically returns a blank
+         *  frame on iOS. Thumbnails reliably contain the actual clip pixels. */
+        if (fallbackSources && fallbackSources.length > 0) {
           localUri = await captureFromFallbackSources(fallbackSources);
+        }
+
+        /** Fallback to view-shot if no clips are active (live PIP screenshot). */
+        if (!localUri) {
+          localUri = await captureViewShot();
         }
 
         if (!localUri) {

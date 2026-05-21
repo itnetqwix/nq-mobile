@@ -304,9 +304,24 @@ export function UpcomingSessionsScreen() {
 
   const todayKey = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
+  /**
+   * Active tabs (upcoming/confirmed) merge both statuses because the backend may
+   * file an active instant lesson under either bucket depending on whether the
+   * trainer joined yet. This ensures rejoinable instant lessons always surface
+   * regardless of server-side bookkeeping.
+   */
   const { data: rawSessions = [], isLoading, isRefetching, refetch } = useQuery({
     queryKey: ["sessions", activeTab],
-    queryFn: () => fetchScheduledMeetings(activeTab),
+    queryFn: async () => {
+      if (activeTab === "upcoming" || activeTab === "confirmed") {
+        const [upcoming, confirmed] = await Promise.all([
+          fetchScheduledMeetings("upcoming").catch(() => []),
+          fetchScheduledMeetings("confirmed").catch(() => []),
+        ]);
+        return [...upcoming, ...confirmed];
+      }
+      return fetchScheduledMeetings(activeTab);
+    },
     staleTime: 60_000,
   });
 
@@ -321,6 +336,13 @@ export function UpcomingSessionsScreen() {
     let list = rawSessions;
     if (activeTab === "upcoming" || activeTab === "confirmed") {
       list = list.filter((s: any) => !isInstantExpiredForLists(s, new Date(nowMs)));
+      list = list.filter((s: any) => {
+        const status = (s?.status ?? "").toString().toLowerCase();
+        if (activeTab === "confirmed") {
+          return status === "confirmed" || isInstantLesson(s);
+        }
+        return status !== "confirmed";
+      });
     }
     if (selectedDate) {
       list = list.filter((s: any) => isSameDay(s.booked_date, selectedDate));

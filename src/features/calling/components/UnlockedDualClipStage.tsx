@@ -37,6 +37,9 @@ type Props = {
   onSeek: (paneIndex: 0 | 1, seconds: number) => void;
   clipFocusIndex?: 0 | 1 | null;
   onToggleExpand?: (paneIndex: 0 | 1) => void;
+  /** When true, render only the video frames (no controls / zoom buttons)
+   *  so screenshots match the web `hide-in-screenshot` behavior. */
+  capturing?: boolean;
 };
 
 export function UnlockedDualClipStage({
@@ -50,6 +53,7 @@ export function UnlockedDualClipStage({
   onSeek,
   clipFocusIndex = null,
   onToggleExpand,
+  capturing = false,
 }: Props) {
   const showBoth = clipFocusIndex == null;
 
@@ -69,14 +73,17 @@ export function UnlockedDualClipStage({
             >
               <View style={styles.player}>
                 <ClipPlayer uri={uri} {...paneProps} />
-                {paneProps.showZoomControls && paneProps.onZoomIn && paneProps.onZoomOut ? (
+                {!capturing &&
+                paneProps.showZoomControls &&
+                paneProps.onZoomIn &&
+                paneProps.onZoomOut ? (
                   <ClipZoomControls
                     onZoomIn={paneProps.onZoomIn}
                     onZoomOut={paneProps.onZoomOut}
                   />
                 ) : null}
               </View>
-              {isTrainer ? (
+              {isTrainer && !capturing ? (
                 <View style={styles.controlsDock}>
                   <ClipPlaybackControls
                     variant="inline"

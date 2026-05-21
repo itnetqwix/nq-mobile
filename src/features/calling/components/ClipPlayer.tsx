@@ -71,10 +71,22 @@ export function ClipPlayer({
   const frameSize = useRef({ w: 0, h: 0 });
   const panStart = useRef({ x: 0, y: 0 });
   const panAtGrant = useRef({ x: 0, y: 0 });
+  /** Refs so the PanResponder closure can read latest pan/zoom without
+   *  re-memoizing the responder on every emit (which would create churn). */
+  const currentPanRef = useRef({ x: 0, y: 0 });
+  const currentZoomRef = useRef(1);
 
   const z = clampZoom(Number.isFinite(zoom) ? zoom : 1);
   const panX = typeof pan?.x === "number" ? pan.x : 0;
   const panY = typeof pan?.y === "number" ? pan.y : 0;
+
+  useEffect(() => {
+    currentPanRef.current = { x: panX, y: panY };
+  }, [panX, panY]);
+
+  useEffect(() => {
+    currentZoomRef.current = z;
+  }, [z]);
 
   useEffect(() => {
     const player = videoRef.current;
@@ -97,26 +109,33 @@ export function ClipPlayer({
 
   const emitPan = useCallback(
     (next: { x: number; y: number }, emitSocket: boolean) => {
-      const clamped = clampPan(next, frameSize.current.w, frameSize.current.h, z);
+      const clamped = clampPan(
+        next,
+        frameSize.current.w,
+        frameSize.current.h,
+        currentZoomRef.current
+      );
       onPanChange?.(clamped, emitSocket);
     },
-    [onPanChange, z]
+    [onPanChange]
   );
 
   const panResponder = useMemo(() => {
-    if (!panEnabled || !onPanChange || z <= 1) return null;
+    if (!panEnabled || !onPanChange) return null;
     return PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => currentZoomRef.current > 1,
       onMoveShouldSetPanResponder: (_, g) =>
-        Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4,
+        currentZoomRef.current > 1 &&
+        (Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4),
       onPanResponderGrant: () => {
-        panAtGrant.current = { x: panX, y: panY };
-        panStart.current = { x: panX, y: panY };
+        panAtGrant.current = { ...currentPanRef.current };
+        panStart.current = { ...currentPanRef.current };
       },
       onPanResponderMove: (_, g) => {
+        const zoomNow = currentZoomRef.current || 1;
         const next = {
-          x: panAtGrant.current.x + g.dx / z,
-          y: panAtGrant.current.y + g.dy / z,
+          x: panAtGrant.current.x + g.dx / zoomNow,
+          y: panAtGrant.current.y + g.dy / zoomNow,
         };
         panStart.current = next;
         emitPan(next, true);
@@ -128,7 +147,7 @@ export function ClipPlayer({
         emitPan(panStart.current, true);
       },
     });
-  }, [emitPan, onPanChange, panEnabled, panX, panY, z]);
+  }, [emitPan, onPanChange, panEnabled]);
 
   return (
     <View style={styles.wrap} onLayout={onLayout}>

@@ -135,11 +135,14 @@ export function isInstantAcceptExpired(session: any, now = new Date()): boolean 
 export function isInstantLessonLive(session: any): boolean {
   if (!isInstantLesson(session)) return false;
   if (session?.both_joined_at) return true;
+  if (session?.first_joined_at) return true;
   const phase = String(session?.instant_phase ?? "").toUpperCase();
   return phase === "ACTIVE";
 }
 
-/** Scheduled end of an instant lesson (duration / end_time), with late rejoin buffer. */
+/** Scheduled end of an instant lesson (duration / end_time), with late rejoin buffer.
+ *  Falls back to `accepted_at + duration` so trainers can rejoin even when the
+ *  server hasn't stamped `both_joined_at` / `start_time` yet. */
 export function getInstantLessonEndMs(session: any): number | null {
   if (!isInstantLesson(session)) return null;
   const end = getSessionEnd(session);
@@ -148,6 +151,18 @@ export function getInstantLessonEndMs(session: any): number | null {
   const durationMin = Number(session?.duration ?? session?.lesson_duration);
   if (start && Number.isFinite(durationMin) && durationMin > 0) {
     return start.getTime() + durationMin * 60 * 1000 + LATE_JOIN_MS;
+  }
+  const acceptedAtMs = session?.accepted_at
+    ? new Date(session.accepted_at).getTime()
+    : NaN;
+  if (Number.isFinite(acceptedAtMs) && Number.isFinite(durationMin) && durationMin > 0) {
+    return acceptedAtMs + durationMin * 60 * 1000 + LATE_JOIN_MS;
+  }
+  const firstJoinMs = session?.first_joined_at
+    ? new Date(session.first_joined_at).getTime()
+    : NaN;
+  if (Number.isFinite(firstJoinMs) && Number.isFinite(durationMin) && durationMin > 0) {
+    return firstJoinMs + durationMin * 60 * 1000 + LATE_JOIN_MS;
   }
   return null;
 }
@@ -173,6 +188,17 @@ export function isInstantExpiredForLists(session: any, now = new Date()): boolea
     const endMs = getInstantLessonEndMs(session);
     if (endMs == null) return false;
     return now.getTime() > endMs;
+  }
+  /** Accepted-but-not-yet-joined instant lessons should remain visible in the
+   *  Confirmed tab for their full duration window so the trainer can rejoin. */
+  const status = normalizeSessionStatus(session?.status);
+  if (
+    isInstantLesson(session) &&
+    session?.accepted_at &&
+    (status === "confirmed" || status === "upcoming")
+  ) {
+    const endMs = getInstantLessonEndMs(session);
+    if (endMs != null) return now.getTime() > endMs;
   }
   return isInstantAcceptExpired(session, now) || isInstantJoinExpired(session, now);
 }
@@ -288,13 +314,22 @@ export function canRejoinLesson(session: any, now = new Date()): boolean {
   if (status === "cancelled" || status === "completed") return false;
   if (canJoinSession(session, now)) return true;
 
-  if (isInstantLesson(session) && isInstantLessonLive(session)) {
-    const endMs = getInstantLessonEndMs(session);
-    if (endMs == null) return status === "confirmed" || status === "upcoming";
-    return (
-      now.getTime() <= endMs &&
-      (status === "confirmed" || status === "upcoming")
-    );
+  if (isInstantLesson(session)) {
+    if (isInstantLessonLive(session)) {
+      const endMs = getInstantLessonEndMs(session);
+      if (endMs == null) return status === "confirmed" || status === "upcoming";
+      return (
+        now.getTime() <= endMs &&
+        (status === "confirmed" || status === "upcoming")
+      );
+    }
+    /** Trainer accepted but neither side fully joined yet — keep rejoinable
+     *  until the booked duration is exhausted so an accidental exit doesn't
+     *  lock the trainer out before any join event was recorded. */
+    if (session?.accepted_at && (status === "confirmed" || status === "upcoming")) {
+      const endMs = getInstantLessonEndMs(session);
+      if (endMs != null) return now.getTime() <= endMs;
+    }
   }
 
   if (session?.both_joined_at) return true;

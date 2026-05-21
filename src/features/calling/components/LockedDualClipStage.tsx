@@ -21,6 +21,7 @@ type Props = {
   durationSeconds: number;
   onTogglePlay: () => void;
   onSeek: (seconds: number) => void;
+  capturing?: boolean;
 };
 
 export function LockedDualClipStage({
@@ -32,6 +33,7 @@ export function LockedDualClipStage({
   durationSeconds,
   onTogglePlay,
   onSeek,
+  capturing = false,
 }: Props) {
   return (
     <View style={styles.root}>
@@ -41,7 +43,10 @@ export function LockedDualClipStage({
           return (
             <View key={paneIndex} style={styles.pane}>
               <ClipPlayer uri={uris[paneIndex]} {...paneProps} />
-              {paneProps.showZoomControls && paneProps.onZoomIn && paneProps.onZoomOut ? (
+              {!capturing &&
+              paneProps.showZoomControls &&
+              paneProps.onZoomIn &&
+              paneProps.onZoomOut ? (
                 <ClipZoomControls
                   onZoomIn={paneProps.onZoomIn}
                   onZoomOut={paneProps.onZoomOut}
@@ -51,7 +56,7 @@ export function LockedDualClipStage({
           );
         })}
       </View>
-      {isTrainer ? (
+      {isTrainer && !capturing ? (
         <View style={styles.controlsFooter}>
           <ClipPlaybackControls
             variant="inline"

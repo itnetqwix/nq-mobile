@@ -160,9 +160,22 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
     void requestPermissions();
   }, [requestPermissions]);
 
+  /** When the trainer ends the call we want the PDF game-plan / ratings modal
+   *  to render BEFORE navigating away. `postCallActiveRef` is flipped by
+   *  `MeetingSurface` when it opens the post-call flow so the CallContext's
+   *  `onEnded` (engine teardown) doesn't yank us back to Home prematurely. */
+  const postCallActiveRef = useRef(false);
   const goHome = useCallback(() => {
+    postCallActiveRef.current = false;
     navigation.reset({ index: 0, routes: [{ name: "Main" }] });
   }, [navigation]);
+  const handleCallEnded = useCallback(() => {
+    if (postCallActiveRef.current) return;
+    goHome();
+  }, [goHome]);
+  const beginPostCallFlow = useCallback(() => {
+    postCallActiveRef.current = true;
+  }, []);
 
   const role: SessionRole =
     accountType === AccountType.TRAINER ? "Trainer" : "Trainee";
@@ -243,7 +256,7 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
       toUser={peer}
       role={role}
       iceServers={iceServers}
-      onEnded={goHome}
+      onEnded={handleCallEnded}
       onPeerJoined={() => {
         pushLocalToast({
           title: NOTIFICATION_TITLES.peerJoinedCall,
@@ -273,6 +286,7 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
         isTrainer={role === "Trainer"}
         accountType={accountType}
         onExit={goHome}
+        onPostCallFlowStart={beginPostCallFlow}
         myId={me._id}
         peerId={peer._id}
         peerDisplayName={peerDisplayName}
@@ -287,6 +301,7 @@ function MeetingSurface({
   isTrainer,
   accountType,
   onExit,
+  onPostCallFlowStart,
   myId,
   peerId,
   peerDisplayName,
@@ -296,6 +311,7 @@ function MeetingSurface({
   isTrainer: boolean;
   accountType: string | null;
   onExit: () => void;
+  onPostCallFlowStart: () => void;
   myId: string;
   peerId: string;
   peerDisplayName: string;
@@ -755,6 +771,7 @@ function MeetingSurface({
   }, [clipDurations, clipProgresses, clipSync]);
 
   const openPostCallFlow = useCallback(async () => {
+    onPostCallFlowStart();
     if (!isTrainer) {
       setRatingsOpen(true);
       return;
@@ -772,7 +789,10 @@ function MeetingSurface({
         hasScreenshots =
           Array.isArray(raw) &&
           raw.some((x: unknown) =>
-            typeof x === "string" ? x.length > 0 : !!(x as { name?: string })?.name
+            typeof x === "string"
+              ? x.length > 0
+              : !!(x as { name?: string; imageUrl?: string })?.name ||
+                !!(x as { imageUrl?: string })?.imageUrl
           );
       } catch {
         hasScreenshots = false;
@@ -780,10 +800,19 @@ function MeetingSurface({
     }
     if (hasScreenshots) setGamePlanOpen(true);
     else setRatingsOpen(true);
-  }, [isTrainer, lessonId, myId, peerId, screenshot.hasCaptures]);
+  }, [
+    isTrainer,
+    lessonId,
+    myId,
+    onPostCallFlowStart,
+    peerId,
+    screenshot.hasCaptures,
+  ]);
 
   /** Show ratings after the call ends — `endCall()` will pop us back, so we
-   *  wrap that path: open the modal first, then exit on dismiss. */
+   *  open the post-call modal FIRST (which flips the parent guard) and only
+   *  then tear down the WebRTC engine. The screen stays mounted until the
+   *  user dismisses ratings, at which point we navigate home. */
   const confirmExit = useCallback(() => {
     Alert.alert(
       "End session?",
@@ -794,8 +823,8 @@ function MeetingSurface({
           text: "End",
           style: "destructive",
           onPress: () => {
-            endCall();
             void openPostCallFlow();
+            setTimeout(() => endCall(), 0);
           },
         },
       ]
@@ -992,6 +1021,7 @@ function MeetingSurface({
                 durationSeconds={lockedDuration}
                 onTogglePlay={handleLockedClipTogglePlay}
                 onSeek={(sec) => handleClipSeek(0, sec)}
+                capturing={screenshot.capturing}
               />
             ) : dualClip && clipPaneUris[0] && clipPaneUris[1] ? (
               <UnlockedDualClipStage
@@ -1026,6 +1056,7 @@ function MeetingSurface({
                     clipFocusIndex === paneIndex ? null : paneIndex
                   )
                 }
+                capturing={screenshot.capturing}
               />
             ) : (
               <View style={styles.singleClip}>
@@ -1034,7 +1065,8 @@ function MeetingSurface({
                   return (
                     <View style={styles.singleClipPlayer}>
                       <ClipPlayer uri={activeClipUri} {...singlePane} />
-                      {singlePane.showZoomControls &&
+                      {!screenshot.capturing &&
+                      singlePane.showZoomControls &&
                       singlePane.onZoomIn &&
                       singlePane.onZoomOut ? (
                         <ClipZoomControls
@@ -1045,7 +1077,7 @@ function MeetingSurface({
                     </View>
                   );
                 })()}
-                {isTrainer ? (
+                {isTrainer && !screenshot.capturing ? (
                   <ClipPlaybackControls
                     size="compact"
                     isPlaying={clipSync.isClipPlaying(
