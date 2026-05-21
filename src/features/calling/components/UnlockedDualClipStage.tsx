@@ -1,10 +1,9 @@
 /**
- * Dual unlocked clips — stacked players, shared controls footer inside one clip box.
+ * Dual unlocked clips — each pane has video + timeline at bottom (web clip-player-frame).
  */
 
 import React from "react";
-import { Pressable, StyleSheet, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { StyleSheet, View } from "react-native";
 
 import { ClipPlaybackControls } from "./ClipPlaybackControls";
 import { ClipPlayer } from "./ClipPlayer";
@@ -58,64 +57,32 @@ export function UnlockedDualClipStage({
               key={paneIndex}
               style={[styles.pane, showBoth ? styles.paneHalf : styles.paneFocused]}
             >
-              <ClipPlayer uri={uri} {...makePaneProps(paneIndex)} />
-              {isTrainer && onToggleExpand ? (
-                <Pressable
-                  style={styles.expandBtn}
-                  onPress={() => onToggleExpand(paneIndex)}
-                  accessibilityLabel={
-                    clipFocusIndex === paneIndex
-                      ? "Exit expanded clip"
-                      : "Expand clip"
-                  }
-                >
-                  <Ionicons
-                    name={
-                      clipFocusIndex === paneIndex
-                        ? "contract-outline"
-                        : "expand-outline"
+              <View style={styles.player}>
+                <ClipPlayer uri={uri} {...makePaneProps(paneIndex)} />
+              </View>
+              {isTrainer ? (
+                <View style={styles.controlsDock}>
+                  <ClipPlaybackControls
+                    variant="inline"
+                    size="compact"
+                    isPlaying={isPlayingByPane[paneIndex]}
+                    onTogglePlay={() => onTogglePlay(paneIndex)}
+                    progressSeconds={progressSecondsByPane[paneIndex]}
+                    durationSeconds={durationSecondsByPane[paneIndex]}
+                    onSeek={(sec) => onSeek(paneIndex, sec)}
+                    disabled={!uri}
+                    showExpand={!!onToggleExpand}
+                    isExpanded={clipFocusIndex === paneIndex}
+                    onToggleExpand={
+                      onToggleExpand ? () => onToggleExpand(paneIndex) : undefined
                     }
-                    size={20}
-                    color="#333"
                   />
-                </Pressable>
+                </View>
               ) : null}
             </View>
           );
         })}
       </View>
-      {isTrainer && showBoth ? (
-        <View style={styles.controlsFooter}>
-          {([0, 1] as const).map((paneIndex) =>
-            uris[paneIndex] ? (
-              <ClipPlaybackControls
-                key={paneIndex}
-                variant="inline"
-                size="compact"
-                isPlaying={isPlayingByPane[paneIndex]}
-                onTogglePlay={() => onTogglePlay(paneIndex)}
-                progressSeconds={progressSecondsByPane[paneIndex]}
-                durationSeconds={durationSecondsByPane[paneIndex]}
-                onSeek={(sec) => onSeek(paneIndex, sec)}
-                disabled={!uris[paneIndex]}
-              />
-            ) : null
-          )}
-        </View>
-      ) : isTrainer && clipFocusIndex != null ? (
-        <View style={styles.controlsFooter}>
-          <ClipPlaybackControls
-            variant="inline"
-            size="compact"
-            isPlaying={isPlayingByPane[clipFocusIndex]}
-            onTogglePlay={() => onTogglePlay(clipFocusIndex)}
-            progressSeconds={progressSecondsByPane[clipFocusIndex]}
-            durationSeconds={durationSecondsByPane[clipFocusIndex]}
-            onSeek={(sec) => onSeek(clipFocusIndex, sec)}
-            disabled={!uris[clipFocusIndex]}
-          />
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -131,6 +98,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   pane: {
+    flexDirection: "column",
     overflow: "hidden",
     borderRadius: 8,
     backgroundColor: CLIP_BG,
@@ -142,24 +110,13 @@ const styles = StyleSheet.create({
   paneFocused: {
     flex: 1,
   },
-  controlsFooter: {
-    backgroundColor: CLIP_BG,
-    paddingTop: 4,
-    paddingBottom: 2,
-    gap: 4,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(0,0,0,0.12)",
+  player: {
+    flex: 1,
+    minHeight: 80,
   },
-  expandBtn: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(0,0,0,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 8,
+  controlsDock: {
+    flexShrink: 0,
+    paddingTop: 2,
+    paddingBottom: 2,
   },
 });

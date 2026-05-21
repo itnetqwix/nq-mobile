@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, View, type LayoutChangeEvent } from "react-native";
+import { useCallback, useRef, useState } from "react";
+import { Alert, View } from "react-native";
 import { captureRef } from "react-native-view-shot";
 import * as FileSystem from "expo-file-system/legacy";
 import { putFileToPresignedUrl } from "../../lib/presignedPut";
 
-import { captureClipFrames } from "./captureClipScreenshot";
+import { captureClipFrameUri } from "./captureClipScreenshot";
 import { fetchSessionReport, requestScreenshotUpload } from "./meetingReportApi";
 
 export type ScreenshotCaptureSource = {
@@ -19,6 +19,9 @@ type Args = {
   isTrainer: boolean;
   onUploaded?: (imageKey: string) => void;
 };
+
+const CAPTURE_FRAME_DELAY_MS = 320;
+const MIN_CAPTURE_BYTES = 8000;
 
 function normalizeReportKeys(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
@@ -44,6 +47,10 @@ function extractImageKeyFromPresignResponse(
   return parts[parts.length - 1] || `file-${Date.now()}.png`;
 }
 
+function delay(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
 export function useMeetingScreenshot({
   sessionId,
   trainerId,
@@ -55,9 +62,6 @@ export function useMeetingScreenshot({
   const [capturing, setCapturing] = useState(false);
   const [captureCount, setCaptureCount] = useState(0);
   const [screenshotKeys, setScreenshotKeys] = useState<string[]>([]);
-  const [compositeFrameUris, setCompositeFrameUris] = useState<string[] | null>(null);
-  const [compositeLayoutReady, setCompositeLayoutReady] = useState(false);
-  const capturePendingRef = useRef(false);
 
   const refreshScreenshots = useCallback(async () => {
     try {
@@ -73,7 +77,7 @@ export function useMeetingScreenshot({
     }
   }, [sessionId, traineeId, trainerId]);
 
-  const uploadJpeg = useCallback(
+  const uploadPng = useCallback(
     async (localUri: string) => {
       const presign = await requestScreenshotUpload({
         sessions: sessionId,
@@ -102,7 +106,7 @@ export function useMeetingScreenshot({
 
   const finishCapture = useCallback(
     async (localUri: string) => {
-      const uploadedKey = await uploadJpeg(localUri);
+      const uploadedKey = await uploadPng(localUri);
       await refreshScreenshots();
       let imageKey = uploadedKey;
       try {
@@ -116,76 +120,71 @@ export function useMeetingScreenshot({
         const last = items[items.length - 1] as { imageUrl?: string } | undefined;
         if (last?.imageUrl) imageKey = last.imageUrl;
       } catch {
-        /** use uploadedKey */
+        /** keep uploadedKey */
       }
       setCaptureCount((n) => n + 1);
       setScreenshotKeys((prev) => [...new Set([...prev, imageKey])]);
       onUploaded?.(imageKey);
     },
-    [onUploaded, refreshScreenshots, sessionId, trainerId, traineeId, uploadJpeg]
+    [onUploaded, refreshScreenshots, sessionId, trainerId, traineeId, uploadPng]
   );
 
-  useEffect(() => {
-    if (!compositeFrameUris?.length || !compositeLayoutReady || !capturePendingRef.current) {
-      return;
-    }
-    const run = async () => {
-      try {
-        if (!captureTargetRef.current) {
-          throw new Error("Capture view not ready");
-        }
-        const uri = await captureRef(captureTargetRef, {
-          format: "jpg",
-          quality: 0.9,
-          result: "tmpfile",
-        });
-        await finishCapture(uri);
-      } catch (e: any) {
-        if (__DEV__) console.warn("[meeting] screenshot composite failed", e);
-        Alert.alert("Screenshot failed", e?.message ?? "Could not save screenshot.");
-      } finally {
-        capturePendingRef.current = false;
-        setCompositeFrameUris(null);
-        setCompositeLayoutReady(false);
-        setCapturing(false);
+  const captureViewShot = useCallback(async (): Promise<string | null> => {
+    if (!captureTargetRef.current) return null;
+    try {
+      const uri = await captureRef(captureTargetRef, {
+        format: "png",
+        quality: 1,
+        result: "tmpfile",
+      });
+      const normalized = uri.split("?")[0];
+      const info = await FileSystem.getInfoAsync(normalized);
+      if (info.exists && "size" in info && typeof info.size === "number") {
+        if (info.size >= MIN_CAPTURE_BYTES) return uri;
       }
-    };
-    void run();
-  }, [compositeFrameUris, compositeLayoutReady, finishCapture]);
+      return null;
+    } catch (e) {
+      if (__DEV__) console.warn("[meeting] view-shot capture failed", e);
+      return null;
+    }
+  }, []);
 
   const takeScreenshot = useCallback(
-    async (sources: ScreenshotCaptureSource[]) => {
+    async (fallbackSources?: ScreenshotCaptureSource[]) => {
       if (!isTrainer) return;
-      if (!sources.length) {
-        Alert.alert("Screenshot", "No clips to capture.");
-        return;
-      }
       setCapturing(true);
       try {
-        const frames = await captureClipFrames(sources);
-        if (frames.length === 0) {
-          throw new Error("Could not capture clip frames. Wait for clips to load.");
+        await delay(CAPTURE_FRAME_DELAY_MS);
+        let localUri = await captureViewShot();
+
+        if (!localUri && fallbackSources?.length) {
+          for (const src of fallbackSources) {
+            if (!src.uri) continue;
+            const frame = await captureClipFrameUri(src.uri, src.progressSeconds);
+            if (frame) {
+              localUri = frame;
+              break;
+            }
+          }
         }
-        if (frames.length === 1) {
-          await finishCapture(frames[0]);
-          setCapturing(false);
-          return;
+
+        if (!localUri) {
+          throw new Error(
+            "Could not capture this view. Try again after clips finish loading."
+          );
         }
-        capturePendingRef.current = true;
-        setCompositeLayoutReady(false);
-        setCompositeFrameUris(frames);
-      } catch (e: any) {
+
+        await finishCapture(localUri);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : "Could not save screenshot.";
         if (__DEV__) console.warn("[meeting] screenshot failed", e);
-        Alert.alert("Screenshot failed", e?.message ?? "Could not save screenshot.");
+        Alert.alert("Screenshot failed", msg);
+      } finally {
         setCapturing(false);
       }
     },
-    [finishCapture, isTrainer]
+    [captureViewShot, finishCapture, isTrainer]
   );
-
-  const onCompositeLayout = useCallback((_e: LayoutChangeEvent) => {
-    setCompositeLayoutReady(true);
-  }, []);
 
   return {
     captureTargetRef,
@@ -195,7 +194,5 @@ export function useMeetingScreenshot({
     screenshotKeys,
     refreshScreenshots,
     hasCaptures: captureCount > 0 || screenshotKeys.length > 0,
-    compositeFrameUris,
-    onCompositeLayout,
   };
 };

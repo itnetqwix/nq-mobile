@@ -1,12 +1,16 @@
 /**
- * ClipPlayer — large-screen video player for the active lesson clip. Mirrors
- * `nq-frontend-main/app/components/portrait-calling/clip-mode.jsx` clip pane.
+ * ClipPlayer — large-screen video player for the active lesson clip.
  */
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import { ResizeMode, Video, type AVPlaybackStatus } from "expo-av";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+} from "react-native-reanimated";
 
 export type ClipPlayerHandle = {
   play: () => Promise<void> | void;
@@ -20,7 +24,6 @@ type Props = {
   seekTargetMs?: number | null;
   zoom?: number;
   pan?: { x: number; y: number };
-  /** Trainer may pinch-to-zoom; second arg false = local preview only until gesture ends. */
   pinchEnabled?: boolean;
   onPinchZoom?: (zoom: number, emitSocket?: boolean) => void;
   onProgressSeconds?: (seconds: number) => void;
@@ -29,6 +32,13 @@ type Props = {
 };
 
 const CLIP_BG = "#ffffff";
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 5;
+
+function clampZoom(z: number) {
+  "worklet";
+  return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z));
+}
 
 export function ClipPlayer({
   uri,
@@ -42,16 +52,29 @@ export function ClipPlayer({
   onDurationSeconds,
   onEnded,
 }: Props) {
-  const videoRef = useRef<Video>(null);
-  const pinchBaseZoomRef = useRef(zoom);
-  const pinchingRef = useRef(false);
-  const [localZoom, setLocalZoom] = useState(zoom);
+  const videoRef = React.useRef<Video>(null);
+  const zoomShared = useSharedValue(zoom);
+  const baseZoom = useSharedValue(zoom);
+  const [pinching, setPinching] = React.useState(false);
+
+  const commitZoom = useCallback(
+    (next: number) => {
+      setPinching(false);
+      onPinchZoom?.(next, true);
+    },
+    [onPinchZoom]
+  );
+
+  const beginPinch = useCallback(() => {
+    setPinching(true);
+  }, []);
 
   useEffect(() => {
-    if (pinchingRef.current) return;
-    setLocalZoom(zoom);
-    pinchBaseZoomRef.current = zoom;
-  }, [zoom]);
+    if (pinching) return;
+    const z = Number.isFinite(zoom) ? zoom : 1;
+    zoomShared.value = z;
+    baseZoom.value = z;
+  }, [zoom, zoomShared, baseZoom, pinching]);
 
   useEffect(() => {
     const player = videoRef.current;
@@ -67,45 +90,45 @@ export function ClipPlayer({
       .catch(() => undefined);
   }, [seekTargetMs]);
 
-  const pinchGesture = useMemo(() => {
+  const panX = typeof pan?.x === "number" ? pan.x : 0;
+  const panY = typeof pan?.y === "number" ? pan.y : 0;
+
+  const animatedTransform = useAnimatedStyle(() => ({
+    transform: [{ scale: zoomShared.value }],
+  }));
+
+  const pinchGesture = React.useMemo(() => {
     if (!pinchEnabled || !onPinchZoom) return null;
     return Gesture.Pinch()
       .enabled(pinchEnabled)
       .onBegin(() => {
-        pinchingRef.current = true;
-        pinchBaseZoomRef.current = zoom;
-        setLocalZoom(zoom);
+        "worklet";
+        baseZoom.value = zoomShared.value;
+        runOnJS(beginPinch)();
       })
-      .onUpdate((e: { scale: number }) => {
-        const next = Math.max(1, Math.min(5, pinchBaseZoomRef.current * e.scale));
-        setLocalZoom(next);
+      .onUpdate((e) => {
+        "worklet";
+        zoomShared.value = clampZoom(baseZoom.value * e.scale);
       })
-      .onEnd((e: { scale: number }) => {
-        const next = Math.max(1, Math.min(5, pinchBaseZoomRef.current * e.scale));
-        pinchBaseZoomRef.current = next;
-        setLocalZoom(next);
-        pinchingRef.current = false;
-        onPinchZoom(next, true);
+      .onEnd(() => {
+        "worklet";
+        runOnJS(commitZoom)(zoomShared.value);
       })
       .onFinalize(() => {
-        pinchingRef.current = false;
+        "worklet";
+        runOnJS(setPinching)(false);
       });
-  }, [pinchEnabled, onPinchZoom, zoom]);
+  }, [pinchEnabled, beginPinch, commitZoom, zoomShared, baseZoom]);
 
   const content = (
     <View style={styles.wrap}>
-      <View
-        style={[
-          styles.transformLayer,
-          {
-            transform: [
-              { translateX: typeof pan?.x === "number" ? pan.x : 0 },
-              { translateY: typeof pan?.y === "number" ? pan.y : 0 },
-              { scale: Number.isFinite(localZoom) ? localZoom : 1 },
-            ],
-          },
-        ]}
-      >
+      <Animated.View style={[styles.transformLayer, animatedTransform]}>
+        <View
+          style={[
+            styles.panLayer,
+            { transform: [{ translateX: panX }, { translateY: panY }] },
+          ]}
+        >
         <Video
           ref={videoRef}
           source={{ uri }}
@@ -128,7 +151,8 @@ export function ClipPlayer({
             if (__DEV__) console.warn("[ClipPlayer] playback failed", { uri, error: e });
           }}
         />
-      </View>
+        </View>
+      </Animated.View>
     </View>
   );
 
@@ -147,6 +171,9 @@ const styles = StyleSheet.create({
   transformLayer: {
     flex: 1,
     backgroundColor: CLIP_BG,
+  },
+  panLayer: {
+    flex: 1,
   },
   player: {
     flex: 1,

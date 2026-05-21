@@ -90,7 +90,6 @@ import {
 import { SessionGamePlanModal } from "../components/SessionGamePlanModal";
 import { SessionScreenshotSheet } from "../components/SessionScreenshotSheet";
 import { SessionScreenshotDetailsModal } from "../components/SessionScreenshotDetailsModal";
-import { ScreenshotCompositeHost } from "../components/ScreenshotCompositeHost";
 import type { ScreenshotCaptureSource } from "../useMeetingScreenshot";
 import { RecordingBar } from "../components/RecordingBar";
 import { useInstantLessonRecording } from "../useInstantLessonRecording";
@@ -927,14 +926,6 @@ function MeetingSurface({
         </View>
       ) : null}
 
-      {screenshot.compositeFrameUris && screenshot.compositeFrameUris.length > 1 ? (
-        <ScreenshotCompositeHost
-          frameUris={screenshot.compositeFrameUris}
-          captureRef={screenshot.captureTargetRef}
-          onLayout={screenshot.onCompositeLayout}
-        />
-      ) : null}
-
       {/* Remote video / clip pane */}
       <View
         style={[
@@ -962,6 +953,8 @@ function MeetingSurface({
           />
         ) : activeClipUri ? (
           <View
+            ref={screenshot.captureTargetRef}
+            collapsable={false}
             style={[
               styles.clipFrame,
               dualClip && styles.clipFrameDual,

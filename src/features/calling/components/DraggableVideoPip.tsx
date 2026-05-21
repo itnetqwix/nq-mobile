@@ -1,17 +1,19 @@
 /**
  * Draggable picture-in-picture tile for live camera streams.
- * Drag off-screen to hide; use the expand button (not tap) to focus on main stage during clip mode.
+ * PanResponder drag (no Reanimated worklets) to avoid ref/worklet crashes.
  */
 
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useMemo } from "react";
-import { Pressable, StyleSheet, Text, View, type LayoutRectangle } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-} from "react-native-reanimated";
+import React, { useMemo, useRef } from "react";
+import {
+  Animated,
+  PanResponder,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type LayoutRectangle,
+} from "react-native";
 import type { MediaStream } from "react-native-webrtc";
 
 import type { CallParticipant } from "../types";
@@ -140,123 +142,123 @@ export function DraggableVideoPip({
   focusOnTap = false,
   onFocus,
   onExpand,
-  onSizeChange,
-  resizable = false,
-  minWidth = PIP_MIN_WIDTH,
-  maxWidth = PIP_MAX_WIDTH,
 }: DraggableVideoPipProps) {
   const reservedBottom = pipReservedBottom ?? safeBottom + 80;
-  const translateX = useSharedValue(position.x);
-  const translateY = useSharedValue(position.y);
-  const startX = useSharedValue(position.x);
-  const startY = useSharedValue(position.y);
-  const didDrag = useSharedValue(false);
-  const releasePosRef = React.useRef(position);
+  const pan = useRef(new Animated.ValueXY(position)).current;
+  const dragStart = useRef({ x: position.x, y: position.y });
+  const releasePos = useRef(position);
+  const didDragRef = useRef(false);
 
-  useEffect(() => {
-    translateX.value = position.x;
-    translateY.value = position.y;
-    startX.value = position.x;
-    startY.value = position.y;
-    releasePosRef.current = position;
-  }, [position.x, position.y, startX, startY, translateX, translateY]);
+  React.useEffect(() => {
+    pan.setValue({ x: position.x, y: position.y });
+    dragStart.current = position;
+    releasePos.current = position;
+  }, [position.x, position.y, pan]);
 
-  const handleRelease = useMemo(
-    () => (rawX: number, rawY: number, moved: boolean) => {
-      if (!moved && focusOnTap && onFocus) {
-        translateX.value = position.x;
-        translateY.value = position.y;
-        onFocus();
-        return;
-      }
-      if (!bounds) {
-        onPositionChange({ x: rawX, y: rawY });
-        return;
-      }
-      const edge = detectHideEdge(
-        rawX,
-        rawY,
-        bounds,
-        safeTop,
-        reservedBottom,
-        width,
-        height
-      );
-      if (edge) {
-        onHide(edge, releasePosRef.current);
-        translateX.value = releasePosRef.current.x;
-        translateY.value = releasePosRef.current.y;
-        return;
-      }
-      const clamped = clampPipPosition(
-        rawX,
-        rawY,
-        bounds,
-        safeTop,
-        reservedBottom,
-        width,
-        height
-      );
-      releasePosRef.current = clamped;
-      translateX.value = clamped.x;
-      translateY.value = clamped.y;
-      onPositionChange(clamped);
-    },
+  const responder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => !disabled && !isHidden,
+        onMoveShouldSetPanResponder: (_, gesture) =>
+          !disabled &&
+          !isHidden &&
+          (didDragRef.current ||
+            Math.abs(gesture.dx) > DRAG_ACTIVATION_PX ||
+            Math.abs(gesture.dy) > DRAG_ACTIVATION_PX),
+        onPanResponderGrant: () => {
+          didDragRef.current = false;
+          dragStart.current = { ...position };
+        },
+        onPanResponderMove: (_, gesture) => {
+          if (
+            Math.abs(gesture.dx) > DRAG_ACTIVATION_PX ||
+            Math.abs(gesture.dy) > DRAG_ACTIVATION_PX
+          ) {
+            didDragRef.current = true;
+          }
+          pan.setValue({
+            x: dragStart.current.x + gesture.dx,
+            y: dragStart.current.y + gesture.dy,
+          });
+        },
+        onPanResponderRelease: (_, gesture) => {
+          const rawX = dragStart.current.x + gesture.dx;
+          const rawY = dragStart.current.y + gesture.dy;
+          const moved = didDragRef.current;
+
+          if (!moved && focusOnTap && onFocus) {
+            pan.setValue({ x: position.x, y: position.y });
+            onFocus();
+            return;
+          }
+
+          if (!bounds) {
+            onPositionChange({ x: rawX, y: rawY });
+            return;
+          }
+
+          const edge = detectHideEdge(
+            rawX,
+            rawY,
+            bounds,
+            safeTop,
+            reservedBottom,
+            width,
+            height
+          );
+          if (edge) {
+            onHide(edge, releasePos.current);
+            pan.setValue({ x: releasePos.current.x, y: releasePos.current.y });
+            return;
+          }
+
+          const clamped = clampPipPosition(
+            rawX,
+            rawY,
+            bounds,
+            safeTop,
+            reservedBottom,
+            width,
+            height
+          );
+          releasePos.current = clamped;
+          pan.setValue(clamped);
+          onPositionChange(clamped);
+        },
+        onPanResponderTerminate: (_, gesture) => {
+          const rawX = dragStart.current.x + gesture.dx;
+          const rawY = dragStart.current.y + gesture.dy;
+          if (!bounds) return;
+          const clamped = clampPipPosition(
+            rawX,
+            rawY,
+            bounds,
+            safeTop,
+            reservedBottom,
+            width,
+            height
+          );
+          pan.setValue(clamped);
+          onPositionChange(clamped);
+        },
+      }),
     [
       bounds,
+      disabled,
       focusOnTap,
       height,
+      isHidden,
       onFocus,
       onHide,
       onPositionChange,
+      pan,
       position.x,
       position.y,
       reservedBottom,
       safeTop,
-      translateX,
-      translateY,
       width,
     ]
   );
-
-  const panGesture = useMemo(() => {
-    if (disabled || isHidden) return null;
-    return Gesture.Pan()
-      .minDistance(DRAG_ACTIVATION_PX)
-      .onBegin(() => {
-        didDrag.value = false;
-        startX.value = translateX.value;
-        startY.value = translateY.value;
-      })
-      .onUpdate((e) => {
-        if (Math.abs(e.translationX) > DRAG_ACTIVATION_PX || Math.abs(e.translationY) > DRAG_ACTIVATION_PX) {
-          didDrag.value = true;
-        }
-        translateX.value = startX.value + e.translationX;
-        translateY.value = startY.value + e.translationY;
-      })
-      .onEnd((e) => {
-        const rawX = startX.value + e.translationX;
-        const rawY = startY.value + e.translationY;
-        runOnJS(handleRelease)(rawX, rawY, didDrag.value);
-      });
-  }, [
-    didDrag,
-    disabled,
-    handleRelease,
-    isHidden,
-    startX,
-    startY,
-    translateX,
-    translateY,
-  ]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value },
-    ],
-  }));
 
   if (!bounds) return null;
 
@@ -287,13 +289,18 @@ export function DraggableVideoPip({
     );
   }
 
-  const tile = (
+  return (
     <Animated.View
       style={[
         styles.tile,
-        { width, height, zIndex },
-        animatedStyle,
+        {
+          width,
+          height,
+          zIndex,
+          transform: [{ translateX: pan.x }, { translateY: pan.y }],
+        },
       ]}
+      {...responder.panHandlers}
       accessibilityLabel={`${tabLabel} camera preview`}
     >
       <UserBox
@@ -314,22 +321,8 @@ export function DraggableVideoPip({
           <Ionicons name="expand-outline" size={16} color="#fff" />
         </Pressable>
       ) : null}
-      {resizable && onSizeChange ? (
-        <Pressable
-          style={styles.resizeHandle}
-          onPress={() => undefined}
-          accessibilityLabel="Resize (disabled in clip mode)"
-        >
-          <Ionicons name="resize-outline" size={14} color="#fff" />
-        </Pressable>
-      ) : null}
     </Animated.View>
   );
-
-  if (panGesture) {
-    return <GestureDetector gesture={panGesture}>{tile}</GestureDetector>;
-  }
-  return tile;
 }
 
 const styles = StyleSheet.create({
@@ -375,16 +368,5 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 11,
     fontWeight: "700",
-  },
-  resizeHandle: {
-    position: "absolute",
-    right: 4,
-    bottom: 4,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    alignItems: "center",
-    justifyContent: "center",
   },
 });
