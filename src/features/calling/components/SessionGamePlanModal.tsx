@@ -20,7 +20,7 @@ import * as Print from "expo-print";
 
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
-import { getS3ImageUrl } from "../../../lib/clipMediaUrl";
+import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { putFileToPresignedUrl } from "../../../lib/presignedPut";
 import { fetchSessionReport } from "../meetingReportApi";
 import {
