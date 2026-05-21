@@ -27,7 +27,11 @@ export const PIP_HEIGHT = 124;
 export const PIP_MIN_WIDTH = 72;
 export const PIP_MAX_WIDTH = 140;
 const DRAG_ACTIVATION_PX = 6;
+/** Hide when less than half the tile remains visible (pushed off-screen). */
 const HIDE_VISIBLE_RATIO = 0.5;
+/** Inset from any screen side that triggers dock-to-tab (still fully on-screen). */
+const DOCK_ZONE_MIN_PX = 28;
+const DOCK_ZONE_SCREEN_FRACTION = 0.07;
 
 export type DraggableVideoPipProps = {
   tileId: "local" | "remote";
@@ -77,6 +81,14 @@ function clampPipPosition(
   };
 }
 
+/**
+ * Dock PIP to left/right/top/bottom tabs when:
+ * - Tile is pushed partially off-screen (< 50% visible), or
+ * - Tile is dragged into the margin along any side (still inside the rectangle).
+ *
+ * Uses distance from tile edges to each screen boundary so left/right sides work
+ * without requiring the tile to cross the outer edge.
+ */
 function detectHideEdge(
   x: number,
   y: number,
@@ -88,21 +100,51 @@ function detectHideEdge(
 ): PipEdge | null {
   const w = bounds.width;
   const h = bounds.height;
-  const visibleW = Math.min(x + pipW, w) - Math.max(x, 0);
-  const visibleH = Math.min(y + pipH, h - reservedBottom) - Math.max(y, safeTop);
-  const ratioW = visibleW / pipW;
-  const ratioH = visibleH / pipH;
-  if (ratioW >= HIDE_VISIBLE_RATIO && ratioH >= HIDE_VISIBLE_RATIO) return null;
+  const playBottom = h - reservedBottom;
 
-  const distLeft = Math.max(0, -x);
-  const distRight = Math.max(0, x + pipW - w);
-  const distTop = Math.max(0, safeTop - y);
-  const distBottom = Math.max(0, y + pipH - (h - reservedBottom));
-  const min = Math.min(distLeft, distRight, distTop, distBottom);
-  if (min === distLeft) return "left";
-  if (min === distRight) return "right";
-  if (min === distTop) return "top";
-  return "bottom";
+  const visibleW = Math.max(0, Math.min(x + pipW, w) - Math.max(x, 0));
+  const visibleH = Math.max(0, Math.min(y + pipH, playBottom) - Math.max(y, safeTop));
+  const visibleArea = visibleW * visibleH;
+  const tileArea = pipW * pipH;
+  const mostlyOffScreen =
+    tileArea > 0 && visibleArea / tileArea < HIDE_VISIBLE_RATIO;
+
+  const dockZone = Math.max(
+    DOCK_ZONE_MIN_PX,
+    Math.min(w, playBottom - safeTop) * DOCK_ZONE_SCREEN_FRACTION
+  );
+
+  /** Gap between tile edge and screen boundary (0 = flush on that side). */
+  const insetLeft = x;
+  const insetRight = w - (x + pipW);
+  const insetTop = y - safeTop;
+  const insetBottom = playBottom - (y + pipH);
+
+  const nearLeft = insetLeft <= dockZone;
+  const nearRight = insetRight <= dockZone;
+  const nearTop = insetTop <= dockZone;
+  const nearBottom = insetBottom <= dockZone;
+
+  if (!mostlyOffScreen && !nearLeft && !nearRight && !nearTop && !nearBottom) {
+    return null;
+  }
+
+  /** Nearest side — corners pick the closer margin (vertex-style dock). */
+  const candidates: { edge: PipEdge; distance: number }[] = [
+    { edge: "left", distance: mostlyOffScreen ? Math.max(0, -x) : insetLeft },
+    { edge: "right", distance: mostlyOffScreen ? Math.max(0, x + pipW - w) : insetRight },
+    { edge: "top", distance: mostlyOffScreen ? Math.max(0, safeTop - y) : insetTop },
+    {
+      edge: "bottom",
+      distance: mostlyOffScreen ? Math.max(0, y + pipH - playBottom) : insetBottom,
+    },
+  ];
+
+  let best = candidates[0];
+  for (let i = 1; i < candidates.length; i += 1) {
+    if (candidates[i].distance < best.distance) best = candidates[i];
+  }
+  return best.edge;
 }
 
 export function defaultPipPosition(
@@ -176,10 +218,24 @@ export function DraggableVideoPip({
           ) {
             didDragRef.current = true;
           }
-          pan.setValue({
-            x: dragStart.current.x + gesture.dx,
-            y: dragStart.current.y + gesture.dy,
-          });
+          const rawX = dragStart.current.x + gesture.dx;
+          const rawY = dragStart.current.y + gesture.dy;
+          pan.setValue({ x: rawX, y: rawY });
+          if (bounds && didDragRef.current) {
+            const edge = detectHideEdge(
+              rawX,
+              rawY,
+              bounds,
+              safeTop,
+              reservedBottom,
+              width,
+              height
+            );
+            if (edge) {
+              onHide(edge, releasePos.current);
+              pan.setValue({ x: releasePos.current.x, y: releasePos.current.y });
+            }
+          }
         },
         onPanResponderRelease: (_, gesture) => {
           const rawX = dragStart.current.x + gesture.dx;

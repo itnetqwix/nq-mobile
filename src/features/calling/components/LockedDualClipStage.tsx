@@ -7,15 +7,10 @@ import { StyleSheet, View } from "react-native";
 
 import { ClipPlaybackControls } from "./ClipPlaybackControls";
 import { ClipPlayer } from "./ClipPlayer";
+import { ClipZoomControls } from "./ClipZoomControls";
+import type { ClipPlayerPaneProps } from "./UnlockedDualClipStage";
 
 const CLIP_BG = "#ffffff";
-
-type ClipPlayerPaneProps = {
-  isPlaying: boolean;
-  seekTargetMs: number | null;
-  onProgressSeconds: (seconds: number) => void;
-  onDurationSeconds: (seconds: number) => void;
-};
 
 type Props = {
   uris: [string, string];
@@ -41,11 +36,20 @@ export function LockedDualClipStage({
   return (
     <View style={styles.root}>
       <View style={styles.stack}>
-        {([0, 1] as const).map((paneIndex) => (
-          <View key={paneIndex} style={styles.pane}>
-            <ClipPlayer uri={uris[paneIndex]} {...makePaneProps(paneIndex)} />
-          </View>
-        ))}
+        {([0, 1] as const).map((paneIndex) => {
+          const paneProps = makePaneProps(paneIndex);
+          return (
+            <View key={paneIndex} style={styles.pane}>
+              <ClipPlayer uri={uris[paneIndex]} {...paneProps} />
+              {paneProps.showZoomControls && paneProps.onZoomIn && paneProps.onZoomOut ? (
+                <ClipZoomControls
+                  onZoomIn={paneProps.onZoomIn}
+                  onZoomOut={paneProps.onZoomOut}
+                />
+              ) : null}
+            </View>
+          );
+        })}
       </View>
       {isTrainer ? (
         <View style={styles.controlsFooter}>
@@ -81,6 +85,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     minHeight: 100,
     backgroundColor: CLIP_BG,
+    position: "relative",
   },
   controlsFooter: {
     backgroundColor: CLIP_BG,

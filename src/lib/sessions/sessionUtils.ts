@@ -131,9 +131,35 @@ export function isInstantAcceptExpired(session: any, now = new Date()): boolean 
   return now.getTime() > deadline;
 }
 
-/** Instant lesson past join window after coach accepted. */
+/** Instant lesson has started (both parties joined or server marked ACTIVE). */
+export function isInstantLessonLive(session: any): boolean {
+  if (!isInstantLesson(session)) return false;
+  if (session?.both_joined_at) return true;
+  const phase = String(session?.instant_phase ?? "").toUpperCase();
+  return phase === "ACTIVE";
+}
+
+/** Scheduled end of an instant lesson (duration / end_time), with late rejoin buffer. */
+export function getInstantLessonEndMs(session: any): number | null {
+  if (!isInstantLesson(session)) return null;
+  const end = getSessionEnd(session);
+  if (end) return end.getTime() + LATE_JOIN_MS;
+  const start = getSessionStart(session);
+  const durationMin = Number(session?.duration ?? session?.lesson_duration);
+  if (start && Number.isFinite(durationMin) && durationMin > 0) {
+    return start.getTime() + durationMin * 60 * 1000 + LATE_JOIN_MS;
+  }
+  return null;
+}
+
+/** Instant lesson past join window after coach accepted (first join only). */
 export function isInstantJoinExpired(session: any, now = new Date()): boolean {
   if (!isInstantLesson(session)) return false;
+  if (isInstantLessonLive(session)) {
+    const endMs = getInstantLessonEndMs(session);
+    if (endMs != null) return now.getTime() > endMs;
+    return false;
+  }
   const status = normalizeSessionStatus(session?.status);
   if (status !== "confirmed" && status !== "upcoming") return false;
   const deadline = resolveJoinDeadlineMs(session);
@@ -143,6 +169,11 @@ export function isInstantJoinExpired(session: any, now = new Date()): boolean {
 
 /** Hide from upcoming/confirmed lists (accept or join window elapsed). */
 export function isInstantExpiredForLists(session: any, now = new Date()): boolean {
+  if (isInstantLessonLive(session)) {
+    const endMs = getInstantLessonEndMs(session);
+    if (endMs == null) return false;
+    return now.getTime() > endMs;
+  }
   return isInstantAcceptExpired(session, now) || isInstantJoinExpired(session, now);
 }
 
@@ -177,6 +208,11 @@ export function shouldShowInDashboardUpcoming(session: any, now = new Date()): b
 export function isSessionTerminalForUI(session: any, now = new Date()): boolean {
   const status = normalizeSessionStatus(session?.status);
   if (status === "cancelled" || status === "completed") return true;
+  if (isInstantLesson(session) && isInstantLessonLive(session)) {
+    const endMs = getInstantLessonEndMs(session);
+    if (endMs == null) return false;
+    return now.getTime() > endMs;
+  }
   return isInstantExpiredForLists(session, now);
 }
 
@@ -251,6 +287,16 @@ export function canRejoinLesson(session: any, now = new Date()): boolean {
   const status = normalizeSessionStatus(session?.status);
   if (status === "cancelled" || status === "completed") return false;
   if (canJoinSession(session, now)) return true;
+
+  if (isInstantLesson(session) && isInstantLessonLive(session)) {
+    const endMs = getInstantLessonEndMs(session);
+    if (endMs == null) return status === "confirmed" || status === "upcoming";
+    return (
+      now.getTime() <= endMs &&
+      (status === "confirmed" || status === "upcoming")
+    );
+  }
+
   if (session?.both_joined_at) return true;
   const phase = String(session?.instant_phase ?? "").toUpperCase();
   if (phase === "ACTIVE") return true;
@@ -318,6 +364,16 @@ export function getJoinDisabledReason(session: any, now = new Date()): string {
   if (isInstantLesson(session)) {
     if (!session?.accepted_at && !session?.both_joined_at) {
       return "Instant lessons can be joined after the coach confirms.";
+    }
+    if (isInstantLessonLive(session)) {
+      const endMs = getInstantLessonEndMs(session);
+      if (endMs != null && now.getTime() > endMs) {
+        return "This instant lesson has ended.";
+      }
+      if (!canRejoinLesson(session, now)) {
+        return "This instant lesson is no longer available.";
+      }
+      return "";
     }
     if (!canJoinSession(session, now) && !canRejoinLesson(session, now)) {
       return "The join window for this instant lesson has expired.";

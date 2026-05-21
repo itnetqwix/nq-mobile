@@ -33,6 +33,8 @@ type Props = {
   trainerId: string;
   traineeId: string;
   imageKey: string | null;
+  /** Local file URI shown immediately after capture (before S3 CDN is ready). */
+  previewUri?: string | null;
   reportTitle?: string;
   reportTopic?: string;
   onClose: () => void;
@@ -45,6 +47,7 @@ export function SessionScreenshotDetailsModal({
   trainerId,
   traineeId,
   imageKey,
+  previewUri: previewUriProp = null,
   reportTitle = "",
   reportTopic = "",
   onClose,
@@ -87,7 +90,9 @@ export function SessionScreenshotDetailsModal({
     };
   }, [visible, sessionId, trainerId, traineeId]);
 
-  const previewUri = imageKey ? getS3ImageUrl(imageKey) : null;
+  const previewUri =
+    previewUriProp ||
+    (imageKey ? getS3ImageUrl(imageKey) : null);
 
   const handleAdd = async () => {
     if (!imageKey) return;
@@ -134,10 +139,10 @@ export function SessionScreenshotDetailsModal({
         </Pressable>
 
         <View style={styles.body}>
-          {loading ? (
-            <ActivityIndicator size="large" color="#000080" />
-          ) : previewUri ? (
+          {previewUri ? (
             <Image source={{ uri: previewUri }} style={styles.preview} resizeMode="contain" />
+          ) : loading ? (
+            <ActivityIndicator size="large" color="#000080" />
           ) : (
             <Text style={styles.loadingText}>Loading preview…</Text>
           )}

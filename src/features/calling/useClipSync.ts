@@ -269,11 +269,17 @@ export function useClipSync({
     };
 
     const onZoomPan = (payload: any) => {
+      if (
+        !shouldApplyRemoteSocketEvent(payload, {
+          sessionId,
+          myUserId: fromUserId,
+          isTrainer,
+        })
+      ) {
+        return;
+      }
       const videoId = String(payload?.videoId ?? payload?.clipId ?? "");
       if (!videoId) return;
-      if (payload?.sessionId != null && String(payload.sessionId) !== String(sessionId)) return;
-      const from = String(payload?.userInfo?.from_user ?? "");
-      if (from && from === String(fromUserId)) return; // ignore our own echo
       const zoom = typeof payload?.zoom === "number" ? payload.zoom : NaN;
       const pan = payload?.pan;
       setZoomPanByVideoId((prev) => {
@@ -640,6 +646,74 @@ export function useClipSync({
     [setVideoHidden]
   );
 
+  /** Re-broadcast clip UI state after trainer reconnects so trainee stays in sync. */
+  const replayClipSocketState = useCallback(() => {
+    if (!socket?.connected || !sessionId || !isTrainer) return;
+    if (selectedClips.length > 0) {
+      socket.emit(CLIP_EVENTS.ON_VIDEO_SELECT, {
+        type: "clips",
+        videos: selectedClips,
+        userInfo,
+        sessionId,
+      });
+    }
+    Object.entries(zoomPanByVideoId).forEach(([videoId, zp]) => {
+      emitZoomPan(videoId, zp.zoom, zp.pan);
+    });
+    if (lockMode) {
+      socket.emit(CLIP_EVENTS.TOGGLE_LOCK_MODE, {
+        locked: true,
+        isLockMode: true,
+        lockPoint,
+        userInfo,
+        sessionId,
+      });
+    }
+    if (lockMode && selectedClips.length >= 2) {
+      socket.emit(CLIP_EVENTS.ON_VIDEO_PLAY_PAUSE, {
+        isPlaying,
+        both: true,
+        userInfo,
+        sessionId,
+      });
+    } else {
+      Object.entries(playingByClipId).forEach(([videoId, playing]) => {
+        if (!playing) return;
+        socket.emit(CLIP_EVENTS.ON_VIDEO_PLAY_PAUSE, {
+          videoId,
+          isPlaying: true,
+          both: false,
+          userInfo,
+          sessionId,
+        });
+      });
+    }
+    if (clipFocusIndex === 0 || clipFocusIndex === 1) {
+      socket.emit(
+        CLIP_EVENTS.TOGGLE_FULL_SCREEN,
+        buildFullscreenPayload({
+          on: true,
+          clipIndex: clipFocusIndex,
+          userInfo,
+          sessionId,
+        })
+      );
+    }
+  }, [
+    clipFocusIndex,
+    emitZoomPan,
+    isPlaying,
+    isTrainer,
+    lockMode,
+    lockPoint,
+    playingByClipId,
+    selectedClips,
+    sessionId,
+    socket,
+    userInfo,
+    zoomPanByVideoId,
+  ]);
+
   const hideLocalCamera =
     hiddenVideos.teacher && hiddenVideos.student
       ? true
@@ -675,5 +749,6 @@ export function useClipSync({
     toggleLockMode,
     toggleClipFullscreen,
     setLayout,
+    replayClipSocketState,
   };
 }

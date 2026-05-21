@@ -7,14 +7,23 @@ import { StyleSheet, View } from "react-native";
 
 import { ClipPlaybackControls } from "./ClipPlaybackControls";
 import { ClipPlayer } from "./ClipPlayer";
+import { ClipZoomControls } from "./ClipZoomControls";
 
 const CLIP_BG = "#ffffff";
 
-type ClipPlayerPaneProps = {
+export type ClipPlayerPaneProps = {
   isPlaying: boolean;
   seekTargetMs: number | null;
+  zoom?: number;
+  pan?: { x: number; y: number };
+  panEnabled?: boolean;
+  onPanChange?: (pan: { x: number; y: number }, emitSocket?: boolean) => void;
   onProgressSeconds: (seconds: number) => void;
   onDurationSeconds: (seconds: number) => void;
+  onEnded?: () => void;
+  showZoomControls?: boolean;
+  onZoomIn?: () => void;
+  onZoomOut?: () => void;
 };
 
 type Props = {
@@ -52,13 +61,20 @@ export function UnlockedDualClipStage({
           if (!uri) return null;
           const visible = showBoth || clipFocusIndex === paneIndex;
           if (!visible) return null;
+          const paneProps = makePaneProps(paneIndex);
           return (
             <View
               key={paneIndex}
               style={[styles.pane, showBoth ? styles.paneHalf : styles.paneFocused]}
             >
               <View style={styles.player}>
-                <ClipPlayer uri={uri} {...makePaneProps(paneIndex)} />
+                <ClipPlayer uri={uri} {...paneProps} />
+                {paneProps.showZoomControls && paneProps.onZoomIn && paneProps.onZoomOut ? (
+                  <ClipZoomControls
+                    onZoomIn={paneProps.onZoomIn}
+                    onZoomOut={paneProps.onZoomOut}
+                  />
+                ) : null}
               </View>
               {isTrainer ? (
                 <View style={styles.controlsDock}>
@@ -113,6 +129,7 @@ const styles = StyleSheet.create({
   player: {
     flex: 1,
     minHeight: 80,
+    position: "relative",
   },
   controlsDock: {
     flexShrink: 0,

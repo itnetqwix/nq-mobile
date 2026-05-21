@@ -4,7 +4,10 @@ import { captureRef } from "react-native-view-shot";
 import * as FileSystem from "expo-file-system/legacy";
 import { putFileToPresignedUrl } from "../../lib/presignedPut";
 
-import { captureClipFrameUri } from "./captureClipScreenshot";
+import {
+  captureClipFrameUri,
+  captureClipFrames,
+} from "./captureClipScreenshot";
 import { fetchSessionReport, requestScreenshotUpload } from "./meetingReportApi";
 
 export type ScreenshotCaptureSource = {
@@ -12,12 +15,17 @@ export type ScreenshotCaptureSource = {
   progressSeconds: number;
 };
 
+export type ScreenshotCapturedPayload = {
+  localUri: string;
+  imageKey: string;
+};
+
 type Args = {
   sessionId: string;
   trainerId: string;
   traineeId: string;
   isTrainer: boolean;
-  onUploaded?: (imageKey: string) => void;
+  onCaptured?: (payload: ScreenshotCapturedPayload) => void;
 };
 
 const CAPTURE_FRAME_DELAY_MS = 320;
@@ -56,12 +64,28 @@ export function useMeetingScreenshot({
   trainerId,
   traineeId,
   isTrainer,
-  onUploaded,
+  onCaptured,
 }: Args) {
   const captureTargetRef = useRef<View>(null);
+  const pendingPreviewUriRef = useRef<string | null>(null);
   const [capturing, setCapturing] = useState(false);
   const [captureCount, setCaptureCount] = useState(0);
   const [screenshotKeys, setScreenshotKeys] = useState<string[]>([]);
+
+  const disposePendingPreview = useCallback(async () => {
+    const uri = pendingPreviewUriRef.current;
+    pendingPreviewUriRef.current = null;
+    if (!uri) return;
+    try {
+      const normalized = uri.split("?")[0];
+      const info = await FileSystem.getInfoAsync(normalized);
+      if (info.exists) {
+        await FileSystem.deleteAsync(normalized, { idempotent: true });
+      }
+    } catch {
+      /** best-effort */
+    }
+  }, []);
 
   const refreshScreenshots = useCallback(async () => {
     try {
@@ -89,25 +113,13 @@ export function useMeetingScreenshot({
         throw new Error("No upload URL returned");
       }
       await putFileToPresignedUrl(uploadUrl, localUri, "image/png");
-      const imageKey = extractImageKeyFromPresignResponse(presign, uploadUrl);
-      try {
-        const normalized = localUri.split("?")[0];
-        const info = await FileSystem.getInfoAsync(normalized);
-        if (info.exists) {
-          await FileSystem.deleteAsync(normalized, { idempotent: true });
-        }
-      } catch {
-        /** best-effort */
-      }
-      return imageKey;
+      return extractImageKeyFromPresignResponse(presign, uploadUrl);
     },
     [sessionId, traineeId, trainerId]
   );
 
-  const finishCapture = useCallback(
-    async (localUri: string) => {
-      const uploadedKey = await uploadPng(localUri);
-      await refreshScreenshots();
+  const resolveImageKeyAfterUpload = useCallback(
+    async (uploadedKey: string) => {
       let imageKey = uploadedKey;
       try {
         const res = await fetchSessionReport({
@@ -122,11 +134,9 @@ export function useMeetingScreenshot({
       } catch {
         /** keep uploadedKey */
       }
-      setCaptureCount((n) => n + 1);
-      setScreenshotKeys((prev) => [...new Set([...prev, imageKey])]);
-      onUploaded?.(imageKey);
+      return imageKey;
     },
-    [onUploaded, refreshScreenshots, sessionId, trainerId, traineeId, uploadPng]
+    [sessionId, trainerId, traineeId]
   );
 
   const captureViewShot = useCallback(async (): Promise<string | null> => {
@@ -149,6 +159,23 @@ export function useMeetingScreenshot({
     }
   }, []);
 
+  const captureFromFallbackSources = useCallback(
+    async (fallbackSources?: ScreenshotCaptureSource[]) => {
+      if (!fallbackSources?.length) return null;
+      const frames = await captureClipFrames(
+        fallbackSources.filter((s) => !!s.uri)
+      );
+      if (frames.length > 0) return frames[0];
+      for (const src of fallbackSources) {
+        if (!src.uri) continue;
+        const frame = await captureClipFrameUri(src.uri, src.progressSeconds);
+        if (frame) return frame;
+      }
+      return null;
+    },
+    []
+  );
+
   const takeScreenshot = useCallback(
     async (fallbackSources?: ScreenshotCaptureSource[]) => {
       if (!isTrainer) return;
@@ -157,15 +184,8 @@ export function useMeetingScreenshot({
         await delay(CAPTURE_FRAME_DELAY_MS);
         let localUri = await captureViewShot();
 
-        if (!localUri && fallbackSources?.length) {
-          for (const src of fallbackSources) {
-            if (!src.uri) continue;
-            const frame = await captureClipFrameUri(src.uri, src.progressSeconds);
-            if (frame) {
-              localUri = frame;
-              break;
-            }
-          }
+        if (!localUri) {
+          localUri = await captureFromFallbackSources(fallbackSources);
         }
 
         if (!localUri) {
@@ -174,8 +194,15 @@ export function useMeetingScreenshot({
           );
         }
 
-        await finishCapture(localUri);
+        pendingPreviewUriRef.current = localUri;
+        const uploadedKey = await uploadPng(localUri);
+        const imageKey = await resolveImageKeyAfterUpload(uploadedKey);
+        await refreshScreenshots();
+        setCaptureCount((n) => n + 1);
+        setScreenshotKeys((prev) => [...new Set([...prev, imageKey])]);
+        onCaptured?.({ localUri, imageKey });
       } catch (e: unknown) {
+        await disposePendingPreview();
         const msg = e instanceof Error ? e.message : "Could not save screenshot.";
         if (__DEV__) console.warn("[meeting] screenshot failed", e);
         Alert.alert("Screenshot failed", msg);
@@ -183,7 +210,16 @@ export function useMeetingScreenshot({
         setCapturing(false);
       }
     },
-    [captureViewShot, finishCapture, isTrainer]
+    [
+      captureFromFallbackSources,
+      captureViewShot,
+      disposePendingPreview,
+      isTrainer,
+      onCaptured,
+      refreshScreenshots,
+      resolveImageKeyAfterUpload,
+      uploadPng,
+    ]
   );
 
   return {
@@ -193,6 +229,7 @@ export function useMeetingScreenshot({
     captureCount,
     screenshotKeys,
     refreshScreenshots,
+    disposePendingPreview,
     hasCaptures: captureCount > 0 || screenshotKeys.length > 0,
   };
 };

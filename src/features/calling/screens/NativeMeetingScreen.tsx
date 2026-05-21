@@ -81,6 +81,7 @@ import { ClipPickerModal } from "../components/ClipPickerModal";
 import { LockedDualClipStage } from "../components/LockedDualClipStage";
 import { UnlockedDualClipStage } from "../components/UnlockedDualClipStage";
 import { ClipPlayer } from "../components/ClipPlayer";
+import { ClipZoomControls } from "../components/ClipZoomControls";
 import { ClipPlaybackControls } from "../components/ClipPlaybackControls";
 import { DrawingOverlay } from "../components/DrawingOverlay";
 import {
@@ -387,6 +388,17 @@ function MeetingSurface({
     isTrainer,
   });
 
+  useEffect(() => {
+    if (!socket || !isTrainer) return;
+    const replay = () => clipSync.replayClipSocketState();
+    socket.on("connect", replay);
+    socket.on("reconnect", replay);
+    return () => {
+      socket.off("connect", replay);
+      socket.off("reconnect", replay);
+    };
+  }, [socket, isTrainer, clipSync.replayClipSocketState]);
+
   const meetingLayout = useMeetingLayout({
     socket,
     sessionId: lessonId,
@@ -437,7 +449,8 @@ function MeetingSurface({
     trainerId: isTrainer ? myId : peerId,
     traineeId: isTrainer ? peerId : myId,
     isTrainer,
-    onUploaded: (imageKey) => {
+    onCaptured: ({ localUri, imageKey }) => {
+      setPendingScreenshotPreviewUri(localUri);
       setPendingScreenshotKey(imageKey);
       setScreenshotDetailsOpen(true);
       pushLocalToast({
@@ -472,6 +485,9 @@ function MeetingSurface({
   const [screenshotSheetOpen, setScreenshotSheetOpen] = useState(false);
   const [screenshotDetailsOpen, setScreenshotDetailsOpen] = useState(false);
   const [pendingScreenshotKey, setPendingScreenshotKey] = useState<string | null>(null);
+  const [pendingScreenshotPreviewUri, setPendingScreenshotPreviewUri] = useState<
+    string | null
+  >(null);
   const [clipDurations, setClipDurations] = useState<[number, number]>([0, 0]);
   const [clipProgresses, setClipProgresses] = useState<[number, number]>([0, 0]);
   const [drawingOverlayKey, setDrawingOverlayKey] = useState(0);
@@ -603,14 +619,20 @@ function MeetingSurface({
       seekTargetMs: seekForPane,
       zoom: zoomPan?.zoom,
       pan: zoomPan?.pan,
-      pinchEnabled: isTrainer && !!clipId,
-      onPinchZoom: clipId
-        ? (nextZoom: number, emitSocket?: boolean) => {
-            const panVal = zoomPan?.pan ?? { x: 0, y: 0 };
-            clipSync.setZoomPan(String(clipId), nextZoom, panVal, {
+      panEnabled: isTrainer && !!clipId && (zoomPan?.zoom ?? 1) > 1,
+      onPanChange: clipId
+        ? (nextPan: { x: number; y: number }, emitSocket?: boolean) => {
+            clipSync.setZoomPan(String(clipId), zoomPan?.zoom ?? 1, nextPan, {
               emitSocket: emitSocket !== false,
             });
           }
+        : undefined,
+      showZoomControls: isTrainer && !!clipId,
+      onZoomIn: clipId
+        ? () => clipSync.bumpZoom(String(clipId), 0.25)
+        : undefined,
+      onZoomOut: clipId
+        ? () => clipSync.bumpZoom(String(clipId), -0.25)
         : undefined,
       onProgressSeconds: (seconds: number) => {
         clipEndedRef.current[paneIndex] = false;
@@ -1007,7 +1029,22 @@ function MeetingSurface({
               />
             ) : (
               <View style={styles.singleClip}>
-                <ClipPlayer uri={activeClipUri} {...makeClipPlayerProps(0)} />
+                {(() => {
+                  const singlePane = makeClipPlayerProps(0);
+                  return (
+                    <View style={styles.singleClipPlayer}>
+                      <ClipPlayer uri={activeClipUri} {...singlePane} />
+                      {singlePane.showZoomControls &&
+                      singlePane.onZoomIn &&
+                      singlePane.onZoomOut ? (
+                        <ClipZoomControls
+                          onZoomIn={singlePane.onZoomIn}
+                          onZoomOut={singlePane.onZoomOut}
+                        />
+                      ) : null}
+                    </View>
+                  );
+                })()}
                 {isTrainer ? (
                   <ClipPlaybackControls
                     size="compact"
@@ -1342,9 +1379,12 @@ function MeetingSurface({
             trainerId={myId}
             traineeId={peerId}
             imageKey={pendingScreenshotKey}
+            previewUri={pendingScreenshotPreviewUri}
             onClose={() => {
               setScreenshotDetailsOpen(false);
               setPendingScreenshotKey(null);
+              setPendingScreenshotPreviewUri(null);
+              screenshot.disposePendingPreview?.();
             }}
             onSaved={() => {
               void screenshot.refreshScreenshots();
@@ -1477,6 +1517,10 @@ const styles = StyleSheet.create({
   singleClip: {
     flex: 1,
     overflow: "hidden",
+  },
+  singleClipPlayer: {
+    flex: 1,
+    position: "relative",
   },
   dualColumn: {
     flex: 1,
