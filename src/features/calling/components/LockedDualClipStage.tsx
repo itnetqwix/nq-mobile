@@ -8,6 +8,8 @@ import { StyleSheet, View } from "react-native";
 import { ClipPlaybackControls } from "./ClipPlaybackControls";
 import { ClipPlayer } from "./ClipPlayer";
 
+const CLIP_BG = "#ffffff";
+
 type ClipPlayerPaneProps = {
   isPlaying: boolean;
   seekTargetMs: number | null;
@@ -24,7 +26,6 @@ type Props = {
   durationSeconds: number;
   onTogglePlay: () => void;
   onSeek: (seconds: number) => void;
-  controlsBottomOffset?: number;
 };
 
 export function LockedDualClipStage({
@@ -47,16 +48,18 @@ export function LockedDualClipStage({
         ))}
       </View>
       {isTrainer ? (
-        <ClipPlaybackControls
-          variant="inline"
-          size="compact"
-          isPlaying={isPlaying}
-          onTogglePlay={onTogglePlay}
-          progressSeconds={progressSeconds}
-          durationSeconds={durationSeconds}
-          onSeek={onSeek}
-          disabled={!uris[0] || !uris[1]}
-        />
+        <View style={styles.controlsFooter}>
+          <ClipPlaybackControls
+            variant="inline"
+            size="compact"
+            isPlaying={isPlaying}
+            onTogglePlay={onTogglePlay}
+            progressSeconds={progressSeconds}
+            durationSeconds={durationSeconds}
+            onSeek={onSeek}
+            disabled={!uris[0] || !uris[1]}
+          />
+        </View>
       ) : null}
     </View>
   );
@@ -65,6 +68,7 @@ export function LockedDualClipStage({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    backgroundColor: CLIP_BG,
   },
   stack: {
     flex: 1,
@@ -74,7 +78,15 @@ const styles = StyleSheet.create({
   pane: {
     flex: 1,
     overflow: "hidden",
-    borderRadius: 10,
+    borderRadius: 8,
     minHeight: 100,
+    backgroundColor: CLIP_BG,
+  },
+  controlsFooter: {
+    backgroundColor: CLIP_BG,
+    paddingTop: 4,
+    paddingBottom: 2,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(0,0,0,0.12)",
   },
 });

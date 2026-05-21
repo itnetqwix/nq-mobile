@@ -1,17 +1,12 @@
 /**
  * ClipPlayer — large-screen video player for the active lesson clip. Mirrors
  * `nq-frontend-main/app/components/portrait-calling/clip-mode.jsx` clip pane.
- *
- *   • Uses `expo-av` Video which has native HW decoding for mp4/h264 on iOS &
- *     Android (no extra deps).
- *   • Playback is driven via props (`isPlaying`, `seekTargetMs`) and callbacks.
- *   • Trainees on web side this same lifecycle works because the socket
- *     payloads are identical.
  */
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { ResizeMode, Video, type AVPlaybackStatus } from "expo-av";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
 export type ClipPlayerHandle = {
   play: () => Promise<void> | void;
@@ -22,16 +17,18 @@ export type ClipPlayerHandle = {
 type Props = {
   uri: string;
   isPlaying: boolean;
-  /** Optional remote seek hint; applied imperatively when it changes. */
   seekTargetMs?: number | null;
   zoom?: number;
   pan?: { x: number; y: number };
-  /** Local control should suppress synced seeks for a moment (e.g. trainer). */
-  isControlling?: boolean;
+  /** Trainer may pinch-to-zoom; second arg false = local preview only until gesture ends. */
+  pinchEnabled?: boolean;
+  onPinchZoom?: (zoom: number, emitSocket?: boolean) => void;
   onProgressSeconds?: (seconds: number) => void;
   onDurationSeconds?: (seconds: number) => void;
   onEnded?: () => void;
 };
+
+const CLIP_BG = "#ffffff";
 
 export function ClipPlayer({
   uri,
@@ -39,11 +36,22 @@ export function ClipPlayer({
   seekTargetMs,
   zoom = 1,
   pan,
+  pinchEnabled = false,
+  onPinchZoom,
   onProgressSeconds,
   onDurationSeconds,
   onEnded,
 }: Props) {
   const videoRef = useRef<Video>(null);
+  const pinchBaseZoomRef = useRef(zoom);
+  const pinchingRef = useRef(false);
+  const [localZoom, setLocalZoom] = useState(zoom);
+
+  useEffect(() => {
+    if (pinchingRef.current) return;
+    setLocalZoom(zoom);
+    pinchBaseZoomRef.current = zoom;
+  }, [zoom]);
 
   useEffect(() => {
     const player = videoRef.current;
@@ -59,7 +67,32 @@ export function ClipPlayer({
       .catch(() => undefined);
   }, [seekTargetMs]);
 
-  return (
+  const pinchGesture = useMemo(() => {
+    if (!pinchEnabled || !onPinchZoom) return null;
+    return Gesture.Pinch()
+      .enabled(pinchEnabled)
+      .onBegin(() => {
+        pinchingRef.current = true;
+        pinchBaseZoomRef.current = zoom;
+        setLocalZoom(zoom);
+      })
+      .onUpdate((e: { scale: number }) => {
+        const next = Math.max(1, Math.min(5, pinchBaseZoomRef.current * e.scale));
+        setLocalZoom(next);
+      })
+      .onEnd((e: { scale: number }) => {
+        const next = Math.max(1, Math.min(5, pinchBaseZoomRef.current * e.scale));
+        pinchBaseZoomRef.current = next;
+        setLocalZoom(next);
+        pinchingRef.current = false;
+        onPinchZoom(next, true);
+      })
+      .onFinalize(() => {
+        pinchingRef.current = false;
+      });
+  }, [pinchEnabled, onPinchZoom, zoom]);
+
+  const content = (
     <View style={styles.wrap}>
       <View
         style={[
@@ -68,7 +101,7 @@ export function ClipPlayer({
             transform: [
               { translateX: typeof pan?.x === "number" ? pan.x : 0 },
               { translateY: typeof pan?.y === "number" ? pan.y : 0 },
-              { scale: Number.isFinite(zoom) ? zoom : 1 },
+              { scale: Number.isFinite(localZoom) ? localZoom : 1 },
             ],
           },
         ]}
@@ -92,26 +125,31 @@ export function ClipPlayer({
             }
           }}
           onError={(e) => {
-            // eslint-disable-next-line no-console
-            console.warn("[ClipPlayer] playback failed", { uri, error: e });
+            if (__DEV__) console.warn("[ClipPlayer] playback failed", { uri, error: e });
           }}
         />
       </View>
     </View>
   );
+
+  if (pinchGesture) {
+    return <GestureDetector gesture={pinchGesture}>{content}</GestureDetector>;
+  }
+  return content;
 }
 
 const styles = StyleSheet.create({
   wrap: {
     flex: 1,
-    backgroundColor: "#000",
-    borderRadius: 16,
+    backgroundColor: CLIP_BG,
     overflow: "hidden",
   },
   transformLayer: {
     flex: 1,
+    backgroundColor: CLIP_BG,
   },
   player: {
     flex: 1,
+    backgroundColor: CLIP_BG,
   },
 });

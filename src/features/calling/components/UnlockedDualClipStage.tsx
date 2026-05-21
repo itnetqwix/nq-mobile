@@ -1,5 +1,5 @@
 /**
- * Dual unlocked clips — stacked players, one shared compact timeline at bottom.
+ * Dual unlocked clips — stacked players, shared controls footer inside one clip box.
  */
 
 import React from "react";
@@ -8,6 +8,8 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { ClipPlaybackControls } from "./ClipPlaybackControls";
 import { ClipPlayer } from "./ClipPlayer";
+
+const CLIP_BG = "#ffffff";
 
 type ClipPlayerPaneProps = {
   isPlaying: boolean;
@@ -20,7 +22,7 @@ type Props = {
   uris: [string, string];
   makePaneProps: (paneIndex: 0 | 1) => ClipPlayerPaneProps;
   isTrainer: boolean;
-  isPlaying: boolean;
+  isPlayingByPane: [boolean, boolean];
   progressSecondsByPane: [number, number];
   durationSecondsByPane: [number, number];
   onTogglePlay: (paneIndex: 0 | 1) => void;
@@ -33,7 +35,7 @@ export function UnlockedDualClipStage({
   uris,
   makePaneProps,
   isTrainer,
-  isPlaying,
+  isPlayingByPane,
   progressSecondsByPane,
   durationSecondsByPane,
   onTogglePlay,
@@ -41,42 +43,22 @@ export function UnlockedDualClipStage({
   clipFocusIndex = null,
   onToggleExpand,
 }: Props) {
+  const showBoth = clipFocusIndex == null;
+
   return (
     <View style={styles.root}>
       <View style={styles.stack}>
         {([0, 1] as const).map((paneIndex) => {
           const uri = uris[paneIndex];
           if (!uri) return null;
-          const focused =
-            clipFocusIndex == null || clipFocusIndex === paneIndex;
-          if (!focused) return null;
+          const visible = showBoth || clipFocusIndex === paneIndex;
+          if (!visible) return null;
           return (
             <View
               key={paneIndex}
-              style={[
-                styles.pane,
-                clipFocusIndex != null && styles.paneFocused,
-              ]}
+              style={[styles.pane, showBoth ? styles.paneHalf : styles.paneFocused]}
             >
-              <View style={styles.paneInner}>
-                <View style={styles.player}>
-                  <ClipPlayer uri={uri} {...makePaneProps(paneIndex)} />
-                </View>
-                {isTrainer ? (
-                  <View style={styles.controlsDock}>
-                    <ClipPlaybackControls
-                      variant="inline"
-                      size="compact"
-                      isPlaying={isPlaying}
-                      onTogglePlay={() => onTogglePlay(paneIndex)}
-                      progressSeconds={progressSecondsByPane[paneIndex]}
-                      durationSeconds={durationSecondsByPane[paneIndex]}
-                      onSeek={(sec) => onSeek(paneIndex, sec)}
-                      disabled={!uri}
-                    />
-                  </View>
-                ) : null}
-              </View>
+              <ClipPlayer uri={uri} {...makePaneProps(paneIndex)} />
               {isTrainer && onToggleExpand ? (
                 <Pressable
                   style={styles.expandBtn}
@@ -94,7 +76,7 @@ export function UnlockedDualClipStage({
                         : "expand-outline"
                     }
                     size={20}
-                    color="#fff"
+                    color="#333"
                   />
                 </Pressable>
               ) : null}
@@ -102,6 +84,38 @@ export function UnlockedDualClipStage({
           );
         })}
       </View>
+      {isTrainer && showBoth ? (
+        <View style={styles.controlsFooter}>
+          {([0, 1] as const).map((paneIndex) =>
+            uris[paneIndex] ? (
+              <ClipPlaybackControls
+                key={paneIndex}
+                variant="inline"
+                size="compact"
+                isPlaying={isPlayingByPane[paneIndex]}
+                onTogglePlay={() => onTogglePlay(paneIndex)}
+                progressSeconds={progressSecondsByPane[paneIndex]}
+                durationSeconds={durationSecondsByPane[paneIndex]}
+                onSeek={(sec) => onSeek(paneIndex, sec)}
+                disabled={!uris[paneIndex]}
+              />
+            ) : null
+          )}
+        </View>
+      ) : isTrainer && clipFocusIndex != null ? (
+        <View style={styles.controlsFooter}>
+          <ClipPlaybackControls
+            variant="inline"
+            size="compact"
+            isPlaying={isPlayingByPane[clipFocusIndex]}
+            onTogglePlay={() => onTogglePlay(clipFocusIndex)}
+            progressSeconds={progressSecondsByPane[clipFocusIndex]}
+            durationSeconds={durationSecondsByPane[clipFocusIndex]}
+            onSeek={(sec) => onSeek(clipFocusIndex, sec)}
+            disabled={!uris[clipFocusIndex]}
+          />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -109,6 +123,7 @@ export function UnlockedDualClipStage({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    backgroundColor: CLIP_BG,
   },
   stack: {
     flex: 1,
@@ -116,23 +131,24 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   pane: {
-    flex: 1,
     overflow: "hidden",
-    borderRadius: 10,
+    borderRadius: 8,
+    backgroundColor: CLIP_BG,
+  },
+  paneHalf: {
+    flex: 1,
     minHeight: 100,
   },
   paneFocused: {
     flex: 1,
   },
-  paneInner: {
-    flex: 1,
-  },
-  player: {
-    flex: 1,
-  },
-  controlsDock: {
-    paddingTop: 2,
+  controlsFooter: {
+    backgroundColor: CLIP_BG,
+    paddingTop: 4,
     paddingBottom: 2,
+    gap: 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(0,0,0,0.12)",
   },
   expandBtn: {
     position: "absolute",
@@ -141,7 +157,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "rgba(0,0,0,0.55)",
+    backgroundColor: "rgba(0,0,0,0.12)",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 8,

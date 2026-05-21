@@ -1,19 +1,17 @@
 /**
  * Draggable picture-in-picture tile for live camera streams.
- * Drag off-screen to hide; tap the edge tab to restore the last visible position.
+ * Drag off-screen to hide; use the expand button (not tap) to focus on main stage during clip mode.
  */
 
 import { Ionicons } from "@expo/vector-icons";
-import React, { useMemo, useRef } from "react";
-import {
-  Animated,
-  PanResponder,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type LayoutRectangle,
-} from "react-native";
+import React, { useEffect, useMemo } from "react";
+import { Pressable, StyleSheet, Text, View, type LayoutRectangle } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+} from "react-native-reanimated";
 import type { MediaStream } from "react-native-webrtc";
 
 import type { CallParticipant } from "../types";
@@ -26,9 +24,8 @@ export const PIP_WIDTH = 88;
 export const PIP_HEIGHT = 124;
 export const PIP_MIN_WIDTH = 72;
 export const PIP_MAX_WIDTH = 140;
-const TAP_SLOP_PX = 8;
-/** Dock to edge when more than 40% of the tile is off-screen (< 60% visible). */
-const HIDE_VISIBLE_RATIO = 0.6;
+const DRAG_ACTIVATION_PX = 6;
+const HIDE_VISIBLE_RATIO = 0.5;
 
 export type DraggableVideoPipProps = {
   tileId: "local" | "remote";
@@ -37,12 +34,9 @@ export type DraggableVideoPipProps = {
   isStreamOff?: boolean;
   muted?: boolean;
   fallbackLabel?: string;
-  /** Parent meeting surface dimensions. */
   bounds: Pick<LayoutRectangle, "width" | "height"> | null;
-  /** Safe-area padding inside bounds. */
   safeTop?: number;
   safeBottom?: number;
-  /** Bottom reserve for action bar + clip timeline (PIPs cannot drag below). */
   pipReservedBottom?: number;
   position: { x: number; y: number };
   isHidden: boolean;
@@ -55,12 +49,13 @@ export type DraggableVideoPipProps = {
   width?: number;
   height?: number;
   zIndex?: number;
-  /** Short tap on tile (trainer focuses stream on main stage). */
+  focusOnTap?: boolean;
   onFocus?: () => void;
-  /** Drag bottom-right corner to resize. */
+  onExpand?: () => void;
   onSizeChange?: (width: number, height: number) => void;
   minWidth?: number;
   maxWidth?: number;
+  resizable?: boolean;
 };
 
 function clampPipPosition(
@@ -97,10 +92,10 @@ function detectHideEdge(
   const ratioH = visibleH / pipH;
   if (ratioW >= HIDE_VISIBLE_RATIO && ratioH >= HIDE_VISIBLE_RATIO) return null;
 
-  const distLeft = x;
-  const distRight = w - (x + pipW);
-  const distTop = y - safeTop;
-  const distBottom = h - reservedBottom - (y + pipH);
+  const distLeft = Math.max(0, -x);
+  const distRight = Math.max(0, x + pipW - w);
+  const distTop = Math.max(0, safeTop - y);
+  const distBottom = Math.max(0, y + pipH - (h - reservedBottom));
   const min = Math.min(distLeft, distRight, distTop, distBottom);
   if (min === distLeft) return "left";
   if (min === distRight) return "right";
@@ -122,7 +117,6 @@ export function defaultPipPosition(
 }
 
 export function DraggableVideoPip({
-  tileId,
   user,
   stream,
   isStreamOff,
@@ -143,117 +137,126 @@ export function DraggableVideoPip({
   width = PIP_WIDTH,
   height = PIP_HEIGHT,
   zIndex = 45,
+  focusOnTap = false,
   onFocus,
+  onExpand,
   onSizeChange,
+  resizable = false,
   minWidth = PIP_MIN_WIDTH,
   maxWidth = PIP_MAX_WIDTH,
 }: DraggableVideoPipProps) {
   const reservedBottom = pipReservedBottom ?? safeBottom + 80;
-  const pan = useRef(new Animated.ValueXY(position)).current;
-  const dragStart = useRef({ x: 0, y: 0 });
-  const releasePos = useRef(position);
+  const translateX = useSharedValue(position.x);
+  const translateY = useSharedValue(position.y);
+  const startX = useSharedValue(position.x);
+  const startY = useSharedValue(position.y);
+  const didDrag = useSharedValue(false);
+  const releasePosRef = React.useRef(position);
 
-  React.useEffect(() => {
-    pan.setValue({ x: position.x, y: position.y });
-    releasePos.current = position;
-  }, [position.x, position.y, pan]);
+  useEffect(() => {
+    translateX.value = position.x;
+    translateY.value = position.y;
+    startX.value = position.x;
+    startY.value = position.y;
+    releasePosRef.current = position;
+  }, [position.x, position.y, startX, startY, translateX, translateY]);
 
-  const responder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => !disabled && !isHidden,
-        onMoveShouldSetPanResponder: () => !disabled && !isHidden,
-        onPanResponderGrant: () => {
-          dragStart.current = {
-            x: (pan.x as Animated.Value & { _value?: number })._value ?? position.x,
-            y: (pan.y as Animated.Value & { _value?: number })._value ?? position.y,
-          };
-          pan.setOffset({
-            x: (pan.x as Animated.Value & { _value?: number })._value ?? 0,
-            y: (pan.y as Animated.Value & { _value?: number })._value ?? 0,
-          });
-          pan.setValue({ x: 0, y: 0 });
-        },
-        onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], {
-          useNativeDriver: false,
-        }),
-        onPanResponderRelease: (_, gesture) => {
-          pan.flattenOffset();
-          const x = dragStart.current.x + gesture.dx;
-          const y = dragStart.current.y + gesture.dy;
-          const moved = Math.hypot(gesture.dx, gesture.dy);
-
-          if (moved < TAP_SLOP_PX) {
-            pan.setValue({ x: position.x, y: position.y });
-            onFocus?.();
-            return;
-          }
-
-          if (!bounds) {
-            onPositionChange({ x, y });
-            return;
-          }
-
-          const clamped = clampPipPosition(
-            x,
-            y,
-            bounds,
-            safeTop,
-            reservedBottom,
-            width,
-            height
-          );
-          const edge = detectHideEdge(
-            clamped.x,
-            clamped.y,
-            bounds,
-            safeTop,
-            reservedBottom,
-            width,
-            height
-          );
-          if (edge) {
-            onHide(edge, releasePos.current);
-            pan.setValue({ x: releasePos.current.x, y: releasePos.current.y });
-            return;
-          }
-
-          releasePos.current = clamped;
-          pan.setValue(clamped);
-          onPositionChange(clamped);
-        },
-      }),
+  const handleRelease = useMemo(
+    () => (rawX: number, rawY: number, moved: boolean) => {
+      if (!moved && focusOnTap && onFocus) {
+        translateX.value = position.x;
+        translateY.value = position.y;
+        onFocus();
+        return;
+      }
+      if (!bounds) {
+        onPositionChange({ x: rawX, y: rawY });
+        return;
+      }
+      const edge = detectHideEdge(
+        rawX,
+        rawY,
+        bounds,
+        safeTop,
+        reservedBottom,
+        width,
+        height
+      );
+      if (edge) {
+        onHide(edge, releasePosRef.current);
+        translateX.value = releasePosRef.current.x;
+        translateY.value = releasePosRef.current.y;
+        return;
+      }
+      const clamped = clampPipPosition(
+        rawX,
+        rawY,
+        bounds,
+        safeTop,
+        reservedBottom,
+        width,
+        height
+      );
+      releasePosRef.current = clamped;
+      translateX.value = clamped.x;
+      translateY.value = clamped.y;
+      onPositionChange(clamped);
+    },
     [
       bounds,
-      disabled,
-      isHidden,
-      onHide,
+      focusOnTap,
+      height,
       onFocus,
+      onHide,
       onPositionChange,
-      pan,
       position.x,
       position.y,
       reservedBottom,
       safeTop,
+      translateX,
+      translateY,
       width,
-      height,
     ]
   );
 
-  const resizeResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => !!onSizeChange && !disabled && !isHidden,
-        onMoveShouldSetPanResponder: () => !!onSizeChange && !disabled && !isHidden,
-        onPanResponderMove: (_, g) => {
-          const nextW = Math.min(maxWidth, Math.max(minWidth, width + g.dx));
-          const aspect = PIP_HEIGHT / PIP_WIDTH;
-          const nextH = Math.round(nextW * aspect);
-          onSizeChange?.(nextW, nextH);
-        },
-      }),
-    [disabled, isHidden, maxWidth, minWidth, onSizeChange, width]
-  );
+  const panGesture = useMemo(() => {
+    if (disabled || isHidden) return null;
+    return Gesture.Pan()
+      .minDistance(DRAG_ACTIVATION_PX)
+      .onBegin(() => {
+        didDrag.value = false;
+        startX.value = translateX.value;
+        startY.value = translateY.value;
+      })
+      .onUpdate((e) => {
+        if (Math.abs(e.translationX) > DRAG_ACTIVATION_PX || Math.abs(e.translationY) > DRAG_ACTIVATION_PX) {
+          didDrag.value = true;
+        }
+        translateX.value = startX.value + e.translationX;
+        translateY.value = startY.value + e.translationY;
+      })
+      .onEnd((e) => {
+        const rawX = startX.value + e.translationX;
+        const rawY = startY.value + e.translationY;
+        runOnJS(handleRelease)(rawX, rawY, didDrag.value);
+      });
+  }, [
+    didDrag,
+    disabled,
+    handleRelease,
+    isHidden,
+    startX,
+    startY,
+    translateX,
+    translateY,
+  ]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+    ],
+  }));
 
   if (!bounds) return null;
 
@@ -284,18 +287,13 @@ export function DraggableVideoPip({
     );
   }
 
-  return (
+  const tile = (
     <Animated.View
       style={[
         styles.tile,
-        {
-          width,
-          height,
-          zIndex,
-          transform: [{ translateX: pan.x }, { translateY: pan.y }],
-        },
+        { width, height, zIndex },
+        animatedStyle,
       ]}
-      {...responder.panHandlers}
       accessibilityLabel={`${tabLabel} camera preview`}
     >
       <UserBox
@@ -306,17 +304,32 @@ export function DraggableVideoPip({
         fallbackLabel={fallbackLabel}
         style={styles.tileInner}
       />
-      {onSizeChange ? (
-        <View
+      {onExpand ? (
+        <Pressable
+          style={styles.expandBtn}
+          onPress={onExpand}
+          hitSlop={8}
+          accessibilityLabel={`Expand ${tabLabel} video`}
+        >
+          <Ionicons name="expand-outline" size={16} color="#fff" />
+        </Pressable>
+      ) : null}
+      {resizable && onSizeChange ? (
+        <Pressable
           style={styles.resizeHandle}
-          {...resizeResponder.panHandlers}
-          accessibilityLabel="Drag to resize camera preview"
+          onPress={() => undefined}
+          accessibilityLabel="Resize (disabled in clip mode)"
         >
           <Ionicons name="resize-outline" size={14} color="#fff" />
-        </View>
+        </Pressable>
       ) : null}
     </Animated.View>
   );
+
+  if (panGesture) {
+    return <GestureDetector gesture={panGesture}>{tile}</GestureDetector>;
+  }
+  return tile;
 }
 
 const styles = StyleSheet.create({
@@ -331,6 +344,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: meetingTheme.border,
     backgroundColor: meetingTheme.videoPlaceholder,
+  },
+  expandBtn: {
+    position: "absolute",
+    top: 4,
+    left: 4,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 4,
   },
   edgeTabWrap: {
     position: "absolute",

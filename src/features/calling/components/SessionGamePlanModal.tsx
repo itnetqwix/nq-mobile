@@ -19,12 +19,12 @@ import {
 
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
-import { getS3ImageUrl } from "../../../lib/clipMediaUrl";
+import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { putFileToPresignedUrl } from "../../../lib/presignedPut";
 import { fetchSessionReport } from "../meetingReportApi";
 import {
   NOTIFICATION_TITLES,
-  useNotification,
+  useNotifications,
 } from "../../notifications/NotificationContext";
 
 type Props = {
@@ -53,7 +53,7 @@ export function SessionGamePlanModal({
   traineeId,
   onClose,
 }: Props) {
-  const { emitNotification } = useNotification();
+  const { emitNotification } = useNotifications();
   const [title, setTitle] = useState("");
   const [topic, setTopic] = useState("");
   const [images, setImages] = useState<string[]>([]);

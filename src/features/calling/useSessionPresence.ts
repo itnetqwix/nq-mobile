@@ -28,9 +28,13 @@ type Args = {
   peerDisplayName: string;
   /** WebRTC/media connected — used only until first LESSON_STATE_SYNC arrives. */
   mediaPartnerJoined?: boolean;
+  /** When false, suppress stale banners (e.g. lesson not active yet). */
+  lessonActive?: boolean;
 };
 
 const TIMER_STATE_SYNC = "LESSON_STATE_SYNC";
+const STALE_DEBOUNCE_MS = 6000;
+const STALE_AUTO_CLEAR_MS = 15000;
 
 function partnerRoleFromPayload(role: unknown): PartnerRole | null {
   const r = String(role ?? "").toLowerCase();
@@ -52,6 +56,7 @@ export function useSessionPresence({
   isTrainer,
   peerDisplayName,
   mediaPartnerJoined = false,
+  lessonActive = true,
 }: Args): SessionPresenceState {
   const [trainerConnected, setTrainerConnected] = useState<boolean | null>(null);
   const [traineeConnected, setTraineeConnected] = useState<boolean | null>(null);
@@ -62,7 +67,20 @@ export function useSessionPresence({
   const [partnerReconnecting, setPartnerReconnecting] = useState(false);
 
   const staleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const staleDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const successDismissRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const trainerConnectedRef = useRef<boolean | null>(null);
+  const traineeConnectedRef = useRef<boolean | null>(null);
+  const partnerLeftKindRef = useRef<PartnerRole | null>(null);
+  const mediaPartnerJoinedRef = useRef(mediaPartnerJoined);
+  const lessonActiveRef = useRef(lessonActive);
+
+  trainerConnectedRef.current = trainerConnected;
+  traineeConnectedRef.current = traineeConnected;
+  partnerLeftKindRef.current = partnerLeftKind;
+  mediaPartnerJoinedRef.current = mediaPartnerJoined;
+  lessonActiveRef.current = lessonActive;
 
   const clearStaleTimer = useCallback(() => {
     if (staleTimerRef.current) {
@@ -70,6 +88,22 @@ export function useSessionPresence({
       staleTimerRef.current = null;
     }
   }, []);
+
+  const clearStaleDebounce = useCallback(() => {
+    if (staleDebounceRef.current) {
+      clearTimeout(staleDebounceRef.current);
+      staleDebounceRef.current = null;
+    }
+  }, []);
+
+  const partnerRole: PartnerRole | null = isTrainer ? "trainee" : "trainer";
+
+  const isPartnerConnectedInSync = useCallback(() => {
+    const t = trainerConnectedRef.current;
+    const tr = traineeConnectedRef.current;
+    if (t == null || tr == null) return mediaPartnerJoinedRef.current;
+    return isTrainer ? !!tr : !!t;
+  }, [isTrainer]);
 
   const showSuccessThenClear = useCallback((msg: string, ms = 5000) => {
     if (successDismissRef.current) clearTimeout(successDismissRef.current);
@@ -80,8 +114,6 @@ export function useSessionPresence({
       successDismissRef.current = null;
     }, ms);
   }, []);
-
-  const partnerRole: PartnerRole | null = isTrainer ? "trainee" : "trainer";
 
   const hasPresenceSync = trainerConnected != null && traineeConnected != null;
   const partnerConnectedFromSocket = hasPresenceSync
@@ -114,6 +146,24 @@ export function useSessionPresence({
       if (typeof state.traineeConnected === "boolean") {
         setTraineeConnected(state.traineeConnected);
       }
+      if (
+        state.trainerConnected === true &&
+        state.traineeConnected === true &&
+        partnerLeftKindRef.current == null
+      ) {
+        clearStaleDebounce();
+        clearStaleTimer();
+        setPartnerReconnecting(false);
+        setPresenceMessage((msg) => {
+          if (
+            msg?.includes("lost connection") ||
+            msg?.includes("reconnect")
+          ) {
+            return null;
+          }
+          return msg;
+        });
+      }
     };
 
     const handleStatusChanged = (payload: {
@@ -130,6 +180,7 @@ export function useSessionPresence({
       if (payload.status === "connected") {
         setPartnerReconnecting(false);
         clearStaleTimer();
+        clearStaleDebounce();
         setPartnerLeftKind((prev) => {
           if (prev != null) {
             showSuccessThenClear(`${peerDisplayName} rejoined the session.`);
@@ -148,6 +199,7 @@ export function useSessionPresence({
 
       if (payload.status === "disconnected") {
         setPartnerReconnecting(false);
+        clearStaleDebounce();
         setPartnerLeftKind(role);
         if (role === "trainer") {
           setTrainerConnected(false);
@@ -174,6 +226,7 @@ export function useSessionPresence({
       if (!role || role !== partnerRole) return;
       if (payload.userId && !isPeer(payload.userId)) return;
 
+      clearStaleDebounce();
       setPartnerLeftKind(role);
       setPartnerReconnecting(false);
       if (role === "trainer") {
@@ -190,17 +243,39 @@ export function useSessionPresence({
       setPresenceVariant("warning");
     };
 
-    const handleStale = () => {
-      clearStaleTimer();
+    const applyStaleBanner = () => {
+      if (!lessonActiveRef.current) return;
+      if (partnerLeftKindRef.current != null) return;
+      if (isPartnerConnectedInSync()) return;
+
       setPartnerReconnecting(true);
       setPresenceMessage(
         `${peerDisplayName} may have lost connection. Waiting for them to reconnect…`
       );
       setPresenceVariant("warning");
+
+      clearStaleTimer();
       staleTimerRef.current = setTimeout(() => {
         staleTimerRef.current = null;
         setPartnerReconnecting(false);
-      }, 15_000);
+        if (isPartnerConnectedInSync() && partnerLeftKindRef.current == null) {
+          setPresenceMessage(null);
+        }
+      }, STALE_AUTO_CLEAR_MS);
+    };
+
+    const handleStale = () => {
+      if (!lessonActiveRef.current) return;
+      if (partnerLeftKindRef.current != null) return;
+      if (isPartnerConnectedInSync()) return;
+
+      clearStaleDebounce();
+      staleDebounceRef.current = setTimeout(() => {
+        staleDebounceRef.current = null;
+        if (partnerLeftKindRef.current != null) return;
+        if (isPartnerConnectedInSync()) return;
+        applyStaleBanner();
+      }, STALE_DEBOUNCE_MS);
     };
 
     const requestState = () => {
@@ -217,6 +292,7 @@ export function useSessionPresence({
 
     return () => {
       clearStaleTimer();
+      clearStaleDebounce();
       if (successDismissRef.current) clearTimeout(successDismissRef.current);
       socket.off(TIMER_STATE_SYNC, handleStateSync);
       socket.off("PARTICIPANT_STATUS_CHANGED", handleStatusChanged);
@@ -233,7 +309,9 @@ export function useSessionPresence({
     peerDisplayName,
     partnerRole,
     clearStaleTimer,
+    clearStaleDebounce,
     showSuccessThenClear,
+    isPartnerConnectedInSync,
   ]);
 
   const dismissPresenceBanner = useCallback(() => {
@@ -244,7 +322,6 @@ export function useSessionPresence({
     setPresenceMessage(null);
   }, []);
 
-  // Authoritative sync: both roles connected → clear join / reconnect prompts.
   useEffect(() => {
     if (trainerConnected !== true || traineeConnected !== true) return;
     setPartnerReconnecting(false);
@@ -252,7 +329,6 @@ export function useSessionPresence({
     dismissPresenceBanner();
   }, [trainerConnected, traineeConnected, dismissPresenceBanner]);
 
-  // Media / partner socket connected → dismiss stale "please join" success banner.
   useEffect(() => {
     if (!partnerConnected) return;
     if (presenceVariant !== "success") return;

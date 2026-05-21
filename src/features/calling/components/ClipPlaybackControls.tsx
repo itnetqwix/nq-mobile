@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import {
   LayoutChangeEvent,
+  PanResponder,
   Pressable,
   StyleSheet,
   Text,
@@ -55,11 +56,26 @@ export function ClipPlaybackControls({
   const value = Math.min(Math.max(progressSeconds, 0), max);
   const ratio = value / max;
 
-  const seekFromEvent = (e: GestureResponderEvent) => {
-    const x = e.nativeEvent.locationX;
+  const seekFromX = (locationX: number) => {
     const w = trackWidth.current || 1;
-    onSeek(Math.max(0, Math.min(max, (x / w) * max)));
+    onSeek(Math.max(0, Math.min(max, (locationX / w) * max)));
   };
+
+  const seekFromEvent = (e: GestureResponderEvent) => {
+    seekFromX(e.nativeEvent.locationX);
+  };
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => !disabled,
+        onMoveShouldSetPanResponder: () => !disabled,
+        onPanResponderGrant: (evt) => seekFromX(evt.nativeEvent.locationX),
+        onPanResponderMove: (evt) => seekFromX(evt.nativeEvent.locationX),
+        onPanResponderRelease: (evt) => seekFromX(evt.nativeEvent.locationX),
+      }),
+    [disabled, max, onSeek]
+  );
 
   return (
     <View
@@ -88,16 +104,20 @@ export function ClipPlaybackControls({
         </Pressable>
 
         <View style={styles.timelineCol}>
-          <Pressable
+          <View
             onLayout={(e: LayoutChangeEvent) => {
               trackWidth.current = e.nativeEvent.layout.width;
             }}
-            onPress={seekFromEvent}
-            disabled={disabled}
+            {...panResponder.panHandlers}
             style={[styles.trackHit, compact && styles.trackHitCompact]}
             accessibilityRole="adjustable"
             accessibilityLabel="Clip timeline"
           >
+            <Pressable
+              onPress={seekFromEvent}
+              disabled={disabled}
+              style={StyleSheet.absoluteFill}
+            />
             <View style={[styles.track, compact && styles.trackCompact]}>
               <View style={[styles.fill, { width: `${ratio * 100}%` }]} />
               <View
@@ -108,7 +128,7 @@ export function ClipPlaybackControls({
                 ]}
               />
             </View>
-          </Pressable>
+          </View>
           <View style={styles.timeRow}>
             <Text style={[styles.timeText, compact && styles.timeTextCompact]}>
               {formatTime(value)}

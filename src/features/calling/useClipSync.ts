@@ -70,13 +70,15 @@ function applyClipsToState(
   setSelectedClips: (c: ClipRecord[]) => void,
   setActiveClipId: (id: string | null) => void,
   setActiveClipUrl: (url: string | null) => void,
-  setIsPlaying: (v: boolean) => void
+  setIsPlaying: (v: boolean) => void,
+  setPlayingByClipId: (v: Record<string, boolean>) => void
 ) {
   setSelectedClips(clips);
   if (clips.length === 0) {
     setActiveClipId(null);
     setActiveClipUrl(null);
     setIsPlaying(false);
+    setPlayingByClipId({});
     return;
   }
   const primary = primaryClipFromList(clips);
@@ -84,6 +86,12 @@ function applyClipsToState(
   setActiveClipId(id);
   setActiveClipUrl(url);
   setIsPlaying(false);
+  const playing: Record<string, boolean> = {};
+  for (const c of clips) {
+    const cid = clipIdOf(c);
+    if (cid) playing[cid] = false;
+  }
+  setPlayingByClipId(playing);
 }
 
 export function useClipSync({
@@ -97,6 +105,7 @@ export function useClipSync({
   const [activeClipId, setActiveClipId] = useState<string | null>(null);
   const [activeClipUrl, setActiveClipUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playingByClipId, setPlayingByClipId] = useState<Record<string, boolean>>({});
   const [hiddenVideos, setHiddenVideos] = useState<HiddenVideosMap>(EMPTY_HIDDEN);
   const [seekHint, setSeekHint] = useState<SeekHint>(null);
   const [lockMode, setLockMode] = useState(false);
@@ -127,7 +136,8 @@ export function useClipSync({
           setSelectedClips,
           setActiveClipId,
           setActiveClipUrl,
-          setIsPlaying
+          setIsPlaying,
+          setPlayingByClipId
         );
         if (clips.length < 2) {
           setLockMode(false);
@@ -148,6 +158,7 @@ export function useClipSync({
         setActiveClipId(id);
         setActiveClipUrl(url);
         setIsPlaying(false);
+        setPlayingByClipId({ [id]: false });
         return;
       }
 
@@ -155,12 +166,13 @@ export function useClipSync({
       setActiveClipId(null);
       setActiveClipUrl(null);
       setIsPlaying(false);
+      setPlayingByClipId({});
     };
 
     const onPlayPause = (payload: any) => {
       const both = !!(payload?.both || lockModeRef.current);
+      const nextPlaying = !!payload?.isPlaying;
       if (both) {
-        const nextPlaying = !!payload?.isPlaying;
         if (lockModeRef.current && pendingPlayAfterLockRef.current == null) {
           pendingPlayAfterLockRef.current = nextPlaying;
         }
@@ -168,9 +180,8 @@ export function useClipSync({
         return;
       }
       const vid = payload?.videoId != null ? String(payload.videoId) : null;
-      if (!vid || vid === activeClipId) {
-        setIsPlaying(!!payload?.isPlaying);
-      }
+      if (!vid) return;
+      setPlayingByClipId((prev) => ({ ...prev, [vid]: nextPlaying }));
     };
 
     const onTime = (payload: any) => {
@@ -185,13 +196,12 @@ export function useClipSync({
         return;
       }
       const vid = payload?.videoId != null ? String(payload.videoId) : null;
-      if (!vid || vid === activeClipId) {
-        setSeekHint({
-          videoId: vid ?? "",
-          progress: payload.progress,
-          receivedAt: Date.now(),
-        });
-      }
+      if (!vid) return;
+      setSeekHint({
+        videoId: vid,
+        progress: payload.progress,
+        receivedAt: Date.now(),
+      });
     };
 
     const onHide = (payload: any) => {
@@ -300,7 +310,16 @@ export function useClipSync({
       socket.off(CLIP_EVENTS.TOGGLE_FULL_SCREEN, onFullscreen);
       socket.off(CLIP_EVENTS.ON_VIDEO_ZOOM_PAN, onZoomPan);
     };
-  }, [socket, activeClipId, sessionId, fromUserId, isTrainer]);
+  }, [socket, sessionId, fromUserId, isTrainer]);
+
+  const isClipPlaying = useCallback(
+    (clipId: string | null | undefined) => {
+      if (!clipId) return false;
+      if (lockMode && selectedClips.length >= 2) return isPlaying;
+      return !!playingByClipId[String(clipId)];
+    },
+    [isPlaying, lockMode, playingByClipId, selectedClips.length]
+  );
 
   const emitZoomPan = useCallback(
     (videoId: string, zoom: number, pan: { x: number; y: number }) => {
@@ -330,6 +349,29 @@ export function useClipSync({
     [emitZoomPan, isTrainer]
   );
 
+  const setZoomPan = useCallback(
+    (videoId: string, zoom: number, pan: { x: number; y: number }, options?: { emitSocket?: boolean }) => {
+      if (!videoId) return;
+      const nextZoom = Math.max(1, Math.min(5, zoom));
+      setZoomPanByVideoId((prev) => {
+        const next = {
+          ...prev,
+          [String(videoId)]: { zoom: nextZoom, pan },
+        };
+        if (isTrainer && options?.emitSocket !== false) {
+          emitZoomPan(String(videoId), nextZoom, pan);
+        }
+        return next;
+      });
+    },
+    [emitZoomPan, isTrainer]
+  );
+
+  const setActiveClip = useCallback((clipId: string, playbackUrl?: string | null) => {
+    setActiveClipId(clipId);
+    if (playbackUrl != null) setActiveClipUrl(playbackUrl);
+  }, []);
+
   const clearLockMode = useCallback(
     (emitSocket: boolean) => {
       lockModeRef.current = false;
@@ -357,7 +399,8 @@ export function useClipSync({
         setSelectedClips,
         setActiveClipId,
         setActiveClipUrl,
-        setIsPlaying
+        setIsPlaying,
+        setPlayingByClipId
       );
       if (normalized.length < 2) {
         clearLockMode(shouldEmit);
@@ -410,18 +453,44 @@ export function useClipSync({
         activeClipId ??
         (selectedClips[0] ? clipIdOf(selectedClips[0]) : null);
       if (!vid && !bothLocked) return;
-      const nextState = typeof next === "boolean" ? next : !isPlaying;
-      setIsPlaying(nextState);
+      if (bothLocked) {
+        const nextState = typeof next === "boolean" ? next : !isPlaying;
+        setIsPlaying(nextState);
+        if (!isTrainer || !socket) return;
+        socket.emit(CLIP_EVENTS.ON_VIDEO_PLAY_PAUSE, {
+          videoId: vid ?? undefined,
+          isPlaying: nextState,
+          both: true,
+          userInfo,
+          sessionId,
+        });
+        return;
+      }
+      if (!vid) return;
+      const current = playingByClipId[vid] ?? false;
+      const nextState = typeof next === "boolean" ? next : !current;
+      setPlayingByClipId((prev) => ({ ...prev, [vid]: nextState }));
+      setActiveClipId(vid);
       if (!isTrainer || !socket) return;
       socket.emit(CLIP_EVENTS.ON_VIDEO_PLAY_PAUSE, {
-        videoId: vid ?? undefined,
+        videoId: vid,
         isPlaying: nextState,
-        both: bothLocked,
+        both: false,
         userInfo,
         sessionId,
       });
     },
-    [activeClipId, isPlaying, isTrainer, lockMode, selectedClips, sessionId, socket, userInfo]
+    [
+      activeClipId,
+      isPlaying,
+      isTrainer,
+      lockMode,
+      playingByClipId,
+      selectedClips,
+      sessionId,
+      socket,
+      userInfo,
+    ]
   );
 
   const seek = useCallback(
@@ -581,8 +650,11 @@ export function useClipSync({
     activeClipId,
     activeClipUrl,
     isPlaying,
+    playingByClipId,
+    isClipPlaying,
     zoomPanByVideoId,
     bumpZoom,
+    setZoomPan,
     hiddenVideos,
     hideLocalCamera,
     seekHint,
@@ -593,6 +665,7 @@ export function useClipSync({
     clipFocusIndex,
     setClipFocus,
     selectClip,
+    setActiveClip,
     emitSelectClips,
     preloadBookingClips,
     togglePlay,

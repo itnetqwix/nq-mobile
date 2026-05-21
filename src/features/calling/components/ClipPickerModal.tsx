@@ -107,6 +107,11 @@ export function ClipPickerModal({
     });
   }, []);
 
+  const clearAll = useCallback(() => {
+    onDone([]);
+    onClose();
+  }, [onClose, onDone]);
+
   const confirm = useCallback(() => {
     const selected = allClips.filter((c) => picked.has(String(c._id))).slice(0, MAX_CLIPS);
     if (selected.length === 0) return;
@@ -140,15 +145,16 @@ export function ClipPickerModal({
             <Text style={styles.title}>Select clips</Text>
             <Text style={styles.subtitle}>{selectionLabel}</Text>
           </View>
-          <Pressable
-            onPress={confirm}
-            hitSlop={12}
-            disabled={picked.size === 0}
-            style={picked.size === 0 ? styles.doneDisabled : undefined}
-          >
+          <Pressable onPress={confirm} hitSlop={12} disabled={picked.size === 0}>
             <Text style={[styles.done, picked.size === 0 && styles.doneMuted]}>Done</Text>
           </Pressable>
         </View>
+
+        {selectedClipIds.length > 0 ? (
+          <Pressable style={styles.clearRow} onPress={clearAll}>
+            <Text style={styles.clearText}>Clear clips and return to live video</Text>
+          </Pressable>
+        ) : null}
 
         {loading ? (
           <View style={styles.center}>
@@ -248,6 +254,14 @@ const styles = StyleSheet.create({
   doneDisabled: { opacity: 0.5 },
   title: { fontSize: 16, fontWeight: "700", color: "#111" },
   subtitle: { fontSize: 12, color: "#666", marginTop: 2 },
+  clearRow: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  clearText: { fontSize: 14, fontWeight: "600", color: "#b91c1c", textAlign: "center" },
   center: {
     flex: 1,
     alignItems: "center",
