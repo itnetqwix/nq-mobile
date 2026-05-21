@@ -16,7 +16,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import * as Print from "expo-print";
 
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
@@ -35,6 +34,17 @@ type Props = {
   traineeId: string;
   onClose: () => void;
 };
+
+/** Loaded on demand so meeting screen does not require ExpoPrint in the dev build. */
+async function printHtmlToPdfFile(html: string): Promise<string | null> {
+  try {
+    const Print = await import("expo-print");
+    const pdf = await Print.printToFileAsync({ html, base64: false });
+    return pdf?.uri ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export function SessionGamePlanModal({
   visible,
@@ -140,9 +150,14 @@ export function SessionGamePlanModal({
         if (!uploadUrl) throw new Error("Could not prepare PDF upload.");
 
         const html = buildPdfHtml(images, title.trim(), topic.trim());
-        const pdf = await Print.printToFileAsync({ html, base64: false });
-        if (!pdf?.uri) throw new Error("Could not generate PDF.");
-        await putFileToPresignedUrl(uploadUrl, pdf.uri, "application/pdf");
+        const pdfUri = await printHtmlToPdfFile(html);
+        if (pdfUri) {
+          await putFileToPresignedUrl(uploadUrl, pdfUri, "application/pdf");
+        } else if (__DEV__) {
+          console.warn(
+            "[SessionGamePlanModal] PDF skipped (rebuild app with expo-print: npx expo run:ios --device)"
+          );
+        }
       }
 
       await apiClient.post(API_ROUTES.report.create, {
