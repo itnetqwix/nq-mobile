@@ -16,6 +16,8 @@ export type SignUpPayload = {
   account_type: string;
   category?: string | null;
   tcpa?: boolean;
+  /** Required: user accepted Terms & Conditions and Privacy Policy. */
+  accepted_terms_and_privacy: boolean;
   isGoogleRegister?: boolean;
 };
 

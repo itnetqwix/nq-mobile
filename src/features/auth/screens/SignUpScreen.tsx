@@ -30,6 +30,7 @@ import type { SignUpPayload } from "../api/types";
 import { PasswordRequirements } from "../components/PasswordRequirements";
 import { AuthEscapeLink } from "../components/AuthEscapeLink";
 import { SignupInlineOtp } from "../components/SignupInlineOtp";
+import { LegalTermsAcceptance } from "../components/LegalTermsAcceptance";
 import { SocialAuthButtons } from "../components/SocialAuthButtons";
 import { useAuth } from "../context/AuthContext";
 import { useLoader } from "../../../components/brand/LoaderProvider";
@@ -69,6 +70,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
   const [accountType, setAccountType] = useState<string>(AccountType.TRAINEE);
   const [category, setCategory] = useState<string | null>(null);
   const [tcpa, setTcpa] = useState(false);
+  const [acceptedTermsAndPrivacy, setAcceptedTermsAndPrivacy] = useState(false);
 
   useEffect(() => {
     if (route.params?.prefillEmail && isSsoSignup) {
@@ -151,6 +153,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
       return t("auth.phoneInvalid");
     }
     if (!phoneVerified) return t("auth.verifyPhoneOtp");
+    if (!acceptedTermsAndPrivacy) return t("auth.legalTermsRequired");
     if (!tcpa) return t("auth.tcpaRequired");
     return null;
   };
@@ -174,7 +177,8 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
     mobile_no: mobile.trim(),
     account_type: accountType,
     category: category ?? undefined,
-    tcpa: true,
+    tcpa,
+    accepted_terms_and_privacy: acceptedTermsAndPrivacy,
     isGoogleRegister: googleRegister,
   });
 
@@ -329,6 +333,11 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
               onPress={() => setAccountType(AccountType.TRAINER)}
             />
           </View>
+
+          <LegalTermsAcceptance
+            value={acceptedTermsAndPrivacy}
+            onValueChange={setAcceptedTermsAndPrivacy}
+          />
 
           <View style={styles.tcpaRow}>
             <Switch value={tcpa} onValueChange={setTcpa} />
