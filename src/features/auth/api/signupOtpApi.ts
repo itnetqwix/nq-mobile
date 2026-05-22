@@ -1,6 +1,29 @@
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 
+export type SignupContactCheck = {
+  available: boolean;
+  normalized?: string;
+  message?: string;
+};
+
+export async function checkSignupContact(
+  channel: "email" | "sms",
+  destination: { email?: string; mobile_no?: string }
+): Promise<SignupContactCheck> {
+  const body =
+    channel === "email"
+      ? { channel, email: destination.email?.trim().toLowerCase() }
+      : { channel, mobile_no: destination.mobile_no?.trim() };
+  const res = await apiClient.post(API_ROUTES.auth.signupCheckContact, body);
+  const data = res.data?.data ?? res.data;
+  return {
+    available: Boolean(data?.available),
+    normalized: data?.normalized,
+    message: data?.message,
+  };
+}
+
 export async function sendSignupOtp(
   channel: "email" | "sms",
   destination: { email?: string; mobile_no?: string }

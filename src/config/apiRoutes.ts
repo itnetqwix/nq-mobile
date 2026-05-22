@@ -27,6 +27,7 @@ export const API_ROUTES = {
     sessionsRevoke: "/auth/sessions/revoke",
     sessionsRevokeOthers: "/auth/sessions/revoke-others",
     signup: "/auth/signup",
+    signupCheckContact: "/auth/signup/check-contact",
     signupOtpSend: "/auth/signup/otp/send",
     signupOtpVerify: "/auth/signup/otp/verify",
     forgotPassword: "/auth/forgot-password",

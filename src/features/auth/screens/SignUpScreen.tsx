@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -23,7 +23,8 @@ import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { queryKeys } from "../../../lib/queryKeys";
 import { colors, radii, space, typography } from "../../../theme";
 import { postSignUp } from "../api/authApi";
-import { fetchMasterRow } from "../api/masterApi";
+import { fetchSportCategories } from "../api/masterApi";
+import { SignupCategoryPicker } from "../components/SignupCategoryPicker";
 import type { SignUpPayload } from "../api/types";
 import { PasswordRequirements } from "../components/PasswordRequirements";
 import { SignupInlineOtp } from "../components/SignupInlineOtp";
@@ -39,7 +40,7 @@ import type { AuthScreenProps } from "../../../navigation/types";
 
 const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 
-type SignUpStep = "contact" | "password";
+type SignUpStep = "contact" | "category" | "password";
 
 export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
   const { t } = useAppTranslation();
@@ -74,16 +75,13 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
     }
   }, [route.params?.prefillEmail, isSsoSignup]);
 
-  const masterQuery = useQuery({
-    queryKey: queryKeys.master.signupRow,
-    queryFn: fetchMasterRow,
+  const categoriesQuery = useQuery({
+    queryKey: queryKeys.master.sportCategories,
+    queryFn: fetchSportCategories,
     staleTime: 1000 * 60 * 30,
   });
 
-  const categories = useMemo(() => {
-    const list = masterQuery.data?.category;
-    return Array.isArray(list) ? list : [];
-  }, [masterQuery.data]);
+  const categories = categoriesQuery.data ?? [];
 
   const mutation = useMutation({
     mutationFn: (payload: SignUpPayload) => postSignUp(payload),
@@ -111,8 +109,12 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
       return t("auth.phoneInvalid");
     }
     if (!phoneVerified) return t("auth.verifyPhoneOtp");
-    if (accountType === AccountType.TRAINER && !category) return t("auth.chooseTrainerCategory");
     if (!tcpa) return t("auth.tcpaRequired");
+    return null;
+  };
+
+  const categoryError = (): string | null => {
+    if (!category) return t("auth.chooseCategory");
     return null;
   };
 
@@ -134,8 +136,17 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
     isGoogleRegister: googleRegister,
   });
 
-  const onContinueToPassword = () => {
+  const onContinueToCategory = () => {
     const err = contactError();
+    if (err) {
+      Alert.alert(t("auth.checkFormTitle"), err);
+      return;
+    }
+    setStep("category");
+  };
+
+  const onContinueFromCategory = () => {
+    const err = categoryError();
     if (err) {
       Alert.alert(t("auth.checkFormTitle"), err);
       return;
@@ -175,8 +186,18 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
         {t("auth.createAccount")}
       </Text>
       <View style={styles.stepRow}>
-        <StepPill label={t("auth.stepContact")} active={step === "contact"} done={step === "password"} />
-        <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+        <StepPill
+          label={t("auth.stepContact")}
+          active={step === "contact"}
+          done={step === "category" || step === "password"}
+        />
+        <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+        <StepPill
+          label={t("auth.stepCategory")}
+          active={step === "category"}
+          done={step === "password"}
+        />
+        <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
         <StepPill
           label={isSsoSignup ? t("auth.stepFinish") : t("auth.stepPassword")}
           active={step === "password"}
@@ -250,7 +271,6 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
               selected={accountType === AccountType.TRAINEE}
               onPress={() => {
                 setAccountType(AccountType.TRAINEE);
-                setCategory(null);
               }}
             />
             <TypeChip
@@ -260,36 +280,47 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
             />
           </View>
 
-          {accountType === AccountType.TRAINER ? (
-            <>
-              <Text style={styles.sectionLabel}>{t("auth.category")}</Text>
-              {masterQuery.isLoading ? (
-                <Text style={styles.muted}>{t("auth.loadingCategories")}</Text>
-              ) : (
-                <View style={styles.wrapChips}>
-                  {categories.map((c) => (
-                    <TypeChip key={c} label={c} selected={category === c} onPress={() => setCategory(c)} />
-                  ))}
-                </View>
-              )}
-            </>
-          ) : null}
-
           <View style={styles.tcpaRow}>
             <Switch value={tcpa} onValueChange={setTcpa} />
             <Text style={styles.tcpaText}>{t("auth.tcpaConsent")}</Text>
           </View>
 
           <Button
+            label={t("auth.continue")}
+            size="lg"
+            onPress={onContinueToCategory}
+          />
+        </Stack>
+      ) : step === "category" ? (
+        <Stack gap="md">
+          <Pressable onPress={() => setStep("contact")} style={styles.backLink}>
+            <Ionicons name="arrow-back" size={18} color={colors.brandAccent} />
+            <Text style={styles.link}>{t("auth.editContactDetails")}</Text>
+          </Pressable>
+          <Text style={styles.sectionLabel}>
+            {accountType === AccountType.TRAINER
+              ? t("auth.categoryTrainerTitle")
+              : t("auth.categoryTraineeTitle")}
+          </Text>
+          <Text style={styles.categoryHint}>{t("auth.categoryStepHint")}</Text>
+          <View style={styles.categoryPickerBox}>
+            <SignupCategoryPicker
+              categories={categories}
+              selected={category}
+              onSelect={setCategory}
+              loading={categoriesQuery.isLoading}
+            />
+          </View>
+          <Button
             label={isSsoSignup ? t("auth.createAccount") : t("auth.continue")}
             size="lg"
             loading={mutation.isPending}
-            onPress={onContinueToPassword}
+            onPress={onContinueFromCategory}
           />
         </Stack>
       ) : (
         <Stack gap="md">
-          <Pressable onPress={() => setStep("contact")} style={styles.backLink}>
+          <Pressable onPress={() => setStep("category")} style={styles.backLink}>
             <Ionicons name="arrow-back" size={18} color={colors.brandAccent} />
             <Text style={styles.link}>{t("auth.editContactDetails")}</Text>
           </Pressable>
@@ -419,6 +450,16 @@ const styles = StyleSheet.create({
     gap: space.sm,
     marginBottom: space.md,
     flexWrap: "wrap",
+  },
+  categoryHint: {
+    fontSize: 13,
+    color: colors.textMuted,
+    lineHeight: 18,
+    marginBottom: space.sm,
+  },
+  categoryPickerBox: {
+    maxHeight: 360,
+    marginBottom: space.md,
   },
   wrapChips: {
     flexDirection: "row",

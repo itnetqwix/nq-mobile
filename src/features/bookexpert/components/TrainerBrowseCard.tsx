@@ -14,6 +14,7 @@ import {
 } from "../lib/trainerUtils";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { FavoriteHeartButton } from "../../dashboard/components/trainee/FavoriteHeartButton";
+import { FriendSocialStrip } from "../../dashboard/components/trainee/FriendSocialStrip";
 
 function Avatar({
   uri,
@@ -52,7 +53,6 @@ export type TrainerBrowseCardProps = {
   onPress: (t: Record<string, unknown>) => void;
   onBook: (t: Record<string, unknown>) => void;
   onSchedule: (t: Record<string, unknown>) => void;
-  /** Highlight category when searching across sports */
   highlightCategory?: string;
   compact?: boolean;
   isFavorite?: boolean;
@@ -72,7 +72,6 @@ export function TrainerBrowseCard({
 }: TrainerBrowseCardProps) {
   const { t } = useAppTranslation();
   const styles = makeCardStyles(themeColors);
-  const trainerId = String(trainer?._id ?? "");
   const name = getTrainerName(trainer);
   const showOnline = !!(trainer as { is_online?: boolean })?.is_online;
   const cats = getTrainerCategories(trainer);
@@ -153,31 +152,38 @@ export function TrainerBrowseCard({
                 {t("bookExpert.slotsAvailable", { count: slotsCount })}
               </Text>
             )}
+            <FriendSocialStrip trainer={trainer} />
           </View>
         </View>
       </Pressable>
       <View style={styles.cardFooter}>
-        {onToggleFavorite ? (
-          <View style={styles.favRow}>
+        <View style={styles.actionRow}>
+          {onToggleFavorite ? (
             <FavoriteHeartButton
+              compact
               active={!!isFavorite}
               onPress={() => onToggleFavorite(trainer)}
               accessibilityLabel={t("traineeDiscover.favoriteA11y", { name })}
             />
-          </View>
-        ) : null}
-        <View style={styles.btnRow}>
+          ) : (
+            <View style={styles.heartSpacer} />
+          )}
           <Pressable
-            style={[styles.actionBtn, !showOnline && styles.actionBtnDisabled]}
+            style={[styles.actionBtn, styles.actionBtnFlex, !showOnline && styles.actionBtnDisabled]}
             onPress={() => showOnline && onBook(trainer)}
             disabled={!showOnline}
           >
-            <Ionicons name="flash" size={16} color={themeColors.brandTextOn} />
-            <Text style={styles.actionBtnText}>{t("bookExpert.instant")}</Text>
+            <Ionicons name="flash" size={15} color={themeColors.brandTextOn} />
+            <Text style={styles.actionBtnText} numberOfLines={1}>
+              {t("bookExpert.instant")}
+            </Text>
           </Pressable>
-          <Pressable style={[styles.actionBtn, styles.actionBtnOutline]} onPress={() => onSchedule(trainer)}>
-            <Ionicons name="calendar-outline" size={16} color={themeColors.brandNavy} />
-            <Text style={[styles.actionBtnText, styles.actionBtnTextOutline]}>
+          <Pressable
+            style={[styles.actionBtn, styles.actionBtnOutline, styles.actionBtnFlex]}
+            onPress={() => onSchedule(trainer)}
+          >
+            <Ionicons name="calendar-outline" size={15} color={themeColors.brandNavy} />
+            <Text style={[styles.actionBtnText, styles.actionBtnTextOutline]} numberOfLines={1}>
               {t("traineeDiscover.bookSession")}
             </Text>
           </Pressable>
@@ -196,10 +202,6 @@ function makeCardStyles(colors: AppColors) {
       borderWidth: 1,
       borderColor: colors.border,
       position: "relative",
-    },
-    favRow: {
-      alignItems: "flex-end",
-      marginBottom: space.sm,
     },
     verifiedBadge: {
       flexDirection: "row",
@@ -234,23 +236,31 @@ function makeCardStyles(colors: AppColors) {
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.borderSubtle,
     },
-    btnRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+    actionRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    heartSpacer: { width: 40 },
     actionBtn: {
       flexDirection: "row",
       alignItems: "center",
+      justifyContent: "center",
       gap: 4,
-      paddingHorizontal: 12,
+      paddingHorizontal: 10,
       paddingVertical: 8,
       borderRadius: radii.pill,
       backgroundColor: colors.brandNavy,
+      minHeight: 40,
     },
+    actionBtnFlex: { flex: 1, minWidth: 0 },
     actionBtnDisabled: { opacity: 0.45 },
     actionBtnOutline: {
       backgroundColor: colors.surface,
       borderWidth: 1,
       borderColor: colors.brandNavy,
     },
-    actionBtnText: { fontSize: 13, fontWeight: "600", color: colors.brandTextOn },
+    actionBtnText: { fontSize: 12, fontWeight: "600", color: colors.brandTextOn, flexShrink: 1 },
     actionBtnTextOutline: { color: colors.brandNavy },
     livePill: {
       flexDirection: "row",

@@ -17,7 +17,8 @@ export function resolveTraineeDashboardCategories(
     const masterSet = new Set(masterSports.map((s) => s.toLowerCase()));
     const ordered = interests.filter((i) => masterSet.has(i.toLowerCase()) || masterSports.length === 0);
     const extra = interests.filter((i) => !ordered.includes(i));
-    return [...ordered, ...extra];
+    const picked = [...ordered, ...extra];
+    if (picked.length > 0) return picked;
   }
   return masterSports;
 }

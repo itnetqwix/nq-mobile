@@ -29,6 +29,7 @@ import {
 } from "../lib/trainerUtils";
 import { useFavoriteTrainers } from "../../dashboard/hooks/useFavoriteTrainers";
 import { FavoriteHeartButton } from "../../dashboard/components/trainee/FavoriteHeartButton";
+import { FriendSocialStrip } from "../../dashboard/components/trainee/FriendSocialStrip";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 type Props = {
@@ -153,6 +154,7 @@ export function TrainerProfileModal({
               {hourly != null && (
                 <Text style={styles.rate}>${hourly.toFixed(0)} <Text style={styles.rateUnit}>/ hour</Text></Text>
               )}
+              <FriendSocialStrip trainer={data} />
             </View>
 
             {categories.length > 0 && (

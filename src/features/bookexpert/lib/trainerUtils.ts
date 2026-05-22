@@ -130,6 +130,42 @@ export function extractTrainerReviews(trainer: Record<string, unknown> | null | 
   return out.sort((a, b) => b.sessionRating - a.sessionRating);
 }
 
+export type TrainerFriendPeer = {
+  _id: string;
+  fullname?: string;
+  profile_picture?: string;
+};
+
+function normalizeFriendPeers(raw: unknown): TrainerFriendPeer[] {
+  if (!Array.isArray(raw)) return [];
+  const out: TrainerFriendPeer[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    const id = String(row._id ?? "");
+    if (!id) continue;
+    out.push({
+      _id: id,
+      fullname: row.fullname as string | undefined,
+      profile_picture: row.profile_picture as string | undefined,
+    });
+    if (out.length >= 4) break;
+  }
+  return out;
+}
+
+export function getTrainerFriendsWhoFavorited(
+  trainer: Record<string, unknown> | null | undefined
+): TrainerFriendPeer[] {
+  return normalizeFriendPeers(trainer?.friendsWhoFavorited);
+}
+
+export function getTrainerFriendsWhoBooked(
+  trainer: Record<string, unknown> | null | undefined
+): TrainerFriendPeer[] {
+  return normalizeFriendPeers(trainer?.friendsWhoBooked);
+}
+
 export function groupCategoriesAlphabetically(categories: string[]): { title: string; data: string[] }[] {
   const groups: Record<string, string[]> = {};
   for (const c of categories) {
