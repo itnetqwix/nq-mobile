@@ -63,6 +63,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         /** Polling uses XHR — same Origin/UA as REST or Cloudflare may block (`xhr poll error`). */
         extraHeaders: getBrowserLikeRequestHeaders(),
         transports: ["polling", "websocket"],
+        forceNew: true,
         reconnection: true,
         reconnectionAttempts: 10,
         reconnectionDelay: 1500,
