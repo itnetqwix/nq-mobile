@@ -1,4 +1,5 @@
 import { configureStore } from "@reduxjs/toolkit";
+import { queryCacheListener } from "./middleware/queryCacheListener";
 import authReducer from "./slices/authSlice";
 import socketReducer from "./slices/socketSlice";
 import systemReducer from "./slices/systemSlice";
@@ -26,7 +27,7 @@ export const store = configureStore({
           "sessionBooking/setPendingSessions",
         ],
       },
-    }),
+    }).prepend(queryCacheListener.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

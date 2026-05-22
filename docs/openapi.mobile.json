@@ -1,0 +1,3325 @@
+{
+  "contractVersion": "2026-05-22",
+  "operationCount": 194,
+  "openapi": "3.1.0",
+  "info": {
+    "title": "NetQwix Mobile API",
+    "version": "1.0.0",
+    "description": "Generated from `src/config/apiRoutes.ts`. Regenerate: `npm run sync:api-contract`."
+  },
+  "servers": [
+    {
+      "url": "https://api-netqwix.com"
+    }
+  ],
+  "paths": {
+    "/admin/audit-logs": {
+      "post": {
+        "operationId": "admin_auditLogs",
+        "tags": [
+          "admin"
+        ],
+        "summary": "admin auditLogs",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/admin/call-diagnostics": {
+      "post": {
+        "operationId": "admin_callDiagnostics",
+        "tags": [
+          "admin"
+        ],
+        "summary": "admin callDiagnostics",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/admin/call-quality-summary/{id}": {
+      "post": {
+        "operationId": "admin_callQualitySummary",
+        "tags": [
+          "admin"
+        ],
+        "summary": "admin callQualitySummary",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/admin/clip-play-url/{id}": {
+      "post": {
+        "operationId": "admin_clipPlayUrl",
+        "tags": [
+          "admin"
+        ],
+        "summary": "admin clipPlayUrl",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/admin/dashboard-metrics": {
+      "post": {
+        "operationId": "admin_dashboardMetrics",
+        "tags": [
+          "admin"
+        ],
+        "summary": "admin dashboardMetrics",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/admin/entity/{id}/undefined": {
+      "delete": {
+        "operationId": "admin_deleteEntity",
+        "tags": [
+          "admin"
+        ],
+        "summary": "admin deleteEntity",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/admin/get-global-commission": {
+      "get": {
+        "operationId": "admin_getGlobalCommission",
+        "tags": [
+          "admin"
+        ],
+        "summary": "admin getGlobalCommission",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/admin/online-users": {
+      "post": {
+        "operationId": "admin_onlineUsers",
+        "tags": [
+          "admin"
+        ],
+        "summary": "admin onlineUsers",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/admin/update-global-commission": {
+      "put": {
+        "operationId": "admin_updateGlobalCommission",
+        "tags": [
+          "admin"
+        ],
+        "summary": "admin updateGlobalCommission",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/admin/user-360/{id}": {
+      "post": {
+        "operationId": "admin_user360",
+        "tags": [
+          "admin"
+        ],
+        "summary": "admin user360",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/admin/user-assets/{id}": {
+      "post": {
+        "operationId": "admin_userAssets",
+        "tags": [
+          "admin"
+        ],
+        "summary": "admin userAssets",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/admin/user-lessons/{id}": {
+      "post": {
+        "operationId": "admin_userLessons",
+        "tags": [
+          "admin"
+        ],
+        "summary": "admin userLessons",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/admin/user-reviews/{id}": {
+      "post": {
+        "operationId": "admin_userReviews",
+        "tags": [
+          "admin"
+        ],
+        "summary": "admin userReviews",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/admin/user-timeline/{id}": {
+      "post": {
+        "operationId": "admin_userTimeline",
+        "tags": [
+          "admin"
+        ],
+        "summary": "admin userTimeline",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/ai/apply-enhanced-profile": {
+      "post": {
+        "operationId": "ai_applyEnhancedProfile",
+        "tags": [
+          "ai"
+        ],
+        "summary": "ai applyEnhancedProfile",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/ai/chat-assistant": {
+      "post": {
+        "operationId": "ai_chatAssistant",
+        "tags": [
+          "ai"
+        ],
+        "summary": "ai chatAssistant",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/ai/enhance-profile": {
+      "post": {
+        "operationId": "ai_enhanceProfile",
+        "tags": [
+          "ai"
+        ],
+        "summary": "ai enhanceProfile",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/ai/lesson-summary/{id}": {
+      "post": {
+        "operationId": "ai_lessonSummary",
+        "tags": [
+          "ai"
+        ],
+        "summary": "ai lessonSummary",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/ai/recommend-trainers": {
+      "post": {
+        "operationId": "ai_recommendTrainers",
+        "tags": [
+          "ai"
+        ],
+        "summary": "ai recommendTrainers",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/ai/review-analysis": {
+      "post": {
+        "operationId": "ai_reviewAnalysis",
+        "tags": [
+          "ai"
+        ],
+        "summary": "ai reviewAnalysis",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/ai/smart-schedule/{id}": {
+      "post": {
+        "operationId": "ai_smartSchedule",
+        "tags": [
+          "ai"
+        ],
+        "summary": "ai smartSchedule",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/ai/smart-search": {
+      "post": {
+        "operationId": "ai_smartSearch",
+        "tags": [
+          "ai"
+        ],
+        "summary": "ai smartSearch",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/ai/tag-clip/{id}": {
+      "post": {
+        "operationId": "ai_tagClip",
+        "tags": [
+          "ai"
+        ],
+        "summary": "ai tagClip",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/auth/confirm-reset-password": {
+      "post": {
+        "operationId": "auth_confirmResetPassword",
+        "tags": [
+          "auth"
+        ],
+        "summary": "auth confirmResetPassword",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "operationId": "auth_forgotPassword",
+        "tags": [
+          "auth"
+        ],
+        "summary": "auth forgotPassword",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "auth_login",
+        "tags": [
+          "auth"
+        ],
+        "summary": "auth login",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "auth_logout",
+        "tags": [
+          "auth"
+        ],
+        "summary": "auth logout",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/auth/sessions": {
+      "post": {
+        "operationId": "auth_sessions",
+        "tags": [
+          "auth"
+        ],
+        "summary": "auth sessions",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/auth/sessions/register": {
+      "post": {
+        "operationId": "auth_sessionsRegister",
+        "tags": [
+          "auth"
+        ],
+        "summary": "auth sessionsRegister",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/auth/sessions/revoke": {
+      "put": {
+        "operationId": "auth_sessionsRevoke",
+        "tags": [
+          "auth"
+        ],
+        "summary": "auth sessionsRevoke",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/auth/sessions/revoke-others": {
+      "put": {
+        "operationId": "auth_sessionsRevokeOthers",
+        "tags": [
+          "auth"
+        ],
+        "summary": "auth sessionsRevokeOthers",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/auth/signup": {
+      "post": {
+        "operationId": "auth_signup",
+        "tags": [
+          "auth"
+        ],
+        "summary": "auth signup",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/auth/signup/otp/send": {
+      "post": {
+        "operationId": "auth_signupOtpSend",
+        "tags": [
+          "auth"
+        ],
+        "summary": "auth signupOtpSend",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/auth/signup/otp/verify": {
+      "post": {
+        "operationId": "auth_signupOtpVerify",
+        "tags": [
+          "auth"
+        ],
+        "summary": "auth signupOtpVerify",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/auth/verify-apple-login": {
+      "post": {
+        "operationId": "auth_verifyAppleLogin",
+        "tags": [
+          "auth"
+        ],
+        "summary": "auth verifyAppleLogin",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/auth/verify-google-login": {
+      "post": {
+        "operationId": "auth_verifyGoogleLogin",
+        "tags": [
+          "auth"
+        ],
+        "summary": "auth verifyGoogleLogin",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/chat-archive": {
+      "post": {
+        "operationId": "chat_archiveConversation",
+        "tags": [
+          "chat"
+        ],
+        "summary": "chat archiveConversation",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/chat-clear": {
+      "post": {
+        "operationId": "chat_clearConversation",
+        "tags": [
+          "chat"
+        ],
+        "summary": "chat clearConversation",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/chat-conversation": {
+      "post": {
+        "operationId": "chat_conversation",
+        "tags": [
+          "chat"
+        ],
+        "summary": "chat conversation",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/chat-conversations": {
+      "get": {
+        "operationId": "chat_conversations",
+        "tags": [
+          "chat"
+        ],
+        "summary": "chat conversations",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/chat-conversations?archived=true": {
+      "get": {
+        "operationId": "chat_archivedConversations",
+        "tags": [
+          "chat"
+        ],
+        "summary": "chat archivedConversations",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/chat-create-group": {
+      "post": {
+        "operationId": "chat_createGroup",
+        "tags": [
+          "chat"
+        ],
+        "summary": "chat createGroup",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/chat-create-group-invite": {
+      "post": {
+        "operationId": "chat_createGroupInvite",
+        "tags": [
+          "chat"
+        ],
+        "summary": "chat createGroupInvite",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/chat-delete-conversation": {
+      "delete": {
+        "operationId": "chat_deleteConversation",
+        "tags": [
+          "chat"
+        ],
+        "summary": "chat deleteConversation",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/chat-delete-message": {
+      "delete": {
+        "operationId": "chat_deleteMessage",
+        "tags": [
+          "chat"
+        ],
+        "summary": "chat deleteMessage",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/chat-edit-message": {
+      "post": {
+        "operationId": "chat_editMessage",
+        "tags": [
+          "chat"
+        ],
+        "summary": "chat editMessage",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/chat-group-invite-respond": {
+      "post": {
+        "operationId": "chat_respondGroupInvite",
+        "tags": [
+          "chat"
+        ],
+        "summary": "chat respondGroupInvite",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/chat-group-invites": {
+      "post": {
+        "operationId": "chat_groupInvites",
+        "tags": [
+          "chat"
+        ],
+        "summary": "chat groupInvites",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/chat-group/{id}": {
+      "post": {
+        "operationId": "chat_groupDetail",
+        "tags": [
+          "chat"
+        ],
+        "summary": "chat groupDetail",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/chat-group/{id}/delete": {
+      "post": {
+        "operationId": "chat_groupDelete",
+        "tags": [
+          "chat"
+        ],
+        "summary": "chat groupDelete",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/chat-group/{id}/exit": {
+      "post": {
+        "operationId": "chat_groupExit",
+        "tags": [
+          "chat"
+        ],
+        "summary": "chat groupExit",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/chat-group/{id}/invite": {
+      "post": {
+        "operationId": "chat_groupInvite",
+        "tags": [
+          "chat"
+        ],
+        "summary": "chat groupInvite",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/chat-group/{id}/members": {
+      "post": {
+        "operationId": "chat_groupMembers",
+        "tags": [
+          "chat"
+        ],
+        "summary": "chat groupMembers",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/chat-group/{id}/remove-member": {
+      "post": {
+        "operationId": "chat_groupRemoveMember",
+        "tags": [
+          "chat"
+        ],
+        "summary": "chat groupRemoveMember",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/chat-group/{id}/update": {
+      "post": {
+        "operationId": "chat_groupUpdate",
+        "tags": [
+          "chat"
+        ],
+        "summary": "chat groupUpdate",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/chat-media-upload-url": {
+      "post": {
+        "operationId": "chat_mediaUploadUrl",
+        "tags": [
+          "chat"
+        ],
+        "summary": "chat mediaUploadUrl",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/chat-messages/{id}": {
+      "post": {
+        "operationId": "chat_messages",
+        "tags": [
+          "chat"
+        ],
+        "summary": "chat messages",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/chat-policy?otherUserId={id}": {
+      "get": {
+        "operationId": "chat_policy",
+        "tags": [
+          "chat"
+        ],
+        "summary": "chat policy",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/chat-send": {
+      "post": {
+        "operationId": "chat_send",
+        "tags": [
+          "chat"
+        ],
+        "summary": "chat send",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/chat-unarchive": {
+      "post": {
+        "operationId": "chat_unarchiveConversation",
+        "tags": [
+          "chat"
+        ],
+        "summary": "chat unarchiveConversation",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/delete-clip/{id}": {
+      "delete": {
+        "operationId": "common_deleteClip",
+        "tags": [
+          "common"
+        ],
+        "summary": "common deleteClip",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/delete-saved-session/{id}": {
+      "delete": {
+        "operationId": "common_deleteSavedSession",
+        "tags": [
+          "common"
+        ],
+        "summary": "common deleteSavedSession",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/extend-session-end-time": {
+      "post": {
+        "operationId": "common_extendSessionEndTime",
+        "tags": [
+          "common"
+        ],
+        "summary": "common extendSessionEndTime",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/featured-content-upload-url": {
+      "post": {
+        "operationId": "common_featuredContentUploadUrl",
+        "tags": [
+          "common"
+        ],
+        "summary": "common featuredContentUploadUrl",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/generate-thumbnail": {
+      "post": {
+        "operationId": "common_generateThumbnail",
+        "tags": [
+          "common"
+        ],
+        "summary": "common generateThumbnail",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/get-all-saved-sessions": {
+      "get": {
+        "operationId": "common_getAllSavedSessions",
+        "tags": [
+          "common"
+        ],
+        "summary": "common getAllSavedSessions",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/get-clips": {
+      "get": {
+        "operationId": "common_getClips",
+        "tags": [
+          "common"
+        ],
+        "summary": "common getClips",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/get-shared-clips": {
+      "get": {
+        "operationId": "common_getSharedClips",
+        "tags": [
+          "common"
+        ],
+        "summary": "common getSharedClips",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/pdf-upload-url": {
+      "post": {
+        "operationId": "common_pdfUploadUrl",
+        "tags": [
+          "common"
+        ],
+        "summary": "common pdfUploadUrl",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/saved-sessions-upload-url": {
+      "post": {
+        "operationId": "common_savedSessionsUploadUrl",
+        "tags": [
+          "common"
+        ],
+        "summary": "common savedSessionsUploadUrl",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/trainee-clips": {
+      "post": {
+        "operationId": "common_traineeClips",
+        "tags": [
+          "common"
+        ],
+        "summary": "common traineeClips",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/update-profile-picture": {
+      "put": {
+        "operationId": "common_updateProfilePicture",
+        "tags": [
+          "common"
+        ],
+        "summary": "common updateProfilePicture",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/upload": {
+      "post": {
+        "operationId": "common_upload",
+        "tags": [
+          "common"
+        ],
+        "summary": "common upload",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/validate-promo": {
+      "post": {
+        "operationId": "promo_validate",
+        "tags": [
+          "promo"
+        ],
+        "summary": "promo validate",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/video-upload-url": {
+      "post": {
+        "operationId": "common_videoUploadUrl",
+        "tags": [
+          "common"
+        ],
+        "summary": "common videoUploadUrl",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/common/visible-promos": {
+      "post": {
+        "operationId": "promo_visible",
+        "tags": [
+          "promo"
+        ],
+        "summary": "promo visible",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/master/master-data": {
+      "get": {
+        "operationId": "master_masterData",
+        "tags": [
+          "master"
+        ],
+        "summary": "master masterData",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/notifications": {
+      "get": {
+        "operationId": "notifications_list",
+        "tags": [
+          "notifications"
+        ],
+        "summary": "notifications list",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/notifications/get-public-key": {
+      "get": {
+        "operationId": "notifications_getPublicKey",
+        "tags": [
+          "notifications"
+        ],
+        "summary": "notifications getPublicKey",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/notifications/register-push-token": {
+      "get": {
+        "operationId": "notifications_registerPushToken",
+        "tags": [
+          "notifications"
+        ],
+        "summary": "notifications registerPushToken",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/notifications/subscription": {
+      "get": {
+        "operationId": "notifications_subscription",
+        "tags": [
+          "notifications"
+        ],
+        "summary": "notifications subscription",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/notifications/unregister-push-token/{id}": {
+      "get": {
+        "operationId": "notifications_unregisterPushToken",
+        "tags": [
+          "notifications"
+        ],
+        "summary": "notifications unregisterPushToken",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/notifications/update": {
+      "get": {
+        "operationId": "notifications_update",
+        "tags": [
+          "notifications"
+        ],
+        "summary": "notifications update",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/report": {
+      "post": {
+        "operationId": "report_create",
+        "tags": [
+          "report"
+        ],
+        "summary": "report create",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/report/add-image": {
+      "post": {
+        "operationId": "report_addImage",
+        "tags": [
+          "report"
+        ],
+        "summary": "report addImage",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/report/add-session-recording": {
+      "post": {
+        "operationId": "report_addSessionRecording",
+        "tags": [
+          "report"
+        ],
+        "summary": "report addSessionRecording",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/report/crop-image": {
+      "post": {
+        "operationId": "report_cropImage",
+        "tags": [
+          "report"
+        ],
+        "summary": "report cropImage",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/report/delete-report/{id}": {
+      "delete": {
+        "operationId": "report_deleteReport",
+        "tags": [
+          "report"
+        ],
+        "summary": "report deleteReport",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/report/get": {
+      "get": {
+        "operationId": "report_get",
+        "tags": [
+          "report"
+        ],
+        "summary": "report get",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/report/get-all": {
+      "get": {
+        "operationId": "report_getAll",
+        "tags": [
+          "report"
+        ],
+        "summary": "report getAll",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/report/remove-image": {
+      "post": {
+        "operationId": "report_removeImage",
+        "tags": [
+          "report"
+        ],
+        "summary": "report removeImage",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/storage/clips/confirm": {
+      "get": {
+        "operationId": "storage_clipsConfirm",
+        "tags": [
+          "storage"
+        ],
+        "summary": "storage clipsConfirm",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/storage/clips/presign": {
+      "get": {
+        "operationId": "storage_clipsPresign",
+        "tags": [
+          "storage"
+        ],
+        "summary": "storage clipsPresign",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainee/book-instant-meeting": {
+      "post": {
+        "operationId": "trainee_bookInstantMeeting",
+        "tags": [
+          "trainee"
+        ],
+        "summary": "trainee bookInstantMeeting",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainee/book-session": {
+      "post": {
+        "operationId": "trainee_bookSession",
+        "tags": [
+          "trainee"
+        ],
+        "summary": "trainee bookSession",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainee/check-slot": {
+      "post": {
+        "operationId": "trainee_checkSlot",
+        "tags": [
+          "trainee"
+        ],
+        "summary": "trainee checkSlot",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainee/get-trainers-with-slots": {
+      "get": {
+        "operationId": "trainee_getTrainersWithSlots",
+        "tags": [
+          "trainee"
+        ],
+        "summary": "trainee getTrainersWithSlots",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainee/instant-lesson/eligibility": {
+      "post": {
+        "operationId": "trainee_instantLessonEligibility",
+        "tags": [
+          "trainee"
+        ],
+        "summary": "trainee instantLessonEligibility",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainee/profile": {
+      "get": {
+        "operationId": "trainee_profile",
+        "tags": [
+          "trainee"
+        ],
+        "summary": "trainee profile",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainee/recent-trainers": {
+      "post": {
+        "operationId": "trainee_recentTrainers",
+        "tags": [
+          "trainee"
+        ],
+        "summary": "trainee recentTrainers",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainee/session-extension/cancel-request": {
+      "post": {
+        "operationId": "trainee_sessionExtensionCancel",
+        "tags": [
+          "trainee"
+        ],
+        "summary": "trainee sessionExtensionCancel",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainee/session-extension/confirm": {
+      "post": {
+        "operationId": "trainee_sessionExtensionConfirm",
+        "tags": [
+          "trainee"
+        ],
+        "summary": "trainee sessionExtensionConfirm",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainee/session-extension/create-payment-intent": {
+      "post": {
+        "operationId": "trainee_sessionExtensionPaymentIntent",
+        "tags": [
+          "trainee"
+        ],
+        "summary": "trainee sessionExtensionPaymentIntent",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainee/session-extension/quote": {
+      "post": {
+        "operationId": "trainee_sessionExtensionQuote",
+        "tags": [
+          "trainee"
+        ],
+        "summary": "trainee sessionExtensionQuote",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainee/session-extension/request": {
+      "post": {
+        "operationId": "trainee_sessionExtensionRequest",
+        "tags": [
+          "trainee"
+        ],
+        "summary": "trainee sessionExtensionRequest",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainer/add-slot": {
+      "post": {
+        "operationId": "trainer_addSlot",
+        "tags": [
+          "trainer"
+        ],
+        "summary": "trainer addSlot",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainer/create-money-request": {
+      "post": {
+        "operationId": "trainer_createMoneyRequest",
+        "tags": [
+          "trainer"
+        ],
+        "summary": "trainer createMoneyRequest",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainer/delete-slot": {
+      "delete": {
+        "operationId": "trainer_deleteSlot",
+        "tags": [
+          "trainer"
+        ],
+        "summary": "trainer deleteSlot",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainer/get-availability": {
+      "get": {
+        "operationId": "trainer_getAvailability",
+        "tags": [
+          "trainer"
+        ],
+        "summary": "trainer getAvailability",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainer/get-money-request": {
+      "get": {
+        "operationId": "trainer_getMoneyRequest",
+        "tags": [
+          "trainer"
+        ],
+        "summary": "trainer getMoneyRequest",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainer/get-recent-trainees": {
+      "get": {
+        "operationId": "trainer_getRecentTrainees",
+        "tags": [
+          "trainer"
+        ],
+        "summary": "trainer getRecentTrainees",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainer/get-slots": {
+      "get": {
+        "operationId": "trainer_getSlots",
+        "tags": [
+          "trainer"
+        ],
+        "summary": "trainer getSlots",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainer/get-trainee-clips": {
+      "get": {
+        "operationId": "trainer_getTraineeClips",
+        "tags": [
+          "trainer"
+        ],
+        "summary": "trainer getTraineeClips",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainer/get-trainers": {
+      "get": {
+        "operationId": "trainer_getTrainers",
+        "tags": [
+          "trainer"
+        ],
+        "summary": "trainer getTrainers",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainer/profile": {
+      "get": {
+        "operationId": "trainer_profile",
+        "tags": [
+          "trainer"
+        ],
+        "summary": "trainer profile",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainer/session-extension/respond": {
+      "post": {
+        "operationId": "trainer_sessionExtensionRespond",
+        "tags": [
+          "trainer"
+        ],
+        "summary": "trainer sessionExtensionRespond",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainer/top-trainers": {
+      "post": {
+        "operationId": "trainer_topTrainers",
+        "tags": [
+          "trainer"
+        ],
+        "summary": "trainer topTrainers",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainer/update-slot": {
+      "put": {
+        "operationId": "trainer_updateSlot",
+        "tags": [
+          "trainer"
+        ],
+        "summary": "trainer updateSlot",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/trainer/update-slots": {
+      "put": {
+        "operationId": "trainer_updateSlots",
+        "tags": [
+          "trainer"
+        ],
+        "summary": "trainer updateSlots",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/transaction/create-payment-intent": {
+      "post": {
+        "operationId": "transaction_createPaymentIntent",
+        "tags": [
+          "transaction"
+        ],
+        "summary": "transaction createPaymentIntent",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/transaction/create-refund": {
+      "post": {
+        "operationId": "transaction_createRefund",
+        "tags": [
+          "transaction"
+        ],
+        "summary": "transaction createRefund",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/transaction/get-payment-intent": {
+      "get": {
+        "operationId": "transaction_getPaymentIntent",
+        "tags": [
+          "transaction"
+        ],
+        "summary": "transaction getPaymentIntent",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/{id}/chat-public-key": {
+      "post": {
+        "operationId": "user_chatPublicKey",
+        "tags": [
+          "user"
+        ],
+        "summary": "user chatPublicKey",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/accept-friend-request": {
+      "post": {
+        "operationId": "user_acceptFriendRequest",
+        "tags": [
+          "user"
+        ],
+        "summary": "user acceptFriendRequest",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/add-trainee-clip/{id}": {
+      "post": {
+        "operationId": "user_addTraineeClip",
+        "tags": [
+          "user"
+        ],
+        "summary": "user addTraineeClip",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/all-online-user": {
+      "post": {
+        "operationId": "user_allOnlineUser",
+        "tags": [
+          "user"
+        ],
+        "summary": "user allOnlineUser",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/approve-expert/{id}": {
+      "post": {
+        "operationId": "user_approveExpert",
+        "tags": [
+          "user"
+        ],
+        "summary": "user approveExpert",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/block-user": {
+      "post": {
+        "operationId": "user_blockUser",
+        "tags": [
+          "user"
+        ],
+        "summary": "user blockUser",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/booking-list": {
+      "get": {
+        "operationId": "user_bookingList",
+        "tags": [
+          "user"
+        ],
+        "summary": "user bookingList",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/booking-list-by-id": {
+      "get": {
+        "operationId": "user_bookingListById",
+        "tags": [
+          "user"
+        ],
+        "summary": "user bookingListById",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/booking/{id}": {
+      "post": {
+        "operationId": "user_bookingById",
+        "tags": [
+          "user"
+        ],
+        "summary": "user bookingById",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/cancel-friend-request": {
+      "post": {
+        "operationId": "user_cancelFriendRequest",
+        "tags": [
+          "user"
+        ],
+        "summary": "user cancelFriendRequest",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/check-stripe-verification": {
+      "post": {
+        "operationId": "user_checkStripeVerification",
+        "tags": [
+          "user"
+        ],
+        "summary": "user checkStripeVerification",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/create-verification-session": {
+      "post": {
+        "operationId": "user_createVerificationSession",
+        "tags": [
+          "user"
+        ],
+        "summary": "user createVerificationSession",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/delete-user/{id}": {
+      "delete": {
+        "operationId": "user_deleteUser",
+        "tags": [
+          "user"
+        ],
+        "summary": "user deleteUser",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/friend-requests": {
+      "get": {
+        "operationId": "user_friendRequests",
+        "tags": [
+          "user"
+        ],
+        "summary": "user friendRequests",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/friends": {
+      "get": {
+        "operationId": "user_friends",
+        "tags": [
+          "user"
+        ],
+        "summary": "user friends",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/get-all-trainee": {
+      "get": {
+        "operationId": "user_getAllTrainee",
+        "tags": [
+          "user"
+        ],
+        "summary": "user getAllTrainee",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/get-all-trainer": {
+      "get": {
+        "operationId": "user_getAllTrainer",
+        "tags": [
+          "user"
+        ],
+        "summary": "user getAllTrainer",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/get-all-users": {
+      "get": {
+        "operationId": "user_getAllUsers",
+        "tags": [
+          "user"
+        ],
+        "summary": "user getAllUsers",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/invite-friend": {
+      "post": {
+        "operationId": "user_inviteFriend",
+        "tags": [
+          "user"
+        ],
+        "summary": "user inviteFriend",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/me": {
+      "get": {
+        "operationId": "user_me",
+        "tags": [
+          "user"
+        ],
+        "summary": "user me",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/me/chat-public-key": {
+      "post": {
+        "operationId": "user_chatPublicKeyMe",
+        "tags": [
+          "user"
+        ],
+        "summary": "user chatPublicKeyMe",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/my-raise-concerns": {
+      "post": {
+        "operationId": "user_myRaiseConcerns",
+        "tags": [
+          "user"
+        ],
+        "summary": "user myRaiseConcerns",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/my-referrals": {
+      "post": {
+        "operationId": "user_myReferrals",
+        "tags": [
+          "user"
+        ],
+        "summary": "user myReferrals",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/online-availability": {
+      "post": {
+        "operationId": "user_onlineAvailability",
+        "tags": [
+          "user"
+        ],
+        "summary": "user onlineAvailability",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/raise-concern": {
+      "get": {
+        "operationId": "user_getRaiseConcern",
+        "tags": [
+          "user"
+        ],
+        "summary": "user getRaiseConcern",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "operationId": "user_raiseConcern",
+        "tags": [
+          "user"
+        ],
+        "summary": "user raiseConcern",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/rating": {
+      "post": {
+        "operationId": "user_rating",
+        "tags": [
+          "user"
+        ],
+        "summary": "user rating",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/register-user-with-stripe": {
+      "post": {
+        "operationId": "user_registerUserWithStripe",
+        "tags": [
+          "user"
+        ],
+        "summary": "user registerUserWithStripe",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/reject-friend-request": {
+      "post": {
+        "operationId": "user_rejectFriendRequest",
+        "tags": [
+          "user"
+        ],
+        "summary": "user rejectFriendRequest",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/remove-friend": {
+      "post": {
+        "operationId": "user_removeFriend",
+        "tags": [
+          "user"
+        ],
+        "summary": "user removeFriend",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/report-user": {
+      "post": {
+        "operationId": "user_reportUser",
+        "tags": [
+          "user"
+        ],
+        "summary": "user reportUser",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/scheduled-meetings": {
+      "get": {
+        "operationId": "user_scheduledMeetings",
+        "tags": [
+          "user"
+        ],
+        "summary": "user scheduledMeetings",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/send-friend-request": {
+      "post": {
+        "operationId": "user_sendFriendRequest",
+        "tags": [
+          "user"
+        ],
+        "summary": "user sendFriendRequest",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/sent-friend-requests": {
+      "get": {
+        "operationId": "user_sentFriendRequests",
+        "tags": [
+          "user"
+        ],
+        "summary": "user sentFriendRequests",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/session-detail/{id}": {
+      "post": {
+        "operationId": "user_sessionDetail",
+        "tags": [
+          "user"
+        ],
+        "summary": "user sessionDetail",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/share-clips": {
+      "post": {
+        "operationId": "user_shareClips",
+        "tags": [
+          "user"
+        ],
+        "summary": "user shareClips",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/sign-up": {
+      "post": {
+        "operationId": "user_signUp",
+        "tags": [
+          "user"
+        ],
+        "summary": "user signUp",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/storage": {
+      "get": {
+        "operationId": "user_storage",
+        "tags": [
+          "user"
+        ],
+        "summary": "user storage",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/storage/checkout": {
+      "get": {
+        "operationId": "user_storageCheckout",
+        "tags": [
+          "user"
+        ],
+        "summary": "user storageCheckout",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/stripe-account-verification": {
+      "post": {
+        "operationId": "user_stripeAccountVerification",
+        "tags": [
+          "user"
+        ],
+        "summary": "user stripeAccountVerification",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/update-account-privacy": {
+      "put": {
+        "operationId": "user_updateAccountPrivacy",
+        "tags": [
+          "user"
+        ],
+        "summary": "user updateAccountPrivacy",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/update-booked-session/{id}": {
+      "put": {
+        "operationId": "user_updateBookedSession",
+        "tags": [
+          "user"
+        ],
+        "summary": "user updateBookedSession",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/update-contact-us-status": {
+      "get": {
+        "operationId": "user_updateContactUsStatus",
+        "tags": [
+          "user"
+        ],
+        "summary": "user updateContactUsStatus",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/update-kyc-status": {
+      "get": {
+        "operationId": "user_updateKycStatus",
+        "tags": [
+          "user"
+        ],
+        "summary": "user updateKycStatus",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/update-mobile-number": {
+      "put": {
+        "operationId": "user_updateMobileNumber",
+        "tags": [
+          "user"
+        ],
+        "summary": "user updateMobileNumber",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/update-notifications-settings": {
+      "put": {
+        "operationId": "user_updateNotificationsSettings",
+        "tags": [
+          "user"
+        ],
+        "summary": "user updateNotificationsSettings",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/update-raised-concern-ticket": {
+      "put": {
+        "operationId": "user_updateRaisedConcernTicket",
+        "tags": [
+          "user"
+        ],
+        "summary": "user updateRaisedConcernTicket",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/update-refund-status": {
+      "get": {
+        "operationId": "user_updateRefundStatus",
+        "tags": [
+          "user"
+        ],
+        "summary": "user updateRefundStatus",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/update-trainer-commission": {
+      "put": {
+        "operationId": "user_updateTrainerCommission",
+        "tags": [
+          "user"
+        ],
+        "summary": "user updateTrainerCommission",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/update-trainer-status": {
+      "get": {
+        "operationId": "user_updateTrainerStatus",
+        "tags": [
+          "user"
+        ],
+        "summary": "user updateTrainerStatus",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/user/write-us": {
+      "get": {
+        "operationId": "user_getWriteUs",
+        "tags": [
+          "user"
+        ],
+        "summary": "user getWriteUs",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "operationId": "user_writeUs",
+        "tags": [
+          "user"
+        ],
+        "summary": "user writeUs",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/verification/face/complete": {
+      "post": {
+        "operationId": "verification_faceComplete",
+        "tags": [
+          "verification"
+        ],
+        "summary": "verification faceComplete",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/verification/face/session": {
+      "post": {
+        "operationId": "verification_faceSession",
+        "tags": [
+          "verification"
+        ],
+        "summary": "verification faceSession",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/verification/otp/send": {
+      "post": {
+        "operationId": "verification_otpSend",
+        "tags": [
+          "verification"
+        ],
+        "summary": "verification otpSend",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/verification/otp/verify": {
+      "post": {
+        "operationId": "verification_otpVerify",
+        "tags": [
+          "verification"
+        ],
+        "summary": "verification otpVerify",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/verification/profile": {
+      "get": {
+        "operationId": "verification_profile",
+        "tags": [
+          "verification"
+        ],
+        "summary": "verification profile",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/verification/status": {
+      "get": {
+        "operationId": "verification_status",
+        "tags": [
+          "verification"
+        ],
+        "summary": "verification status",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/wallet/balance": {
+      "get": {
+        "operationId": "wallet_balance",
+        "tags": [
+          "wallet"
+        ],
+        "summary": "wallet balance",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/wallet/config": {
+      "get": {
+        "operationId": "wallet_config",
+        "tags": [
+          "wallet"
+        ],
+        "summary": "wallet config",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/wallet/earnings": {
+      "get": {
+        "operationId": "wallet_earnings",
+        "tags": [
+          "wallet"
+        ],
+        "summary": "wallet earnings",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/wallet/ledger": {
+      "get": {
+        "operationId": "wallet_ledger",
+        "tags": [
+          "wallet"
+        ],
+        "summary": "wallet ledger",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/wallet/payout-preference": {
+      "put": {
+        "operationId": "wallet_payoutPreference",
+        "tags": [
+          "wallet"
+        ],
+        "summary": "wallet payoutPreference",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/wallet/pin/forgot/confirm": {
+      "post": {
+        "operationId": "wallet_pinForgotConfirm",
+        "tags": [
+          "wallet"
+        ],
+        "summary": "wallet pinForgotConfirm",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/wallet/pin/forgot/request": {
+      "post": {
+        "operationId": "wallet_pinForgotRequest",
+        "tags": [
+          "wallet"
+        ],
+        "summary": "wallet pinForgotRequest",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/wallet/pin/set": {
+      "post": {
+        "operationId": "wallet_pinSet",
+        "tags": [
+          "wallet"
+        ],
+        "summary": "wallet pinSet",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/wallet/pin/verify": {
+      "post": {
+        "operationId": "wallet_pinVerify",
+        "tags": [
+          "wallet"
+        ],
+        "summary": "wallet pinVerify",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/wallet/topup/{id}/confirm": {
+      "post": {
+        "operationId": "wallet_topUpConfirm",
+        "tags": [
+          "wallet"
+        ],
+        "summary": "wallet topUpConfirm",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/wallet/topup/{id}/status": {
+      "get": {
+        "operationId": "wallet_topUpStatus",
+        "tags": [
+          "wallet"
+        ],
+        "summary": "wallet topUpStatus",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/wallet/topup/create-intent": {
+      "post": {
+        "operationId": "wallet_topUpCreateIntent",
+        "tags": [
+          "wallet"
+        ],
+        "summary": "wallet topUpCreateIntent",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/wallet/transactions/{id}": {
+      "post": {
+        "operationId": "wallet_transactionDetail",
+        "tags": [
+          "wallet"
+        ],
+        "summary": "wallet transactionDetail",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/wallet/withdraw": {
+      "post": {
+        "operationId": "wallet_withdraw",
+        "tags": [
+          "wallet"
+        ],
+        "summary": "wallet withdraw",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ]
+}

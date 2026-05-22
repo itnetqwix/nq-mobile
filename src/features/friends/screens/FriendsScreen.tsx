@@ -17,6 +17,7 @@ import {
   View,
 } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "../../../lib/queryKeys";
 import { Ionicons } from "@expo/vector-icons";
 import { Button, EmptyState, Skeleton } from "../../../components/ui";
 import { colors, radii, space, typography } from "../../../theme";
@@ -248,39 +249,39 @@ export function FriendsScreen() {
   const queryClient = useQueryClient();
 
   const { data: friends = [], isLoading: loadingFriends, isRefetching: refreshingFriends, refetch: refetchFriends } = useQuery({
-    queryKey: ["friends"],
+    queryKey: queryKeys.friends.list,
     queryFn: fetchFriends,
     staleTime: 120_000,
   });
 
   const { data: requests = [], isLoading: loadingReqs, isRefetching: refreshingReqs, refetch: refetchReqs } = useQuery({
-    queryKey: ["friendRequests"],
+    queryKey: queryKeys.friends.requests,
     queryFn: fetchFriendRequests,
     staleTime: 60_000,
   });
 
   const { data: sentRequests = [], isLoading: loadingSent, isRefetching: refreshingSent, refetch: refetchSent } = useQuery({
-    queryKey: ["sentFriendRequests"],
+    queryKey: queryKeys.friends.sentRequests,
     queryFn: fetchSentFriendRequests,
     staleTime: 60_000,
   });
 
   const handleAccept = async (requestId: string) => {
     await postAcceptFriendRequest(requestId);
-    queryClient.invalidateQueries({ queryKey: ["friendRequests"] });
-    queryClient.invalidateQueries({ queryKey: ["friends"] });
+    queryClient.invalidateQueries({ queryKey: queryKeys.friends.requests });
+    queryClient.invalidateQueries({ queryKey: queryKeys.friends.list });
   };
 
   const handleReject = async (requestId: string) => {
     await postRejectFriendRequest(requestId);
-    queryClient.invalidateQueries({ queryKey: ["friendRequests"] });
+    queryClient.invalidateQueries({ queryKey: queryKeys.friends.requests });
   };
 
   const handleCancelRequest = async (receiverId: string) => {
     setCancelBusy(true);
     try {
       await apiClient.post(API_ROUTES.user.cancelFriendRequest, { receiverId });
-      queryClient.invalidateQueries({ queryKey: ["sentFriendRequests"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.friends.sentRequests });
     } catch (e: any) {
       Alert.alert(t("common.error"), e?.response?.data?.error ?? t("friends.couldNotCancel"));
     } finally {
@@ -296,7 +297,7 @@ export function FriendsScreen() {
         onPress: async () => {
           try {
             await apiClient.post(API_ROUTES.user.removeFriend, { friendId });
-            queryClient.invalidateQueries({ queryKey: ["friends"] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.friends.list });
             Alert.alert(t("common.done"), t("friends.removedBody", { name }));
           } catch (e: any) {
             Alert.alert(t("common.error"), e?.response?.data?.error ?? t("friends.couldNotRemove"));
@@ -314,8 +315,8 @@ export function FriendsScreen() {
         onPress: async () => {
           try {
             await apiClient.post(API_ROUTES.user.blockUser, { userId });
-            queryClient.invalidateQueries({ queryKey: ["friends"] });
-            queryClient.invalidateQueries({ queryKey: ["conversations"] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.friends.list });
+            queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
             Alert.alert(t("common.done"), t("friends.blockedBody", { name }));
           } catch (e: any) {
             Alert.alert(t("common.error"), e?.response?.data?.error ?? t("friends.couldNotBlock"));
@@ -377,7 +378,7 @@ export function FriendsScreen() {
         const conversation = body?.data ?? body?.result ?? body;
         const convId = conversation?._id ?? conversation?.conversationId;
         if (convId) {
-          queryClient.invalidateQueries({ queryKey: ["conversations"] });
+          queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
           setActiveChat({
             conversationId: convId,
             partner: { _id: userId, fullname: name, profile_picture: picture },
@@ -499,7 +500,7 @@ export function FriendsScreen() {
         partner={activeChat.partner}
         onGoBack={() => {
           setActiveChat(null);
-          queryClient.invalidateQueries({ queryKey: ["conversations"] });
+          queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
         }}
       />
     );

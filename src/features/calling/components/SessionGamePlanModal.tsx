@@ -17,7 +17,9 @@ import {
   View,
 } from "react-native";
 
+import * as FileSystem from "expo-file-system/legacy";
 import { apiClient } from "../../../api/client";
+import { fetchStorageInfo } from "../../home/api/homeApi";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { putFileToPresignedUrl } from "../../../lib/presignedPut";
@@ -143,15 +145,34 @@ export function SessionGamePlanModal({
     try {
       // Generate + upload PDF (web parity) when screenshots exist.
       if (images.length > 0) {
-        const sign = await apiClient.post(API_ROUTES.common.pdfUploadUrl, {
-          session_id: sessionId,
-        });
-        const uploadUrl = sign?.data?.url;
-        if (!uploadUrl) throw new Error("Could not prepare PDF upload.");
-
         const html = buildPdfHtml(images, title.trim(), topic.trim());
         const pdfUri = await printHtmlToPdfFile(html);
         if (pdfUri) {
+          let pdfBytes = 0;
+          try {
+            const info = await FileSystem.getInfoAsync(pdfUri, { size: true });
+            if (info.exists && "size" in info && typeof info.size === "number") {
+              pdfBytes = info.size;
+            }
+          } catch {
+            /* ignore */
+          }
+          if (pdfBytes > 0) {
+            const storage = await fetchStorageInfo();
+            if (storage.usedBytes + pdfBytes > storage.quotaBytes) {
+              Alert.alert(
+                "Storage full",
+                "You have reached your storage limit (clips and game plans). Upgrade in Settings → Storage plan."
+              );
+              return;
+            }
+          }
+          const sign = await apiClient.post(API_ROUTES.common.pdfUploadUrl, {
+            session_id: sessionId,
+            sizeBytes: pdfBytes,
+          });
+          const uploadUrl = sign?.data?.url;
+          if (!uploadUrl) throw new Error("Could not prepare PDF upload.");
           await putFileToPresignedUrl(uploadUrl, pdfUri, "application/pdf");
         } else if (__DEV__) {
           console.warn(

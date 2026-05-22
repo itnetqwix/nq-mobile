@@ -1,2 +1,10 @@
-export { apiClient } from "./client";
-export { API_BASE_URL } from "../config/env";
+export {
+  API_CONTRACT_VERSION,
+  API_OPERATIONS,
+  buildOpenApiDocument,
+  getApiOperation,
+  pathFor,
+  type ApiOperation,
+  type ApiOperationId,
+  type HttpMethod,
+} from "./apiContract";

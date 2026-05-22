@@ -20,6 +20,7 @@ import {
 import { AccountType } from "../../../constants/accountType";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
+import { queryKeys } from "../../../lib/queryKeys";
 import { colors, radii, space, typography } from "../../../theme";
 import { postSignUp } from "../api/authApi";
 import { fetchMasterRow } from "../api/masterApi";
@@ -74,7 +75,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
   }, [route.params?.prefillEmail, isSsoSignup]);
 
   const masterQuery = useQuery({
-    queryKey: ["master", "row"],
+    queryKey: queryKeys.master.signupRow,
     queryFn: fetchMasterRow,
     staleTime: 1000 * 60 * 30,
   });

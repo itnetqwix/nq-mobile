@@ -19,6 +19,7 @@ import { useAuth } from "../../auth/context/AuthContext";
 import { dedupeRowsById, fetchBookingTransactions } from "../../home/api/homeApi";
 import type { MenuStackParamList } from "../../../navigation/types";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import { queryKeys } from "../../../lib/queryKeys";
 
 const PAGE_SIZE = 25;
 
@@ -155,7 +156,7 @@ export function TransactionsScreen() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ["transactions", "booking-list-by-id"],
+    queryKey: queryKeys.transactions.bookingListById,
     queryFn: ({ pageParam }) =>
       fetchBookingTransactions({ page: pageParam, limit: PAGE_SIZE }),
     initialPageParam: 1,

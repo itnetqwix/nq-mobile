@@ -17,6 +17,7 @@ import { postReportsGetAll } from "../../home/api/homeApi";
 import { LockerListShell } from "../components/locker/LockerListShell";
 import { LockerViewerModal, type LockerViewerMode } from "../components/locker/LockerViewerModal";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import { queryKeys } from "../../../lib/queryKeys";
 
 function formatReportDate(
   id: { month?: number; day?: number; year?: number } | null | undefined,
@@ -86,7 +87,7 @@ export function GamePlansScreen() {
   );
 
   const reportsQ = useQuery({
-    queryKey: ["locker", "reports"],
+    queryKey: queryKeys.locker.reports,
     queryFn: () => postReportsGetAll({}),
     staleTime: 30_000,
   });

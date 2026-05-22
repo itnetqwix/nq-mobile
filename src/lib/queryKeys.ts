@@ -1,5 +1,6 @@
 /**
  * Central React Query keys — use these everywhere instead of inline string tuples.
+ * Invalidate via `queryInvalidation.ts` or RTK `queryCacheListenerMiddleware`.
  */
 
 export const queryKeys = {
@@ -12,6 +13,7 @@ export const queryKeys = {
   },
   scheduledMeetings: ["scheduledMeetings"] as const,
   notifications: {
+    all: ["notifications"] as const,
     inbox: ["notifications"] as const,
   },
   wallet: {
@@ -23,16 +25,20 @@ export const queryKeys = {
   },
   friends: {
     all: ["friends"] as const,
-    list: ["friends", "list"] as const,
+    list: ["friends"] as const,
     requests: ["friendRequests"] as const,
     sentRequests: ["sentFriendRequests"] as const,
     forClipShare: ["friends", "forClipShare"] as const,
   },
   chats: {
+    all: ["chat"] as const,
     conversations: ["conversations"] as const,
     messages: (chatId: string) => ["chatMessages", chatId] as const,
     archived: ["chat", "archived"] as const,
-    groupMembers: (groupId: string) => ["groupMembers", groupId] as const,
+    groupMembers: (groupId: string, search?: string) =>
+      search !== undefined
+        ? (["groupMembers", groupId, search] as const)
+        : (["groupMembers", groupId] as const),
     groupInvites: ["groupInvites"] as const,
   },
   presence: {
@@ -46,17 +52,19 @@ export const queryKeys = {
   trainer: {
     slots: ["trainerSlots"] as const,
     schedule: ["trainerSchedule"] as const,
-    /** Invalidates all per-trainer availability queries */
     availabilityAll: ["trainerAvailability"] as const,
     availability: (trainerId: string) => ["trainerAvailability", trainerId] as const,
     profile: (id: string) => ["trainerProfile", id] as const,
     directory: (hash: string) => ["trainersDirectory", hash] as const,
+    directorySearch: (search: string, filterHash: string) =>
+      ["trainersDirectory", search, filterHash] as const,
   },
   instant: {
     eligibility: (trainerId: string, durationMinutes: number) =>
       ["instantEligibility", trainerId, durationMinutes] as const,
     wizardClips: ["instantBookingWizardClips"] as const,
     lessonClips: (lessonId: string) => ["instantLessonClips", lessonId] as const,
+    lessonClipsAll: ["instantLessonClips"] as const,
   },
   scheduled: {
     checkSlot: (trainerId: string, bookedDateIso: string, traineeTz: string) =>
@@ -64,9 +72,38 @@ export const queryKeys = {
   },
   master: {
     row: ["masterRow"] as const,
-    legacy: ["master", "row"] as const,
+    signupRow: ["master", "row"] as const,
+    sportCategories: ["sportCategories"] as const,
+  },
+  locker: {
+    all: ["locker"] as const,
+    myClips: ["locker", "myClips"] as const,
+    sharedClips: ["locker", "sharedClips"] as const,
+    savedSessions: ["locker", "savedSessions"] as const,
+    reports: ["locker", "reports"] as const,
+  },
+  storage: {
+    all: ["storage"] as const,
+    info: ["storage", "info"] as const,
+  },
+  user: {
+    referrals: ["myReferrals"] as const,
+  },
+  transactions: {
+    bookingListById: ["transactions", "booking-list-by-id"] as const,
   },
   dashboard: {
     aiRecommendations: ["aiRecommendations"] as const,
   },
+} as const;
+
+/** Root prefixes for broad invalidation (e.g. after socket reconnect). */
+export const queryKeyRoots = {
+  sessions: queryKeys.sessions.all,
+  wallet: queryKeys.wallet.all,
+  friends: queryKeys.friends.all,
+  chats: queryKeys.chats.all,
+  locker: queryKeys.locker.all,
+  storage: queryKeys.storage.all,
+  presence: ["presence"] as const,
 } as const;

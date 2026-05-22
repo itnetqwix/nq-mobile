@@ -10,6 +10,7 @@ import { LockerListShell } from "../components/locker/LockerListShell";
 import { LockerViewerModal, type LockerViewerMode } from "../components/locker/LockerViewerModal";
 import { ClipUploadModal } from "../components/locker/ClipUploadModal";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import { queryKeys } from "../../../lib/queryKeys";
 
 type ClipTab = "mine" | "shared";
 
@@ -178,14 +179,14 @@ export function ClipsScreen() {
   );
 
   const myQ = useQuery({
-    queryKey: ["locker", "myClips"],
+    queryKey: queryKeys.locker.myClips,
     queryFn: () => postMyClipsGrouped({}),
     enabled: tab === "mine",
     staleTime: 30_000,
   });
 
   const sharedQ = useQuery({
-    queryKey: ["locker", "sharedClips"],
+    queryKey: queryKeys.locker.sharedClips,
     queryFn: () => postSharedClipsGrouped(),
     enabled: tab === "shared",
     staleTime: 30_000,
@@ -377,8 +378,8 @@ export function ClipsScreen() {
         visible={uploadVisible}
         onClose={() => setUploadVisible(false)}
         onUploaded={() => {
-          void queryClient.invalidateQueries({ queryKey: ["locker", "myClips"] });
-          void queryClient.invalidateQueries({ queryKey: ["instantLessonClips"] });
+          void queryClient.invalidateQueries({ queryKey: queryKeys.locker.myClips });
+          void queryClient.invalidateQueries({ queryKey: queryKeys.instant.lessonClipsAll });
         }}
       />
     </>

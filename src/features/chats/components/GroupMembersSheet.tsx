@@ -17,6 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EmptyState } from "../../../components/ui";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
+import { queryKeys } from "../../../lib/queryKeys";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { fetchFriends } from "../../home/api/homeApi";
 import {
@@ -68,7 +69,7 @@ export function GroupMembersSheet({
   const [inviting, setInviting] = useState(false);
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ["groupMembers", conversationId, search],
+    queryKey: queryKeys.chats.groupMembers(conversationId, search),
     queryFn: () => fetchGroupMembers(conversationId, search),
     enabled: visible && !!conversationId,
   });
@@ -101,7 +102,7 @@ export function GroupMembersSheet({
       await uploadChatFileToS3(uploadUrl, result.assets[0].uri, "image/jpeg");
       await updateGroup(conversationId, { groupAvatar: mediaUrl });
       await refetch();
-      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
     } catch (e: any) {
       Alert.alert("Error", e?.response?.data?.error ?? e?.message ?? "Could not update photo.");
     } finally {
@@ -110,7 +111,7 @@ export function GroupMembersSheet({
   }, [conversationId, isAdmin, refetch, queryClient]);
 
   const { data: friends = [] } = useQuery({
-    queryKey: ["friends"],
+    queryKey: queryKeys.friends.list,
     queryFn: fetchFriends,
     enabled: visible && showInvite,
   });
@@ -157,7 +158,7 @@ export function GroupMembersSheet({
       setSelectedInvitees(new Set());
       setInviteSearch("");
       await refetch();
-      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
       Alert.alert("Invites sent", "Friends will see the request in Group requests.");
     } catch (e: any) {
       Alert.alert("Error", e?.response?.data?.error ?? e?.message ?? "Could not send invites.");
@@ -191,7 +192,7 @@ export function GroupMembersSheet({
         style: "destructive",
         onPress: () => {
           void exitGroup(conversationId).then(() => {
-            queryClient.invalidateQueries({ queryKey: ["conversations"] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
             onClose();
             onLeftGroup();
           });
@@ -208,7 +209,7 @@ export function GroupMembersSheet({
         style: "destructive",
         onPress: () => {
           void deleteGroup(conversationId).then(() => {
-            queryClient.invalidateQueries({ queryKey: ["conversations"] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
             onClose();
             onLeftGroup();
           });
@@ -225,7 +226,7 @@ export function GroupMembersSheet({
         style: "destructive",
         onPress: () => {
           void clearChatConversation(conversationId).then(() => {
-            queryClient.invalidateQueries({ queryKey: ["chatMessages", conversationId] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.chats.messages(conversationId) });
           });
         },
       },

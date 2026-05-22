@@ -15,6 +15,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { EmptyState, Skeleton } from "../../../components/ui";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
+import { queryKeys } from "../../../lib/queryKeys";
 import { StackSwipeBackShell } from "../../../navigation/StackSwipeBackShell";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
@@ -43,7 +44,7 @@ export function ArchivedChatsScreen() {
   } | null>(null);
 
   const q = useQuery({
-    queryKey: ["chat", "archived"],
+    queryKey: queryKeys.chats.archived,
     queryFn: fetchArchivedConversations,
   });
 
@@ -77,7 +78,7 @@ export function ArchivedChatsScreen() {
     async (conversationId: string) => {
       try {
         await unarchiveChatConversation(conversationId);
-        void queryClient.invalidateQueries({ queryKey: ["chat"] });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
         Alert.alert(t("chats.unarchivedTitle"), t("chats.unarchivedBody"));
       } catch (e: any) {
         Alert.alert(t("chats.unarchiveError"), e?.message ?? t("chats.unarchiveError"));

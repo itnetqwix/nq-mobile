@@ -1,5 +1,8 @@
 /**
- * REST paths for the NetQwix API. Mount prefixes match `nq-backend-main/routes.ts`:
+ * REST paths for the NetQwix API (source of truth for mobile + OpenAPI contract).
+ * See `docs/API-CONTRACT.md` and `npm run sync:api-contract`.
+ *
+ * Mount prefixes match `nq-backend-main/routes.ts`:
  * `router.use("/user", userRoute)`, `/auth`, `/master`, `/trainer`, `/trainee`,
  * `/transaction`, `/common`, `/report`, `/admin`, `/notifications`.
  *
@@ -146,6 +149,10 @@ export const API_ROUTES = {
     withdraw: "/wallet/withdraw",
     config: "/wallet/config",
     transactionDetail: (id: string) => `/wallet/transactions/${id}` as const,
+  },
+  storage: {
+    clipsPresign: "/storage/clips/presign",
+    clipsConfirm: "/storage/clips/confirm",
   },
   common: {
     extendSessionEndTime: "/common/extend-session-end-time",

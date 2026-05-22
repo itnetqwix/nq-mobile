@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import * as VideoThumbnails from "expo-video-thumbnails";
 import React, { useEffect, useMemo, useState } from "react";
@@ -21,13 +22,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AccountType } from "../../../../constants/accountType";
 import { fetchSportCategories } from "../../../auth/api/masterApi";
 import { useAuth } from "../../../auth/context/AuthContext";
-import {
-  fetchFriends,
-  fetchStorageInfo,
-  postClipUploadSignUrls,
-} from "../../../home/api/homeApi";
+import { fetchFriends, fetchStorageInfo, uploadLockerClip } from "../../../home/api/homeApi";
+import { lockerMutated } from "../../../../store/actions/cacheInvalidation";
+import { useAppDispatch } from "../../../../store/hooks";
+import { MAX_CLIP_FILE_BYTES, formatStorageMb } from "../../../../lib/storageLimits";
+import { queryKeys } from "../../../../lib/queryKeys";
 import { getApiErrorMessage } from "../../../../lib/http/getApiErrorMessage";
-import { putFileToPresignedUrl } from "../../../../lib/presignedPut";
 import { apiClient } from "../../../../api/client";
 import { API_ROUTES } from "../../../../config/apiRoutes";
 import { colors, radii, space } from "../../../../theme";
@@ -47,6 +47,7 @@ type Props = {
 export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
   const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
+  const dispatch = useAppDispatch();
   const { user, accountType } = useAuth();
   const isTrainer = accountType === AccountType.TRAINER;
 
@@ -68,14 +69,14 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
   const [selectedFriendEmails, setSelectedFriendEmails] = useState<string[]>([]);
 
   const { data: categories = [], isLoading: catLoading } = useQuery<string[]>({
-    queryKey: ["sportCategories"],
+    queryKey: queryKeys.master.sportCategories,
     queryFn: fetchSportCategories,
     enabled: visible,
     staleTime: 300_000,
   });
 
   const { data: friendsList = [] } = useQuery<any[]>({
-    queryKey: ["friends", "forClipShare"],
+    queryKey: queryKeys.friends.forClipShare,
     queryFn: fetchFriends,
     enabled: visible && shareTarget === SHARE_FRIENDS,
     staleTime: 60_000,
@@ -168,64 +169,76 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
 
   const submit = async () => {
     if (!videoAsset || !thumbUri || !canSubmit) return;
-    if (shareTarget === SHARE_MY_CLIPS) {
+    let fileBytes = videoAsset.fileSize ?? 0;
+    if (fileBytes <= 0) {
       try {
-        const storage = await fetchStorageInfo();
-        const fileBytes = videoAsset.fileSize ?? 0;
-        if (storage.usedBytes + fileBytes > storage.quotaBytes) {
-          Alert.alert(
-            t("locker.storageFullTitle"),
-            t("locker.storageFullBody"),
-            [{ text: t("common.ok") }]
-          );
-          return;
+        const info = await FileSystem.getInfoAsync(videoAsset.uri, { size: true });
+        if (info.exists && "size" in info && typeof info.size === "number") {
+          fileBytes = info.size;
         }
       } catch {
-        /* proceed if storage endpoint unavailable */
+        /* size unknown */
       }
     }
+    if (fileBytes <= 0) {
+      Alert.alert(t("locker.uploadFailedTitle"), t("locker.clipSizeUnknown"));
+      return;
+    }
+    if (fileBytes > MAX_CLIP_FILE_BYTES) {
+      Alert.alert(
+        t("locker.clipTooLargeTitle"),
+        t("locker.clipTooLargeBody", { max: formatStorageMb(MAX_CLIP_FILE_BYTES) })
+      );
+      return;
+    }
+
+    try {
+      const storage = await fetchStorageInfo();
+      if (storage.usedBytes + fileBytes > storage.quotaBytes) {
+        Alert.alert(
+          t("locker.storageFullTitle"),
+          t("locker.storageFullBody"),
+          [{ text: t("common.ok") }]
+        );
+        return;
+      }
+    } catch {
+      /* proceed if storage endpoint unavailable */
+    }
+
     setUploadBusy(true);
     setVideoProgress(0);
     setThumbProgress(0);
-    setUploadPhase("finalize");
+    setUploadPhase("video");
     try {
-      const data = await postClipUploadSignUrls({
-        clips: [
-          {
-            filename: videoAsset.fileName ?? "clip.mp4",
-            fileType: videoMime,
-            thumbnail: "image/jpeg",
-            title: title.trim(),
-            category: effectiveCategory,
-            fileSizeBytes: videoAsset.fileSize ?? 0,
-          },
-        ],
+      const { clipId } = await uploadLockerClip({
+        videoUri: videoAsset.uri,
+        videoMime,
+        videoSizeBytes: fileBytes > 0 ? fileBytes : 1,
+        thumbUri,
+        title: title.trim(),
+        category: effectiveCategory,
         shareOptions:
           shareTarget === SHARE_FRIENDS
             ? { type: SHARE_FRIENDS, emails: selectedFriendEmails }
             : { type: SHARE_MY_CLIPS },
-      });
-      const row = data.results?.[0];
-      if (!row?.url || !row.thumbnailURL) {
-        throw new Error(data.message ?? "Server did not return upload URLs.");
-      }
-      setUploadPhase("video");
-      await putFileToPresignedUrl(row.url, videoAsset.uri, videoMime, ({ percent }) => {
-        setVideoProgress(percent);
-      });
-      setUploadPhase("thumb");
-      await putFileToPresignedUrl(row.thumbnailURL, thumbUri, "image/jpeg", ({ percent }) => {
-        setThumbProgress(percent);
+        onVideoProgress: (percent) => {
+          setUploadPhase("video");
+          setVideoProgress(percent);
+        },
+        onThumbProgress: (percent) => {
+          setUploadPhase("thumb");
+          setThumbProgress(percent);
+        },
       });
       setUploadPhase("finalize");
 
-      // AI auto-tag the clip in the background
-      if (row.clipId || data.results?.[0]?._id) {
-        const clipId = row.clipId || data.results[0]._id;
+      if (clipId) {
         apiClient.post(API_ROUTES.ai.tagClip(String(clipId))).catch(() => {});
       }
 
       Alert.alert(t("locker.uploadedTitle"), t("locker.uploadedBody"));
+      dispatch(lockerMutated());
       onUploaded();
       onClose();
     } catch (e) {

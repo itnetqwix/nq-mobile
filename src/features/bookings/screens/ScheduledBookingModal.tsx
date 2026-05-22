@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
+import { idempotencyHeaders, newIdempotencyKey } from "../../../lib/idempotency";
 import { queryKeys } from "../../../lib/queryKeys";
 import { unwrapApiData } from "../../../lib/http/unwrapApiData";
 import { colors, radii, space, typography } from "../../../theme";
@@ -339,7 +340,9 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
         bookPayload.payment_method = "wallet";
         if (walletToken) bookPayload.pin_session_token = walletToken;
       }
-      const { data: bookRes } = await apiClient.post(API_ROUTES.trainee.bookSession, bookPayload);
+      const { data: bookRes } = await apiClient.post(API_ROUTES.trainee.bookSession, bookPayload, {
+        headers: idempotencyHeaders(newIdempotencyKey("book-session")),
+      });
       const bookingInfo =
         (bookRes as { result?: unknown })?.result ?? bookRes ?? { trainer_id: trainerId };
 

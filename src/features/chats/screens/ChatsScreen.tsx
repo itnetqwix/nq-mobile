@@ -19,6 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { apiClient } from "../../../api/client";
 import { EmptyState, Skeleton } from "../../../components/ui";
 import { API_ROUTES } from "../../../config/apiRoutes";
+import { queryKeys } from "../../../lib/queryKeys";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
@@ -351,21 +352,21 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
   const { isOnline } = useOnlinePresence();
 
   const { data: conversations = [], isLoading, isRefetching, refetch } = useQuery({
-    queryKey: ["conversations"],
+    queryKey: queryKeys.chats.conversations,
     queryFn: fetchConversations,
     staleTime: 15_000,
     refetchInterval: 25_000,
   });
 
   const { data: groupInvites = [], refetch: refetchGroupInvites } = useQuery({
-    queryKey: ["groupInvites"],
+    queryKey: queryKeys.chats.groupInvites,
     queryFn: fetchGroupInvites,
     staleTime: 20_000,
     refetchInterval: 30_000,
   });
 
   const { data: friends = [], isLoading: loadingFriends } = useQuery({
-    queryKey: ["friends"],
+    queryKey: queryKeys.friends.list,
     queryFn: fetchFriends,
     staleTime: 120_000,
     enabled: showNewChat || showGroupCreate,
@@ -507,7 +508,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
         setGroupDescription("");
         setGroupAvatarUri(null);
         setSelectedGroupMembers(new Set());
-        queryClient.invalidateQueries({ queryKey: ["conversations"] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
         Alert.alert(t("chats.groupCreatedTitle"), t("chats.groupCreatedBody"));
         setActiveChat({
           conversationId: convId,
@@ -556,7 +557,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
       if (convId) {
         setShowNewChat(false);
         setFriendSearch("");
-        queryClient.invalidateQueries({ queryKey: ["conversations"] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
         setActiveChat({ conversationId: convId, partner: friend });
       } else {
         Alert.alert(t("common.error"), t("chats.openChatError"));

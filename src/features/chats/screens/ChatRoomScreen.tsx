@@ -26,6 +26,7 @@ import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
+import { queryKeys } from "../../../lib/queryKeys";
 import { useAuth } from "../../auth/context/AuthContext";
 import { useSocket } from "../../socket/SocketContext";
 import { useOnlinePresence } from "../../socket/useOnlinePresence";
@@ -591,7 +592,7 @@ export function ChatRoomScreen({
   const [liveMemberCount, setLiveMemberCount] = useState(memberCount ?? 0);
 
   const { data: groupMembersData } = useQuery({
-    queryKey: ["groupMembers", conversationId],
+    queryKey: queryKeys.chats.groupMembers(conversationId),
     queryFn: () => fetchGroupMembers(conversationId),
     enabled: isGroup,
     staleTime: 30_000,
@@ -701,7 +702,7 @@ export function ChatRoomScreen({
   }, [emitTyping]);
 
   const { data: serverMessages = [] } = useQuery<Message[]>({
-    queryKey: ["chatMessages", conversationId],
+    queryKey: queryKeys.chats.messages(conversationId),
     queryFn: async () => {
       const res = await apiClient.get(API_ROUTES.chat.messages(conversationId), {
         params: { page: 1, limit: 200 },
@@ -1268,7 +1269,7 @@ export function ChatRoomScreen({
                   if (!t?.trim()) return;
                   void editChatMessage(item._id, t.trim()).then(() =>
                     queryClient.invalidateQueries({
-                      queryKey: ["chatMessages", conversationId],
+                      queryKey: queryKeys.chats.messages(conversationId),
                     })
                   );
                 }, "plain-text", plain);

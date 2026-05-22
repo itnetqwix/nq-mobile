@@ -13,6 +13,7 @@ import {
 import { MAX_CLIPS, WIZARD_STEPS, wizardStepIndex } from "./constants";
 import { parseInstantBookingMeta } from "./parseInstantBookingLessonId";
 import type { WizardStep, WizardTrainer } from "./types";
+import { idempotencyHeaders, newIdempotencyKey } from "../../../lib/idempotency";
 import { queryKeys } from "../../../lib/queryKeys";
 import { fetchWalletBalance } from "../../wallet/walletApi";
 import { fetchInstantLessonEligibility } from "../../home/api/homeApi";
@@ -225,7 +226,9 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
         if (pinSessionToken) bookingPayload.pin_session_token = pinSessionToken;
       }
       if (couponCode.trim()) bookingPayload.coupon_code = couponCode.trim();
-      const res = await apiClient.post(API_ROUTES.trainee.bookInstantMeeting, bookingPayload);
+      const res = await apiClient.post(API_ROUTES.trainee.bookInstantMeeting, bookingPayload, {
+        headers: idempotencyHeaders(newIdempotencyKey("book-instant")),
+      });
       const { lessonId, acceptDeadlineAt } = parseInstantBookingMeta(res);
       if (!lessonId) throw new Error("Server did not return a booking id.");
       if (selectedClipIds.length > 0) {

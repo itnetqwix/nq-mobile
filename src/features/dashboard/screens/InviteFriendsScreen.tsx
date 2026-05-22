@@ -16,6 +16,7 @@ import { radii, space, typography, useThemeColors, useThemedStyles } from "../..
 import { postInviteFriendEmail, fetchMyReferrals } from "../../home/api/homeApi";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import { queryKeys } from "../../../lib/queryKeys";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -30,7 +31,7 @@ export function InviteFriendsScreen() {
   const [loading, setLoading] = useState(false);
 
   const { data: referrals = [], isLoading: loadingHistory } = useQuery({
-    queryKey: ["myReferrals"],
+    queryKey: queryKeys.user.referrals,
     queryFn: fetchMyReferrals,
     staleTime: 60_000,
   });
@@ -120,7 +121,7 @@ export function InviteFriendsScreen() {
         t("invites.sentBody", { count: ok.length })
       );
     }
-    queryClient.invalidateQueries({ queryKey: ["myReferrals"] });
+    queryClient.invalidateQueries({ queryKey: queryKeys.user.referrals });
   }, [allEmails, queryClient, t]);
 
   return (

@@ -1,8 +1,10 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { socketCacheEvent } from "../../store/actions/cacheInvalidation";
+import { useAppDispatch } from "../../store/hooks";
 import {
-  invalidateForSocketEvent,
+  SOCKET_PRESENCE_EVENTS,
   SOCKET_SESSION_EVENTS,
+  SOCKET_WALLET_EVENTS,
 } from "../../lib/socketInvalidate";
 import { useSocket } from "./SocketContext";
 
@@ -16,23 +18,25 @@ const BOOKING_EVENTS = [
 const ALL_INVALIDATION_EVENTS = [
   ...SOCKET_SESSION_EVENTS,
   ...BOOKING_EVENTS,
+  ...SOCKET_WALLET_EVENTS,
+  ...SOCKET_PRESENCE_EVENTS,
   "INSTANT_LESSON_PHASE",
-  "userStatus",
-  "onlineUser",
+  "receive",
 ] as const;
 
 /**
- * Keeps React Query caches fresh when the server pushes booking/timer/extension updates.
+ * Dispatches RTK cache-invalidation actions on socket events.
+ * `queryCacheListenerMiddleware` applies React Query invalidations.
  */
 export function SocketQueryInvalidationBridge() {
   const { socket } = useSocket();
-  const queryClient = useQueryClient();
+  const dispatch = useAppDispatch();
 
   useEffect(() => {
     if (!socket) return;
 
     const handler = (event: string) => {
-      invalidateForSocketEvent(queryClient, event);
+      dispatch(socketCacheEvent({ event }));
     };
 
     ALL_INVALIDATION_EVENTS.forEach((event) => {
@@ -44,7 +48,7 @@ export function SocketQueryInvalidationBridge() {
         socket.off(event, handler);
       });
     };
-  }, [socket, queryClient]);
+  }, [socket, dispatch]);
 
   return null;
 }

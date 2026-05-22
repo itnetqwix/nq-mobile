@@ -37,6 +37,7 @@ import {
   getTrainerName,
 } from "../lib/trainerUtils";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import { queryKeys } from "../../../lib/queryKeys";
 
 function Avatar({
   uri,
@@ -187,7 +188,7 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
     isRefetching: directoryRefetching,
     refetch: refetchDirectory,
   } = useQuery({
-    queryKey: ["trainersDirectory", trimmed, apiFilterParams],
+    queryKey: queryKeys.trainer.directorySearch(trimmed, JSON.stringify(apiFilterParams)),
     queryFn: () =>
       fetchTrainersWithSlots({
         search: searchActive ? trimmed : undefined,
@@ -198,7 +199,7 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
   });
 
   const { data: onlineRaw = [] } = useQuery({
-    queryKey: ["bookExpert", "online"],
+    queryKey: queryKeys.presence.bookExpertOnline,
     queryFn: fetchOnlineUsers,
     staleTime: 30_000,
     refetchInterval: 30_000,

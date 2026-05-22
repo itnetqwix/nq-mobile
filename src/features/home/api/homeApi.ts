@@ -415,6 +415,7 @@ export type StoragePlanInfo = {
   planLabel: string;
   quotaBytes: number;
   usedBytes: number;
+  maxClipFileBytes?: number;
   billingInterval: string | null;
   plans: {
     id: string;
@@ -488,6 +489,121 @@ export async function postClipUploadSignUrls(
 ): Promise<{ success?: number; results?: ClipUploadSignRow[]; message?: string }> {
   const res = await apiClient.post(API_ROUTES.common.videoUploadUrl, payload);
   return (res.data ?? {}) as { success?: number; results?: ClipUploadSignRow[]; message?: string };
+}
+
+export type ClipConfirmPayload = {
+  videoKey: string;
+  thumbnailKey: string;
+  fileType: string;
+  title: string;
+  category: string;
+  fileSizeBytes: number;
+  shareOptions: {
+    type: string;
+    friends?: string[];
+    emails?: string[];
+  };
+};
+
+/** Register clip in DB after S3 PUT (`POST /storage/clips/confirm`). */
+export async function postClipConfirm(
+  payload: ClipConfirmPayload
+): Promise<{ clipId: string | null }> {
+  const res = await apiClient.post(API_ROUTES.storage.clipsConfirm, payload);
+  const body = (res.data ?? {}) as {
+    success?: number;
+    clipId?: string | null;
+    message?: string;
+  };
+  if (body.success !== 1) {
+    throw new Error(body.message || "Failed to save clip.");
+  }
+  return { clipId: body.clipId ?? null };
+}
+
+/** Presign → PUT video + thumbnail → confirm (replaces `/common/video-upload-url`). */
+export async function uploadLockerClip(params: {
+  videoUri: string;
+  videoMime: string;
+  videoSizeBytes: number;
+  thumbUri: string;
+  title: string;
+  category: string;
+  shareOptions: ClipConfirmPayload["shareOptions"];
+  onVideoProgress?: (percent: number) => void;
+  onThumbProgress?: (percent: number) => void;
+}): Promise<{ clipId: string | null }> {
+  const { putFileToPresignedUrl } = await import("../../../lib/presignedPut");
+
+  const videoPresign = await postClipPresignUpload({
+    contentType: params.videoMime,
+    sizeBytes: params.videoSizeBytes,
+    purpose: "clip",
+  });
+  const thumbPresign = await postClipPresignUpload({
+    contentType: "image/jpeg",
+    sizeBytes: 0,
+    purpose: "thumbnail",
+  });
+
+  await putFileToPresignedUrl(
+    videoPresign.uploadUrl,
+    params.videoUri,
+    params.videoMime,
+    params.onVideoProgress
+      ? ({ percent }) => params.onVideoProgress!(percent)
+      : undefined
+  );
+  await putFileToPresignedUrl(
+    thumbPresign.uploadUrl,
+    params.thumbUri,
+    "image/jpeg",
+    params.onThumbProgress
+      ? ({ percent }) => params.onThumbProgress!(percent)
+      : undefined
+  );
+
+  return postClipConfirm({
+    videoKey: videoPresign.key,
+    thumbnailKey: thumbPresign.key,
+    fileType: params.videoMime,
+    title: params.title,
+    category: params.category,
+    fileSizeBytes: params.videoSizeBytes,
+    shareOptions: params.shareOptions,
+  });
+}
+
+/** Month 2: single-clip presigned PUT (`POST /storage/clips/presign`). */
+export async function postClipPresignUpload(params: {
+  contentType: string;
+  filename?: string;
+  sizeBytes?: number;
+  purpose?: "clip" | "thumbnail";
+}): Promise<{ uploadUrl: string; key: string; mediaUrl: string; expiresIn: number }> {
+  const res = await apiClient.post(API_ROUTES.storage.clipsPresign, {
+    contentType: params.contentType,
+    filename: params.filename,
+    sizeBytes: params.sizeBytes,
+    purpose: params.purpose,
+  });
+  const body = (res.data ?? {}) as {
+    success?: number;
+    uploadUrl?: string;
+    key?: string;
+    mediaUrl?: string;
+    expiresIn?: number;
+    message?: string;
+  };
+  if (body.success !== 1 || !body.uploadUrl || !body.mediaUrl) {
+    throw new Error(body.message || "Failed to get upload URL");
+  }
+  return {
+    uploadUrl: body.uploadUrl,
+    key: body.key ?? "",
+    mediaUrl: body.mediaUrl,
+    expiresIn: body.expiresIn ?? 900,
+  };
 }
 
 export async function postShareClipsToEmail(userEmail: string, clips: any[]): Promise<void> {

@@ -13,6 +13,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { Button, Card, ScreenContainer, SectionHeader } from "../../../components/ui";
 import { fetchStorageInfo } from "../../home/api/homeApi";
+import { queryKeys } from "../../../lib/queryKeys";
 import { StackSwipeBackShell } from "../../../navigation/StackSwipeBackShell";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { useStorageCheckoutFlow, type StorageCheckoutInterval } from "../hooks/useStorageCheckoutFlow";
@@ -31,7 +32,7 @@ export function StoragePlanScreen() {
   const [interval, setInterval] = useState<StorageCheckoutInterval>("monthly");
 
   const q = useQuery({
-    queryKey: ["storage", "info"],
+    queryKey: queryKeys.storage.info,
     queryFn: fetchStorageInfo,
   });
 
@@ -81,7 +82,7 @@ export function StoragePlanScreen() {
     if (planId === "free" || planId === info?.planId) return;
     const result = await subscribe(planId, interval);
     if (result.ok) {
-      void queryClient.invalidateQueries({ queryKey: ["storage"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.storage.all });
       Alert.alert(t("storage.upgradedTitle"), t("storage.upgradedBody"));
       return;
     }

@@ -9,6 +9,7 @@ import { postGetAllSavedSessions } from "../../home/api/homeApi";
 import { LockerListShell } from "../components/locker/LockerListShell";
 import { LockerViewerModal, type LockerViewerMode } from "../components/locker/LockerViewerModal";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import { queryKeys } from "../../../lib/queryKeys";
 
 export function SavedLessonsScreen() {
   const { t } = useAppTranslation();
@@ -43,7 +44,7 @@ export function SavedLessonsScreen() {
   );
 
   const savedQ = useQuery({
-    queryKey: ["locker", "savedSessions"],
+    queryKey: queryKeys.locker.savedSessions,
     queryFn: postGetAllSavedSessions,
     staleTime: 30_000,
   });

@@ -1,5 +1,6 @@
 import { apiClient } from "../../api/client";
 import { API_ROUTES } from "../../config/apiRoutes";
+import { idempotencyHeaders, newIdempotencyKey } from "../../lib/idempotency";
 
 export type WalletBalance = {
   walletAccountId: string;
@@ -86,9 +87,11 @@ function unwrapData<T>(res: { data: unknown }): T {
 }
 
 export async function createTopUpIntent(amountMinor: number): Promise<TopUpIntentResult> {
-  const res = await apiClient.post(API_ROUTES.wallet.topUpCreateIntent, {
-    amount_minor: amountMinor,
-  });
+  const res = await apiClient.post(
+    API_ROUTES.wallet.topUpCreateIntent,
+    { amount_minor: amountMinor },
+    { headers: idempotencyHeaders(newIdempotencyKey("topup-intent")) }
+  );
   return unwrapData<TopUpIntentResult>(res);
 }
 
@@ -98,7 +101,9 @@ export async function fetchTopUpStatus(topupId: string): Promise<TopUpStatusResu
 }
 
 export async function confirmTopUp(topupId: string): Promise<{ status: string; processed?: boolean }> {
-  const res = await apiClient.post(API_ROUTES.wallet.topUpConfirm(topupId));
+  const res = await apiClient.post(API_ROUTES.wallet.topUpConfirm(topupId), undefined, {
+    headers: idempotencyHeaders(`topup-confirm-${topupId}`),
+  });
   return unwrapData<{ status: string; processed?: boolean }>(res);
 }
 
@@ -139,10 +144,11 @@ export async function updatePayoutPreference(preference: "wallet_fast" | "bank_s
 }
 
 export async function requestWithdraw(amountMinor: number, method: "bank" | "wallet_internal") {
-  const res = await apiClient.post(API_ROUTES.wallet.withdraw, {
-    amount_minor: amountMinor,
-    method,
-  });
+  const res = await apiClient.post(
+    API_ROUTES.wallet.withdraw,
+    { amount_minor: amountMinor, method },
+    { headers: idempotencyHeaders(newIdempotencyKey("withdraw")) }
+  );
   return res.data;
 }
 

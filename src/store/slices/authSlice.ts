@@ -2,7 +2,6 @@ import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/tool
 import { extractLoginTokens, summarizeLoginPayloadKeys } from "../../lib/http/parseLoginResponse";
 import { getApiErrorMessage } from "../../lib/http/getApiErrorMessage";
 import { getCurrentUser, postLogin } from "../../features/auth/api/authApi";
-import { fetchMasterRow } from "../../features/auth/api/masterApi";
 import { ensureAuthSessionRegistered, postLogout } from "../../features/auth/api/authSessionsApi";
 import {
   clearSession,
@@ -13,7 +12,6 @@ import {
 } from "../../features/auth/session/tokenStorage";
 import { registerMyChatPublicKey } from "../../features/chats/crypto/chatKeysApi";
 import { applyLanguageFromUser } from "../../i18n/applyLanguageFromUser";
-import { queryKeys } from "../../lib/queryKeys";
 import { getGlobalQueryClient } from "../queryClientRef";
 
 export type AuthUser = Record<string, unknown> | null;
@@ -74,12 +72,7 @@ export const completeSessionFromTokens = createAsyncThunk(
     try {
       const me = await getCurrentUser();
       void applyLanguageFromUser(me);
-      const qc = getGlobalQueryClient();
-      qc?.invalidateQueries();
-      void qc?.prefetchQuery({
-        queryKey: queryKeys.master.row,
-        queryFn: fetchMasterRow,
-      });
+      getGlobalQueryClient()?.invalidateQueries();
       void registerMyChatPublicKey().catch(() => undefined);
       return { user: me, accountType: tokens.account_type };
     } catch (e) {

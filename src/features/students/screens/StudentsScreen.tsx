@@ -6,6 +6,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { queryKeys } from "../../../lib/queryKeys";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -115,7 +116,7 @@ export function StudentsScreen() {
 
   /** Only trainees this trainer has worked with (same API as web Student Record). */
   const { data: students = [], isLoading, isRefetching, refetch } = useQuery({
-    queryKey: ["recentTrainees"],
+    queryKey: queryKeys.presence.recentTrainees,
     queryFn: fetchRecentTrainees,
     enabled: isTrainer,
     staleTime: 120_000,
