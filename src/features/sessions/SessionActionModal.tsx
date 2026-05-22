@@ -15,6 +15,7 @@ import { Button, ImageWithSkeleton, Pill } from "../../components/ui";
 import { AccountType } from "../../constants/accountType";
 import { useAuth } from "../auth/context/AuthContext";
 import { fetchSessionDetail, updateBookedSessionStatus } from "../home/api/homeApi";
+import { queryKeys } from "../../lib/queryKeys";
 import { getS3ImageUrl } from "../../lib/imageUtils";
 import {
   canEnterLesson,
@@ -182,8 +183,8 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
   }, [viewSession]);
 
   const invalidateSessions = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ["sessions"] });
-    await queryClient.invalidateQueries({ queryKey: ["onlineUsers"] });
+    await queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
+    await queryClient.invalidateQueries({ queryKey: queryKeys.presence.onlineUsers });
   }, [queryClient]);
 
   const handleConfirm = useCallback(async () => {

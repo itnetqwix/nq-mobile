@@ -22,6 +22,7 @@ import {
   putProfile,
   type TrainerScheduleDay,
 } from "../../home/api/homeApi";
+import { queryKeys } from "../../../lib/queryKeys";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { useAuth } from "../../auth/context/AuthContext";
 
@@ -259,7 +260,7 @@ export function TrainerScheduleScreen() {
   };
 
   const { data, isLoading, isRefetching, refetch } = useQuery({
-    queryKey: ["trainerSchedule"],
+    queryKey: queryKeys.trainer.schedule,
     queryFn: fetchTrainerSlots,
     staleTime: 30_000,
   });
@@ -342,8 +343,8 @@ export function TrainerScheduleScreen() {
       await postTrainerSlots(filtered);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["trainerSchedule"] });
-      queryClient.invalidateQueries({ queryKey: ["trainerAvailability"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.trainer.schedule });
+      queryClient.invalidateQueries({ queryKey: queryKeys.trainer.availabilityAll });
       Alert.alert("Availability saved", "Your weekly availability is now live for bookings.");
     },
     onError: (err: any) => {

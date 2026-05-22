@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { queryKeys } from "../../../lib/queryKeys";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import React from "react";
@@ -65,7 +66,7 @@ export function WalletActivityScreen() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ["wallet", "ledger"],
+    queryKey: queryKeys.wallet.ledger,
     queryFn: ({ pageParam }) => fetchWalletLedger(pageParam, PAGE_SIZE),
     initialPageParam: 1,
     getNextPageParam: (lastPage, _all, lastPageParam) => {

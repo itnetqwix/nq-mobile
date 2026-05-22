@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { colors, radii, typography } from "../../theme";
+import { queryKeys } from "../../lib/queryKeys";
 import { fetchScheduledMeetings } from "../home/api/homeApi";
 import { canRejoinLesson, isInstantLesson } from "../../lib/sessions/sessionUtils";
 import { navigationRef } from "../../navigation/navigationRef";
@@ -44,7 +45,7 @@ export function InstantLessonStatusBanner() {
   } = useInstantLesson();
 
   const { data: sessions = [] } = useQuery({
-    queryKey: ["sessions", "upcoming"],
+    queryKey: queryKeys.sessions.upcoming,
     queryFn: () => fetchScheduledMeetings("upcoming"),
     staleTime: 30_000,
   });

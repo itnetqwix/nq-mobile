@@ -3,6 +3,7 @@ import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from "react-nati
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
+import { queryKeys } from "../../../lib/queryKeys";
 import {
   fetchTrainerEarnings,
   requestWithdraw,
@@ -36,7 +37,7 @@ export function TrainerEarningsScreen() {
   const queryClient = useQueryClient();
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const { data: earnings, isLoading } = useQuery({
-    queryKey: ["wallet", "earnings"],
+    queryKey: queryKeys.wallet.earnings,
     queryFn: fetchTrainerEarnings,
   });
 
@@ -45,7 +46,7 @@ export function TrainerEarningsScreen() {
   const handlePreference = async (pref: "wallet_fast" | "bank_standard") => {
     try {
       await updatePayoutPreference(pref);
-      void queryClient.invalidateQueries({ queryKey: ["wallet"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all });
       Alert.alert(
         "Saved",
         pref === "wallet_fast"
@@ -70,7 +71,7 @@ export function TrainerEarningsScreen() {
       );
       Alert.alert("Submitted", "Withdrawal request submitted.");
       setWithdrawAmount("");
-      void queryClient.invalidateQueries({ queryKey: ["wallet"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all });
     } catch (e: any) {
       Alert.alert("Error", e?.response?.data?.error ?? e?.message);
     }

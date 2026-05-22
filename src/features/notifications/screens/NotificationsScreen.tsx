@@ -15,6 +15,7 @@ import {
 import { EmptyState, Skeleton } from "../../../components/ui";
 import type { RootStackParamList, ShellSurfaceRouteId } from "../../../navigation/types";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
+import { queryKeys } from "../../../lib/queryKeys";
 import { fetchNotifications } from "../../home/api/homeApi";
 import { useNotifications } from "../NotificationContext";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
@@ -145,7 +146,7 @@ export function NotificationsScreen() {
   const { markFirstPageRead, refreshInbox } = useNotifications();
 
   const { data: notifications = [], isLoading, isRefetching, refetch } = useQuery({
-    queryKey: ["notifications"],
+    queryKey: queryKeys.notifications.inbox,
     queryFn: () => fetchNotifications(1, 50),
     staleTime: 30_000,
   });

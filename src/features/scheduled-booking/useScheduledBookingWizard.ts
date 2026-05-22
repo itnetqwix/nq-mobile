@@ -16,6 +16,7 @@ import {
   scheduledStepIndex,
   type ScheduledWizardStep,
 } from "./constants";
+import { queryKeys } from "../../lib/queryKeys";
 import { bookScheduledSession, fetchDayAvailability, validateSlotRange } from "./scheduledBookingApi";
 import {
   buildStartCandidates,
@@ -123,7 +124,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
   }, [visible]);
 
   const dayAvailabilityQuery = useQuery({
-    queryKey: ["scheduledCheckSlot", tid, bookedDateIso, traineeTz],
+    queryKey: queryKeys.scheduled.checkSlot(tid, bookedDateIso, traineeTz),
     queryFn: async () => {
       const data = await fetchDayAvailability({
         trainerId: tid,
@@ -325,7 +326,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
       });
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["sessions", "upcoming"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.upcoming });
       Alert.alert(
         "Session requested",
         "Your session request was sent. Your coach must confirm before it is scheduled.",

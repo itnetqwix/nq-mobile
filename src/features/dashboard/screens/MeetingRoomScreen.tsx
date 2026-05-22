@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Button, EmptyState } from "../../../components/ui";
 import { colors, radii, space, typography } from "../../../theme";
 import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "../../../lib/queryKeys";
 import { fetchScheduledMeetings } from "../../home/api/homeApi";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
@@ -18,7 +19,7 @@ export function MeetingRoomScreen() {
   const { accountType } = useAuth();
 
   const { data: sessions = [], isLoading } = useQuery({
-    queryKey: ["sessions", "upcoming"],
+    queryKey: queryKeys.sessions.upcoming,
     queryFn: () => fetchScheduledMeetings("upcoming"),
     staleTime: 30_000,
   });

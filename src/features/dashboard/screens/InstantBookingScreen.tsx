@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Button, EmptyState, Skeleton } from "../../../components/ui";
 import { colors, radii, space, typography } from "../../../theme";
+import { queryKeys } from "../../../lib/queryKeys";
 import { fetchOnlineUsers } from "../../home/api/homeApi";
 import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
@@ -44,7 +45,7 @@ export function InstantBookingScreen() {
   const [wizardTrainer, setWizardTrainer] = useState<Record<string, unknown> | null>(null);
 
   const { data: onlineUsers = [], isLoading, isRefetching, refetch } = useQuery({
-    queryKey: ["onlineUsers"],
+    queryKey: queryKeys.presence.onlineUsers,
     queryFn: fetchOnlineUsers,
     staleTime: 30_000,
     refetchInterval: 30_000,

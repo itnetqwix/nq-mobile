@@ -15,6 +15,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../navigation/types";
 import { getAccessToken, getAccountType } from "../../auth/session/tokenStorage";
 import { AccountType } from "../../../constants/accountType";
+import { queryKeys } from "../../../lib/queryKeys";
 import { fetchScheduledMeetings } from "../../home/api/homeApi";
 import { PortraitCallOverlay } from "../../calling/components/PortraitCallOverlay";
 import { SessionExtensionModal } from "../../calling/components/SessionExtensionModal";
@@ -50,7 +51,7 @@ function useSessionPeer(lessonId: string, accountType: string | null) {
   const queryClient = useQueryClient();
 
   const cached = useMemo(() => {
-    const caches = queryClient.getQueriesData<any[]>({ queryKey: ["sessions"] });
+    const caches = queryClient.getQueriesData<any[]>({ queryKey: queryKeys.sessions.all });
     for (const [, list] of caches) {
       if (!Array.isArray(list)) continue;
       const hit = list.find((s) => String(s?._id) === String(lessonId));
@@ -60,7 +61,7 @@ function useSessionPeer(lessonId: string, accountType: string | null) {
   }, [queryClient, lessonId]);
 
   const { data: fetched } = useQuery({
-    queryKey: ["sessionLookup", lessonId],
+    queryKey: queryKeys.sessions.lookup(lessonId),
     enabled: !cached && !!lessonId,
     queryFn: async () => {
       const [upcoming, confirmed] = await Promise.all([
@@ -144,8 +145,8 @@ export function MeetingScreen({ navigation, route }: Props) {
         setExtensionNotice(`Trainee added +${addedMin} min to this lesson`);
         setTimeout(() => setExtensionNotice(null), 8000);
       }
-      void queryClient.invalidateQueries({ queryKey: ["sessionLookup", lessonId] });
-      void queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.lookup(lessonId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
     };
     socket.on("LESSON_TIMER_EXTENDED", onExtended);
     return () => {

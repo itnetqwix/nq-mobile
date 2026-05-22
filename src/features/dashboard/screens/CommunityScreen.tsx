@@ -15,6 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EmptyState, ImageWithSkeleton, Pill, Skeleton } from "../../../components/ui";
 import { colors, radii, space, typography } from "../../../theme";
+import { queryKeys } from "../../../lib/queryKeys";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
 import { apiClient } from "../../../api/client";
@@ -184,19 +185,19 @@ export function CommunityScreen() {
 
   const trimmedSearch = search.trim();
   const { data: members = [], isLoading, isRefetching, refetch } = useQuery({
-    queryKey: ["communityUsers", trimmedSearch],
+    queryKey: queryKeys.presence.community(trimmedSearch),
     queryFn: () => fetchCommunityUsers(trimmedSearch || undefined),
     staleTime: 120_000,
   });
 
   const { data: friends = [] } = useQuery({
-    queryKey: ["friends"],
+    queryKey: queryKeys.friends.all,
     queryFn: fetchFriends,
     staleTime: 120_000,
   });
 
   const { data: sentRequests = [] } = useQuery({
-    queryKey: ["friendRequests"],
+    queryKey: queryKeys.friends.requests,
     queryFn: fetchFriendRequests,
     staleTime: 60_000,
   });
@@ -247,9 +248,9 @@ export function CommunityScreen() {
   );
 
   const invalidateAll = () => {
-    queryClient.invalidateQueries({ queryKey: ["friends"] });
-    queryClient.invalidateQueries({ queryKey: ["friendRequests"] });
-    queryClient.invalidateQueries({ queryKey: ["communityUsers"] });
+    queryClient.invalidateQueries({ queryKey: queryKeys.friends.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.friends.requests });
+    queryClient.invalidateQueries({ queryKey: queryKeys.presence.communityAll });
   };
 
   const handleAction = useCallback(
@@ -308,7 +309,7 @@ export function CommunityScreen() {
         const conversation = body?.data ?? body?.result ?? body;
         const convId = conversation?._id ?? conversation?.conversationId;
         if (convId) {
-          queryClient.invalidateQueries({ queryKey: ["conversations"] });
+          queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
           setActiveChat({
             conversationId: convId,
             partner: { _id: userId, fullname: name, profile_picture: picture },
@@ -335,7 +336,7 @@ export function CommunityScreen() {
         partner={activeChat.partner}
         onGoBack={() => {
           setActiveChat(null);
-          queryClient.invalidateQueries({ queryKey: ["conversations"] });
+          queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
         }}
       />
     );

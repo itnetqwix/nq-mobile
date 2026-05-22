@@ -102,12 +102,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       }, 10_000);
 
       const bumpPresenceQueries = () => {
-        queryClient.invalidateQueries({ queryKey: ["onlineUsers"] });
-        queryClient.invalidateQueries({ queryKey: ["bookExpert", "online"] });
-        queryClient.invalidateQueries({ queryKey: ["friends"] });
-        queryClient.invalidateQueries({ queryKey: ["conversations"] });
-        queryClient.invalidateQueries({ queryKey: ["recentTrainees"] });
-        queryClient.invalidateQueries({ queryKey: ["communityUsers"] });
+        const { invalidateOnPresenceSocketEvent } = require("../../lib/socketInvalidate");
+        invalidateOnPresenceSocketEvent(queryClient);
       };
       createdSocket.on("userStatus", bumpPresenceQueries);
       createdSocket.on("onlineUser", bumpPresenceQueries);

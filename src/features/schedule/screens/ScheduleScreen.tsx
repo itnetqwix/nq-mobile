@@ -17,6 +17,7 @@ import { AccountType } from "../../../constants/accountType";
 import { Button, EmptyState, Pill } from "../../../components/ui";
 import { colors, radii, space, typography } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
+import { queryKeys } from "../../../lib/queryKeys";
 import { fetchTrainerSlots } from "../../home/api/homeApi";
 import { UpcomingSessionsScreen } from "../../sessions/screens/UpcomingSessionsScreen";
 import type { MainTabScreenProps } from "../../../navigation/types";
@@ -54,7 +55,7 @@ function TrainerSchedule() {
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { data: inventory = [], isLoading, isRefetching, refetch } = useQuery({
-    queryKey: ["trainerSlots"],
+    queryKey: queryKeys.trainer.slots,
     queryFn: fetchTrainerSlots,
     staleTime: 60_000,
   });

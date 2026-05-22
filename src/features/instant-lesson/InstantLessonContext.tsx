@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { AppState, Vibration } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "../../lib/queryKeys";
 import { useSocket } from "../socket/SocketContext";
 import { useAuth } from "../auth/context/AuthContext";
 import {
@@ -351,7 +352,7 @@ export function InstantLessonProvider({
     };
 
     const invalidateSessionLists = () => {
-      void queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
     };
 
     const handleDecline = (payload: any) => {

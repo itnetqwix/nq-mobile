@@ -12,6 +12,7 @@ import {
 } from "../../../lib/security/biometricGate";
 import { checkDeviceIntegrity } from "../../../lib/security/deviceIntegrity";
 import { setWalletPin, verifyWalletPin } from "../walletApi";
+import { queryKeys } from "../../../lib/queryKeys";
 import { useWalletBalance } from "../hooks/useWalletBalance";
 import { PinPad } from "../security/PinPad";
 import { savePinSession } from "../security/pinSessionStore";
@@ -79,7 +80,7 @@ export function WalletSecurityScreen() {
         setPin("");
         setConfirmPin("");
         setMode("verify");
-        void queryClient.invalidateQueries({ queryKey: ["wallet"] });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all });
       } catch (e: unknown) {
         Alert.alert(
           t("wallet.errorTitle"),

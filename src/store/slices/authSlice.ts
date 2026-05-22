@@ -13,6 +13,7 @@ import {
 } from "../../features/auth/session/tokenStorage";
 import { registerMyChatPublicKey } from "../../features/chats/crypto/chatKeysApi";
 import { applyLanguageFromUser } from "../../i18n/applyLanguageFromUser";
+import { queryKeys } from "../../lib/queryKeys";
 import { getGlobalQueryClient } from "../queryClientRef";
 
 export type AuthUser = Record<string, unknown> | null;
@@ -75,7 +76,10 @@ export const completeSessionFromTokens = createAsyncThunk(
       void applyLanguageFromUser(me);
       const qc = getGlobalQueryClient();
       qc?.invalidateQueries();
-      void qc?.prefetchQuery({ queryKey: ["masterRow"], queryFn: fetchMasterRow });
+      void qc?.prefetchQuery({
+        queryKey: queryKeys.master.row,
+        queryFn: fetchMasterRow,
+      });
       void registerMyChatPublicKey().catch(() => undefined);
       return { user: me, accountType: tokens.account_type };
     } catch (e) {

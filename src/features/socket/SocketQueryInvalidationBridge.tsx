@@ -1,22 +1,28 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import {
+  invalidateForSocketEvent,
+  SOCKET_SESSION_EVENTS,
+} from "../../lib/socketInvalidate";
 import { useSocket } from "./SocketContext";
 
-const SESSION_INVALIDATION_EVENTS = [
-  "LESSON_TIMER_EXTENDED",
-  "SESSION_EXTENSION_APPLIED",
-  "SESSION_EXTENSION_REQUESTED",
-  "SESSION_EXTENSION_ACCEPTED",
-  "SESSION_EXTENSION_REJECTED",
-  "SESSION_EXTENSION_CANCELLED",
-  "SESSION_EXTENSION_EXPIRED",
+const BOOKING_EVENTS = [
   "BOOKING_CREATED",
   "BOOKING_UPDATED",
+  "BOOKING_STATUS_UPDATED",
   "BOOKING_CANCELLED",
 ] as const;
 
+const ALL_INVALIDATION_EVENTS = [
+  ...SOCKET_SESSION_EVENTS,
+  ...BOOKING_EVENTS,
+  "INSTANT_LESSON_PHASE",
+  "userStatus",
+  "onlineUser",
+] as const;
+
 /**
- * Keeps React Query session lists fresh when the server pushes booking/timer updates.
+ * Keeps React Query caches fresh when the server pushes booking/timer/extension updates.
  */
 export function SocketQueryInvalidationBridge() {
   const { socket } = useSocket();
@@ -25,17 +31,17 @@ export function SocketQueryInvalidationBridge() {
   useEffect(() => {
     if (!socket) return;
 
-    const invalidateSessions = () => {
-      void queryClient.invalidateQueries({ queryKey: ["sessions"] });
+    const handler = (event: string) => {
+      invalidateForSocketEvent(queryClient, event);
     };
 
-    SESSION_INVALIDATION_EVENTS.forEach((event) => {
-      socket.on(event, invalidateSessions);
+    ALL_INVALIDATION_EVENTS.forEach((event) => {
+      socket.on(event, handler);
     });
 
     return () => {
-      SESSION_INVALIDATION_EVENTS.forEach((event) => {
-        socket.off(event, invalidateSessions);
+      ALL_INVALIDATION_EVENTS.forEach((event) => {
+        socket.off(event, handler);
       });
     };
   }, [socket, queryClient]);

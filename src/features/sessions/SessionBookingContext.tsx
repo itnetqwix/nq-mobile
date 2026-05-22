@@ -27,6 +27,7 @@ import {
   isPendingBooking,
   shouldShowInDashboardRequests,
 } from "../../lib/sessions/sessionUtils";
+import { invalidateOnBookingSocketEvent } from "../../lib/socketInvalidate";
 import { useSocket } from "../socket/SocketContext";
 import { SessionActionModal } from "./SessionActionModal";
 
@@ -182,8 +183,7 @@ export function SessionBookingProvider({ children }: { children: React.ReactNode
     if (!socket || !isTrainer) return;
 
     const invalidate = () => {
-      void queryClient.invalidateQueries({ queryKey: ["sessions"] });
-      void queryClient.invalidateQueries({ queryKey: ["sessions", "upcoming"] });
+      invalidateOnBookingSocketEvent(queryClient);
       void refreshPending();
     };
 

@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
+import { queryKeys } from "../../../lib/queryKeys";
 import { unwrapApiData } from "../../../lib/http/unwrapApiData";
 import { colors, radii, space, typography } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
@@ -107,7 +108,7 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
   }, [visible]);
 
   const slotsQuery = useQuery({
-    queryKey: ["trainerAvailability", trainerId],
+    queryKey: queryKeys.trainer.availability(trainerId),
     queryFn: async () => {
       const res = await apiClient.post(API_ROUTES.trainer.getAvailability, {
         trainer_id: trainerId,

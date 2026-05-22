@@ -42,6 +42,7 @@ import type { RootStackParamList } from "../../../navigation/types";
 import { AccountType } from "../../../constants/accountType";
 import { useAuth } from "../../auth/context/AuthContext";
 import { useSocket } from "../../socket/SocketContext";
+import { queryKeys } from "../../../lib/queryKeys";
 import { fetchMeetingSession, fetchScheduledMeetings } from "../../home/api/homeApi";
 import { parseIceServersFromSession } from "../meetingIceServers";
 import { getClipPlaybackUrl } from "../../../lib/clipMediaUrl";
@@ -119,7 +120,7 @@ const NAVY = meetingTheme.navy;
 function useSessionLookup(lessonId: string) {
   const queryClient = useQueryClient();
   const cached = useMemo<SessionRow | null>(() => {
-    const caches = queryClient.getQueriesData<SessionRow[]>({ queryKey: ["sessions"] });
+    const caches = queryClient.getQueriesData<SessionRow[]>({ queryKey: queryKeys.sessions.all });
     for (const [, list] of caches) {
       if (!Array.isArray(list)) continue;
       const hit = list.find((s) => String(s?._id) === String(lessonId));
@@ -129,7 +130,7 @@ function useSessionLookup(lessonId: string) {
   }, [queryClient, lessonId]);
 
   const { data: fetched, isLoading } = useQuery<SessionRow | undefined>({
-    queryKey: ["sessionLookup", lessonId],
+    queryKey: queryKeys.sessions.lookup(lessonId),
     enabled: !cached && !!lessonId,
     queryFn: async () => {
       const direct = await fetchMeetingSession(lessonId);

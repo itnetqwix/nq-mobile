@@ -24,6 +24,7 @@ import { useWalletTopUpFlow } from "../hooks/useWalletTopUpFlow";
 import { useWalletBalance } from "../hooks/useWalletBalance";
 import type { WalletStackParamList } from "../navigation/WalletNavigator";
 import { useShellHeaderTitle } from "../../../navigation/useShellHeaderTitle";
+import { queryKeys } from "../../../lib/queryKeys";
 import { fetchWalletConfig } from "../walletApi";
 
 const PRESETS = [25, 50, 100, 200];
@@ -47,7 +48,7 @@ export function WalletTopUpScreen({ navigation, route }: Props) {
 
   const { data: balance, refetch: refetchBalance } = useWalletBalance(isTrainee);
   const { data: config, isLoading: configLoading } = useQuery({
-    queryKey: ["wallet", "config"],
+    queryKey: queryKeys.wallet.config,
     queryFn: fetchWalletConfig,
     staleTime: 300_000,
   });
@@ -152,7 +153,7 @@ export function WalletTopUpScreen({ navigation, route }: Props) {
 
     const result = await runTopUp(dollars);
     if (result.ok) {
-      await queryClient.invalidateQueries({ queryKey: ["wallet"] });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all });
       await refetchBalance();
       Alert.alert(
         t("wallet.fundsAdded"),
@@ -165,7 +166,7 @@ export function WalletTopUpScreen({ navigation, route }: Props) {
     if (result.code === "canceled") return;
 
     if (result.code === "timeout") {
-      await queryClient.invalidateQueries({ queryKey: ["wallet"] });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all });
       Alert.alert(t("wallet.processingPayment"), result.message, [
         { text: t("systemActions.ok"), onPress: () => navigation.goBack() },
       ]);

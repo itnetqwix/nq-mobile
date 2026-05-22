@@ -13,6 +13,7 @@ import {
 import { MAX_CLIPS, WIZARD_STEPS, wizardStepIndex } from "./constants";
 import { parseInstantBookingMeta } from "./parseInstantBookingLessonId";
 import type { WizardStep, WizardTrainer } from "./types";
+import { queryKeys } from "../../../lib/queryKeys";
 import { fetchWalletBalance } from "../../wallet/walletApi";
 import { fetchInstantLessonEligibility } from "../../home/api/homeApi";
 
@@ -104,7 +105,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
         .then((res: any) => setVisiblePromos(res?.data?.data || []))
         .catch(() => {});
       void queryClient.prefetchQuery({
-        queryKey: ["wallet", "balance"],
+        queryKey: queryKeys.wallet.balance,
         queryFn: fetchWalletBalance,
       });
     }
@@ -115,14 +116,14 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
   }, [visible, resetWizard]);
 
   const eligibilityQuery = useQuery({
-    queryKey: ["instantEligibility", tid, durationMinutes],
+    queryKey: queryKeys.instant.eligibility(tid, durationMinutes),
     queryFn: () => fetchInstantLessonEligibility(tid, durationMinutes),
     enabled: visible && !!tid && durationMinutes > 0,
     staleTime: 15_000,
   });
 
   const clipsQuery = useQuery({
-    queryKey: ["instantBookingWizardClips"],
+    queryKey: queryKeys.instant.wizardClips,
     queryFn: fetchMyClipsGrouped,
     enabled: visible && step === "clips",
     staleTime: 30_000,

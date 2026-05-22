@@ -16,6 +16,7 @@ import { Button } from "../../../components/ui";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
+import { queryKeys } from "../../../lib/queryKeys";
 import {
   createTopUpIntent,
   fetchWalletBalance,
@@ -73,12 +74,12 @@ export function WalletScreen() {
   const isTrainee = accountType === AccountType.TRAINEE;
 
   const { data: balance, isLoading } = useQuery({
-    queryKey: ["wallet", "balance"],
+    queryKey: queryKeys.wallet.balance,
     queryFn: fetchWalletBalance,
   });
 
   const { data: ledger } = useQuery({
-    queryKey: ["wallet", "ledger"],
+    queryKey: queryKeys.wallet.ledger,
     queryFn: () => fetchWalletLedger(1, 20),
   });
 
@@ -102,7 +103,7 @@ export function WalletScreen() {
       if (payErr && payErr.code !== "Canceled") throw new Error(payErr.message);
       if (!payErr) {
         Alert.alert("Success", "Wallet topped up. Balance updates in a moment.");
-        void queryClient.invalidateQueries({ queryKey: ["wallet"] });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all });
       }
     } catch (e: any) {
       Alert.alert("Top-up failed", e?.message ?? "Could not complete payment");
@@ -120,7 +121,7 @@ export function WalletScreen() {
       await setWalletPin(pin);
       Alert.alert("PIN set", "Your wallet PIN is active.");
       setPin("");
-      void queryClient.invalidateQueries({ queryKey: ["wallet"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all });
     } catch (e: any) {
       Alert.alert("Error", e?.response?.data?.error ?? e?.message);
     }

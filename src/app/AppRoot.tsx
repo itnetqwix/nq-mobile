@@ -34,8 +34,12 @@ import { ThemedNavigationContainer } from "./ThemedNavigationContainer";
 import i18n from "../i18n";
 import { normalizeAppLocale } from "../i18n/languages";
 import { loadPersistedAppLocale } from "../i18n/localeStorage";
+import { initMobileSentry } from "../lib/sentry";
+import { queryKeys } from "../lib/queryKeys";
 import { StoreProvider } from "../store/StoreProvider";
 import { setGlobalQueryClient } from "../store/queryClientRef";
+
+initMobileSentry();
 
 function SystemStateHooks() {
   useSessionExpiredNavigation();
@@ -89,7 +93,7 @@ export function AppRoot() {
                 dehydrateOptions: {
                   shouldDehydrateQuery: (query) =>
                     Array.isArray(query.queryKey) &&
-                    query.queryKey[0] === "sessions",
+                    query.queryKey[0] === queryKeys.sessions.all[0],
                 },
               }}
             >

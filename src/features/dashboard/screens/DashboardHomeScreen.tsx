@@ -18,6 +18,7 @@ import { AccountType } from "../../../constants/accountType";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Skeleton, ImageWithSkeleton } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
+import { queryKeys } from "../../../lib/queryKeys";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { resolveShowAsOnline } from "../../../lib/user/resolveShowAsOnline";
 import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
@@ -359,7 +360,7 @@ function AIRecommendedSection({ onView }: { onView: (t: any) => void }) {
   const styles = useDashboardHomeStyles();
   const themeColors = useThemeColors();
   const { data, isLoading } = useQuery({
-    queryKey: ["aiRecommendations"],
+    queryKey: queryKeys.dashboard.aiRecommendations,
     queryFn: async () => {
       const res = await apiClient.get(API_ROUTES.ai.recommendTrainers);
       return res.data?.result?.recommendations || [];
@@ -457,21 +458,21 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
     async (next: boolean) => {
       const confirmed = await setOnlineAvailability(next);
       patchUser({ showAsOnline: confirmed });
-      void queryClient.invalidateQueries({ queryKey: ["onlineUsers"] });
-      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.presence.onlineUsers });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
     },
     [patchUser, queryClient]
   );
 
   const { data: onlineUsers = [], isLoading: loadingCoaches } = useQuery({
-    queryKey: ["onlineUsers"],
+    queryKey: queryKeys.presence.onlineUsers,
     queryFn: fetchOnlineUsers,
     enabled: isTrainee,
     staleTime: 60_000,
   });
 
   const { data: sessions = [], isLoading: loadingSessions } = useQuery({
-    queryKey: ["sessions", "upcoming"],
+    queryKey: queryKeys.sessions.upcoming,
     queryFn: () => fetchScheduledMeetings("upcoming"),
     staleTime: 60_000,
   });
@@ -483,7 +484,7 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
   }, []);
 
   const { data: completedSessions = [] } = useQuery({
-    queryKey: ["sessions", "completed"],
+    queryKey: queryKeys.sessions.completed,
     queryFn: () => fetchScheduledMeetings("completed"),
     staleTime: 120_000,
   });
@@ -505,20 +506,20 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
   }, [completedSessions]);
 
   const { data: friendRequests = [], isLoading: loadingFriends } = useQuery({
-    queryKey: ["friendRequests"],
+    queryKey: queryKeys.friends.requests,
     queryFn: fetchFriendRequests,
     staleTime: 120_000,
   });
 
   const { data: recentTrainees = [] } = useQuery({
-    queryKey: ["recentTrainees"],
+    queryKey: queryKeys.presence.recentTrainees,
     queryFn: fetchRecentTrainees,
     enabled: isTrainer,
     staleTime: 120_000,
   });
 
   const { data: recentTrainers = [] } = useQuery({
-    queryKey: ["recentTrainers"],
+    queryKey: queryKeys.presence.recentTrainers,
     queryFn: fetchRecentTrainers,
     enabled: isTrainee,
     staleTime: 120_000,
@@ -532,11 +533,11 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
     setPullRefreshing(true);
     try {
       await Promise.all([
-        queryClient.refetchQueries({ queryKey: ["onlineUsers"] }),
-        queryClient.refetchQueries({ queryKey: ["sessions", "upcoming"] }),
-        queryClient.refetchQueries({ queryKey: ["friendRequests"] }),
-        queryClient.refetchQueries({ queryKey: ["recentTrainees"] }),
-        queryClient.refetchQueries({ queryKey: ["recentTrainers"] }),
+        queryClient.refetchQueries({ queryKey: queryKeys.presence.onlineUsers }),
+        queryClient.refetchQueries({ queryKey: queryKeys.sessions.upcoming }),
+        queryClient.refetchQueries({ queryKey: queryKeys.friends.requests }),
+        queryClient.refetchQueries({ queryKey: queryKeys.presence.recentTrainees }),
+        queryClient.refetchQueries({ queryKey: queryKeys.presence.recentTrainers }),
       ]);
     } finally {
       setPullRefreshing(false);
@@ -573,7 +574,7 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
 
   useLayoutEffect(() => {
     void queryClient.prefetchQuery({
-      queryKey: ["wallet", "balance"],
+      queryKey: queryKeys.wallet.balance,
       queryFn: async () => {
         const { fetchWalletBalance } = await import("../../wallet/walletApi");
         return fetchWalletBalance();
@@ -610,12 +611,12 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
 
   const handleAccept = useCallback(async (requestId: string) => {
     await postAcceptFriendRequest(requestId);
-    queryClient.invalidateQueries({ queryKey: ["friendRequests"] });
+    queryClient.invalidateQueries({ queryKey: queryKeys.friends.requests });
   }, [queryClient]);
 
   const handleReject = useCallback(async (requestId: string) => {
     await postRejectFriendRequest(requestId);
-    queryClient.invalidateQueries({ queryKey: ["friendRequests"] });
+    queryClient.invalidateQueries({ queryKey: queryKeys.friends.requests });
   }, [queryClient]);
 
   const nowSessions = useMemo(

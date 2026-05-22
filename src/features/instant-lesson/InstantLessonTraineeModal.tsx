@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "../../lib/queryKeys";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -81,7 +82,7 @@ export function InstantLessonTraineeModal() {
     isRefetching: clipsRefetching,
     refetch: refetchClips,
   } = useQuery({
-    queryKey: ["instantLessonClips", lessonId],
+    queryKey: queryKeys.instant.lessonClips(lessonId),
     queryFn: fetchMyClipsGrouped,
     enabled: visible && !!lessonId,
     staleTime: 30_000,
@@ -110,7 +111,7 @@ export function InstantLessonTraineeModal() {
       await addTraineeClipsToBookedSession(lessonId, selectedIds);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
       Alert.alert("Clips attached", "Your clips are linked to this lesson.");
     },
     onError: (err: any) => {

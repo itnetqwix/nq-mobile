@@ -23,6 +23,12 @@ import {
   fetchNotifications,
   patchNotificationsMarkRead,
 } from "../home/api/homeApi";
+import { queryKeys } from "../../lib/queryKeys";
+import {
+  invalidateOnBookingSocketEvent,
+  invalidateOnSessionSocketEvent,
+  invalidateOnWalletSocketEvent,
+} from "../../lib/socketInvalidate";
 import { useSocket } from "../socket/SocketContext";
 import { emitInstantLessonPhase } from "../instant-lesson/instantLessonBridge";
 import { navigationRef } from "../../navigation/navigationRef";
@@ -301,14 +307,14 @@ export function NotificationProvider({
         kind === "instant_lesson_request" ||
         titleLower.includes("instant lesson request")
       ) {
-        queryClient.invalidateQueries({ queryKey: ["sessions"] });
+        invalidateOnSessionSocketEvent(queryClient);
       } else if (
         kind === "instant_lesson_declined" ||
         kind === "instant_lesson_join_expired" ||
         kind === "instant_lesson_accept_expired"
       ) {
-        queryClient.invalidateQueries({ queryKey: ["sessions"] });
-        queryClient.invalidateQueries({ queryKey: ["wallet"] });
+        invalidateOnSessionSocketEvent(queryClient);
+        invalidateOnWalletSocketEvent(queryClient);
       }
 
       /**
@@ -325,13 +331,12 @@ export function NotificationProvider({
         t.includes("refund") ||
         t.includes("lesson")
       ) {
-        queryClient.invalidateQueries({ queryKey: ["scheduledMeetings"] });
-        queryClient.invalidateQueries({ queryKey: ["sessions"] });
-        queryClient.invalidateQueries({ queryKey: ["wallet"] });
+        invalidateOnBookingSocketEvent(queryClient);
+        invalidateOnWalletSocketEvent(queryClient);
       }
       if (t.includes("friend")) {
-        queryClient.invalidateQueries({ queryKey: ["friends"] });
-        queryClient.invalidateQueries({ queryKey: ["friendRequests"] });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.friends.all });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.friends.requests });
       }
     };
 
@@ -343,15 +348,11 @@ export function NotificationProvider({
       traineeId?: string;
       type?: string;
     }) => {
-      queryClient.invalidateQueries({ queryKey: ["scheduledMeetings"] });
-      queryClient.invalidateQueries({ queryKey: ["sessions"] });
-      queryClient.invalidateQueries({ queryKey: ["sessions", "upcoming"] });
-      queryClient.invalidateQueries({ queryKey: ["trainerAvailability"] });
+      invalidateOnBookingSocketEvent(queryClient);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.upcoming });
     };
-    const onBookingStatusUpdated = (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ["scheduledMeetings"] });
-      queryClient.invalidateQueries({ queryKey: ["sessions"] });
-      queryClient.invalidateQueries({ queryKey: ["trainerAvailability"] });
+    const onBookingStatusUpdated = () => {
+      invalidateOnBookingSocketEvent(queryClient);
     };
 
     const onInstantPhase = (data: {
@@ -360,9 +361,8 @@ export function NotificationProvider({
       refundReason?: string;
     }) => {
       emitInstantLessonPhase(data);
-      queryClient.invalidateQueries({ queryKey: ["scheduledMeetings"] });
-      queryClient.invalidateQueries({ queryKey: ["sessions"] });
-      queryClient.invalidateQueries({ queryKey: ["wallet"] });
+      invalidateOnBookingSocketEvent(queryClient);
+      invalidateOnWalletSocketEvent(queryClient);
     };
 
     socket.on("BOOKING_CREATED", onBookingCreated);

@@ -11,6 +11,7 @@ import { useAuth } from "../auth/context/AuthContext";
 import { useInstantLesson } from "../instant-lesson/InstantLessonContext";
 import { fetchScheduledMeetings } from "../home/api/homeApi";
 import { useSocket } from "../socket/SocketContext";
+import { queryKeys } from "../../lib/queryKeys";
 import {
   accountTypeToReconcileRole,
   reconcileInstantLessonRows,
@@ -45,7 +46,7 @@ export function SessionLifecycleBridge() {
       lastRunRef.current = now;
 
       void (async () => {
-        await queryClient.invalidateQueries({ queryKey: ["sessions"] });
+        await queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
 
         let rows: Record<string, unknown>[] = [];
         try {

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "../../../lib/queryKeys";
 import { useEffect, useState } from "react";
 import { getPinSessionToken } from "../security/pinSessionStore";
 import { fetchWalletConfig } from "../walletApi";
@@ -13,7 +14,7 @@ export function useWalletPaymentOption(priceDollars: number, enabled = true) {
     void getPinSessionToken().then(setStoredPinToken);
   }, [enabled, balance?.pinSet]);
   const { data: config } = useQuery({
-    queryKey: ["wallet", "config"],
+    queryKey: queryKeys.wallet.config,
     queryFn: fetchWalletConfig,
     staleTime: 300_000,
     enabled,

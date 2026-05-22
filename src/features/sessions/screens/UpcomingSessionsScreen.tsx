@@ -19,6 +19,7 @@ import { AccountType } from "../../../constants/accountType";
 import { Button, Card, EmptyState, Pill, Skeleton, Stack } from "../../../components/ui";
 import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
+import { queryKeys } from "../../../lib/queryKeys";
 import { fetchScheduledMeetings } from "../../home/api/homeApi";
 import {
   canEnterLesson,
@@ -311,7 +312,7 @@ export function UpcomingSessionsScreen() {
    * regardless of server-side bookkeeping.
    */
   const { data: rawSessions = [], isLoading, isRefetching, refetch } = useQuery({
-    queryKey: ["sessions", activeTab],
+    queryKey: queryKeys.sessions.list(activeTab),
     queryFn: async () => {
       if (activeTab === "upcoming" || activeTab === "confirmed") {
         const [upcoming, confirmed] = await Promise.all([
