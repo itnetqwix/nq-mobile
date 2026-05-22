@@ -30,7 +30,7 @@ queryCacheListener.startListening({
   actionCreator: socketCacheEvent,
   effect: ({ payload }) => {
     const client = qc();
-    if (!client) return;
+    if (!client || !payload?.event) return;
     invalidateForSocketEvent(client, payload.event);
   },
 });

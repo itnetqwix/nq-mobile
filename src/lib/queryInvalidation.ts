@@ -68,6 +68,8 @@ export function invalidateOnPresenceSocketEvent(queryClient: QueryClient): void 
 }
 
 export function invalidateForSocketEvent(queryClient: QueryClient, event: string): void {
+  if (typeof event !== "string" || !event) return;
+
   const sessionEvents = [
     "LESSON_TIMER_EXTENDED",
     "SESSION_EXTENSION_APPLIED",

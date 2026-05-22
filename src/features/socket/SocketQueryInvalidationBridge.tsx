@@ -35,17 +35,17 @@ export function SocketQueryInvalidationBridge() {
   useEffect(() => {
     if (!socket) return;
 
-    const handler = (event: string) => {
-      dispatch(socketCacheEvent({ event }));
-    };
-
-    ALL_INVALIDATION_EVENTS.forEach((event) => {
-      socket.on(event, handler);
+    const handlers = ALL_INVALIDATION_EVENTS.map((eventName) => {
+      const handler = () => {
+        dispatch(socketCacheEvent({ event: eventName }));
+      };
+      socket.on(eventName, handler);
+      return { eventName, handler };
     });
 
     return () => {
-      ALL_INVALIDATION_EVENTS.forEach((event) => {
-        socket.off(event, handler);
+      handlers.forEach(({ eventName, handler }) => {
+        socket.off(eventName, handler);
       });
     };
   }, [socket, dispatch]);
