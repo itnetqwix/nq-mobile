@@ -88,7 +88,7 @@ export function VerifyContactScreen({ onDone }: Props) {
         phase={1}
         phaseTotal={3}
         title="Confirm your contact details"
-        subtitle="We use this to secure your trainer account and send important updates."
+        subtitle="If you already verified email and phone during signup, this step is skipped automatically."
         steps={[
           {
             key: "email",
@@ -109,7 +109,15 @@ export function VerifyContactScreen({ onDone }: Props) {
         <Banner
           tone="success"
           title="Email already verified"
-          description="You signed in with this address. Continue to phone verification below."
+          description="This address was confirmed during signup or sign-in."
+        />
+      ) : null}
+
+      {emailDone && phoneDone ? (
+        <Banner
+          tone="success"
+          title="Contact already verified"
+          description="Email and phone were confirmed during signup. Taking you to the next step."
         />
       ) : null}
 
