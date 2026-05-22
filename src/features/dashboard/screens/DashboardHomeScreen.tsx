@@ -23,7 +23,6 @@ import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { resolveShowAsOnline } from "../../../lib/user/resolveShowAsOnline";
 import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
 import {
-  fetchOnlineUsers,
   fetchScheduledMeetings,
   fetchFriendRequests,
   fetchRecentTrainees,
@@ -44,21 +43,18 @@ import type { DashboardRouteId } from "../config/dashboardRoutes";
 import {
   HomeMainCont,
   RecentUsersGrid,
-  TrainerBoxCard,
   useWebHomeStyles,
 } from "../components/webHome";
 import {
   DashboardEmptyWelcome,
   LockerHub,
   SessionListSection,
-  TraineeProfileSection,
+  TraineeDiscoverDashboard,
   TrainerProfileSection,
 } from "../components/home";
 import AIFloatingButton from "../../ai/AIFloatingButton";
 import AIAssistantScreen from "../../ai/AIAssistantScreen";
 import ReviewAnalysisCard from "../../ai/ReviewAnalysisCard";
-import { apiClient } from "../../../api/client";
-import { API_ROUTES } from "../../../config/apiRoutes";
 import { useSessionBooking } from "../../sessions/SessionBookingContext";
 import {
   getOtherParty,
@@ -71,7 +67,6 @@ import { PostLessonConcernBanner } from "../../sessions/components/PostLessonCon
 import { TrainerProfileModal } from "../../bookexpert/components/TrainerProfileModal";
 import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
 import { ScheduledBookingWizardModal } from "../../scheduled-booking/ScheduledBookingWizardModal";
-import { getTrainerCategories } from "../../bookexpert/lib/trainerUtils";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 function useDashboardHomeStyles() {
@@ -245,36 +240,6 @@ function SectionHeader({ title }: { title: string }) {
   return <Text style={styles.sectionHeader}>{title}</Text>;
 }
 
-function CoachCard({
-  trainer,
-  onView,
-}: {
-  trainer: any;
-  onView: (trainer: any) => void;
-}) {
-  const { t } = useAppTranslation();
-  const styles = useDashboardHomeStyles();
-  const name = trainer?.fullname || trainer?.fullName || t("dashboardHome.coachDefault");
-  const cats = getTrainerCategories(trainer).slice(0, 2).join(", ");
-  return (
-    <Pressable
-      style={({ pressed }) => [pressed && { opacity: 0.9 }]}
-      onPress={() => onView(trainer)}
-      accessibilityRole="button"
-      accessibilityLabel={t("dashboardHome.viewCoachA11y", { name })}
-    >
-      <TrainerBoxCard style={{ width: 132, flexShrink: 0 }}>
-        <Avatar uri={trainer?.profile_picture} name={name} size={70} onlineStatus="online" />
-        <Text style={styles.coachName} numberOfLines={1}>{name}</Text>
-        {!!cats && <Text style={styles.coachCat} numberOfLines={1}>{cats}</Text>}
-        <View style={styles.bookBtn}>
-          <Text style={styles.bookBtnText}>{t("dashboardHome.viewProfile")}</Text>
-        </View>
-      </TrainerBoxCard>
-    </Pressable>
-  );
-}
-
 function RecentUserChip({ user, label }: { user: any; label?: string }) {
   const { t } = useAppTranslation();
   const styles = useDashboardHomeStyles();
@@ -355,76 +320,6 @@ function QuickActionButton({
   );
 }
 
-function AIRecommendedSection({ onView }: { onView: (t: any) => void }) {
-  const { t } = useAppTranslation();
-  const styles = useDashboardHomeStyles();
-  const themeColors = useThemeColors();
-  const { data, isLoading } = useQuery({
-    queryKey: queryKeys.dashboard.aiRecommendations,
-    queryFn: async () => {
-      const res = await apiClient.get(API_ROUTES.ai.recommendTrainers);
-      return res.data?.result?.recommendations || [];
-    },
-    staleTime: 300_000,
-    retry: 1,
-  });
-
-  if (isLoading) {
-    return (
-      <HomeMainCont title={t("dashboardHome.recommendedForYou")} testID="card ai-recommended">
-        <View style={{ flexDirection: "row", gap: space.sm }}>
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} width={160} height={180} radius={radii.md} />
-          ))}
-        </View>
-      </HomeMainCont>
-    );
-  }
-
-  if (!data?.length) return null;
-
-  return (
-    <HomeMainCont title={t("dashboardHome.recommendedForYou")} testID="card ai-recommended">
-      <FlatList
-        horizontal
-        nestedScrollEnabled
-        data={data.slice(0, 6)}
-        keyExtractor={(item: any, i: number) => item?.trainerId ?? String(i)}
-        renderItem={({ item }: { item: any }) => (
-          <Pressable
-            style={({ pressed }) => [pressed && { opacity: 0.9 }]}
-            onPress={() => item.trainer && onView(item.trainer)}
-          >
-            <TrainerBoxCard style={{ width: 150, flexShrink: 0 }}>
-              <Avatar uri={item.trainer?.profile_picture} name={item.trainer?.fullname} size={60} />
-              <Text style={styles.coachName} numberOfLines={1}>
-                {item.trainer?.fullname || t("dashboardHome.coachDefault")}
-              </Text>
-              <Text style={[styles.coachCat, { fontSize: 11 }]} numberOfLines={1}>
-                {item.trainer?.category || ""}
-              </Text>
-              <Text style={{ fontSize: 10, color: themeColors.textMuted, textAlign: "center", marginTop: 2 }} numberOfLines={2}>
-                {item.reason || ""}
-              </Text>
-              <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4, gap: 2 }}>
-                <Ionicons name="star" size={12} color="#f59e0b" />
-                <Text style={{ fontSize: 11, color: themeColors.text, fontWeight: "600" }}>
-                  {item.trainer?.avgRating || t("dashboardHome.newRating")}
-                </Text>
-              </View>
-              <View style={styles.bookBtn}>
-                <Text style={styles.bookBtnText}>{t("dashboardHome.viewProfile")}</Text>
-              </View>
-            </TrainerBoxCard>
-          </Pressable>
-        )}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: space.sm, paddingVertical: 4 }}
-      />
-    </HomeMainCont>
-  );
-}
-
 type DashboardHomeProps = CompositeScreenProps<
   NativeStackScreenProps<HomeStackParamList, "DashboardHome">,
   BottomTabScreenProps<MainTabParamList>
@@ -463,13 +358,6 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
     },
     [patchUser, queryClient]
   );
-
-  const { data: onlineUsers = [], isLoading: loadingCoaches } = useQuery({
-    queryKey: queryKeys.presence.onlineUsers,
-    queryFn: fetchOnlineUsers,
-    enabled: isTrainee,
-    staleTime: 60_000,
-  });
 
   const { data: sessions = [], isLoading: loadingSessions } = useQuery({
     queryKey: queryKeys.sessions.upcoming,
@@ -532,17 +420,26 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
   const onRefresh = useCallback(async () => {
     setPullRefreshing(true);
     try {
-      await Promise.all([
-        queryClient.refetchQueries({ queryKey: queryKeys.presence.onlineUsers }),
+      const tasks = [
         queryClient.refetchQueries({ queryKey: queryKeys.sessions.upcoming }),
         queryClient.refetchQueries({ queryKey: queryKeys.friends.requests }),
         queryClient.refetchQueries({ queryKey: queryKeys.presence.recentTrainees }),
         queryClient.refetchQueries({ queryKey: queryKeys.presence.recentTrainers }),
-      ]);
+      ];
+      if (isTrainee) {
+        tasks.push(
+          queryClient.refetchQueries({ queryKey: queryKeys.presence.onlineUsers }),
+          queryClient.refetchQueries({ queryKey: queryKeys.presence.bookExpertOnline }),
+          queryClient.refetchQueries({ queryKey: ["trainersDirectory"] })
+        );
+      } else {
+        tasks.push(queryClient.refetchQueries({ queryKey: queryKeys.presence.onlineUsers }));
+      }
+      await Promise.all(tasks);
     } finally {
       setPullRefreshing(false);
     }
-  }, [queryClient]);
+  }, [queryClient, isTrainee]);
 
   const openFeature = (id: DashboardRouteId, extra?: Partial<{ bookLessonTrainerId: string }>) => {
     // Some dashboard “features” map directly to bottom tabs for correct tab highlighting.
@@ -634,15 +531,6 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
     () => sessions.filter((s: any) => shouldShowInDashboardUpcoming(s)),
     [sessions, sessionListTick]
   );
-  const coaches = useMemo(() => {
-    const map = new Map<string, any>();
-    for (const u of onlineUsers) {
-      const t = u.trainer_info ?? u;
-      if (t?._id && !map.has(String(t._id))) map.set(String(t._id), t);
-    }
-    return Array.from(map.values());
-  }, [onlineUsers]);
-
   const showEmptyDashboard =
     !loadingSessions &&
     nowSessions.length === 0 &&
@@ -682,31 +570,26 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
         />
       }
     >
-      {/* Header — greeting row (app bar = native header + drawer) */}
-      <View style={[styles.header, gutter]}>
-        <View>
-          <Text style={[styles.greeting, { color: themeColors.headerTitle }]}>
-            {t("dashboardHome.greeting", { name })}
-          </Text>
-          <Text style={styles.roleTag}>{accountType ?? t("menu.member")}</Text>
+      {/* Header — trainers only (trainees use discover header) */}
+      {isTrainer && (
+        <View style={[styles.header, gutter]}>
+          <View>
+            <Text style={[styles.greeting, { color: themeColors.headerTitle }]}>
+              {t("dashboardHome.greeting", { name })}
+            </Text>
+            <Text style={styles.roleTag}>{accountType ?? t("menu.member")}</Text>
+          </View>
         </View>
-      </View>
+      )}
 
-      {/* Quick Actions — mirrors website sidebar icons */}
+      {/* Quick Actions */}
       <View style={[styles.quickRow, gutter]}>
         {isTrainee && (
-          <>
-            <QuickActionButton
-              icon="calendar-outline"
-              label={t("dashboardHome.quickSessions")}
-              onPress={() => openFeature("upcoming-sessions")}
-            />
-            <QuickActionButton
-              icon="book-outline"
-              label={t("dashboardHome.quickBookExpert")}
-              onPress={() => openFeature("book-lesson")}
-            />
-          </>
+          <QuickActionButton
+            icon="calendar-outline"
+            label={t("dashboardHome.quickSessions")}
+            onPress={() => openFeature("upcoming-sessions")}
+          />
         )}
         {isTrainer && (
           <>
@@ -742,11 +625,15 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
           />
         )}
         {isTrainee && (
-          <TraineeProfileSection
+          <TraineeDiscoverDashboard
             name={name}
             accountType={accountType ?? AccountType.TRAINEE}
             profilePicture={(user as any)?.profile_picture}
+            user={user as Record<string, unknown> | undefined}
             onSettings={() => openShell("settings")}
+            onViewTrainer={setProfileTrainer}
+            onInstantBook={setWizardTrainer}
+            onScheduleBook={setScheduleTrainer}
           />
         )}
 
@@ -776,41 +663,11 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
           </HomeMainCont>
         )}
 
-        {/* Coaches Online Now — trainee; tiles use `Trainer-box-1` */}
-        {isTrainee && (loadingCoaches || coaches.length > 0) && (
-          <HomeMainCont title={t("dashboardHome.coachesOnlineNow")} testID="card trainer-profile-card Home-main-Cont coaches-online">
-            {loadingCoaches ? (
-              <View style={[styles.loadingRow, { flexDirection: "row", gap: space.sm }]}>
-                {[0, 1, 2].map((i) => (
-                  <Skeleton key={i} width={160} height={180} radius={radii.md} />
-                ))}
-              </View>
-            ) : (
-              <FlatList
-                horizontal
-                nestedScrollEnabled
-                data={coaches}
-                keyExtractor={(item, i) => item?._id ?? String(i)}
-                renderItem={({ item }) => (
-                  <CoachCard trainer={item} onView={setProfileTrainer} />
-                )}
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: space.sm, paddingVertical: 4 }}
-              />
-            )}
-          </HomeMainCont>
-        )}
-
-        {/* AI Recommended Trainers */}
-        {isTrainee && <AIRecommendedSection onView={setProfileTrainer} />}
-
-        {showEmptyDashboard ? (
-          <HomeMainCont testID="home-empty-dashboard">
+        {isTrainee && showEmptyDashboard ? (
+          <HomeMainCont testID="home-empty-sessions-hint" title={t("dashboardHome.upcomingSessions")}>
             <DashboardEmptyWelcome
               onBookLesson={() =>
-                isTrainer
-                  ? openFeature("upcoming-sessions")
-                  : (navigation as { navigate: (name: string) => void }).navigate("Schedule")
+                (navigation as { navigate: (name: string) => void }).navigate("Schedule")
               }
               onOpenClips={() => openShell("clips")}
             />

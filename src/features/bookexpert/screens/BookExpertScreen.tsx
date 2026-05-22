@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
-  Image,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -16,7 +14,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { EmptyState, Skeleton } from "../../../components/ui";
 import { type AppColors, radii, space, typography, useThemeColors } from "../../../theme";
-import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { fetchOnlineUsers, fetchTrainersWithSlots } from "../../home/api/homeApi";
 import { useOnlinePresence } from "../../socket/useOnlinePresence";
 import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
@@ -30,131 +27,9 @@ import {
   filtersToApiParams,
   type TrainerBrowseFilters,
 } from "../lib/trainerBrowseConstants";
-import {
-  getTrainerAvgRating,
-  getTrainerCategories,
-  getTrainerHourlyRate,
-  getTrainerName,
-} from "../lib/trainerUtils";
+import { TrainerBrowseCard } from "../components/TrainerBrowseCard";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
-
-function Avatar({
-  uri,
-  name,
-  size = 64,
-  styles: st,
-}: {
-  uri?: string;
-  name?: string;
-  size?: number;
-  styles: ReturnType<typeof makeStyles>;
-}) {
-  const [failed, setFailed] = React.useState(false);
-  const url = getS3ImageUrl(uri);
-  if (!url || failed) {
-    return (
-      <View style={[st.avatarFallback, { width: size, height: size, borderRadius: size / 2 }]}>
-        <Text style={[st.avatarInitial, { fontSize: size * 0.38 }]}>
-          {(name ?? "?")[0]?.toUpperCase()}
-        </Text>
-      </View>
-    );
-  }
-  return (
-    <Image
-      source={{ uri: url }}
-      style={{ width: size, height: size, borderRadius: size / 2 }}
-      onError={() => setFailed(true)}
-    />
-  );
-}
-
-function TrainerCard({
-  trainer,
-  onPress,
-  onBook,
-  onSchedule,
-  styles,
-  themeColors,
-}: {
-  trainer: Record<string, unknown>;
-  onPress: (t: Record<string, unknown>) => void;
-  onBook: (t: Record<string, unknown>) => void;
-  onSchedule: (t: Record<string, unknown>) => void;
-  styles: ReturnType<typeof makeStyles>;
-  themeColors: AppColors;
-}) {
-  const { t } = useAppTranslation();
-  const { isOnline } = useOnlinePresence();
-  const trainerId = String(trainer?._id ?? "");
-  const name = getTrainerName(trainer);
-  const showOnline = isOnline(trainerId) || !!(trainer as any)?.is_online;
-  const cats = getTrainerCategories(trainer).slice(0, 3).join(" • ");
-  const rating = getTrainerAvgRating(trainer);
-  const hourly = getTrainerHourlyRate(trainer);
-  const slotsCount = Array.isArray(trainer?.slots) ? (trainer.slots as unknown[]).length : null;
-
-  return (
-    <View style={styles.card}>
-      <Pressable
-        style={({ pressed }) => [pressed && { opacity: 0.92 }]}
-        onPress={() => onPress(trainer)}
-        accessibilityRole="button"
-        accessibilityLabel={t("bookExpert.viewProfileA11y", { name })}
-      >
-        <View style={styles.cardRow}>
-          <Avatar uri={trainer?.profile_picture as string} name={name} size={64} styles={styles} />
-          <View style={styles.cardInfo}>
-            <View style={styles.cardTitleRow}>
-              <Text style={styles.trainerName} numberOfLines={1}>
-                {name}
-              </Text>
-              <Ionicons name="chevron-forward" size={18} color={themeColors.textMuted} />
-            </View>
-            {!!cats && (
-              <Text style={styles.trainerCat} numberOfLines={2}>
-                {cats}
-              </Text>
-            )}
-            {rating != null && (
-              <View style={styles.ratingRow}>
-                <Ionicons name="star" size={13} color={themeColors.warning} />
-                <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
-              </View>
-            )}
-            {hourly != null && <Text style={styles.rateText}>${hourly.toFixed(0)}/hr</Text>}
-            {slotsCount !== null && (
-              <Text style={styles.slotsText}>
-                {t("bookExpert.slotsAvailable", { count: slotsCount })}
-              </Text>
-            )}
-          </View>
-        </View>
-      </Pressable>
-      <View style={styles.cardFooter}>
-        <View style={styles.btnRow}>
-          <Pressable style={styles.actionBtn} onPress={() => onBook(trainer)}>
-            <Ionicons name="flash" size={16} color={themeColors.brandTextOn} />
-            <Text style={styles.actionBtnText}>{t("bookExpert.instant")}</Text>
-          </Pressable>
-          <Pressable style={[styles.actionBtn, styles.actionBtnOutline]} onPress={() => onSchedule(trainer)}>
-            <Ionicons name="calendar-outline" size={16} color={themeColors.brandNavy} />
-            <Text style={[styles.actionBtnText, styles.actionBtnTextOutline]}>
-              {t("bookExpert.schedule")}
-            </Text>
-          </Pressable>
-        </View>
-        {showOnline && (
-          <View style={styles.onlineBadge}>
-            <View style={styles.onlineDot} />
-            <Text style={styles.onlineText}>{t("bookExpert.online")}</Text>
-          </View>
-        )}
-      </View>
-    </View>
-  );
-}
 
 type Props = { bookLessonTrainerId?: string };
 
@@ -318,9 +193,8 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
           data={mergedRows}
           keyExtractor={(item, i) => item?._id ?? String(i)}
           renderItem={({ item }) => (
-            <TrainerCard
+            <TrainerBrowseCard
               trainer={item}
-              styles={styles}
               themeColors={themeColors}
               onPress={setProfileTrainer}
               onBook={setWizardTrainer}

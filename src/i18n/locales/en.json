@@ -727,6 +727,28 @@
     "acceptRequestA11y": "Accept friend request from {{name}}",
     "rejectRequestA11y": "Reject friend request from {{name}}"
   },
+  "traineeDiscover": {
+    "welcome": "Hi, {{name}}",
+    "roleTrainee": "Trainee",
+    "profileA11y": "Your profile and settings",
+    "searchPlaceholder": "Search coaches by name…",
+    "yourSports": "Your sports",
+    "browseSports": "Browse by sport",
+    "addInterestsHint": "Add your sports in account settings to personalize this list.",
+    "all": "All",
+    "liveOnly": "Live now",
+    "liveNow": "Live now",
+    "offline": "Offline",
+    "reviews": "reviews",
+    "fromRate": "From ${{rate}}/hr",
+    "bookSession": "Book session",
+    "resultsFor": "Coaches matching “{{query}}”",
+    "coachesIn": "{{category}} coaches",
+    "coachesForYou": "Coaches for your sports",
+    "allCoaches": "All coaches",
+    "emptyTitle": "No coaches found",
+    "emptySub": "Try another sport, turn off Live now, or search by a different name."
+  },
   "notifications": {
     "justNow": "just now",
     "minutesAgo": "{{count}}m ago",

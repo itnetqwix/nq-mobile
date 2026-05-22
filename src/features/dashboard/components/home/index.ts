@@ -8,5 +8,6 @@ export { SessionListSection } from "./SessionListSection";
 export { SessionPreviewRow } from "./SessionPreviewRow";
 export { TrainerProfileSection } from "./TrainerProfileSection";
 export { TraineeProfileSection } from "./TraineeProfileSection";
+export { TraineeDiscoverDashboard } from "./TraineeDiscoverDashboard";
 export { LOCKER_TILES, lockerTilesForRole } from "./lockerConfig";
 export type { LockerTileId, SessionPreviewProps } from "./types";
