@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Skeleton } from "../../../../components/ui";
 import { AccountType } from "../../../../constants/accountType";
@@ -17,6 +17,27 @@ import { TrainerBrowseCard } from "../../../bookexpert/components/TrainerBrowseC
 import { fetchOnlineUsers, fetchTrainersWithSlots } from "../../../home/api/homeApi";
 import { useOnlinePresence } from "../../../socket/useOnlinePresence";
 import { getTrainerCategories } from "../../../bookexpert/lib/trainerUtils";
+import {
+  TRAINEE_COACH_PAGE_SIZE,
+  TRAINEE_COACH_PREVIEW_COUNT,
+} from "../../lib/traineeDiscoverConstants";
+import { sortTrainersForDiscover } from "../../lib/sortTrainersForDiscover";
+import { PastBookedTrainersSection } from "./PastBookedTrainersSection";
+import { ContinueWhereYouLeftOffCard } from "../trainee/ContinueWhereYouLeftOffCard";
+import { CategoryEmptySuggestions } from "../trainee/CategoryEmptySuggestions";
+import { FavoriteCoachesSection } from "../trainee/FavoriteCoachesSection";
+import { DashboardStatChip } from "../shared/DashboardStatChip";
+import { useDashboardSessions } from "../../hooks/useDashboardSessions";
+import { useFavoriteTrainers } from "../../hooks/useFavoriteTrainers";
+import { useWalletBalance } from "../../../wallet/hooks/useWalletBalance";
+import { TrainerBrowseFiltersSheet } from "../../../bookexpert/components/TrainerBrowseFiltersSheet";
+import {
+  countActiveFilters,
+  DEFAULT_BROWSE_FILTERS,
+  filtersToApiParams,
+  type TrainerBrowseFilters,
+} from "../../../bookexpert/lib/trainerBrowseConstants";
+import { trainerHasOpenSlots } from "../../../bookexpert/lib/trainerUtils";
 import { queryKeys } from "../../../../lib/queryKeys";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
@@ -36,6 +57,8 @@ type Props = {
   onViewTrainer: (t: Record<string, unknown>) => void;
   onInstantBook: (t: Record<string, unknown>) => void;
   onScheduleBook: (t: Record<string, unknown>) => void;
+  onOpenWallet?: () => void;
+  onOpenSession?: (session: Record<string, unknown>) => void;
 };
 
 export function TraineeDiscoverDashboard({
@@ -47,6 +70,8 @@ export function TraineeDiscoverDashboard({
   onViewTrainer,
   onInstantBook,
   onScheduleBook,
+  onOpenWallet,
+  onOpenSession,
 }: Props) {
   const { t } = useAppTranslation();
   const themeColors = useThemeColors();
@@ -54,7 +79,15 @@ export function TraineeDiscoverDashboard({
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [liveOnly, setLiveOnly] = useState(false);
+  const [browseFilters, setBrowseFilters] = useState<TrainerBrowseFilters>(DEFAULT_BROWSE_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(TRAINEE_COACH_PREVIEW_COUNT);
+
+  const { nextSession } = useDashboardSessions(accountType);
+  const { data: walletBalance } = useWalletBalance();
+  const { isFavorite, toggleFavorite } = useFavoriteTrainers();
+  const apiFilterParams = useMemo(() => filtersToApiParams(browseFilters), [browseFilters]);
+  const activeFilterCount = countActiveFilters(browseFilters);
 
   useEffect(() => {
     const id = setTimeout(() => setDebouncedSearch(search.trim()), 350);
@@ -83,25 +116,43 @@ export function TraineeDiscoverDashboard({
     return undefined;
   }, [searchActive, selectedCategory, interests]);
 
+  const directoryFilterKey = JSON.stringify({
+    apiCategories,
+    searchActive,
+    filters: apiFilterParams,
+  });
+
+  useEffect(() => {
+    setVisibleCount(TRAINEE_COACH_PREVIEW_COUNT);
+  }, [trimmed, directoryFilterKey]);
+
   const {
-    data: directoryRows = [],
+    data: directoryPages,
     isLoading,
     isRefetching,
-  } = useQuery({
-    queryKey: queryKeys.trainer.directorySearch(
-      trimmed,
-      JSON.stringify({ apiCategories, liveOnly })
-    ),
-    queryFn: () =>
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useInfiniteQuery({
+    queryKey: queryKeys.trainer.directorySearch(trimmed, directoryFilterKey),
+    queryFn: ({ pageParam }) =>
       fetchTrainersWithSlots({
         search: searchActive ? trimmed : undefined,
         categories: apiCategories,
-        onlineOnly: liveOnly || undefined,
-        limit: 80,
-        sortBy: "rating",
+        ...apiFilterParams,
+        page: pageParam,
+        limit: TRAINEE_COACH_PAGE_SIZE,
       }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, _pages, lastPageParam) =>
+      lastPage.length >= TRAINEE_COACH_PAGE_SIZE ? lastPageParam + 1 : undefined,
     staleTime: 60_000,
   });
+
+  const directoryRows = useMemo(
+    () => directoryPages?.pages.flat() ?? [],
+    [directoryPages]
+  );
 
   const { data: onlineRaw = [] } = useQuery({
     queryKey: queryKeys.presence.bookExpertOnline,
@@ -119,13 +170,34 @@ export function TraineeDiscoverDashboard({
       ...row,
       is_online: isTrainerOnline(String(row._id ?? "")),
     })) as Array<Record<string, unknown> & { is_online: boolean }>;
-    if (liveOnly) rows = rows.filter((r) => r.is_online);
-    rows.sort((a, b) => {
-      if (a.is_online !== b.is_online) return a.is_online ? -1 : 1;
-      return 0;
-    });
-    return rows;
-  }, [directoryRows, onlineRaw, isOnline, liveOnly]);
+    if (browseFilters.onlineOnly) rows = rows.filter((r) => r.is_online);
+    if (browseFilters.hasOpenSlots) {
+      rows = rows.filter((r) => trainerHasOpenSlots(r));
+    }
+    return sortTrainersForDiscover(rows);
+  }, [directoryRows, onlineRaw, isOnline, browseFilters.onlineOnly, browseFilters.hasOpenSlots]);
+
+  const visibleRows = useMemo(
+    () => mergedRows.slice(0, visibleCount),
+    [mergedRows, visibleCount]
+  );
+
+  const canShowMore =
+    visibleCount < mergedRows.length || Boolean(hasNextPage);
+
+  const handleShowMore = () => {
+    const nextVisible = visibleCount + TRAINEE_COACH_PAGE_SIZE;
+    if (nextVisible > mergedRows.length && hasNextPage) {
+      void fetchNextPage().then(() => setVisibleCount(nextVisible));
+      return;
+    }
+    setVisibleCount(nextVisible);
+  };
+
+  const totalLabel =
+    hasNextPage || mergedRows.length > visibleCount
+      ? `${mergedRows.length}+`
+      : String(mergedRows.length);
 
   const roleLabel =
     accountType === AccountType.TRAINEE
@@ -142,13 +214,41 @@ export function TraineeDiscoverDashboard({
 
   const showCategoryHint = interests.length === 0 && dashboardCategories.length > 0;
 
+  const walletCredits =
+    walletBalance?.balances?.available != null
+      ? `$${(walletBalance.balances.available).toFixed(0)}`
+      : "—";
+
+  const altCategories = useMemo(() => {
+    if (!selectedCategory) return [];
+    return dashboardCategories.filter((c) => c !== selectedCategory).slice(0, 3);
+  }, [selectedCategory, dashboardCategories]);
+
   return (
     <View style={styles.root}>
+      <TrainerBrowseFiltersSheet
+        visible={filtersOpen}
+        value={browseFilters}
+        onApply={setBrowseFilters}
+        onDismiss={() => setFiltersOpen(false)}
+      />
+
       <View style={styles.headerCard}>
         <View style={styles.headerTextCol}>
           <Text style={styles.welcome}>{t("traineeDiscover.welcome", { name })}</Text>
-          <View style={styles.rolePill}>
-            <Text style={styles.rolePillText}>{roleLabel}</Text>
+          <View style={styles.headerRow}>
+            <View style={styles.rolePill}>
+              <Text style={styles.rolePillText}>{roleLabel}</Text>
+            </View>
+            {onOpenWallet ? (
+              <DashboardStatChip
+                icon="wallet-outline"
+                label={t("traineeDiscover.walletCredits")}
+                value={walletCredits}
+                onPress={onOpenWallet}
+                accessibilityLabel={t("traineeDiscover.walletA11y")}
+              />
+            ) : null}
           </View>
         </View>
         <Pressable
@@ -159,6 +259,15 @@ export function TraineeDiscoverDashboard({
           <HomeUserAvatar uri={profilePicture} name={name} size={72} />
         </Pressable>
       </View>
+
+      {nextSession ? (
+        <ContinueWhereYouLeftOffCard
+          session={nextSession}
+          onOpenSession={onOpenSession ? () => onOpenSession(nextSession) : undefined}
+        />
+      ) : null}
+
+      <PastBookedTrainersSection onSelectTrainer={onViewTrainer} />
 
       <View style={styles.searchBar}>
         <Ionicons name="search-outline" size={20} color={themeColors.textMuted} />
@@ -176,11 +285,29 @@ export function TraineeDiscoverDashboard({
             <Ionicons name="close-circle" size={20} color={themeColors.textMuted} />
           </Pressable>
         )}
+        <Pressable
+          style={[styles.filterBtn, activeFilterCount > 0 && styles.filterBtnActive]}
+          onPress={() => setFiltersOpen(true)}
+          accessibilityLabel={t("traineeDiscover.openFiltersA11y")}
+        >
+          <Ionicons
+            name="options-outline"
+            size={20}
+            color={activeFilterCount > 0 ? themeColors.brandTextOn : themeColors.brandNavy}
+          />
+          {activeFilterCount > 0 ? (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+            </View>
+          ) : null}
+        </Pressable>
       </View>
 
       {search.trim().length > 0 && search.trim().length < 2 && (
         <Text style={styles.searchHint}>{t("bookExpert.searchMinHint")}</Text>
       )}
+
+      <FavoriteCoachesSection onSelectTrainer={onViewTrainer} />
 
       {!searchActive && (
         <>
@@ -234,13 +361,32 @@ export function TraineeDiscoverDashboard({
       )}
 
       <View style={styles.listHeaderRow}>
-        <Text style={styles.listTitle}>{listTitle}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.listTitle}>{listTitle}</Text>
+          {!isLoading && mergedRows.length > 0 && (
+            <Text style={styles.listMeta}>
+              {t("traineeDiscover.showingCount", {
+                shown: visibleRows.length,
+                total: totalLabel,
+              })}
+            </Text>
+          )}
+        </View>
         <Pressable
-          style={[styles.liveFilter, liveOnly && styles.liveFilterOn]}
-          onPress={() => setLiveOnly((v) => !v)}
+          style={[styles.liveFilter, browseFilters.onlineOnly && styles.liveFilterOn]}
+          onPress={() =>
+            setBrowseFilters((f) => ({ ...f, onlineOnly: !f.onlineOnly }))
+          }
         >
-          <View style={[styles.liveFilterDot, liveOnly && styles.liveFilterDotOn]} />
-          <Text style={[styles.liveFilterText, liveOnly && styles.liveFilterTextOn]}>
+          <View
+            style={[styles.liveFilterDot, browseFilters.onlineOnly && styles.liveFilterDotOn]}
+          />
+          <Text
+            style={[
+              styles.liveFilterText,
+              browseFilters.onlineOnly && styles.liveFilterTextOn,
+            ]}
+          >
             {t("traineeDiscover.liveOnly")}
           </Text>
         </Pressable>
@@ -253,14 +399,22 @@ export function TraineeDiscoverDashboard({
           ))}
         </View>
       ) : mergedRows.length === 0 ? (
-        <View style={styles.empty}>
-          <Ionicons name="people-outline" size={40} color={themeColors.textMuted} />
-          <Text style={styles.emptyTitle}>{t("traineeDiscover.emptyTitle")}</Text>
-          <Text style={styles.emptySub}>{t("traineeDiscover.emptySub")}</Text>
-        </View>
+        selectedCategory && altCategories.length > 0 ? (
+          <CategoryEmptySuggestions
+            category={selectedCategory}
+            alternatives={altCategories}
+            onPick={setSelectedCategory}
+          />
+        ) : (
+          <View style={styles.empty}>
+            <Ionicons name="people-outline" size={40} color={themeColors.textMuted} />
+            <Text style={styles.emptyTitle}>{t("traineeDiscover.emptyTitle")}</Text>
+            <Text style={styles.emptySub}>{t("traineeDiscover.emptySub")}</Text>
+          </View>
+        )
       ) : (
         <View style={styles.trainerList}>
-          {mergedRows.map((trainer) => {
+          {visibleRows.map((trainer) => {
             const highlight =
               searchActive && getTrainerCategories(trainer).length > 0
                 ? getTrainerCategories(trainer)[0]
@@ -274,10 +428,30 @@ export function TraineeDiscoverDashboard({
                 onBook={onInstantBook}
                 onSchedule={onScheduleBook}
                 highlightCategory={highlight}
+                isFavorite={isFavorite(trainer)}
+                onToggleFavorite={toggleFavorite}
               />
             );
           })}
-          {isRefetching && (
+          {canShowMore && (
+            <Pressable
+              style={({ pressed }) => [styles.showMoreBtn, pressed && { opacity: 0.85 }]}
+              onPress={handleShowMore}
+              disabled={isFetchingNextPage}
+              accessibilityRole="button"
+              accessibilityLabel={t("traineeDiscover.showMoreA11y")}
+            >
+              {isFetchingNextPage ? (
+                <ActivityIndicator color={themeColors.brandNavy} />
+              ) : (
+                <>
+                  <Text style={styles.showMoreText}>{t("traineeDiscover.showMore")}</Text>
+                  <Ionicons name="chevron-down" size={18} color={themeColors.brandNavy} />
+                </>
+              )}
+            </Pressable>
+          )}
+          {(isRefetching || isFetchingNextPage) && visibleRows.length > 0 && !canShowMore && (
             <ActivityIndicator style={{ marginVertical: space.md }} color={themeColors.brandNavy} />
           )}
         </View>
@@ -312,6 +486,31 @@ function useStyles() {
         backgroundColor: palette.brandSubtle,
       },
       rolePillText: { ...typography.caption, color: palette.brandNavy, fontWeight: "700" },
+      headerRow: { flexDirection: "row", alignItems: "center", gap: space.sm, flexWrap: "wrap" },
+      filterBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: palette.border,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: palette.surface,
+      },
+      filterBtnActive: { backgroundColor: palette.brandNavy, borderColor: palette.brandNavy },
+      filterBadge: {
+        position: "absolute",
+        top: -4,
+        right: -4,
+        minWidth: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: palette.error,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 4,
+      },
+      filterBadgeText: { fontSize: 10, fontWeight: "700", color: "#fff" },
       searchBar: {
         flexDirection: "row",
         alignItems: "center",
@@ -387,7 +586,20 @@ function useStyles() {
         marginTop: space.xs,
         gap: space.sm,
       },
-      listTitle: { ...typography.titleSm, color: palette.text, fontWeight: "700", flex: 1 },
+      listTitle: { ...typography.titleSm, color: palette.text, fontWeight: "700" },
+      listMeta: { ...typography.caption, color: palette.textMuted, marginTop: 2 },
+      showMoreBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        paddingVertical: space.md,
+        borderRadius: radii.lg,
+        borderWidth: 1,
+        borderColor: palette.brandNavy,
+        backgroundColor: palette.surfaceElevated,
+      },
+      showMoreText: { ...typography.label, color: palette.brandNavy, fontWeight: "700" },
       liveFilter: {
         flexDirection: "row",
         alignItems: "center",

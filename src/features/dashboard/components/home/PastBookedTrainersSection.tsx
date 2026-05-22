@@ -1,0 +1,107 @@
+import React from "react";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { useQuery } from "@tanstack/react-query";
+import { Ionicons } from "@expo/vector-icons";
+import { Skeleton } from "../../../../components/ui";
+import { fetchRecentTrainers } from "../../../home/api/homeApi";
+import { getTrainerName } from "../../../bookexpert/lib/trainerUtils";
+import { queryKeys } from "../../../../lib/queryKeys";
+import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
+import { useAppTranslation } from "../../../../i18n/useAppTranslation";
+import { HomeUserAvatar } from "./HomeUserAvatar";
+
+type Props = {
+  onSelectTrainer: (trainer: Record<string, unknown>) => void;
+};
+
+export function PastBookedTrainersSection({ onSelectTrainer }: Props) {
+  const { t } = useAppTranslation();
+  const c = useThemeColors();
+  const styles = useStyles();
+
+  const { data: trainers = [], isLoading } = useQuery({
+    queryKey: queryKeys.presence.recentTrainers,
+    queryFn: fetchRecentTrainers,
+    staleTime: 120_000,
+  });
+
+  if (isLoading) {
+    return (
+      <View style={styles.wrap}>
+        <Text style={styles.title}>{t("traineeDiscover.pastBookedTitle")}</Text>
+        <View style={{ flexDirection: "row", gap: space.sm }}>
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} width={100} height={120} radius={radii.md} />
+          ))}
+        </View>
+      </View>
+    );
+  }
+
+  if (!trainers.length) return null;
+
+  return (
+    <View style={styles.wrap}>
+      <Text style={styles.title}>{t("traineeDiscover.pastBookedTitle")}</Text>
+      <Text style={styles.sub}>{t("traineeDiscover.pastBookedSub")}</Text>
+      <FlatList
+        horizontal
+        nestedScrollEnabled
+        showsHorizontalScrollIndicator={false}
+        data={trainers}
+        keyExtractor={(item, i) => String(item?._id ?? i)}
+        contentContainerStyle={styles.strip}
+        renderItem={({ item }) => {
+          const name = getTrainerName(item);
+          return (
+            <Pressable
+              style={({ pressed }) => [styles.tile, pressed && { opacity: 0.9 }]}
+              onPress={() => onSelectTrainer(item)}
+              accessibilityRole="button"
+              accessibilityLabel={t("traineeDiscover.bookAgainA11y", { name })}
+            >
+              <HomeUserAvatar uri={item?.profile_picture as string} name={name} size={56} />
+              <Text style={styles.name} numberOfLines={2}>
+                {name}
+              </Text>
+              <View style={styles.bookAgainRow}>
+                <Ionicons name="refresh-outline" size={14} color={c.brandNavy} />
+                <Text style={styles.bookAgain}>{t("traineeDiscover.bookAgain")}</Text>
+              </View>
+            </Pressable>
+          );
+        }}
+      />
+    </View>
+  );
+}
+
+function useStyles() {
+  return useThemedStyles((palette) =>
+    StyleSheet.create({
+      wrap: { marginBottom: space.sm },
+      title: { ...typography.titleSm, color: palette.text, fontWeight: "700" },
+      sub: { ...typography.caption, color: palette.textMuted, marginTop: 4, marginBottom: space.sm },
+      strip: { gap: space.sm, paddingVertical: 4 },
+      tile: {
+        width: 108,
+        alignItems: "center",
+        padding: space.sm,
+        borderRadius: radii.md,
+        backgroundColor: palette.surfaceElevated,
+        borderWidth: 1,
+        borderColor: palette.border,
+      },
+      name: {
+        ...typography.caption,
+        color: palette.text,
+        fontWeight: "600",
+        textAlign: "center",
+        marginTop: 6,
+        minHeight: 32,
+      },
+      bookAgainRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 },
+      bookAgain: { ...typography.caption, color: palette.brandNavy, fontWeight: "700" },
+    })
+  );
+}

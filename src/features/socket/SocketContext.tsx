@@ -5,6 +5,7 @@ import { useAuth } from "../auth/context/AuthContext";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { setSocketConnected } from "../../store/slices/socketSlice";
 import { selectSocketConnected } from "../../store/selectors";
+import { getBrowserLikeRequestHeaders } from "../../api/browserRequestHeaders";
 import { API_BASE_URL } from "../../config/env";
 import { getAccessToken } from "../auth/session/tokenStorage";
 
@@ -58,6 +59,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
        */
       createdSocket = io(API_BASE_URL, {
         auth: { authorization: token },
+        /** Polling uses XHR — same Origin/UA as REST or Cloudflare may block (`xhr poll error`). */
+        extraHeaders: getBrowserLikeRequestHeaders(),
         transports: ["polling", "websocket"],
         reconnection: true,
         reconnectionAttempts: 10,

@@ -1,6 +1,6 @@
 import axios from "axios";
-import { Platform } from "react-native";
-import { API_BASE_URL, WEB_APP_ORIGIN } from "../config/env";
+import { API_BASE_URL } from "../config/env";
+import { getBrowserLikeRequestHeaders } from "./browserRequestHeaders";
 import { emitSessionExpired, emitUnauthorized } from "../lib/auth/sessionEvents";
 import { isMaintenanceResponse } from "../features/system-states/hooks/useSystemStateFromError";
 import { assertCertificatePinningAllowed } from "../lib/security/certPinning";
@@ -17,24 +17,14 @@ const useExpoNativeFetch = process.env.EXPO_PUBLIC_USE_EXPO_FETCH === "1";
  * Bare RN requests (no Origin / browser UA) are often dropped by edge WAFs → `ERR_NETWORK`
  * with no HTTP status even though curl and the web app work.
  */
-function browserLikeUserAgent(): string {
-  if (Platform.OS === "ios") {
-    return "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
-  }
-  return "Mozilla/5.0 (Linux; Android 13; SM-G981B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36";
-}
-
 const axiosDefaults = {
   baseURL: API_BASE_URL,
   timeout: 60_000,
   /** Expo native client does not support `same-origin` credentials the way browsers do. */
   withCredentials: false,
   headers: {
-    Accept: "application/json, text/plain, */*",
+    ...getBrowserLikeRequestHeaders(),
     "Content-Type": "application/json",
-    Origin: WEB_APP_ORIGIN,
-    Referer: `${WEB_APP_ORIGIN}/`,
-    "User-Agent": browserLikeUserAgent(),
     "Sec-Fetch-Dest": "empty",
     "Sec-Fetch-Mode": "cors",
     "Sec-Fetch-Site": "cross-site",

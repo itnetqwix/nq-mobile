@@ -26,7 +26,6 @@ import {
   fetchScheduledMeetings,
   fetchFriendRequests,
   fetchRecentTrainees,
-  fetchRecentTrainers,
   postAcceptFriendRequest,
   postRejectFriendRequest,
   setOnlineAvailability,
@@ -50,8 +49,8 @@ import {
   LockerHub,
   SessionListSection,
   TraineeDiscoverDashboard,
-  TrainerProfileSection,
 } from "../components/home";
+import { TrainerDashboardHub } from "../components/trainer/TrainerDashboardHub";
 import AIFloatingButton from "../../ai/AIFloatingButton";
 import AIAssistantScreen from "../../ai/AIAssistantScreen";
 import ReviewAnalysisCard from "../../ai/ReviewAnalysisCard";
@@ -406,13 +405,6 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
     staleTime: 120_000,
   });
 
-  const { data: recentTrainers = [] } = useQuery({
-    queryKey: queryKeys.presence.recentTrainers,
-    queryFn: fetchRecentTrainers,
-    enabled: isTrainee,
-    staleTime: 120_000,
-  });
-
   /** Only true during an explicit pull-to-refresh — not background refetches
    *  (binding to isFetching breaks iOS scrolling / UIRefreshControl). */
   const [pullRefreshing, setPullRefreshing] = useState(false);
@@ -424,16 +416,23 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
         queryClient.refetchQueries({ queryKey: queryKeys.sessions.upcoming }),
         queryClient.refetchQueries({ queryKey: queryKeys.friends.requests }),
         queryClient.refetchQueries({ queryKey: queryKeys.presence.recentTrainees }),
-        queryClient.refetchQueries({ queryKey: queryKeys.presence.recentTrainers }),
+        isTrainee
+          ? queryClient.refetchQueries({ queryKey: queryKeys.presence.recentTrainers })
+          : Promise.resolve(),
       ];
       if (isTrainee) {
         tasks.push(
           queryClient.refetchQueries({ queryKey: queryKeys.presence.onlineUsers }),
           queryClient.refetchQueries({ queryKey: queryKeys.presence.bookExpertOnline }),
-          queryClient.refetchQueries({ queryKey: ["trainersDirectory"] })
+          queryClient.refetchQueries({ queryKey: ["trainersDirectory"] }),
+          queryClient.refetchQueries({ queryKey: queryKeys.trainee.favorites })
         );
       } else {
-        tasks.push(queryClient.refetchQueries({ queryKey: queryKeys.presence.onlineUsers }));
+        tasks.push(
+          queryClient.refetchQueries({ queryKey: queryKeys.presence.onlineUsers }),
+          queryClient.refetchQueries({ queryKey: queryKeys.wallet.earnings }),
+          queryClient.refetchQueries({ queryKey: queryKeys.trainer.slots })
+        );
       }
       await Promise.all(tasks);
     } finally {
@@ -570,58 +569,38 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
         />
       }
     >
-      {/* Header — trainers only (trainees use discover header) */}
-      {isTrainer && (
-        <View style={[styles.header, gutter]}>
-          <View>
-            <Text style={[styles.greeting, { color: themeColors.headerTitle }]}>
-              {t("dashboardHome.greeting", { name })}
-            </Text>
-            <Text style={styles.roleTag}>{accountType ?? t("menu.member")}</Text>
-          </View>
-        </View>
-      )}
-
-      {/* Quick Actions */}
-      <View style={[styles.quickRow, gutter]}>
-        {isTrainee && (
+      {/* Quick Actions — trainee only (trainer hub has shortcuts) */}
+      {isTrainee && (
+        <View style={[styles.quickRow, gutter]}>
           <QuickActionButton
             icon="calendar-outline"
             label={t("dashboardHome.quickSessions")}
             onPress={() => openFeature("upcoming-sessions")}
           />
-        )}
-        {isTrainer && (
-          <>
-            <QuickActionButton
-              icon="calendar-outline"
-              label={t("dashboardHome.quickSchedule")}
-              onPress={() => openFeature("upcoming-sessions")}
-            />
-            <QuickActionButton
-              icon="time-outline"
-              label={t("dashboardHome.quickSessions")}
-              onPress={() => openFeature("upcoming-sessions")}
-            />
-          </>
-        )}
-        <QuickActionButton
-          icon="chatbubbles-outline"
-          label={t("dashboardHome.quickChats")}
-          onPress={() => navigation.getParent()?.navigate("Chats" as never)}
-        />
-      </View>
+          <QuickActionButton
+            icon="chatbubbles-outline"
+            label={t("dashboardHome.quickChats")}
+            onPress={() => navigation.getParent()?.navigate("Chats" as never)}
+          />
+        </View>
+      )}
 
       <View style={[{ paddingTop: space.md }, gutter]}>
         {/* Web: trainer `UserInfoCard` inside `Home-main-Cont` above recent students */}
         {isTrainer && (
-          <TrainerProfileSection
+          <TrainerDashboardHub
             name={name}
             accountType={accountType ?? AccountType.TRAINER}
             profilePicture={(user as any)?.profile_picture}
             showAsOnline={showAsOnline}
+            user={user as Record<string, unknown> | undefined}
             onSettings={() => openShell("settings")}
             onAvailabilityToggle={handleAvailabilityToggle}
+            onOpenWallet={() => openShell("wallet")}
+            onOpenSchedule={() => openFeature("schedule")}
+            onOpenSessions={() => openFeature("upcoming-sessions")}
+            onOpenClips={() => openShell("clips")}
+            onSessionPress={openSession}
           />
         )}
         {isTrainee && (
@@ -634,6 +613,8 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
             onViewTrainer={setProfileTrainer}
             onInstantBook={setWizardTrainer}
             onScheduleBook={setScheduleTrainer}
+            onOpenWallet={() => openShell("wallet")}
+            onOpenSession={openSession}
           />
         )}
 
@@ -684,24 +665,8 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
           />
         ) : null}
 
-        {/* Trainer: pending session requests (realtime via socket) */}
-        {isTrainer && (loadingSessions || pendingSessions.length > 0) && (
-          <SessionListSection
-            title={t("dashboardHome.sessionRequests")}
-            subtitle={t("dashboardHome.sessionRequestsSub")}
-            sessions={pendingSessions}
-            accountType={accountType}
-            loading={loadingSessions}
-            count={pendingSessions.length}
-            maxPreview={3}
-            seeAllLabel={t("dashboardHome.reviewAllRequests", { count: pendingSessions.length })}
-            onSeeAll={() => openFeature("upcoming-sessions")}
-            onSessionPress={openSession}
-            testID="home-session-requests"
-          />
-        )}
-
-        {(loadingSessions || nowSessions.length > 0) && (
+        {/* Trainer session lists live in TrainerDashboardHub; trainee lists below discover */}
+        {isTrainee && (loadingSessions || nowSessions.length > 0) && (
           <SessionListSection
             title={t("dashboardHome.activeSessions")}
             subtitle={t("dashboardHome.activeSessionsSub")}
@@ -714,7 +679,7 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
           />
         )}
 
-        {upcomingConfirmed.length > 0 && nowSessions.length === 0 && (
+        {isTrainee && upcomingConfirmed.length > 0 && nowSessions.length === 0 && (
           <SessionListSection
             title={t("dashboardHome.upcomingSessions")}
             subtitle={t("dashboardHome.upcomingSessionsSub")}
@@ -739,19 +704,6 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
                 <View key={`${u._id ?? "t"}-${i}`} style={webHomeStyles.recentUsersGridItemTrainer}>
                   <RecentUserChip user={u} />
                 </View>
-              ))}
-            </RecentUsersGrid>
-          </HomeMainCont>
-        )}
-
-        {isTrainee && recentTrainers.length > 0 && (
-          <HomeMainCont
-            title={t("dashboardHome.recentTrainers")}
-            testID="card rounded trainer-profile-card Select Recent Student"
-          >
-            <RecentUsersGrid accountIsTrainer={false}>
-              {recentTrainers.map((u: any, i: number) => (
-                <RecentUserChip key={`${u._id ?? "e"}-${i}`} user={u} />
               ))}
             </RecentUsersGrid>
           </HomeMainCont>

@@ -27,6 +27,8 @@ import {
   getTrainerId,
   getTrainerName,
 } from "../lib/trainerUtils";
+import { useFavoriteTrainers } from "../../dashboard/hooks/useFavoriteTrainers";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 type Props = {
   visible: boolean;
@@ -66,10 +68,12 @@ export function TrainerProfileModal({
   onInstant,
   onSchedule,
 }: Props) {
+  const { t } = useAppTranslation();
   const themeColors = useThemeColors();
   const styles = useMemo(() => makeStyles(themeColors), [themeColors]);
   const insets = useSafeAreaInsets();
   const { isOnline } = useOnlinePresence();
+  const { isFavorite, toggleFavorite } = useFavoriteTrainers();
   const trainerId = getTrainerId(trainer);
 
   const { data: enriched, isLoading } = useQuery({
@@ -105,7 +109,22 @@ export function TrainerProfileModal({
             <Ionicons name="close" size={26} color={themeColors.text} />
           </Pressable>
           <Text style={styles.headerTitle}>Coach profile</Text>
-          <View style={{ width: 26 }} />
+          {data ? (
+            <Pressable
+              onPress={() => toggleFavorite(data)}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel={t("traineeDiscover.favoriteA11y", { name })}
+            >
+              <Ionicons
+                name={isFavorite(data) ? "star" : "star-outline"}
+                size={26}
+                color={isFavorite(data) ? themeColors.warning : themeColors.textMuted}
+              />
+            </Pressable>
+          ) : (
+            <View style={{ width: 26 }} />
+          )}
         </View>
 
         {isLoading ? (

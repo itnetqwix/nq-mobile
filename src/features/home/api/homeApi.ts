@@ -331,8 +331,9 @@ export type BrowseTrainersParams = {
   minRating?: number;
   minHourlyRate?: number;
   maxHourlyRate?: number;
-  sortBy?: "name" | "rating" | "hourly_rate" | "hourly_rate_desc";
+  sortBy?: "name" | "rating" | "hourly_rate" | "hourly_rate_desc" | "next_available";
   onlineOnly?: boolean;
+  hasSlotsOnly?: boolean;
   page?: number;
   limit?: number;
 };
@@ -353,6 +354,7 @@ export async function fetchTrainersWithSlots(params?: BrowseTrainersParams): Pro
   }
   if (params?.sortBy) query.sortBy = params.sortBy;
   if (params?.onlineOnly) query.onlineOnly = "1";
+  if (params?.hasSlotsOnly) query.hasSlotsOnly = "1";
   if (params?.page) query.page = String(params.page);
   if (params?.limit) query.limit = String(params.limit);
 

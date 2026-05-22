@@ -45,6 +45,46 @@ export function getTrainerAvgRating(trainer: Record<string, unknown> | null | un
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+export function getTrainerReviewCount(trainer: Record<string, unknown> | null | undefined): number {
+  const n = Number(trainer?.reviewCount);
+  if (Number.isFinite(n) && n >= 0) return n;
+  const rows = trainer?.trainer_ratings;
+  return Array.isArray(rows) ? rows.length : 0;
+}
+
+export function getTrainerCompletedSessionCount(
+  trainer: Record<string, unknown> | null | undefined
+): number {
+  const n = Number(trainer?.completedSessionCount);
+  if (Number.isFinite(n) && n >= 0) return n;
+  const rows = trainer?.trainer_ratings;
+  if (!Array.isArray(rows)) return 0;
+  return rows.filter((row) => {
+    const r = row as Record<string, unknown>;
+    const status = String(r?.status ?? "").toLowerCase();
+    return status === "completed" || status === "confirm" || status === "confirmed";
+  }).length;
+}
+
+export function isTrainerVerified(trainer: Record<string, unknown> | null | undefined): boolean {
+  if (trainer?.isVerified === true) return true;
+  const status = String(trainer?.status ?? "").toLowerCase();
+  if (status === "approved") return true;
+  const tv = trainer?.trainer_verification as Record<string, unknown> | undefined;
+  return String(tv?.onboarding_step ?? "") === "completed";
+}
+
+export function trainerHasOpenSlots(trainer: Record<string, unknown> | null | undefined): boolean {
+  const slots = trainer?.slots;
+  if (Array.isArray(slots) && slots.length > 0) return true;
+  const avail = trainer?.available_slots;
+  if (!Array.isArray(avail)) return false;
+  return avail.some((day) => {
+    const d = day as { slots?: unknown[] };
+    return Array.isArray(d.slots) && d.slots.length > 0;
+  });
+}
+
 export function getTrainerBio(trainer: Record<string, unknown> | null | undefined): string {
   const extra = trainer?.extraInfo as Record<string, unknown> | undefined;
   const bio =

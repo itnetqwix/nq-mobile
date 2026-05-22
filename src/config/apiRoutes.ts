@@ -123,6 +123,8 @@ export const API_ROUTES = {
     profile: "/trainee/profile",
     checkSlot: "/trainee/check-slot",
     recentTrainers: "/trainee/recent-trainers",
+    favoriteTrainers: "/trainee/favorite-trainers",
+    favoriteTrainer: (trainerId: string) => `/trainee/favorite-trainers/${trainerId}` as const,
     sessionExtensionQuote: "/trainee/session-extension/quote",
     sessionExtensionRequest: "/trainee/session-extension/request",
     sessionExtensionCancel: "/trainee/session-extension/cancel-request",

@@ -6,8 +6,11 @@ import { getS3ImageUrl } from "../../../lib/imageUtils";
 import {
   getTrainerAvgRating,
   getTrainerCategories,
+  getTrainerCompletedSessionCount,
   getTrainerHourlyRate,
   getTrainerName,
+  getTrainerReviewCount,
+  isTrainerVerified,
 } from "../lib/trainerUtils";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
@@ -51,6 +54,8 @@ export type TrainerBrowseCardProps = {
   /** Highlight category when searching across sports */
   highlightCategory?: string;
   compact?: boolean;
+  isFavorite?: boolean;
+  onToggleFavorite?: (trainer: Record<string, unknown>) => void;
 };
 
 export function TrainerBrowseCard({
@@ -61,6 +66,8 @@ export function TrainerBrowseCard({
   onSchedule,
   highlightCategory,
   compact,
+  isFavorite,
+  onToggleFavorite,
 }: TrainerBrowseCardProps) {
   const { t } = useAppTranslation();
   const styles = makeCardStyles(themeColors);
@@ -73,11 +80,29 @@ export function TrainerBrowseCard({
     cats.slice(0, 2).join(" • ") ||
     "";
   const rating = getTrainerAvgRating(trainer);
+  const reviewCount = getTrainerReviewCount(trainer);
+  const completedCount = getTrainerCompletedSessionCount(trainer);
+  const verified = isTrainerVerified(trainer);
   const hourly = getTrainerHourlyRate(trainer);
   const slotsCount = Array.isArray(trainer?.slots) ? (trainer.slots as unknown[]).length : null;
 
   return (
     <View style={[styles.card, compact && styles.cardCompact]}>
+      {onToggleFavorite ? (
+        <Pressable
+          style={styles.favBtn}
+          onPress={() => onToggleFavorite(trainer)}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={t("traineeDiscover.favoriteA11y", { name })}
+        >
+          <Ionicons
+            name={isFavorite ? "star" : "star-outline"}
+            size={22}
+            color={isFavorite ? themeColors.warning : themeColors.textMuted}
+          />
+        </Pressable>
+      ) : null}
       <Pressable
         style={({ pressed }) => [pressed && { opacity: 0.92 }]}
         onPress={() => onPress(trainer)}
@@ -103,6 +128,12 @@ export function TrainerBrowseCard({
               <Text style={styles.trainerName} numberOfLines={1}>
                 {name}
               </Text>
+              {verified ? (
+                <View style={styles.verifiedBadge}>
+                  <Ionicons name="checkmark-circle" size={12} color={themeColors.success} />
+                  <Text style={styles.verifiedText}>{t("traineeDiscover.verified")}</Text>
+                </View>
+              ) : null}
               <Ionicons name="chevron-forward" size={18} color={themeColors.textMuted} />
             </View>
             {!!categoryLabel && (
@@ -114,9 +145,18 @@ export function TrainerBrowseCard({
               <View style={styles.ratingRow}>
                 <Ionicons name="star" size={13} color={themeColors.warning} />
                 <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
-                <Text style={styles.reviewsHint}>{t("traineeDiscover.reviews")}</Text>
+                {reviewCount > 0 ? (
+                  <Text style={styles.reviewsHint}>
+                    {t("traineeDiscover.reviewCount", { count: reviewCount })}
+                  </Text>
+                ) : null}
               </View>
             )}
+            {completedCount > 0 ? (
+              <Text style={styles.sessionsText}>
+                {t("traineeDiscover.sessionsCompleted", { count: completedCount })}
+              </Text>
+            ) : null}
             {hourly != null && (
               <Text style={styles.rateText}>
                 {t("traineeDiscover.fromRate", { rate: hourly.toFixed(0) })}
@@ -160,7 +200,20 @@ function makeCardStyles(colors: AppColors) {
       padding: space.md,
       borderWidth: 1,
       borderColor: colors.border,
+      position: "relative",
     },
+    favBtn: { position: "absolute", top: 10, right: 10, zIndex: 2 },
+    verifiedBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 2,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: radii.pill,
+      backgroundColor: `${colors.success}18`,
+    },
+    verifiedText: { ...typography.caption, color: colors.success, fontSize: 10, fontWeight: "700" },
+    sessionsText: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
     cardCompact: { padding: space.sm },
     cardRow: { flexDirection: "row", gap: space.md, alignItems: "flex-start" },
     cardInfo: { flex: 1, minWidth: 0 },

@@ -31,7 +31,8 @@ export type TrainerBrowseFilters = {
   priceKey: PriceFilterKey;
   ratingKey: RatingFilterKey;
   onlineOnly: boolean;
-  sortBy: "name" | "rating" | "hourly_rate" | "hourly_rate_desc";
+  hasOpenSlots: boolean;
+  sortBy: "name" | "rating" | "hourly_rate" | "hourly_rate_desc" | "next_available";
 };
 
 export const DEFAULT_BROWSE_FILTERS: TrainerBrowseFilters = {
@@ -39,7 +40,8 @@ export const DEFAULT_BROWSE_FILTERS: TrainerBrowseFilters = {
   priceKey: "any",
   ratingKey: "any",
   onlineOnly: false,
-  sortBy: "name",
+  hasOpenSlots: false,
+  sortBy: "rating",
 };
 
 export function countActiveFilters(f: TrainerBrowseFilters): number {
@@ -48,6 +50,7 @@ export function countActiveFilters(f: TrainerBrowseFilters): number {
   if (f.priceKey !== "any") n += 1;
   if (f.ratingKey !== "any") n += 1;
   if (f.onlineOnly) n += 1;
+  if (f.hasOpenSlots) n += 1;
   return n;
 }
 
@@ -58,6 +61,7 @@ export function filtersToApiParams(f: TrainerBrowseFilters): {
   maxHourlyRate?: number;
   sortBy: TrainerBrowseFilters["sortBy"];
   onlineOnly?: boolean;
+  hasSlotsOnly?: boolean;
 } {
   const price = PRICE_FILTER_OPTIONS.find((p) => p.key === f.priceKey);
   const rating = RATING_FILTER_OPTIONS.find((r) => r.key === f.ratingKey);
@@ -68,5 +72,6 @@ export function filtersToApiParams(f: TrainerBrowseFilters): {
     maxHourlyRate: price?.maxHourlyRate,
     sortBy: f.sortBy,
     onlineOnly: f.onlineOnly || undefined,
+    hasSlotsOnly: f.hasOpenSlots || undefined,
   };
 }

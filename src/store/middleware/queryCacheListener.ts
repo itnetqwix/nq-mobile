@@ -36,15 +36,6 @@ queryCacheListener.startListening({
 });
 
 queryCacheListener.startListening({
-  actionCreator: socketReconnected,
-  effect: () => {
-    const client = qc();
-    if (!client) return;
-    invalidateOnSocketReconnect(client);
-  },
-});
-
-queryCacheListener.startListening({
   actionCreator: lockerMutated,
   effect: () => {
     const client = qc();

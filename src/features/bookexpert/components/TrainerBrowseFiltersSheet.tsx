@@ -25,6 +25,7 @@ import { groupCategoriesAlphabetically } from "../lib/trainerUtils";
 const SORT_OPTIONS: { key: TrainerBrowseFilters["sortBy"]; label: string }[] = [
   { key: "name", label: "Name (A–Z)" },
   { key: "rating", label: "Top rated" },
+  { key: "next_available", label: "Next available" },
   { key: "hourly_rate", label: "Price: low to high" },
   { key: "hourly_rate_desc", label: "Price: high to low" },
 ];
@@ -148,6 +149,18 @@ export function TrainerBrowseFiltersSheet({ visible, value, onApply, onDismiss }
               color={draft.onlineOnly ? themeColors.brandNavy : themeColors.textMuted}
             />
             <Text style={styles.onlineLabel}>Online coaches only</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.onlineRow, draft.hasOpenSlots && styles.onlineRowActive]}
+            onPress={() => setDraft((p) => ({ ...p, hasOpenSlots: !p.hasOpenSlots }))}
+          >
+            <Ionicons
+              name={draft.hasOpenSlots ? "checkmark-circle" : "ellipse-outline"}
+              size={22}
+              color={draft.hasOpenSlots ? themeColors.brandNavy : themeColors.textMuted}
+            />
+            <Text style={styles.onlineLabel}>Has open slots</Text>
           </Pressable>
 
           <Text style={styles.sectionLabel}>Categories</Text>

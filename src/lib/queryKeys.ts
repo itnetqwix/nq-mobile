@@ -95,6 +95,12 @@ export const queryKeys = {
   dashboard: {
     aiRecommendations: ["aiRecommendations"] as const,
   },
+  trainee: {
+    favorites: ["trainee", "favoriteTrainers"] as const,
+  },
+  trainerRole: {
+    dashboardSummary: ["trainer", "dashboardSummary"] as const,
+  },
 } as const;
 
 /** Root prefixes for broad invalidation (e.g. after socket reconnect). */
