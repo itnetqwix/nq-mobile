@@ -79,6 +79,7 @@ export function TimeRemaining({
   const [color, setColor] = useState("#28a745");
   const [warning, setWarning] = useState<Warning>(null);
   const lastSeconds = useRef<number | null>(null);
+  const hasLeadingTools = Boolean(leadingTools);
 
   useEffect(() => {
     const hasAuth =
@@ -123,13 +124,13 @@ export function TimeRemaining({
       style={[
         styles.wrap,
         { top: topInset },
-        alignRight && !leadingTools && styles.wrapRight,
-        leadingTools && styles.wrapSplit,
+        alignRight && !hasLeadingTools ? styles.wrapRight : null,
+        hasLeadingTools ? styles.wrapSplit : null,
       ]}
       pointerEvents="box-none"
     >
-      {leadingTools ? <View style={styles.leading}>{leadingTools}</View> : null}
-      <View style={[styles.pill, leadingTools && alignRight && styles.pillRight]}>
+      {hasLeadingTools ? <View style={styles.leading}>{leadingTools}</View> : null}
+      <View style={[styles.pill, hasLeadingTools && alignRight ? styles.pillRight : null]}>
         <Text style={styles.label}>{timerLabel}</Text>
         <Text style={[styles.value, { color }]}>{display}</Text>
         {!isAuthoritative && remainingSeconds != null && (

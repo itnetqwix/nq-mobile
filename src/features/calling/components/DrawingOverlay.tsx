@@ -16,7 +16,6 @@ import {
   Canvas,
   Path,
   Skia,
-  Text as SkiaText,
   type SkPath,
 } from "@shopify/react-native-skia";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -347,21 +346,24 @@ export function DrawingOverlay({
                 color={current.color}
               />
             ) : null}
+          </Canvas>
+          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
             {allText.map((t, i) => {
               const p = t.points[0];
               if (!p || !t.text) return null;
               return (
-                <SkiaText
+                <Text
                   key={`text-${i}-${t.text}`}
-                  x={p.x}
-                  y={p.y}
-                  text={t.text}
-                  color={Skia.Color(t.color)}
-                  fontSize={18}
-                />
+                  style={[
+                    styles.textLabel,
+                    { color: t.color, left: p.x, top: p.y },
+                  ]}
+                >
+                  {t.text}
+                </Text>
               );
             })}
-          </Canvas>
+          </View>
         </View>
       </GestureDetector>
 
@@ -424,6 +426,14 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 15,
     color: "#111",
+  },
+  textLabel: {
+    position: "absolute",
+    fontSize: 18,
+    fontWeight: "700",
+    textShadowColor: "rgba(0,0,0,0.35)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   textModalActions: {
     flexDirection: "row",

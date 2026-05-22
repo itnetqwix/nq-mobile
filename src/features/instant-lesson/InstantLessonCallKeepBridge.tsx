@@ -22,7 +22,13 @@ import {
 } from "./instantLessonCallKeep";
 import { dismissInstantLessonIncomingCall } from "./instantLessonIncomingNotifications";
 
-type CallKeepEvent = { name: string; data?: { callUUID?: string; handle?: string } };
+type CallKeepInitialEvents = import("react-native-callkeep").InitialEvents;
+type CallKeepInitialEvent = CallKeepInitialEvents[number];
+
+function getCallUuid(event: CallKeepInitialEvent): string | undefined {
+  const data = event.data as { callUUID?: string } | undefined;
+  return data?.callUUID;
+}
 
 export function InstantLessonCallKeepBridge() {
   const { status, accountType } = useAuth();
@@ -79,13 +85,14 @@ export function InstantLessonCallKeepBridge() {
         await endInstantLessonCall(payload.lessonId);
       };
 
-      const replayInitialEvents = (events: CallKeepEvent[]) => {
+      const replayInitialEvents = (events: CallKeepInitialEvents) => {
         for (const event of events) {
-          const callUUID = event.data?.callUUID;
+          const callUUID = getCallUuid(event);
           if (!callUUID) continue;
-          if (event.name === "answerCall") {
+          const name = String(event.name);
+          if (name === "RNCallKeepPerformAnswerCallAction" || name === "answerCall") {
             void handleAnswer(callUUID);
-          } else if (event.name === "endCall") {
+          } else if (name === "RNCallKeepPerformEndCallAction" || name === "endCall") {
             void handleEnd(callUUID);
           }
         }
@@ -94,7 +101,7 @@ export function InstantLessonCallKeepBridge() {
       try {
         const initial = await ck.getInitialEvents();
         if (Array.isArray(initial) && initial.length > 0) {
-          replayInitialEvents(initial as CallKeepEvent[]);
+          replayInitialEvents(initial);
           ck.clearInitialEvents();
         }
       } catch {
@@ -114,7 +121,7 @@ export function InstantLessonCallKeepBridge() {
       );
 
       subscriptions.push(
-        ck.addEventListener("didLoadWithEvents", (events: CallKeepEvent[]) => {
+        ck.addEventListener("didLoadWithEvents", (events) => {
           replayInitialEvents(events);
         })
       );
