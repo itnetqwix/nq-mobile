@@ -12,6 +12,9 @@ export type AuthStackParamList = {
         prefillEmail?: string;
         ssoProvider?: "google" | "apple";
         isGoogleRegister?: boolean;
+        /** Present when completing Google signup — used to sign in after register. */
+        googleIdToken?: string;
+        appleIdentityToken?: string;
       }
     | undefined;
   ForgotPassword: undefined;

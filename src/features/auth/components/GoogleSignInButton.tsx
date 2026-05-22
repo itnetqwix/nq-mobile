@@ -105,6 +105,7 @@ function GoogleSignInButtonInner({
             prefillEmail: result.email,
             ssoProvider: "google",
             isGoogleRegister: true,
+            googleIdToken: idToken,
           } as never);
           return;
         }

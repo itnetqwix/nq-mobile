@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
@@ -23,6 +23,7 @@ import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { queryKeys } from "../../../lib/queryKeys";
 import { colors, radii, space, typography } from "../../../theme";
 import { postSignUp } from "../api/authApi";
+import { postAppleVerify, postGoogleVerify } from "../api/socialAuth";
 import { fetchSportCategories } from "../api/masterApi";
 import { SignupCategoryPicker } from "../components/SignupCategoryPicker";
 import type { SignUpPayload } from "../api/types";
@@ -44,7 +45,7 @@ type SignUpStep = "contact" | "category" | "password";
 
 export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
   const { t } = useAppTranslation();
-  const { completeSessionFromTokens } = useAuth();
+  const { signIn, completeSessionFromTokens } = useAuth();
   const { showLoader, hideLoader } = useLoader();
   const isSsoSignup = Boolean(route.params?.isGoogleRegister || route.params?.ssoProvider);
   const ssoLabel =
@@ -83,21 +84,61 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
 
   const categories = categoriesQuery.data ?? [];
 
-  const mutation = useMutation({
-    mutationFn: (payload: SignUpPayload) => postSignUp(payload),
-    onSuccess: () => {
-      const body =
-        accountType === AccountType.TRAINER
-          ? t("auth.accountCreatedTrainerBody")
-          : t("auth.accountCreatedTraineeBody");
-      Alert.alert(t("auth.accountCreatedTitle"), body, [
-        { text: t("auth.ok"), onPress: () => navigation.navigate("Login") },
-      ]);
-    },
-    onError: (err) => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const signInAfterSignup = async (payload: SignUpPayload, loginPassword: string) => {
+    await postSignUp(payload);
+    await signIn(payload.email.trim().toLowerCase(), loginPassword);
+    await promptEnableAppUnlock();
+  };
+
+  const signInAfterSsoSignup = async (payload: SignUpPayload) => {
+    await postSignUp(payload);
+    const emailNorm = payload.email.trim().toLowerCase();
+    if (route.params?.googleIdToken) {
+      const result = await postGoogleVerify({
+        email: emailNorm,
+        id_token: route.params.googleIdToken,
+      });
+      if (result.kind !== "tokens") {
+        throw new Error(t("auth.signUpSsoLoginFailed"));
+      }
+      await completeSessionFromTokens(result);
+    } else if (route.params?.appleIdentityToken) {
+      const result = await postAppleVerify({
+        email: emailNorm,
+        identity_token: route.params.appleIdentityToken,
+      });
+      if (result.kind !== "tokens") {
+        throw new Error(t("auth.signUpSsoLoginFailed"));
+      }
+      await completeSessionFromTokens(result);
+    } else {
+      throw new Error(t("auth.signUpSsoLoginFailed"));
+    }
+    await promptEnableAppUnlock();
+  };
+
+  const runSignup = async (
+    payload: SignUpPayload,
+    mode: "password" | "sso",
+    loginPassword?: string
+  ) => {
+    setSubmitting(true);
+    showLoader(t("auth.creatingAccount"));
+    try {
+      if (mode === "sso") {
+        await signInAfterSsoSignup(payload);
+      } else if (loginPassword) {
+        await signInAfterSignup(payload, loginPassword);
+      }
+    } catch (err) {
       Alert.alert(t("auth.signUpFailed"), getApiErrorMessage(err));
-    },
-  });
+    } finally {
+      hideLoader();
+      setSubmitting(false);
+    }
+  };
 
   const contactError = (): string | null => {
     if (!fullname.trim() || !/^[A-Za-z\s]+$/.test(fullname.trim())) {
@@ -131,7 +172,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
     password: usePassword,
     mobile_no: mobile.trim(),
     account_type: accountType,
-    category: accountType === AccountType.TRAINER ? category : undefined,
+    category: category ?? undefined,
     tcpa: true,
     isGoogleRegister: googleRegister,
   });
@@ -152,7 +193,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
       return;
     }
     if (isSsoSignup) {
-      mutation.mutate(buildPayload("*****", true));
+      void runSignup(buildPayload("*****", true), "sso");
       return;
     }
     setStep("password");
@@ -164,7 +205,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
       Alert.alert(t("auth.checkPasswordTitle"), err);
       return;
     }
-    mutation.mutate(buildPayload(password, false));
+    void runSignup(buildPayload(password, false), "password", password);
   };
 
   const onSocialTokens = async (tokens: { access_token: string; account_type: string }) => {
@@ -245,6 +286,10 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
             />
           )}
 
+          {!isSsoSignup && (emailVerified || phoneVerified) ? (
+            <Text style={styles.contactOnceHint}>{t("auth.signupContactOnceHint")}</Text>
+          ) : null}
+
           <FormField
             label={t("auth.phone")}
             value={mobile}
@@ -297,6 +342,22 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
             <Ionicons name="arrow-back" size={18} color={colors.brandAccent} />
             <Text style={styles.link}>{t("auth.editContactDetails")}</Text>
           </Pressable>
+          {(emailVerified || phoneVerified) && (
+            <View style={styles.verifiedContactRow}>
+              {emailVerified ? (
+                <View style={styles.verifiedContactChip}>
+                  <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                  <Text style={styles.verifiedContactText}>{t("auth.emailVerified")}</Text>
+                </View>
+              ) : null}
+              {phoneVerified ? (
+                <View style={styles.verifiedContactChip}>
+                  <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                  <Text style={styles.verifiedContactText}>{t("auth.phoneVerified")}</Text>
+                </View>
+              ) : null}
+            </View>
+          )}
           <Text style={styles.sectionLabel}>
             {accountType === AccountType.TRAINER
               ? t("auth.categoryTrainerTitle")
@@ -314,7 +375,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
           <Button
             label={isSsoSignup ? t("auth.createAccount") : t("auth.continue")}
             size="lg"
-            loading={mutation.isPending}
+            loading={submitting}
             onPress={onContinueFromCategory}
           />
         </Stack>
@@ -354,7 +415,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
 
           <Button
             label={t("auth.createAccount")}
-            loading={mutation.isPending}
+            loading={submitting}
             onPress={onSubmit}
             size="lg"
             disabled={!isSignupPasswordValid(password) || password !== confirmPassword}
@@ -523,9 +584,37 @@ const styles = StyleSheet.create({
     marginTop: space.xs,
     marginBottom: space.sm,
   },
-  ssoVerifiedText: {
-    color: colors.success,
-    fontWeight: "600",
-    fontSize: 14,
-  },
-});
+    ssoVerifiedText: {
+      color: colors.success,
+      fontWeight: "600",
+      fontSize: 14,
+    },
+    verifiedContactRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: space.sm,
+      marginBottom: space.sm,
+    },
+    verifiedContactChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: radii.pill,
+      backgroundColor: `${colors.success}14`,
+      borderWidth: 1,
+      borderColor: `${colors.success}40`,
+    },
+    verifiedContactText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.success,
+    },
+    contactOnceHint: {
+      ...typography.caption,
+      color: colors.textMuted,
+      lineHeight: 18,
+      marginBottom: space.xs,
+    },
+  });

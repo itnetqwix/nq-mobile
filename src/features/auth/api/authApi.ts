@@ -49,9 +49,6 @@ export async function postSignUp(payload: SignUpPayload): Promise<unknown> {
     email: payload.email.toLowerCase(),
     isGoogleRegister: payload.isGoogleRegister ?? false,
   };
-  if (body.account_type === "Trainee") {
-    delete body.category;
-  }
   const { data } = await apiClient.post(API_ROUTES.auth.signup, body);
   return data;
 }

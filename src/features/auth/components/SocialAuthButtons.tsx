@@ -39,7 +39,7 @@ export function SocialAuthButtons({ navigation, onTokens, mode = "login" }: Prop
         navigation.navigate("SignUp", {
           prefillEmail: result.email,
           ssoProvider: "apple",
-          isGoogleRegister: true,
+          appleIdentityToken: identityToken,
         } as never);
         return;
       }
