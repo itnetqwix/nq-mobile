@@ -13,6 +13,7 @@ import {
   isTrainerVerified,
 } from "../lib/trainerUtils";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import { FavoriteHeartButton } from "../../dashboard/components/trainee/FavoriteHeartButton";
 
 function Avatar({
   uri,
@@ -88,21 +89,6 @@ export function TrainerBrowseCard({
 
   return (
     <View style={[styles.card, compact && styles.cardCompact]}>
-      {onToggleFavorite ? (
-        <Pressable
-          style={styles.favBtn}
-          onPress={() => onToggleFavorite(trainer)}
-          hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel={t("traineeDiscover.favoriteA11y", { name })}
-        >
-          <Ionicons
-            name={isFavorite ? "star" : "star-outline"}
-            size={22}
-            color={isFavorite ? themeColors.warning : themeColors.textMuted}
-          />
-        </Pressable>
-      ) : null}
       <Pressable
         style={({ pressed }) => [pressed && { opacity: 0.92 }]}
         onPress={() => onPress(trainer)}
@@ -171,6 +157,15 @@ export function TrainerBrowseCard({
         </View>
       </Pressable>
       <View style={styles.cardFooter}>
+        {onToggleFavorite ? (
+          <View style={styles.favRow}>
+            <FavoriteHeartButton
+              active={!!isFavorite}
+              onPress={() => onToggleFavorite(trainer)}
+              accessibilityLabel={t("traineeDiscover.favoriteA11y", { name })}
+            />
+          </View>
+        ) : null}
         <View style={styles.btnRow}>
           <Pressable
             style={[styles.actionBtn, !showOnline && styles.actionBtnDisabled]}
@@ -202,7 +197,10 @@ function makeCardStyles(colors: AppColors) {
       borderColor: colors.border,
       position: "relative",
     },
-    favBtn: { position: "absolute", top: 10, right: 10, zIndex: 2 },
+    favRow: {
+      alignItems: "flex-end",
+      marginBottom: space.sm,
+    },
     verifiedBadge: {
       flexDirection: "row",
       alignItems: "center",

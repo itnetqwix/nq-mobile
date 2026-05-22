@@ -58,6 +58,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
        * Polling first improves reliability on mobile networks; client upgrades when possible.
        */
       createdSocket = io(API_BASE_URL, {
+        path: "/socket.io",
         auth: { authorization: token },
         /** Polling uses XHR — same Origin/UA as REST or Cloudflare may block (`xhr poll error`). */
         extraHeaders: getBrowserLikeRequestHeaders(),

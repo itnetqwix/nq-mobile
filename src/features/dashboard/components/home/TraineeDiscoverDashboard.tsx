@@ -26,7 +26,6 @@ import { PastBookedTrainersSection } from "./PastBookedTrainersSection";
 import { ContinueWhereYouLeftOffCard } from "../trainee/ContinueWhereYouLeftOffCard";
 import { CategoryEmptySuggestions } from "../trainee/CategoryEmptySuggestions";
 import { FavoriteCoachesSection } from "../trainee/FavoriteCoachesSection";
-import { DashboardStatChip } from "../shared/DashboardStatChip";
 import { useDashboardSessions } from "../../hooks/useDashboardSessions";
 import { useFavoriteTrainers } from "../../hooks/useFavoriteTrainers";
 import { useWalletBalance } from "../../../wallet/hooks/useWalletBalance";
@@ -236,19 +235,8 @@ export function TraineeDiscoverDashboard({
       <View style={styles.headerCard}>
         <View style={styles.headerTextCol}>
           <Text style={styles.welcome}>{t("traineeDiscover.welcome", { name })}</Text>
-          <View style={styles.headerRow}>
-            <View style={styles.rolePill}>
-              <Text style={styles.rolePillText}>{roleLabel}</Text>
-            </View>
-            {onOpenWallet ? (
-              <DashboardStatChip
-                icon="wallet-outline"
-                label={t("traineeDiscover.walletCredits")}
-                value={walletCredits}
-                onPress={onOpenWallet}
-                accessibilityLabel={t("traineeDiscover.walletA11y")}
-              />
-            ) : null}
+          <View style={styles.rolePill}>
+            <Text style={styles.rolePillText}>{roleLabel}</Text>
           </View>
         </View>
         <Pressable
@@ -259,6 +247,20 @@ export function TraineeDiscoverDashboard({
           <HomeUserAvatar uri={profilePicture} name={name} size={72} />
         </Pressable>
       </View>
+
+      {onOpenWallet ? (
+        <Pressable
+          style={({ pressed }) => [styles.walletCard, pressed && { opacity: 0.92 }]}
+          onPress={onOpenWallet}
+          accessibilityRole="button"
+          accessibilityLabel={t("traineeDiscover.walletA11y")}
+        >
+          <Ionicons name="wallet-outline" size={22} color={themeColors.brandNavy} />
+          <Text style={styles.walletLabel}>{t("traineeDiscover.walletCredits")}</Text>
+          <Text style={styles.walletValue}>{walletCredits}</Text>
+          <Ionicons name="chevron-forward" size={18} color={themeColors.textMuted} />
+        </Pressable>
+      ) : null}
 
       {nextSession ? (
         <ContinueWhereYouLeftOffCard
@@ -486,7 +488,30 @@ function useStyles() {
         backgroundColor: palette.brandSubtle,
       },
       rolePillText: { ...typography.caption, color: palette.brandNavy, fontWeight: "700" },
-      headerRow: { flexDirection: "row", alignItems: "center", gap: space.sm, flexWrap: "wrap" },
+      walletCard: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: space.sm,
+        marginTop: space.sm,
+        paddingHorizontal: space.md,
+        paddingVertical: space.md,
+        borderRadius: radii.lg,
+        backgroundColor: palette.surfaceElevated,
+        borderWidth: 1,
+        borderColor: palette.border,
+      },
+      walletLabel: {
+        ...typography.bodySm,
+        color: palette.textMuted,
+        flexShrink: 0,
+      },
+      walletValue: {
+        ...typography.titleSm,
+        color: palette.text,
+        fontWeight: "700",
+        flex: 1,
+        textAlign: "right",
+      },
       filterBtn: {
         width: 40,
         height: 40,

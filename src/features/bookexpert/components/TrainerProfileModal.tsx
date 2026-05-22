@@ -28,6 +28,7 @@ import {
   getTrainerName,
 } from "../lib/trainerUtils";
 import { useFavoriteTrainers } from "../../dashboard/hooks/useFavoriteTrainers";
+import { FavoriteHeartButton } from "../../dashboard/components/trainee/FavoriteHeartButton";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 type Props = {
@@ -110,20 +111,14 @@ export function TrainerProfileModal({
           </Pressable>
           <Text style={styles.headerTitle}>Coach profile</Text>
           {data ? (
-            <Pressable
+            <FavoriteHeartButton
+              active={isFavorite(data)}
               onPress={() => toggleFavorite(data)}
-              hitSlop={12}
-              accessibilityRole="button"
               accessibilityLabel={t("traineeDiscover.favoriteA11y", { name })}
-            >
-              <Ionicons
-                name={isFavorite(data) ? "star" : "star-outline"}
-                size={26}
-                color={isFavorite(data) ? themeColors.warning : themeColors.textMuted}
-              />
-            </Pressable>
+              size={24}
+            />
           ) : (
-            <View style={{ width: 26 }} />
+            <View style={{ width: 44 }} />
           )}
         </View>
 
