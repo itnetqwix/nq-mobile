@@ -34,6 +34,8 @@ import { ThemedNavigationContainer } from "./ThemedNavigationContainer";
 import i18n from "../i18n";
 import { normalizeAppLocale } from "../i18n/languages";
 import { loadPersistedAppLocale } from "../i18n/localeStorage";
+import { StoreProvider } from "../store/StoreProvider";
+import { setGlobalQueryClient } from "../store/queryClientRef";
 
 function SystemStateHooks() {
   useSessionExpiredNavigation();
@@ -43,6 +45,10 @@ function SystemStateHooks() {
 
 export function AppRoot() {
   const queryClient = useMemo(() => createPersistedQueryClient(), []);
+
+  useEffect(() => {
+    setGlobalQueryClient(queryClient);
+  }, [queryClient]);
 
   useEffect(() => {
     warmLoaderTipsCache();
@@ -70,6 +76,7 @@ export function AppRoot() {
 
   return (
     <GestureHandlerRootView style={styles.flex}>
+      <StoreProvider>
       <SafeAreaProvider>
         <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
           <ThemeProvider>
@@ -112,6 +119,7 @@ export function AppRoot() {
           </ThemeProvider>
         </StripeProvider>
       </SafeAreaProvider>
+      </StoreProvider>
     </GestureHandlerRootView>
   );
 }

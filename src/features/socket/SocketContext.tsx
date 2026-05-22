@@ -2,6 +2,9 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 import { useQueryClient } from "@tanstack/react-query";
 import { io, type Socket } from "socket.io-client";
 import { useAuth } from "../auth/context/AuthContext";
+import { useAppDispatch, useAppSelector } from "../../store/hooks";
+import { setSocketConnected } from "../../store/slices/socketSlice";
+import { selectSocketConnected } from "../../store/selectors";
 import { API_BASE_URL } from "../../config/env";
 import { getAccessToken } from "../auth/session/tokenStorage";
 
@@ -25,8 +28,9 @@ let lastSocketErrorLogAt = 0;
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const { status } = useAuth();
   const queryClient = useQueryClient();
+  const dispatch = useAppDispatch();
+  const isConnected = useAppSelector(selectSocketConnected);
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     if (status !== "signedIn") {
@@ -34,7 +38,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         prev?.disconnect();
         return null;
       });
-      setIsConnected(false);
+      dispatch(setSocketConnected(false));
       return;
     }
 
@@ -72,7 +76,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       setSocket(createdSocket);
 
       createdSocket.on("connect", () => {
-        if (!cancelled) setIsConnected(true);
+        if (!cancelled) dispatch(setSocketConnected(true));
         if (__DEV__) {
           // eslint-disable-next-line no-console
           console.log("[socket] connected via", createdSocket?.io.engine?.transport?.name);
@@ -109,7 +113,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       createdSocket.on("onlineUser", bumpPresenceQueries);
 
       const onDisconnect = () => {
-        if (!cancelled) setIsConnected(false);
+        if (!cancelled) dispatch(setSocketConnected(false));
         clearInterval(heartbeatId);
         createdSocket?.off("userStatus", bumpPresenceQueries);
         createdSocket?.off("onlineUser", bumpPresenceQueries);
@@ -121,9 +125,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
       createdSocket?.disconnect();
       setSocket(null);
-      setIsConnected(false);
+      dispatch(setSocketConnected(false));
     };
-  }, [status, queryClient]);
+  }, [status, queryClient, dispatch]);
 
   const value = useMemo(() => ({ socket, isConnected }), [socket, isConnected]);
 

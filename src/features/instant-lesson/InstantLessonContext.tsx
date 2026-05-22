@@ -5,7 +5,6 @@ import React, {
   useEffect,
   useMemo,
   useRef,
-  useState,
 } from "react";
 import { AppState, Vibration } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
@@ -35,33 +34,19 @@ import {
 } from "./instantLessonIncomingNotifications";
 import { consumeInstantLessonNotificationAction } from "./instantLessonPendingAction";
 import { useInstantLessonRingtone } from "./useInstantLessonRingtone";
+import type { TraineeBooking, TrainerIncoming } from "./types";
+export type { TraineeBooking, TrainerIncoming } from "./types";
+import { useAppDispatch, useAppSelector } from "../../store/hooks";
+import {
+  setTrainerIncoming as setTrainerIncomingAction,
+  setTraineeBooking as setTraineeBookingAction,
+} from "../../store/slices/instantLessonSlice";
+import {
+  selectTrainerIncoming,
+  selectTraineeBooking,
+} from "../../store/selectors";
 
 const ACCEPT_HAPTIC_PATTERN: number[] = [0, 40, 80, 40];
-
-export type TrainerIncoming = {
-  lessonId: string;
-  coachId: string;
-  traineeId: string;
-  traineeInfo: { _id: string; fullname: string; profile_picture?: string };
-  /** Accept-window deadline (incoming) or join-window deadline (accepted). */
-  expiresAt: number;
-  joinDeadlineAt?: number;
-  step: "incoming" | "accepted";
-  minimized?: boolean;
-  duration?: number;
-  lessonType?: string;
-};
-
-export type TraineeBooking = {
-  lessonId: string;
-  coachId: string;
-  traineeId: string;
-  trainerName: string;
-  step: "waiting" | "accepted" | "declined" | "expired";
-  acceptDeadlineAt?: number;
-  joinDeadlineAt?: number;
-  minimized?: boolean;
-};
 
 type InstantLessonContextValue = {
   trainerIncoming: TrainerIncoming | null;
@@ -124,8 +109,35 @@ export function InstantLessonProvider({
   const { socket } = useSocket();
   const queryClient = useQueryClient();
   const { user, status: authStatus } = useAuth();
-  const [trainerIncoming, setTrainerIncoming] = useState<TrainerIncoming | null>(null);
-  const [traineeBooking, setTraineeBooking] = useState<TraineeBooking | null>(null);
+  const dispatch = useAppDispatch();
+  const trainerIncoming = useAppSelector(selectTrainerIncoming);
+  const traineeBooking = useAppSelector(selectTraineeBooking);
+
+  const setTrainerIncoming = useCallback(
+    (
+      arg:
+        | TrainerIncoming
+        | null
+        | ((prev: TrainerIncoming | null) => TrainerIncoming | null)
+    ) => {
+      const next = typeof arg === "function" ? arg(trainerIncoming) : arg;
+      dispatch(setTrainerIncomingAction(next));
+    },
+    [dispatch, trainerIncoming]
+  );
+
+  const setTraineeBooking = useCallback(
+    (
+      arg:
+        | TraineeBooking
+        | null
+        | ((prev: TraineeBooking | null) => TraineeBooking | null)
+    ) => {
+      const next = typeof arg === "function" ? arg(traineeBooking) : arg;
+      dispatch(setTraineeBookingAction(next));
+    },
+    [dispatch, traineeBooking]
+  );
   const expiryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingInstantRequestRef = useRef<Record<string, unknown> | null>(null);
   const traineeAutoMeetingLessonRef = useRef<string | null>(null);

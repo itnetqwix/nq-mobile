@@ -6,11 +6,19 @@ import React, {
   useEffect,
   useMemo,
   useRef,
-  useState,
 } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 import { AccountType } from "../../constants/accountType";
 import { useAuth } from "../auth/context/AuthContext";
+import { useAppDispatch, useAppSelector } from "../../store/hooks";
+import {
+  setActiveSession,
+  setPendingSessions,
+} from "../../store/slices/sessionBookingSlice";
+import {
+  selectActiveBookingSession,
+  selectPendingBookingSessions,
+} from "../../store/selectors";
 import { fetchScheduledMeetings } from "../home/api/homeApi";
 import {
   extractBookingIdFromNotification,
@@ -45,27 +53,28 @@ export function SessionBookingProvider({ children }: { children: React.ReactNode
   const queryClient = useQueryClient();
   const isTrainer = accountType === AccountType.TRAINER;
 
-  const [activeSession, setActiveSession] = useState<any | null>(null);
-  const [pendingSessions, setPendingSessions] = useState<any[]>([]);
+  const dispatch = useAppDispatch();
+  const activeSession = useAppSelector(selectActiveBookingSession);
+  const pendingSessions = useAppSelector(selectPendingBookingSessions);
   const lastPopupIdRef = useRef<string | null>(null);
   const knownPendingIdsRef = useRef<Set<string>>(new Set());
   const pendingSeededRef = useRef(false);
 
   const loadPending = useCallback(async () => {
     if (status !== "signedIn" || !isTrainer) {
-      setPendingSessions([]);
+      dispatch(setPendingSessions([]));
       return [];
     }
     try {
       const rows = await fetchScheduledMeetings("upcoming");
       const pending = rows.filter((s) => shouldShowInDashboardRequests(s));
-      setPendingSessions(pending);
+      dispatch(setPendingSessions(pending));
       return pending;
     } catch {
-      setPendingSessions([]);
+      dispatch(setPendingSessions([]));
       return [];
     }
-  }, [status, isTrainer]);
+  }, [status, isTrainer, dispatch]);
 
   const refreshPending = useCallback(async () => {
     await loadPending();
@@ -78,20 +87,20 @@ export function SessionBookingProvider({ children }: { children: React.ReactNode
   const openSession = useCallback((session: any) => {
     if (!session) return;
     lastPopupIdRef.current = null;
-    setActiveSession(session);
-  }, []);
+    dispatch(setActiveSession(session));
+  }, [dispatch]);
 
   const closeSession = useCallback(() => {
-    setActiveSession(null);
-  }, []);
+    dispatch(setActiveSession(null));
+  }, [dispatch]);
 
   const showSessionModal = useCallback((session: any) => {
     if (!session) return;
     const id = String(session._id ?? session.id ?? "");
     if (!id) return;
     lastPopupIdRef.current = id;
-    setActiveSession(session);
-  }, []);
+    dispatch(setActiveSession(session));
+  }, [dispatch]);
 
   const tryOpenFromBookingEvent = useCallback(
     async (bookingId?: string) => {

@@ -6,9 +6,18 @@ import React, {
   useEffect,
   useMemo,
   useRef,
-  useState,
 } from "react";
 import { useAuth } from "../auth/context/AuthContext";
+import { useAppDispatch, useAppSelector } from "../../store/hooks";
+import {
+  clearToasts as clearToastsAction,
+  dismissToastById,
+  pushToast,
+  incrementUnreadCount,
+  setToastQueue,
+  setUnreadCount,
+} from "../../store/slices/notificationsSlice";
+import { selectToastQueue, selectUnreadCount } from "../../store/selectors";
 import {
   dedupeRowsById,
   fetchNotifications,
@@ -164,8 +173,9 @@ export function NotificationProvider({
   const { user, status, accountType } = useAuth();
   const { socket } = useSocket();
 
-  const [toastQueue, setToastQueue] = useState<IncomingNotification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const dispatch = useAppDispatch();
+  const toastQueue = useAppSelector(selectToastQueue) as IncomingNotification[];
+  const unreadCount = useAppSelector(selectUnreadCount);
 
   const TOAST_STACK_LIMIT = 3;
   const TOAST_DEDUPE_MS = 90_000;
@@ -198,17 +208,8 @@ export function NotificationProvider({
     }
     recentToastKeysRef.current.set(fp, now);
 
-    setToastQueue((prev) => {
-      /** Drop earlier toasts that share the same _id to prevent flicker
-       *  duplicates from a reconnecting socket. */
-      const without = next._id
-        ? prev.filter((t) => t._id !== next._id)
-        : prev;
-      const merged = [...without, next];
-      /** Trim to the configured max so the stack never runs off-screen. */
-      return merged.slice(-TOAST_STACK_LIMIT);
-    });
-  }, [toastFingerprint]);
+    dispatch(pushToast(next));
+  }, [toastFingerprint, dispatch]);
 
   /** Keep the auth user id in a ref so socket callbacks always see the latest value. */
   const userIdRef = useRef<string | null>(null);
@@ -222,11 +223,11 @@ export function NotificationProvider({
       const unread = list.filter(
         (n: any) => !(n?.isRead ?? n?.is_read ?? false)
       ).length;
-      setUnreadCount(unread);
+      dispatch(setUnreadCount(unread));
     } catch {
       /** non-blocking */
     }
-  }, [queryClient, status]);
+  }, [queryClient, status, dispatch]);
 
   const markFirstPageRead = useCallback(async () => {
     try {
@@ -239,8 +240,8 @@ export function NotificationProvider({
   /** Pull the inbox once on sign-in + on a coarse interval so badges stay reasonably current. */
   useEffect(() => {
     if (status !== "signedIn") {
-      setUnreadCount(0);
-      setToastQueue([]);
+      dispatch(setUnreadCount(0));
+      dispatch(setToastQueue([]));
       return;
     }
     void refreshInbox();
@@ -248,7 +249,7 @@ export function NotificationProvider({
       void refreshInbox();
     }, 60_000);
     return () => clearInterval(id);
-  }, [status, refreshInbox]);
+  }, [status, refreshInbox, dispatch]);
 
   /** Listen to live pushes. */
   useEffect(() => {
@@ -273,7 +274,7 @@ export function NotificationProvider({
       );
 
       if (isNewInInbox) {
-        setUnreadCount((c) => c + 1);
+        dispatch(incrementUnreadCount());
         pushToQueue({ ...payload, isRead: false });
       }
 
@@ -374,7 +375,7 @@ export function NotificationProvider({
       socket.off("BOOKING_STATUS_UPDATED", onBookingStatusUpdated);
       socket.off("INSTANT_LESSON_PHASE", onInstantPhase);
     };
-  }, [socket, queryClient, pushToQueue]);
+  }, [socket, queryClient, pushToQueue, dispatch, accountType]);
 
   const emitNotification = useCallback(
     (payload: EmitNotificationPayload): boolean => {
@@ -402,15 +403,16 @@ export function NotificationProvider({
     [socket]
   );
 
-  const dismissToast = useCallback((id?: string) => {
-    setToastQueue((prev) => {
-      if (prev.length === 0) return prev;
-      if (!id) return prev.slice(1);
-      return prev.filter((t) => t._id !== id);
-    });
-  }, []);
+  const dismissToast = useCallback(
+    (id?: string) => {
+      dispatch(dismissToastById(id));
+    },
+    [dispatch]
+  );
 
-  const clearToasts = useCallback(() => setToastQueue([]), []);
+  const clearToasts = useCallback(() => {
+    dispatch(clearToastsAction());
+  }, [dispatch]);
 
   const pushLocalToast = useCallback(
     (payload: LocalToastPayload) => {
@@ -436,7 +438,7 @@ export function NotificationProvider({
             return dedupeRowsById([next, ...list]);
           }
         );
-        setUnreadCount((c) => c + 1);
+        dispatch(incrementUnreadCount());
       }
       if (__DEV__ && !senderId) {
         // no-op — local toasts are valid even without a signed-in user

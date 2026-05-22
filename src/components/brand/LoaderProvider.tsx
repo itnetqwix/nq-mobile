@@ -5,14 +5,18 @@ import React, {
   useEffect,
   useMemo,
   useRef,
-  useState,
   type ReactNode,
 } from "react";
 import { Modal, StyleSheet, View } from "react-native";
 import { NetQwixLoader } from "./NetQwixLoader";
 import { warmLoaderTipsCache } from "./loaderTips/loaderTipsService";
+import { useAppDispatch, useAppSelector } from "../../store/hooks";
+import {
+  setLoaderMessage,
+  setLoaderVisible,
+} from "../../store/slices/uiSlice";
+import { selectLoaderMessage, selectLoaderVisible } from "../../store/selectors";
 
-/** Avoid flashing the overlay on fast sign-in / API calls. */
 const SHOW_DELAY_MS = 280;
 
 type LoaderContextValue = {
@@ -24,8 +28,9 @@ type LoaderContextValue = {
 const LoaderContext = createContext<LoaderContextValue | null>(null);
 
 export function LoaderProvider({ children }: { children: ReactNode }) {
-  const [visible, setVisible] = useState(false);
-  const [message, setMessage] = useState("Loading");
+  const dispatch = useAppDispatch();
+  const visible = useAppSelector(selectLoaderVisible);
+  const message = useAppSelector(selectLoaderMessage);
   const showTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingRef = useRef(false);
 
@@ -38,22 +43,22 @@ export function LoaderProvider({ children }: { children: ReactNode }) {
 
   const showLoader = useCallback(
     (msg?: string) => {
-      if (msg) setMessage(msg);
+      if (msg) dispatch(setLoaderMessage(msg));
       pendingRef.current = true;
       clearShowTimer();
       showTimerRef.current = setTimeout(() => {
         showTimerRef.current = null;
-        if (pendingRef.current) setVisible(true);
+        if (pendingRef.current) dispatch(setLoaderVisible(true));
       }, SHOW_DELAY_MS);
     },
-    [clearShowTimer]
+    [clearShowTimer, dispatch]
   );
 
   const hideLoader = useCallback(() => {
     pendingRef.current = false;
     clearShowTimer();
-    setVisible(false);
-  }, [clearShowTimer]);
+    dispatch(setLoaderVisible(false));
+  }, [clearShowTimer, dispatch]);
 
   useEffect(() => {
     warmLoaderTipsCache();
@@ -92,7 +97,6 @@ export function useLoader(): LoaderContextValue {
   return ctx;
 }
 
-/** Safe hook when provider may be absent (e.g. tests). */
 export function useLoaderOptional(): LoaderContextValue | null {
   return useContext(LoaderContext);
 }

@@ -1,31 +1,20 @@
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { extractLoginTokens, summarizeLoginPayloadKeys } from "../../../lib/http/parseLoginResponse";
-import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
-import { getCurrentUser, postLogin } from "../api/authApi";
-import { fetchMasterRow } from "../api/masterApi";
-import { onUnauthorized } from "../../../lib/auth/sessionEvents";
-import { ensureAuthSessionRegistered, postLogout } from "../api/authSessionsApi";
+import React, { createContext, useCallback, useContext, useMemo } from "react";
 import {
-  clearSession,
-  getAccessToken,
-  getAccountType,
-  getSessionId,
-  saveSession,
-} from "../session/tokenStorage";
-import { registerMyChatPublicKey } from "../../chats/crypto/chatKeysApi";
-import { applyLanguageFromUser } from "../../../i18n/applyLanguageFromUser";
+  completeSessionFromTokens as completeSessionFromTokensThunk,
+  patchUser,
+  refreshUserThunk,
+  signInThunk,
+  signOutThunk,
+} from "../../../store/slices/authSlice";
+import { useAppDispatch, useAppSelector } from "../../../store/hooks";
+import {
+  selectAccountType,
+  selectAuthStatus,
+  selectAuthUser,
+} from "../../../store/selectors";
 
 export type AuthUser = Record<string, unknown> | null;
-
-type AuthStatus = "loading" | "signedOut" | "signedIn";
+export type AuthStatus = "loading" | "signedOut" | "signedIn";
 
 type AuthContextValue = {
   status: AuthStatus;
@@ -45,60 +34,22 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/** Thin bridge — state lives in Redux (`auth` slice). */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const queryClient = useQueryClient();
-  const [status, setStatus] = useState<AuthStatus>("loading");
-  const [user, setUser] = useState<AuthUser>(null);
-  const [accountType, setAccountType] = useState<string | null>(null);
+  const dispatch = useAppDispatch();
+  const status = useAppSelector(selectAuthStatus);
+  const user = useAppSelector(selectAuthUser);
+  const accountType = useAppSelector(selectAccountType);
 
-  const refreshUser = useCallback(async () => {
-    const token = await getAccessToken();
-    if (!token) return;
-    const me = await getCurrentUser();
-    setUser(me);
-    void applyLanguageFromUser(me);
-    const at = await getAccountType();
-    if (at) setAccountType(at);
-  }, []);
-
-  const patchUser = useCallback((patch: Record<string, unknown>) => {
-    setUser((prev) => (prev ? { ...prev, ...patch } : { ...patch }));
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const token = await getAccessToken();
-        if (!token) {
-          if (!cancelled) {
-            setUser(null);
-            setAccountType(null);
-            setStatus("signedOut");
-          }
-          return;
-        }
-        const [me, at] = await Promise.all([getCurrentUser(), getAccountType()]);
-        if (cancelled) return;
-        setUser(me);
-        setAccountType(at ?? (me?.account_type as string) ?? (me?.accountType as string) ?? null);
-        setStatus("signedIn");
-        void applyLanguageFromUser(me);
-        const sid = await getSessionId();
-        if (!sid) void ensureAuthSessionRegistered().catch(() => undefined);
-      } catch {
-        await clearSession();
-        if (!cancelled) {
-          setUser(null);
-          setAccountType(null);
-          setStatus("signedOut");
-        }
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      const result = await dispatch(signInThunk({ email, password }));
+      if (signInThunk.rejected.match(result)) {
+        throw new Error(String(result.payload ?? "Sign in failed."));
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    },
+    [dispatch]
+  );
 
   const completeSessionFromTokens = useCallback(
     async (tokens: {
@@ -107,72 +58,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refresh_token?: string;
       session_id?: string;
     }) => {
-      await saveSession(tokens.access_token, tokens.account_type, {
-        refreshToken: tokens.refresh_token,
-        sessionId: tokens.session_id,
-      });
-      try {
-        const me = await getCurrentUser();
-        setUser(me);
-        setAccountType(tokens.account_type);
-        setStatus("signedIn");
-        void applyLanguageFromUser(me);
-        queryClient.invalidateQueries();
-        void queryClient.prefetchQuery({
-          queryKey: ["masterRow"],
-          queryFn: fetchMasterRow,
-        });
-        void registerMyChatPublicKey().catch(() => undefined);
-      } catch (e) {
-        await clearSession();
-        throw new Error(
-          `Login succeeded but profile could not load: ${getApiErrorMessage(e)}`
-        );
+      const result = await dispatch(completeSessionFromTokensThunk(tokens));
+      if (completeSessionFromTokensThunk.rejected.match(result)) {
+        throw new Error(String(result.payload ?? "Session failed."));
       }
     },
-    [queryClient]
-  );
-
-  const signIn = useCallback(
-    async (email: string, password: string) => {
-      let res: Awaited<ReturnType<typeof postLogin>>;
-      try {
-        res = await postLogin({ email, password });
-      } catch (e) {
-        throw new Error(getApiErrorMessage(e, "Sign in failed."));
-      }
-
-      const tokens = extractLoginTokens(res);
-      if (!tokens) {
-        throw new Error(
-          `Unexpected login response (no tokens). ${summarizeLoginPayloadKeys(res)}`
-        );
-      }
-
-      await completeSessionFromTokens(tokens);
-    },
-    [completeSessionFromTokens]
+    [dispatch]
   );
 
   const signOut = useCallback(async () => {
-    try {
-      await postLogout();
-      await clearSession();
-    } catch {
-      /** Still leave the app in a signed-out state so the user can sign in again. */
-    } finally {
-      setUser(null);
-      setAccountType(null);
-      setStatus("signedOut");
-      queryClient.clear();
-    }
-  }, [queryClient]);
+    await dispatch(signOutThunk());
+  }, [dispatch]);
 
-  useEffect(() => {
-    return onUnauthorized(() => {
-      void signOut();
-    });
-  }, [signOut]);
+  const refreshUser = useCallback(async () => {
+    await dispatch(refreshUserThunk());
+  }, [dispatch]);
+
+  const patchUserLocal = useCallback(
+    (patch: Record<string, unknown>) => {
+      dispatch(patchUser(patch));
+    },
+    [dispatch]
+  );
 
   const value = useMemo(
     () => ({
@@ -183,9 +90,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       completeSessionFromTokens,
       signOut,
       refreshUser,
-      patchUser,
+      patchUser: patchUserLocal,
     }),
-    [status, user, accountType, signIn, completeSessionFromTokens, signOut, refreshUser, patchUser]
+    [
+      status,
+      user,
+      accountType,
+      signIn,
+      completeSessionFromTokens,
+      signOut,
+      refreshUser,
+      patchUserLocal,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -197,4 +113,12 @@ export function useAuth(): AuthContextValue {
     throw new Error("useAuth must be used within AuthProvider");
   }
   return ctx;
+}
+
+/** Read auth directly from Redux (no context). */
+export function useAuthStore() {
+  const status = useAppSelector(selectAuthStatus);
+  const user = useAppSelector(selectAuthUser);
+  const accountType = useAppSelector(selectAccountType);
+  return { status, user, accountType };
 }

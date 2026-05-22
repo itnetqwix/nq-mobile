@@ -3,14 +3,15 @@ import React, {
   useCallback,
   useContext,
   useMemo,
-  useState,
 } from "react";
 import type { SystemStateId } from "../presets/types";
 import { navigateToSystemState } from "../navigation/linkActions";
+import { useAppDispatch, useAppSelector } from "../../../store/hooks";
+import { setMaintenanceMode } from "../../../store/slices/systemSlice";
+import { selectMaintenanceMode } from "../../../store/selectors";
 
 type SystemStateContextValue = {
   showSystemState: (id: SystemStateId, message?: string) => void;
-  /** Force global maintenance overlay (e.g. from env). */
   maintenanceMode: boolean;
   setMaintenanceMode: (on: boolean) => void;
 };
@@ -18,21 +19,27 @@ type SystemStateContextValue = {
 const SystemStateContext = createContext<SystemStateContextValue | null>(null);
 
 export function SystemStateProvider({ children }: { children: React.ReactNode }) {
-  const [maintenanceMode, setMaintenanceMode] = useState(
-    process.env.EXPO_PUBLIC_MAINTENANCE_MODE === "1"
-  );
+  const dispatch = useAppDispatch();
+  const maintenanceMode = useAppSelector(selectMaintenanceMode);
 
   const showSystemState = useCallback((id: SystemStateId, message?: string) => {
     navigateToSystemState(id, { message });
   }, []);
 
+  const setMaintenanceModeLocal = useCallback(
+    (on: boolean) => {
+      dispatch(setMaintenanceMode(on));
+    },
+    [dispatch]
+  );
+
   const value = useMemo(
     () => ({
       showSystemState,
       maintenanceMode,
-      setMaintenanceMode,
+      setMaintenanceMode: setMaintenanceModeLocal,
     }),
-    [showSystemState, maintenanceMode]
+    [showSystemState, maintenanceMode, setMaintenanceModeLocal]
   );
 
   return (
@@ -50,7 +57,6 @@ export function useSystemState(): SystemStateContextValue {
   return ctx;
 }
 
-/** Safe when provider is optional (e.g. tests). */
 export function useSystemStateOptional(): SystemStateContextValue | null {
   return useContext(SystemStateContext);
 }

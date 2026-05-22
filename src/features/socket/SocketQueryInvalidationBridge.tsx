@@ -19,7 +19,7 @@ const SESSION_INVALIDATION_EVENTS = [
  * Keeps React Query session lists fresh when the server pushes booking/timer updates.
  */
 export function SocketQueryInvalidationBridge() {
-  const socket = useSocket();
+  const { socket } = useSocket();
   const queryClient = useQueryClient();
 
   useEffect(() => {
