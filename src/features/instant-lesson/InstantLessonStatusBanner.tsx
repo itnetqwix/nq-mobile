@@ -17,6 +17,7 @@ import { canRejoinLesson, isInstantLesson } from "../../lib/sessions/sessionUtil
 import { navigationRef } from "../../navigation/navigationRef";
 import { useAuth } from "../auth/context/AuthContext";
 import { AccountType } from "../../constants/accountType";
+import { confirmTrainerDecline } from "./confirmTrainerDecline";
 import { useInstantLesson } from "./InstantLessonContext";
 import { InstantLessonDeadlineChip } from "./components/InstantLessonDeadlineChip";
 
@@ -41,6 +42,7 @@ export function InstantLessonStatusBanner() {
     joinTrainerLesson,
     restoreTrainerAccepted,
     restoreTrainerIncoming,
+    declineRequest,
     clearTrainerIncoming,
   } = useInstantLesson();
 
@@ -176,19 +178,33 @@ export function InstantLessonStatusBanner() {
           </Pressable>
         </Animated.View>
       ) : trainerWaiting && trainerIncoming ? (
-        <Pressable style={styles.pillColumn} onPress={restoreTrainerIncoming}>
-          <View style={styles.pill}>
+        <View style={styles.pillColumn}>
+          <Pressable style={styles.pill} onPress={restoreTrainerIncoming}>
             <Ionicons name="flash" size={16} color={colors.brandNavy} />
             <Text style={styles.pillText} numberOfLines={1}>
               Instant request from {trainerIncoming.traineeInfo?.fullname ?? "trainee"}…
             </Text>
             <Ionicons name="chevron-up" size={16} color={colors.brandNavy} />
+          </Pressable>
+          <View style={styles.pillFooterRow}>
+            <InstantLessonDeadlineChip
+              deadlineMs={trainerIncoming.expiresAt}
+              label="Respond within"
+            />
+            <Pressable
+              hitSlop={8}
+              onPress={() =>
+                confirmTrainerDecline(
+                  trainerIncoming.traineeInfo?.fullname ?? "Trainee",
+                  declineRequest
+                )
+              }
+              style={styles.pillDismiss}
+            >
+              <Ionicons name="close" size={18} color={colors.textMuted} />
+            </Pressable>
           </View>
-          <InstantLessonDeadlineChip
-            deadlineMs={trainerIncoming.expiresAt}
-            label="Respond within"
-          />
-        </Pressable>
+        </View>
       ) : traineeWaiting && traineeBooking ? (
         <Pressable style={styles.pillColumn} onPress={restoreBooking}>
           <View style={styles.pill}>
@@ -241,6 +257,14 @@ const styles = StyleSheet.create({
     zIndex: 9999,
   },
   pillColumn: { alignItems: "center", gap: 6, width: "100%" },
+  pillFooterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    width: "100%",
+  },
+  pillDismiss: { padding: 4 },
   pill: {
     flexDirection: "row",
     alignItems: "center",

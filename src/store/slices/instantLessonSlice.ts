@@ -4,11 +4,14 @@ import type { TraineeBooking, TrainerIncoming } from "../../features/instant-les
 type InstantLessonState = {
   trainerIncoming: TrainerIncoming | null;
   traineeBooking: TraineeBooking | null;
+  /** Trainer declined/dismissed — ignore duplicate INSTANT_LESSON_REQUEST for same lesson */
+  dismissedLessonIds: string[];
 };
 
 const initialState: InstantLessonState = {
   trainerIncoming: null,
   traineeBooking: null,
+  dismissedLessonIds: [],
 };
 
 const instantLessonSlice = createSlice({
@@ -29,6 +32,14 @@ const instantLessonSlice = createSlice({
       if (!state.traineeBooking) return;
       state.traineeBooking = { ...state.traineeBooking, ...action.payload };
     },
+    markDismissedLessonId(state, action: PayloadAction<string>) {
+      const id = action.payload;
+      if (!id || state.dismissedLessonIds.includes(id)) return;
+      state.dismissedLessonIds.push(id);
+      if (state.dismissedLessonIds.length > 30) {
+        state.dismissedLessonIds = state.dismissedLessonIds.slice(-30);
+      }
+    },
   },
 });
 
@@ -37,5 +48,6 @@ export const {
   setTraineeBooking,
   patchTrainerIncoming,
   patchTraineeBooking,
+  markDismissedLessonId,
 } = instantLessonSlice.actions;
 export default instantLessonSlice.reducer;

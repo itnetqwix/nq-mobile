@@ -108,12 +108,21 @@ export function TraineeDiscoverDashboard({
     [interests, masterSports]
   );
 
+  /** Category filter: explicit filter sheet > sport chip > trainee profile interests */
   const apiCategories = useMemo(() => {
+    if (browseFilters.selectedCategories.length > 0) {
+      return browseFilters.selectedCategories.join(",");
+    }
     if (searchActive) return undefined;
     if (selectedCategory) return selectedCategory;
     if (interests.length > 0) return interests.join(",");
     return undefined;
-  }, [searchActive, selectedCategory, interests]);
+  }, [
+    browseFilters.selectedCategories,
+    searchActive,
+    selectedCategory,
+    interests,
+  ]);
 
   const directoryFilterKey = JSON.stringify({
     apiCategories,
@@ -137,8 +146,8 @@ export function TraineeDiscoverDashboard({
     queryFn: ({ pageParam }) =>
       fetchTrainersWithSlots({
         search: searchActive ? trimmed : undefined,
-        categories: apiCategories,
         ...apiFilterParams,
+        categories: apiCategories ?? apiFilterParams.categories,
         page: pageParam,
         limit: TRAINEE_COACH_PAGE_SIZE,
       }),

@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ImageWithSkeleton } from "../../../components/ui";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { colors, radii, space, typography } from "../../../theme";
+import { confirmTrainerDecline } from "../confirmTrainerDecline";
 import { useInstantLesson } from "../InstantLessonContext";
 import { useNativeIncomingCallUi } from "../useNativeIncomingCallUi";
 import { InstantLessonDeadlineChip } from "./InstantLessonDeadlineChip";
@@ -24,7 +25,12 @@ import { InstantLessonDeadlineChip } from "./InstantLessonDeadlineChip";
 export function InstantLessonIncomingCallOverlay() {
   const insets = useSafeAreaInsets();
   const nativeCallUi = useNativeIncomingCallUi();
-  const { trainerIncoming, acceptRequest, declineRequest } = useInstantLesson();
+  const {
+    trainerIncoming,
+    acceptRequest,
+    declineRequest,
+    minimizeTrainerIncoming,
+  } = useInstantLesson();
   const pulse = useRef(new Animated.Value(1)).current;
 
   const visible =
@@ -54,8 +60,19 @@ export function InstantLessonIncomingCallOverlay() {
   const name = trainee?.fullname ?? "Trainee";
   const avatarUrl = getS3ImageUrl(trainee?.profile_picture);
 
+  const promptDecline = () => {
+    confirmTrainerDecline(name, declineRequest);
+  };
+
   return (
-    <Modal visible transparent animationType="fade" statusBarTranslucent>
+    <Modal
+      visible
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      presentationStyle="overFullScreen"
+      onRequestClose={promptDecline}
+    >
       <View style={[styles.backdrop, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <View style={styles.card}>
           <View style={styles.header}>
@@ -89,26 +106,36 @@ export function InstantLessonIncomingCallOverlay() {
           />
 
           <Text style={styles.hint}>
-            Accept confirms the session. Open the app to join when you are ready — the join timer
-            starts after you accept.
+            Tap Confirm to accept. Decline notifies the trainee. Not now keeps the request on your
+            dashboard until the timer ends.
           </Text>
 
           <View style={styles.actions}>
             <Pressable
               style={({ pressed }) => [styles.declineBtn, pressed && styles.pressed]}
-              onPress={declineRequest}
+              onPress={promptDecline}
               accessibilityLabel="Decline instant lesson"
             >
               <Ionicons name="close" size={36} color="#fff" />
+              <Text style={styles.actionLabel}>Decline</Text>
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.acceptBtn, pressed && styles.pressed]}
               onPress={acceptRequest}
-              accessibilityLabel="Accept instant lesson"
+              accessibilityLabel="Confirm instant lesson"
             >
               <Ionicons name="checkmark" size={40} color="#fff" />
+              <Text style={styles.actionLabel}>Confirm</Text>
             </Pressable>
           </View>
+
+          <Pressable
+            style={({ pressed }) => [styles.notNowBtn, pressed && { opacity: 0.85 }]}
+            onPress={minimizeTrainerIncoming}
+            accessibilityLabel="Respond later from dashboard"
+          >
+            <Text style={styles.notNowText}>Not now</Text>
+          </Pressable>
         </View>
       </View>
     </Modal>
@@ -182,20 +209,41 @@ const styles = StyleSheet.create({
     gap: space.xl * 2,
   },
   declineBtn: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 88,
+    minHeight: 88,
+    borderRadius: 44,
     backgroundColor: colors.danger,
     alignItems: "center",
     justifyContent: "center",
+    gap: 2,
+    paddingVertical: 8,
   },
   acceptBtn: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 88,
+    minHeight: 88,
+    borderRadius: 44,
     backgroundColor: colors.success,
     alignItems: "center",
     justifyContent: "center",
+    gap: 2,
+    paddingVertical: 8,
+  },
+  actionLabel: {
+    ...typography.caption,
+    fontWeight: "800",
+    color: "#fff",
+    marginTop: 2,
+  },
+  notNowBtn: {
+    marginTop: space.md,
+    paddingVertical: space.sm,
+    paddingHorizontal: space.md,
+  },
+  notNowText: {
+    ...typography.bodySm,
+    fontWeight: "700",
+    color: colors.brandNavy,
+    textDecorationLine: "underline",
   },
   pressed: {
     opacity: 0.88,

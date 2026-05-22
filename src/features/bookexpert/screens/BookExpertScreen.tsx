@@ -30,17 +30,25 @@ import {
 import { TrainerBrowseCard } from "../components/TrainerBrowseCard";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
+import { useAuth } from "../../auth/context/AuthContext";
+import { getTraineeInterests } from "../../dashboard/lib/traineeInterests";
 
 type Props = { bookLessonTrainerId?: string };
 
 export function BookExpertScreen({ bookLessonTrainerId }: Props) {
   const { t } = useAppTranslation();
+  const { user } = useAuth();
   const themeColors = useThemeColors();
   const styles = useMemo(() => makeStyles(themeColors), [themeColors]);
 
+  const traineeInterests = useMemo(() => getTraineeInterests(user), [user]);
+
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [browseFilters, setBrowseFilters] = useState<TrainerBrowseFilters>(DEFAULT_BROWSE_FILTERS);
+  const [browseFilters, setBrowseFilters] = useState<TrainerBrowseFilters>(() => ({
+    ...DEFAULT_BROWSE_FILTERS,
+    selectedCategories: traineeInterests.length ? [...traineeInterests] : [],
+  }));
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [profileTrainer, setProfileTrainer] = useState<Record<string, unknown> | null>(null);
   const [wizardTrainer, setWizardTrainer] = useState<Record<string, unknown> | null>(null);
@@ -55,6 +63,14 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
   const trimmed = debouncedSearch;
   const searchActive = trimmed.length >= 2 && !/^\d+$/.test(trimmed);
   const apiFilterParams = useMemo(() => filtersToApiParams(browseFilters), [browseFilters]);
+  const apiCategories = useMemo(() => {
+    if (browseFilters.selectedCategories.length > 0) {
+      return browseFilters.selectedCategories.join(",");
+    }
+    if (searchActive) return undefined;
+    if (traineeInterests.length > 0) return traineeInterests.join(",");
+    return undefined;
+  }, [browseFilters.selectedCategories, searchActive, traineeInterests]);
   const activeFilterCount = countActiveFilters(browseFilters);
 
   const {
@@ -63,11 +79,15 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
     isRefetching: directoryRefetching,
     refetch: refetchDirectory,
   } = useQuery({
-    queryKey: queryKeys.trainer.directorySearch(trimmed, JSON.stringify(apiFilterParams)),
+    queryKey: queryKeys.trainer.directorySearch(
+      trimmed,
+      JSON.stringify({ ...apiFilterParams, categories: apiCategories })
+    ),
     queryFn: () =>
       fetchTrainersWithSlots({
         search: searchActive ? trimmed : undefined,
         ...apiFilterParams,
+        categories: apiCategories ?? apiFilterParams.categories,
         limit: 80,
       }),
     staleTime: 60_000,

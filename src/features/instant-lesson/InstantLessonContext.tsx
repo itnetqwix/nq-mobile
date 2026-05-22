@@ -41,10 +41,12 @@ import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import {
   setTrainerIncoming as setTrainerIncomingAction,
   setTraineeBooking as setTraineeBookingAction,
+  markDismissedLessonId,
 } from "../../store/slices/instantLessonSlice";
 import {
   selectTrainerIncoming,
   selectTraineeBooking,
+  selectDismissedInstantLessonIds,
 } from "../../store/selectors";
 
 const ACCEPT_HAPTIC_PATTERN: number[] = [0, 40, 80, 40];
@@ -67,6 +69,7 @@ type InstantLessonContextValue = {
   minimizeTrainerAccepted: () => void;
   restoreTrainerAccepted: () => void;
   restoreTrainerIncoming: () => void;
+  minimizeTrainerIncoming: () => void;
   clearTrainerIncoming: () => void;
   focusTrainerRequestFromSession: (session: Record<string, unknown>) => void;
   restoreTraineeFlowFromSession: (
@@ -93,6 +96,7 @@ const InstantLessonContext = createContext<InstantLessonContextValue>({
   minimizeTrainerAccepted: () => {},
   restoreTrainerAccepted: () => {},
   restoreTrainerIncoming: () => {},
+  minimizeTrainerIncoming: () => {},
   clearTrainerIncoming: () => {},
   focusTrainerRequestFromSession: () => {},
   restoreTraineeFlowFromSession: () => {},
@@ -113,6 +117,7 @@ export function InstantLessonProvider({
   const dispatch = useAppDispatch();
   const trainerIncoming = useAppSelector(selectTrainerIncoming);
   const traineeBooking = useAppSelector(selectTraineeBooking);
+  const dismissedLessonIds = useAppSelector(selectDismissedInstantLessonIds);
 
   const setTrainerIncoming = useCallback(
     (
@@ -189,8 +194,18 @@ export function InstantLessonProvider({
     if (!trainerIncoming) trainerAutoMeetingLessonRef.current = null;
   }, [trainerIncoming]);
 
+  const markLessonDismissed = useCallback(
+    (lessonId: string) => {
+      if (lessonId) dispatch(markDismissedLessonId(String(lessonId)));
+    },
+    [dispatch]
+  );
+
   const applyIncomingRequest = useCallback(
     (payload: InstantLessonIncomingPayload) => {
+      if (dismissedLessonIds.includes(String(payload.lessonId))) {
+        return;
+      }
       clearExpiryTimer();
       setTrainerIncoming({
         lessonId: payload.lessonId,
@@ -221,7 +236,7 @@ export function InstantLessonProvider({
         }
       })();
     },
-    [clearExpiryTimer, scheduleExpiry, startRinging, stopRinging]
+    [clearExpiryTimer, scheduleExpiry, startRinging, stopRinging, dismissedLessonIds]
   );
 
   useEffect(() => {
@@ -357,9 +372,14 @@ export function InstantLessonProvider({
 
     const handleDecline = (payload: any) => {
       const { lessonId } = payload || {};
+      if (lessonId) markLessonDismissed(String(lessonId));
       setTraineeBooking((prev) => {
         if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
         return { ...prev, step: "declined" as const, minimized: false };
+      });
+      setTrainerIncoming((prev) => {
+        if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
+        return null;
       });
       invalidateSessionLists();
     };
@@ -367,7 +387,10 @@ export function InstantLessonProvider({
     const handleExpire = (payload: any) => {
       const { lessonId } = payload || {};
       clearExpiryTimer();
-      if (lessonId) void endInstantLessonCall(String(lessonId));
+      if (lessonId) {
+        markLessonDismissed(String(lessonId));
+        void endInstantLessonCall(String(lessonId));
+      }
       setTrainerIncoming((prev) => {
         if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
         return null;
@@ -382,7 +405,10 @@ export function InstantLessonProvider({
     const handleTraineeCancelled = (payload: any) => {
       const { lessonId } = payload || {};
       clearExpiryTimer();
-      if (lessonId) void endInstantLessonCall(String(lessonId));
+      if (lessonId) {
+        markLessonDismissed(String(lessonId));
+        void endInstantLessonCall(String(lessonId));
+      }
       setTrainerIncoming((prev) => {
         if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
         return null;
@@ -409,7 +435,7 @@ export function InstantLessonProvider({
       socket.off(EVENTS.PHASE, handlePhase);
       socket.off(EVENTS.TRAINEE_CANCELLED, handleTraineeCancelled);
     };
-  }, [socket, clearExpiryTimer, scheduleExpiry, startRinging, queryClient]);
+  }, [socket, clearExpiryTimer, scheduleExpiry, startRinging, queryClient, markLessonDismissed]);
 
   useEffect(() => {
     if (
@@ -492,6 +518,7 @@ export function InstantLessonProvider({
     if (!trainerIncoming || !socket) return;
     void stopRinging();
     const lid = String(trainerIncoming.lessonId);
+    markLessonDismissed(lid);
     socket.emit(EVENTS.DECLINE, {
       lessonId: trainerIncoming.lessonId,
       coachId: trainerIncoming.coachId,
@@ -501,7 +528,7 @@ export function InstantLessonProvider({
     void dismissInstantLessonIncomingCall(lid);
     void endInstantLessonCall(lid);
     setTrainerIncoming(null);
-  }, [trainerIncoming, socket, clearExpiryTimer, stopRinging]);
+  }, [trainerIncoming, socket, clearExpiryTimer, stopRinging, markLessonDismissed]);
 
   const joinTrainerLesson = useCallback(() => {
     if (!trainerIncoming || trainerIncoming.step !== "accepted") return;
@@ -535,6 +562,14 @@ export function InstantLessonProvider({
     );
   }, []);
 
+  const minimizeTrainerIncoming = useCallback(() => {
+    void stopRinging();
+    setTrainerIncoming((prev) =>
+      prev?.step === "incoming" ? { ...prev, minimized: true } : prev
+    );
+  }, [stopRinging]);
+
+  /** Dismiss UI only after accept/join flow — does not decline on the server */
   const clearTrainerIncoming = useCallback(() => {
     clearExpiryTimer();
     void stopRinging();
@@ -640,7 +675,7 @@ export function InstantLessonProvider({
   const focusTrainerRequestFromSession = useCallback(
     (session: Record<string, unknown>) => {
       const lessonId = String(session._id ?? session.id ?? "");
-      if (!lessonId) return;
+      if (!lessonId || dismissedLessonIds.includes(lessonId)) return;
 
       const traineeInfo = (session.trainee_info ?? {}) as TrainerIncoming["traineeInfo"];
       const base = {
@@ -691,7 +726,7 @@ export function InstantLessonProvider({
         () => setTrainerIncoming(null)
       );
     },
-    [userId, scheduleExpiry]
+    [userId, scheduleExpiry, dismissedLessonIds]
   );
 
   const restoreTraineeFlowFromSession = useCallback(
@@ -814,13 +849,14 @@ export function InstantLessonProvider({
       const traineeId = String(session.trainee_id ?? "");
       if (!lessonId || !socket) return;
       void stopRinging();
+      markLessonDismissed(lessonId);
       socket.emit(EVENTS.DECLINE, { lessonId, coachId, traineeId });
       clearExpiryTimer();
       void dismissInstantLessonIncomingCall(lessonId);
       void endInstantLessonCall(lessonId);
       setTrainerIncoming(null);
     },
-    [socket, userId, stopRinging, clearExpiryTimer]
+    [socket, userId, stopRinging, clearExpiryTimer, markLessonDismissed]
   );
 
   const acceptIncomingPayload = useCallback(
@@ -898,6 +934,7 @@ export function InstantLessonProvider({
       minimizeTrainerAccepted,
       restoreTrainerAccepted,
       restoreTrainerIncoming,
+      minimizeTrainerIncoming,
       clearTrainerIncoming,
       focusTrainerRequestFromSession,
       restoreTraineeFlowFromSession,
@@ -920,6 +957,7 @@ export function InstantLessonProvider({
       minimizeTrainerAccepted,
       restoreTrainerAccepted,
       restoreTrainerIncoming,
+      minimizeTrainerIncoming,
       clearTrainerIncoming,
       focusTrainerRequestFromSession,
       restoreTraineeFlowFromSession,

@@ -13,3 +13,5 @@ export const selectUnreadCount = (s: RootState) => s.notifications.unreadCount;
 export const selectToastQueue = (s: RootState) => s.notifications.toastQueue;
 export const selectTrainerIncoming = (s: RootState) => s.instantLesson.trainerIncoming;
 export const selectTraineeBooking = (s: RootState) => s.instantLesson.traineeBooking;
+export const selectDismissedInstantLessonIds = (s: RootState) =>
+  s.instantLesson.dismissedLessonIds;

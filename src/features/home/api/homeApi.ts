@@ -362,8 +362,18 @@ export async function fetchTrainersWithSlots(params?: BrowseTrainersParams): Pro
   const body = res.data as Record<string, unknown>;
   /** Backend: `{ status, data: Trainer[] }` — see `traineeController.getSlotsOfAllTrainers`. */
   const rows = body?.data ?? body?.result;
-  if (Array.isArray(rows)) return rows;
-  return [];
+  if (!Array.isArray(rows)) return [];
+
+  return rows.filter((row) => {
+    const r = row as Record<string, unknown>;
+    if (r.isVerified === true) return true;
+    const status = String(r.status ?? "").toLowerCase();
+    if (status !== "approved") return false;
+    const tv = r.trainer_verification as Record<string, unknown> | undefined;
+    const step = String(tv?.onboarding_step ?? "");
+    if (step === "completed") return true;
+    return step === "account_created" && !tv?.submitted_for_review_at;
+  });
 }
 
 export type TrainerScheduleDay = {
