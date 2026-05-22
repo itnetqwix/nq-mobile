@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { NetqwixLogo } from "../../../components/brand/NetqwixLogo";
 import { Banner, Button, ScreenContainer } from "../../../components/ui";
+import { AuthEscapeLink } from "../../auth/components/AuthEscapeLink";
 import { useAuth } from "../../auth/context/AuthContext";
 import { OtpVerificationStep } from "../components/OtpVerificationStep";
 import { VerificationProgressHeader } from "../components/VerificationProgressHeader";
@@ -78,6 +79,7 @@ export function VerifyContactScreen({ onDone }: Props) {
 
   return (
     <ScreenContainer scroll applyTopInset padding="lg" background={colors.background}>
+      <AuthEscapeLink variant="signout" />
       <View style={styles.brand}>
         <NetqwixLogo maxWidth={200} />
       </View>

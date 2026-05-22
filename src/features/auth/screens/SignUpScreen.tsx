@@ -28,6 +28,7 @@ import { fetchSportCategories } from "../api/masterApi";
 import { SignupCategoryPicker } from "../components/SignupCategoryPicker";
 import type { SignUpPayload } from "../api/types";
 import { PasswordRequirements } from "../components/PasswordRequirements";
+import { AuthEscapeLink } from "../components/AuthEscapeLink";
 import { SignupInlineOtp } from "../components/SignupInlineOtp";
 import { SocialAuthButtons } from "../components/SocialAuthButtons";
 import { useAuth } from "../context/AuthContext";
@@ -248,6 +249,10 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
 
       {step === "contact" ? (
         <Stack gap="md">
+          <AuthEscapeLink
+            variant="signin"
+            onNavigateToLogin={() => navigation.navigate("Login")}
+          />
           <SocialAuthButtons navigation={navigation} onTokens={onSocialTokens} mode="signup" />
 
           <FormField

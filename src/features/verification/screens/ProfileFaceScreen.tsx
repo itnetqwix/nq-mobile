@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, Button, StyleSheet, ScrollView } from "react-native";
+import { AuthEscapeLink } from "../../auth/components/AuthEscapeLink";
 import {
   completeFaceLiveness,
   createFaceLivenessSession,
@@ -17,6 +18,7 @@ export function ProfileFaceScreen({ onDone }: Props) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <AuthEscapeLink variant="signout" />
       <Text style={styles.title}>Profile & face</Text>
       <Text style={styles.sub}>Step 2: complete profile and liveness check</Text>
       {msg ? <Text style={styles.msg}>{msg}</Text> : null}

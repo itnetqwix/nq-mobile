@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { View, Text, StyleSheet } from "react-native";
+import { AuthEscapeLink } from "../../auth/components/AuthEscapeLink";
 import { getVerificationStatus } from "../verificationApi";
 
 type Props = { onApproved: () => void };
@@ -16,6 +17,7 @@ export function PendingReviewScreen({ onApproved }: Props) {
 
   return (
     <View style={styles.container}>
+      <AuthEscapeLink variant="signout" />
       <Text style={styles.title}>Under review</Text>
       <Text style={styles.body}>
         We received your application. Review typically completes within 48 hours. You will be notified by email.
