@@ -1,4 +1,9 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  createPersistedQueryClient,
+  persister,
+  PERSIST_MAX_AGE_MS,
+  PersistQueryClientProvider,
+} from "../lib/queryPersist";
 import { StripeProvider } from "@stripe/stripe-react-native";
 import React, { useCallback, useEffect, useMemo } from "react";
 import { StyleSheet } from "react-native";
@@ -13,6 +18,7 @@ import {
 import { useSessionExpiredNavigation } from "../features/system-states/hooks/useSessionExpiredNavigation";
 import { useUpdateRequiredGate } from "../features/system-states/hooks/useUpdateRequiredGate";
 import { SocketProvider } from "../features/socket/SocketContext";
+import { SocketQueryInvalidationBridge } from "../features/socket/SocketQueryInvalidationBridge";
 import { InstantLessonProvider } from "../features/instant-lesson/InstantLessonContext";
 import { NotificationProvider } from "../features/notifications/NotificationContext";
 import { SessionBookingProvider } from "../features/sessions/SessionBookingContext";
@@ -36,18 +42,7 @@ function SystemStateHooks() {
 }
 
 export function AppRoot() {
-  const queryClient = useMemo(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            retry: 1,
-            staleTime: 60_000,
-          },
-        },
-      }),
-    []
-  );
+  const queryClient = useMemo(() => createPersistedQueryClient(), []);
 
   useEffect(() => {
     warmLoaderTipsCache();
@@ -79,12 +74,24 @@ export function AppRoot() {
         <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
           <ThemeProvider>
             <LoaderProvider>
-            <QueryClientProvider client={queryClient}>
+            <PersistQueryClientProvider
+              client={queryClient}
+              persistOptions={{
+                persister,
+                maxAge: PERSIST_MAX_AGE_MS,
+                dehydrateOptions: {
+                  shouldDehydrateQuery: (query) =>
+                    Array.isArray(query.queryKey) &&
+                    query.queryKey[0] === "sessions",
+                },
+              }}
+            >
               <AuthProvider>
                 <SystemStateProvider>
                   <SystemGateProvider>
                     <SystemStateHooks />
                     <SocketProvider>
+                      <SocketQueryInvalidationBridge />
                       <NotificationProvider>
                         <SessionBookingProvider>
                           <InstantLessonProvider onNavigateToMeeting={navigateToMeeting}>
@@ -100,7 +107,7 @@ export function AppRoot() {
                   </SystemGateProvider>
                 </SystemStateProvider>
               </AuthProvider>
-            </QueryClientProvider>
+            </PersistQueryClientProvider>
             </LoaderProvider>
           </ThemeProvider>
         </StripeProvider>
