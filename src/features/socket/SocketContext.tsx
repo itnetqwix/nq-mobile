@@ -87,15 +87,17 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
-      createdSocket.on("connect_error", (err) => {
-        if (!__DEV__) return;
+      createdSocket.on("connect_error", (err: Error & { description?: number; context?: { responseText?: string } }) => {
         const now = Date.now();
         if (now - lastSocketErrorLogAt < 15_000) return;
         lastSocketErrorLogAt = now;
+        const hint = err?.context?.responseText?.slice?.(0, 120) ?? "";
         // eslint-disable-next-line no-console
         console.warn(
           "[socket] connect_error",
           err?.message ?? err,
+          err?.description ? `http=${err.description}` : "",
+          hint ? `body=${hint}` : "",
           `(API: ${API_BASE_URL})`
         );
       });
