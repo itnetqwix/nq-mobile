@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } fro
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Modal,
   Pressable,
   RefreshControl,
@@ -571,7 +570,11 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
       />
     <ScrollView
       style={[styles.root, { backgroundColor: themeColors.background }]}
-      contentContainerStyle={[styles.content, { paddingBottom: space.xl * 2 + insets.bottom }]}
+      contentContainerStyle={[
+        gutter,
+        styles.content,
+        { paddingBottom: space.xl * 2 + insets.bottom },
+      ]}
       nestedScrollEnabled
       keyboardShouldPersistTaps="handled"
       refreshControl={
@@ -584,7 +587,7 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
     >
       {/* Quick Actions — trainee only (trainer hub has shortcuts) */}
       {isTrainee && (
-        <View style={[styles.quickRow, gutter]}>
+        <View style={styles.quickRow}>
           <QuickActionButton
             icon="calendar-outline"
             label={t("dashboardHome.quickSessions")}
@@ -598,7 +601,7 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
         </View>
       )}
 
-      <View style={[{ paddingTop: space.md }, gutter]}>
+      <View style={{ paddingTop: space.md }}>
         {/* Web: trainer `UserInfoCard` inside `Home-main-Cont` above recent students */}
         {isTrainer && (
           <TrainerDashboardHub
@@ -724,9 +727,7 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
 
         {/* AI Review Analysis — trainer only */}
         {isTrainer && (
-          <View style={[{ paddingHorizontal: space.md }]}>
-            <ReviewAnalysisCard />
-          </View>
+          <ReviewAnalysisCard />
         )}
 
         <LockerHub accountType={accountType} onOpenSurface={openShell} />

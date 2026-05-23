@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { space, typography, useThemeColors } from "../../../theme";
 import type { AuthScreenParams } from "../types/authIntent";
@@ -14,7 +14,6 @@ type Props = {
 export function AuthModalChrome({ children }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
-  const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const route = useRoute();
   const params = (route.params ?? {}) as AuthScreenParams;
@@ -41,8 +40,11 @@ export function AuthModalChrome({ children }: Props) {
           : undefined;
 
   return (
-    <View style={[styles.root, { backgroundColor: c.background }]}>
-      <View style={[styles.topBar, { paddingTop: Math.max(insets.top, space.sm) }]}>
+    <SafeAreaView
+      edges={["top", "bottom"]}
+      style={[styles.root, { backgroundColor: c.background }]}
+    >
+      <View style={styles.topBar}>
         <Pressable
           onPress={dismissToBrowse}
           style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.85 }]}
@@ -58,15 +60,17 @@ export function AuthModalChrome({ children }: Props) {
           <Text style={[styles.contextText, { color: c.brandNavy }]}>{contextMessage}</Text>
         </View>
       ) : null}
-      {children}
-    </View>
+      <View style={styles.body}>{children}</View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  body: { flex: 1 },
   topBar: {
     paddingHorizontal: space.md,
+    paddingTop: space.xs,
     paddingBottom: space.xs,
   },
   closeBtn: {

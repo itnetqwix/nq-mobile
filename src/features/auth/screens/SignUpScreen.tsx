@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -82,18 +82,26 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
     }
   }, [route.params?.prefillEmail, isSsoSignup]);
 
+  const isTrainerAccount = accountType === AccountType.TRAINER;
+
   const categoriesQuery = useQuery({
     queryKey: queryKeys.master.sportCategories,
     queryFn: fetchSportCategories,
     staleTime: 1000 * 60 * 30,
+    enabled: isTrainerAccount,
   });
 
   const categories = categoriesQuery.data ?? [];
   const [submitting, setSubmitting] = useState(false);
 
+  const visibleSteps = useMemo(() => {
+    const base = isSsoSignup ? STEP_ORDER.filter((s) => s !== "password") : STEP_ORDER;
+    return isTrainerAccount ? base : base.filter((s) => s !== "category");
+  }, [isSsoSignup, isTrainerAccount]);
+
   const goBack = () => {
-    const idx = STEP_ORDER.indexOf(step);
-    if (idx > 0) setStep(STEP_ORDER[idx - 1]);
+    const idx = visibleSteps.indexOf(step);
+    if (idx > 0) setStep(visibleSteps[idx - 1]);
     else navigation.navigate("Login");
   };
 
@@ -171,6 +179,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
   };
 
   const categoryError = (): string | null => {
+    if (!isTrainerAccount) return null;
     if (!category) return t("auth.chooseCategory");
     return null;
   };
@@ -190,13 +199,15 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
     password: usePassword,
     mobile_no: mobile.trim(),
     account_type: accountType,
-    category: category ?? undefined,
+    category: isTrainerAccount ? (category ?? undefined) : undefined,
     tcpa,
     accepted_terms_and_privacy: acceptedTermsAndPrivacy,
     isGoogleRegister: googleRegister,
   });
 
-  const onContinueFromAccountType = () => setStep("category");
+  const onContinueFromAccountType = () => {
+    setStep(isTrainerAccount ? "category" : "profile");
+  };
 
   const onContinueFromCategory = () => {
     const err = categoryError();
@@ -248,15 +259,20 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
     }
   };
 
-  const visibleSteps = isSsoSignup ? STEP_ORDER.filter((s) => s !== "password") : STEP_ORDER;
-
   return (
     <AuthModalChrome>
-      <ScreenContainer scroll applyTopInset padding="lg" background={colors.background}>
+      <ScreenContainer
+        scroll
+        applyTopInset={false}
+        applyBottomInset={false}
+        padding="lg"
+        background={colors.background}
+        contentStyle={styles.scrollContent}
+      >
         <View style={styles.brand}>
           <NetqwixLogo maxWidth={220} />
         </View>
-        <Text style={[typography.titleLg, { color: colors.text, marginTop: space.md }]}>
+        <Text style={[typography.titleLg, { color: colors.text, marginTop: space.sm }]}>
           {t("auth.createAccount")}
         </Text>
         <View style={styles.stepRow}>
@@ -294,7 +310,10 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
               <TypeChip
                 label={t("auth.trainee")}
                 selected={accountType === AccountType.TRAINEE}
-                onPress={() => setAccountType(AccountType.TRAINEE)}
+                onPress={() => {
+                  setAccountType(AccountType.TRAINEE);
+                  setCategory(null);
+                }}
               />
               <TypeChip
                 label={t("auth.trainer")}
@@ -306,13 +325,9 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
           </Stack>
         ) : null}
 
-        {step === "category" ? (
+        {step === "category" && isTrainerAccount ? (
           <Stack gap="md">
-            <Text style={styles.sectionLabel}>
-              {accountType === AccountType.TRAINER
-                ? t("auth.categoryTrainerTitle")
-                : t("auth.categoryTraineeTitle")}
-            </Text>
+            <Text style={styles.sectionLabel}>{t("auth.categoryTrainerTitle")}</Text>
             <Text style={styles.categoryHint}>{t("auth.categoryStepHint")}</Text>
             <View style={styles.categoryPickerBox}>
               <SignupCategoryPicker
@@ -543,7 +558,8 @@ function TypeChip({
 }
 
 const styles = StyleSheet.create({
-  brand: { alignItems: "center", marginTop: space.lg },
+  scrollContent: { flexGrow: 1 },
+  brand: { alignItems: "center", marginTop: space.xs },
   stepRow: {
     flexDirection: "row",
     alignItems: "center",

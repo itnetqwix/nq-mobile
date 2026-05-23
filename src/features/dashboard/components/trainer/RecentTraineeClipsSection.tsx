@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "../../../../components/ui";
 import { getS3ImageUrl } from "../../../../lib/imageUtils";
@@ -65,17 +65,17 @@ export function RecentTraineeClipsSection({ onOpenClips }: Props) {
         </Pressable>
       }
     >
-      <FlatList
+      <ScrollView
         horizontal
         nestedScrollEnabled
         showsHorizontalScrollIndicator={false}
-        data={tiles}
-        keyExtractor={(item) => item.id}
         contentContainerStyle={{ gap: space.sm }}
-        renderItem={({ item }) => {
+      >
+        {tiles.map((item) => {
           const uri = getS3ImageUrl(item.thumb);
           return (
             <Pressable
+              key={item.id}
               style={({ pressed }) => [styles.tile, pressed && { opacity: 0.9 }]}
               onPress={onOpenClips}
             >
@@ -91,8 +91,8 @@ export function RecentTraineeClipsSection({ onOpenClips }: Props) {
               </Text>
             </Pressable>
           );
-        }}
-      />
+        })}
+      </ScrollView>
     </DashboardSection>
   );
 }

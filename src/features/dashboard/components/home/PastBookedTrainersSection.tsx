@@ -1,5 +1,5 @@
 import React from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Skeleton } from "../../../../components/ui";
@@ -44,17 +44,17 @@ export function PastBookedTrainersSection({ onSelectTrainer }: Props) {
     <View style={styles.wrap}>
       <Text style={styles.title}>{t("traineeDiscover.pastBookedTitle")}</Text>
       <Text style={styles.sub}>{t("traineeDiscover.pastBookedSub")}</Text>
-      <FlatList
+      <ScrollView
         horizontal
         nestedScrollEnabled
         showsHorizontalScrollIndicator={false}
-        data={trainers}
-        keyExtractor={(item, i) => String(item?._id ?? i)}
         contentContainerStyle={styles.strip}
-        renderItem={({ item }) => {
+      >
+        {trainers.map((item, i) => {
           const name = getTrainerName(item);
           return (
             <Pressable
+              key={String(item?._id ?? i)}
               style={({ pressed }) => [styles.tile, pressed && { opacity: 0.9 }]}
               onPress={() => onSelectTrainer(item)}
               accessibilityRole="button"
@@ -70,8 +70,8 @@ export function PastBookedTrainersSection({ onSelectTrainer }: Props) {
               </View>
             </Pressable>
           );
-        }}
-      />
+        })}
+      </ScrollView>
     </View>
   );
 }

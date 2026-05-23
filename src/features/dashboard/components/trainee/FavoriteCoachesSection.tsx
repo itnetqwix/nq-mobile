@@ -1,5 +1,5 @@
 import React from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
 import { Skeleton } from "../../../../components/ui";
 import { getTrainerName } from "../../../bookexpert/lib/trainerUtils";
 import { useFavoriteTrainers } from "../../hooks/useFavoriteTrainers";
@@ -29,17 +29,17 @@ export function FavoriteCoachesSection({ onSelectTrainer }: Props) {
 
   return (
     <DashboardSection title={t("traineeDiscover.favoriteCoaches")}>
-      <FlatList
+      <ScrollView
         horizontal
         nestedScrollEnabled
         showsHorizontalScrollIndicator={false}
-        data={favorites}
-        keyExtractor={(item, i) => String(item._id ?? i)}
         contentContainerStyle={styles.strip}
-        renderItem={({ item }) => {
+      >
+        {favorites.map((item, i) => {
           const name = getTrainerName(item);
           return (
             <Pressable
+              key={String(item._id ?? i)}
               style={({ pressed }) => [styles.tile, pressed && { opacity: 0.9 }]}
               onPress={() => onSelectTrainer(item)}
             >
@@ -49,8 +49,8 @@ export function FavoriteCoachesSection({ onSelectTrainer }: Props) {
               </Text>
             </Pressable>
           );
-        }}
-      />
+        })}
+      </ScrollView>
     </DashboardSection>
   );
 }

@@ -142,7 +142,7 @@ export function RootNavigator() {
               name="Auth"
               component={AuthNavigator}
               options={{
-                presentation: "modal",
+                presentation: "fullScreenModal",
                 animation: "slide_from_bottom",
                 headerShown: false,
                 gestureEnabled: true,

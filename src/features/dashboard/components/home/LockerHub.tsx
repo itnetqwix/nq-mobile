@@ -28,11 +28,9 @@ export function LockerHub({ accountType, onOpenSurface }: Props) {
       hint: {
         ...typography.caption,
         color: palette.textMuted,
-        paddingHorizontal: space.md,
         paddingBottom: space.sm,
       },
       scrollContent: {
-        paddingHorizontal: space.md,
         paddingBottom: space.md,
         gap: space.sm,
       },
@@ -65,7 +63,7 @@ export function LockerHub({ accountType, onOpenSurface }: Props) {
           />
         ))}
       </ScrollView>
-      <View style={{ paddingHorizontal: space.md, paddingBottom: space.xs }}>
+      <View style={{ paddingBottom: space.xs }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name="lock-closed" size={14} color={c.textMuted} />
           <Text style={[typography.caption, { color: c.textMuted, flex: 1 }]}>

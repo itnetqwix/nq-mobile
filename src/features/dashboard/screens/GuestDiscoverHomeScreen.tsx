@@ -3,7 +3,9 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { NetqwixLogo } from "../../../components/brand/NetqwixLogo";
 import { AccountType } from "../../../constants/accountType";
+import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import type { HomeStackParamList } from "../../../navigation/types";
 import { space, typography, useThemeColors } from "../../../theme";
@@ -17,12 +19,16 @@ export function GuestDiscoverHomeScreen() {
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const insets = useSafeAreaInsets();
+  const gutter = useHorizontalGutter("md");
   const navigation = useNavigation<Nav>();
   const { requireAuth, openAuth } = useRequireAuth();
   const [profileTrainer, setProfileTrainer] = useState<Record<string, unknown> | null>(null);
 
   useLayoutEffect(() => {
     navigation.setOptions({
+      headerTitle: () => (
+        <NetqwixLogo variant="wordmark" maxWidth={132} height={34} compact align="center" />
+      ),
       headerRight: () => (
         <Pressable
           onPress={() => openAuth("Login")}
@@ -64,8 +70,15 @@ export function GuestDiscoverHomeScreen() {
       />
       <ScrollView
         style={{ flex: 1, backgroundColor: c.background }}
-        contentContainerStyle={{ paddingBottom: space.xl * 2 + insets.bottom }}
+        contentContainerStyle={[
+          gutter,
+          {
+            paddingTop: space.sm,
+            paddingBottom: space.xl * 2 + insets.bottom,
+          },
+        ]}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         <View style={[styles.banner, { backgroundColor: c.brandAccentSubtle, borderColor: c.brandAccent }]}>
           <Text style={[typography.titleSm, { color: c.brandNavy }]}>
@@ -112,7 +125,7 @@ export function GuestDiscoverHomeScreen() {
               bookMode: "schedule",
             })
           }
-          onToggleFavoriteGuest={(trainer) =>
+          onToggleFavoriteGuest={() =>
             requireAuth(undefined, {
               intent: "favorite",
               messageKey: "guest.signInToContinue",
@@ -129,9 +142,7 @@ const styles = StyleSheet.create({
   headerBtn: { paddingHorizontal: space.sm, paddingVertical: space.xs },
   headerBtnText: { fontWeight: "700", fontSize: 16 },
   banner: {
-    marginHorizontal: space.md,
-    marginTop: space.md,
-    marginBottom: space.sm,
+    marginBottom: space.md,
     padding: space.md,
     borderRadius: 12,
     borderWidth: 1,
@@ -144,6 +155,7 @@ const styles = StyleSheet.create({
   bannerActions: {
     flexDirection: "row",
     alignItems: "center",
+    flexWrap: "wrap",
     gap: space.md,
     marginTop: space.md,
   },

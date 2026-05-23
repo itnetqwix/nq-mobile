@@ -15,7 +15,7 @@ type Props = {
 export function AuthScreenLayout({ title, subtitle, children, footer, style }: Props) {
   const c = useThemeColors();
   const styles = StyleSheet.create({
-    brand: { alignItems: "center", marginTop: space.md },
+    brand: { alignItems: "center", marginTop: space.xs },
     title: { ...typography.titleLg, color: c.text, marginTop: space.lg, textAlign: "center" },
     subtitle: {
       ...typography.bodyMd,
@@ -33,10 +33,19 @@ export function AuthScreenLayout({ title, subtitle, children, footer, style }: P
       padding: space.lg,
     },
     footer: { marginTop: space.lg },
+    scrollContent: { flexGrow: 1 },
   });
 
   return (
-    <ScreenContainer scroll applyTopInset={false} padding="lg" background={c.background} style={style}>
+    <ScreenContainer
+      scroll
+      applyTopInset={false}
+      applyBottomInset={false}
+      padding="lg"
+      background={c.background}
+      style={style}
+      contentStyle={styles.scrollContent}
+    >
       <View style={styles.brand}>
         <NetqwixLogo maxWidth={260} height={80} />
       </View>

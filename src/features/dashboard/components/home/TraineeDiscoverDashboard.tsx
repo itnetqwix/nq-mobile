@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -240,6 +240,14 @@ export function TraineeDiscoverDashboard({
     return dashboardCategories.filter((c) => c !== selectedCategory).slice(0, 3);
   }, [selectedCategory, dashboardCategories]);
 
+  const categoryStripItems = useMemo(
+    () => [
+      { id: "__all__", label: t("traineeDiscover.all") },
+      ...dashboardCategories.map((c) => ({ id: c, label: c })),
+    ],
+    [dashboardCategories, t]
+  );
+
   return (
     <View style={styles.root}>
       <TrainerBrowseFiltersSheet
@@ -338,14 +346,13 @@ export function TraineeDiscoverDashboard({
           {showCategoryHint && (
             <Text style={styles.hint}>{t("traineeDiscover.addInterestsHint")}</Text>
           )}
-          <FlatList
+          <ScrollView
             horizontal
             nestedScrollEnabled
             showsHorizontalScrollIndicator={false}
-            data={[{ id: "__all__", label: t("traineeDiscover.all") }, ...dashboardCategories.map((c) => ({ id: c, label: c }))]}
-            keyExtractor={(item) => item.id}
             contentContainerStyle={styles.categoryStrip}
-            renderItem={({ item }) => {
+          >
+            {categoryStripItems.map((item) => {
               const active =
                 item.id === "__all__" ? selectedCategory === null : selectedCategory === item.label;
               const icon =
@@ -354,6 +361,7 @@ export function TraineeDiscoverDashboard({
                   : getCategoryIcon(item.label);
               return (
                 <Pressable
+                  key={item.id}
                   style={[styles.categoryTile, active && styles.categoryTileActive]}
                   onPress={() =>
                     setSelectedCategory(item.id === "__all__" ? null : item.label)
@@ -374,8 +382,8 @@ export function TraineeDiscoverDashboard({
                   </Text>
                 </Pressable>
               );
-            }}
-          />
+            })}
+          </ScrollView>
         </>
       )}
 
