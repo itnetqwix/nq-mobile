@@ -253,8 +253,15 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
 export function navMatrixFor(
   surface: "drawer" | "more",
   accountType: AccountTypeValue | string | null,
-  group?: "dashboard" | "tools"
+  group?: "dashboard" | "tools",
+  options?: { guest?: boolean }
 ): NavMatrixEntry[] {
+  if (options?.guest) {
+    const guestIds = new Set(["my-locker", "book-lesson", "about-us", "contact-us"]);
+    return NAV_MATRIX.filter(
+      (entry) => entry.surfaces.includes(surface) && guestIds.has(entry.id)
+    );
+  }
   return NAV_MATRIX.filter((entry) => {
     if (!entry.surfaces.includes(surface)) return false;
     if (group && entry.group !== group) return false;

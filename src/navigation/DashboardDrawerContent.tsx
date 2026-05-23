@@ -14,6 +14,8 @@ import { NetqwixLogo } from "../components/brand/NetqwixLogo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radii, space, typography, useThemeColors } from "../theme";
 import { useAuth } from "../features/auth/context/AuthContext";
+import { useGuestMode } from "../features/auth/hooks/useGuestMode";
+import { useRequireAuth } from "../features/auth/hooks/useRequireAuth";
 import type { MainTabParamList } from "./types";
 import type { NavigatorScreenParams } from "@react-navigation/native";
 import { navMatrixFor, type NavMatrixEntry } from "./navMatrix";
@@ -23,11 +25,13 @@ export function DashboardDrawerContent(props: DrawerContentComponentProps) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const isGuest = useGuestMode();
   const { accountType, signOut } = useAuth();
+  const { openAuth } = useRequireAuth();
 
   const drawerEntries = useMemo(
-    () => navMatrixFor("drawer", accountType),
-    [accountType]
+    () => navMatrixFor("drawer", accountType, undefined, { guest: isGuest }),
+    [accountType, isGuest]
   );
 
   const activeNav = useMemo(
@@ -137,11 +141,32 @@ export function DashboardDrawerContent(props: DrawerContentComponentProps) {
 
       <View style={styles.spacer} />
 
-      <Pressable style={({ pressed }) => [styles.row, pressed && styles.rowPressed]} onPress={onLogout}>
+      <Pressable
+        style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+        onPress={() => {
+          if (isGuest) {
+            openAuth("Login");
+            close();
+            return;
+          }
+          onLogout();
+        }}
+      >
         <View style={styles.iconWrap}>
-          <Ionicons name="log-out-outline" size={22} color={colors.danger} />
+          <Ionicons
+            name={isGuest ? "log-in-outline" : "log-out-outline"}
+            size={22}
+            color={isGuest ? colors.brandAccent : colors.danger}
+          />
         </View>
-        <Text style={[styles.rowLabel, { color: colors.danger }]}>{t("auth.signOutLower")}</Text>
+        <Text
+          style={[
+            styles.rowLabel,
+            { color: isGuest ? colors.brandAccent : colors.danger },
+          ]}
+        >
+          {isGuest ? t("auth.signIn") : t("auth.signOutLower")}
+        </Text>
       </Pressable>
     </DrawerContentScrollView>
   );

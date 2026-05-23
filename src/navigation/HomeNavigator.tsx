@@ -3,7 +3,7 @@ import React from "react";
 import { useThemeColors } from "../theme";
 import { dashboardRouteById } from "../features/dashboard/config/dashboardRoutes";
 import { shellSurfaceById } from "../features/dashboard/config/shellSurfaces";
-import { DashboardHomeScreen } from "../features/dashboard/screens/DashboardHomeScreen";
+import { DashboardHomeEntry } from "./DashboardHomeEntry";
 import { DashboardFeatureScreen } from "../features/dashboard/screens/DashboardFeatureScreen";
 import { ShellSurfaceScreen } from "../features/dashboard/screens/ShellSurfaceScreen";
 import { TransactionDetailScreen } from "../features/dashboard/screens/TransactionDetailScreen";
@@ -33,7 +33,7 @@ export function HomeNavigator() {
     >
       <Stack.Screen
         name="DashboardHome"
-        component={DashboardHomeScreen}
+        component={DashboardHomeEntry}
         options={{ title: i18n.t("nav.dashboard") }}
       />
       <Stack.Screen

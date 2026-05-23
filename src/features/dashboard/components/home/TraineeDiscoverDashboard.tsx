@@ -48,6 +48,8 @@ import {
 import { HomeUserAvatar } from "./HomeUserAvatar";
 
 type Props = {
+  /** Browse without account — trainer directory only; booking requires sign-in. */
+  isGuest?: boolean;
   name: string;
   accountType: string;
   profilePicture?: string;
@@ -61,6 +63,7 @@ type Props = {
 };
 
 export function TraineeDiscoverDashboard({
+  isGuest = false,
   name,
   accountType,
   profilePicture,
@@ -82,9 +85,9 @@ export function TraineeDiscoverDashboard({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(TRAINEE_COACH_PREVIEW_COUNT);
 
-  const { nextSession } = useDashboardSessions(accountType);
-  const { data: walletBalance } = useWalletBalance();
-  const { isFavorite, toggleFavorite } = useFavoriteTrainers();
+  const { nextSession } = useDashboardSessions(isGuest ? null : accountType);
+  const { data: walletBalance } = useWalletBalance(!isGuest);
+  const { isFavorite, toggleFavorite } = useFavoriteTrainers(!isGuest);
   const apiFilterParams = useMemo(() => filtersToApiParams(browseFilters), [browseFilters]);
   const activeFilterCount = countActiveFilters(browseFilters);
 
@@ -166,7 +169,8 @@ export function TraineeDiscoverDashboard({
     queryKey: queryKeys.presence.bookExpertOnline,
     queryFn: fetchOnlineUsers,
     staleTime: 30_000,
-    refetchInterval: 30_000,
+    refetchInterval: isGuest ? false : 30_000,
+    enabled: !isGuest,
   });
 
   const { isOnline } = useOnlinePresence();
@@ -207,8 +211,9 @@ export function TraineeDiscoverDashboard({
       ? `${mergedRows.length}+`
       : String(mergedRows.length);
 
-  const roleLabel =
-    accountType === AccountType.TRAINEE
+  const roleLabel = isGuest
+    ? t("guest.exploringAsGuest")
+    : accountType === AccountType.TRAINEE
       ? t("traineeDiscover.roleTrainee")
       : accountType || t("menu.member");
 
@@ -257,7 +262,7 @@ export function TraineeDiscoverDashboard({
         </Pressable>
       </View>
 
-      {onOpenWallet ? (
+      {onOpenWallet && !isGuest ? (
         <Pressable
           style={({ pressed }) => [styles.walletCard, pressed && { opacity: 0.92 }]}
           onPress={onOpenWallet}
@@ -271,14 +276,14 @@ export function TraineeDiscoverDashboard({
         </Pressable>
       ) : null}
 
-      {nextSession ? (
+      {!isGuest && nextSession ? (
         <ContinueWhereYouLeftOffCard
           session={nextSession}
           onOpenSession={onOpenSession ? () => onOpenSession(nextSession) : undefined}
         />
       ) : null}
 
-      <PastBookedTrainersSection onSelectTrainer={onViewTrainer} />
+      {!isGuest ? <PastBookedTrainersSection onSelectTrainer={onViewTrainer} /> : null}
 
       <View style={styles.searchBar}>
         <Ionicons name="search-outline" size={20} color={themeColors.textMuted} />
@@ -318,7 +323,7 @@ export function TraineeDiscoverDashboard({
         <Text style={styles.searchHint}>{t("bookExpert.searchMinHint")}</Text>
       )}
 
-      <FavoriteCoachesSection onSelectTrainer={onViewTrainer} />
+      {!isGuest ? <FavoriteCoachesSection onSelectTrainer={onViewTrainer} /> : null}
 
       {!searchActive && (
         <>
@@ -439,8 +444,8 @@ export function TraineeDiscoverDashboard({
                 onBook={onInstantBook}
                 onSchedule={onScheduleBook}
                 highlightCategory={highlight}
-                isFavorite={isFavorite(trainer)}
-                onToggleFavorite={toggleFavorite}
+                isFavorite={isGuest ? false : isFavorite(trainer)}
+                onToggleFavorite={isGuest ? undefined : toggleFavorite}
               />
             );
           })}

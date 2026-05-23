@@ -7,13 +7,14 @@ import {
   removeFavoriteTrainer,
 } from "../api/favoriteTrainersApi";
 
-export function useFavoriteTrainers() {
+export function useFavoriteTrainers(enabled = true) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: queryKeys.trainee.favorites,
     queryFn: fetchFavoriteTrainers,
     staleTime: 60_000,
+    enabled,
   });
 
   const favoriteIds = new Set(

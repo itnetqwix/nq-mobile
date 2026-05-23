@@ -31,6 +31,8 @@ import { TrainerBrowseCard } from "../components/TrainerBrowseCard";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
 import { useAuth } from "../../auth/context/AuthContext";
+import { useGuestMode } from "../../auth/hooks/useGuestMode";
+import { useRequireAuth } from "../../auth/hooks/useRequireAuth";
 import { getTraineeInterests } from "../../dashboard/lib/traineeInterests";
 
 type Props = { bookLessonTrainerId?: string };
@@ -38,6 +40,8 @@ type Props = { bookLessonTrainerId?: string };
 export function BookExpertScreen({ bookLessonTrainerId }: Props) {
   const { t } = useAppTranslation();
   const { user } = useAuth();
+  const isGuest = useGuestMode();
+  const { requireAuth } = useRequireAuth();
   const themeColors = useThemeColors();
   const styles = useMemo(() => makeStyles(themeColors), [themeColors]);
 
@@ -97,7 +101,8 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
     queryKey: queryKeys.presence.bookExpertOnline,
     queryFn: fetchOnlineUsers,
     staleTime: 30_000,
-    refetchInterval: 30_000,
+    refetchInterval: isGuest ? false : 30_000,
+    enabled: !isGuest,
   });
 
   const { isOnline } = useOnlinePresence();
@@ -138,8 +143,8 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
         visible={!!profileTrainer}
         trainer={profileTrainer}
         onDismiss={() => setProfileTrainer(null)}
-        onInstant={(t) => setWizardTrainer(t)}
-        onSchedule={(t) => setScheduleTrainer(t)}
+        onInstant={(t) => requireAuth(() => setWizardTrainer(t), "guest.signInToBook")}
+        onSchedule={(t) => requireAuth(() => setScheduleTrainer(t), "guest.signInToBook")}
       />
       <TrainerBrowseFiltersSheet
         visible={filtersOpen}
@@ -217,8 +222,8 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
               trainer={item}
               themeColors={themeColors}
               onPress={setProfileTrainer}
-              onBook={setWizardTrainer}
-              onSchedule={setScheduleTrainer}
+              onBook={(t) => requireAuth(() => setWizardTrainer(t), "guest.signInToBook")}
+              onSchedule={(t) => requireAuth(() => setScheduleTrainer(t), "guest.signInToBook")}
             />
           )}
           contentContainerStyle={styles.list}

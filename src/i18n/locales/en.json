@@ -763,6 +763,19 @@
     "acceptRequestA11y": "Accept friend request from {{name}}",
     "rejectRequestA11y": "Reject friend request from {{name}}"
   },
+  "guest": {
+    "explorerName": "Explorer",
+    "exploringAsGuest": "Guest",
+    "exploreBannerTitle": "Explore NetQwix",
+    "exploreBannerBody": "Browse coaches and categories. Sign in when you're ready to book, message, or save favorites.",
+    "signInTitle": "Sign in required",
+    "signInToContinue": "Create a free account or sign in to use this feature.",
+    "signInToBook": "Sign in to book instant or scheduled sessions with a coach.",
+    "sessionsTitle": "Your sessions",
+    "sessionsBody": "Sign in to view upcoming lessons, join calls, and manage bookings.",
+    "chatsTitle": "Messages",
+    "chatsBody": "Sign in to chat with coaches and trainees."
+  },
   "traineeDiscover": {
     "welcome": "Hi, {{name}}",
     "roleTrainee": "Trainee",

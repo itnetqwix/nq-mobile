@@ -25,6 +25,7 @@ export function useDashboardSessions(accountType: string | null) {
     queryKey: queryKeys.sessions.upcoming,
     queryFn: () => fetchScheduledMeetings("upcoming"),
     staleTime: 60_000,
+    enabled: Boolean(accountType),
   });
 
   const nowSessions = useMemo(

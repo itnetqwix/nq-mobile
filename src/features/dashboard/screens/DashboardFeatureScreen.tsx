@@ -2,6 +2,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import React from "react";
 import { EmptyState } from "../../../components/ui";
 import { useAuth } from "../../auth/context/AuthContext";
+import { useGuestMode } from "../../auth/hooks/useGuestMode";
 import type { MenuStackParamList } from "../../../navigation/types";
 import { isDashboardRouteAllowed } from "../config/dashboardRoutes";
 import { AccountType } from "../../../constants/accountType";
@@ -26,8 +27,9 @@ export function DashboardFeatureScreen({ route }: DashboardFeatureScreenProps) {
   const { t } = useAppTranslation();
   const { featureId, bookLessonTrainerId } = route.params;
   const { accountType } = useAuth();
+  const isGuest = useGuestMode();
 
-  if (!isDashboardRouteAllowed(featureId, accountType)) {
+  if (!isDashboardRouteAllowed(featureId, accountType, { guest: isGuest })) {
     return (
       <StackSwipeBackShell>
         <EmptyState

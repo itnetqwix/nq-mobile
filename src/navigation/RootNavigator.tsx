@@ -28,6 +28,11 @@ function MainWithAppUnlock() {
   );
 }
 
+/** Guest browse — same dashboard shell, no biometric gate or auth-only overlays. */
+function GuestBrowseShell() {
+  return <DashboardDrawerShell />;
+}
+
 export function RootNavigator() {
   const { status, refreshUser } = useAuth();
   const { refetchVerificationGate, ...verificationGate } = useTrainerVerificationGate();
@@ -63,7 +68,7 @@ export function RootNavigator() {
   return (
     <>
       <Stack.Navigator
-        key={signedIn ? "signedIn" : "signedOut"}
+        key={signedIn ? "signedIn" : "guestBrowse"}
         screenOptions={{
           headerShown: false,
           gestureEnabled: true,
@@ -96,7 +101,16 @@ export function RootNavigator() {
           </>
         ) : (
           <>
-            <Stack.Screen name="Auth" component={AuthNavigator} />
+            <Stack.Screen name="Main" component={GuestBrowseShell} />
+            <Stack.Screen
+              name="Auth"
+              component={AuthNavigator}
+              options={{
+                presentation: "modal",
+                animation: "slide_from_bottom",
+                headerShown: false,
+              }}
+            />
             <Stack.Screen
               name="SystemState"
               component={SystemStateScreen}

@@ -57,7 +57,7 @@ export type DashboardDrawerParamList = {
 };
 
 export type RootStackParamList = {
-  Auth: undefined;
+  Auth: NavigatorScreenParams<AuthStackParamList> | undefined;
   Main: undefined;
   Meeting: { lessonId: string };
   SystemState: { stateId: SystemStateId; message?: string };

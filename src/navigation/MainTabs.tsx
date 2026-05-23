@@ -3,6 +3,8 @@ import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChatsScreen } from "../features/chats/screens/ChatsScreen";
+import { GuestTabGateScreen } from "../features/auth/screens/GuestTabGateScreen";
+import { useGuestMode } from "../features/auth/hooks/useGuestMode";
 import { ScheduleScreen } from "../features/schedule/screens/ScheduleScreen";
 import { useThemeColors } from "../theme";
 import { AppScreenHeader } from "./AppScreenHeader";
@@ -28,6 +30,7 @@ function tabHeaderOptions(title: string) {
 export function MainTabs() {
   const insets = useSafeAreaInsets();
   const c = useThemeColors();
+  const isGuest = useGuestMode();
   const tabPadBottom = Math.max(insets.bottom, 6);
   const tabPadTop = 6;
   const tabMinHeight = 52 + tabPadTop + tabPadBottom;
@@ -85,7 +88,15 @@ export function MainTabs() {
       >
         {(props) => (
           <TabSwipeShell tabIndex={1}>
-            <ScheduleScreen {...props} />
+            {isGuest ? (
+              <GuestTabGateScreen
+                icon="time-outline"
+                titleKey="guest.sessionsTitle"
+                bodyKey="guest.sessionsBody"
+              />
+            ) : (
+              <ScheduleScreen {...props} />
+            )}
           </TabSwipeShell>
         )}
       </Tab.Screen>
@@ -100,7 +111,15 @@ export function MainTabs() {
       >
         {(props) => (
           <TabSwipeShell tabIndex={2}>
-            <ChatsScreen {...props} />
+            {isGuest ? (
+              <GuestTabGateScreen
+                icon="chatbubbles-outline"
+                titleKey="guest.chatsTitle"
+                bodyKey="guest.chatsBody"
+              />
+            ) : (
+              <ChatsScreen {...props} />
+            )}
           </TabSwipeShell>
         )}
       </Tab.Screen>

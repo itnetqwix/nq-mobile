@@ -138,10 +138,21 @@ export function dashboardRoutesForRoles(accountType: string | null): DashboardRo
   return DASHBOARD_ROUTES.filter((r) => r.allowedRoles.includes(role));
 }
 
+/** Routes guests may open while browsing (no account). */
+export const GUEST_BROWSE_ROUTE_IDS: readonly DashboardRouteId[] = [
+  "book-lesson",
+  "about-us",
+  "contact-us",
+];
+
 export function isDashboardRouteAllowed(
   id: DashboardRouteId,
-  accountType: string | null
+  accountType: string | null,
+  options?: { guest?: boolean }
 ): boolean {
+  if (options?.guest) {
+    return GUEST_BROWSE_ROUTE_IDS.includes(id);
+  }
   if (!accountType) return false;
   const route = dashboardRouteById(id);
   if (!route) return false;
