@@ -1,8 +1,9 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import React from "react";
+import React, { useEffect } from "react";
 import { EmptyState } from "../../../components/ui";
 import { useAuth } from "../../auth/context/AuthContext";
 import { useGuestMode } from "../../auth/hooks/useGuestMode";
+import { useRequireAuth } from "../../auth/hooks/useRequireAuth";
 import type { MenuStackParamList } from "../../../navigation/types";
 import { isDashboardRouteAllowed } from "../config/dashboardRoutes";
 import { AccountType } from "../../../constants/accountType";
@@ -23,13 +24,23 @@ import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 export type DashboardFeatureScreenProps = NativeStackScreenProps<MenuStackParamList, "DashboardFeature">;
 
-export function DashboardFeatureScreen({ route }: DashboardFeatureScreenProps) {
+export function DashboardFeatureScreen({ route, navigation }: DashboardFeatureScreenProps) {
   const { t } = useAppTranslation();
   const { featureId, bookLessonTrainerId } = route.params;
   const { accountType } = useAuth();
   const isGuest = useGuestMode();
+  const { redirectToAuth } = useRequireAuth();
 
-  if (!isDashboardRouteAllowed(featureId, accountType, { guest: isGuest })) {
+  const allowed = isDashboardRouteAllowed(featureId, accountType, { guest: isGuest });
+
+  useEffect(() => {
+    if (isGuest && !allowed) {
+      redirectToAuth("Login", { messageKey: "guest.signInToContinue" });
+      navigation.goBack();
+    }
+  }, [isGuest, allowed, redirectToAuth, navigation]);
+
+  if (!allowed) {
     return (
       <StackSwipeBackShell>
         <EmptyState

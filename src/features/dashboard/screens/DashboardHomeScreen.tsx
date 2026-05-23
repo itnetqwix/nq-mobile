@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
+import { PendingAuthResumeBridge } from "../../auth/components/PendingAuthResumeBridge";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -536,8 +537,20 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
     pendingSessions.length === 0 &&
     upcomingConfirmed.length === 0;
 
+  const resumeBook = useCallback(
+    (trainer: Record<string, unknown>, mode: "instant" | "schedule") => {
+      if (mode === "schedule") {
+        setScheduleTrainer(trainer);
+      } else {
+        setWizardTrainer(trainer);
+      }
+    },
+    []
+  );
+
   return (
     <>
+      <PendingAuthResumeBridge onResumeBook={isTrainee ? resumeBook : undefined} />
       <InstantLessonBookingWizardModal
         visible={!!wizardTrainer}
         trainer={wizardTrainer}

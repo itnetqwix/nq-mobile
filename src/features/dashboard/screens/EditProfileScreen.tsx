@@ -253,6 +253,15 @@ export function EditProfileScreen() {
                 inputStyle={{ minHeight: 110, textAlignVertical: "top" }}
               />
               <Pressable
+                onPress={() =>
+                  navigation.navigate("ShellSurface", { surfaceId: "professionalProfile" })
+                }
+                style={styles.enhanceBtn}
+              >
+                <Ionicons name="ribbon-outline" size={16} color={c.brandAccent} />
+                <Text style={styles.enhanceBtnText}>{t("trainerProfile.editProfessional")}</Text>
+              </Pressable>
+              <Pressable
                 onPress={async () => {
                   try {
                     setEnhancing(true);

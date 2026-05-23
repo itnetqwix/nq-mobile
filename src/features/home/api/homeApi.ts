@@ -248,6 +248,7 @@ export type ProfileUpdate = Partial<{
   preferred_locale: string;
   category: string;
   hourly_rate: string;
+  extraInfo: Record<string, unknown>;
 }>;
 
 /**
@@ -408,18 +409,22 @@ function extractApiArray(body: unknown): any[] {
   return [];
 }
 
-/** POST `/common/get-clips` — returns clips grouped by category (`_id` = category name). */
-export async function postMyClipsGrouped(params?: {
-  trainee_id?: string;
-}): Promise<{ _id: string; clips: any[] }[]> {
-  const res = await apiClient.post(API_ROUTES.common.getClips, params ?? {});
-  return extractApiArray(res.data);
+/** POST `/common/get-clips` — nested category → subcategory groups. */
+export async function postMyClipsGrouped(params?: { trainee_id?: string }) {
+  const { postMyClipsNested } = await import("../../clips/api/clipsApi");
+  return postMyClipsNested(params);
 }
 
-/** POST `/common/get-shared-clips` — friend-shared clips grouped by category. */
-export async function postSharedClipsGrouped(): Promise<{ _id: string; clips: any[] }[]> {
-  const res = await apiClient.post(API_ROUTES.common.getSharedClips, {});
-  return extractApiArray(res.data);
+/** POST `/common/get-shared-clips` — grouped by sharer name. */
+export async function postSharedClipsGrouped() {
+  const { postSharedClipsBySharer } = await import("../../clips/api/clipsApi");
+  return postSharedClipsBySharer();
+}
+
+/** POST `/common/get-library-clips` — Netqwix library nested groups. */
+export async function postLibraryClipsGrouped() {
+  const { postLibraryClipsNested } = await import("../../clips/api/clipsApi");
+  return postLibraryClipsNested();
 }
 
 export type StoragePlanInfo = {
@@ -508,7 +513,9 @@ export type ClipConfirmPayload = {
   thumbnailKey: string;
   fileType: string;
   title: string;
-  category: string;
+  category?: string;
+  category_id?: string;
+  subcategory_id?: string;
   fileSizeBytes: number;
   shareOptions: {
     type: string;
@@ -540,7 +547,9 @@ export async function uploadLockerClip(params: {
   videoSizeBytes: number;
   thumbUri: string;
   title: string;
-  category: string;
+  category?: string;
+  category_id?: string;
+  subcategory_id?: string;
   shareOptions: ClipConfirmPayload["shareOptions"];
   onVideoProgress?: (percent: number) => void;
   onThumbProgress?: (percent: number) => void;
@@ -581,6 +590,8 @@ export async function uploadLockerClip(params: {
     fileType: params.videoMime,
     title: params.title,
     category: params.category,
+    category_id: params.category_id,
+    subcategory_id: params.subcategory_id,
     fileSizeBytes: params.videoSizeBytes,
     shareOptions: params.shareOptions,
   });

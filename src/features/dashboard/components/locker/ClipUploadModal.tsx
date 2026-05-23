@@ -20,7 +20,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AccountType } from "../../../../constants/accountType";
-import { fetchSportCategories } from "../../../auth/api/masterApi";
+import { fetchClipTaxonomy } from "../../../clips/api/clipsApi";
 import { useAuth } from "../../../auth/context/AuthContext";
 import { fetchFriends, fetchStorageInfo, uploadLockerClip } from "../../../home/api/homeApi";
 import { lockerMutated } from "../../../../store/actions/cacheInvalidation";
@@ -59,7 +59,8 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
   const [videoAsset, setVideoAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [thumbUri, setThumbUri] = useState<string | null>(null);
   const [title, setTitle] = useState("");
-  const [categorySel, setCategorySel] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [subcategoryId, setSubcategoryId] = useState("");
   const [thumbBusy, setThumbBusy] = useState(false);
   const [uploadBusy, setUploadBusy] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0);
@@ -68,12 +69,16 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
   const [shareTarget, setShareTarget] = useState<ShareTarget>(SHARE_MY_CLIPS);
   const [selectedFriendEmails, setSelectedFriendEmails] = useState<string[]>([]);
 
-  const { data: categories = [], isLoading: catLoading } = useQuery<string[]>({
-    queryKey: queryKeys.master.sportCategories,
-    queryFn: fetchSportCategories,
+  const { data: taxonomy, isLoading: catLoading } = useQuery({
+    queryKey: queryKeys.clips.taxonomy,
+    queryFn: fetchClipTaxonomy,
     enabled: visible,
     staleTime: 300_000,
   });
+
+  const categories = taxonomy?.categories ?? [];
+  const selectedCategory = categories.find((c) => c.id === categoryId);
+  const subcategories = selectedCategory?.subcategories ?? [];
 
   const { data: friendsList = [] } = useQuery<any[]>({
     queryKey: queryKeys.friends.forClipShare,
@@ -87,7 +92,8 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
       setVideoAsset(null);
       setThumbUri(null);
       setTitle("");
-      setCategorySel("");
+      setCategoryId("");
+      setSubcategoryId("");
       setThumbBusy(false);
       setUploadBusy(false);
       setVideoProgress(0);
@@ -99,15 +105,12 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
   }, [visible]);
 
   useEffect(() => {
-    if (visible && isTrainer && profileCategory) {
-      setCategorySel(profileCategory);
-    }
-  }, [visible, isTrainer, profileCategory]);
-
-  const effectiveCategory = useMemo(() => {
-    if (isTrainer && profileCategory) return profileCategory;
-    return categorySel.trim();
-  }, [isTrainer, profileCategory, categorySel]);
+    if (!visible || !isTrainer || !profileCategory || !taxonomy) return;
+    const match = taxonomy.categories.find(
+      (c) => c.name.toLowerCase() === profileCategory.toLowerCase()
+    );
+    if (match) setCategoryId(match.id);
+  }, [visible, isTrainer, profileCategory, taxonomy]);
 
   const videoMime = videoAsset?.mimeType ?? "video/mp4";
 
@@ -162,7 +165,8 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
     !!videoAsset &&
     !!thumbUri &&
     title.trim().length > 0 &&
-    effectiveCategory.length > 0 &&
+    categoryId.length > 0 &&
+    subcategoryId.length > 0 &&
     !thumbBusy &&
     !uploadBusy &&
     (shareTarget === SHARE_MY_CLIPS || selectedFriendEmails.length > 0);
@@ -217,7 +221,9 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
         videoSizeBytes: fileBytes > 0 ? fileBytes : 1,
         thumbUri,
         title: title.trim(),
-        category: effectiveCategory,
+        category: selectedCategory?.name ?? profileCategory,
+        category_id: categoryId,
+        subcategory_id: subcategoryId,
         shareOptions:
           shareTarget === SHARE_FRIENDS
             ? { type: SHARE_FRIENDS, emails: selectedFriendEmails }
@@ -320,16 +326,19 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
               ) : (
                 <View style={styles.chips}>
                   {categories.map((c) => {
-                    const on = categorySel === c;
+                    const on = categoryId === c.id;
                     return (
                       <Pressable
-                        key={c}
+                        key={c.id}
                         style={[styles.chip, on && styles.chipOn]}
-                        onPress={() => setCategorySel(c)}
+                        onPress={() => {
+                          setCategoryId(c.id);
+                          setSubcategoryId("");
+                        }}
                         disabled={uploadBusy}
                       >
                         <Text style={[styles.chipText, on && styles.chipTextOn]} numberOfLines={1}>
-                          {c}
+                          {c.name}
                         </Text>
                       </Pressable>
                     );
@@ -337,6 +346,31 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
                 </View>
               )}
             </>
+          )}
+
+          <Text style={styles.label}>{t("locker.subcategory")}</Text>
+          {catLoading ? (
+            <ActivityIndicator color={colors.brandNavy} style={{ marginVertical: space.sm }} />
+          ) : subcategories.length === 0 ? (
+            <Text style={styles.muted}>{t("locker.selectCategoryFirst")}</Text>
+          ) : (
+            <View style={styles.chips}>
+              {subcategories.map((s) => {
+                const on = subcategoryId === s.id;
+                return (
+                  <Pressable
+                    key={s.id}
+                    style={[styles.chip, on && styles.chipOn]}
+                    onPress={() => setSubcategoryId(s.id)}
+                    disabled={uploadBusy}
+                  >
+                    <Text style={[styles.chipText, on && styles.chipTextOn]} numberOfLines={1}>
+                      {s.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           )}
 
           <Text style={styles.label}>{t("locker.shareTo")}</Text>

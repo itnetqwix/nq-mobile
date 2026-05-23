@@ -43,8 +43,24 @@ export function GuestDiscoverHomeScreen() {
         visible={!!profileTrainer}
         trainer={profileTrainer}
         onDismiss={() => setProfileTrainer(null)}
-        onInstant={() => requireAuth(undefined, "guest.signInToBook")}
-        onSchedule={() => requireAuth(undefined, "guest.signInToBook")}
+        onInstant={(trainer) =>
+          requireAuth(undefined, {
+            intent: "book",
+            messageKey: "guest.signInToBook",
+            trainer,
+            bookMode: "instant",
+            screen: "Login",
+          })
+        }
+        onSchedule={(trainer) =>
+          requireAuth(undefined, {
+            intent: "book",
+            messageKey: "guest.signInToBook",
+            trainer,
+            bookMode: "schedule",
+            screen: "Login",
+          })
+        }
       />
       <ScrollView
         style={{ flex: 1, backgroundColor: c.background }}
@@ -80,8 +96,29 @@ export function GuestDiscoverHomeScreen() {
           user={null}
           onSettings={() => openAuth("Login")}
           onViewTrainer={setProfileTrainer}
-          onInstantBook={() => requireAuth(undefined, "guest.signInToBook")}
-          onScheduleBook={() => requireAuth(undefined, "guest.signInToBook")}
+          onInstantBook={(trainer) =>
+            requireAuth(undefined, {
+              intent: "book",
+              messageKey: "guest.signInToBook",
+              trainer,
+              bookMode: "instant",
+            })
+          }
+          onScheduleBook={(trainer) =>
+            requireAuth(undefined, {
+              intent: "book",
+              messageKey: "guest.signInToBook",
+              trainer,
+              bookMode: "schedule",
+            })
+          }
+          onToggleFavoriteGuest={(trainer) =>
+            requireAuth(undefined, {
+              intent: "favorite",
+              messageKey: "guest.signInToContinue",
+              screen: "SignUp",
+            })
+          }
         />
       </ScrollView>
     </>

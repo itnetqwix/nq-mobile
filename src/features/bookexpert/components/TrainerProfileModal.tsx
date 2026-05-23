@@ -22,11 +22,16 @@ import {
   getTrainerAvgRating,
   getTrainerBio,
   getTrainerCategories,
+  getTrainerCertificates,
+  getTrainerDegrees,
   getTrainerExtraSection,
   getTrainerHourlyRate,
+  getTrainerWorkExperience,
   getTrainerId,
   getTrainerName,
 } from "../lib/trainerUtils";
+import { useGuestMode } from "../../auth/hooks/useGuestMode";
+import { useRequireAuth } from "../../auth/hooks/useRequireAuth";
 import { useFavoriteTrainers } from "../../dashboard/hooks/useFavoriteTrainers";
 import { FavoriteHeartButton } from "../../dashboard/components/trainee/FavoriteHeartButton";
 import { FriendSocialStrip } from "../../dashboard/components/trainee/FriendSocialStrip";
@@ -75,7 +80,9 @@ export function TrainerProfileModal({
   const styles = useMemo(() => makeStyles(themeColors), [themeColors]);
   const insets = useSafeAreaInsets();
   const { isOnline } = useOnlinePresence();
-  const { isFavorite, toggleFavorite } = useFavoriteTrainers();
+  const isGuest = useGuestMode();
+  const { requireAuth } = useRequireAuth();
+  const { isFavorite, toggleFavorite } = useFavoriteTrainers(!isGuest);
   const trainerId = getTrainerId(trainer);
 
   const { data: enriched, isLoading } = useQuery({
@@ -102,6 +109,9 @@ export function TrainerProfileModal({
   const teachingStyle = getTrainerExtraSection(data, "teaching_style");
   const credentials = getTrainerExtraSection(data, "credentials_and_affiliations");
   const curriculum = getTrainerExtraSection(data, "curriculum");
+  const certificateRows = getTrainerCertificates(data);
+  const workRows = getTrainerWorkExperience(data);
+  const degreeRows = getTrainerDegrees(data);
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onDismiss}>
@@ -113,8 +123,18 @@ export function TrainerProfileModal({
           <Text style={styles.headerTitle}>Coach profile</Text>
           {data ? (
             <FavoriteHeartButton
-              active={isFavorite(data)}
-              onPress={() => toggleFavorite(data)}
+              active={isGuest ? false : isFavorite(data)}
+              onPress={() => {
+                if (isGuest) {
+                  requireAuth(undefined, {
+                    intent: "favorite",
+                    messageKey: "guest.signInToContinue",
+                    screen: "SignUp",
+                  });
+                  return;
+                }
+                toggleFavorite(data);
+              }}
               accessibilityLabel={t("traineeDiscover.favoriteA11y", { name })}
               size={24}
             />
@@ -184,6 +204,65 @@ export function TrainerProfileModal({
               </View>
             )}
 
+            {certificateRows.length > 0 && (
+              <View style={styles.block}>
+                <Text style={styles.blockTitle}>{t("trainerProfile.certificatesTitle")}</Text>
+                {certificateRows.map((cert) => (
+                  <View key={cert.id} style={styles.credentialCard}>
+                    <Text style={styles.credentialTitle}>{cert.title}</Text>
+                    <Text style={styles.bodyText}>{cert.issuer}</Text>
+                    {cert.issued_at ? (
+                      <Text style={styles.credentialMeta}>
+                        {t("trainerProfile.issued")}: {cert.issued_at}
+                        {cert.expires_at ? ` · ${t("trainerProfile.expires")}: ${cert.expires_at}` : ""}
+                      </Text>
+                    ) : null}
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {workRows.length > 0 && (
+              <View style={styles.block}>
+                <Text style={styles.blockTitle}>{t("trainerProfile.workTitle")}</Text>
+                {workRows.map((job) => (
+                  <View key={job.id} style={styles.credentialCard}>
+                    <Text style={styles.credentialTitle}>{job.title}</Text>
+                    {job.company ? <Text style={styles.bodyText}>{job.company}</Text> : null}
+                    <Text style={styles.credentialMeta}>
+                      {job.location} · {job.start_date}
+                      {job.is_current
+                        ? ` – ${t("trainerProfile.present")}`
+                        : job.end_date
+                          ? ` – ${job.end_date}`
+                          : ""}
+                    </Text>
+                    {job.description ? <Text style={styles.bodyText}>{job.description}</Text> : null}
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {degreeRows.length > 0 && (
+              <View style={styles.block}>
+                <Text style={styles.blockTitle}>{t("trainerProfile.degreesTitle")}</Text>
+                {degreeRows.map((deg) => (
+                  <View key={deg.id} style={styles.credentialCard}>
+                    <Text style={styles.credentialTitle}>{deg.degree}</Text>
+                    <Text style={styles.bodyText}>{deg.institution}</Text>
+                    {deg.field_of_study ? (
+                      <Text style={styles.credentialMeta}>{deg.field_of_study}</Text>
+                    ) : null}
+                    {(deg.location || deg.graduation_year) && (
+                      <Text style={styles.credentialMeta}>
+                        {[deg.location, deg.graduation_year].filter(Boolean).join(" · ")}
+                      </Text>
+                    )}
+                  </View>
+                ))}
+              </View>
+            )}
+
             {!!credentials && (
               <View style={styles.block}>
                 <Text style={styles.blockTitle}>Credentials & affiliations</Text>
@@ -228,8 +307,15 @@ export function TrainerProfileModal({
                 label="Instant lesson"
                 leftIcon="flash"
                 onPress={() => {
-                  onInstant(data);
-                  onDismiss();
+                  requireAuth(() => {
+                    onInstant(data);
+                    onDismiss();
+                  }, {
+                    intent: "book",
+                    messageKey: "guest.signInToBook",
+                    trainer: data,
+                    bookMode: "instant",
+                  });
                 }}
               />
             </View>
@@ -239,8 +325,15 @@ export function TrainerProfileModal({
                 variant="secondary"
                 leftIcon="calendar-outline"
                 onPress={() => {
-                  onSchedule(data);
-                  onDismiss();
+                  requireAuth(() => {
+                    onSchedule(data);
+                    onDismiss();
+                  }, {
+                    intent: "book",
+                    messageKey: "guest.signInToBook",
+                    trainer: data,
+                    bookMode: "schedule",
+                  });
                 }}
               />
             </View>
@@ -317,6 +410,14 @@ function makeStyles(colors: AppColors) {
     reviewScore: { ...typography.caption, fontWeight: "700", color: colors.text },
     reviewTitle: { ...typography.bodySm, fontWeight: "600", color: colors.text, marginTop: 4 },
     reviewBody: { ...typography.bodySm, color: colors.textMuted, marginTop: 4, lineHeight: 20 },
+    credentialCard: {
+      marginBottom: space.sm,
+      paddingBottom: space.sm,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.borderSubtle,
+    },
+    credentialTitle: { ...typography.bodyMd, fontWeight: "700", color: colors.text },
+    credentialMeta: { ...typography.caption, color: colors.textMuted, marginTop: 4 },
     footer: {
       position: "absolute",
       left: 0,

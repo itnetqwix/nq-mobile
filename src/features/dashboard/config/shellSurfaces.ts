@@ -17,6 +17,7 @@ export const UTILITY_SURFACE_IDS = [
   "transactions",
   "trainerSchedule",
   "editProfile",
+  "professionalProfile",
   "reportIssue",
 ] as const;
 export type UtilitySurfaceId = (typeof UTILITY_SURFACE_IDS)[number];
@@ -99,6 +100,13 @@ export const SHELL_SURFACES: readonly ShellSurfaceMeta[] = [
     subtitle: "Update your name, mobile, and other personal details.",
     webContext: "Web profile editor (`/trainee/profile` / `/trainer/profile`).",
     allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
+  },
+  {
+    id: "professionalProfile",
+    title: "Professional profile",
+    subtitle: "Certificates, work experience, and education.",
+    webContext: "Trainer credentials on profile.",
+    allowedRoles: [AccountType.TRAINER],
   },
   {
     id: "reportIssue",

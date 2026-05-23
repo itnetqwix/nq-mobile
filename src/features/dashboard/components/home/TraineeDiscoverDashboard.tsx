@@ -58,6 +58,8 @@ type Props = {
   onViewTrainer: (t: Record<string, unknown>) => void;
   onInstantBook: (t: Record<string, unknown>) => void;
   onScheduleBook: (t: Record<string, unknown>) => void;
+  /** When set, guest users see favorite control and tapping redirects to auth. */
+  onToggleFavoriteGuest?: (t: Record<string, unknown>) => void;
   onOpenWallet?: () => void;
   onOpenSession?: (session: Record<string, unknown>) => void;
 };
@@ -72,6 +74,7 @@ export function TraineeDiscoverDashboard({
   onViewTrainer,
   onInstantBook,
   onScheduleBook,
+  onToggleFavoriteGuest,
   onOpenWallet,
   onOpenSession,
 }: Props) {
@@ -445,7 +448,13 @@ export function TraineeDiscoverDashboard({
                 onSchedule={onScheduleBook}
                 highlightCategory={highlight}
                 isFavorite={isGuest ? false : isFavorite(trainer)}
-                onToggleFavorite={isGuest ? undefined : toggleFavorite}
+                onToggleFavorite={
+                  isGuest
+                    ? onToggleFavoriteGuest
+                      ? () => onToggleFavoriteGuest(trainer)
+                      : undefined
+                    : () => toggleFavorite(trainer)
+                }
               />
             );
           })}

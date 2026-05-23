@@ -4,18 +4,19 @@ import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { DashboardRouteId } from "../features/dashboard/config/dashboardRoutes";
 import type { ShellSurfaceMeta } from "../features/dashboard/config/shellSurfaces";
 import type { SystemStateId } from "../features/system-states/presets/types";
+import type { AuthScreenParams } from "../features/auth/types/authIntent";
 
 export type AuthStackParamList = {
-  Login: undefined;
+  Login: AuthScreenParams | undefined;
   SignUp:
-    | {
+    | ({
         prefillEmail?: string;
         ssoProvider?: "google" | "apple";
         isGoogleRegister?: boolean;
         /** Present when completing Google signup — used to sign in after register. */
         googleIdToken?: string;
         appleIdentityToken?: string;
-      }
+      } & AuthScreenParams)
     | undefined;
   ForgotPassword: undefined;
 };

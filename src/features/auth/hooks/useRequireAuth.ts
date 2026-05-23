@@ -1,43 +1,62 @@
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useCallback } from "react";
-import { Alert } from "react-native";
-import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import type { RootStackParamList } from "../../../navigation/types";
+import { setPendingAuthIntent } from "../lib/pendingAuthIntent";
+import type { RequireAuthOptions } from "../types/authIntent";
 import { useGuestMode } from "./useGuestMode";
 
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
 
 /**
- * Prompts guest users to sign in before protected actions (book, chat, wallet, etc.).
+ * Redirects guest users to the Auth modal for protected actions (book, chat, wallet, etc.).
  */
 export function useRequireAuth() {
-  const { t } = useAppTranslation();
   const isGuest = useGuestMode();
   const navigation = useNavigation<RootNav>();
 
-  const openAuth = useCallback(
-    (screen: "Login" | "SignUp" = "Login") => {
-      navigation.navigate("Auth", { screen } as never);
+  const redirectToAuth = useCallback(
+    (screen: "Login" | "SignUp" = "Login", options?: RequireAuthOptions) => {
+      const opts = options ?? {};
+      if (opts.intent || opts.trainer) {
+        setPendingAuthIntent({
+          intent: opts.intent ?? "generic",
+          trainer: opts.trainer,
+          bookMode: opts.bookMode,
+          messageKey: opts.messageKey,
+        });
+      }
+      navigation.navigate("Auth", {
+        screen,
+        params: {
+          intent: opts.intent,
+          messageKey: opts.messageKey,
+        },
+      } as never);
     },
     [navigation]
   );
 
   const requireAuth = useCallback(
-    (onAuthed?: () => void, messageKey = "guest.signInToContinue"): boolean => {
+    (onAuthed?: () => void, options?: RequireAuthOptions | string): boolean => {
       if (!isGuest) {
         onAuthed?.();
         return true;
       }
-      Alert.alert(t("guest.signInTitle"), t(messageKey), [
-        { text: t("common.cancel"), style: "cancel" },
-        { text: t("auth.signIn"), onPress: () => openAuth("Login") },
-        { text: t("auth.signUp"), onPress: () => openAuth("SignUp") },
-      ]);
+      const resolved: RequireAuthOptions =
+        typeof options === "string" ? { messageKey: options } : (options ?? {});
+      redirectToAuth(resolved.screen ?? "Login", resolved);
       return false;
     },
-    [isGuest, openAuth, t]
+    [isGuest, redirectToAuth]
   );
 
-  return { isGuest, requireAuth, openAuth };
+  const openAuth = useCallback(
+    (screen: "Login" | "SignUp" = "Login", options?: RequireAuthOptions) => {
+      redirectToAuth(screen, options);
+    },
+    [redirectToAuth]
+  );
+
+  return { isGuest, requireAuth, redirectToAuth, openAuth };
 }

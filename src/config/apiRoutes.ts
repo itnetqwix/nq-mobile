@@ -97,6 +97,12 @@ export const API_ROUTES = {
     faceSession: "/verification/face/session",
     faceComplete: "/verification/face/complete",
   },
+  clips: {
+    taxonomy: "/clips/taxonomy",
+    librarySubmissions: "/clips/library-submissions",
+    librarySubmissionsMine: "/clips/library-submissions/mine",
+    accountReapply: "/clips/account/reapply",
+  },
   master: {
     masterData: "/master/master-data",
   },
@@ -166,6 +172,7 @@ export const API_ROUTES = {
     pdfUploadUrl: "/common/pdf-upload-url",
     getClips: "/common/get-clips",
     getSharedClips: "/common/get-shared-clips",
+    getLibraryClips: "/common/get-library-clips",
     traineeClips: "/common/trainee-clips",
     deleteClip: (id: string) => `/common/delete-clip/${id}` as const,
     deleteSavedSession: (id: string) => `/common/delete-saved-session/${id}` as const,

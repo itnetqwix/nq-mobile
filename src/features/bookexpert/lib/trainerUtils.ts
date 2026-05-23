@@ -104,6 +104,88 @@ export function getTrainerExtraSection(
   return typeof val === "string" ? val.trim() : "";
 }
 
+export type TrainerCertificateRow = {
+  id: string;
+  title: string;
+  issuer: string;
+  issued_at?: string;
+  expires_at?: string;
+};
+
+export type TrainerWorkRow = {
+  id: string;
+  title: string;
+  company?: string;
+  location: string;
+  start_date: string;
+  end_date?: string;
+  is_current?: boolean;
+  description?: string;
+};
+
+export type TrainerDegreeRow = {
+  id: string;
+  degree: string;
+  field_of_study?: string;
+  institution: string;
+  location?: string;
+  graduation_year?: string;
+};
+
+function asRecordArray(extra: Record<string, unknown> | undefined, key: string): Record<string, unknown>[] {
+  const val = extra?.[key];
+  return Array.isArray(val) ? val.filter((x) => x && typeof x === "object") as Record<string, unknown>[] : [];
+}
+
+export function getTrainerCertificates(
+  trainer: Record<string, unknown> | null | undefined
+): TrainerCertificateRow[] {
+  const extra = trainer?.extraInfo as Record<string, unknown> | undefined;
+  return asRecordArray(extra, "certificates")
+    .map((row, i) => ({
+      id: String(row.id ?? i),
+      title: String(row.title ?? "").trim(),
+      issuer: String(row.issuer ?? "").trim(),
+      issued_at: row.issued_at ? String(row.issued_at) : undefined,
+      expires_at: row.expires_at ? String(row.expires_at) : undefined,
+    }))
+    .filter((r) => r.title && r.issuer);
+}
+
+export function getTrainerWorkExperience(
+  trainer: Record<string, unknown> | null | undefined
+): TrainerWorkRow[] {
+  const extra = trainer?.extraInfo as Record<string, unknown> | undefined;
+  return asRecordArray(extra, "work_experience")
+    .map((row, i) => ({
+      id: String(row.id ?? i),
+      title: String(row.title ?? "").trim(),
+      company: row.company ? String(row.company).trim() : undefined,
+      location: String(row.location ?? "").trim(),
+      start_date: String(row.start_date ?? "").trim(),
+      end_date: row.end_date ? String(row.end_date) : undefined,
+      is_current: row.is_current === true,
+      description: row.description ? String(row.description).trim() : undefined,
+    }))
+    .filter((r) => r.title && r.location && r.start_date);
+}
+
+export function getTrainerDegrees(
+  trainer: Record<string, unknown> | null | undefined
+): TrainerDegreeRow[] {
+  const extra = trainer?.extraInfo as Record<string, unknown> | undefined;
+  return asRecordArray(extra, "degrees")
+    .map((row, i) => ({
+      id: String(row.id ?? i),
+      degree: String(row.degree ?? "").trim(),
+      field_of_study: row.field_of_study ? String(row.field_of_study).trim() : undefined,
+      institution: String(row.institution ?? "").trim(),
+      location: row.location ? String(row.location).trim() : undefined,
+      graduation_year: row.graduation_year ? String(row.graduation_year).trim() : undefined,
+    }))
+    .filter((r) => r.degree && r.institution);
+}
+
 export function extractTrainerReviews(trainer: Record<string, unknown> | null | undefined): TrainerReview[] {
   const rows = trainer?.trainer_ratings;
   if (!Array.isArray(rows)) return [];

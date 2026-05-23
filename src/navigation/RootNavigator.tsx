@@ -4,7 +4,11 @@ import { BrandedSessionLoader } from "../components/brand/BrandedSessionLoader";
 import { AppUnlockGate } from "../features/auth/components/AppUnlockGate";
 import { useAuth } from "../features/auth/context/AuthContext";
 import { OnboardingNavigator } from "./OnboardingNavigator";
+import { TrainerProfileSetupNavigator } from "./TrainerProfileSetupNavigator";
+import { needsTrainerProfileSetup } from "../features/trainer-profile/lib/trainerProfileSetup";
+import { AccountType } from "../constants/accountType";
 import { useTrainerVerificationGate } from "../features/verification/hooks/useTrainerVerificationGate";
+import { AccountRejectedScreen } from "../features/verification/screens/AccountRejectedScreen";
 import { GracePeriodBanner } from "../features/verification/components/GracePeriodBanner";
 import { InstantLessonStatusBanner } from "../features/instant-lesson/InstantLessonStatusBanner";
 import { InstantLessonTraineeModal } from "../features/instant-lesson/InstantLessonTraineeModal";
@@ -34,7 +38,7 @@ function GuestBrowseShell() {
 }
 
 export function RootNavigator() {
-  const { status, refreshUser } = useAuth();
+  const { status, refreshUser, user, accountType } = useAuth();
   const { refetchVerificationGate, ...verificationGate } = useTrainerVerificationGate();
   const [startVerificationEarly, setStartVerificationEarly] = useState(false);
 
@@ -50,8 +54,40 @@ export function RootNavigator() {
     return <BrandedSessionLoader />;
   }
 
+  const isAccountRejected = signedIn && String(user?.status ?? "").toLowerCase() === "rejected";
+
+  const showTrainerProfileSetup =
+    signedIn &&
+    !isAccountRejected &&
+    accountType === AccountType.TRAINER &&
+    needsTrainerProfileSetup(accountType, user);
+
   const showVerificationWizard =
-    signedIn && (verificationGate.required || startVerificationEarly);
+    signedIn &&
+    !isAccountRejected &&
+    !showTrainerProfileSetup &&
+    (verificationGate.required || startVerificationEarly);
+
+  if (isAccountRejected) {
+    return (
+      <AccountRejectedScreen
+        onReapplied={() => {
+          void refreshUser();
+          refetchVerificationGate();
+        }}
+      />
+    );
+  }
+
+  if (showTrainerProfileSetup) {
+    return (
+      <TrainerProfileSetupNavigator
+        onComplete={() => {
+          void refreshUser();
+        }}
+      />
+    );
+  }
 
   if (showVerificationWizard) {
     return (
@@ -109,6 +145,7 @@ export function RootNavigator() {
                 presentation: "modal",
                 animation: "slide_from_bottom",
                 headerShown: false,
+                gestureEnabled: true,
               }}
             />
             <Stack.Screen

@@ -129,22 +129,40 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
 
   return (
     <View style={styles.root}>
-      <InstantLessonBookingWizardModal
-        visible={!!wizardTrainer}
-        trainer={wizardTrainer}
-        onDismiss={() => setWizardTrainer(null)}
-      />
-      <ScheduledBookingWizardModal
-        visible={!!scheduleTrainer}
-        trainer={scheduleTrainer}
-        onDismiss={() => setScheduleTrainer(null)}
-      />
+      {!isGuest ? (
+        <>
+          <InstantLessonBookingWizardModal
+            visible={!!wizardTrainer}
+            trainer={wizardTrainer}
+            onDismiss={() => setWizardTrainer(null)}
+          />
+          <ScheduledBookingWizardModal
+            visible={!!scheduleTrainer}
+            trainer={scheduleTrainer}
+            onDismiss={() => setScheduleTrainer(null)}
+          />
+        </>
+      ) : null}
       <TrainerProfileModal
         visible={!!profileTrainer}
         trainer={profileTrainer}
         onDismiss={() => setProfileTrainer(null)}
-        onInstant={(t) => requireAuth(() => setWizardTrainer(t), "guest.signInToBook")}
-        onSchedule={(t) => requireAuth(() => setScheduleTrainer(t), "guest.signInToBook")}
+        onInstant={(tr) =>
+          requireAuth(() => setWizardTrainer(tr), {
+            intent: "book",
+            messageKey: "guest.signInToBook",
+            trainer: tr,
+            bookMode: "instant",
+          })
+        }
+        onSchedule={(tr) =>
+          requireAuth(() => setScheduleTrainer(tr), {
+            intent: "book",
+            messageKey: "guest.signInToBook",
+            trainer: tr,
+            bookMode: "schedule",
+          })
+        }
       />
       <TrainerBrowseFiltersSheet
         visible={filtersOpen}
@@ -222,8 +240,22 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
               trainer={item}
               themeColors={themeColors}
               onPress={setProfileTrainer}
-              onBook={(t) => requireAuth(() => setWizardTrainer(t), "guest.signInToBook")}
-              onSchedule={(t) => requireAuth(() => setScheduleTrainer(t), "guest.signInToBook")}
+              onBook={(tr) =>
+                requireAuth(() => setWizardTrainer(tr), {
+                  intent: "book",
+                  messageKey: "guest.signInToBook",
+                  trainer: tr,
+                  bookMode: "instant",
+                })
+              }
+              onSchedule={(tr) =>
+                requireAuth(() => setScheduleTrainer(tr), {
+                  intent: "book",
+                  messageKey: "guest.signInToBook",
+                  trainer: tr,
+                  bookMode: "schedule",
+                })
+              }
             />
           )}
           contentContainerStyle={styles.list}

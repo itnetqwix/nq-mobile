@@ -5,14 +5,24 @@ import { Ionicons } from "@expo/vector-icons";
 import { EmptyState, ImageWithSkeleton } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { getClipPlaybackUrl, getClipThumbnailUrl } from "../../../lib/clipMediaUrl";
-import { postMyClipsGrouped, postSharedClipsGrouped } from "../../home/api/homeApi";
+import {
+  postLibraryClipsGrouped,
+  postMyClipsGrouped,
+  postSharedClipsGrouped,
+} from "../../home/api/homeApi";
+import type {
+  LockerClip,
+  NestedCategoryGroup,
+  SharedClipsGroup,
+} from "../../clips/api/clipsApi";
 import { LockerListShell } from "../components/locker/LockerListShell";
 import { LockerViewerModal, type LockerViewerMode } from "../components/locker/LockerViewerModal";
 import { ClipUploadModal } from "../components/locker/ClipUploadModal";
+import { LibrarySubmissionSheet } from "../../clips/components/LibrarySubmissionSheet";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
 
-type ClipTab = "mine" | "shared";
+type ClipTab = "mine" | "shared" | "library";
 
 function dedupeClipsById<T extends { _id?: unknown }>(list: T[]): T[] {
   const seen = new Set<string>();
@@ -25,17 +35,6 @@ function dedupeClipsById<T extends { _id?: unknown }>(list: T[]): T[] {
     out.push(raw);
   }
   return out;
-}
-
-function formatCategoryLabel(raw: unknown, uncategorizedLabel: string): string {
-  if (raw == null || raw === "") return uncategorizedLabel;
-  if (typeof raw === "string") return raw;
-  if (typeof raw === "object" && raw !== null) {
-    const o = raw as Record<string, unknown>;
-    if (typeof o.name === "string") return o.name;
-    if (typeof o.title === "string") return o.title;
-  }
-  return String(raw);
 }
 
 function CategorySection({
@@ -59,6 +58,7 @@ function CategorySection({
         borderWidth: 1,
         borderColor: palette.border,
         overflow: "hidden",
+        marginBottom: space.sm,
       },
       sectionHead: {
         flexDirection: "row",
@@ -86,6 +86,14 @@ function CategorySection({
       },
       countPillText: { color: palette.brandTextOn, fontSize: 11, fontWeight: "700" },
       sectionBody: { paddingHorizontal: space.sm, paddingBottom: space.sm },
+      nestedSection: {
+        marginTop: space.xs,
+        marginLeft: space.sm,
+        borderLeftWidth: 2,
+        borderLeftColor: palette.border,
+        paddingLeft: space.sm,
+      },
+      nestedTitle: { ...typography.caption, color: palette.textMuted, marginVertical: 6, fontWeight: "600" },
     })
   );
 
@@ -110,12 +118,83 @@ function CategorySection({
   );
 }
 
+function NestedTaxonomySections({
+  groups,
+  renderClipRow,
+  uncategorizedLabel,
+}: {
+  groups: NestedCategoryGroup[];
+  renderClipRow: (clip: LockerClip, key: string) => React.ReactNode;
+  uncategorizedLabel: string;
+}) {
+  const styles = useThemedStyles((palette) =>
+    StyleSheet.create({
+      nestedSection: {
+        marginTop: space.xs,
+        marginLeft: space.sm,
+        borderLeftWidth: 2,
+        borderLeftColor: palette.border,
+        paddingLeft: space.sm,
+      },
+      nestedTitle: { ...typography.caption, color: palette.textMuted, marginVertical: 6, fontWeight: "600" },
+    })
+  );
+
+  if (groups.length === 0) return null;
+
+  return (
+    <>
+      {groups.map((cat, ci) => {
+        const catTitle = cat.categoryName || uncategorizedLabel;
+        const totalClips = cat.subcategories.reduce((n, s) => n + s.clips.length, 0);
+        return (
+          <CategorySection
+            key={`cat-${cat.categoryId ?? ci}`}
+            title={catTitle}
+            count={totalClips}
+            defaultOpen={ci === 0}
+          >
+            {cat.subcategories.map((sub, si) => {
+              const clips = dedupeClipsById(sub.clips);
+              if (clips.length === 0) return null;
+              return (
+                <View key={`sub-${sub.subcategoryId ?? si}`} style={styles.nestedSection}>
+                  <Text style={styles.nestedTitle}>{sub.subcategoryName}</Text>
+                  {clips.map((clip, clipIdx) =>
+                    renderClipRow(clip, `clip-${ci}-${si}-${String(clip._id ?? clipIdx)}`)
+                  )}
+                </View>
+              );
+            })}
+          </CategorySection>
+        );
+      })}
+    </>
+  );
+}
+
+function libraryStatusChip(status: string, t: (k: string) => string): string | null {
+  switch (status) {
+    case "submitted":
+      return t("locker.libraryStatusSubmitted");
+    case "under_review":
+      return t("locker.libraryStatusUnderReview");
+    case "accepted":
+      return t("locker.libraryStatusAccepted");
+    case "rejected":
+      return t("locker.libraryStatusRejected");
+    default:
+      return null;
+  }
+}
+
 export function ClipsScreen() {
   const { t } = useAppTranslation();
   const queryClient = useQueryClient();
   const c = useThemeColors();
   const [tab, setTab] = useState<ClipTab>("mine");
   const [uploadVisible, setUploadVisible] = useState(false);
+  const [librarySheetClip, setLibrarySheetClip] = useState<LockerClip | null>(null);
   const [viewer, setViewer] = useState<{
     uri: string;
     title: string;
@@ -125,22 +204,18 @@ export function ClipsScreen() {
 
   const styles = useThemedStyles((palette) =>
     StyleSheet.create({
-      toolbarRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: space.sm,
-      },
+      toolbarRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
       segment: {
         flex: 1,
         flexDirection: "row",
         padding: 4,
         borderRadius: radii.md,
         backgroundColor: palette.surfaceMuted,
-        gap: 4,
+        gap: 2,
       },
       segBtn: { flex: 1, paddingVertical: 8, borderRadius: radii.sm, alignItems: "center" },
       segBtnOn: { backgroundColor: palette.surfaceElevated },
-      segLabel: { ...typography.label, color: palette.textMuted },
+      segLabel: { ...typography.label, color: palette.textMuted, fontSize: 11 },
       segLabelOn: { color: palette.brandNavy, fontWeight: "700" },
       uploadFab: {
         width: 44,
@@ -175,6 +250,16 @@ export function ClipsScreen() {
       clipMeta: { flex: 1, minWidth: 0 },
       clipTitle: { ...typography.bodyMd, fontWeight: "600", color: palette.text },
       clipDate: { ...typography.caption, color: palette.textMuted, marginTop: 2 },
+      libChip: {
+        alignSelf: "flex-start",
+        marginTop: 4,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: radii.pill,
+        backgroundColor: palette.brandSubtle,
+      },
+      libChipText: { fontSize: 10, fontWeight: "700", color: palette.brandNavy },
+      libAction: { padding: 4 },
     })
   );
 
@@ -192,12 +277,20 @@ export function ClipsScreen() {
     staleTime: 30_000,
   });
 
-  const active = tab === "mine" ? myQ : sharedQ;
+  const libraryQ = useQuery({
+    queryKey: queryKeys.locker.libraryClips,
+    queryFn: () => postLibraryClipsGrouped(),
+    enabled: tab === "library",
+    staleTime: 30_000,
+  });
+
+  const active = tab === "mine" ? myQ : tab === "shared" ? sharedQ : libraryQ;
 
   const onRefresh = useCallback(() => {
     void myQ.refetch();
     void sharedQ.refetch();
-  }, [myQ, sharedQ]);
+    void libraryQ.refetch();
+  }, [myQ, sharedQ, libraryQ]);
 
   const openClip = (clip: Record<string, unknown>) => {
     const uri = getClipPlaybackUrl(clip);
@@ -221,13 +314,25 @@ export function ClipsScreen() {
             style={[styles.segBtn, tab === "mine" && styles.segBtnOn]}
             onPress={() => setTab("mine")}
           >
-            <Text style={[styles.segLabel, tab === "mine" && styles.segLabelOn]}>{t("locker.myClips")}</Text>
+            <Text style={[styles.segLabel, tab === "mine" && styles.segLabelOn]}>
+              {t("locker.myClips")}
+            </Text>
           </Pressable>
           <Pressable
             style={[styles.segBtn, tab === "shared" && styles.segBtnOn]}
             onPress={() => setTab("shared")}
           >
-            <Text style={[styles.segLabel, tab === "shared" && styles.segLabelOn]}>{t("locker.sharedClips")}</Text>
+            <Text style={[styles.segLabel, tab === "shared" && styles.segLabelOn]}>
+              {t("locker.sharedClips")}
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.segBtn, tab === "library" && styles.segBtnOn]}
+            onPress={() => setTab("library")}
+          >
+            <Text style={[styles.segLabel, tab === "library" && styles.segLabelOn]}>
+              {t("locker.netqwixLibrary")}
+            </Text>
           </Pressable>
         </View>
         {tab === "mine" ? (
@@ -245,8 +350,19 @@ export function ClipsScreen() {
     [tab, styles, c, t]
   );
 
-  const renderClipRow = (clip: Record<string, unknown>, key: string, showSharer?: boolean) => {
+  const renderClipRow = (
+    clip: LockerClip,
+    key: string,
+    opts?: { showSharer?: boolean; showLibraryActions?: boolean }
+  ) => {
     const thumb = getClipThumbnailUrl(clip);
+    const sub = clip.librarySubmission;
+    const statusText = sub?.status ? libraryStatusChip(sub.status, t) : null;
+    const canRequestLibrary =
+      opts?.showLibraryActions &&
+      (!sub || sub.status === "rejected") &&
+      sub?.status !== "accepted";
+
     return (
       <Pressable key={key} style={styles.clipCard} onPress={() => openClip(clip)}>
         <View style={styles.thumbWrap}>
@@ -269,7 +385,7 @@ export function ClipsScreen() {
           <Text style={styles.clipTitle} numberOfLines={2}>
             {String(clip.title ?? clip.file_name ?? t("locker.clipDefault"))}
           </Text>
-          {showSharer ? (
+          {opts?.showSharer ? (
             <Text style={styles.clipDate} numberOfLines={1}>
               {t("locker.sharedBy", {
                 name: String(
@@ -280,16 +396,38 @@ export function ClipsScreen() {
               })}
             </Text>
           ) : null}
+          {statusText ? (
+            <View style={styles.libChip}>
+              <Text style={styles.libChipText}>{statusText}</Text>
+            </View>
+          ) : null}
           {clip.createdAt || clip.shared_at ? (
             <Text style={styles.clipDate}>
               {new Date(String(clip.shared_at ?? clip.createdAt)).toLocaleDateString()}
             </Text>
           ) : null}
         </View>
-        <Ionicons name="chevron-forward" size={18} color={c.textMuted} />
+        {canRequestLibrary ? (
+          <Pressable
+            style={styles.libAction}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              setLibrarySheetClip(clip);
+            }}
+            hitSlop={8}
+          >
+            <Ionicons name="library-outline" size={20} color={c.brandNavy} />
+          </Pressable>
+        ) : (
+          <Ionicons name="chevron-forward" size={18} color={c.textMuted} />
+        )}
       </Pressable>
     );
   };
+
+  const myGroups = (myQ.data ?? []) as NestedCategoryGroup[];
+  const sharedGroups = (sharedQ.data ?? []) as SharedClipsGroup[];
+  const libraryGroups = (libraryQ.data ?? []) as NestedCategoryGroup[];
 
   return (
     <>
@@ -304,7 +442,7 @@ export function ClipsScreen() {
       >
         {tab === "mine" && (
           <>
-            {(myQ.data ?? []).length === 0 ? (
+            {myGroups.length === 0 ? (
               <EmptyState
                 icon="film-outline"
                 title={t("locker.noClips")}
@@ -313,17 +451,39 @@ export function ClipsScreen() {
                 onAction={() => setUploadVisible(true)}
               />
             ) : (
-              (myQ.data ?? []).map((grp: { _id?: unknown; clips?: unknown[] }, i: number) => {
-                const clips = dedupeClipsById((grp.clips ?? []) as { _id?: unknown }[]);
+              <NestedTaxonomySections
+                groups={myGroups}
+                uncategorizedLabel={t("locker.uncategorized")}
+                renderClipRow={(clip, key) =>
+                  renderClipRow(clip, key, { showLibraryActions: true })
+                }
+              />
+            )}
+          </>
+        )}
+
+        {tab === "shared" && (
+          <>
+            {sharedGroups.length === 0 ? (
+              <EmptyState
+                icon="share-social-outline"
+                title={t("locker.noShared")}
+                description={t("locker.noSharedDescription")}
+              />
+            ) : (
+              sharedGroups.map((grp, i) => {
+                const clips = dedupeClipsById(grp.clips);
                 return (
                   <CategorySection
-                    key={`mine-grp-${i}-${String(grp._id ?? "uncat")}`}
-                    title={formatCategoryLabel(grp._id, t("locker.uncategorized"))}
+                    key={`shared-${grp.sharerId ?? i}`}
+                    title={grp.sharerName || t("locker.friendDefault")}
                     count={clips.length}
                     defaultOpen={i === 0}
                   >
                     {clips.map((clip, ci) =>
-                      renderClipRow(clip as Record<string, unknown>, `mine-${i}-${String(clip._id ?? ci)}`)
+                      renderClipRow(clip, `shared-${i}-${String(clip._id ?? ci)}`, {
+                        showSharer: false,
+                      })
                     )}
                   </CategorySection>
                 );
@@ -332,34 +492,20 @@ export function ClipsScreen() {
           </>
         )}
 
-        {tab === "shared" && (
+        {tab === "library" && (
           <>
-            {(sharedQ.data ?? []).length === 0 ? (
+            {libraryGroups.length === 0 ? (
               <EmptyState
-                icon="share-social-outline"
-                title={t("locker.noShared")}
-                description={t("locker.noSharedDescription")}
+                icon="library-outline"
+                title={t("locker.noLibraryClips")}
+                description={t("locker.noLibraryClipsDescription")}
               />
             ) : (
-              (sharedQ.data ?? []).map((grp: { _id?: unknown; clips?: unknown[] }, i: number) => {
-                const clips = dedupeClipsById((grp.clips ?? []) as { _id?: unknown }[]);
-                return (
-                  <CategorySection
-                    key={`shared-grp-${i}-${String(grp._id ?? "uncat")}`}
-                    title={formatCategoryLabel(grp._id, t("locker.uncategorized"))}
-                    count={clips.length}
-                    defaultOpen={i === 0}
-                  >
-                    {clips.map((clip, ci) =>
-                      renderClipRow(
-                        clip as Record<string, unknown>,
-                        `shared-${i}-${String(clip._id ?? ci)}`,
-                        true
-                      )
-                    )}
-                  </CategorySection>
-                );
-              })
+              <NestedTaxonomySections
+                groups={libraryGroups}
+                uncategorizedLabel={t("locker.uncategorized")}
+                renderClipRow={(clip, key) => renderClipRow(clip, key)}
+              />
             )}
           </>
         )}
@@ -380,6 +526,15 @@ export function ClipsScreen() {
         onUploaded={() => {
           void queryClient.invalidateQueries({ queryKey: queryKeys.locker.myClips });
           void queryClient.invalidateQueries({ queryKey: queryKeys.instant.lessonClipsAll });
+        }}
+      />
+
+      <LibrarySubmissionSheet
+        visible={!!librarySheetClip}
+        clip={librarySheetClip}
+        onClose={() => setLibrarySheetClip(null)}
+        onSubmitted={() => {
+          void queryClient.invalidateQueries({ queryKey: queryKeys.locker.myClips });
         }}
       />
     </>

@@ -106,9 +106,10 @@ export function useTrainerVerificationGate(): VerificationGateState & {
       try {
         const s = await getVerificationStatus();
         if (cancelled) return;
+        const rejected = s.status === "rejected" || s.step === "rejected";
         applyGate({
           loading: false,
-          required: Boolean(s.required),
+          required: rejected ? false : Boolean(s.required),
           inGracePeriod: Boolean(s.in_grace_period),
           graceDaysRemaining: s.grace_days_remaining ?? 0,
         });

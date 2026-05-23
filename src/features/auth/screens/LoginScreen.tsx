@@ -7,6 +7,7 @@ import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { space, useThemeColors } from "../../../theme";
 import { useAuth } from "../context/AuthContext";
+import { AuthModalChrome } from "../components/AuthModalChrome";
 import { AuthScreenLayout } from "../components/AuthScreenLayout";
 import { SocialAuthButtons } from "../components/SocialAuthButtons";
 import type { AuthScreenProps } from "../../../navigation/types";
@@ -74,6 +75,7 @@ export function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
   );
 
   return (
+    <AuthModalChrome>
     <AuthScreenLayout
       title={t("auth.welcomeBack")}
       subtitle={t("auth.signInSubtitle")}
@@ -139,5 +141,6 @@ export function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
         <SocialAuthButtons navigation={navigation} onTokens={onSocialTokens} />
       </Stack>
     </AuthScreenLayout>
+    </AuthModalChrome>
   );
 }

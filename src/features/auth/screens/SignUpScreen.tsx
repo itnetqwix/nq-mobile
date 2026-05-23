@@ -29,6 +29,7 @@ import { SignupCategoryPicker } from "../components/SignupCategoryPicker";
 import type { SignUpPayload } from "../api/types";
 import { PasswordRequirements } from "../components/PasswordRequirements";
 import { AuthEscapeLink } from "../components/AuthEscapeLink";
+import { AuthModalChrome } from "../components/AuthModalChrome";
 import { SignupInlineOtp } from "../components/SignupInlineOtp";
 import { LegalTermsAcceptance } from "../components/LegalTermsAcceptance";
 import { SocialAuthButtons } from "../components/SocialAuthButtons";
@@ -43,7 +44,9 @@ import type { AuthScreenProps } from "../../../navigation/types";
 
 const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 
-type SignUpStep = "contact" | "category" | "password";
+type SignUpStep = "accountType" | "category" | "profile" | "verify" | "password";
+
+const STEP_ORDER: SignUpStep[] = ["accountType", "category", "profile", "verify", "password"];
 
 export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
   const { t } = useAppTranslation();
@@ -57,7 +60,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
         ? t("auth.ssoGoogle")
         : t("auth.ssoGeneric");
 
-  const [step, setStep] = useState<SignUpStep>("contact");
+  const [step, setStep] = useState<SignUpStep>(isSsoSignup ? "accountType" : "accountType");
   const [fullname, setFullname] = useState("");
   const [email, setEmail] = useState(route.params?.prefillEmail ?? "");
   const [mobile, setMobile] = useState("");
@@ -86,8 +89,13 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
   });
 
   const categories = categoriesQuery.data ?? [];
-
   const [submitting, setSubmitting] = useState(false);
+
+  const goBack = () => {
+    const idx = STEP_ORDER.indexOf(step);
+    if (idx > 0) setStep(STEP_ORDER[idx - 1]);
+    else navigation.navigate("Login");
+  };
 
   const signInAfterSignup = async (payload: SignUpPayload, loginPassword: string) => {
     await postSignUp(payload);
@@ -143,15 +151,19 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
     }
   };
 
-  const contactError = (): string | null => {
+  const profileError = (): string | null => {
     if (!fullname.trim() || !/^[A-Za-z\s]+$/.test(fullname.trim())) {
       return t("auth.fullNameInvalid");
     }
     if (!EMAIL_RE.test(email.trim())) return t("auth.emailInvalidShort");
-    if (!isSsoSignup && !emailVerified) return t("auth.verifyEmailOtp");
     if (!mobile.trim() || mobile.replace(/\D/g, "").length < 10) {
       return t("auth.phoneInvalid");
     }
+    return null;
+  };
+
+  const verifyError = (): string | null => {
+    if (!isSsoSignup && !emailVerified) return t("auth.verifyEmailOtp");
     if (!phoneVerified) return t("auth.verifyPhoneOtp");
     if (!acceptedTermsAndPrivacy) return t("auth.legalTermsRequired");
     if (!tcpa) return t("auth.tcpaRequired");
@@ -163,10 +175,12 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
     return null;
   };
 
-  const passwordError = (): string | null => {
+  const passwordErrorMsg = (): string | null => {
     const err = signupPasswordError(password);
     if (err) return t("auth.passwordMustInclude", { detail: err.toLowerCase() });
     if (password !== confirmPassword) return t("auth.passwordsMismatch");
+    if (!acceptedTermsAndPrivacy) return t("auth.legalTermsRequired");
+    if (!tcpa) return t("auth.tcpaRequired");
     return null;
   };
 
@@ -182,17 +196,28 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
     isGoogleRegister: googleRegister,
   });
 
-  const onContinueToCategory = () => {
-    const err = contactError();
+  const onContinueFromAccountType = () => setStep("category");
+
+  const onContinueFromCategory = () => {
+    const err = categoryError();
     if (err) {
       Alert.alert(t("auth.checkFormTitle"), err);
       return;
     }
-    setStep("category");
+    setStep("profile");
   };
 
-  const onContinueFromCategory = () => {
-    const err = categoryError();
+  const onContinueFromProfile = () => {
+    const err = profileError();
+    if (err) {
+      Alert.alert(t("auth.checkFormTitle"), err);
+      return;
+    }
+    setStep("verify");
+  };
+
+  const onContinueFromVerify = () => {
+    const err = verifyError();
     if (err) {
       Alert.alert(t("auth.checkFormTitle"), err);
       return;
@@ -205,7 +230,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
   };
 
   const onSubmit = () => {
-    const err = passwordError();
+    const err = passwordErrorMsg();
     if (err) {
       Alert.alert(t("auth.checkPasswordTitle"), err);
       return;
@@ -223,225 +248,260 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
     }
   };
 
-  return (
-    <ScreenContainer scroll applyTopInset padding="lg" background={colors.background}>
-      <View style={styles.brand}>
-        <NetqwixLogo maxWidth={220} />
-      </View>
-      <Text style={[typography.titleLg, { color: colors.text, marginTop: space.md }]}>
-        {t("auth.createAccount")}
-      </Text>
-      <View style={styles.stepRow}>
-        <StepPill
-          label={t("auth.stepContact")}
-          active={step === "contact"}
-          done={step === "category" || step === "password"}
-        />
-        <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
-        <StepPill
-          label={t("auth.stepCategory")}
-          active={step === "category"}
-          done={step === "password"}
-        />
-        <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
-        <StepPill
-          label={isSsoSignup ? t("auth.stepFinish") : t("auth.stepPassword")}
-          active={step === "password"}
-          done={false}
-        />
-      </View>
+  const visibleSteps = isSsoSignup ? STEP_ORDER.filter((s) => s !== "password") : STEP_ORDER;
 
-      {step === "contact" ? (
-        <Stack gap="md">
+  return (
+    <AuthModalChrome>
+      <ScreenContainer scroll applyTopInset padding="lg" background={colors.background}>
+        <View style={styles.brand}>
+          <NetqwixLogo maxWidth={220} />
+        </View>
+        <Text style={[typography.titleLg, { color: colors.text, marginTop: space.md }]}>
+          {t("auth.createAccount")}
+        </Text>
+        <View style={styles.stepRow}>
+          {visibleSteps.map((s, i) => (
+            <React.Fragment key={s}>
+              {i > 0 ? (
+                <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+              ) : null}
+              <StepPill
+                label={stepLabel(t, s, isSsoSignup)}
+                active={step === s}
+                done={visibleSteps.indexOf(step) > i}
+              />
+            </React.Fragment>
+          ))}
+        </View>
+
+        {step !== "accountType" ? (
+          <Pressable onPress={goBack} style={styles.backLink}>
+            <Ionicons name="arrow-back" size={18} color={colors.brandAccent} />
+            <Text style={styles.link}>{t("common.back")}</Text>
+          </Pressable>
+        ) : (
           <AuthEscapeLink
             variant="signin"
             onNavigateToLogin={() => navigation.navigate("Login")}
           />
-          <SocialAuthButtons navigation={navigation} onTokens={onSocialTokens} mode="signup" />
+        )}
 
-          <FormField
-            label={t("auth.fullName")}
-            value={fullname}
-            onChangeText={setFullname}
-            autoCapitalize="words"
-            required
-          />
-
-          <FormField
-            label={t("auth.email")}
-            value={email}
-            onChangeText={(text) => {
-              setEmail(text);
-              setEmailVerified(false);
-            }}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            editable={!emailVerified && !isSsoSignup}
-            required
-          />
-          {isSsoSignup && emailVerified ? (
-            <View style={styles.ssoVerified}>
-              <Ionicons name="checkmark-circle" size={18} color={colors.success} />
-              <Text style={styles.ssoVerifiedText}>
-                {t("auth.emailVerifiedWith", { provider: ssoLabel })}
-              </Text>
+        {step === "accountType" ? (
+          <Stack gap="md">
+            <Text style={styles.sectionLabel}>{t("auth.accountTypeLabel")}</Text>
+            <Text style={styles.categoryHint}>{t("auth.accountTypeStepHint")}</Text>
+            <View style={styles.row}>
+              <TypeChip
+                label={t("auth.trainee")}
+                selected={accountType === AccountType.TRAINEE}
+                onPress={() => setAccountType(AccountType.TRAINEE)}
+              />
+              <TypeChip
+                label={t("auth.trainer")}
+                selected={accountType === AccountType.TRAINER}
+                onPress={() => setAccountType(AccountType.TRAINER)}
+              />
             </View>
-          ) : (
-            <SignupInlineOtp
-              channel="email"
-              email={email}
-              verified={emailVerified}
-              onVerified={() => setEmailVerified(true)}
+            <Button label={t("auth.continue")} size="lg" onPress={onContinueFromAccountType} />
+          </Stack>
+        ) : null}
+
+        {step === "category" ? (
+          <Stack gap="md">
+            <Text style={styles.sectionLabel}>
+              {accountType === AccountType.TRAINER
+                ? t("auth.categoryTrainerTitle")
+                : t("auth.categoryTraineeTitle")}
+            </Text>
+            <Text style={styles.categoryHint}>{t("auth.categoryStepHint")}</Text>
+            <View style={styles.categoryPickerBox}>
+              <SignupCategoryPicker
+                categories={categories}
+                selected={category}
+                onSelect={setCategory}
+                loading={categoriesQuery.isLoading}
+              />
+            </View>
+            <Button label={t("auth.continue")} size="lg" onPress={onContinueFromCategory} />
+          </Stack>
+        ) : null}
+
+        {step === "profile" ? (
+          <Stack gap="md">
+            {!isSsoSignup ? (
+              <SocialAuthButtons
+                navigation={navigation as never}
+                onTokens={onSocialTokens}
+                mode="signup"
+              />
+            ) : null}
+            <FormField
+              label={t("auth.fullName")}
+              value={fullname}
+              onChangeText={setFullname}
+              autoCapitalize="words"
+              required
             />
-          )}
-
-          {!isSsoSignup && (emailVerified || phoneVerified) ? (
-            <Text style={styles.contactOnceHint}>{t("auth.signupContactOnceHint")}</Text>
-          ) : null}
-
-          <FormField
-            label={t("auth.phone")}
-            value={mobile}
-            onChangeText={(text) => {
-              setMobile(text);
-              setPhoneVerified(false);
-            }}
-            keyboardType="phone-pad"
-            editable={!phoneVerified}
-            required
-          />
-          <SignupInlineOtp
-            channel="sms"
-            mobile={mobile}
-            disabled={!emailVerified}
-            verified={phoneVerified}
-            onVerified={() => setPhoneVerified(true)}
-          />
-
-          <Text style={styles.sectionLabel}>{t("auth.accountTypeLabel")}</Text>
-          <View style={styles.row}>
-            <TypeChip
-              label={t("auth.trainee")}
-              selected={accountType === AccountType.TRAINEE}
-              onPress={() => {
-                setAccountType(AccountType.TRAINEE);
+            <FormField
+              label={t("auth.email")}
+              value={email}
+              onChangeText={(text) => {
+                setEmail(text);
+                setEmailVerified(false);
               }}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              editable={!isSsoSignup}
+              required
             />
-            <TypeChip
-              label={t("auth.trainer")}
-              selected={accountType === AccountType.TRAINER}
-              onPress={() => setAccountType(AccountType.TRAINER)}
+            {isSsoSignup && emailVerified ? (
+              <View style={styles.ssoVerified}>
+                <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+                <Text style={styles.ssoVerifiedText}>
+                  {t("auth.emailVerifiedWith", { provider: ssoLabel })}
+                </Text>
+              </View>
+            ) : null}
+            <FormField
+              label={t("auth.phone")}
+              value={mobile}
+              onChangeText={(text) => {
+                setMobile(text);
+                setPhoneVerified(false);
+              }}
+              keyboardType="phone-pad"
+              required
             />
-          </View>
+            <Button label={t("auth.continue")} size="lg" onPress={onContinueFromProfile} />
+          </Stack>
+        ) : null}
 
-          <LegalTermsAcceptance
-            value={acceptedTermsAndPrivacy}
-            onValueChange={setAcceptedTermsAndPrivacy}
-          />
-
-          <View style={styles.tcpaRow}>
-            <Switch value={tcpa} onValueChange={setTcpa} />
-            <Text style={styles.tcpaText}>{t("auth.tcpaConsent")}</Text>
-          </View>
-
-          <Button
-            label={t("auth.continue")}
-            size="lg"
-            onPress={onContinueToCategory}
-          />
-        </Stack>
-      ) : step === "category" ? (
-        <Stack gap="md">
-          <Pressable onPress={() => setStep("contact")} style={styles.backLink}>
-            <Ionicons name="arrow-back" size={18} color={colors.brandAccent} />
-            <Text style={styles.link}>{t("auth.editContactDetails")}</Text>
-          </Pressable>
-          {(emailVerified || phoneVerified) && (
-            <View style={styles.verifiedContactRow}>
-              {emailVerified ? (
-                <View style={styles.verifiedContactChip}>
-                  <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-                  <Text style={styles.verifiedContactText}>{t("auth.emailVerified")}</Text>
+        {step === "verify" ? (
+          <Stack gap="md">
+            <Text style={styles.categoryHint}>{t("auth.verifyStepHint")}</Text>
+            {!isSsoSignup ? (
+              <>
+                <SignupInlineOtp
+                  channel="email"
+                  email={email}
+                  verified={emailVerified}
+                  onVerified={() => setEmailVerified(true)}
+                />
+                <SignupInlineOtp
+                  channel="sms"
+                  mobile={mobile}
+                  disabled={!emailVerified}
+                  verified={phoneVerified}
+                  onVerified={() => setPhoneVerified(true)}
+                />
+              </>
+            ) : (
+              <SignupInlineOtp
+                channel="sms"
+                mobile={mobile}
+                verified={phoneVerified}
+                onVerified={() => setPhoneVerified(true)}
+              />
+            )}
+            {isSsoSignup ? (
+              <>
+                <LegalTermsAcceptance
+                  value={acceptedTermsAndPrivacy}
+                  onValueChange={setAcceptedTermsAndPrivacy}
+                />
+                <View style={styles.tcpaRow}>
+                  <Switch value={tcpa} onValueChange={setTcpa} />
+                  <Text style={styles.tcpaText}>{t("auth.tcpaConsent")}</Text>
                 </View>
-              ) : null}
-              {phoneVerified ? (
-                <View style={styles.verifiedContactChip}>
-                  <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-                  <Text style={styles.verifiedContactText}>{t("auth.phoneVerified")}</Text>
-                </View>
-              ) : null}
+              </>
+            ) : null}
+            <Button
+              label={isSsoSignup ? t("auth.createAccount") : t("auth.continue")}
+              size="lg"
+              loading={submitting && isSsoSignup}
+              onPress={onContinueFromVerify}
+            />
+          </Stack>
+        ) : null}
+
+        {step === "password" ? (
+          <Stack gap="md">
+            <PasswordRequirements password={password} />
+            <FormField
+              label={t("auth.password")}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+              required
+              trailing={
+                <PasswordVisibilityToggle
+                  visible={showPassword}
+                  onToggle={() => setShowPassword((v) => !v)}
+                />
+              }
+            />
+            <FormField
+              label={t("auth.confirmPassword")}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showConfirm}
+              autoCapitalize="none"
+              autoCorrect={false}
+              required
+              trailing={
+                <PasswordVisibilityToggle
+                  visible={showConfirm}
+                  onToggle={() => setShowConfirm((v) => !v)}
+                />
+              }
+            />
+            <LegalTermsAcceptance
+              value={acceptedTermsAndPrivacy}
+              onValueChange={setAcceptedTermsAndPrivacy}
+            />
+            <View style={styles.tcpaRow}>
+              <Switch value={tcpa} onValueChange={setTcpa} />
+              <Text style={styles.tcpaText}>{t("auth.tcpaConsent")}</Text>
             </View>
-          )}
-          <Text style={styles.sectionLabel}>
-            {accountType === AccountType.TRAINER
-              ? t("auth.categoryTrainerTitle")
-              : t("auth.categoryTraineeTitle")}
-          </Text>
-          <Text style={styles.categoryHint}>{t("auth.categoryStepHint")}</Text>
-          <View style={styles.categoryPickerBox}>
-            <SignupCategoryPicker
-              categories={categories}
-              selected={category}
-              onSelect={setCategory}
-              loading={categoriesQuery.isLoading}
+            <Button
+              label={t("auth.createAccount")}
+              loading={submitting}
+              onPress={onSubmit}
+              size="lg"
+              disabled={!isSignupPasswordValid(password) || password !== confirmPassword}
             />
-          </View>
-          <Button
-            label={isSsoSignup ? t("auth.createAccount") : t("auth.continue")}
-            size="lg"
-            loading={submitting}
-            onPress={onContinueFromCategory}
-          />
-        </Stack>
-      ) : (
-        <Stack gap="md">
-          <Pressable onPress={() => setStep("category")} style={styles.backLink}>
-            <Ionicons name="arrow-back" size={18} color={colors.brandAccent} />
-            <Text style={styles.link}>{t("auth.editContactDetails")}</Text>
-          </Pressable>
+          </Stack>
+        ) : null}
 
-          <PasswordRequirements password={password} />
-
-          <FormField
-            label={t("auth.password")}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-            autoCapitalize="none"
-            autoCorrect={false}
-            required
-            trailing={
-              <PasswordVisibilityToggle visible={showPassword} onToggle={() => setShowPassword((v) => !v)} />
-            }
-          />
-          <FormField
-            label={t("auth.confirmPassword")}
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry={!showConfirm}
-            autoCapitalize="none"
-            autoCorrect={false}
-            required
-            trailing={
-              <PasswordVisibilityToggle visible={showConfirm} onToggle={() => setShowConfirm((v) => !v)} />
-            }
-          />
-
-          <Button
-            label={t("auth.createAccount")}
-            loading={submitting}
-            onPress={onSubmit}
-            size="lg"
-            disabled={!isSignupPasswordValid(password) || password !== confirmPassword}
-          />
-        </Stack>
-      )}
-
-      <Pressable onPress={() => navigation.navigate("Login")} style={styles.back}>
-        <Text style={styles.link}>{t("auth.alreadyHaveAccountSignIn")}</Text>
-      </Pressable>
-    </ScreenContainer>
+        <Pressable onPress={() => navigation.navigate("Login")} style={styles.back}>
+          <Text style={styles.link}>{t("auth.alreadyHaveAccountSignIn")}</Text>
+        </Pressable>
+      </ScreenContainer>
+    </AuthModalChrome>
   );
+}
+
+function stepLabel(
+  t: (key: string) => string,
+  step: SignUpStep,
+  isSso: boolean
+): string {
+  switch (step) {
+    case "accountType":
+      return t("auth.stepAccountType");
+    case "category":
+      return t("auth.stepCategory");
+    case "profile":
+      return t("auth.stepProfile");
+    case "verify":
+      return t("auth.stepVerify");
+    case "password":
+      return isSso ? t("auth.stepFinish") : t("auth.stepPassword");
+    default:
+      return step;
+  }
 }
 
 function StepPill({
@@ -461,14 +521,7 @@ function StepPill({
         done && !active && styles.pillDone,
       ]}
     >
-      <Text
-        style={[
-          styles.pillText,
-          (active || done) && styles.pillTextActive,
-        ]}
-      >
-        {label}
-      </Text>
+      <Text style={[styles.pillText, (active || done) && styles.pillTextActive]}>{label}</Text>
     </View>
   );
 }
@@ -494,11 +547,12 @@ const styles = StyleSheet.create({
   stepRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: space.sm,
+    flexWrap: "wrap",
+    gap: space.xs,
     marginVertical: space.md,
   },
   pill: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: radii.pill,
     backgroundColor: colors.surfaceElevated,
@@ -509,10 +563,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brandAccentSubtle,
     borderColor: colors.brandAccent,
   },
-  pillDone: {
-    borderColor: colors.success,
-  },
-  pillText: { fontSize: 13, fontWeight: "600", color: colors.textMuted },
+  pillDone: { borderColor: colors.success },
+  pillText: { fontSize: 12, fontWeight: "600", color: colors.textMuted },
   pillTextActive: { color: colors.brandNavy },
   sectionLabel: {
     fontSize: 14,
@@ -536,35 +588,23 @@ const styles = StyleSheet.create({
     maxHeight: 360,
     marginBottom: space.md,
   },
-  wrapChips: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: space.sm,
-    marginBottom: space.md,
-  },
   chip: {
-    paddingVertical: 10,
+    flex: 1,
+    minWidth: 120,
+    paddingVertical: 14,
     paddingHorizontal: 14,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surfaceElevated,
+    alignItems: "center",
   },
   chipSelected: {
     borderColor: colors.brandAccent,
     backgroundColor: colors.brandAccentSubtle,
   },
-  chipText: {
-    color: colors.text,
-    fontWeight: "600",
-  },
-  chipTextSelected: {
-    color: colors.brandAccent,
-  },
-  muted: {
-    color: colors.textMuted,
-    marginBottom: space.md,
-  },
+  chipText: { color: colors.text, fontWeight: "600" },
+  chipTextSelected: { color: colors.brandAccent },
   tcpaRow: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -583,52 +623,13 @@ const styles = StyleSheet.create({
     gap: 6,
     marginBottom: space.sm,
   },
-  back: {
-    marginTop: space.lg,
-    alignItems: "center",
-  },
-  link: {
-    color: colors.brandAccent,
-    fontWeight: "600",
-  },
+  back: { marginTop: space.lg, alignItems: "center" },
+  link: { color: colors.brandAccent, fontWeight: "600" },
   ssoVerified: {
     flexDirection: "row",
     alignItems: "center",
     gap: space.sm,
-    marginTop: space.xs,
     marginBottom: space.sm,
   },
-    ssoVerifiedText: {
-      color: colors.success,
-      fontWeight: "600",
-      fontSize: 14,
-    },
-    verifiedContactRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: space.sm,
-      marginBottom: space.sm,
-    },
-    verifiedContactChip: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 4,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: radii.pill,
-      backgroundColor: `${colors.success}14`,
-      borderWidth: 1,
-      borderColor: `${colors.success}40`,
-    },
-    verifiedContactText: {
-      fontSize: 12,
-      fontWeight: "600",
-      color: colors.success,
-    },
-    contactOnceHint: {
-      ...typography.caption,
-      color: colors.textMuted,
-      lineHeight: 18,
-      marginBottom: space.xs,
-    },
-  });
+  ssoVerifiedText: { color: colors.success, fontWeight: "600", fontSize: 14 },
+});
