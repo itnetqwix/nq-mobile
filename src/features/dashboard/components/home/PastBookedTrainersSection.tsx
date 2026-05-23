@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Skeleton } from "../../../../components/ui";
 import { fetchRecentTrainers } from "../../../home/api/homeApi";
 import { getTrainerName } from "../../../bookexpert/lib/trainerUtils";
+import { trainerListItemKey } from "../../../../lib/lists/trainerListUtils";
 import { queryKeys } from "../../../../lib/queryKeys";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
@@ -54,7 +55,7 @@ export function PastBookedTrainersSection({ onSelectTrainer }: Props) {
           const name = getTrainerName(item);
           return (
             <Pressable
-              key={String(item?._id ?? i)}
+              key={trainerListItemKey(item, i, "past-")}
               style={({ pressed }) => [styles.tile, pressed && { opacity: 0.9 }]}
               onPress={() => onSelectTrainer(item)}
               accessibilityRole="button"

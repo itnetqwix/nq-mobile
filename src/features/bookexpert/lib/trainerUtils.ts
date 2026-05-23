@@ -220,12 +220,14 @@ export type TrainerFriendPeer = {
 
 function normalizeFriendPeers(raw: unknown): TrainerFriendPeer[] {
   if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
   const out: TrainerFriendPeer[] = [];
   for (const item of raw) {
     if (!item || typeof item !== "object") continue;
     const row = item as Record<string, unknown>;
     const id = String(row._id ?? "");
-    if (!id) continue;
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
     out.push({
       _id: id,
       fullname: row.fullname as string | undefined,

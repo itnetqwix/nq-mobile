@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EmptyState, ImageWithSkeleton, Pill, Skeleton } from "../../../components/ui";
 import { colors, radii, space, typography } from "../../../theme";
 import { queryKeys } from "../../../lib/queryKeys";
+import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
 import { apiClient } from "../../../api/client";
@@ -34,6 +35,7 @@ import {
   NOTIFICATION_TYPES,
   useNotifications,
 } from "../../notifications/NotificationContext";
+import { useChatRoomChrome } from "../../chats/hooks/useChatRoomChrome";
 import { ChatRoomScreen } from "../../chats/screens/ChatRoomScreen";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
@@ -171,6 +173,7 @@ export function CommunityScreen() {
     conversationId: string;
     partner: { _id: string; fullname?: string; profile_picture?: string };
   } | null>(null);
+  useChatRoomChrome(!!activeChat);
   const currentUserId = String((user as any)?._id ?? (user as any)?.id ?? "");
 
   const listPad = useMemo(
@@ -382,7 +385,7 @@ export function CommunityScreen() {
       </View>
       <FlatList
         data={filteredMembers}
-        keyExtractor={(item, i) => item?._id ?? String(i)}
+        keyExtractor={flatListKeyExtractor}
         renderItem={({ item }) => (
           <MemberCard
             user={item}

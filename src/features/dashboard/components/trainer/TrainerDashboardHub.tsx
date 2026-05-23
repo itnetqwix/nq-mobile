@@ -1,9 +1,11 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
+import ReviewAnalysisCard from "../../../ai/ReviewAnalysisCard";
 import { queryKeys } from "../../../../lib/queryKeys";
 import { fetchTrainerSlots } from "../../../home/api/homeApi";
+import type { UtilitySurfaceId } from "../../config/shellSurfaces";
 import { TrainerOnlineToggle } from "../TrainerOnlineToggle";
 import { HomeUserAvatar } from "../home/HomeUserAvatar";
 import { useDashboardSessions } from "../../hooks/useDashboardSessions";
@@ -14,7 +16,11 @@ import { TrainerEarningsSnapshot } from "./TrainerEarningsSnapshot";
 import { RecentTraineeClipsSection } from "./RecentTraineeClipsSection";
 import { RatingFeedbackPulse } from "./RatingFeedbackPulse";
 import { PerformanceTipsCard } from "./PerformanceTipsCard";
-import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
+import { TrainerRecentTraineesSection } from "./TrainerRecentTraineesSection";
+import { TrainerFriendRequestsSection } from "./TrainerFriendRequestsSection";
+import { TrainerLockerSection } from "./TrainerLockerSection";
+import { createTrainerDashboardStyles } from "./trainerDashboardTheme";
+import { useThemeColors, useThemedStyles } from "../../../../theme";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
 
 type Props = {
@@ -23,12 +29,17 @@ type Props = {
   profilePicture?: string;
   showAsOnline: boolean;
   user?: Record<string, unknown> | null;
+  recentTrainees?: Record<string, unknown>[];
+  friendRequests?: Array<Record<string, unknown>>;
+  onAcceptFriend?: (id: string) => void;
+  onRejectFriend?: (id: string) => void;
   onSettings: () => void;
   onAvailabilityToggle: (next: boolean) => Promise<void>;
   onOpenWallet?: () => void;
   onOpenSchedule: () => void;
   onOpenSessions: () => void;
   onOpenClips: () => void;
+  onOpenSurface: (id: UtilitySurfaceId) => void;
   onSessionPress: (session: Record<string, unknown>) => void;
 };
 
@@ -38,17 +49,22 @@ export function TrainerDashboardHub({
   profilePicture,
   showAsOnline,
   user,
+  recentTrainees = [],
+  friendRequests = [],
+  onAcceptFriend,
+  onRejectFriend,
   onSettings,
   onAvailabilityToggle,
   onOpenWallet,
   onOpenSchedule,
   onOpenSessions,
   onOpenClips,
+  onOpenSurface,
   onSessionPress,
 }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
-  const styles = useStyles();
+  const theme = useThemedStyles((palette) => createTrainerDashboardStyles(palette));
   const { pendingSessions, todayTimeline } = useDashboardSessions(accountType);
 
   const { data: scheduleSlots = [] } = useQuery({
@@ -60,39 +76,41 @@ export function TrainerDashboardHub({
   const nextSlot = formatNextOpenSlot(scheduleSlots);
 
   return (
-    <View style={styles.root}>
-      <View style={styles.headerCard}>
-        <Pressable style={styles.headerMain} onPress={onSettings}>
+    <View style={theme.stack}>
+      <View style={[theme.card, theme.cardPadding, theme.cardGap]}>
+        <Pressable style={theme.rowStart} onPress={onSettings}>
           <HomeUserAvatar
             uri={profilePicture}
             name={name}
             size={64}
             onlineStatus={showAsOnline ? "online" : "offline"}
           />
-          <View style={styles.headerText}>
-            <Text style={styles.welcome}>{t("trainerDashboard.welcome", { name })}</Text>
-            <Text style={styles.role}>{t("trainerDashboard.roleTrainer")}</Text>
+          <View style={theme.flex1}>
+            <Text style={theme.welcome}>{t("trainerDashboard.welcome", { name })}</Text>
+            <Text style={theme.role}>{t("trainerDashboard.roleTrainer")}</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={c.textMuted} />
         </Pressable>
         <TrainerEarningsSnapshot onPress={onOpenWallet} />
       </View>
 
-      <PendingRequestsBanner
-        count={pendingSessions.length}
-        onPress={onOpenSessions}
-      />
+      <PendingRequestsBanner count={pendingSessions.length} onPress={onOpenSessions} />
 
-      <View style={styles.availCard}>
-        <TrainerOnlineToggle value={showAsOnline} onToggle={onAvailabilityToggle} />
-        <Pressable style={styles.slotRow} onPress={onOpenSchedule}>
+      <View style={theme.card}>
+        <TrainerOnlineToggle
+          embedded
+          value={showAsOnline}
+          onToggle={onAvailabilityToggle}
+        />
+        <View style={theme.divider} />
+        <Pressable style={theme.scheduleRow} onPress={onOpenSchedule}>
           <Ionicons name="calendar-outline" size={18} color={c.brandNavy} />
-          <Text style={styles.slotText}>
+          <Text style={theme.scheduleText}>
             {nextSlot
               ? t("trainerDashboard.nextSlot", { when: nextSlot })
               : t("trainerDashboard.noSlots")}
           </Text>
-          <Text style={styles.slotLink}>{t("trainerDashboard.openSchedule")}</Text>
+          <Text style={theme.sectionLink}>{t("trainerDashboard.openSchedule")}</Text>
         </Pressable>
       </View>
 
@@ -101,6 +119,14 @@ export function TrainerDashboardHub({
         onSessionPress={onSessionPress}
         onSeeAll={onOpenSessions}
       />
+
+      {friendRequests.length > 0 && onAcceptFriend && onRejectFriend ? (
+        <TrainerFriendRequestsSection
+          requests={friendRequests}
+          onAccept={onAcceptFriend}
+          onReject={onRejectFriend}
+        />
+      ) : null}
 
       <RatingFeedbackPulse user={user} />
 
@@ -111,43 +137,12 @@ export function TrainerDashboardHub({
       />
 
       <RecentTraineeClipsSection onOpenClips={onOpenClips} />
-    </View>
-  );
-}
 
-function useStyles() {
-  return useThemedStyles((palette) =>
-    StyleSheet.create({
-      root: { gap: space.md, marginBottom: space.md },
-      headerCard: {
-        backgroundColor: palette.surfaceElevated,
-        borderRadius: radii.lg,
-        padding: space.md,
-        borderWidth: 1,
-        borderColor: palette.border,
-        gap: space.sm,
-      },
-      headerMain: { flexDirection: "row", alignItems: "center", gap: space.md },
-      headerText: { flex: 1, minWidth: 0 },
-      welcome: { ...typography.titleSm, color: palette.text, fontWeight: "700" },
-      role: { ...typography.caption, color: palette.textMuted, marginTop: 2 },
-      availCard: {
-        backgroundColor: palette.surfaceElevated,
-        borderRadius: radii.lg,
-        borderWidth: 1,
-        borderColor: palette.border,
-        overflow: "hidden",
-      },
-      slotRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: space.sm,
-        paddingHorizontal: space.md,
-        paddingBottom: space.md,
-        flexWrap: "wrap",
-      },
-      slotText: { ...typography.bodySm, color: palette.text, flex: 1 },
-      slotLink: { ...typography.caption, color: palette.brandNavy, fontWeight: "700" },
-    })
+      <TrainerRecentTraineesSection trainees={recentTrainees} />
+
+      <ReviewAnalysisCard embedded />
+
+      <TrainerLockerSection accountType={accountType} onOpenSurface={onOpenSurface} />
+    </View>
   );
 }

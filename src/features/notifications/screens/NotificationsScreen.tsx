@@ -16,6 +16,7 @@ import { EmptyState, Skeleton } from "../../../components/ui";
 import type { RootStackParamList, ShellSurfaceRouteId } from "../../../navigation/types";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { queryKeys } from "../../../lib/queryKeys";
+import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { fetchNotifications } from "../../home/api/homeApi";
 import { useNotifications } from "../NotificationContext";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
@@ -218,7 +219,7 @@ export function NotificationsScreen() {
   return (
     <FlatList
       data={notifications}
-      keyExtractor={(item, i) => item?._id ?? String(i)}
+      keyExtractor={flatListKeyExtractor}
       renderItem={({ item }) => (
         <NotificationItem
           item={item}

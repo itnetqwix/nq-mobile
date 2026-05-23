@@ -13,6 +13,8 @@ type Props = {
   onPress?: () => void;
   tone?: "default" | "success" | "warning";
   accessibilityLabel?: string;
+  /** Fill equal width in a row (e.g. earnings snapshot). */
+  expand?: boolean;
 };
 
 export function DashboardStatChip({
@@ -22,6 +24,7 @@ export function DashboardStatChip({
   onPress,
   tone = "default",
   accessibilityLabel,
+  expand,
 }: Props) {
   const c = useThemeColors();
   const styles = useThemedStyles((palette) =>
@@ -36,7 +39,9 @@ export function DashboardStatChip({
         borderWidth: 1,
         borderColor: palette.border,
         backgroundColor: palette.surfaceElevated,
-        maxWidth: 160,
+        maxWidth: expand ? undefined : 160,
+        flex: expand ? 1 : undefined,
+        minWidth: expand ? 0 : undefined,
       },
       chipSuccess: { borderColor: palette.success, backgroundColor: `${palette.success}12` },
       chipWarning: { borderColor: palette.warning, backgroundColor: `${palette.warning}12` },

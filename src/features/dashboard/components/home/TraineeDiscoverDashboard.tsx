@@ -23,6 +23,7 @@ import {
 } from "../../../home/api/homeApi";
 import { useOnlinePresence } from "../../../socket/useOnlinePresence";
 import { getTrainerCategories } from "../../../bookexpert/lib/trainerUtils";
+import { trainerListItemKey } from "../../../../lib/lists/trainerListUtils";
 import {
   TRAINEE_COACH_PAGE_SIZE,
   TRAINEE_COACH_PREVIEW_COUNT,
@@ -103,7 +104,8 @@ export function TraineeDiscoverDashboard({
 
   const { nextSession } = useDashboardSessions(isGuest ? null : accountType);
   const { data: walletBalance } = useWalletBalance(!isGuest);
-  const { isFavorite, toggleFavorite } = useFavoriteTrainers(!isGuest);
+  const isTraineeAccount = accountType === AccountType.TRAINEE;
+  const { isFavorite, toggleFavorite } = useFavoriteTrainers(!isGuest && isTraineeAccount);
   const apiFilterParams = useMemo(() => filtersToApiParams(browseFilters), [browseFilters]);
   const activeFilterCount = countActiveFilters(browseFilters);
 
@@ -463,10 +465,9 @@ export function TraineeDiscoverDashboard({
               searchActive && getTrainerCategories(trainer).length > 0
                 ? getTrainerCategories(trainer)[0]
                 : undefined;
-            const rowKey = String(trainer._id ?? trainer.id ?? `row-${index}`);
             return (
               <TrainerBrowseCard
-                key={rowKey}
+                key={trainerListItemKey(trainer, index, "discover-")}
                 trainer={trainer}
                 themeColors={themeColors}
                 onPress={onViewTrainer}

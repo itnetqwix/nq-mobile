@@ -20,6 +20,7 @@ import { apiClient } from "../../../api/client";
 import { EmptyState, Skeleton } from "../../../components/ui";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { queryKeys } from "../../../lib/queryKeys";
+import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
@@ -33,6 +34,7 @@ import {
   respondGroupInvite,
 } from "../api/chatActionsApi";
 import type { MainTabScreenProps } from "../../../navigation/types";
+import { useChatRoomChrome } from "../hooks/useChatRoomChrome";
 import { ChatRoomScreen } from "./ChatRoomScreen";
 import {
   getPresignedChatUploadUrl,
@@ -339,6 +341,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
     groupAdminId?: string;
     groupDescription?: string;
   } | null>(null);
+  useChatRoomChrome(!!activeChat);
   const [showNewChat, setShowNewChat] = useState(false);
   const [friendSearch, setFriendSearch] = useState("");
   const [creatingChat, setCreatingChat] = useState(false);
@@ -667,7 +670,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
       ) : (
         <FlatList
           data={filtered}
-          keyExtractor={(item, i) => item?._id ?? String(i)}
+          keyExtractor={flatListKeyExtractor}
           renderItem={({ item }) => {
             const partner = getPartner(item);
             const lastMsg = item.lastMessage ?? item.last_message ?? "";
@@ -888,8 +891,8 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
                     ) : null}
                   </View>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
-                    {selectedMemberList.slice(0, 10).map((m) => (
-                      <View key={m._id} style={{ alignItems: "center", marginRight: 10, width: 56 }}>
+                    {selectedMemberList.slice(0, 10).map((m, mi) => (
+                      <View key={`${m._id}-${mi}`} style={{ alignItems: "center", marginRight: 10, width: 56 }}>
                         <Avatar uri={m.profile_picture} name={m.fullname} size={44} />
                         <Text style={{ fontSize: 10, color: c.textMuted, marginTop: 4 }} numberOfLines={1}>
                           {(m.fullname ?? "").split(" ")[0]}
@@ -932,7 +935,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
           ) : (
             <FlatList
               data={friendsList}
-              keyExtractor={(item) => item._id}
+              keyExtractor={flatListKeyExtractor}
               renderItem={({ item }) => {
                 const isSelected = selectedGroupMembers.has(item._id);
                 return (
@@ -986,7 +989,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
           </View>
           <FlatList
             data={selectedMemberList}
-            keyExtractor={(item) => item._id}
+            keyExtractor={flatListKeyExtractor}
             renderItem={({ item }) => (
               <View style={styles.friendRow}>
                 <Avatar uri={item.profile_picture} name={item.fullname} size={44} />

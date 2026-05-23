@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { DashboardSection } from "../shared/DashboardSection";
 import { SessionPreviewRow } from "../home/SessionPreviewRow";
 import { AccountType } from "../../../../constants/accountType";
-import { space, typography, useThemedStyles } from "../../../../theme";
+import { radii, space, typography, useThemedStyles } from "../../../../theme";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
 
 type Props = {
@@ -19,6 +19,7 @@ export function TodayScheduleTimeline({ sessions, onSessionPress, onSeeAll }: Pr
 
   return (
     <DashboardSection
+      embedded
       title={t("trainerDashboard.todaySchedule")}
       action={
         <Pressable onPress={onSeeAll} hitSlop={8}>
@@ -45,7 +46,7 @@ function useStyles() {
   return useThemedStyles((palette) =>
     StyleSheet.create({
       list: {
-        borderRadius: 12,
+        borderRadius: radii.lg,
         overflow: "hidden",
         borderWidth: 1,
         borderColor: palette.border,

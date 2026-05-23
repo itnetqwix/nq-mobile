@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,12 +13,13 @@ import {
 } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AccountType } from "../../../constants/accountType";
 import { useAuth } from "../../auth/context/AuthContext";
 import { createLibrarySubmission, fetchClipTaxonomy, type LockerClip } from "../api/clipsApi";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { queryKeys } from "../../../lib/queryKeys";
-import { colors, radii, space } from "../../../theme";
+import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 type Props = {
@@ -28,11 +31,14 @@ type Props = {
 
 export function LibrarySubmissionSheet({ visible, clip, onClose, onSubmitted }: Props) {
   const { t } = useAppTranslation();
+  const insets = useSafeAreaInsets();
+  const c = useThemeColors();
+  const styles = useStyles();
   const { user, accountType } = useAuth();
   const isTrainer = accountType === AccountType.TRAINER;
   const profileCategory = useMemo(() => {
-    const c = user?.category ?? (user as any)?.Category;
-    return typeof c === "string" ? c.trim() : "";
+    const cat = user?.category ?? (user as any)?.Category;
+    return typeof cat === "string" ? cat.trim() : "";
   }, [user]);
 
   const [categoryId, setCategoryId] = useState("");
@@ -57,18 +63,18 @@ export function LibrarySubmissionSheet({ visible, clip, onClose, onSubmitted }: 
   useEffect(() => {
     if (!visible || !taxonomy || !isTrainer || !profileCategory) return;
     const match = taxonomy.categories.find(
-      (c) => c.name.toLowerCase() === profileCategory.toLowerCase()
+      (cat) => cat.name.toLowerCase() === profileCategory.toLowerCase()
     );
     if (match) setCategoryId(match.id);
   }, [visible, taxonomy, isTrainer, profileCategory]);
 
-  const selectedCategory = taxonomy?.categories.find((c) => c.id === categoryId);
+  const selectedCategory = taxonomy?.categories.find((cat) => cat.id === categoryId);
   const subcategories = selectedCategory?.subcategories ?? [];
 
   const submission = clip?.librarySubmission;
-  const canRequest =
-    !submission ||
-    submission.status === "rejected";
+  const canRequest = !submission || submission.status === "rejected";
+
+  const clipTitle = String(clip?.title ?? clip?.file_name ?? t("locker.clipDefault"));
 
   const submit = async () => {
     if (!clip?._id || !categoryId || !subcategoryId) return;
@@ -106,148 +112,217 @@ export function LibrarySubmissionSheet({ visible, clip, onClose, onSubmitted }: 
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{t("locker.libraryRequestTitle")}</Text>
-        <Pressable onPress={onClose} hitSlop={12}>
-          <Ionicons name="close" size={26} color={colors.text} />
-        </Pressable>
-      </View>
-      <ScrollView contentContainerStyle={styles.body}>
-        <Text style={styles.lead}>{t("locker.libraryRequestLead")}</Text>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <View style={[styles.header, { paddingTop: Math.max(insets.top, space.md) }]}>
+          <View style={styles.headerText}>
+            <Text style={styles.title}>{t("locker.libraryRequestTitle")}</Text>
+            <Text style={styles.subtitle} numberOfLines={1}>
+              {clipTitle}
+            </Text>
+          </View>
+          <Pressable onPress={onClose} hitSlop={12} accessibilityRole="button">
+            <Ionicons name="close" size={26} color={c.text} />
+          </Pressable>
+        </View>
 
-        {submission && submission.status !== "rejected" ? (
-          <View style={styles.statusBox}>
-            <Text style={styles.statusLabel}>{t("locker.libraryRequestStatus")}</Text>
-            <Text style={styles.statusValue}>{statusLabel(submission.status)}</Text>
-            {submission.rejection_reason ? (
+        <ScrollView
+          contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + space.xl }]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.heroCard}>
+            <Ionicons name="library-outline" size={28} color={c.brandNavy} />
+            <Text style={styles.lead}>{t("locker.libraryRequestLead")}</Text>
+          </View>
+
+          {submission && submission.status !== "rejected" ? (
+            <View style={styles.statusBox}>
+              <Text style={styles.statusLabel}>{t("locker.libraryRequestStatus")}</Text>
+              <Text style={styles.statusValue}>{statusLabel(submission.status)}</Text>
+              {submission.rejection_reason ? (
+                <Text style={styles.reason}>{submission.rejection_reason}</Text>
+              ) : null}
+            </View>
+          ) : null}
+
+          {submission?.status === "rejected" && submission.rejection_reason ? (
+            <View style={styles.rejectBox}>
+              <Text style={styles.rejectTitle}>{t("locker.libraryRejectionTitle")}</Text>
               <Text style={styles.reason}>{submission.rejection_reason}</Text>
-            ) : null}
-          </View>
-        ) : null}
+            </View>
+          ) : null}
 
-        {submission?.status === "rejected" && submission.rejection_reason ? (
-          <View style={styles.rejectBox}>
-            <Text style={styles.rejectTitle}>{t("locker.libraryRejectionTitle")}</Text>
-            <Text style={styles.reason}>{submission.rejection_reason}</Text>
-          </View>
-        ) : null}
-
-        {canRequest ? (
-          <>
-            {isLoading ? (
-              <ActivityIndicator color={colors.brandNavy} style={{ marginVertical: space.md }} />
-            ) : (
-              <>
-                {!isTrainer && (
-                  <>
-                    <Text style={styles.label}>{t("locker.sportCategory")}</Text>
+          {canRequest ? (
+            <View style={styles.formCard}>
+              {isLoading ? (
+                <ActivityIndicator color={c.brandNavy} style={{ marginVertical: space.md }} />
+              ) : (
+                <>
+                  {!isTrainer && (
+                    <>
+                      <Text style={styles.label}>{t("locker.sportCategory")}</Text>
+                      <View style={styles.chips}>
+                        {(taxonomy?.categories ?? []).map((cat) => (
+                          <Pressable
+                            key={cat.id}
+                            style={[styles.chip, categoryId === cat.id && styles.chipOn]}
+                            onPress={() => {
+                              setCategoryId(cat.id);
+                              setSubcategoryId("");
+                            }}
+                          >
+                            <Text
+                              style={[styles.chipText, categoryId === cat.id && styles.chipTextOn]}
+                            >
+                              {cat.name}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </>
+                  )}
+                  {isTrainer && profileCategory ? (
+                    <View style={styles.profileRow}>
+                      <Text style={styles.label}>{t("locker.sportFromProfile")}</Text>
+                      <Text style={styles.profileValue}>{profileCategory}</Text>
+                    </View>
+                  ) : null}
+                  <Text style={styles.label}>{t("locker.subcategory")}</Text>
+                  {subcategories.length === 0 ? (
+                    <Text style={styles.muted}>{t("locker.selectCategoryFirst")}</Text>
+                  ) : (
                     <View style={styles.chips}>
-                      {(taxonomy?.categories ?? []).map((c) => (
+                      {subcategories.map((s) => (
                         <Pressable
-                          key={c.id}
-                          style={[styles.chip, categoryId === c.id && styles.chipOn]}
-                          onPress={() => {
-                            setCategoryId(c.id);
-                            setSubcategoryId("");
-                          }}
+                          key={s.id}
+                          style={[styles.chip, subcategoryId === s.id && styles.chipOn]}
+                          onPress={() => setSubcategoryId(s.id)}
                         >
-                          <Text style={[styles.chipText, categoryId === c.id && styles.chipTextOn]}>
-                            {c.name}
+                          <Text
+                            style={[styles.chipText, subcategoryId === s.id && styles.chipTextOn]}
+                          >
+                            {s.name}
                           </Text>
                         </Pressable>
                       ))}
                     </View>
-                  </>
-                )}
-                {isTrainer && profileCategory ? (
-                  <Text style={styles.muted}>
-                    {t("locker.sportFromProfile")}: {profileCategory}
-                  </Text>
-                ) : null}
-                <Text style={styles.label}>{t("locker.subcategory")}</Text>
-                <View style={styles.chips}>
-                  {subcategories.map((s) => (
-                    <Pressable
-                      key={s.id}
-                      style={[styles.chip, subcategoryId === s.id && styles.chipOn]}
-                      onPress={() => setSubcategoryId(s.id)}
-                    >
-                      <Text style={[styles.chipText, subcategoryId === s.id && styles.chipTextOn]}>
-                        {s.name}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </>
-            )}
+                  )}
+                </>
+              )}
+            </View>
+          ) : null}
+        </ScrollView>
+
+        {canRequest ? (
+          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, space.md) }]}>
             <Pressable
-              style={[styles.submitBtn, (!categoryId || !subcategoryId || busy) && styles.submitDisabled]}
+              style={[
+                styles.submitBtn,
+                (!categoryId || !subcategoryId || busy) && styles.submitDisabled,
+              ]}
               onPress={() => void submit()}
               disabled={!categoryId || !subcategoryId || busy}
             >
               {busy ? (
-                <ActivityIndicator color={colors.brandTextOn} />
+                <ActivityIndicator color={c.brandTextOn} />
               ) : (
                 <Text style={styles.submitText}>{t("locker.libraryRequestSubmit")}</Text>
               )}
             </Pressable>
-          </>
+          </View>
         ) : null}
-      </ScrollView>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: space.lg,
-    paddingVertical: space.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  title: { fontSize: 18, fontWeight: "700", color: colors.text, flex: 1 },
-  body: { padding: space.lg, paddingBottom: 40 },
-  lead: { color: colors.textMuted, marginBottom: space.md, lineHeight: 20 },
-  label: { fontWeight: "600", color: colors.text, marginTop: space.md, marginBottom: space.sm },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: radii.pill,
-    backgroundColor: colors.surfaceMuted,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipOn: { backgroundColor: colors.brandSubtle, borderColor: colors.brandNavy },
-  chipText: { color: colors.textMuted, fontSize: 13 },
-  chipTextOn: { color: colors.brandNavy, fontWeight: "600" },
-  submitBtn: {
-    marginTop: space.lg,
-    backgroundColor: colors.brandNavy,
-    borderRadius: radii.md,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  submitDisabled: { opacity: 0.5 },
-  submitText: { color: colors.brandTextOn, fontWeight: "700" },
-  statusBox: {
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: radii.md,
-    padding: space.md,
-    marginBottom: space.md,
-  },
-  statusLabel: { color: colors.textMuted, fontSize: 12 },
-  statusValue: { color: colors.text, fontWeight: "700", marginTop: 4 },
-  rejectBox: {
-    backgroundColor: "#fef2f2",
-    borderRadius: radii.md,
-    padding: space.md,
-    marginBottom: space.md,
-  },
-  rejectTitle: { fontWeight: "700", color: "#b91c1c", marginBottom: 4 },
-  reason: { color: colors.text, lineHeight: 20 },
-  muted: { color: colors.textMuted, marginBottom: space.sm },
-});
+function useStyles() {
+  return useThemedStyles((palette) =>
+    StyleSheet.create({
+      flex: { flex: 1, backgroundColor: palette.background },
+      header: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: space.sm,
+        paddingHorizontal: space.lg,
+        paddingBottom: space.md,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: palette.border,
+        backgroundColor: palette.surfaceElevated,
+      },
+      headerText: { flex: 1, minWidth: 0 },
+      title: { ...typography.titleSm, color: palette.text, fontWeight: "700" },
+      subtitle: { ...typography.caption, color: palette.textMuted, marginTop: 2 },
+      body: { padding: space.lg, gap: space.md },
+      heroCard: {
+        backgroundColor: palette.surfaceElevated,
+        borderRadius: radii.lg,
+        borderWidth: 1,
+        borderColor: palette.border,
+        padding: space.md,
+        gap: space.sm,
+        alignItems: "flex-start",
+      },
+      lead: { ...typography.bodySm, color: palette.textMuted, lineHeight: 20 },
+      formCard: {
+        backgroundColor: palette.surfaceElevated,
+        borderRadius: radii.lg,
+        borderWidth: 1,
+        borderColor: palette.border,
+        padding: space.md,
+        gap: space.sm,
+      },
+      label: { ...typography.caption, fontWeight: "700", color: palette.text, marginTop: space.xs },
+      chips: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
+      chip: {
+        paddingHorizontal: space.md,
+        paddingVertical: space.sm,
+        borderRadius: radii.pill,
+        backgroundColor: palette.background,
+        borderWidth: 1,
+        borderColor: palette.border,
+      },
+      chipOn: { backgroundColor: palette.brandSubtle, borderColor: palette.brandNavy },
+      chipText: { ...typography.caption, color: palette.textMuted, fontWeight: "600" },
+      chipTextOn: { color: palette.brandNavy },
+      profileRow: { gap: 4, marginBottom: space.xs },
+      profileValue: { ...typography.bodyMd, color: palette.text, fontWeight: "600" },
+      muted: { ...typography.caption, color: palette.textMuted },
+      footer: {
+        paddingHorizontal: space.lg,
+        paddingTop: space.sm,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: palette.border,
+        backgroundColor: palette.surfaceElevated,
+      },
+      submitBtn: {
+        backgroundColor: palette.brandNavy,
+        borderRadius: radii.md,
+        paddingVertical: 14,
+        alignItems: "center",
+      },
+      submitDisabled: { opacity: 0.5 },
+      submitText: { ...typography.bodyMd, color: palette.brandTextOn, fontWeight: "700" },
+      statusBox: {
+        backgroundColor: palette.surfaceMuted,
+        borderRadius: radii.md,
+        padding: space.md,
+        borderWidth: 1,
+        borderColor: palette.border,
+      },
+      statusLabel: { ...typography.caption, color: palette.textMuted },
+      statusValue: { ...typography.bodyMd, color: palette.text, fontWeight: "700", marginTop: 4 },
+      rejectBox: {
+        backgroundColor: "#fef2f2",
+        borderRadius: radii.md,
+        padding: space.md,
+        borderWidth: 1,
+        borderColor: "#fecaca",
+      },
+      rejectTitle: { fontWeight: "700", color: "#b91c1c", marginBottom: 4 },
+      reason: { ...typography.bodySm, color: palette.text, lineHeight: 20 },
+    })
+  );
+}

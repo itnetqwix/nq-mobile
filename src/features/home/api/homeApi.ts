@@ -1,6 +1,9 @@
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
+import { dedupeRowsById, dedupeTrainersById } from "../../../lib/lists/trainerListUtils";
+
+export { dedupeRowsById } from "../../../lib/lists/trainerListUtils";
 
 /**
  * `/user/all-online-user` returns `ResponseBuilder` JSON; `data` may be an aggregate row
@@ -27,24 +30,7 @@ function normalizeOnlineTrainerRows(raw: unknown): any[] {
       commission: t.commission,
     });
   }
-  return out;
-}
-
-/** Drop duplicate Mongo rows so list `key={_id}` stays stable (API/cache may repeat ids). */
-export function dedupeRowsById<T extends { _id?: unknown }>(rows: T[]): T[] {
-  const seen = new Set<string>();
-  const out: T[] = [];
-  for (const row of rows) {
-    const id = row?._id != null ? String(row._id) : "";
-    if (!id) {
-      out.push(row);
-      continue;
-    }
-    if (seen.has(id)) continue;
-    seen.add(id);
-    out.push(row);
-  }
-  return out;
+  return dedupeTrainersById(out);
 }
 
 export type InstantEligibilityResult = {
@@ -162,7 +148,8 @@ export async function fetchRecentTrainees(): Promise<any[]> {
 
 export async function fetchRecentTrainers(): Promise<any[]> {
   const res = await apiClient.get(API_ROUTES.trainee.recentTrainers);
-  return res.data?.result ?? res.data ?? [];
+  const raw = res.data?.result ?? res.data ?? [];
+  return Array.isArray(raw) ? dedupeRowsById(raw) : [];
 }
 
 export async function postAcceptFriendRequest(requestId: string): Promise<any> {
@@ -365,7 +352,7 @@ export async function fetchTrainersWithSlots(params?: BrowseTrainersParams): Pro
   const rows = body?.data ?? body?.result;
   if (!Array.isArray(rows)) return [];
 
-  return rows.filter((row) => {
+  const filtered = rows.filter((row) => {
     const r = row as Record<string, unknown>;
     if (r.isVerified === true) return true;
     const status = String(r.status ?? "").toLowerCase();
@@ -375,6 +362,7 @@ export async function fetchTrainersWithSlots(params?: BrowseTrainersParams): Pro
     if (step === "completed") return true;
     return step === "account_created" && !tv?.submitted_for_review_at;
   });
+  return dedupeTrainersById(filtered);
 }
 
 export type TrainerScheduleDay = {

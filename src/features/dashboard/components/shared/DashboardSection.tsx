@@ -9,12 +9,22 @@ type Props = {
   children: React.ReactNode;
   style?: ViewStyle;
   testID?: string;
+  /** Parent stack controls vertical gap (trainer hub). */
+  embedded?: boolean;
 };
 
-export function DashboardSection({ title, subtitle, action, children, style, testID }: Props) {
+export function DashboardSection({
+  title,
+  subtitle,
+  action,
+  children,
+  style,
+  testID,
+  embedded,
+}: Props) {
   const styles = useThemedStyles((palette) =>
     StyleSheet.create({
-      root: { marginBottom: space.md },
+      root: { marginBottom: embedded ? 0 : space.md },
       head: {
         flexDirection: "row",
         alignItems: "center",

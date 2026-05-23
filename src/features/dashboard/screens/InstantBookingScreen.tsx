@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Button, EmptyState, Skeleton } from "../../../components/ui";
 import { colors, radii, space, typography } from "../../../theme";
 import { queryKeys } from "../../../lib/queryKeys";
+import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { fetchOnlineUsers } from "../../home/api/homeApi";
 import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
@@ -77,7 +78,7 @@ export function InstantBookingScreen() {
       ) : (
         <FlatList
           data={onlineTrainers}
-          keyExtractor={(item, i) => item?._id ?? String(i)}
+          keyExtractor={flatListKeyExtractor}
           renderItem={({ item }) => {
             const name = item?.fullname ?? item?.fullName ?? t("instantBooking.trainerDefault");
             return (

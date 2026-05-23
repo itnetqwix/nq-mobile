@@ -69,7 +69,7 @@ function AvatarCluster({
     <View style={styles.cluster}>
       {peers.map((peer, index) => (
         <View
-          key={peer._id}
+          key={`${peer._id}-${index}`}
           style={[styles.clusterItem, index > 0 && styles.clusterOverlap]}
         >
           <PeerAvatar peer={peer} badge={badge} styles={styles} />

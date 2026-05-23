@@ -20,6 +20,7 @@ import { dedupeRowsById, fetchBookingTransactions } from "../../home/api/homeApi
 import type { MenuStackParamList } from "../../../navigation/types";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
+import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 
 const PAGE_SIZE = 25;
 
@@ -193,7 +194,7 @@ export function TransactionsScreen() {
   return (
     <FlatList
       data={rows}
-      keyExtractor={(item, i) => item?._id ?? String(i)}
+      keyExtractor={flatListKeyExtractor}
       renderItem={({ item }) => (
         <TransactionRow
           booking={item}

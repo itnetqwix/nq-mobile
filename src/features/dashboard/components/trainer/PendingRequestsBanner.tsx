@@ -46,7 +46,6 @@ function useStyles() {
         backgroundColor: `${palette.warning}18`,
         borderWidth: 1,
         borderColor: palette.warning,
-        marginBottom: space.md,
       },
       textCol: { flex: 1, minWidth: 0 },
       title: { ...typography.subtitle, color: palette.text, fontWeight: "700" },

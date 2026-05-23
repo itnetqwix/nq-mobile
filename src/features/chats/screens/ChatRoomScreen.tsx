@@ -27,6 +27,7 @@ import { API_ROUTES } from "../../../config/apiRoutes";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { queryKeys } from "../../../lib/queryKeys";
+import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { useAuth } from "../../auth/context/AuthContext";
 import { useSocket } from "../../socket/SocketContext";
 import { useOnlinePresence } from "../../socket/useOnlinePresence";
@@ -242,7 +243,7 @@ function useChatRoomStyles() {
   },
   messageListEmpty: {
     flexGrow: 1,
-    justifyContent: "center",
+    paddingTop: space.lg,
   },
   messageRow: {
     width: "100%",
@@ -1369,9 +1370,9 @@ export function ChatRoomScreen({
   const partnerName = partner?.fullname ?? "Chat";
   const partnerAvatar = getS3ImageUrl(partner?.profile_picture);
   const showPolicyBanner = !isGroup && !!(chatPolicy && !chatPolicy.hasPaidSession);
-  const composerBottomInset = Math.max(insets.bottom, 8);
-  const keyboardVerticalOffset =
-    insets.top + 56 + (showPolicyBanner ? 48 : 0);
+  const composerBottomInset = Math.max(insets.bottom, space.sm);
+  const chatHeaderHeight = insets.top + 60;
+  const keyboardVerticalOffset = chatHeaderHeight;
 
   const sharedMedia = chatMediaItems;
 
@@ -1417,7 +1418,7 @@ export function ChatRoomScreen({
         style={[
           styles.header,
           {
-            paddingTop: insets.top + 12,
+            paddingTop: insets.top + space.sm,
             backgroundColor: themeColors.surfaceElevated,
             borderBottomColor: themeColors.border,
           },
@@ -1465,26 +1466,25 @@ export function ChatRoomScreen({
       </View>
 
       {/* Chat policy banner */}
-      {showPolicyBanner && (
-        <View style={styles.policyBanner}>
-          <Ionicons name="information-circle-outline" size={16} color="#f59e0b" />
-          <Text style={styles.policyText}>
-            {rateLimited || chatPolicy.remainingToday <= 0
-              ? "Daily message limit reached. Book a lesson to unlock unlimited messaging!"
-              : `${chatPolicy.remainingToday} message${chatPolicy.remainingToday === 1 ? "" : "s"} remaining today. Book a lesson to chat freely.`}
-          </Text>
-        </View>
-      )}
-
       <KeyboardAvoidingView
         style={styles.keyboardWrap}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? keyboardVerticalOffset : 0}
       >
+        {showPolicyBanner && (
+          <View style={styles.policyBanner}>
+            <Ionicons name="information-circle-outline" size={16} color="#f59e0b" />
+            <Text style={styles.policyText}>
+              {rateLimited || chatPolicy!.remainingToday <= 0
+                ? "Daily message limit reached. Book a lesson to unlock unlimited messaging!"
+                : `${chatPolicy!.remainingToday} message${chatPolicy!.remainingToday === 1 ? "" : "s"} remaining today. Book a lesson to chat freely.`}
+            </Text>
+          </View>
+        )}
         <SectionList
           ref={sectionListRef}
           sections={messageSections}
-          keyExtractor={(item) => item._id}
+          keyExtractor={flatListKeyExtractor}
           renderItem={renderMessage}
           renderSectionHeader={({ section: { title } }) => (
             <ChatDaySeparator label={title} />
@@ -1826,12 +1826,12 @@ export function ChatRoomScreen({
                       searchSections.map((section) => (
                         <View key={section.title}>
                           <Text style={styles.searchDayHeader}>{section.title}</Text>
-                          {section.data.map((m) => {
+                          {section.data.map((m, hitIndex) => {
                             const text = getSearchableText(m);
                             const parts = highlightQueryParts(text, profileSearch);
                             return (
                               <Pressable
-                                key={m._id}
+                                key={`${m._id}-${hitIndex}`}
                                 style={styles.searchHit}
                                 onPress={() => jumpToMessage(m._id)}
                               >

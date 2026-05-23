@@ -1,5 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
+import { AccountType } from "../../../constants/accountType";
 import { queryKeys } from "../../../lib/queryKeys";
+import { dedupeTrainersById } from "../../../lib/lists/trainerListUtils";
+import { useAuth } from "../../auth/context/AuthContext";
 import { getTrainerId } from "../../bookexpert/lib/trainerUtils";
 import {
   addFavoriteTrainer,
@@ -9,12 +13,18 @@ import {
 
 export function useFavoriteTrainers(enabled = true) {
   const queryClient = useQueryClient();
+  const { accountType } = useAuth();
+  const isTrainee = accountType === AccountType.TRAINEE;
 
   const query = useQuery({
     queryKey: queryKeys.trainee.favorites,
     queryFn: fetchFavoriteTrainers,
     staleTime: 60_000,
-    enabled,
+    enabled: enabled && isTrainee,
+    retry: (failureCount, error) => {
+      if (isAxiosError(error) && error.response?.status === 401) return false;
+      return failureCount < 1;
+    },
   });
 
   const favoriteIds = new Set(
@@ -40,7 +50,7 @@ export function useFavoriteTrainers(enabled = true) {
         (old = []) => {
           if (old.some((t) => getTrainerId(t) === trainerId)) return old;
           const row = trainer ? { ...trainer, _id: trainerId } : { _id: trainerId };
-          return [row, ...old];
+          return dedupeTrainersById([row, ...old]);
         }
       );
       return { previous };
@@ -86,7 +96,7 @@ export function useFavoriteTrainers(enabled = true) {
     favoriteIds.has(getTrainerId(trainer));
 
   return {
-    favorites: query.data ?? [],
+    favorites: dedupeTrainersById(query.data ?? []),
     isLoading: query.isLoading,
     isFavorite,
     toggleFavorite,

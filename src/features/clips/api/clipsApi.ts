@@ -1,5 +1,6 @@
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
+import { dedupeNestedClipGroups } from "../../../lib/lists/clipListUtils";
 
 export type ClipTaxonomySubcategory = {
   id: string;
@@ -70,7 +71,7 @@ export async function postMyClipsNested(params?: {
 }): Promise<NestedCategoryGroup[]> {
   const res = await apiClient.post(API_ROUTES.common.getClips, params ?? {});
   const data = extractData<NestedCategoryGroup[]>(res);
-  return Array.isArray(data) ? data : [];
+  return Array.isArray(data) ? dedupeNestedClipGroups(data) : [];
 }
 
 export async function postSharedClipsBySharer(): Promise<SharedClipsGroup[]> {
@@ -82,7 +83,7 @@ export async function postSharedClipsBySharer(): Promise<SharedClipsGroup[]> {
 export async function postLibraryClipsNested(): Promise<NestedCategoryGroup[]> {
   const res = await apiClient.post(API_ROUTES.common.getLibraryClips, {});
   const data = extractData<NestedCategoryGroup[]>(res);
-  return Array.isArray(data) ? data : [];
+  return Array.isArray(data) ? dedupeNestedClipGroups(data) : [];
 }
 
 export async function createLibrarySubmission(

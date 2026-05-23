@@ -2,6 +2,7 @@ import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
 import { Skeleton } from "../../../../components/ui";
 import { getTrainerName } from "../../../bookexpert/lib/trainerUtils";
+import { trainerListItemKey } from "../../../../lib/lists/trainerListUtils";
 import { useFavoriteTrainers } from "../../hooks/useFavoriteTrainers";
 import { radii, space, typography, useThemedStyles } from "../../../../theme";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
@@ -15,7 +16,7 @@ type Props = {
 export function FavoriteCoachesSection({ onSelectTrainer }: Props) {
   const { t } = useAppTranslation();
   const styles = useStyles();
-  const { favorites, isLoading } = useFavoriteTrainers();
+  const { favorites, isLoading } = useFavoriteTrainers(true);
 
   if (isLoading) {
     return (
@@ -39,7 +40,7 @@ export function FavoriteCoachesSection({ onSelectTrainer }: Props) {
           const name = getTrainerName(item);
           return (
             <Pressable
-              key={String(item._id ?? i)}
+              key={trainerListItemKey(item, i, "fav-")}
               style={({ pressed }) => [styles.tile, pressed && { opacity: 0.9 }]}
               onPress={() => onSelectTrainer(item)}
             >

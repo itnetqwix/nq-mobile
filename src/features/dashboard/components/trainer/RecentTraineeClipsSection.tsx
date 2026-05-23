@@ -48,7 +48,7 @@ export function RecentTraineeClipsSection({ onOpenClips }: Props) {
 
   if (isLoading) {
     return (
-      <DashboardSection title={t("trainerDashboard.recentClips")}>
+      <DashboardSection embedded title={t("trainerDashboard.recentClips")}>
         <Skeleton width={120} height={80} radius={radii.md} />
       </DashboardSection>
     );
@@ -58,6 +58,7 @@ export function RecentTraineeClipsSection({ onOpenClips }: Props) {
 
   return (
     <DashboardSection
+      embedded
       title={t("trainerDashboard.recentClips")}
       action={
         <Pressable onPress={onOpenClips} hitSlop={8}>

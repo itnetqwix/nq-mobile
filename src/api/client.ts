@@ -13,6 +13,7 @@ import {
   bearerFromAuthHeader,
   getAuthAxiosMeta,
   isAuthNoSignOutPath,
+  isSoft401Path,
 } from "./axiosAuthMeta";
 import { isInAuthGracePeriod } from "../lib/auth/authSessionGuard";
 
@@ -96,6 +97,7 @@ apiClient.interceptors.response.use(
       const skipSignOut =
         meta._skipAuthSignOut ||
         isAuthNoSignOutPath(requestUrl) ||
+        isSoft401Path(requestUrl) ||
         staleRequest;
 
       if (!skipSignOut && !meta._authRetried) {

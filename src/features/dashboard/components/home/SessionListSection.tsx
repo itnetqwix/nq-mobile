@@ -65,7 +65,7 @@ export function SessionListSection({
     >
       {preview.map((session, idx) => (
         <SessionPreviewRow
-          key={`${String(session._id ?? idx)}`}
+          key={`session-${String(session._id ?? idx)}-${idx}`}
           session={session}
           accountType={accountType}
           onPress={() => onSessionPress(session)}

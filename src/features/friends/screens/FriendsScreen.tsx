@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../../../lib/queryKeys";
+import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { Ionicons } from "@expo/vector-icons";
 import { Button, EmptyState, Skeleton } from "../../../components/ui";
 import { colors, radii, space, typography } from "../../../theme";
@@ -34,6 +35,7 @@ import {
 } from "../../home/api/homeApi";
 
 import { ShareClipsPanel } from "../components/ShareClipsPanel";
+import { useChatRoomChrome } from "../../chats/hooks/useChatRoomChrome";
 import { ChatRoomScreen } from "../../chats/screens/ChatRoomScreen";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
@@ -246,6 +248,7 @@ export function FriendsScreen() {
     conversationId: string;
     partner: { _id: string; fullname?: string; profile_picture?: string };
   } | null>(null);
+  useChatRoomChrome(!!activeChat);
   const queryClient = useQueryClient();
 
   const { data: friends = [], isLoading: loadingFriends, isRefetching: refreshingFriends, refetch: refetchFriends } = useQuery({
@@ -437,7 +440,7 @@ export function FriendsScreen() {
     return (
       <FlatList
         data={data}
-        keyExtractor={(item, i) => item?._id ?? String(i)}
+        keyExtractor={flatListKeyExtractor}
         renderItem={({ item }) =>
           tabKey === "friends" ? (
             <FriendCard

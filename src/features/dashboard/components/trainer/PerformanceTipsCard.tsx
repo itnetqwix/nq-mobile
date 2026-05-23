@@ -41,7 +41,7 @@ export function PerformanceTipsCard({
   if (!tips.length) return null;
 
   return (
-    <DashboardSection title={t("trainerDashboard.performanceTips")}>
+    <DashboardSection embedded title={t("trainerDashboard.performanceTips")}>
       <View style={styles.card}>
         {tips.map((tip, i) => (
           <View key={i} style={[styles.row, i > 0 && styles.rowBorder]}>

@@ -30,7 +30,7 @@ import { queryKeys } from "../../../../lib/queryKeys";
 import { getApiErrorMessage } from "../../../../lib/http/getApiErrorMessage";
 import { apiClient } from "../../../../api/client";
 import { API_ROUTES } from "../../../../config/apiRoutes";
-import { colors, radii, space } from "../../../../theme";
+import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
 
 const SHARE_MY_CLIPS = "My Clips";
@@ -47,6 +47,8 @@ type Props = {
 export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
   const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
+  const c = useThemeColors();
+  const styles = useStyles();
   const dispatch = useAppDispatch();
   const { user, accountType } = useAuth();
   const isTrainer = accountType === AccountType.TRAINER;
@@ -264,22 +266,26 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={insets.top + 8}
       >
-        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-          <Text style={styles.headerTitle}>{t("locker.uploadTitle")}</Text>
+        <View style={[styles.header, { paddingTop: Math.max(insets.top, space.md) }]}>
+          <View style={styles.headerText}>
+            <Text style={styles.headerTitle}>{t("locker.uploadTitle")}</Text>
+            <Text style={styles.headerSub}>{t("locker.uploadLead")}</Text>
+          </View>
           <Pressable onPress={onClose} hitSlop={12} disabled={uploadBusy}>
-            <Ionicons name="close" size={28} color={colors.text} />
+            <Ionicons name="close" size={26} color={c.text} />
           </Pressable>
         </View>
 
-        <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-          <Text style={styles.lead}>{t("locker.uploadLead")}</Text>
-
+        <ScrollView
+          contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 100 }]}
+          keyboardShouldPersistTaps="handled"
+        >
           <Pressable
             style={({ pressed }) => [styles.pickBtn, pressed && { opacity: 0.9 }]}
             onPress={pickVideo}
             disabled={thumbBusy || uploadBusy}
           >
-            <Ionicons name="folder-open-outline" size={22} color={colors.brandNavy} />
+            <Ionicons name="folder-open-outline" size={22} color={c.brandNavy} />
             <Text style={styles.pickBtnText}>
               {videoAsset ? t("locker.replaceVideo") : t("locker.chooseVideo")}
             </Text>
@@ -287,7 +293,7 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
 
           {thumbBusy && (
             <View style={styles.rowCenter}>
-              <ActivityIndicator color={colors.brandNavy} />
+              <ActivityIndicator color={c.brandNavy} />
               <Text style={styles.muted}>{t("locker.preparingPreview")}</Text>
             </View>
           )}
@@ -301,13 +307,14 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
             </View>
           )}
 
+          <View style={styles.formCard}>
           <Text style={styles.label}>{t("locker.titleLabel")}</Text>
           <TextInput
             style={styles.input}
             value={title}
             onChangeText={setTitle}
             placeholder={t("locker.titlePlaceholder")}
-            placeholderTextColor={colors.textMuted}
+            placeholderTextColor={c.textMuted}
             editable={!uploadBusy}
           />
 
@@ -322,23 +329,23 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
             <>
               <Text style={styles.label}>{t("locker.sportCategory")}</Text>
               {catLoading ? (
-                <ActivityIndicator color={colors.brandNavy} style={{ marginVertical: space.sm }} />
+                <ActivityIndicator color={c.brandNavy} style={{ marginVertical: space.sm }} />
               ) : (
                 <View style={styles.chips}>
-                  {categories.map((c) => {
-                    const on = categoryId === c.id;
+                  {categories.map((cat) => {
+                    const on = categoryId === cat.id;
                     return (
                       <Pressable
-                        key={c.id}
+                        key={cat.id}
                         style={[styles.chip, on && styles.chipOn]}
                         onPress={() => {
-                          setCategoryId(c.id);
+                          setCategoryId(cat.id);
                           setSubcategoryId("");
                         }}
                         disabled={uploadBusy}
                       >
                         <Text style={[styles.chipText, on && styles.chipTextOn]} numberOfLines={1}>
-                          {c.name}
+                          {cat.name}
                         </Text>
                       </Pressable>
                     );
@@ -350,7 +357,7 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
 
           <Text style={styles.label}>{t("locker.subcategory")}</Text>
           {catLoading ? (
-            <ActivityIndicator color={colors.brandNavy} style={{ marginVertical: space.sm }} />
+            <ActivityIndicator color={c.brandNavy} style={{ marginVertical: space.sm }} />
           ) : subcategories.length === 0 ? (
             <Text style={styles.muted}>{t("locker.selectCategoryFirst")}</Text>
           ) : (
@@ -380,7 +387,7 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
               onPress={() => setShareTarget(SHARE_MY_CLIPS)}
               disabled={uploadBusy}
             >
-              <Ionicons name="folder-outline" size={16} color={shareTarget === SHARE_MY_CLIPS ? colors.brandNavy : colors.textMuted} />
+              <Ionicons name="folder-outline" size={16} color={shareTarget === SHARE_MY_CLIPS ? c.brandNavy : c.textMuted} />
               <Text style={[styles.shareTargetText, shareTarget === SHARE_MY_CLIPS && styles.shareTargetTextOn]}>
                 {t("locker.shareMyClips")}
               </Text>
@@ -390,7 +397,7 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
               onPress={() => setShareTarget(SHARE_FRIENDS)}
               disabled={uploadBusy}
             >
-              <Ionicons name="people-outline" size={16} color={shareTarget === SHARE_FRIENDS ? colors.brandNavy : colors.textMuted} />
+              <Ionicons name="people-outline" size={16} color={shareTarget === SHARE_FRIENDS ? c.brandNavy : c.textMuted} />
               <Text style={[styles.shareTargetText, shareTarget === SHARE_FRIENDS && styles.shareTargetTextOn]}>
                 {t("locker.shareFriends")}
               </Text>
@@ -467,7 +474,10 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
               <Text style={styles.progressHint}>{t("locker.keepAppOpen")}</Text>
             </View>
           )}
+          </View>
+        </ScrollView>
 
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, space.md) }]}>
           <Pressable
             style={({ pressed }) => [
               styles.submit,
@@ -477,132 +487,159 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
             disabled={!canSubmit}
           >
             {uploadBusy ? (
-              <ActivityIndicator color={colors.brandTextOn} />
+              <ActivityIndicator color={c.brandTextOn} />
             ) : (
               <>
-                <Ionicons name="cloud-upload-outline" size={20} color={colors.brandTextOn} />
+                <Ionicons name="cloud-upload-outline" size={20} color={c.brandTextOn} />
                 <Text style={styles.submitText}>{t("locker.uploadToLocker")}</Text>
               </>
             )}
           </Pressable>
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </Modal>
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.background },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: space.md,
-    paddingBottom: space.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  headerTitle: { fontSize: 18, fontWeight: "800", color: colors.brandNavy },
-  body: { padding: space.md, paddingBottom: space.xl * 2, gap: space.md },
-  lead: { fontSize: 14, color: colors.textMuted, lineHeight: 20 },
-  pickBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: space.sm,
-    paddingVertical: 14,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.brandNavy,
-    backgroundColor: colors.sidebarActiveBg,
-  },
-  pickBtnText: { fontSize: 16, fontWeight: "700", color: colors.brandNavy },
-  rowCenter: { flexDirection: "row", alignItems: "center", gap: space.sm },
-  muted: { fontSize: 13, color: colors.textMuted },
-  previewBox: { alignItems: "center", gap: space.sm },
-  previewImg: {
-    width: "100%",
-    height: 160,
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
-  },
-  fileMeta: { fontSize: 12, color: colors.textMuted },
-  label: { fontSize: 13, fontWeight: "700", color: colors.text },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.sm,
-    paddingHorizontal: space.md,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: colors.text,
-    backgroundColor: colors.surface,
-  },
-  categoryReadonly: { gap: 4 },
-  profileCat: { fontSize: 16, fontWeight: "600", color: colors.text },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    maxWidth: "100%",
-  },
-  chipOn: { borderColor: colors.brandNavy, backgroundColor: colors.sidebarActiveBg },
-  chipText: { fontSize: 13, fontWeight: "600", color: colors.text },
-  chipTextOn: { color: colors.brandNavy },
-  submit: {
-    marginTop: space.md,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: colors.brandNavy,
-    paddingVertical: 14,
-    borderRadius: radii.md,
-  },
-  submitText: { fontSize: 16, fontWeight: "700", color: colors.brandTextOn },
-  progressBlock: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    padding: space.md,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  progressRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  progressLabel: { fontSize: 13, fontWeight: "600", color: colors.text },
-  progressPercent: { fontSize: 13, fontWeight: "700", color: colors.brandNavy, minWidth: 44, textAlign: "right" },
-  progressTrack: {
-    width: "100%",
-    height: 8,
-    backgroundColor: colors.border,
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-  progressFill: { height: "100%", backgroundColor: colors.brandNavy, borderRadius: 4 },
-  progressHint: { fontSize: 11, color: colors.textMuted, fontStyle: "italic" },
-  shareTargetRow: { flexDirection: "row", gap: 10 },
-  shareTargetBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 12,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  shareTargetBtnOn: {
-    borderColor: colors.brandNavy,
-    backgroundColor: colors.sidebarActiveBg,
-  },
-  shareTargetText: { fontSize: 14, fontWeight: "600", color: colors.textMuted },
-  shareTargetTextOn: { color: colors.brandNavy },
-  friendPickerBox: { gap: space.sm },
-  friendChips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-});
+function useStyles() {
+  return useThemedStyles((palette) =>
+    StyleSheet.create({
+      flex: { flex: 1, backgroundColor: palette.background },
+      header: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: space.sm,
+        paddingHorizontal: space.lg,
+        paddingBottom: space.md,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: palette.border,
+        backgroundColor: palette.surfaceElevated,
+      },
+      headerText: { flex: 1, minWidth: 0 },
+      headerTitle: { ...typography.titleSm, color: palette.text, fontWeight: "700" },
+      headerSub: { ...typography.caption, color: palette.textMuted, marginTop: 2, lineHeight: 18 },
+      body: { padding: space.lg, gap: space.md },
+      formCard: {
+        backgroundColor: palette.surfaceElevated,
+        borderRadius: radii.lg,
+        borderWidth: 1,
+        borderColor: palette.border,
+        padding: space.md,
+        gap: space.sm,
+      },
+      pickBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: space.sm,
+        paddingVertical: 16,
+        borderRadius: radii.lg,
+        borderWidth: 1.5,
+        borderStyle: "dashed",
+        borderColor: palette.brandNavy,
+        backgroundColor: palette.brandSubtle,
+      },
+      pickBtnText: { ...typography.bodyMd, fontWeight: "700", color: palette.brandNavy },
+      rowCenter: { flexDirection: "row", alignItems: "center", gap: space.sm },
+      muted: { ...typography.caption, color: palette.textMuted },
+      previewBox: { alignItems: "center", gap: space.sm },
+      previewImg: {
+        width: "100%",
+        height: 180,
+        borderRadius: radii.md,
+        backgroundColor: palette.surfaceMuted,
+      },
+      fileMeta: { ...typography.caption, color: palette.textMuted },
+      label: { ...typography.caption, fontWeight: "700", color: palette.text },
+      input: {
+        borderWidth: 1,
+        borderColor: palette.border,
+        borderRadius: radii.md,
+        paddingHorizontal: space.md,
+        paddingVertical: 12,
+        fontSize: 16,
+        color: palette.text,
+        backgroundColor: palette.background,
+      },
+      categoryReadonly: { gap: 4 },
+      profileCat: { ...typography.bodyMd, fontWeight: "600", color: palette.text },
+      chips: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
+      chip: {
+        paddingHorizontal: space.md,
+        paddingVertical: space.sm,
+        borderRadius: radii.pill,
+        borderWidth: 1,
+        borderColor: palette.border,
+        backgroundColor: palette.background,
+        maxWidth: "100%",
+      },
+      chipOn: { borderColor: palette.brandNavy, backgroundColor: palette.brandSubtle },
+      chipText: { ...typography.caption, fontWeight: "600", color: palette.text },
+      chipTextOn: { color: palette.brandNavy },
+      footer: {
+        paddingHorizontal: space.lg,
+        paddingTop: space.sm,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: palette.border,
+        backgroundColor: palette.surfaceElevated,
+      },
+      submit: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        backgroundColor: palette.brandNavy,
+        paddingVertical: 14,
+        borderRadius: radii.md,
+      },
+      submitText: { ...typography.bodyMd, fontWeight: "700", color: palette.brandTextOn },
+      progressBlock: {
+        backgroundColor: palette.surfaceMuted,
+        borderRadius: radii.md,
+        padding: space.md,
+        gap: 8,
+        borderWidth: 1,
+        borderColor: palette.border,
+      },
+      progressRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+      progressLabel: { ...typography.caption, fontWeight: "600", color: palette.text },
+      progressPercent: {
+        ...typography.caption,
+        fontWeight: "700",
+        color: palette.brandNavy,
+        minWidth: 44,
+        textAlign: "right",
+      },
+      progressTrack: {
+        width: "100%",
+        height: 8,
+        backgroundColor: palette.border,
+        borderRadius: 4,
+        overflow: "hidden",
+      },
+      progressFill: { height: "100%", backgroundColor: palette.brandNavy, borderRadius: 4 },
+      progressHint: { ...typography.caption, color: palette.textMuted, fontStyle: "italic" },
+      shareTargetRow: { flexDirection: "row", gap: 10 },
+      shareTargetBtn: {
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        paddingVertical: 12,
+        borderRadius: radii.md,
+        borderWidth: 1,
+        borderColor: palette.border,
+        backgroundColor: palette.background,
+      },
+      shareTargetBtnOn: {
+        borderColor: palette.brandNavy,
+        backgroundColor: palette.brandSubtle,
+      },
+      shareTargetText: { ...typography.bodySm, fontWeight: "600", color: palette.textMuted },
+      shareTargetTextOn: { color: palette.brandNavy },
+      friendPickerBox: { gap: space.sm },
+      friendChips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    })
+  );
+}

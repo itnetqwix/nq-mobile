@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { EmptyState, Skeleton } from "../../../components/ui";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { queryKeys } from "../../../lib/queryKeys";
+import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { StackSwipeBackShell } from "../../../navigation/StackSwipeBackShell";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
@@ -23,6 +24,7 @@ import {
   fetchArchivedConversations,
   unarchiveChatConversation,
 } from "../api/chatActionsApi";
+import { useChatRoomChrome } from "../hooks/useChatRoomChrome";
 import { ChatRoomScreen } from "./ChatRoomScreen";
 
 function partnerFromConversation(conv: any, myId: string) {
@@ -42,6 +44,7 @@ export function ArchivedChatsScreen() {
     partner: any;
     isGroup?: boolean;
   } | null>(null);
+  useChatRoomChrome(!!activeChat);
 
   const q = useQuery({
     queryKey: queryKeys.chats.archived,
@@ -106,7 +109,7 @@ export function ArchivedChatsScreen() {
       <View style={{ flex: 1, backgroundColor: c.surface }}>
         <FlatList
           data={q.data ?? []}
-          keyExtractor={(item) => String(item._id ?? item.id)}
+          keyExtractor={flatListKeyExtractor}
           refreshControl={
             <RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />
           }

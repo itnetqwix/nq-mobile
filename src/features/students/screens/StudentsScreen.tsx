@@ -7,6 +7,7 @@ import {
   View,
 } from "react-native";
 import { queryKeys } from "../../../lib/queryKeys";
+import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -156,7 +157,7 @@ export function StudentsScreen() {
   return (
     <FlatList
       data={students}
-      keyExtractor={(item, i) => item?._id ?? String(i)}
+      keyExtractor={flatListKeyExtractor}
       renderItem={({ item }) => <StudentCard student={item} />}
       contentContainerStyle={listPad}
       refreshControl={

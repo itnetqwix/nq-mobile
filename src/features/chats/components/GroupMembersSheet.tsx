@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EmptyState } from "../../../components/ui";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { queryKeys } from "../../../lib/queryKeys";
+import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { fetchFriends } from "../../home/api/homeApi";
 import {
@@ -299,7 +300,7 @@ export function GroupMembersSheet({
         ) : (
           <FlatList
             data={members}
-            keyExtractor={(item) => item._id}
+            keyExtractor={flatListKeyExtractor}
             contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
             ListEmptyComponent={
               <EmptyState
@@ -388,7 +389,7 @@ export function GroupMembersSheet({
           </View>
           <FlatList
             data={inviteCandidates}
-            keyExtractor={(item) => item._id}
+            keyExtractor={flatListKeyExtractor}
             renderItem={({ item }) => {
               const selected = selectedInvitees.has(item._id);
               return (

@@ -37,9 +37,11 @@ const OFFLINE = {
 type Props = {
   value: boolean;
   onToggle: (next: boolean) => Promise<void>;
+  /** Flush inside a parent card (no outer margin / radius). */
+  embedded?: boolean;
 };
 
-export function TrainerOnlineToggle({ value, onToggle }: Props) {
+export function TrainerOnlineToggle({ value, onToggle, embedded }: Props) {
   const [displayOnline, setDisplayOnline] = useState(value);
   const [syncing, setSyncing] = useState(false);
   const pulse = useRef(new Animated.Value(1)).current;
@@ -134,6 +136,7 @@ export function TrainerOnlineToggle({ value, onToggle }: Props) {
     <Animated.View
       style={[
         styles.card,
+        embedded && styles.cardEmbedded,
         {
           backgroundColor: bgTint,
           borderColor: borderTint,
@@ -227,6 +230,11 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     borderWidth: 1.5,
     overflow: "hidden",
+  },
+  cardEmbedded: {
+    marginTop: 0,
+    borderRadius: 0,
+    borderWidth: 0,
   },
   pressable: {
     flexDirection: "row",

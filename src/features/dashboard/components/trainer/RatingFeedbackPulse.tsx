@@ -26,7 +26,7 @@ export function RatingFeedbackPulse({ user, onOpenReviews }: Props) {
     : "";
 
   return (
-    <DashboardSection title={t("trainerDashboard.ratingPulse")}>
+    <DashboardSection embedded title={t("trainerDashboard.ratingPulse")}>
       <Pressable
         style={({ pressed }) => [styles.card, pressed && onOpenReviews && { opacity: 0.92 }]}
         onPress={onOpenReviews}

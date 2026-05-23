@@ -30,6 +30,7 @@ import {
 import { TrainerBrowseCard } from "../components/TrainerBrowseCard";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
+import { dedupeTrainersById, flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { useAuth } from "../../auth/context/AuthContext";
 import { useGuestMode } from "../../auth/hooks/useGuestMode";
 import { useRequireAuth } from "../../auth/hooks/useRequireAuth";
@@ -114,8 +115,8 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
       ...t,
       is_online: isTrainerOnline(String(t._id)),
     }));
-    if (browseFilters.onlineOnly) return rows.filter((t) => t.is_online);
-    return rows;
+    const filtered = browseFilters.onlineOnly ? rows.filter((t) => t.is_online) : rows;
+    return dedupeTrainersById(filtered);
   }, [directoryRows, onlineRaw, isOnline, browseFilters.onlineOnly]);
 
   useEffect(() => {
@@ -234,7 +235,7 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
       ) : (
         <FlatList
           data={mergedRows}
-          keyExtractor={(item, i) => item?._id ?? String(i)}
+          keyExtractor={flatListKeyExtractor}
           renderItem={({ item }) => (
             <TrainerBrowseCard
               trainer={item}

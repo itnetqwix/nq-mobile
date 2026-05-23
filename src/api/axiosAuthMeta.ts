@@ -33,10 +33,24 @@ const AUTH_NO_SIGNOUT_PATHS = [
   "/auth/verify-apple-login",
 ];
 
+/**
+ * Trainee-only routes return 401 when `account_type` is not trainee (backend middleware).
+ * That is not an expired session — must not clear tokens app-wide.
+ */
+const TRAINEE_ONLY_SOFT_401_PATHS = ["/trainee/favorite-trainers"];
+
 export function isAuthNoSignOutPath(url: string | undefined): boolean {
   if (!url) return false;
   const path = url.split("?")[0] ?? url;
   return AUTH_NO_SIGNOUT_PATHS.some(
+    (p) => path === p || path.endsWith(p)
+  );
+}
+
+export function isSoft401Path(url: string | undefined): boolean {
+  if (!url) return false;
+  const path = url.split("?")[0] ?? url;
+  return TRAINEE_ONLY_SOFT_401_PATHS.some(
     (p) => path === p || path.endsWith(p)
   );
 }

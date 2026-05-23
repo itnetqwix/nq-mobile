@@ -21,21 +21,9 @@ import { ClipUploadModal } from "../components/locker/ClipUploadModal";
 import { LibrarySubmissionSheet } from "../../clips/components/LibrarySubmissionSheet";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
+import { dedupeClipsById } from "../../../lib/lists/clipListUtils";
 
 type ClipTab = "mine" | "shared" | "library";
-
-function dedupeClipsById<T extends { _id?: unknown }>(list: T[]): T[] {
-  const seen = new Set<string>();
-  const out: T[] = [];
-  for (let i = 0; i < list.length; i++) {
-    const raw = list[i];
-    const id = raw?._id != null ? String(raw._id) : `__noid:${i}`;
-    if (seen.has(id)) continue;
-    seen.add(id);
-    out.push(raw);
-  }
-  return out;
-}
 
 function CategorySection({
   title,

@@ -39,11 +39,7 @@ import type {
   ShellSurfaceRouteId,
 } from "../../../navigation/types";
 import type { DashboardRouteId } from "../config/dashboardRoutes";
-import {
-  HomeMainCont,
-  RecentUsersGrid,
-  useWebHomeStyles,
-} from "../components/webHome";
+import { HomeMainCont, useWebHomeStyles } from "../components/webHome";
 import {
   DashboardEmptyWelcome,
   LockerHub,
@@ -53,7 +49,6 @@ import {
 import { TrainerDashboardHub } from "../components/trainer/TrainerDashboardHub";
 import AIFloatingButton from "../../ai/AIFloatingButton";
 import AIAssistantScreen from "../../ai/AIAssistantScreen";
-import ReviewAnalysisCard from "../../ai/ReviewAnalysisCard";
 import { useSessionBooking } from "../../sessions/SessionBookingContext";
 import {
   getOtherParty,
@@ -237,18 +232,6 @@ function Avatar({
 function SectionHeader({ title }: { title: string }) {
   const styles = useDashboardHomeStyles();
   return <Text style={styles.sectionHeader}>{title}</Text>;
-}
-
-function RecentUserChip({ user, label }: { user: any; label?: string }) {
-  const { t } = useAppTranslation();
-  const styles = useDashboardHomeStyles();
-  const name = user?.fullname || user?.fullName || label || t("dashboardHome.userDefault");
-  return (
-    <View style={styles.recentChip}>
-      <Avatar uri={user?.profile_picture} name={name} size={44} />
-      <Text style={styles.recentName} numberOfLines={1}>{name}</Text>
-    </View>
-  );
 }
 
 /** Web `NavHomePage` friend request tiles — column card with navy border */
@@ -603,8 +586,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
         </View>
       )}
 
-      <View style={{ paddingTop: space.md }}>
-        {/* Web: trainer `UserInfoCard` inside `Home-main-Cont` above recent students */}
+      <View style={isTrainee ? { paddingTop: space.md } : undefined}>
         {isTrainer && (
           <TrainerDashboardHub
             name={name}
@@ -612,12 +594,17 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
             profilePicture={(user as any)?.profile_picture}
             showAsOnline={showAsOnline}
             user={user as Record<string, unknown> | undefined}
+            recentTrainees={recentTrainees}
+            friendRequests={friendRequests}
+            onAcceptFriend={handleAccept}
+            onRejectFriend={handleReject}
             onSettings={() => openShell("settings")}
             onAvailabilityToggle={handleAvailabilityToggle}
             onOpenWallet={() => openShell("wallet")}
             onOpenSchedule={() => openFeature("schedule")}
             onOpenSessions={() => openFeature("upcoming-sessions")}
             onOpenClips={() => openShell("clips")}
+            onOpenSurface={openShell}
             onSessionPress={openSession}
           />
         )}
@@ -636,8 +623,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
           />
         )}
 
-        {/* Web `NavHomePage` — Recent Friend Requests card */}
-        {friendRequests.length > 0 && (
+        {isTrainee && friendRequests.length > 0 && (
           <HomeMainCont
             title={t("dashboardHome.recentFriendRequests")}
             testID="card trainer-profile-card Home-main-Cont friend-requests"
@@ -711,28 +697,9 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
           />
         )}
 
-        {/* Recent Users — `recent-users-grid` / `trainer-students-grid` vs `single-row-experts` */}
-        {isTrainer && recentTrainees.length > 0 && (
-          <HomeMainCont
-            title={t("dashboardHome.recentTrainees")}
-            testID="card rounded trainer-profile-card Select Recent Student"
-          >
-            <RecentUsersGrid accountIsTrainer>
-              {recentTrainees.map((u: any, i: number) => (
-                <View key={`${u._id ?? "t"}-${i}`} style={webHomeStyles.recentUsersGridItemTrainer}>
-                  <RecentUserChip user={u} />
-                </View>
-              ))}
-            </RecentUsersGrid>
-          </HomeMainCont>
+        {isTrainee && (
+          <LockerHub accountType={accountType} onOpenSurface={openShell} />
         )}
-
-        {/* AI Review Analysis — trainer only */}
-        {isTrainer && (
-          <ReviewAnalysisCard />
-        )}
-
-        <LockerHub accountType={accountType} onOpenSurface={openShell} />
       </View>
     </ScrollView>
 

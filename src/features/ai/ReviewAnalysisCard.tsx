@@ -10,7 +10,12 @@ import { useThemeColors, space, radii, typography } from "../../theme";
 import { apiClient } from "../../api/client";
 import { API_ROUTES } from "../../config/apiRoutes";
 
-export default function ReviewAnalysisCard() {
+type Props = {
+  /** Fits trainer dashboard stack (no extra outer margins). */
+  embedded?: boolean;
+};
+
+export default function ReviewAnalysisCard({ embedded }: Props) {
   const colors = useThemeColors();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -40,7 +45,16 @@ export default function ReviewAnalysisCard() {
       : "help-circle";
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <View
+      style={[
+        styles.card,
+        embedded && styles.cardEmbedded,
+        {
+          backgroundColor: embedded ? colors.surfaceElevated : colors.surface,
+          borderColor: colors.border,
+        },
+      ]}
+    >
       <View style={styles.header}>
         <View style={[styles.iconWrap, { backgroundColor: colors.brandAccentSubtle }]}>
           <Ionicons name="sparkles" size={16} color={colors.brandAccent} />
@@ -120,6 +134,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginVertical: space.sm,
     overflow: "hidden",
+  },
+  cardEmbedded: {
+    borderRadius: radii.lg,
+    marginVertical: 0,
   },
   header: {
     flexDirection: "row",
