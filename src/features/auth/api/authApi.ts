@@ -59,8 +59,12 @@ export async function postForgotPassword(email: string): Promise<unknown> {
 }
 
 /** GET /user/me — userController returns `result.result` JSON; primary field is `userInfo`. */
-export async function getCurrentUser(): Promise<Record<string, unknown>> {
-  const { data } = await apiClient.get<Record<string, unknown>>(API_ROUTES.user.me);
+export async function getCurrentUser(options?: {
+  skipAuthSignOut?: boolean;
+}): Promise<Record<string, unknown>> {
+  const { data } = await apiClient.get<Record<string, unknown>>(API_ROUTES.user.me, {
+    _skipAuthSignOut: options?.skipAuthSignOut,
+  } as { _skipAuthSignOut?: boolean });
   const userInfo = (data as { userInfo?: Record<string, unknown> }).userInfo;
   if (userInfo && typeof userInfo === "object") {
     return userInfo;

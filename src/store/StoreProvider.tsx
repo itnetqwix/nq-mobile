@@ -4,7 +4,8 @@ import { store } from "./store";
 import { hydrateAuth } from "./slices/authSlice";
 import { useAppDispatch } from "./hooks";
 import { onUnauthorized } from "../lib/auth/sessionEvents";
-import { signOutThunk } from "./slices/authSlice";
+import { clearSessionLocalThunk } from "./slices/authSlice";
+import { isInAuthGracePeriod } from "../lib/auth/authSessionGuard";
 
 function AuthBootstrap({ children }: { children: React.ReactNode }) {
   const dispatch = useAppDispatch();
@@ -15,7 +16,8 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     return onUnauthorized(() => {
-      void dispatch(signOutThunk());
+      if (isInAuthGracePeriod()) return;
+      void dispatch(clearSessionLocalThunk());
     });
   }, [dispatch]);
 

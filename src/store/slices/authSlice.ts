@@ -13,6 +13,11 @@ import {
 import { registerMyChatPublicKey } from "../../features/chats/crypto/chatKeysApi";
 import { applyLanguageFromUser } from "../../i18n/applyLanguageFromUser";
 import { getGlobalQueryClient } from "../queryClientRef";
+import {
+  bumpAuthEpoch,
+  getAuthEpoch,
+  markAuthSessionEstablished,
+} from "../../lib/auth/authSessionGuard";
 
 export type AuthUser = Record<string, unknown> | null;
 export type AuthStatus = "loading" | "signedOut" | "signedIn";
@@ -32,15 +37,23 @@ const initialState: AuthState = {
 export const hydrateAuth = createAsyncThunk(
   "auth/hydrate",
   async (_, { rejectWithValue }) => {
+    const hydrateEpoch = getAuthEpoch();
+    const tokenAtStart = await getAccessToken();
+    if (!tokenAtStart) {
+      return { user: null, accountType: null, signedIn: false as const };
+    }
     try {
-      const token = await getAccessToken();
-      if (!token) {
-        return { user: null, accountType: null, signedIn: false as const };
+      const [me, at] = await Promise.all([
+        getCurrentUser({ skipAuthSignOut: true }),
+        getAccountType(),
+      ]);
+      if (hydrateEpoch !== getAuthEpoch()) {
+        return rejectWithValue("superseded");
       }
-      const [me, at] = await Promise.all([getCurrentUser(), getAccountType()]);
       void applyLanguageFromUser(me);
       const sid = await getSessionId();
-      if (!sid) void ensureAuthSessionRegistered().catch(() => undefined);
+      if (!sid) await ensureAuthSessionRegistered().catch(() => undefined);
+      markAuthSessionEstablished();
       return {
         user: me,
         accountType:
@@ -48,7 +61,13 @@ export const hydrateAuth = createAsyncThunk(
         signedIn: true as const,
       };
     } catch {
-      await clearSession();
+      if (hydrateEpoch !== getAuthEpoch()) {
+        return rejectWithValue("superseded");
+      }
+      const tokenNow = await getAccessToken();
+      if (tokenNow && tokenNow === tokenAtStart) {
+        await clearSession();
+      }
       return rejectWithValue("hydrate_failed");
     }
   }
@@ -65,13 +84,17 @@ export const completeSessionFromTokens = createAsyncThunk(
     },
     { rejectWithValue }
   ) => {
+    bumpAuthEpoch();
     await saveSession(tokens.access_token, tokens.account_type, {
       refreshToken: tokens.refresh_token,
       sessionId: tokens.session_id,
     });
     try {
-      const me = await getCurrentUser();
+      const me = await getCurrentUser({ skipAuthSignOut: true });
       void applyLanguageFromUser(me);
+      const sid = await getSessionId();
+      if (!sid) await ensureAuthSessionRegistered().catch(() => undefined);
+      markAuthSessionEstablished();
       getGlobalQueryClient()?.invalidateQueries();
       void registerMyChatPublicKey().catch(() => undefined);
       return { user: me, accountType: tokens.account_type };
@@ -106,7 +129,18 @@ export const signInThunk = createAsyncThunk(
   }
 );
 
+/** Clears local session only (no server revoke) — used after invalid/expired tokens. */
+export const clearSessionLocalThunk = createAsyncThunk(
+  "auth/clearSessionLocal",
+  async () => {
+    bumpAuthEpoch();
+    await clearSession();
+    getGlobalQueryClient()?.clear();
+  }
+);
+
 export const signOutThunk = createAsyncThunk("auth/signOut", async () => {
+  bumpAuthEpoch();
   try {
     await postLogout();
     await clearSession();
@@ -141,7 +175,9 @@ const authSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(hydrateAuth.pending, (state) => {
-        state.status = "loading";
+        if (state.status !== "signedIn") {
+          state.status = "loading";
+        }
       })
       .addCase(hydrateAuth.fulfilled, (state, action) => {
         if (action.payload.signedIn === false) {
@@ -154,7 +190,10 @@ const authSlice = createSlice({
         state.accountType = action.payload.accountType;
         state.status = "signedIn";
       })
-      .addCase(hydrateAuth.rejected, (state) => {
+      .addCase(hydrateAuth.rejected, (state, action) => {
+        if (action.payload === "superseded" || state.status === "signedIn") {
+          return;
+        }
         state.user = null;
         state.accountType = null;
         state.status = "signedOut";
@@ -172,6 +211,11 @@ const authSlice = createSlice({
         state.status = "signedIn";
       })
       .addCase(signOutThunk.fulfilled, (state) => {
+        state.user = null;
+        state.accountType = null;
+        state.status = "signedOut";
+      })
+      .addCase(clearSessionLocalThunk.fulfilled, (state) => {
         state.user = null;
         state.accountType = null;
         state.status = "signedOut";

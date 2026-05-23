@@ -15,6 +15,7 @@ import {
 } from "../actions/cacheInvalidation";
 import { setSocketConnected } from "../slices/socketSlice";
 import {
+  clearSessionLocalThunk,
   completeSessionFromTokens,
   hydrateAuth,
   signOutThunk,
@@ -59,7 +60,7 @@ queryCacheListener.startListening({
 });
 
 queryCacheListener.startListening({
-  matcher: isAnyOf(userSignedOut, signOutThunk.fulfilled),
+  matcher: isAnyOf(userSignedOut, signOutThunk.fulfilled, clearSessionLocalThunk.fulfilled),
   effect: () => {
     /** signOutThunk already calls clear(); listener is a safety net for other sign-out paths. */
     qc()?.clear();

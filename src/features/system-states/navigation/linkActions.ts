@@ -1,9 +1,7 @@
 import { Alert, Linking, Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
-import { navigationRef } from "../../../navigation/navigationRef";
-import { navigateToWalletTopUp } from "../../../navigation/navigationRef";
-import { clearSession } from "../../auth/session/tokenStorage";
+import { navigationRef, navigateToAuthLogin, navigateToWalletTopUp } from "../../../navigation/navigationRef";
 import type { SystemStateActionId } from "../presets/types";
 
 const REMEMBER_DEVICE_KEY = "nq_remember_device";
@@ -52,14 +50,8 @@ export async function runSystemStateAction(
       ctx.onRetry?.();
       break;
     case "auth_login":
-      await clearSession();
-      if (navigationRef.isReady()) {
-        navigationRef.reset({
-          index: 0,
-          routes: [{ name: "Auth" }],
-        });
-      }
       ctx.onDismiss?.();
+      await navigateToAuthLogin();
       break;
     case "auth_signup":
       if (navigationRef.isReady()) {

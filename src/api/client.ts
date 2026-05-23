@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { type InternalAxiosRequestConfig } from "axios";
 import { API_BASE_URL } from "../config/env";
 import { getBrowserLikeRequestHeaders } from "./browserRequestHeaders";
 import { emitSessionExpired, emitUnauthorized } from "../lib/auth/sessionEvents";
@@ -8,6 +8,13 @@ import { getAccessToken, getSessionId } from "../features/auth/session/tokenStor
 import { getClientSessionHeaders } from "../features/auth/session/clientSessionHeaders";
 import { expoFetchForAxios } from "./expoFetchForAxios";
 import { logHttpErrorDebug, logHttpRequestDebug, logHttpResponseDebug } from "./httpDebug";
+import { refreshAccessToken } from "./authRefresh";
+import {
+  bearerFromAuthHeader,
+  getAuthAxiosMeta,
+  isAuthNoSignOutPath,
+} from "./axiosAuthMeta";
+import { isInAuthGracePeriod } from "../lib/auth/authSessionGuard";
 
 /** Opt in with `EXPO_PUBLIC_USE_EXPO_FETCH=1` — Expo native fetch can drop POST bodies on some iOS/Hermes paths; default uses RN’s stack (reliable JSON login). */
 const useExpoNativeFetch = process.env.EXPO_PUBLIC_USE_EXPO_FETCH === "1";
@@ -70,11 +77,53 @@ apiClient.interceptors.response.use(
   },
   async (error) => {
     logHttpErrorDebug(error);
-    if (error?.response?.status === 401) {
+    const config = error?.config as InternalAxiosRequestConfig | undefined;
+    const meta = config ? getAuthAxiosMeta(config) : {};
+    const status = error?.response?.status;
+
+    if (status === 401 && config) {
       error.isUnauthorized = true;
-      emitSessionExpired();
-      emitUnauthorized();
+      const requestUrl = config.url ?? "";
+      const sentToken = bearerFromAuthHeader(
+        config.headers?.Authorization as string | undefined
+      );
+      const currentToken = await getAccessToken();
+      const staleRequest =
+        Boolean(sentToken) &&
+        Boolean(currentToken) &&
+        sentToken !== currentToken;
+
+      const skipSignOut =
+        meta._skipAuthSignOut ||
+        isAuthNoSignOutPath(requestUrl) ||
+        staleRequest;
+
+      if (!skipSignOut && !meta._authRetried) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) {
+          meta._authRetried = true;
+          config.headers.Authorization = `Bearer ${await getAccessToken()}`;
+          return apiClient.request(config);
+        }
+      }
+
+      if (!skipSignOut && !isInAuthGracePeriod()) {
+        if (__DEV__) {
+          // eslint-disable-next-line no-console
+          console.warn("[auth] signing out after 401", requestUrl);
+        }
+        emitSessionExpired();
+        emitUnauthorized();
+      } else if (__DEV__ && status === 401) {
+        // eslint-disable-next-line no-console
+        console.warn("[auth] 401 ignored", requestUrl, {
+          staleRequest,
+          grace: isInAuthGracePeriod(),
+          skipSignOut,
+        });
+      }
     }
+
     if (isMaintenanceResponse(error)) {
       error.isMaintenance = true;
     }

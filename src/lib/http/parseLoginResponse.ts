@@ -48,6 +48,12 @@ export function extractLoginTokens(payload: unknown): LoginTokens | null {
     if (nested) return nested;
   }
 
+  // { status, data: { access_token, ... } } — /auth/refresh, /auth/sessions/register
+  if (isRecord(outer)) {
+    const fromData = readTokenBlock(outer);
+    if (fromData) return fromData;
+  }
+
   // Rare flat shape
   const flat = readTokenBlock(payload);
   if (flat) return flat;

@@ -404,8 +404,8 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
         style={[
           styles.shell,
           {
-            paddingTop: insets.top + 8,
-            paddingBottom: insets.bottom + 12,
+            paddingTop: insets.top + 4,
+            paddingBottom: insets.bottom + 8,
           },
         ]}
       >
@@ -429,7 +429,7 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
         {step === "slots" && (
           <>
             {slotsQuery.isLoading && (
-              <View style={styles.center}>
+              <View style={styles.inlineStatus}>
                 <ActivityIndicator color={colors.brandNavy} />
                 <Text style={styles.loadingText}>
                   Loading availability...
@@ -437,7 +437,7 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
               </View>
             )}
             {!slotsQuery.isLoading && slotsByDay.length === 0 && (
-              <View style={styles.center}>
+              <View style={styles.inlineStatus}>
                 <Ionicons
                   name="calendar-outline"
                   size={48}
@@ -689,12 +689,11 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
   },
-  center: {
-    flex: 1,
+  inlineStatus: {
     alignItems: "center",
-    justifyContent: "center",
     gap: space.sm,
-    padding: space.lg,
+    paddingHorizontal: space.lg,
+    paddingTop: space.xl,
   },
   loadingText: { ...typography.bodyMd, color: colors.textMuted },
   emptyTitle: { ...typography.titleSm, color: colors.text },
@@ -703,7 +702,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: "center",
   },
-  listContent: { padding: space.md, paddingBottom: space.xl },
+  listContent: { padding: space.md, paddingBottom: space.lg, paddingTop: space.xs },
   dayGroup: { marginBottom: space.lg },
   dayLabel: {
     ...typography.titleSm,
@@ -732,11 +731,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontWeight: "500",
   },
-  reviewContent: { padding: space.md, paddingBottom: space.xl },
+  reviewContent: { padding: space.md, paddingBottom: space.lg, gap: space.sm },
   card: {
     backgroundColor: colors.surfaceElevated,
     borderRadius: radii.lg,
-    padding: space.lg,
+    padding: space.md,
     borderWidth: 1,
     borderColor: colors.border,
     gap: 12,

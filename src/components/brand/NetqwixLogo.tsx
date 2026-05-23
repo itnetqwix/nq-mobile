@@ -18,6 +18,8 @@ type Props = {
   height?: number;
   style?: StyleProp<ImageStyle>;
   compact?: boolean;
+  /** Use full horizontal wordmark (`netquix_logo_v1.png`) across the container width. */
+  fullWidth?: boolean;
   /** Horizontal alignment inside the wrapper */
   align?: "center" | "start";
 };
@@ -28,14 +30,17 @@ export function NetqwixLogo({
   height,
   style,
   compact,
+  fullWidth,
   align = "center",
 }: Props) {
   const c = useThemeColors();
   const [failed, setFailed] = useState(false);
 
   const isPin = variant === "pin";
-  const width = maxWidth ?? (isPin ? 52 : 220);
-  const imgHeight = height ?? (isPin ? 52 : 72);
+  const wordmarkFull = !isPin && fullWidth;
+  const width = wordmarkFull ? "100%" : (maxWidth ?? (isPin ? 52 : 220));
+  const imgHeight = height ?? (isPin ? 52 : wordmarkFull ? 88 : 72);
+  const maxW = wordmarkFull ? (maxWidth ?? 340) : undefined;
   const source = isPin ? brandImages.netqwixPin : brandImages.netqwixWordmark;
 
   if (failed) {
@@ -59,7 +64,12 @@ export function NetqwixLogo({
         accessibilityLabel="NetQwix"
         source={source}
         contentFit="contain"
-        style={[{ width, height: imgHeight }, style]}
+        style={[
+          wordmarkFull
+            ? { width: "100%", maxWidth: maxW, height: imgHeight }
+            : { width, height: imgHeight },
+          style,
+        ]}
         onError={() => setFailed(true)}
       />
     </View>
@@ -69,8 +79,9 @@ export function NetqwixLogo({
 const styles = StyleSheet.create({
   wrap: {
     alignItems: "center",
-    marginBottom: space.lg,
-    marginTop: space.sm,
+    marginBottom: space.md,
+    marginTop: 0,
+    alignSelf: "stretch",
   },
   wrapCompact: {
     marginBottom: 0,

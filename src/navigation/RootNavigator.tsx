@@ -126,6 +126,16 @@ export function RootNavigator() {
               }}
             />
             <Stack.Screen
+              name="Auth"
+              component={AuthNavigator}
+              options={{
+                presentation: "fullScreenModal",
+                animation: "slide_from_bottom",
+                headerShown: false,
+                gestureEnabled: true,
+              }}
+            />
+            <Stack.Screen
               name="SystemState"
               component={SystemStateScreen}
               options={{

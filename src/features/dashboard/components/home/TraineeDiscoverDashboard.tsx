@@ -16,7 +16,11 @@ import { Skeleton } from "../../../../components/ui";
 import { AccountType } from "../../../../constants/accountType";
 import { fetchSportCategories } from "../../../auth/api/masterApi";
 import { TrainerBrowseCard } from "../../../bookexpert/components/TrainerBrowseCard";
-import { fetchOnlineUsers, fetchTrainersWithSlots } from "../../../home/api/homeApi";
+import {
+  dedupeRowsById,
+  fetchOnlineUsers,
+  fetchTrainersWithSlots,
+} from "../../../home/api/homeApi";
 import { useOnlinePresence } from "../../../socket/useOnlinePresence";
 import { getTrainerCategories } from "../../../bookexpert/lib/trainerUtils";
 import {
@@ -173,7 +177,7 @@ export function TraineeDiscoverDashboard({
   });
 
   const directoryRows = useMemo(
-    () => directoryPages?.pages.flat() ?? [],
+    () => dedupeRowsById(directoryPages?.pages.flat() ?? []),
     [directoryPages]
   );
 
@@ -198,7 +202,7 @@ export function TraineeDiscoverDashboard({
     if (browseFilters.hasOpenSlots) {
       rows = rows.filter((r) => trainerHasOpenSlots(r));
     }
-    return sortTrainersForDiscover(rows);
+    return sortTrainersForDiscover(dedupeRowsById(rows));
   }, [directoryRows, onlineRaw, isOnline, browseFilters.onlineOnly, browseFilters.hasOpenSlots]);
 
   const visibleRows = useMemo(
@@ -355,7 +359,13 @@ export function TraineeDiscoverDashboard({
           {showCategoryHint && (
             <Text style={styles.hint}>{t("traineeDiscover.addInterestsHint")}</Text>
           )}
-          <View style={styles.categoryStrip}>
+          <ScrollView
+            horizontal
+            nestedScrollEnabled
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryStrip}
+            decelerationRate="fast"
+          >
             {categoryStripItems.map((item) => {
               const active =
                 item.id === "__all__" ? selectedCategory === null : selectedCategory === item.label;
@@ -370,6 +380,9 @@ export function TraineeDiscoverDashboard({
                   onPress={() =>
                     setSelectedCategory(item.id === "__all__" ? null : item.label)
                   }
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={item.label}
                 >
                   <View style={[styles.categoryIconWrap, active && styles.categoryIconWrapActive]}>
                     <Ionicons
@@ -387,7 +400,7 @@ export function TraineeDiscoverDashboard({
                 </Pressable>
               );
             })}
-          </View>
+          </ScrollView>
         </>
       )}
 
@@ -445,14 +458,15 @@ export function TraineeDiscoverDashboard({
         )
       ) : (
         <View style={styles.trainerList}>
-          {visibleRows.map((trainer) => {
+          {visibleRows.map((trainer, index) => {
             const highlight =
               searchActive && getTrainerCategories(trainer).length > 0
                 ? getTrainerCategories(trainer)[0]
                 : undefined;
+            const rowKey = String(trainer._id ?? trainer.id ?? `row-${index}`);
             return (
               <TrainerBrowseCard
-                key={String(trainer._id)}
+                key={rowKey}
                 trainer={trainer}
                 themeColors={themeColors}
                 onPress={onViewTrainer}
@@ -622,12 +636,13 @@ function useStyles() {
       },
       categoryStrip: {
         flexDirection: "row",
-        flexWrap: "wrap",
         gap: space.sm,
         paddingVertical: space.sm,
+        paddingRight: space.md,
       },
       categoryTile: {
         width: 88,
+        flexShrink: 0,
         alignItems: "center",
         paddingVertical: space.sm,
         paddingHorizontal: 6,

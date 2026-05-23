@@ -7,6 +7,7 @@ import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { getLocalizedSystemStatePreset } from "../../../i18n/systemStateI18n";
 import type { SystemStateId } from "../presets/types";
 import type { ActionContext } from "../navigation/linkActions";
+import { RememberDeviceCheckbox } from "./RememberDeviceCheckbox";
 import { SystemStateActions } from "./SystemStateActions";
 import { SystemStateHero } from "./SystemStateHero";
 
@@ -35,6 +36,8 @@ export function SystemStateLayout({
   const description = descriptionOverride ?? preset.description;
   const insets = useSafeAreaInsets();
   const c = useThemeColors();
+  const rememberDeviceAction = preset.secondary?.action === "toggle_remember_device";
+  const actionsSecondary = rememberDeviceAction ? undefined : preset.secondary;
 
   return (
     <ScrollView
@@ -42,8 +45,8 @@ export function SystemStateLayout({
       contentContainerStyle={[
         styles.scroll,
         {
-          paddingTop: insets.top + space.xl,
-          paddingBottom: insets.bottom + space.xl,
+          paddingTop: insets.top + space.md,
+          paddingBottom: insets.bottom + space.lg,
           backgroundColor: c.background,
         },
       ]}
@@ -51,7 +54,13 @@ export function SystemStateLayout({
     >
       <View style={styles.inner}>
         {showBrand ? (
-          <NetqwixLogo variant="pin" maxWidth={56} height={56} compact />
+          <NetqwixLogo
+            variant={stateId === "session_expired" ? "wordmark" : "pin"}
+            fullWidth={stateId === "session_expired"}
+            maxWidth={stateId === "session_expired" ? 340 : 56}
+            height={stateId === "session_expired" ? 88 : 56}
+            compact={stateId !== "session_expired"}
+          />
         ) : null}
         <SystemStateHero icon={preset.icon} variant={preset.variant} />
         <Text style={[typography.titleMd, styles.title, { color: c.text }]}>
@@ -64,9 +73,14 @@ export function SystemStateLayout({
             {description}
           </Text>
         ) : null}
+        {rememberDeviceAction && preset.secondary ? (
+          <RememberDeviceCheckbox
+            label={preset.secondary.label || t("systemActions.rememberDevice")}
+          />
+        ) : null}
         <SystemStateActions
           primary={preset.primary}
-          secondary={preset.secondary}
+          secondary={actionsSecondary}
           supportLink={preset.supportLink}
           actionContext={actionContext}
           busy={busy}
@@ -82,18 +96,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.lg,
   },
   inner: {
-    flex: 1,
+    width: "100%",
+    maxWidth: 400,
+    alignSelf: "center",
     alignItems: "center",
-    justifyContent: "center",
-    minHeight: 400,
   },
   title: {
     textAlign: "center",
-    marginBottom: space.sm,
+    marginBottom: space.xs,
+    marginTop: space.sm,
   },
   description: {
     textAlign: "center",
     maxWidth: 340,
     lineHeight: 22,
+    marginBottom: space.sm,
   },
 });

@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 320,
     gap: space.sm,
-    marginTop: space.lg,
+    marginTop: space.md,
   },
   secondaryBtn: {
     marginTop: space.xs,
