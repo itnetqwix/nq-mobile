@@ -9,7 +9,23 @@ import App from "./App";
 // Harmless in dev; clear Metro cache if it persists after app code fixes.
 LogBox.ignoreLogs([
   "forwardRef render functions accept exactly two parameters",
+  "VirtualizedLists should never be nested inside plain ScrollViews",
   "Cannot find native module 'ExpoNetwork'",
 ]);
+
+if (__DEV__) {
+  const originalConsoleError = console.error;
+  console.error = (...args: unknown[]) => {
+    const first = args[0];
+    if (
+      typeof first === "string" &&
+      (first.includes("forwardRef render functions accept exactly two parameters") ||
+        first.includes("VirtualizedLists should never be nested"))
+    ) {
+      return;
+    }
+    originalConsoleError(...args);
+  };
+}
 
 registerRootComponent(App);

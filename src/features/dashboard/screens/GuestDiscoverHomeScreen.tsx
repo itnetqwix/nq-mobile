@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -25,6 +25,7 @@ export function GuestDiscoverHomeScreen() {
   const [profileTrainer, setProfileTrainer] = useState<Record<string, unknown> | null>(null);
 
   useLayoutEffect(() => {
+    if (typeof navigation?.setOptions !== "function") return;
     navigation.setOptions({
       headerTitle: () => (
         <NetqwixLogo variant="wordmark" maxWidth={132} height={34} compact align="center" />
@@ -68,42 +69,39 @@ export function GuestDiscoverHomeScreen() {
           })
         }
       />
-      <ScrollView
-        style={{ flex: 1, backgroundColor: c.background }}
-        contentContainerStyle={[
-          gutter,
-          {
-            paddingTop: space.sm,
-            paddingBottom: space.xl * 2 + insets.bottom,
-          },
-        ]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={[styles.banner, { backgroundColor: c.brandAccentSubtle, borderColor: c.brandAccent }]}>
-          <Text style={[typography.titleSm, { color: c.brandNavy }]}>
-            {t("guest.exploreBannerTitle")}
-          </Text>
-          <Text style={[styles.bannerBody, { color: c.textSecondary }]}>
-            {t("guest.exploreBannerBody")}
-          </Text>
-          <View style={styles.bannerActions}>
-            <Pressable
-              onPress={() => openAuth("SignUp")}
-              style={[styles.bannerPrimary, { backgroundColor: c.brandAccent }]}
-            >
-              <Text style={styles.bannerPrimaryText}>{t("auth.createAccount")}</Text>
-            </Pressable>
-            <Pressable onPress={() => openAuth("Login")} style={styles.bannerLink}>
-              <Text style={[styles.bannerLinkText, { color: c.brandAccent }]}>
-                {t("auth.signIn")}
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-
-        <TraineeDiscoverDashboard
+      <TraineeDiscoverDashboard
           isGuest
+          scrollable
+          leadingContent={
+            <View style={[styles.banner, { backgroundColor: c.brandAccentSubtle, borderColor: c.brandAccent }]}>
+              <Text style={[typography.titleSm, { color: c.brandNavy }]}>
+                {t("guest.exploreBannerTitle")}
+              </Text>
+              <Text style={[styles.bannerBody, { color: c.textSecondary }]}>
+                {t("guest.exploreBannerBody")}
+              </Text>
+              <View style={styles.bannerActions}>
+                <Pressable
+                  onPress={() => openAuth("SignUp")}
+                  style={[styles.bannerPrimary, { backgroundColor: c.brandAccent }]}
+                >
+                  <Text style={styles.bannerPrimaryText}>{t("auth.createAccount")}</Text>
+                </Pressable>
+                <Pressable onPress={() => openAuth("Login")} style={styles.bannerLink}>
+                  <Text style={[styles.bannerLinkText, { color: c.brandAccent }]}>
+                    {t("auth.signIn")}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          }
+          contentContainerStyle={[
+            gutter,
+            {
+              paddingTop: space.sm,
+              paddingBottom: space.xl * 2 + insets.bottom,
+            },
+          ]}
           name={t("guest.explorerName")}
           accountType={AccountType.TRAINEE}
           user={null}
@@ -133,7 +131,6 @@ export function GuestDiscoverHomeScreen() {
             })
           }
         />
-      </ScrollView>
     </>
   );
 }

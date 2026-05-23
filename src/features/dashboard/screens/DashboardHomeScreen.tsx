@@ -30,7 +30,7 @@ import {
   postRejectFriendRequest,
   setOnlineAvailability,
 } from "../../home/api/homeApi";
-import type { CompositeScreenProps } from "@react-navigation/native";
+import { useNavigation, type CompositeScreenProps } from "@react-navigation/native";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type {
@@ -324,7 +324,8 @@ type DashboardHomeProps = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList>
 >;
 
-export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
+export function DashboardHomeScreen(_props: DashboardHomeProps) {
+  const navigation = useNavigation<DashboardHomeProps["navigation"]>();
   const { t } = useAppTranslation();
   const themeColors = useThemeColors();
   const styles = useDashboardHomeStyles();
@@ -479,6 +480,7 @@ export function DashboardHomeScreen({ navigation }: DashboardHomeProps) {
   }, [queryClient]);
 
   useLayoutEffect(() => {
+    if (typeof navigation?.setOptions !== "function") return;
     navigation.setOptions({
       headerRight: () => (
         <View style={{ flexDirection: "row", alignItems: "center", marginRight: 6 }}>

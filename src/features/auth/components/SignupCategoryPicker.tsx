@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useMemo } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   Pressable,
   StyleSheet,
   Text,
@@ -51,20 +50,13 @@ export function SignupCategoryPicker({
   }
 
   return (
-    <FlatList
-      data={items}
-      keyExtractor={(item) => item}
-      numColumns={3}
-      scrollEnabled
-      nestedScrollEnabled
-      columnWrapperStyle={styles.row}
-      contentContainerStyle={styles.grid}
-      showsVerticalScrollIndicator={false}
-      renderItem={({ item }) => {
+    <View style={styles.grid}>
+      {items.map((item) => {
         const active = selected === item;
         const icon = getCategoryIcon(item);
         return (
           <Pressable
+            key={item}
             onPress={() => onSelect(item)}
             style={[styles.tile, active && styles.tileActive]}
             accessibilityRole="button"
@@ -83,18 +75,21 @@ export function SignupCategoryPicker({
             </Text>
           </Pressable>
         );
-      }}
-    />
+      })}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  grid: { paddingBottom: space.md, gap: space.sm },
-  row: { gap: space.sm },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: space.sm,
+    paddingBottom: space.md,
+  },
   tile: {
-    flex: 1,
-    minWidth: "30%",
-    maxWidth: "33%",
+    width: "31%",
+    minWidth: 96,
     alignItems: "center",
     paddingVertical: 10,
     paddingHorizontal: 4,

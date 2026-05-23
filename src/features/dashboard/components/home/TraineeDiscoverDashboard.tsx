@@ -7,6 +7,8 @@ import {
   Text,
   TextInput,
   View,
+  type StyleProp,
+  type ViewStyle,
 } from "react-native";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
@@ -62,6 +64,10 @@ type Props = {
   onToggleFavoriteGuest?: (t: Record<string, unknown>) => void;
   onOpenWallet?: () => void;
   onOpenSession?: (session: Record<string, unknown>) => void;
+  /** Guest home: own vertical scroll (no parent ScrollView). */
+  scrollable?: boolean;
+  leadingContent?: React.ReactNode;
+  contentContainerStyle?: StyleProp<ViewStyle>;
 };
 
 export function TraineeDiscoverDashboard({
@@ -77,6 +83,9 @@ export function TraineeDiscoverDashboard({
   onToggleFavoriteGuest,
   onOpenWallet,
   onOpenSession,
+  scrollable = false,
+  leadingContent,
+  contentContainerStyle,
 }: Props) {
   const { t } = useAppTranslation();
   const themeColors = useThemeColors();
@@ -248,8 +257,8 @@ export function TraineeDiscoverDashboard({
     [dashboardCategories, t]
   );
 
-  return (
-    <View style={styles.root}>
+  const discoverBody = (
+    <>
       <TrainerBrowseFiltersSheet
         visible={filtersOpen}
         value={browseFilters}
@@ -346,12 +355,7 @@ export function TraineeDiscoverDashboard({
           {showCategoryHint && (
             <Text style={styles.hint}>{t("traineeDiscover.addInterestsHint")}</Text>
           )}
-          <ScrollView
-            horizontal
-            nestedScrollEnabled
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoryStrip}
-          >
+          <View style={styles.categoryStrip}>
             {categoryStripItems.map((item) => {
               const active =
                 item.id === "__all__" ? selectedCategory === null : selectedCategory === item.label;
@@ -383,7 +387,7 @@ export function TraineeDiscoverDashboard({
                 </Pressable>
               );
             })}
-          </ScrollView>
+          </View>
         </>
       )}
 
@@ -489,8 +493,24 @@ export function TraineeDiscoverDashboard({
           )}
         </View>
       )}
-    </View>
+    </>
   );
+
+  if (scrollable) {
+    return (
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={contentContainerStyle}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {leadingContent}
+        <View style={styles.root}>{discoverBody}</View>
+      </ScrollView>
+    );
+  }
+
+  return <View style={styles.root}>{discoverBody}</View>;
 }
 
 function useStyles() {
@@ -601,6 +621,8 @@ function useStyles() {
         marginBottom: 4,
       },
       categoryStrip: {
+        flexDirection: "row",
+        flexWrap: "wrap",
         gap: space.sm,
         paddingVertical: space.sm,
       },
