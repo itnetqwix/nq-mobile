@@ -11,6 +11,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { STRIPE_PUBLISHABLE_KEY } from "../config/env";
 import { AuthProvider } from "../features/auth/context/AuthContext";
+import { hydrateLastAuthMethod } from "../features/auth/lib/lastAuthMethod";
+import { hydratePendingAuthIntent } from "../features/auth/lib/pendingAuthIntent";
 import {
   SystemGateProvider,
   SystemStateProvider,
@@ -56,6 +58,11 @@ export function AppRoot() {
 
   useEffect(() => {
     warmLoaderTipsCache();
+  }, []);
+
+  useEffect(() => {
+    void hydratePendingAuthIntent();
+    void hydrateLastAuthMethod();
   }, []);
 
   useEffect(() => {

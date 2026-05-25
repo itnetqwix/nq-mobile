@@ -7,6 +7,7 @@ import { emailFromIdToken } from "../../../lib/jwt/decodeJwtPayload";
 import { radii, space, typography, useThemeColors } from "../../../theme";
 import type { AuthScreenProps } from "../../../navigation/types";
 import { isGoogleConfiguredForPlatform, postGoogleVerify, useGoogleAuthRequest } from "../api/socialAuth";
+import { setLastAuthMethod } from "../lib/lastAuthMethod";
 
 type Props = {
   navigation: AuthScreenProps<"Login">["navigation"];
@@ -109,6 +110,7 @@ function GoogleSignInButtonInner({
           } as never);
           return;
         }
+        await setLastAuthMethod("google");
         await onTokens(result);
       } catch (e) {
         Alert.alert("Google Sign In failed", getApiErrorMessage(e));

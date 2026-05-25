@@ -1,4 +1,4 @@
-export type AuthIntent = "book" | "favorite" | "chat" | "generic";
+export type AuthIntent = "book" | "favorite" | "chat" | "schedule" | "generic";
 
 export type AuthScreenParams = {
   intent?: AuthIntent;
@@ -10,6 +10,10 @@ export type PendingAuthAction = {
   trainer?: Record<string, unknown>;
   bookMode?: "instant" | "schedule";
   messageKey?: string;
+  /** Optional snapshot of where the user was — used to restore context. */
+  context?: Record<string, unknown>;
+  /** Unix ms; intents older than ~24h are discarded on hydrate. */
+  t?: number;
 };
 
 export type RequireAuthOptions = {
@@ -18,4 +22,5 @@ export type RequireAuthOptions = {
   messageKey?: string;
   trainer?: Record<string, unknown>;
   bookMode?: "instant" | "schedule";
+  context?: Record<string, unknown>;
 };

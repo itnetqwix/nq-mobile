@@ -57,7 +57,41 @@
     "signOut": "Sign Out",
     "signOutLower": "Sign out",
     "signOutConfirm": "Are you sure you want to sign out?",
+    "signOutAll": "Sign out from all devices",
+    "signOutAllConfirm": "This will end your session on every phone, tablet, and browser you're signed into. Continue?",
+    "signOutAllDone": "Signed out from all devices.",
     "activeSessions": "Active sessions",
+    "continueAsGuest": "Continue as guest",
+    "continueAsGuestPrefix": "Just browsing?",
+    "lastUsed": "Last used",
+    "lastUsedHint": {
+      "google": "You signed in with Google last time. Use the Google button below.",
+      "apple": "You signed in with Apple last time. Use the Apple button below.",
+      "password": "You signed in with email last time. Enter your password to continue.",
+      "magic-link": "Last time you used a magic link. Tap below to send one again."
+    },
+    "magicLink": {
+      "entryCta": "Email me a sign-in link",
+      "title": "Sign in with email",
+      "subtitle": "We'll email you a one-time link and a 6-digit code. No password needed.",
+      "featurePoint1": "One-tap link that opens NetQwix straight away",
+      "featurePoint2": "Code expires in 15 minutes — single use only",
+      "featurePoint3": "Skip the password entirely",
+      "requestCta": "Send me the link",
+      "verifyTitle": "Check your email",
+      "verifySubtitle": "Enter the 6-digit code we just sent to {{email}}.",
+      "verifyCta": "Verify and sign in",
+      "verifyFailedTitle": "Couldn't verify",
+      "verifyFailedBody": "That code didn't work. Double-check or request a fresh one.",
+      "failedTitle": "Couldn't send link",
+      "failedBody": "We hit a snag. Try again in a moment.",
+      "resendCta": "Resend code",
+      "resendIn": "Resend in {{seconds}}s",
+      "useDifferentEmail": "Use a different email",
+      "checkSpamHint": "Don't see it? Check spam or promotions. The code lasts 15 minutes.",
+      "backToOptions": "Back to other sign-in options",
+      "cellA11y": "Code digit {{index}}"
+    },
     "ok": "OK",
     "continue": "Continue",
     "fullName": "Full name",
@@ -167,6 +201,34 @@
     "notSignedIn": "Not signed in.",
     "storagePlan": "Storage plan",
     "storagePlanSubtitle": "Manage clip storage and upgrades",
+    "bookingReminders": "Session reminders",
+    "reminderCadence": {
+      "standard": {
+        "title": "Standard",
+        "subtitle": "Push 24 hours, 1 hour, and 10 minutes before a session"
+      },
+      "minimal": {
+        "title": "Minimal",
+        "subtitle": "One push, 1 hour before a session"
+      },
+      "aggressive": {
+        "title": "Don't let me forget",
+        "subtitle": "24 hours, 1 hour, 10 minutes, and right at start"
+      },
+      "off": {
+        "title": "Off",
+        "subtitle": "Skip session reminder pushes (you'll still see in-app alerts)"
+      }
+    },
+    "signOutAllSubtitle": "End every session, on every device, right now.",
+    "dangerZone": "Danger zone",
+    "deleteAccount": "Delete account",
+    "deleteAccountSubtitle": "Permanently remove your data from NetQwix.",
+    "deleteAccountWarn": "This cannot be undone. We'll close every active session, hide your profile, and scrub your personal info from NetQwix. Bookings and payment records are kept for legal compliance.",
+    "deleteAccountContinue": "I understand, continue",
+    "deleteAccountFinalTitle": "Last chance",
+    "deleteAccountFinalBody": "Are you absolutely sure? You'll be signed out everywhere and won't be able to recover this account.",
+    "deleteAccountFinalConfirm": "Delete my account",
     "account": "Account",
     "appearance": "Appearance",
     "storage": "Storage",
@@ -839,7 +901,31 @@
     "sessionsTitle": "Your sessions",
     "sessionsBody": "Sign in to view upcoming lessons, join calls, and manage bookings.",
     "chatsTitle": "Messages",
-    "chatsBody": "Sign in to chat with coaches and trainees."
+    "chatsBody": "Sign in to chat with coaches and trainees.",
+    "lock": {
+      "chatWithCoach": "Sign in to chat with {{name}}",
+      "bookWithCoach": "Sign in to book {{name}}",
+      "chatBody": "Create a free NetQwix account to message {{name}} — they usually reply within an hour.",
+      "bookBody": "Create a free NetQwix account to book a session with {{name}} — instant or scheduled, your choice.",
+      "coachWaiting": "Ready to message",
+      "coachAvailable": "Ready to coach you",
+      "alreadyHave": "I already have an account"
+    },
+    "saved": {
+      "title": "Saved coaches",
+      "empty": "Tap the heart on any coach to save them here. We'll keep your list after you sign in."
+    },
+    "hero": {
+      "freeIntroEyebrow": "FREE INTRO LESSON",
+      "freeIntroTitle": "Try a 1:1 lesson on us",
+      "freeIntroBody": "Pick any verified coach and your first 20 minutes are on the house. No card required.",
+      "freeIntroCta": "Claim my free lesson"
+    },
+    "nudge": {
+      "continueBrowsing": "Loving NetQwix? Save your spot — sign up free.",
+      "dismiss": "Not now",
+      "signUp": "Sign up"
+    }
   },
   "traineeDiscover": {
     "welcome": "Hi, {{name}}",
@@ -849,6 +935,7 @@
     "yourSports": "Your sports",
     "browseSports": "Browse by sport",
     "addInterestsHint": "Add your sports in account settings to personalize this list.",
+    "recentlyViewed": "Recently viewed",
     "all": "All",
     "liveOnly": "Live now",
     "liveNow": "Live now",
@@ -867,6 +954,19 @@
     "showingCount": "Showing {{shown}} of {{total}}",
     "pastBookedTitle": "Book again",
     "pastBookedSub": "Coaches you've trained with before",
+    "forYouTitle": "Picked for you",
+    "forYouSub": "Tailored from your activity",
+    "forYouTileA11y": "Open {{name}}",
+    "forYouReason": {
+      "repeat1": "You've booked them before",
+      "repeatN": "You've booked them {{n}} times",
+      "sameCategory": "Same category as your last coach",
+      "guestFavorite": "You favorited them earlier",
+      "guestView": "You checked them out earlier",
+      "recentlyViewed": "You viewed them recently",
+      "onlineNow": "Live and ready now",
+      "matchYourTaste": "Matches your taste"
+    },
     "bookAgain": "Book again",
     "bookAgainA11y": "Book again with {{name}}",
     "verified": "Verified",
@@ -1165,6 +1265,33 @@
     "slotsAvailable_other": "{{count}} slots available",
     "instant": "Instant",
     "schedule": "Schedule",
+    "onlineNowChip": "Online now",
+    "nextOpenLabel": "Next open:",
+    "bookSlotA11y": "Book {{day}} at {{time}}",
+    "compare": "Compare",
+    "compareAdded": "Pinned",
+    "compareAddA11y": "Add {{name}} to compare",
+    "compareRemoveA11y": "Remove {{name}} from compare",
+    "compareTrayTitle": "Comparing {{count}} coach",
+    "compareTrayTitle_other": "Comparing {{count}} coaches",
+    "compareNeedMore": "Pin one more to compare",
+    "compareOpen": "Compare side-by-side",
+    "compareClear": "Clear",
+    "compareClearAll": "Clear all pinned coaches",
+    "compareLimitTitle": "Compare list full",
+    "compareLimitBody": "You can compare up to {{max}} coaches at a time. Remove one to pin a new pick.",
+    "compareModalTitle": "Compare coaches",
+    "compareModalSubtitle": "{{count}} coach pinned for comparison",
+    "compareModalSubtitle_other": "{{count}} coaches pinned for comparison",
+    "compareRate": "Hourly rate",
+    "compareRating": "Rating",
+    "compareSessions": "Sessions completed",
+    "compareLanguages": "Languages",
+    "compareCategories": "Categories",
+    "compareNotListed": "Not listed",
+    "compareNoReviews": "No reviews yet",
+    "compareNewCoach": "New coach",
+    "compareRemove": "Remove",
     "online": "Online",
     "trainerDefault": "Trainer"
   },

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert } from "react-native";
 import { apiClient } from "../../api/client";
 import { API_ROUTES } from "../../config/apiRoutes";
+import { addEventToCalendar } from "../../lib/calendar/addToCalendar";
 import { useAuth } from "../auth/context/AuthContext";
 import {
   NOTIFICATION_TITLES,
@@ -327,16 +328,37 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.upcoming });
+      const startJs = selectedStart?.toJSDate();
+      const endJs = sessionEnd?.toJSDate();
+      const cleanup = () => {
+        onBooked?.();
+        onDismiss();
+        resetWizard();
+      };
       Alert.alert(
         "Session requested",
         "Your session request was sent. Your coach must confirm before it is scheduled.",
         [
           {
-            text: "OK",
-            onPress: () => {
-              onBooked?.();
-              onDismiss();
-              resetWizard();
+            text: "Done",
+            style: "cancel",
+            onPress: cleanup,
+          },
+          {
+            text: "Add to Calendar",
+            onPress: async () => {
+              if (startJs) {
+                await addEventToCalendar({
+                  title: `NetQwix session with ${tname}`,
+                  startsAt: startJs,
+                  endsAt: endJs,
+                  durationMinutes,
+                  description:
+                    "Your scheduled NetQwix session. Open the NetQwix app a few minutes before the start time to join.",
+                  timeZone: traineeTz,
+                });
+              }
+              cleanup();
             },
           },
         ]

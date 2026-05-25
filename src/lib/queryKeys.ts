@@ -48,6 +48,7 @@ export const queryKeys = {
     community: (search: string) => ["communityUsers", search] as const,
     recentTrainees: ["recentTrainees"] as const,
     recentTrainers: ["recentTrainers"] as const,
+    personalizedFeed: (recentIds: string[]) => ["personalizedFeed", recentIds.join("|")] as const,
   },
   trainer: {
     slots: ["trainerSlots"] as const,

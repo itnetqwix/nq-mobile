@@ -83,6 +83,24 @@ export async function revokeOtherAuthSessions(): Promise<number> {
   return typeof count === "number" ? count : 0;
 }
 
+/**
+ * Nukes every active session for this user — current device included.
+ * Caller should immediately call {@link postLogout} + local `signOut()`
+ * because the access token returned by this device will be rejected as soon
+ * as the next refresh cycle runs (or sooner if it tries any new request).
+ */
+export async function revokeAllAuthSessions(): Promise<number> {
+  const res = await apiClient.post(
+    API_ROUTES.auth.sessionsRevokeAll,
+    {},
+    { headers: await withSessionContext() }
+  );
+  const count =
+    (res.data as { data?: { revokedCount?: number } })?.data?.revokedCount ??
+    (res.data as { result?: { data?: { revokedCount?: number } } })?.result?.data?.revokedCount;
+  return typeof count === "number" ? count : 0;
+}
+
 export async function postLogout(): Promise<void> {
   const refreshToken = await getRefreshToken();
   if (!refreshToken) return;

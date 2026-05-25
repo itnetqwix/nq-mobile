@@ -30,6 +30,8 @@ import { WebRoutes } from "../../../constants/webRoutes";
 import type { MenuStackParamList, ShellSurfaceRouteId } from "../../../navigation/types";
 import { space, typography, useThemeColors } from "../../../theme";
 import { useTheme, type ThemeMode } from "../../../theme/ThemeContext";
+import { requestAccountDeletion } from "../../auth/api/accountDeletionApi";
+import { revokeAllAuthSessions } from "../../auth/api/authSessionsApi";
 import { useAuth } from "../../auth/context/AuthContext";
 import {
   biometricLabel,
@@ -43,6 +45,7 @@ import {
   patchUserNotificationSettings,
   postAccountPrivacy,
   putProfile,
+  type BookingReminderCadence,
   type UserNotificationPrefs,
 } from "../../home/api/homeApi";
 import i18n from "../../../i18n";
@@ -50,8 +53,21 @@ import { applyRtlLocale } from "../../../i18n/applyRtlLocale";
 import { bcp47ForAppLocale, languageLabelForCode, normalizeAppLocale } from "../../../i18n/languages";
 import { persistAppLocale } from "../../../i18n/localeStorage";
 
+const REMINDER_CADENCES: BookingReminderCadence[] = [
+  "standard",
+  "minimal",
+  "aggressive",
+  "off",
+];
+
 function readNotificationPrefs(user: Record<string, unknown> | null): UserNotificationPrefs {
   const n = (user?.notifications ?? {}) as Partial<UserNotificationPrefs>;
+  const cadence = n.bookingReminderCadence;
+  const validCadence = (
+    cadence && REMINDER_CADENCES.includes(cadence as BookingReminderCadence)
+      ? (cadence as BookingReminderCadence)
+      : "standard"
+  );
   return {
     promotional: {
       email: n.promotional?.email !== false,
@@ -61,6 +77,7 @@ function readNotificationPrefs(user: Record<string, unknown> | null): UserNotifi
       email: n.transactional?.email !== false,
       sms: n.transactional?.sms !== false,
     },
+    bookingReminderCadence: validCadence,
   };
 }
 
@@ -204,7 +221,7 @@ export function SettingsScreen() {
   };
 
   const handleNotifToggle = async (
-    category: keyof UserNotificationPrefs,
+    category: "promotional" | "transactional",
     channel: "email" | "sms",
     value: boolean
   ) => {
@@ -230,6 +247,26 @@ export function SettingsScreen() {
     }
   };
 
+  const handleCadenceChange = async (cadence: BookingReminderCadence) => {
+    if (notif.bookingReminderCadence === cadence) return;
+    const prev = notif;
+    const updated: UserNotificationPrefs = { ...notif, bookingReminderCadence: cadence };
+    setNotif(updated);
+    setNotifBusy("cadence");
+    try {
+      await patchUserNotificationSettings(updated);
+      patchUser({ notifications: updated });
+    } catch (e: any) {
+      setNotif(prev);
+      Alert.alert(
+        t("settings.notificationsAlertTitle"),
+        e?.message ?? t("settings.notificationsUpdateError")
+      );
+    } finally {
+      setNotifBusy(null);
+    }
+  };
+
   const handleSignOut = () => {
     Alert.alert(t("auth.signOut"), t("auth.signOutConfirm"), [
       { text: t("common.cancel"), style: "cancel" },
@@ -237,6 +274,66 @@ export function SettingsScreen() {
         text: t("auth.signOut"),
         style: "destructive",
         onPress: () => signOut(),
+      },
+    ]);
+  };
+
+  const handleSignOutAll = () => {
+    Alert.alert(t("auth.signOutAll"), t("auth.signOutAllConfirm"), [
+      { text: t("common.cancel"), style: "cancel" },
+      {
+        text: t("auth.signOutAll"),
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await revokeAllAuthSessions();
+          } catch (e) {
+            Alert.alert(t("auth.signOutAll"), getApiErrorMessage(e, t("auth.signOutAll")));
+          } finally {
+            await signOut();
+          }
+        },
+      },
+    ]);
+  };
+
+  /**
+   * Two-step confirmation — first a warning, then a final destructive
+   * confirmation. We don't ask for typed-text confirmation here because the
+   * sign-in-required flow already gates it, but the second alert is
+   * intentionally explicit about consequences.
+   */
+  const handleDeleteAccount = () => {
+    Alert.alert(t("settings.deleteAccount"), t("settings.deleteAccountWarn"), [
+      { text: t("common.cancel"), style: "cancel" },
+      {
+        text: t("settings.deleteAccountContinue"),
+        style: "destructive",
+        onPress: () => {
+          Alert.alert(
+            t("settings.deleteAccountFinalTitle"),
+            t("settings.deleteAccountFinalBody"),
+            [
+              { text: t("common.cancel"), style: "cancel" },
+              {
+                text: t("settings.deleteAccountFinalConfirm"),
+                style: "destructive",
+                onPress: async () => {
+                  try {
+                    await requestAccountDeletion();
+                  } catch (e) {
+                    Alert.alert(
+                      t("settings.deleteAccount"),
+                      getApiErrorMessage(e, t("settings.deleteAccount"))
+                    );
+                    return;
+                  }
+                  await signOut();
+                },
+              },
+            ]
+          );
+        },
       },
     ]);
   };
@@ -478,6 +575,40 @@ export function SettingsScreen() {
         </Text> */}
       </Card>
 
+      <SectionHeader label={t("settings.bookingReminders")} />
+      <Card variant="outlined" padding={0} style={styles.sectionCard}>
+        {REMINDER_CADENCES.map((cadence, i) => {
+          const selected = notif.bookingReminderCadence === cadence;
+          return (
+            <React.Fragment key={cadence}>
+              {i > 0 ? <Divider /> : null}
+              <ListRow
+                icon={
+                  cadence === "off"
+                    ? "notifications-off-outline"
+                    : cadence === "aggressive"
+                    ? "alarm-outline"
+                    : "notifications-outline"
+                }
+                title={t(`settings.reminderCadence.${cadence}.title`)}
+                subtitle={t(`settings.reminderCadence.${cadence}.subtitle`)}
+                rightAdornment={
+                  notifBusy === "cadence" && selected ? (
+                    <ActivityIndicator size="small" color={c.brandAccent} />
+                  ) : selected ? (
+                    <Ionicons name="checkmark-circle" size={22} color={c.brandAccent} />
+                  ) : (
+                    <Ionicons name="ellipse-outline" size={22} color={c.neutral300} />
+                  )
+                }
+                onPress={() => void handleCadenceChange(cadence)}
+                hideChevron
+              />
+            </React.Fragment>
+          );
+        })}
+      </Card>
+
       <SectionHeader label={t("settings.emailSmsPreferences")} />
       <Card variant="outlined" padding={0} style={styles.sectionCard}>
         {(
@@ -534,6 +665,27 @@ export function SettingsScreen() {
           title={t("settings.signOut")}
           destructive
           onPress={handleSignOut}
+          hideChevron
+        />
+        <Divider />
+        <ListRow
+          icon="globe-outline"
+          title={t("auth.signOutAll")}
+          subtitle={t("settings.signOutAllSubtitle")}
+          destructive
+          onPress={handleSignOutAll}
+          hideChevron
+        />
+      </Card>
+
+      <SectionHeader label={t("settings.dangerZone")} />
+      <Card variant="outlined" padding={0} style={styles.sectionCard}>
+        <ListRow
+          icon="trash-outline"
+          title={t("settings.deleteAccount")}
+          subtitle={t("settings.deleteAccountSubtitle")}
+          destructive
+          onPress={handleDeleteAccount}
           hideChevron
         />
       </Card>

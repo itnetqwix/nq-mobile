@@ -18,12 +18,13 @@ export function useRequireAuth() {
   const redirectToAuth = useCallback(
     (screen: "Login" | "SignUp" = "Login", options?: RequireAuthOptions) => {
       const opts = options ?? {};
-      if (opts.intent || opts.trainer) {
+      if (opts.intent || opts.trainer || opts.context) {
         setPendingAuthIntent({
           intent: opts.intent ?? "generic",
           trainer: opts.trainer,
           bookMode: opts.bookMode,
           messageKey: opts.messageKey,
+          context: opts.context,
         });
       }
       navigation.navigate("Auth", {

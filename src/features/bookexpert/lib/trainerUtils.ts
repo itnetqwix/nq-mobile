@@ -85,6 +85,96 @@ export function trainerHasOpenSlots(trainer: Record<string, unknown> | null | un
   });
 }
 
+export type NextSlotPreview = {
+  label: string;
+  time: string;
+  iso: string;
+};
+
+const DAY_NAME_TO_NUM: Record<string, number> = {
+  sun: 7, sunday: 7,
+  mon: 1, monday: 1,
+  tue: 2, tuesday: 2,
+  wed: 3, wednesday: 3,
+  thu: 4, thursday: 4,
+  fri: 5, friday: 5,
+  sat: 6, saturday: 6,
+};
+
+function parseHHmm(value: unknown): { h: number; m: number } | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const [hStr, mStr] = trimmed.split(":");
+  const h = Number(hStr);
+  const m = Number(mStr ?? "0");
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+  if (h < 0 || h > 23 || m < 0 || m > 59) return null;
+  return { h, m };
+}
+
+/**
+ * Returns up to `limit` upcoming bookable slots for a trainer, rendered as
+ * short chips ("Mon 6:00 PM", "Wed 7:30 AM"). Pulled directly from the
+ * trainer's weekly availability so we don't need an extra API call per
+ * card — the directory payload already includes `extraInfo.availabilityInfo`.
+ *
+ * Slots that fall earlier today than "now" are skipped so cards never show
+ * stale times. Timezone is the trainer's, with a sensible UTC fallback.
+ */
+export function getTrainerNextSlots(
+  trainer: Record<string, unknown> | null | undefined,
+  limit = 3
+): NextSlotPreview[] {
+  if (!trainer) return [];
+  const extra = trainer.extraInfo as Record<string, unknown> | undefined;
+  const avail = extra?.availabilityInfo as
+    | { availability?: Record<string, unknown>; timeZone?: string }
+    | undefined;
+  const weekly = avail?.availability;
+  if (!weekly || typeof weekly !== "object") return [];
+  const tz =
+    avail?.timeZone ||
+    (trainer.time_zone as string | undefined) ||
+    (trainer.trainer_timezone as string | undefined) ||
+    "utc";
+
+  const { DateTime } = require("luxon") as typeof import("luxon");
+  const now = DateTime.now().setZone(tz);
+  if (!now.isValid) return [];
+
+  type Candidate = { start: import("luxon").DateTime };
+  const candidates: Candidate[] = [];
+
+  for (const [dayName, slotsRaw] of Object.entries(weekly)) {
+    const dayKey = dayName.toLowerCase();
+    const dayNum = DAY_NAME_TO_NUM[dayKey];
+    if (!dayNum) continue;
+    if (!Array.isArray(slotsRaw)) continue;
+
+    for (const slot of slotsRaw) {
+      const s = slot as { start_time?: unknown; end_time?: unknown };
+      const start = parseHHmm(s.start_time);
+      if (!start) continue;
+
+      let day = now.set({ hour: start.h, minute: start.m, second: 0, millisecond: 0 });
+      const offset = (dayNum - day.weekday + 7) % 7;
+      day = day.plus({ days: offset });
+      if (day <= now) day = day.plus({ days: 7 });
+      candidates.push({ start: day });
+    }
+  }
+
+  candidates.sort((a, b) => a.start.toMillis() - b.start.toMillis());
+
+  const limited = candidates.slice(0, Math.max(0, limit));
+  return limited.map((row) => ({
+    label: row.start.toFormat("ccc"),
+    time: row.start.toFormat("h:mm a"),
+    iso: row.start.toUTC().toISO() ?? "",
+  }));
+}
+
 export function getTrainerBio(trainer: Record<string, unknown> | null | undefined): string {
   const extra = trainer?.extraInfo as Record<string, unknown> | undefined;
   const bio =

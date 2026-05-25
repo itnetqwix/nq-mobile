@@ -112,6 +112,7 @@ export function MainTabs() {
                 icon="time-outline"
                 titleKey="guest.sessionsTitle"
                 bodyKey="guest.sessionsBody"
+                flavor="schedule"
               />
             ) : (
               <ScheduleScreen {...props} />
@@ -135,6 +136,7 @@ export function MainTabs() {
                 icon="chatbubbles-outline"
                 titleKey="guest.chatsTitle"
                 bodyKey="guest.chatsBody"
+                flavor="chats"
               />
             ) : (
               <ChatsScreen {...props} />

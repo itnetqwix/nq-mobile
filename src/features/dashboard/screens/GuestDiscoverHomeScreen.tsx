@@ -8,10 +8,15 @@ import { AccountType } from "../../../constants/accountType";
 import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import type { HomeStackParamList } from "../../../navigation/types";
-import { space, typography, useThemeColors } from "../../../theme";
+import { space, useThemeColors } from "../../../theme";
 import { useRequireAuth } from "../../auth/hooks/useRequireAuth";
+import { recordTrainerView } from "../../auth/lib/guestActivity";
 import { TrainerProfileModal } from "../../bookexpert/components/TrainerProfileModal";
+import { FreeIntroLessonHero } from "../components/guest/FreeIntroLessonHero";
+import { GuestSavedCoachesStrip } from "../components/guest/GuestSavedCoachesStrip";
 import { TraineeDiscoverDashboard } from "../components/home/TraineeDiscoverDashboard";
+import { useGuestFavoriteTrainers } from "../hooks/useGuestFavoriteTrainers";
+import { GuestBrowsingNudge } from "../components/guest/GuestBrowsingNudge";
 
 type Nav = NativeStackNavigationProp<HomeStackParamList, "DashboardHome">;
 
@@ -23,6 +28,7 @@ export function GuestDiscoverHomeScreen() {
   const navigation = useNavigation<Nav>();
   const { requireAuth, openAuth } = useRequireAuth();
   const [profileTrainer, setProfileTrainer] = useState<Record<string, unknown> | null>(null);
+  const { favorites: savedTrainers } = useGuestFavoriteTrainers(true);
 
   useLayoutEffect(() => {
     if (typeof navigation?.setOptions !== "function") return;
@@ -73,26 +79,24 @@ export function GuestDiscoverHomeScreen() {
           isGuest
           scrollable
           leadingContent={
-            <View style={[styles.banner, { backgroundColor: c.brandAccentSubtle, borderColor: c.brandAccent }]}>
-              <Text style={[typography.titleSm, { color: c.brandNavy }]}>
-                {t("guest.exploreBannerTitle")}
-              </Text>
-              <Text style={[styles.bannerBody, { color: c.textSecondary }]}>
-                {t("guest.exploreBannerBody")}
-              </Text>
-              <View style={styles.bannerActions}>
-                <Pressable
-                  onPress={() => openAuth("SignUp")}
-                  style={[styles.bannerPrimary, { backgroundColor: c.brandAccent }]}
-                >
-                  <Text style={styles.bannerPrimaryText}>{t("auth.createAccount")}</Text>
-                </Pressable>
-                <Pressable onPress={() => openAuth("Login")} style={styles.bannerLink}>
-                  <Text style={[styles.bannerLinkText, { color: c.brandAccent }]}>
-                    {t("auth.signIn")}
-                  </Text>
-                </Pressable>
-              </View>
+            <View style={styles.heroWrap}>
+              <GuestBrowsingNudge onSignUp={() => openAuth("SignUp")} />
+              <FreeIntroLessonHero
+                onPress={() =>
+                  requireAuth(undefined, {
+                    intent: "book",
+                    messageKey: "guest.signInToBook",
+                    screen: "SignUp",
+                  })
+                }
+              />
+              <GuestSavedCoachesStrip
+                favorites={savedTrainers}
+                onPress={(trainer) => {
+                  void recordTrainerView(trainer);
+                  setProfileTrainer(trainer);
+                }}
+              />
             </View>
           }
           contentContainerStyle={[
@@ -106,7 +110,10 @@ export function GuestDiscoverHomeScreen() {
           accountType={AccountType.TRAINEE}
           user={null}
           onSettings={() => openAuth("Login")}
-          onViewTrainer={setProfileTrainer}
+          onViewTrainer={(trainer) => {
+            void recordTrainerView(trainer);
+            setProfileTrainer(trainer);
+          }}
           onInstantBook={(trainer) =>
             requireAuth(undefined, {
               intent: "book",
@@ -123,13 +130,7 @@ export function GuestDiscoverHomeScreen() {
               bookMode: "schedule",
             })
           }
-          onToggleFavoriteGuest={() =>
-            requireAuth(undefined, {
-              intent: "favorite",
-              messageKey: "guest.signInToContinue",
-              screen: "SignUp",
-            })
-          }
+          onToggleFavoriteGuest={undefined}
         />
     </>
   );
@@ -138,30 +139,5 @@ export function GuestDiscoverHomeScreen() {
 const styles = StyleSheet.create({
   headerBtn: { paddingHorizontal: space.sm, paddingVertical: space.xs },
   headerBtnText: { fontWeight: "700", fontSize: 16 },
-  banner: {
-    marginBottom: space.md,
-    padding: space.md,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  bannerBody: {
-    ...typography.bodySm,
-    marginTop: space.xs,
-    lineHeight: 20,
-  },
-  bannerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: space.md,
-    marginTop: space.md,
-  },
-  bannerPrimary: {
-    paddingHorizontal: space.md,
-    paddingVertical: 10,
-    borderRadius: 999,
-  },
-  bannerPrimaryText: { color: "#fff", fontWeight: "700" },
-  bannerLink: { paddingVertical: 8 },
-  bannerLinkText: { fontWeight: "600" },
+  heroWrap: { gap: 0 },
 });

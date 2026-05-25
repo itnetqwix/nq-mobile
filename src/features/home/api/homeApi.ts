@@ -152,6 +152,43 @@ export async function fetchRecentTrainers(): Promise<any[]> {
   return Array.isArray(raw) ? dedupeRowsById(raw) : [];
 }
 
+export type PersonalizedReason =
+  | "past_session_repeat"
+  | "past_session_same_category"
+  | "guest_view"
+  | "guest_favorite"
+  | "recently_viewed"
+  | "online_now";
+
+export type PersonalizedFeedRow = {
+  trainer_id: string;
+  reasons: PersonalizedReason[];
+  primary_reason: PersonalizedReason;
+  repeat_count: number;
+};
+
+export type PersonalizedFeedResponse = {
+  for_you: any[];
+  reasoning: PersonalizedFeedRow[];
+};
+
+export async function fetchPersonalizedFeed(opts: {
+  limit?: number;
+  recentTrainerIds?: string[];
+} = {}): Promise<PersonalizedFeedResponse> {
+  const params: Record<string, string> = {};
+  if (opts.limit) params.limit = String(opts.limit);
+  if (opts.recentTrainerIds?.length) {
+    params.recentTrainerIds = opts.recentTrainerIds.slice(0, 12).join(",");
+  }
+  const res = await apiClient.get(API_ROUTES.trainee.personalizedFeed, { params });
+  const data = (res.data?.data ?? res.data?.result ?? res.data ?? {}) as Partial<PersonalizedFeedResponse>;
+  return {
+    for_you: Array.isArray(data.for_you) ? data.for_you : [],
+    reasoning: Array.isArray(data.reasoning) ? data.reasoning : [],
+  };
+}
+
 export async function postAcceptFriendRequest(requestId: string): Promise<any> {
   const res = await apiClient.post(API_ROUTES.user.acceptFriendRequest, { requestId });
   return res.data;
@@ -213,9 +250,12 @@ export async function postInviteFriendEmail(userEmail: string): Promise<void> {
   });
 }
 
+export type BookingReminderCadence = "standard" | "minimal" | "aggressive" | "off";
+
 export type UserNotificationPrefs = {
   promotional: { email: boolean; sms: boolean };
   transactional: { email: boolean; sms: boolean };
+  bookingReminderCadence?: BookingReminderCadence;
 };
 
 export async function patchUserNotificationSettings(

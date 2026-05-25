@@ -9,6 +9,7 @@ import {
   getTrainerCompletedSessionCount,
   getTrainerHourlyRate,
   getTrainerName,
+  getTrainerNextSlots,
   getTrainerReviewCount,
   isTrainerVerified,
 } from "../lib/trainerUtils";
@@ -57,6 +58,9 @@ export type TrainerBrowseCardProps = {
   compact?: boolean;
   isFavorite?: boolean;
   onToggleFavorite?: (trainer: Record<string, unknown>) => void;
+  /** When provided, renders a small "compare" pin in the card corner. */
+  isComparePinned?: boolean;
+  onToggleCompare?: (trainer: Record<string, unknown>) => void;
 };
 
 export function TrainerBrowseCard({
@@ -69,6 +73,8 @@ export function TrainerBrowseCard({
   compact,
   isFavorite,
   onToggleFavorite,
+  isComparePinned,
+  onToggleCompare,
 }: TrainerBrowseCardProps) {
   const { t } = useAppTranslation();
   const styles = makeCardStyles(themeColors);
@@ -85,9 +91,46 @@ export function TrainerBrowseCard({
   const verified = isTrainerVerified(trainer);
   const hourly = getTrainerHourlyRate(trainer);
   const slotsCount = Array.isArray(trainer?.slots) ? (trainer.slots as unknown[]).length : null;
+  const nextSlots = React.useMemo(() => getTrainerNextSlots(trainer, 3), [trainer]);
 
   return (
     <View style={[styles.card, compact && styles.cardCompact]}>
+      {onToggleCompare && !compact ? (
+        <Pressable
+          onPress={() => onToggleCompare(trainer)}
+          style={({ pressed }) => [
+            styles.compareCornerBtn,
+            {
+              backgroundColor: isComparePinned ? themeColors.brandNavy : themeColors.surface,
+              borderColor: isComparePinned ? themeColors.brandNavy : themeColors.border,
+            },
+            pressed && { opacity: 0.8 },
+          ]}
+          accessibilityRole="button"
+          accessibilityState={{ selected: !!isComparePinned }}
+          accessibilityLabel={t(
+            isComparePinned
+              ? "bookExpert.compareRemoveA11y"
+              : "bookExpert.compareAddA11y",
+            { name }
+          )}
+          hitSlop={6}
+        >
+          <Ionicons
+            name={isComparePinned ? "checkmark" : "git-compare-outline"}
+            size={14}
+            color={isComparePinned ? themeColors.brandTextOn : themeColors.brandNavy}
+          />
+          <Text
+            style={[
+              styles.compareCornerText,
+              { color: isComparePinned ? themeColors.brandTextOn : themeColors.brandNavy },
+            ]}
+          >
+            {t(isComparePinned ? "bookExpert.compareAdded" : "bookExpert.compare")}
+          </Text>
+        </Pressable>
+      ) : null}
       <Pressable
         style={({ pressed }) => [pressed && { opacity: 0.92 }]}
         onPress={() => onPress(trainer)}
@@ -156,6 +199,27 @@ export function TrainerBrowseCard({
           </View>
         </View>
       </Pressable>
+      {!compact && nextSlots.length > 0 ? (
+        <View style={styles.slotsStrip}>
+          <Ionicons name="time-outline" size={13} color={themeColors.textMuted} />
+          <Text style={styles.slotsStripHint}>{t("bookExpert.nextOpenLabel")}</Text>
+          {nextSlots.map((slot) => (
+            <Pressable
+              key={slot.iso || `${slot.label}-${slot.time}`}
+              onPress={() => onSchedule(trainer)}
+              style={styles.slotChip}
+              accessibilityRole="button"
+              accessibilityLabel={t("bookExpert.bookSlotA11y", {
+                day: slot.label,
+                time: slot.time,
+              })}
+            >
+              <Text style={styles.slotChipDay}>{slot.label}</Text>
+              <Text style={styles.slotChipTime}>{slot.time}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
       <View style={styles.cardFooter}>
         <View style={styles.actionRow}>
           {onToggleFavorite ? (
@@ -230,6 +294,52 @@ function makeCardStyles(colors: AppColors) {
     reviewsHint: { ...typography.caption, color: colors.textMuted },
     rateText: { ...typography.caption, color: colors.brandNavy, marginTop: 2, fontWeight: "600" },
     slotsText: { ...typography.caption, color: colors.success, marginTop: 3, fontWeight: "500" },
+    slotsStrip: {
+      flexDirection: "row",
+      alignItems: "center",
+      flexWrap: "wrap",
+      gap: 6,
+      marginTop: space.sm,
+    },
+    slotsStripHint: {
+      ...typography.caption,
+      color: colors.textMuted,
+      fontWeight: "600",
+      marginRight: 2,
+    },
+    slotChip: {
+      flexDirection: "row",
+      alignItems: "baseline",
+      gap: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: radii.pill,
+      backgroundColor: colors.brandAccentSubtle,
+      borderWidth: 1,
+      borderColor: colors.brandAccent,
+    },
+    slotChipDay: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: colors.brandNavy,
+      letterSpacing: 0.3,
+      textTransform: "uppercase",
+    },
+    slotChipTime: { fontSize: 12, fontWeight: "600", color: colors.brandNavy },
+    compareCornerBtn: {
+      position: "absolute",
+      top: 10,
+      right: 10,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: radii.pill,
+      borderWidth: 1,
+      zIndex: 2,
+    },
+    compareCornerText: { fontSize: 10, fontWeight: "800", letterSpacing: 0.3 },
     cardFooter: {
       marginTop: space.md,
       paddingTop: space.sm,

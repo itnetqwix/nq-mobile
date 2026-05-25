@@ -2,9 +2,11 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import { Alert, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { useLoader } from "../../../components/brand/LoaderProvider";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { radii, space, typography, useThemeColors } from "../../../theme";
 import { isGoogleConfigured, postAppleVerify, signInWithAppleNative } from "../api/socialAuth";
+import { peekLastAuthMethod, setLastAuthMethod } from "../lib/lastAuthMethod";
 import { GoogleSignInButton } from "./GoogleSignInButton";
 import type { AuthScreenProps } from "../../../navigation/types";
 
@@ -15,12 +17,14 @@ type Props = {
 };
 
 export function SocialAuthButtons({ navigation, onTokens, mode = "login" }: Props) {
+  const { t } = useAppTranslation();
   const c = useThemeColors();
   const { showLoader, hideLoader } = useLoader();
   const [busy, setBusy] = useState(false);
 
   const showApple = Platform.OS === "ios";
   const showGoogle = isGoogleConfigured();
+  const lastMethod = peekLastAuthMethod();
 
   if (!showApple && !showGoogle) {
     return null;
@@ -43,6 +47,7 @@ export function SocialAuthButtons({ navigation, onTokens, mode = "login" }: Prop
         } as never);
         return;
       }
+      await setLastAuthMethod("apple");
       await onTokens(result);
     } catch (e: unknown) {
       const code = (e as { code?: string })?.code;
@@ -64,30 +69,46 @@ export function SocialAuthButtons({ navigation, onTokens, mode = "login" }: Prop
 
       <View style={styles.socialRow}>
         {showGoogle ? (
-          <GoogleSignInButton
-            navigation={navigation}
-            onTokens={onTokens}
-            busy={busy}
-            setBusy={setBusy}
-            mode={mode}
-          />
+          <View style={[styles.providerCol, { flex: 1 }]}>
+            <GoogleSignInButton
+              navigation={navigation}
+              onTokens={onTokens}
+              busy={busy}
+              setBusy={setBusy}
+              mode={mode}
+            />
+            {lastMethod === "google" ? <LastUsedBadge label={t("auth.lastUsed")} /> : null}
+          </View>
         ) : null}
         {showApple ? (
-          <Pressable
-            style={({ pressed }) => [
-              styles.socialBtn,
-              { borderColor: c.border, backgroundColor: c.text, opacity: busy ? 0.5 : 1 },
-              !showGoogle && styles.socialBtnFull,
-              pressed && !busy && { opacity: 0.88 },
-            ]}
-            onPress={handleApple}
-            disabled={busy}
-          >
-            <Ionicons name="logo-apple" size={22} color={c.background} />
-            <Text style={[styles.socialLabel, { color: c.background }]}>Apple</Text>
-          </Pressable>
+          <View style={[styles.providerCol, !showGoogle && { flex: 1 }]}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.socialBtn,
+                { borderColor: c.border, backgroundColor: c.text, opacity: busy ? 0.5 : 1 },
+                !showGoogle && styles.socialBtnFull,
+                pressed && !busy && { opacity: 0.88 },
+              ]}
+              onPress={handleApple}
+              disabled={busy}
+            >
+              <Ionicons name="logo-apple" size={22} color={c.background} />
+              <Text style={[styles.socialLabel, { color: c.background }]}>Apple</Text>
+            </Pressable>
+            {lastMethod === "apple" ? <LastUsedBadge label={t("auth.lastUsed")} /> : null}
+          </View>
         ) : null}
       </View>
+    </View>
+  );
+}
+
+function LastUsedBadge({ label }: { label: string }) {
+  const c = useThemeColors();
+  return (
+    <View style={[styles.lastUsedPill, { backgroundColor: c.brandAccent }]}>
+      <Ionicons name="checkmark-circle" size={11} color="#fff" />
+      <Text style={styles.lastUsedText}>{label}</Text>
     </View>
   );
 }
@@ -107,6 +128,17 @@ const styles = StyleSheet.create({
     alignItems: "stretch",
     gap: space.sm,
   },
+  providerCol: { gap: 6 },
+  lastUsedPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  lastUsedText: { color: "#fff", fontWeight: "800", fontSize: 10, letterSpacing: 0.4 },
   socialBtn: {
     flex: 1,
     flexDirection: "row",

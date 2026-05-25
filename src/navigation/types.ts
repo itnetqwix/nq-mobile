@@ -19,6 +19,8 @@ export type AuthStackParamList = {
       } & AuthScreenParams)
     | undefined;
   ForgotPassword: undefined;
+  MagicLinkRequest: { prefillEmail?: string } | undefined;
+  MagicLinkVerify: { email: string; expiresInMinutes?: number };
 };
 
 export type ShellSurfaceRouteId = ShellSurfaceMeta["id"];

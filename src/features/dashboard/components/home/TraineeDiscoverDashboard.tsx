@@ -29,12 +29,21 @@ import {
   TRAINEE_COACH_PREVIEW_COUNT,
 } from "../../lib/traineeDiscoverConstants";
 import { sortTrainersForDiscover } from "../../lib/sortTrainersForDiscover";
+import { ForYouTrainersSection } from "./ForYouTrainersSection";
 import { PastBookedTrainersSection } from "./PastBookedTrainersSection";
+import { RecentlyViewedTrainersRow } from "./RecentlyViewedTrainersRow";
 import { ContinueWhereYouLeftOffCard } from "../trainee/ContinueWhereYouLeftOffCard";
 import { CategoryEmptySuggestions } from "../trainee/CategoryEmptySuggestions";
 import { FavoriteCoachesSection } from "../trainee/FavoriteCoachesSection";
 import { useDashboardSessions } from "../../hooks/useDashboardSessions";
 import { useFavoriteTrainers } from "../../hooks/useFavoriteTrainers";
+import { useGuestFavoriteTrainers } from "../../hooks/useGuestFavoriteTrainers";
+import { useRecentlyViewedTrainers } from "../../hooks/useRecentlyViewedTrainers";
+import {
+  recordGuestFavoriteEvent,
+  recordGuestSearch,
+  recordTrainerView,
+} from "../../../auth/lib/guestActivity";
 import { useWalletBalance } from "../../../wallet/hooks/useWalletBalance";
 import { TrainerBrowseFiltersSheet } from "../../../bookexpert/components/TrainerBrowseFiltersSheet";
 import {
@@ -106,6 +115,13 @@ export function TraineeDiscoverDashboard({
   const { data: walletBalance } = useWalletBalance(!isGuest);
   const isTraineeAccount = accountType === AccountType.TRAINEE;
   const { isFavorite, toggleFavorite } = useFavoriteTrainers(!isGuest && isTraineeAccount);
+  const guestFavorites = useGuestFavoriteTrainers(isGuest);
+  const recentTrainerOwnerId = isGuest
+    ? null
+    : String((user as { _id?: string })?._id ?? "") || null;
+  const { recentTrainers, track: trackRecentTrainer } = useRecentlyViewedTrainers(
+    recentTrainerOwnerId
+  );
   const apiFilterParams = useMemo(() => filtersToApiParams(browseFilters), [browseFilters]);
   const activeFilterCount = countActiveFilters(browseFilters);
 
@@ -113,6 +129,13 @@ export function TraineeDiscoverDashboard({
     const id = setTimeout(() => setDebouncedSearch(search.trim()), 350);
     return () => clearTimeout(id);
   }, [search]);
+
+  useEffect(() => {
+    if (!isGuest) return;
+    const q = debouncedSearch;
+    if (q.length < 2) return;
+    void recordGuestSearch(q);
+  }, [isGuest, debouncedSearch]);
 
   const trimmed = debouncedSearch;
   const searchActive = trimmed.length >= 2 && !/^\d+$/.test(trimmed);
@@ -309,7 +332,23 @@ export function TraineeDiscoverDashboard({
         />
       ) : null}
 
+      {!isGuest ? (
+        <ForYouTrainersSection
+          recentTrainerIds={recentTrainers.map((row) => row._id).filter(Boolean)}
+          onSelectTrainer={onViewTrainer}
+          enabled={!isGuest}
+        />
+      ) : null}
+
       {!isGuest ? <PastBookedTrainersSection onSelectTrainer={onViewTrainer} /> : null}
+
+      <RecentlyViewedTrainersRow
+        rows={recentTrainers}
+        onSelectTrainer={(tr) => {
+          void trackRecentTrainer(tr);
+          onViewTrainer(tr);
+        }}
+      />
 
       <View style={styles.searchBar}>
         <Ionicons name="search-outline" size={20} color={themeColors.textMuted} />
@@ -470,16 +509,25 @@ export function TraineeDiscoverDashboard({
                 key={trainerListItemKey(trainer, index, "discover-")}
                 trainer={trainer}
                 themeColors={themeColors}
-                onPress={onViewTrainer}
+                onPress={(tr) => {
+                  if (isGuest) void recordTrainerView(tr);
+                  void trackRecentTrainer(tr);
+                  onViewTrainer(tr);
+                }}
                 onBook={onInstantBook}
                 onSchedule={onScheduleBook}
                 highlightCategory={highlight}
-                isFavorite={isGuest ? false : isFavorite(trainer)}
+                isFavorite={
+                  isGuest ? guestFavorites.isFavorite(trainer) : isFavorite(trainer)
+                }
                 onToggleFavorite={
                   isGuest
-                    ? onToggleFavoriteGuest
-                      ? () => onToggleFavoriteGuest(trainer)
-                      : undefined
+                    ? () => {
+                        guestFavorites.toggleFavorite(trainer);
+                        const tid = String((trainer as { _id?: string })._id ?? "");
+                        if (tid) void recordGuestFavoriteEvent(tid);
+                        onToggleFavoriteGuest?.(trainer);
+                      }
                     : () => toggleFavorite(trainer)
                 }
               />

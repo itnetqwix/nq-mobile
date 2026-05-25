@@ -3,6 +3,8 @@ import { useRoute } from "@react-navigation/native";
 import React from "react";
 import { ForgotPasswordScreen } from "../features/auth/screens/ForgotPasswordScreen";
 import { LoginScreen } from "../features/auth/screens/LoginScreen";
+import { MagicLinkRequestScreen } from "../features/auth/screens/MagicLinkRequestScreen";
+import { MagicLinkVerifyScreen } from "../features/auth/screens/MagicLinkVerifyScreen";
 import { SignUpScreen } from "../features/auth/screens/SignUpScreen";
 import type { RootStackParamList } from "./types";
 import type { AuthStackParamList } from "./types";
@@ -36,6 +38,8 @@ export function AuthNavigator() {
         component={ForgotPasswordScreen}
         options={{ title: "Reset password" }}
       />
+      <Stack.Screen name="MagicLinkRequest" component={MagicLinkRequestScreen} />
+      <Stack.Screen name="MagicLinkVerify" component={MagicLinkVerifyScreen} />
     </Stack.Navigator>
   );
 }
