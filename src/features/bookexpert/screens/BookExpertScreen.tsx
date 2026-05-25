@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
+  Image,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -129,6 +130,34 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
     const filtered = browseFilters.onlineOnly ? rows.filter((t) => t.is_online) : rows;
     return dedupeTrainersById(filtered);
   }, [directoryRows, onlineRaw, isOnline, browseFilters.onlineOnly]);
+
+  /**
+   * Prefetch the avatars + hero shots for the first ~12 trainer cards
+   * the user is about to see. Network-bound; runs once per result set,
+   * cancellable on unmount via the inFlight ref.
+   */
+  useEffect(() => {
+    if (mergedRows.length === 0) return;
+    const aboveTheFold = mergedRows.slice(0, 12);
+    const urls = new Set<string>();
+    for (const tr of aboveTheFold) {
+      const candidates = [
+        tr.profile_picture,
+        tr.profile_pic,
+        tr.avatar,
+        tr.cover_picture,
+        tr.thumbnail,
+      ];
+      for (const u of candidates) {
+        if (typeof u === "string" && u.startsWith("http")) urls.add(u);
+      }
+    }
+    void Promise.all(
+      [...urls].map((u) =>
+        Image.prefetch(u).catch(() => false)
+      )
+    );
+  }, [mergedRows]);
 
   useEffect(() => {
     if (!bookLessonTrainerId || mergedRows.length === 0) return;

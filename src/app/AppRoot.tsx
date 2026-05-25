@@ -31,6 +31,11 @@ import { InstantLessonCallKeepBridge } from "../features/instant-lesson/InstantL
 import { TrainerOnlinePresenceBridge } from "../features/instant-lesson/TrainerOnlinePresenceBridge";
 import { navigationRef } from "../navigation/navigationRef";
 import { LoaderProvider } from "../components/brand/LoaderProvider";
+import { NetworkStatusBanner } from "../components/system/NetworkStatusBanner";
+import {
+  hydrateOfflineChatQueue,
+  useOfflineChatQueueFlusher,
+} from "../features/chats/lib/offlineChatQueue";
 import { warmLoaderTipsCache } from "../components/brand/loaderTips/loaderTipsService";
 import { ThemeProvider } from "../theme/ThemeContext";
 import { ThemedNavigationContainer } from "./ThemedNavigationContainer";
@@ -47,6 +52,7 @@ initMobileSentry();
 function SystemStateHooks() {
   useSessionExpiredNavigation();
   useUpdateRequiredGate(true);
+  useOfflineChatQueueFlusher();
   return null;
 }
 
@@ -65,6 +71,7 @@ export function AppRoot() {
     void hydratePendingAuthIntent();
     void hydrateLastAuthMethod();
     void bootstrapCallRejoinStore();
+    void hydrateOfflineChatQueue();
   }, []);
 
   useEffect(() => {
@@ -119,6 +126,7 @@ export function AppRoot() {
                             <InstantLessonCallKeepBridge />
                             <TrainerOnlinePresenceBridge />
                             <SessionLifecycleBridge />
+                            <NetworkStatusBanner />
                             <ThemedNavigationContainer />
                           </InstantLessonProvider>
                         </SessionBookingProvider>

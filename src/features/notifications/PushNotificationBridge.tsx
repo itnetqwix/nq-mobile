@@ -96,6 +96,14 @@ export function PushNotificationBridge() {
   useEffect(() => {
     let cancelled = false;
     if (status === "signedIn") {
+      /**
+       * Just-in-time policy: we never *ask* for the OS prompt on app
+       * launch. We only re-register the token when permission was
+       * already granted from a previous opt-in (e.g. user toggled
+       * booking reminders last session). The OS prompt itself is
+       * triggered via `requestPushPermissionForReason` at the moment
+       * the user opts into a notify-able feature.
+       */
       (async () => {
         const result = await registerDevicePushToken();
         if (cancelled || !result) return;

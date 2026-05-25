@@ -11,6 +11,7 @@ import { ReportIssueScreen } from "../features/dashboard/screens/ReportIssueScre
 import { ActiveSessionsScreen } from "../features/auth/screens/ActiveSessionsScreen";
 import { StoragePlanScreen } from "../features/settings/screens/StoragePlanScreen";
 import { ArchivedChatsScreen } from "../features/chats/screens/ArchivedChatsScreen";
+import { NotificationPreferencesScreen } from "../features/notifications/screens/NotificationPreferencesScreen";
 import i18n from "../i18n";
 import { localizedDashboardTitle } from "../i18n/dashboardRouteI18n";
 import { localizedShellTitle } from "../i18n/shellSurfaceI18n";
@@ -81,6 +82,11 @@ export function HomeNavigator() {
         name="ArchivedChats"
         component={ArchivedChatsScreen}
         options={{ title: i18n.t("chats.archivedTitle") }}
+      />
+      <Stack.Screen
+        name="NotificationPreferences"
+        component={NotificationPreferencesScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

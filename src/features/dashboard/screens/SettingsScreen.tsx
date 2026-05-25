@@ -49,6 +49,7 @@ import {
   type UserNotificationPrefs,
 } from "../../home/api/homeApi";
 import { setReadReceiptsEnabled } from "../../chats/api/chatActionsApi";
+import { requestPushPermissionForReason } from "../../notifications/pushTokens";
 import i18n from "../../../i18n";
 import { applyRtlLocale } from "../../../i18n/applyRtlLocale";
 import { bcp47ForAppLocale, languageLabelForCode, normalizeAppLocale } from "../../../i18n/languages";
@@ -254,6 +255,14 @@ export function SettingsScreen() {
 
   const handleCadenceChange = async (cadence: BookingReminderCadence) => {
     if (notif.bookingReminderCadence === cadence) return;
+    /**
+     * Just-in-time push permission prompt: enabling reminders is a
+     * direct opt-in to receiving pushes, so this is the right moment
+     * to ask the OS for permission.
+     */
+    if (cadence !== "off" && notif.bookingReminderCadence === "off") {
+      void requestPushPermissionForReason("booking_reminder");
+    }
     const prev = notif;
     const updated: UserNotificationPrefs = { ...notif, bookingReminderCadence: cadence };
     setNotif(updated);
@@ -611,6 +620,22 @@ export function SettingsScreen() {
               />
             )
           }
+        />
+      </Card>
+
+      <SectionHeader
+        label={t("settings.notificationsHeader", { defaultValue: "Notifications" })}
+      />
+      <Card variant="outlined" padding={0} style={styles.sectionCard}>
+        <ListRow
+          icon="notifications-circle-outline"
+          title={t("settings.notificationPreferencesTitle", {
+            defaultValue: "Notification preferences",
+          })}
+          subtitle={t("settings.notificationPreferencesHint", {
+            defaultValue: "Categories, channels, mute, quiet hours",
+          })}
+          onPress={() => navigation.navigate("NotificationPreferences" as never)}
         />
       </Card>
 

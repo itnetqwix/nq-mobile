@@ -48,7 +48,24 @@ export type RegisterTokenPayload = {
 /** Surface a friendly status to the caller (Settings can show "push enabled"). */
 export type PushPermissionStatus = "granted" | "denied" | "undetermined";
 
-export async function ensureNotificationPermissions(): Promise<PushPermissionStatus> {
+/**
+ * Just-in-time permission request.
+ *
+ * Pass a `reason` so we can decide whether to *ask* now vs. just read
+ * the cached status. Callers should pass `reason` only when the user
+ * has actually opted in to something that benefits from a push (e.g.
+ * tapped "Notify me when slot opens", flipped a reminder switch).
+ *
+ * Calling this with no `reason` is a read-only check used by Settings.
+ */
+export async function ensureNotificationPermissions(
+  reason?:
+    | "booking_reminder"
+    | "chat_message"
+    | "instant_lesson"
+    | "marketing"
+    | "session_starting"
+): Promise<PushPermissionStatus> {
   /** Simulators don't have push entitlement — bail early so dev builds don't
    *  show a misleading "denied" status. */
   if (!Device.isDevice) return "undetermined";
@@ -61,6 +78,11 @@ export async function ensureNotificationPermissions(): Promise<PushPermissionSta
   ) {
     return "denied";
   }
+  // Without a reason we never trigger the OS prompt — this is the
+  // "settings UI just wants to read state" path.
+  if (!reason) {
+    return current.status === "denied" ? "denied" : "undetermined";
+  }
   const next = await Notifications.requestPermissionsAsync({
     ios: {
       allowAlert: true,
@@ -70,6 +92,22 @@ export async function ensureNotificationPermissions(): Promise<PushPermissionSta
   });
   if (next.granted) return "granted";
   return next.status === "denied" ? "denied" : "undetermined";
+}
+
+/**
+ * High-level helper used by feature code at the moment of opt-in.
+ * Returns true when push is now usable (registered or already was).
+ *
+ *   const ok = await requestPushPermissionForReason("booking_reminder");
+ *   if (!ok) showOSSettingsDeepLink();
+ */
+export async function requestPushPermissionForReason(
+  reason: Parameters<typeof ensureNotificationPermissions>[0]
+): Promise<boolean> {
+  const status = await ensureNotificationPermissions(reason);
+  if (status !== "granted") return false;
+  const result = await registerDevicePushToken();
+  return !!result;
 }
 
 /** Android channel setup — must run once before showing any local
@@ -89,10 +127,33 @@ export async function configureAndroidChannels(): Promise<void> {
       vibrationPattern: [0, 250, 250, 250],
       lightColor: colors.brandNavy,
     });
+    /**
+     * One channel per logical category — Android stacks notifications
+     * sent to the same channel into a single visual group. The matching
+     * iOS-side grouping happens via the `threadId` we send in the push
+     * payload (see backend `notificationsService`).
+     */
     await Notifications.setNotificationChannelAsync("messages", {
       name: "Messages",
       importance: Notifications.AndroidImportance.DEFAULT,
       vibrationPattern: [0, 200],
+      lightColor: colors.brandNavy,
+    });
+    await Notifications.setNotificationChannelAsync("bookings", {
+      name: "Bookings",
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 200],
+      lightColor: colors.brandNavy,
+    });
+    await Notifications.setNotificationChannelAsync("payments", {
+      name: "Payments",
+      importance: Notifications.AndroidImportance.DEFAULT,
+      vibrationPattern: [0, 200],
+      lightColor: colors.brandNavy,
+    });
+    await Notifications.setNotificationChannelAsync("marketing", {
+      name: "Promos & updates",
+      importance: Notifications.AndroidImportance.LOW,
       lightColor: colors.brandNavy,
     });
   } catch {
@@ -104,11 +165,16 @@ export async function configureAndroidChannels(): Promise<void> {
  * Acquire a push token (Expo for managed delivery / native for direct FCM/APNs)
  * and register it with the backend. Safe to call multiple times — the backend
  * is expected to de-dupe by `deviceId`.
+ *
+ * **Does NOT trigger the OS permission prompt** — callers wanting that should
+ * use {@link requestPushPermissionForReason}. This keeps the launch path
+ * silent so we only ask after the user explicitly opts in to a notify-able
+ * feature.
  */
 export async function registerDevicePushToken(): Promise<RegisterTokenPayload | null> {
-  const perm = await ensureNotificationPermissions();
-  if (perm !== "granted") return null;
   if (!Device.isDevice) return null;
+  const perm = await Notifications.getPermissionsAsync();
+  if (!perm.granted) return null;
 
   await configureAndroidChannels();
 

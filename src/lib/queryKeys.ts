@@ -15,6 +15,7 @@ export const queryKeys = {
   notifications: {
     all: ["notifications"] as const,
     inbox: ["notifications"] as const,
+    preferences: ["notificationPreferences"] as const,
   },
   wallet: {
     all: ["wallet"] as const,

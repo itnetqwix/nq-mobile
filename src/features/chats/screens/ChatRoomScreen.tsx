@@ -73,6 +73,7 @@ import { PinnedMessageBanner } from "../components/PinnedMessageBanner";
 import { DisappearingMessagesSheet } from "../components/DisappearingMessagesSheet";
 import { ScheduledMessageComposer } from "../components/ScheduledMessageComposer";
 import { ScheduledMessagesSheet } from "../components/ScheduledMessagesSheet";
+import { enqueueChatMessage } from "../lib/offlineChatQueue";
 
 type Props = {
   conversationId: string;
@@ -1137,16 +1138,46 @@ export function ChatRoomScreen({
         setChatPolicy((p) => p ? { ...p, remainingToday: Math.max(0, p.remainingToday - 1) } : p);
       }
     } catch (e: any) {
-      setLocalMessages((prev) => prev.filter((m) => m._id !== tempId));
       const status = e?.response?.status;
-      if (status === 429) {
+      const isNetworkLevel =
+        !e?.response &&
+        (e?.code === "ERR_NETWORK" ||
+          e?.code === "ECONNABORTED" ||
+          e?.message === "Network Error" ||
+          String(e?.message ?? "").includes("Network request failed"));
+
+      if (isNetworkLevel) {
+        // Park the message in the persistent queue and *keep* the
+        // optimistic bubble — the network banner already explains why.
+        await enqueueChatMessage({
+          clientId: tempId,
+          conversationId,
+          receiverId: isGroup ? null : partner._id,
+          content,
+          type: "text",
+          replyToMessageId: replyId,
+          enqueuedAt: Date.now(),
+          attempts: 0,
+        });
+        setLocalMessages((prev) =>
+          prev.map((m) =>
+            m._id === tempId
+              ? { ...m, status: "sending", pending: true }
+              : m
+          )
+        );
         haptics.warning();
-        setRateLimited(true);
-        const msg = e?.response?.data?.data?.error ?? e?.response?.data?.error ?? "Message limit reached.";
-        setChatPolicy((p) => p ? { ...p, remainingToday: 0 } : p);
-        Alert.alert("Limit Reached", msg);
       } else {
-        haptics.error();
+        setLocalMessages((prev) => prev.filter((m) => m._id !== tempId));
+        if (status === 429) {
+          haptics.warning();
+          setRateLimited(true);
+          const msg = e?.response?.data?.data?.error ?? e?.response?.data?.error ?? "Message limit reached.";
+          setChatPolicy((p) => p ? { ...p, remainingToday: 0 } : p);
+          Alert.alert("Limit Reached", msg);
+        } else {
+          haptics.error();
+        }
       }
     } finally {
       setIsSendingMessage(false);

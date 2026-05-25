@@ -43,6 +43,7 @@ export type HomeStackParamList = {
   ActiveSessions: undefined;
   StoragePlan: undefined;
   ArchivedChats: undefined;
+  NotificationPreferences: undefined;
 };
 
 /** @deprecated Use HomeStackParamList */

@@ -9,16 +9,25 @@
       "distribution": "internal",
       "ios": {
         "simulator": false
+      },
+      "android": {
+        "jsEngine": "hermes"
       }
     },
     "preview": {
       "distribution": "internal",
       "ios": {
         "simulator": false
+      },
+      "android": {
+        "jsEngine": "hermes"
       }
     },
     "production": {
       "autoIncrement": true,
+      "android": {
+        "jsEngine": "hermes"
+      },
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://api-netqwix.com",
         "EXPO_PUBLIC_WEB_ORIGIN": "https://netqwix.com",

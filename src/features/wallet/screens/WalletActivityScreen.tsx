@@ -14,7 +14,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { EmptyState } from "../../../components/ui";
+import { EmptyState, Skeleton } from "../../../components/ui";
 import { space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import type { MenuStackParamList } from "../../../navigation/types";
 import { useShellHeaderTitle } from "../../../navigation/useShellHeaderTitle";
@@ -80,8 +80,18 @@ export function WalletActivityScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color={c.iconPrimary} />
+      <View>
+        {[0, 1, 2, 3, 4, 5].map((idx) => (
+          <View key={idx} style={styles.row}>
+            <Skeleton width={40} height={40} radius={20} />
+            <View style={{ flex: 1 }}>
+              <Skeleton width={"70%"} height={14} />
+              <View style={{ height: 6 }} />
+              <Skeleton width={"40%"} height={11} />
+            </View>
+            <Skeleton width={64} height={14} />
+          </View>
+        ))}
       </View>
     );
   }

@@ -14,7 +14,7 @@ import {
   View,
 } from "react-native";
 import { AccountType } from "../../../constants/accountType";
-import { Button, EmptyState, Pill } from "../../../components/ui";
+import { Button, EmptyState, Pill, Skeleton } from "../../../components/ui";
 import { colors, radii, space, typography } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
 import { queryKeys } from "../../../lib/queryKeys";
@@ -82,8 +82,20 @@ function TrainerSchedule() {
 
   if (isLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.brandNavy} />
+      <View style={styles.root}>
+        <View style={styles.header}>
+          <Skeleton height={22} width={160} />
+          <Skeleton height={36} width={120} radius={radii.md} />
+        </View>
+        {[0, 1, 2, 3].map((row) => (
+          <View key={row} style={styles.skeletonSection}>
+            <Skeleton height={14} width={110} />
+            <View style={{ height: 8 }} />
+            <Skeleton height={62} radius={radii.lg} />
+            <View style={{ height: 6 }} />
+            <Skeleton height={62} radius={radii.lg} />
+          </View>
+        ))}
       </View>
     );
   }
@@ -205,6 +217,7 @@ const styles = StyleSheet.create({
 
   listContent: { padding: space.md, paddingBottom: space.xl },
   listEmptyGrow: { flexGrow: 1, padding: space.md },
+  skeletonSection: { paddingHorizontal: space.md, paddingTop: space.md },
 
   sectionTitle: {
     ...typography.subtitle,

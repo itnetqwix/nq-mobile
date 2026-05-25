@@ -233,6 +233,9 @@ export const API_ROUTES = {
     registerPushToken: "/notifications/register-push-token",
     unregisterPushToken: (deviceId: string) =>
       `/notifications/unregister-push-token/${encodeURIComponent(deviceId)}` as const,
+    preferences: "/notifications/preferences",
+    mute: "/notifications/mute",
+    quietHours: "/notifications/quiet-hours",
   },
   promo: {
     validate: "/common/validate-promo",
