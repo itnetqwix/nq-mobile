@@ -78,6 +78,7 @@ import { ClipMiniPip } from "../components/ClipMiniPip";
 import { ActionButtons } from "../components/ActionButtons";
 import { TimeRemaining } from "../components/TimeRemaining";
 import { PeerJoinedModal } from "../components/PeerJoinedModal";
+import { ConnectionQualityPill } from "../components/ConnectionQualityPill";
 import { ClipPickerModal } from "../components/ClipPickerModal";
 import { LockedDualClipStage } from "../components/LockedDualClipStage";
 import { UnlockedDualClipStage } from "../components/UnlockedDualClipStage";
@@ -97,6 +98,7 @@ import { RecordingBar } from "../components/RecordingBar";
 import { useInstantLessonRecording } from "../useInstantLessonRecording";
 import { RatingsModal } from "../components/RatingsModal";
 import { MeetingJoinBanner } from "../components/MeetingJoinBanner";
+import { SessionRecapSheet } from "../components/SessionRecapSheet";
 import { DualLiveStage } from "../components/DualLiveStage";
 import { useSessionPresence } from "../useSessionPresence";
 import { meetingTheme } from "../meetingTheme";
@@ -173,14 +175,36 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
    *  `MeetingSurface` when it opens the post-call flow so the CallContext's
    *  `onEnded` (engine teardown) doesn't yank us back to Home prematurely. */
   const postCallActiveRef = useRef(false);
+  const peerNameRef = useRef<string | undefined>(undefined);
   const goHome = useCallback(() => {
     postCallActiveRef.current = false;
     navigation.reset({ index: 0, routes: [{ name: "Main" }] });
   }, [navigation]);
   const handleCallEnded = useCallback(() => {
-    if (postCallActiveRef.current) return;
+    if (postCallActiveRef.current) {
+      goHome();
+      return;
+    }
+    /**
+     * Engine torn down without the post-call flow ever opening → almost
+     * always a drop (ICE failure, app killed mid-call, peer crashed). We
+     * stash a rejoin record so the dashboard banner can offer one-tap
+     * re-entry. `setLastInterruptedSession` debounces stale records on
+     * its own.
+     */
+    try {
+      const { setLastInterruptedSession } = require("../callRejoinStore");
+      setLastInterruptedSession({
+        lessonId: String(lessonId),
+        partnerName: peerNameRef.current,
+        endedReason: "drop",
+        endedAt: Date.now(),
+      });
+    } catch {
+      /* noop */
+    }
     goHome();
-  }, [goHome]);
+  }, [goHome, lessonId]);
   const beginPostCallFlow = useCallback(() => {
     postCallActiveRef.current = true;
   }, []);
@@ -256,6 +280,10 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
 
   const peerDisplayName =
     peer?.fullname ?? peer?.fullName ?? "Your partner";
+
+  useEffect(() => {
+    peerNameRef.current = peer?.fullname ?? peer?.fullName ?? undefined;
+  }, [peer]);
 
   return (
     <CallProvider
@@ -828,12 +856,8 @@ function MeetingSurface({
     });
   }, [clipDurations, clipProgresses, clipSync]);
 
-  const openPostCallFlow = useCallback(async () => {
-    onPostCallFlowStart();
-    if (!isTrainer) {
-      setRatingsOpen(true);
-      return;
-    }
+  const [recapSheetOpen, setRecapSheetOpen] = useState(false);
+  const continueAfterRecap = useCallback(async () => {
     let hasScreenshots = screenshot.hasCaptures;
     if (!hasScreenshots) {
       try {
@@ -858,14 +882,21 @@ function MeetingSurface({
     }
     if (hasScreenshots) setGamePlanOpen(true);
     else setRatingsOpen(true);
-  }, [
-    isTrainer,
-    lessonId,
-    myId,
-    onPostCallFlowStart,
-    peerId,
-    screenshot.hasCaptures,
-  ]);
+  }, [lessonId, myId, peerId, screenshot.hasCaptures]);
+
+  const openPostCallFlow = useCallback(async () => {
+    onPostCallFlowStart();
+    if (!isTrainer) {
+      setRatingsOpen(true);
+      return;
+    }
+    /**
+     * Trainers see the recap composer FIRST (skippable). Once they send
+     * or skip, we fall through to the existing screenshots / ratings
+     * post-call flow via `continueAfterRecap`.
+     */
+    setRecapSheetOpen(true);
+  }, [isTrainer, onPostCallFlowStart]);
 
   /** Show ratings after the call ends — `endCall()` will pop us back, so we
    *  open the post-call modal FIRST (which flips the parent guard) and only
@@ -1362,6 +1393,19 @@ function MeetingSurface({
         </Pressable>
       ) : null}
 
+      {/* Connection quality pill - overlay above the timer in top-left */}
+      <View
+        pointerEvents="box-none"
+        style={{
+          position: "absolute",
+          top: chrome.topChrome,
+          left: 12,
+          zIndex: 20,
+        }}
+      >
+        <ConnectionQualityPill />
+      </View>
+
       {/* Top chrome */}
       <TimeRemaining
         remainingSeconds={lessonTimer.remainingSeconds}
@@ -1534,6 +1578,26 @@ function MeetingSurface({
           setActiveWarning(null);
           setTraineeExtendOpen(true);
         }}
+        onQuickExtendTenMin={
+          !isTrainer && activeWarning === "two"
+            ? async () => {
+                setActiveWarning(null);
+                /**
+                 * "+10 min · charge wallet" — auto-fire a 10 minute
+                 * extension request via the existing flow. The trainee
+                 * modal will surface itself with the price + accept-from-
+                 * wallet path on top, so the user can confirm with a
+                 * single PIN entry instead of crawling the slider.
+                 */
+                try {
+                  await extensionFlow.requestExtension(10);
+                  setTraineeExtendOpen(true);
+                } catch {
+                  setTraineeExtendOpen(true);
+                }
+              }
+            : undefined
+        }
         onDismiss={() => setActiveWarning(null)}
       />
 
@@ -1547,6 +1611,22 @@ function MeetingSurface({
         accountType={accountType}
         isFromCall
       />
+
+      {isTrainer ? (
+        <SessionRecapSheet
+          visible={recapSheetOpen}
+          sessionId={String(lessonId)}
+          traineeId={peerId}
+          traineeName={peerDisplayName}
+          onClose={() => {
+            setRecapSheetOpen(false);
+            void continueAfterRecap();
+          }}
+          onSent={() => {
+            setRecapSheetOpen(false);
+          }}
+        />
+      ) : null}
     </View>
   );
 }

@@ -13,6 +13,7 @@ import { STRIPE_PUBLISHABLE_KEY } from "../config/env";
 import { AuthProvider } from "../features/auth/context/AuthContext";
 import { hydrateLastAuthMethod } from "../features/auth/lib/lastAuthMethod";
 import { hydratePendingAuthIntent } from "../features/auth/lib/pendingAuthIntent";
+import { bootstrapCallRejoinStore } from "../features/calling/callRejoinStore";
 import {
   SystemGateProvider,
   SystemStateProvider,
@@ -63,6 +64,7 @@ export function AppRoot() {
   useEffect(() => {
     void hydratePendingAuthIntent();
     void hydrateLastAuthMethod();
+    void bootstrapCallRejoinStore();
   }, []);
 
   useEffect(() => {

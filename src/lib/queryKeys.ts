@@ -22,6 +22,9 @@ export const queryKeys = {
     ledger: ["wallet", "ledger"] as const,
     config: ["wallet", "config"] as const,
     earnings: ["wallet", "earnings"] as const,
+    trainerPulse: ["wallet", "trainerPulse"] as const,
+    trainerEarningsSeries: (range: "weekly" | "monthly") =>
+      ["wallet", "earningsSeries", range] as const,
   },
   friends: {
     all: ["friends"] as const,
@@ -40,6 +43,9 @@ export const queryKeys = {
         ? (["groupMembers", groupId, search] as const)
         : (["groupMembers", groupId] as const),
     groupInvites: ["groupInvites"] as const,
+    pinned: (conversationId: string) => ["chatPinned", conversationId] as const,
+    globalSearch: (q: string) => ["chatGlobalSearch", q] as const,
+    scheduled: ["chatScheduled"] as const,
   },
   presence: {
     onlineUsers: ["onlineUsers"] as const,

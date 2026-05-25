@@ -48,6 +48,7 @@ import {
   type BookingReminderCadence,
   type UserNotificationPrefs,
 } from "../../home/api/homeApi";
+import { setReadReceiptsEnabled } from "../../chats/api/chatActionsApi";
 import i18n from "../../../i18n";
 import { applyRtlLocale } from "../../../i18n/applyRtlLocale";
 import { bcp47ForAppLocale, languageLabelForCode, normalizeAppLocale } from "../../../i18n/languages";
@@ -182,6 +183,10 @@ export function SettingsScreen() {
   const [isPrivate, setIsPrivate] = useState(Boolean(user?.isPrivate));
   const [notif, setNotif] = useState<UserNotificationPrefs>(() => readNotificationPrefs(user));
   const [privacyBusy, setPrivacyBusy] = useState(false);
+  const [readReceipts, setReadReceipts] = useState(
+    (user as any)?.privacy?.read_receipts_enabled !== false
+  );
+  const [readReceiptsBusy, setReadReceiptsBusy] = useState(false);
   const [notifBusy, setNotifBusy] = useState<string | null>(null);
   const [appUnlockOn, setAppUnlockOn] = useState(false);
   const [unlockLabel, setUnlockLabel] = useState(() => t("settings.biometricsDefault"));
@@ -570,9 +575,43 @@ export function SettingsScreen() {
             )
           }
         />
-        {/* <Text style={styles.hint}>
-          Matches the settings toggle.
-        </Text> */}
+        <Divider />
+        <ListRow
+          icon="checkmark-done-outline"
+          title={t("settings.readReceipts", { defaultValue: "Read receipts" })}
+          subtitle={t("settings.readReceiptsHint", {
+            defaultValue:
+              "Show others a blue tick when you've read their messages.",
+          })}
+          rightAdornment={
+            readReceiptsBusy ? (
+              <ActivityIndicator size="small" color={c.brandAccent} />
+            ) : (
+              <Switch
+                value={readReceipts}
+                onValueChange={async (next) => {
+                  setReadReceipts(next);
+                  setReadReceiptsBusy(true);
+                  try {
+                    await setReadReceiptsEnabled(next);
+                    patchUser({
+                      privacy: {
+                        ...((user as any)?.privacy ?? {}),
+                        read_receipts_enabled: next,
+                      },
+                    } as any);
+                  } catch {
+                    setReadReceipts(!next);
+                  } finally {
+                    setReadReceiptsBusy(false);
+                  }
+                }}
+                trackColor={{ false: c.neutral200, true: c.brandAccentSubtle }}
+                thumbColor={readReceipts ? c.brandAccent : c.neutral100}
+              />
+            )
+          }
+        />
       </Card>
 
       <SectionHeader label={t("settings.bookingReminders")} />

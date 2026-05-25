@@ -698,6 +698,28 @@ export async function setOnlineAvailability(showAsOnline: boolean): Promise<bool
   }
 }
 
+export async function setAutoDeclineOutsideHours(
+  enabled: boolean
+): Promise<boolean> {
+  try {
+    const { data } = await apiClient.put(
+      API_ROUTES.user.autoDeclineOutsideHours,
+      { auto_decline_outside_business_hours: enabled }
+    );
+    const inner =
+      (data as { data?: Record<string, unknown> }).data ??
+      (data as { result?: Record<string, unknown> }).result ??
+      data;
+    const next = (inner as { auto_decline_outside_business_hours?: boolean })
+      ?.auto_decline_outside_business_hours;
+    return typeof next === "boolean" ? next : enabled;
+  } catch (e) {
+    throw new Error(
+      getApiErrorMessage(e, "Could not update business-hours rule.")
+    );
+  }
+}
+
 export async function findNetqwixUserByEmail(email: string): Promise<any | null> {
   const normalized = email.trim().toLowerCase();
   if (!normalized) return null;

@@ -60,6 +60,13 @@ export type ChatTabOpenPayload = {
   memberCount?: number;
   groupAdminId?: string;
   groupDescription?: string;
+  /**
+   * If set, ChatRoomScreen jumps & highlights this message and pre-fills
+   * the in-chat search with `searchSeed`. Used by the global "Search
+   * messages" feature on the chat list top bar.
+   */
+  targetMessageId?: string;
+  searchSeed?: string;
 };
 
 export type MainTabParamList = {
@@ -81,7 +88,7 @@ export type DashboardDrawerParamList = {
 export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList> | undefined;
   Main: undefined;
-  Meeting: { lessonId: string };
+  Meeting: { lessonId: string; skipLobby?: boolean };
   SystemState: { stateId: SystemStateId; message?: string };
 };
 

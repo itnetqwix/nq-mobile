@@ -25,6 +25,7 @@ import {
 import { queryKeys } from "../../../lib/queryKeys";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { useAuth } from "../../auth/context/AuthContext";
+import { WeeklyAvailabilityPainter } from "../components/trainer/WeeklyAvailabilityPainter";
 
 /** Same day order/casing as web `weekDays` in `nq-frontend-main/app/common/constants.js`. */
 const WEEKDAYS = [
@@ -266,6 +267,7 @@ export function TrainerScheduleScreen() {
   });
 
   const [days, setDays] = useState<DayState[]>(buildDefaultDays);
+  const [mode, setMode] = useState<"painter" | "list">("painter");
 
   useEffect(() => {
     if (Array.isArray(data)) setDays(mergeServerWithDefaults(data));
@@ -404,7 +406,67 @@ export function TrainerScheduleScreen() {
           ) : null}
         </View>
 
-        {days.map((d, dayIdx) => (
+        <View style={styles.modeRow}>
+          <Pressable
+            onPress={() => setMode("painter")}
+            style={[
+              styles.modeBtn,
+              mode === "painter" && styles.modeBtnActive,
+            ]}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: mode === "painter" }}
+          >
+            <Ionicons
+              name="brush-outline"
+              size={14}
+              color={mode === "painter" ? colors.brandTextOn : colors.brandNavy}
+            />
+            <Text
+              style={[
+                styles.modeBtnText,
+                mode === "painter" && { color: colors.brandTextOn },
+              ]}
+            >
+              Quick paint
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setMode("list")}
+            style={[styles.modeBtn, mode === "list" && styles.modeBtnActive]}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: mode === "list" }}
+          >
+            <Ionicons
+              name="list-outline"
+              size={14}
+              color={mode === "list" ? colors.brandTextOn : colors.brandNavy}
+            />
+            <Text
+              style={[
+                styles.modeBtnText,
+                mode === "list" && { color: colors.brandTextOn },
+              ]}
+            >
+              Per-day list
+            </Text>
+          </Pressable>
+        </View>
+
+        {mode === "painter" ? (
+          <View style={styles.dayCard}>
+            <Text style={styles.dayTitle}>Weekly availability</Text>
+            <Text style={styles.painterHint}>
+              Drag across cells to paint your weekly availability. Saves repeat
+              every week for the next 4 weeks.
+            </Text>
+            <WeeklyAvailabilityPainter
+              initialDays={days}
+              onChange={(next) => setDays(next as DayState[])}
+            />
+          </View>
+        ) : null}
+
+        {mode === "list" ? days.map((d, dayIdx) => (
           <View key={d.day} style={styles.dayCard}>
             <View style={styles.dayHeader}>
               <Text style={styles.dayTitle}>{d.day}</Text>
@@ -452,7 +514,7 @@ export function TrainerScheduleScreen() {
               ))
             )}
           </View>
-        ))}
+        )) : null}
 
         <Button
           label={dirty ? "Save schedule" : "Up to date"}
@@ -598,4 +660,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   pickerConfirmText: { ...typography.bodyMd, fontWeight: "700", color: colors.brandTextOn },
+  modeRow: {
+    flexDirection: "row",
+    gap: 6,
+    backgroundColor: colors.surfaceMuted,
+    padding: 4,
+    borderRadius: radii.pill,
+    alignSelf: "flex-start",
+  },
+  modeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radii.pill,
+  },
+  modeBtnActive: { backgroundColor: colors.brandNavy },
+  modeBtnText: { ...typography.bodySm, fontWeight: "700", color: colors.brandNavy },
+  painterHint: { ...typography.caption, color: colors.textMuted, marginBottom: 4 },
 });

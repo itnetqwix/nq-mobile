@@ -13,6 +13,7 @@ import { formatNextOpenSlot } from "../../lib/trainerSlotUtils";
 import { PendingRequestsBanner } from "./PendingRequestsBanner";
 import { TodayScheduleTimeline } from "./TodayScheduleTimeline";
 import { TrainerEarningsSnapshot } from "./TrainerEarningsSnapshot";
+import { TrainerPulseHero } from "./TrainerPulseHero";
 import { RecentTraineeClipsSection } from "./RecentTraineeClipsSection";
 import { RatingFeedbackPulse } from "./RatingFeedbackPulse";
 import { PerformanceTipsCard } from "./PerformanceTipsCard";
@@ -77,6 +78,13 @@ export function TrainerDashboardHub({
 
   return (
     <View style={theme.stack}>
+      <TrainerPulseHero
+        onOpenEarnings={onOpenWallet}
+        onOpenStudents={onOpenSessions}
+      />
+
+      <TrainerRecentTraineesSection trainees={recentTrainees} />
+
       <View style={[theme.card, theme.cardPadding, theme.cardGap]}>
         <Pressable style={theme.rowStart} onPress={onSettings}>
           <HomeUserAvatar
@@ -137,8 +145,6 @@ export function TrainerDashboardHub({
       />
 
       <RecentTraineeClipsSection onOpenClips={onOpenClips} />
-
-      <TrainerRecentTraineesSection trainees={recentTrainees} />
 
       <ReviewAnalysisCard embedded />
 

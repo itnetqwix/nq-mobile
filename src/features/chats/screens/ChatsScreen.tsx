@@ -37,6 +37,7 @@ import {
 import type { MainTabScreenProps } from "../../../navigation/types";
 import { useChatRoomChrome } from "../hooks/useChatRoomChrome";
 import { ChatRoomScreen } from "./ChatRoomScreen";
+import { GlobalMessageSearchResults } from "../components/GlobalMessageSearchResults";
 import {
   getPresignedChatUploadUrl,
   uploadChatFileToS3,
@@ -383,6 +384,8 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
     memberCount?: number;
     groupAdminId?: string;
     groupDescription?: string;
+    targetMessageId?: string;
+    searchSeed?: string;
   } | null>(null);
   const [listFilter, setListFilter] = useState<"all" | "unread" | "groups">("all");
   useChatRoomChrome(!!activeChat);
@@ -411,6 +414,8 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
       memberCount: payload.memberCount,
       groupAdminId: payload.groupAdminId,
       groupDescription: payload.groupDescription,
+      targetMessageId: payload.targetMessageId,
+      searchSeed: payload.searchSeed,
     });
     navigation.setParams({ open: undefined } as never);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -663,6 +668,8 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
         memberCount={activeChat.memberCount}
         groupAdminId={activeChat.groupAdminId}
         groupDescription={activeChat.groupDescription}
+        targetMessageId={activeChat.targetMessageId}
+        searchSeed={activeChat.searchSeed}
         onGoBack={() => {
           setActiveChat(null);
           refetch();
@@ -695,6 +702,28 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
           <Ionicons name="archive-outline" size={22} color={c.brandNavy} />
         </Pressable>
       </View>
+
+      {search.trim().length >= 2 ? (
+        <GlobalMessageSearchResults
+          query={search}
+          currentUserId={currentUserId}
+          onOpenResult={(conversationId, partner, targetMessageId, isGroup) => {
+            setActiveChat({
+              conversationId,
+              partner: {
+                _id: String(partner?._id ?? conversationId),
+                fullname: partner?.fullname ?? "Chat",
+                profile_picture: partner?.profile_picture,
+                isGroup,
+              },
+              isGroup,
+              targetMessageId,
+              searchSeed: search.trim(),
+            });
+            setSearch("");
+          }}
+        />
+      ) : null}
 
       <View style={styles.filterRow}>
         {(

@@ -5,6 +5,8 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../navigation/types";
 import { allowWebMeetingFallback, shouldUseNativeMeeting } from "../featureFlag";
 import { NativeCallRequiredScreen } from "./NativeCallRequiredScreen";
+import { PrecallLobbyScreen } from "./PrecallLobbyScreen";
+import { setLastInterruptedSession } from "../callRejoinStore";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Meeting">;
 
@@ -38,14 +40,38 @@ const LazyWebMeetingScreen = React.lazy(() =>
 /**
  * Mobile lessons use native WebRTC only (NativeMeetingScreen).
  * Expo Go → NativeCallRequiredScreen (no embedded web meeting).
+ *
+ * Wrapped in a tiny gate that shows the pre-call lobby on first entry —
+ * camera preview, mic test, and a network probe — then swaps to the real
+ * meeting once the user taps Join. When re-joining after a drop, the
+ * `skipLobby` route param bypasses the lobby (tap-to-rejoin is supposed
+ * to feel instant).
  */
 export function MeetingRouter(props: Props) {
   const [useNative, setUseNative] = useState(shouldUseNativeMeeting());
   const webFallback = allowWebMeetingFallback();
+  const lessonId = props.route?.params?.lessonId ?? "";
+  const skipLobby = Boolean(
+    (props.route?.params as { skipLobby?: boolean } | undefined)?.skipLobby
+  );
+  const [joined, setJoined] = useState(skipLobby);
 
   useEffect(() => {
     setUseNative(shouldUseNativeMeeting());
   }, []);
+
+  if (!joined && lessonId) {
+    return (
+      <PrecallLobbyScreen
+        lessonId={lessonId}
+        onJoin={() => {
+          setLastInterruptedSession(null);
+          setJoined(true);
+        }}
+        onCancel={() => props.navigation.goBack()}
+      />
+    );
+  }
 
   if (useNative) {
     return (

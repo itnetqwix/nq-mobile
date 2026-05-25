@@ -48,6 +48,7 @@ import {
   TraineeDiscoverDashboard,
 } from "../components/home";
 import { TrainerDashboardHub } from "../components/trainer/TrainerDashboardHub";
+import { CallRejoinBanner } from "../../calling/components/CallRejoinBanner";
 import AIFloatingButton from "../../ai/AIFloatingButton";
 import AIAssistantScreen from "../../ai/AIAssistantScreen";
 import { useSessionBooking } from "../../sessions/SessionBookingContext";
@@ -589,6 +590,10 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
           />
         </View>
       )}
+
+      <View style={{ paddingHorizontal: space.md, paddingTop: space.sm }}>
+        <CallRejoinBanner />
+      </View>
 
       <View style={isTrainee ? { paddingTop: space.md } : undefined}>
         {isTrainer && (

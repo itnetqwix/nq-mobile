@@ -26,6 +26,10 @@ type Props = {
   /** Only the trainee sees the "Extend" CTA — pass true to render it. */
   canExtend: boolean;
   onExtend: () => void;
+  /** Quick +10 min auto-charge from wallet path. Set when the trainee has enough wallet balance. */
+  onQuickExtendTenMin?: () => void;
+  quickExtendPrice?: number;
+  quickExtendCurrency?: string;
   onDismiss: () => void;
 };
 
@@ -53,6 +57,9 @@ export function SessionTimeWarningModal({
   autoDismissMs = 12000,
   canExtend,
   onExtend,
+  onQuickExtendTenMin,
+  quickExtendPrice,
+  quickExtendCurrency,
   onDismiss,
 }: Props) {
   const insets = useSafeAreaInsets();
@@ -75,9 +82,23 @@ export function SessionTimeWarningModal({
           <Text style={styles.body}>{copy.body}</Text>
 
           {kind === "two" && canExtend ? (
-            <View style={styles.actionRow}>
-              <Button label="Not now" onPress={onDismiss} variant="ghost" fullWidth />
-              <Button label="Extend session" onPress={onExtend} fullWidth />
+            <View style={styles.actionStack}>
+              {onQuickExtendTenMin ? (
+                <Button
+                  label={
+                    quickExtendPrice
+                      ? `+10 min · ${quickExtendCurrency ?? "$"}${quickExtendPrice.toFixed(0)} wallet`
+                      : "+10 min · charge wallet"
+                  }
+                  leftIcon="flash"
+                  onPress={onQuickExtendTenMin}
+                  fullWidth
+                />
+              ) : null}
+              <View style={styles.actionRow}>
+                <Button label="Custom" onPress={onExtend} variant="secondary" fullWidth />
+                <Button label="Not now" onPress={onDismiss} variant="ghost" fullWidth />
+              </View>
             </View>
           ) : (
             <Pressable onPress={onDismiss} style={styles.dismissBtn}>
@@ -123,6 +144,7 @@ const styles = StyleSheet.create({
     marginTop: space.sm,
     width: "100%",
   },
+  actionStack: { width: "100%", gap: space.sm, marginTop: space.sm },
   dismissBtn: {
     marginTop: space.sm,
     paddingVertical: 10,

@@ -39,7 +39,15 @@ import {
   resolveChatMediaUri,
 } from "../lib/chatMediaUtils";
 import { ChatDaySeparator } from "../components/ChatDaySeparator";
-import { deleteChatMessage, editChatMessage, fetchGroupMembers } from "../api/chatActionsApi";
+import {
+  deleteChatMessage,
+  editChatMessage,
+  fetchGroupMembers,
+  pinChatMessage,
+  reactToMessage,
+  transcribeVoiceMessage,
+  setConversationDisappearingTtl,
+} from "../api/chatActionsApi";
 import { GroupMembersSheet } from "../components/GroupMembersSheet";
 import {
   findMessageSectionLocation,
@@ -56,6 +64,15 @@ import {
 import { useChatE2E } from "../hooks/useChatE2E";
 import { isEncryptedChatContent } from "../crypto/chatEncryption";
 import { haptics } from "../../../lib/haptics";
+import { PinnedTraineeNoteCard } from "../components/PinnedTraineeNoteCard";
+import { TrainerNudgePickerSheet } from "../components/TrainerNudgePickerSheet";
+import { MessageActionsSheet } from "../components/MessageActionsSheet";
+import type { MessageAction } from "../components/MessageActionsSheet";
+import { ForwardPickerSheet } from "../components/ForwardPickerSheet";
+import { PinnedMessageBanner } from "../components/PinnedMessageBanner";
+import { DisappearingMessagesSheet } from "../components/DisappearingMessagesSheet";
+import { ScheduledMessageComposer } from "../components/ScheduledMessageComposer";
+import { ScheduledMessagesSheet } from "../components/ScheduledMessagesSheet";
 
 type Props = {
   conversationId: string;
@@ -70,6 +87,12 @@ type Props = {
   groupAdminId?: string;
   groupDescription?: string;
   onGoBack: () => void;
+  /**
+   * Auto-jump & highlight this message id and pre-seed the in-chat
+   * search. Used by the global message search on the chat list.
+   */
+  targetMessageId?: string;
+  searchSeed?: string;
 };
 
 type SenderRef = string | { _id?: string; fullname?: string; profile_picture?: string };
@@ -86,6 +109,10 @@ type Message = {
   createdAt: string;
   replyToMessageId?: string | null;
   editedAt?: string | null;
+  reactions?: Array<{ user_id: string; emoji: string }>;
+  forwardedFromMessageId?: string | null;
+  transcript?: string | null;
+  transcriptStatus?: "idle" | "pending" | "done" | "failed";
 };
 
 const EMOJI_LIST = [
@@ -666,6 +693,8 @@ export function ChatRoomScreen({
   memberCount,
   groupDescription: groupDescriptionProp,
   onGoBack,
+  targetMessageId,
+  searchSeed,
 }: Props) {
   const themeColors = useThemeColors();
   const styles = useChatRoomStyles();
@@ -692,6 +721,11 @@ export function ChatRoomScreen({
   const [profileTab, setProfileTab] = useState<"info" | "media" | "search">("info");
   const [partnerTyping, setPartnerTyping] = useState(false);
   const [partnerOnline, setPartnerOnline] = useState(false);
+  const [nudgePickerOpen, setNudgePickerOpen] = useState(false);
+  const isTrainerView =
+    !isGroup &&
+    typeof (authUser as { account_type?: string } | null)?.account_type === "string" &&
+    (authUser as { account_type?: string } | null)!.account_type === "Trainer";
   const [partnerLastSeen, setPartnerLastSeen] = useState<string | null>(null);
   const currentUserId = String((authUser as any)?._id ?? (authUser as any)?.id ?? "");
   const chatE2E = useChatE2E(isGroup ? undefined : partner?._id);
@@ -728,6 +762,38 @@ export function ChatRoomScreen({
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [editTarget, setEditTarget] = useState<Message | null>(null);
   const [editDraft, setEditDraft] = useState("");
+  /**
+   * Long-press action sheet target — when set, the message-level
+   * reactions bar + actions menu opens for that bubble.
+   */
+  const [actionsTarget, setActionsTarget] = useState<Message | null>(null);
+  const [forwardTarget, setForwardTarget] = useState<Message | null>(null);
+  /** Message ids whose transcript was just toggled visible. */
+  const [transcriptVisible, setTranscriptVisible] = useState<Record<string, boolean>>({});
+  const [transcribingId, setTranscribingId] = useState<string | null>(null);
+  const [disappearingSheetOpen, setDisappearingSheetOpen] = useState(false);
+  const [disappearingMinutes, setDisappearingMinutes] = useState(0);
+  const [scheduleComposerOpen, setScheduleComposerOpen] = useState(false);
+  const [scheduledListOpen, setScheduledListOpen] = useState(false);
+
+  /**
+   * Hydrate the local `disappearingMinutes` from the cached
+   * conversations list — the conversation row already carries the
+   * field thanks to the schema change.
+   */
+  useEffect(() => {
+    try {
+      const cached = queryClient.getQueryData(
+        queryKeys.chats.conversations
+      ) as any[] | undefined;
+      const row = cached?.find((c: any) => String(c._id) === String(conversationId));
+      if (row && typeof row.disappearingTtlMinutes === "number") {
+        setDisappearingMinutes(row.disappearingTtlMinutes);
+      }
+    } catch {
+      /* cache shape mismatch, ignore */
+    }
+  }, [conversationId, queryClient]);
 
   useEffect(() => {
     if (isGroup || !partner?._id) return;
@@ -969,6 +1035,49 @@ export function ChatRoomScreen({
       socket.emit("LEAVE_CHAT", { conversationId });
     };
   }, [socket, conversationId, queryClient, currentUserId]);
+
+  /**
+   * Socket sync for the new chat features (reactions, pin updates,
+   * conversation-level changes like disappearing TTL, and async voice
+   * transcripts). They all reduce to invalidating the relevant query.
+   */
+  useEffect(() => {
+    if (!socket || !conversationId) return;
+    const onReactionUpdated = (p: any) => {
+      if (p?.conversationId !== conversationId) return;
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.chats.messages(conversationId),
+      });
+    };
+    const onPinned = (p: any) => {
+      if (p?.conversationId !== conversationId) return;
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.chats.pinned(conversationId),
+      });
+    };
+    const onConvUpdated = (p: any) => {
+      if (p?.conversationId !== conversationId) return;
+      if (typeof p?.disappearingTtlMinutes === "number") {
+        setDisappearingMinutes(p.disappearingTtlMinutes);
+      }
+    };
+    const onTranscriptReady = (p: any) => {
+      if (p?.conversationId !== conversationId) return;
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.chats.messages(conversationId),
+      });
+    };
+    socket.on("CHAT_REACTION_UPDATED", onReactionUpdated);
+    socket.on("CHAT_PINNED", onPinned);
+    socket.on("CHAT_CONVERSATION_UPDATED", onConvUpdated);
+    socket.on("CHAT_TRANSCRIPT_READY", onTranscriptReady);
+    return () => {
+      socket.off("CHAT_REACTION_UPDATED", onReactionUpdated);
+      socket.off("CHAT_PINNED", onPinned);
+      socket.off("CHAT_CONVERSATION_UPDATED", onConvUpdated);
+      socket.off("CHAT_TRANSCRIPT_READY", onTranscriptReady);
+    };
+  }, [socket, conversationId, queryClient]);
 
   useEffect(() => {
     setLocalMessages((prev) => {
@@ -1344,6 +1453,23 @@ export function ChatRoomScreen({
     [messageSections]
   );
 
+  /**
+   * When the chat was opened with a targetMessageId (from the global
+   * search results), jump to that message as soon as the section list
+   * has the relevant page loaded. We retry a few times because the
+   * initial messages query may still be in flight.
+   */
+  const targetJumpedRef = useRef(false);
+  useEffect(() => {
+    if (!targetMessageId || targetJumpedRef.current) return;
+    if (!messageSections?.length) return;
+    const loc = findMessageSectionLocation(messageSections, targetMessageId);
+    if (!loc) return;
+    targetJumpedRef.current = true;
+    jumpToMessage(targetMessageId);
+    if (searchSeed) setProfileSearch(searchSeed);
+  }, [targetMessageId, messageSections, jumpToMessage, searchSeed]);
+
   // ─── Render message ─────────────────────────────────────────────────────────
 
   const renderMessage = useCallback(
@@ -1368,49 +1494,7 @@ export function ChatRoomScreen({
 
       const onLongPressMsg = () => {
         haptics.impact();
-        const buttons: { text: string; style?: "destructive" | "cancel"; onPress?: () => void }[] =
-          [
-            {
-              text: "Reply",
-              onPress: () => setReplyTo(item),
-            },
-          ];
-        if (isMine && item.type === "text") {
-        const created = new Date(item.createdAt).getTime();
-        const canEdit = Date.now() - created < 30 * 60 * 1000;
-        if (canEdit) {
-          buttons.push({
-            text: "Edit",
-            onPress: () => {
-              const plain = chatE2E.decryptForDisplay(item.content);
-              if (Platform.OS === "ios") {
-                Alert.prompt("Edit message", undefined, (t) => {
-                  if (!t?.trim()) return;
-                  void editChatMessage(item._id, t.trim()).then(() =>
-                    queryClient.invalidateQueries({
-                      queryKey: queryKeys.chats.messages(conversationId),
-                    })
-                  );
-                }, "plain-text", plain);
-              } else {
-                setEditDraft(plain);
-                setEditTarget(item);
-              }
-            },
-          });
-        }
-        buttons.push({
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            void deleteChatMessage(item._id).then(() =>
-              queryClient.invalidateQueries({ queryKey: ["chatMessages", conversationId] })
-            );
-          },
-        });
-        }
-        buttons.push({ text: "Cancel", style: "cancel" });
-        Alert.alert("Message", undefined, buttons);
+        setActionsTarget(item);
       };
 
       return (
@@ -1429,6 +1513,19 @@ export function ChatRoomScreen({
               isHighlighted && styles.bubbleHighlight,
             ]}
           >
+          {item.forwardedFromMessageId ? (
+            <View style={chatExtrasInlineStyles.forwardedBadge}>
+              <Ionicons name="arrow-redo-outline" size={11} color={isMine ? "rgba(255,255,255,0.85)" : "#6B7280"} />
+              <Text
+                style={[
+                  chatExtrasInlineStyles.forwardedText,
+                  { color: isMine ? "rgba(255,255,255,0.85)" : "#6B7280" },
+                ]}
+              >
+                Forwarded
+              </Text>
+            </View>
+          ) : null}
           {replyPreview ? (
             <View style={styles.replyQuote}>
               <Text style={styles.replyQuoteText} numberOfLines={2}>
@@ -1454,6 +1551,50 @@ export function ChatRoomScreen({
               {mediaKind === "video" && !mediaUri ? "Video" : item.content}
             </Text>
           ) : null}
+          {item.type === "voice" && transcriptVisible[item._id] && item.transcript ? (
+            <View style={chatExtrasInlineStyles.transcriptBox}>
+              <Text style={chatExtrasInlineStyles.transcriptLabel}>Transcript</Text>
+              <Text style={chatExtrasInlineStyles.transcriptText}>{item.transcript}</Text>
+            </View>
+          ) : null}
+          {item.type === "voice" ? (
+            <Pressable
+              onPress={() => {
+                if (item.transcript && item.transcriptStatus === "done") {
+                  setTranscriptVisible((s) => ({ ...s, [item._id]: !s[item._id] }));
+                  return;
+                }
+                if (transcribingId === item._id) return;
+                setTranscribingId(item._id);
+                void transcribeVoiceMessage(item._id)
+                  .then(() => {
+                    setTranscriptVisible((s) => ({ ...s, [item._id]: true }));
+                    queryClient.invalidateQueries({
+                      queryKey: queryKeys.chats.messages(conversationId),
+                    });
+                  })
+                  .finally(() => setTranscribingId(null));
+              }}
+              hitSlop={8}
+              style={chatExtrasInlineStyles.transcriptBtn}
+            >
+              <Ionicons name="text-outline" size={12} color={isMine ? "rgba(255,255,255,0.85)" : "#2563EB"} />
+              <Text
+                style={[
+                  chatExtrasInlineStyles.transcriptBtnText,
+                  { color: isMine ? "rgba(255,255,255,0.85)" : "#2563EB" },
+                ]}
+              >
+                {transcribingId === item._id
+                  ? "Transcribing…"
+                  : transcriptVisible[item._id]
+                  ? "Hide transcript"
+                  : item.transcript
+                  ? "Show transcript"
+                  : "Show transcript"}
+              </Text>
+            </Pressable>
+          ) : null}
           <View style={styles.bubbleFooter}>
             <Text style={[styles.bubbleTime, isMine && styles.bubbleTimeMine]}>
               {item.editedAt ? "Edited · " : ""}
@@ -1467,6 +1608,30 @@ export function ChatRoomScreen({
             )}
           </View>
           </View>
+          {item.reactions && item.reactions.length > 0 ? (
+            <View
+              style={[
+                chatExtrasInlineStyles.reactionsRow,
+                isMine
+                  ? chatExtrasInlineStyles.reactionsRowMine
+                  : chatExtrasInlineStyles.reactionsRowTheirs,
+              ]}
+            >
+              {Object.entries(
+                item.reactions.reduce<Record<string, number>>((acc, r) => {
+                  acc[r.emoji] = (acc[r.emoji] || 0) + 1;
+                  return acc;
+                }, {})
+              ).map(([emoji, count]) => (
+                <View key={emoji} style={chatExtrasInlineStyles.reactionChip}>
+                  <Text style={chatExtrasInlineStyles.reactionChipEmoji}>{emoji}</Text>
+                  {count > 1 ? (
+                    <Text style={chatExtrasInlineStyles.reactionChipCount}>{count}</Text>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          ) : null}
           </Pressable>
         </View>
       );
@@ -1482,6 +1647,8 @@ export function ChatRoomScreen({
       chatE2E,
       senderNameById,
       resolveSenderId,
+      transcriptVisible,
+      transcribingId,
     ]
   );
 
@@ -1581,12 +1748,65 @@ export function ChatRoomScreen({
             ) : null}
           </View>
         </Pressable>
+        {isTrainerView ? (
+          <Pressable
+            onPress={() => {
+              haptics.tap();
+              setNudgePickerOpen(true);
+            }}
+            hitSlop={10}
+            style={styles.headerMore}
+            accessibilityRole="button"
+            accessibilityLabel="Send a nudge to this trainee"
+          >
+            <Ionicons name="paper-plane-outline" size={18} color={themeColors.brandNavy} />
+          </Pressable>
+        ) : null}
+        {isTrainerView ? (
+          <Pressable
+            onPress={() => {
+              haptics.tap();
+              setScheduleComposerOpen(true);
+            }}
+            onLongPress={() => {
+              haptics.impact();
+              setScheduledListOpen(true);
+            }}
+            hitSlop={10}
+            style={styles.headerMore}
+            accessibilityRole="button"
+            accessibilityLabel="Schedule a message"
+          >
+            <Ionicons name="time-outline" size={18} color={themeColors.brandNavy} />
+          </Pressable>
+        ) : null}
         <Pressable onPress={handleProfileAction} hitSlop={10} style={styles.headerMore}>
           <Ionicons name="ellipsis-vertical" size={20} color={themeColors.textMuted} />
         </Pressable>
       </View>
 
-      {/* Chat policy banner */}
+      {isTrainerView ? (
+        <TrainerNudgePickerSheet
+          visible={nudgePickerOpen}
+          onClose={() => setNudgePickerOpen(false)}
+          traineeId={partner._id}
+          traineeName={partner.fullname}
+        />
+      ) : null}
+
+      {isTrainerView ? (
+        <PinnedTraineeNoteCard
+          traineeId={partner._id}
+          traineeName={partner.fullname}
+        />
+      ) : null}
+
+      <PinnedMessageBanner
+        conversationId={conversationId}
+        decryptText={(raw) => chatE2E.decryptForDisplay(raw)}
+        onJump={(id) => jumpToMessage(id)}
+      />
+
       <KeyboardAvoidingView
         style={styles.keyboardWrap}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -1920,6 +2140,26 @@ export function ChatRoomScreen({
                     <Ionicons name="flag-outline" size={22} color={themeColors.textMuted} />
                     <Text style={styles.profileActionText}>Report</Text>
                   </Pressable>
+                  <Pressable
+                    style={styles.profileActionBtn}
+                    onPress={() => {
+                      setShowProfile(false);
+                      setDisappearingSheetOpen(true);
+                    }}
+                  >
+                    <Ionicons name="timer-outline" size={22} color={themeColors.brandNavy} />
+                    <Text style={styles.profileActionText}>
+                      {disappearingMinutes > 0
+                        ? `Disappearing · ${
+                            disappearingMinutes >= 60 * 24
+                              ? `${Math.round(disappearingMinutes / (60 * 24))}d`
+                              : disappearingMinutes >= 60
+                              ? `${Math.round(disappearingMinutes / 60)}h`
+                              : `${disappearingMinutes}m`
+                          }`
+                        : "Disappearing messages"}
+                    </Text>
+                  </Pressable>
                 </View>
               )}
 
@@ -2025,8 +2265,263 @@ export function ChatRoomScreen({
           onLeftGroup={onGoBack}
         />
       ) : null}
+
+      <MessageActionsSheet
+        visible={!!actionsTarget}
+        onClose={() => setActionsTarget(null)}
+        currentReaction={
+          actionsTarget?.reactions?.find(
+            (r) => String(r.user_id) === String(currentUserId)
+          )?.emoji ?? null
+        }
+        onReact={(emoji) => {
+          const target = actionsTarget;
+          if (!target) return;
+          void reactToMessage(target._id, emoji).then(() =>
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.chats.messages(conversationId),
+            })
+          );
+          setActionsTarget(null);
+        }}
+        actions={buildMessageActions({
+          item: actionsTarget,
+          isMine:
+            !!actionsTarget &&
+            resolveSenderId(actionsTarget.senderId) === currentUserId,
+          conversationId,
+          chatE2E,
+          queryClient,
+          setReplyTo,
+          setEditDraft,
+          setEditTarget,
+          setForwardTarget,
+        })}
+      />
+
+      <ForwardPickerSheet
+        visible={!!forwardTarget}
+        onClose={() => setForwardTarget(null)}
+        messageId={forwardTarget?._id ?? ""}
+        currentUserId={currentUserId}
+        excludeConversationId={conversationId}
+        onForwarded={() => setForwardTarget(null)}
+      />
+
+      <DisappearingMessagesSheet
+        visible={disappearingSheetOpen}
+        conversationId={conversationId}
+        currentMinutes={disappearingMinutes}
+        onClose={() => setDisappearingSheetOpen(false)}
+        onChanged={(m) => setDisappearingMinutes(m)}
+      />
+
+      {isTrainerView ? (
+        <ScheduledMessageComposer
+          visible={scheduleComposerOpen}
+          conversationId={conversationId}
+          onClose={() => setScheduleComposerOpen(false)}
+        />
+      ) : null}
+
+      {isTrainerView ? (
+        <ScheduledMessagesSheet
+          visible={scheduledListOpen}
+          currentUserId={currentUserId}
+          onClose={() => setScheduledListOpen(false)}
+        />
+      ) : null}
     </View>
   );
 }
 
+/**
+ * Build the contextual action list for the long-press sheet. Lives at
+ * module scope so it can be reused / tree-shaken and doesn't bloat the
+ * already-massive component.
+ */
+function buildMessageActions(args: {
+  item: Message | null;
+  isMine: boolean;
+  conversationId: string;
+  chatE2E: { decryptForDisplay: (raw: string) => string };
+  queryClient: any;
+  setReplyTo: (m: Message) => void;
+  setEditDraft: (v: string) => void;
+  setEditTarget: (m: Message) => void;
+  setForwardTarget: (m: Message) => void;
+}): MessageAction[] {
+  const {
+    item,
+    isMine,
+    conversationId,
+    chatE2E,
+    queryClient,
+    setReplyTo,
+    setEditDraft,
+    setEditTarget,
+    setForwardTarget,
+  } = args;
+  if (!item) return [];
+  const actions: MessageAction[] = [
+    {
+      id: "reply",
+      label: "Reply",
+      icon: "arrow-undo-outline",
+      onPress: () => setReplyTo(item),
+    },
+    {
+      id: "forward",
+      label: "Forward",
+      icon: "arrow-redo-outline",
+      onPress: () => setForwardTarget(item),
+    },
+    {
+      id: "pin",
+      label: "Pin to top",
+      icon: "pin-outline",
+      onPress: () => {
+        void pinChatMessage(item._id).then(() =>
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.chats.pinned(conversationId),
+          })
+        );
+      },
+    },
+  ];
+  if (item.type === "text") {
+    actions.push({
+      id: "copy",
+      label: "Copy",
+      icon: "copy-outline",
+      onPress: () => {
+        try {
+          const Clipboard = require("expo-clipboard");
+          const plain = chatE2E.decryptForDisplay(item.content);
+          void Clipboard.setStringAsync(plain);
+        } catch {
+          /* clipboard not available */
+        }
+      },
+    });
+  }
+  if (isMine && item.type === "text") {
+    const ageMs = Date.now() - new Date(item.createdAt).getTime();
+    if (ageMs < 30 * 60 * 1000) {
+      actions.push({
+        id: "edit",
+        label: "Edit",
+        icon: "create-outline",
+        onPress: () => {
+          const plain = chatE2E.decryptForDisplay(item.content);
+          if (Platform.OS === "ios") {
+            Alert.prompt(
+              "Edit message",
+              undefined,
+              (t?: string) => {
+                if (!t?.trim()) return;
+                void editChatMessage(item._id, t.trim()).then(() =>
+                  queryClient.invalidateQueries({
+                    queryKey: queryKeys.chats.messages(conversationId),
+                  })
+                );
+              },
+              "plain-text",
+              plain
+            );
+          } else {
+            setEditDraft(plain);
+            setEditTarget(item);
+          }
+        },
+      });
+    }
+  }
+  if (isMine) {
+    actions.push({
+      id: "delete",
+      label: "Delete",
+      icon: "trash-outline",
+      destructive: true,
+      onPress: () => {
+        void deleteChatMessage(item._id).then(() =>
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.chats.messages(conversationId),
+          })
+        );
+      },
+    });
+  }
+  return actions;
+}
+
+const chatExtrasInlineStyles = StyleSheet.create({
+  forwardedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginBottom: 4,
+  },
+  forwardedText: {
+    fontSize: 11,
+    fontStyle: "italic",
+    fontWeight: "500",
+  },
+  reactionsRow: {
+    flexDirection: "row",
+    marginTop: -10,
+    paddingHorizontal: 4,
+    gap: 4,
+  },
+  reactionsRowMine: { alignSelf: "flex-end" },
+  reactionsRowTheirs: { alignSelf: "flex-start" },
+  reactionChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#E5E7EB",
+    gap: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
+  },
+  reactionChipEmoji: { fontSize: 13 },
+  reactionChipCount: { fontSize: 11, color: "#374151", fontWeight: "600" },
+  transcriptBox: {
+    marginTop: 6,
+    backgroundColor: "rgba(255,255,255,0.6)",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  transcriptLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#475569",
+    textTransform: "uppercase",
+    marginBottom: 2,
+    letterSpacing: 0.4,
+  },
+  transcriptText: {
+    fontSize: 13,
+    color: "#0F172A",
+    lineHeight: 18,
+  },
+  transcriptBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 4,
+  },
+  transcriptBtnText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+});
 

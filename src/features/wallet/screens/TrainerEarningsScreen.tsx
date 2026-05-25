@@ -9,6 +9,7 @@ import {
   requestWithdraw,
   updatePayoutPreference,
 } from "../walletApi";
+import { EarningsTrendsCard } from "../components/EarningsTrendsCard";
 
 export function TrainerEarningsScreen() {
   const c = useThemeColors();
@@ -88,6 +89,8 @@ export function TrainerEarningsScreen() {
           Pending release: ${(earnings?.balances?.pending_release ?? 0).toFixed(2)}
         </Text>
       </View>
+
+      <EarningsTrendsCard />
 
       <Text style={styles.section}>Payout preference</Text>
       <View style={styles.chips}>

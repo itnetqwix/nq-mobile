@@ -658,4 +658,76 @@ export class NativeCallEngine {
       iceConnectionState: ice ?? "unknown",
     };
   }
+
+  /**
+   * Aggregate WebRTC stats into a small set of numbers the UI uses for
+   * the connection-quality pill. We collapse the verbose RTCStatsReport
+   * down to RTT, jitter, and packet-loss percent — enough to decide
+   * red/yellow/green without bloating the consumer.
+   *
+   * `getStats()` is async; the UI calls this on a ~2 s interval.
+   */
+  async getRealtimeNetworkStats(): Promise<{
+    rttMs: number | null;
+    jitterMs: number | null;
+    packetLossPct: number | null;
+    iceConnectionState: string;
+  }> {
+    const pc = this.pc as any;
+    if (!pc?.getStats) {
+      return {
+        rttMs: null,
+        jitterMs: null,
+        packetLossPct: null,
+        iceConnectionState: "unknown",
+      };
+    }
+    try {
+      const report = await pc.getStats();
+      let rttMs: number | null = null;
+      let jitterMs: number | null = null;
+      let packetsLost = 0;
+      let packetsReceived = 0;
+
+      report.forEach((stat: any) => {
+        if (!stat) return;
+        if (
+          (stat.type === "candidate-pair" || stat.type === "candidatepair") &&
+          stat.nominated &&
+          typeof stat.currentRoundTripTime === "number"
+        ) {
+          rttMs = Math.round(stat.currentRoundTripTime * 1000);
+        }
+        if (stat.type === "inbound-rtp" && (stat.kind === "audio" || stat.kind === "video")) {
+          if (typeof stat.jitter === "number") {
+            jitterMs = Math.max(jitterMs ?? 0, Math.round(stat.jitter * 1000));
+          }
+          if (typeof stat.packetsLost === "number") {
+            packetsLost += stat.packetsLost;
+          }
+          if (typeof stat.packetsReceived === "number") {
+            packetsReceived += stat.packetsReceived;
+          }
+        }
+      });
+
+      const total = packetsLost + packetsReceived;
+      const packetLossPct =
+        total > 0 ? Math.min(100, (packetsLost / total) * 100) : null;
+      const ice = (this.pc as any)?.iceConnectionState as string | undefined;
+      return {
+        rttMs,
+        jitterMs,
+        packetLossPct,
+        iceConnectionState: ice ?? "unknown",
+      };
+    } catch {
+      return {
+        rttMs: null,
+        jitterMs: null,
+        packetLossPct: null,
+        iceConnectionState: "unknown",
+      };
+    }
+  }
 }

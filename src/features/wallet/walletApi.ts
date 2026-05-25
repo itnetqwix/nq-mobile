@@ -156,3 +156,51 @@ export async function fetchTrainerEarnings() {
   const res = await apiClient.get(API_ROUTES.wallet.earnings);
   return ((res.data as { data?: WalletBalance })?.data ?? res.data) as WalletBalance;
 }
+
+export type TrainerPulse = {
+  currency: string;
+  earnings_this_week: number;
+  earnings_last_week: number;
+  delta_amount: number;
+  delta_percent: number | null;
+  active_students_30d: number;
+  new_students_this_week: number;
+  sessions_this_week: number;
+};
+
+export async function fetchTrainerPulse(): Promise<TrainerPulse> {
+  const res = await apiClient.get(API_ROUTES.wallet.trainerPulse);
+  const data = (res.data as { data?: TrainerPulse })?.data ?? res.data;
+  return data as TrainerPulse;
+}
+
+export type EarningsSeriesPoint = {
+  key: string;
+  label: string;
+  start: string | null;
+  end: string | null;
+  total: number;
+};
+
+export type EarningsSeries = {
+  range: "weekly" | "monthly";
+  currency: string;
+  series: EarningsSeriesPoint[];
+  total: number;
+};
+
+export async function fetchTrainerEarningsSeries(
+  range: "weekly" | "monthly"
+): Promise<EarningsSeries> {
+  const res = await apiClient.get(API_ROUTES.wallet.trainerEarningsSeries, {
+    params: { range },
+  });
+  const data = (res.data as { data?: EarningsSeries })?.data ?? res.data;
+  return data as EarningsSeries;
+}
+
+export function buildTrainerEarningsCsvUrl(
+  range: "weekly" | "monthly"
+): string {
+  return `${API_ROUTES.wallet.trainerEarningsCsv}?range=${range}`;
+}

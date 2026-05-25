@@ -65,6 +65,13 @@ type CallContextValue = {
   switchCamera: () => void;
   endCall: () => void;
   reconnectPeer: () => void;
+  /** Fetch current network stats (RTT, jitter, packet loss). */
+  getNetworkStats: () => Promise<{
+    rttMs: number | null;
+    jitterMs: number | null;
+    packetLossPct: number | null;
+    iceConnectionState: string;
+  }>;
   /** Imperatively dismiss the peer-joined modal. */
   acknowledgePeerJoined: () => void;
   /** Last engine error, surfaced for toasts/banners. */
@@ -90,6 +97,12 @@ const CallContext = createContext<CallContextValue>({
   switchCamera: noop,
   endCall: noop,
   reconnectPeer: noop,
+  getNetworkStats: async () => ({
+    rttMs: null,
+    jitterMs: null,
+    packetLossPct: null,
+    iceConnectionState: "unknown",
+  }),
   acknowledgePeerJoined: noop,
   lastError: null,
 });
@@ -259,6 +272,17 @@ export function CallProvider({
     engineRef.current?.reconnectPeer();
   }, []);
 
+  const getNetworkStats = useCallback(async () => {
+    return (
+      (await engineRef.current?.getRealtimeNetworkStats()) ?? {
+        rttMs: null,
+        jitterMs: null,
+        packetLossPct: null,
+        iceConnectionState: "unknown",
+      }
+    );
+  }, []);
+
   const acknowledgePeerJoined = useCallback(() => setPeerJoined(null), []);
 
   const value = useMemo<CallContextValue>(
@@ -279,6 +303,7 @@ export function CallProvider({
       switchCamera,
       endCall,
       reconnectPeer,
+      getNetworkStats,
       acknowledgePeerJoined,
       lastError,
     }),
@@ -299,6 +324,7 @@ export function CallProvider({
       switchCamera,
       endCall,
       reconnectPeer,
+      getNetworkStats,
       acknowledgePeerJoined,
       lastError,
     ]
