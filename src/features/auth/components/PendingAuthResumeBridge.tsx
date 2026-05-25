@@ -65,7 +65,7 @@ export function PendingAuthResumeBridge({ onResumeBook }: Props) {
     }
 
     if (pending.intent === "chat") {
-      navigation.navigate("DashboardFeature", { featureId: "community" });
+      navigation.navigate("DashboardFeature", { featureId: "my-community" });
       return;
     }
 

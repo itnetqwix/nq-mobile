@@ -22,11 +22,20 @@ export function dedupeTrainersById<T extends Record<string, unknown>>(rows: T[])
   return out;
 }
 
-export function dedupeRowsById<T extends { _id?: unknown; id?: unknown }>(rows: T[]): T[] {
+/**
+ * Drop duplicate Mongo rows by `_id` / `id`, preserving insertion order.
+ *
+ * The generic accepts any row shape — we cast to the structural id-bearing
+ * shape inside the loop so callers passing `Record<string, unknown>` or
+ * domain types without an explicit `_id?` field don't have to widen their
+ * types just to dedupe. The runtime contract (`row._id` ?? `row.id`)
+ * stays identical to before.
+ */
+export function dedupeRowsById<T>(rows: T[]): T[] {
   const seen = new Set<string>();
   const out: T[] = [];
   for (const row of rows) {
-    const id = rowId(row);
+    const id = rowId(row as { _id?: unknown; id?: unknown } | null | undefined);
     if (id) {
       if (seen.has(id)) continue;
       seen.add(id);

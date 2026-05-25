@@ -7,6 +7,24 @@ export type AuthAxiosMeta = {
   _skipAuthSignOut?: boolean;
 };
 
+/**
+ * Module augmentation: expose our auth-meta flags on `AxiosRequestConfig`
+ * so call-sites can pass `{ _skipAuthSignOut: true }` directly without
+ * needing an awkward `as` cast on every request. The interceptor at the
+ * client layer reads these via {@link getAuthAxiosMeta}; nothing else
+ * changes about the shape on the wire.
+ *
+ * Keeping the declaration co-located with the meta type means the
+ * surface stays discoverable — any future flag we add here will land in
+ * the public config shape with one extra line below.
+ */
+declare module "axios" {
+  // eslint-disable-next-line @typescript-eslint/no-empty-interface
+  interface AxiosRequestConfig extends Partial<AuthAxiosMeta> {}
+  // eslint-disable-next-line @typescript-eslint/no-empty-interface
+  interface InternalAxiosRequestConfig extends Partial<AuthAxiosMeta> {}
+}
+
 export function getAuthAxiosMeta(
   config: InternalAxiosRequestConfig
 ): AuthAxiosMeta {

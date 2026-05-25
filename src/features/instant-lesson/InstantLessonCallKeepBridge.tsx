@@ -114,9 +114,17 @@ export function InstantLessonCallKeepBridge() {
       );
 
       subscriptions.push(
-        ck.addEventListener("didLoadWithEvents", (events: CallKeepEvent[]) => {
-          replayInitialEvents(events);
-        })
+        /**
+         * `react-native-callkeep` retyped the `didLoadWithEvents` payload
+         * into a discriminated union (`InitialEvents`) that's incompatible
+         * with our local `CallKeepEvent[]` shape used elsewhere in this
+         * file. We bridge through `unknown` so the runtime contract
+         * (array of `{ name, data }` records) keeps working with both
+         * the old and new typings.
+         */
+        ck.addEventListener("didLoadWithEvents", ((events: unknown) => {
+          replayInitialEvents(events as CallKeepEvent[]);
+        }) as never)
       );
     })();
 

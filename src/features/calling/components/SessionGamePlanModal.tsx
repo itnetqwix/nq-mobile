@@ -150,7 +150,13 @@ export function SessionGamePlanModal({
         if (pdfUri) {
           let pdfBytes = 0;
           try {
-            const info = await FileSystem.getInfoAsync(pdfUri, { size: true });
+            /**
+             * `expo-file-system@latest` always returns `size` on the info
+             * payload — the legacy `{ size: true }` option was removed
+             * (the field used to be lazy on older SDK versions). We rely
+             * on the runtime check below to stay robust either way.
+             */
+            const info = await FileSystem.getInfoAsync(pdfUri);
             if (info.exists && "size" in info && typeof info.size === "number") {
               pdfBytes = info.size;
             }

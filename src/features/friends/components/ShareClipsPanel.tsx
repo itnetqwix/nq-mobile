@@ -31,11 +31,30 @@ import {
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function flattenClips(groups: { _id: string; clips: any[] }[]): any[] {
+/**
+ * Flatten the locker's nested category → subcategory → clips response
+ * into a flat list, tagging each clip with the originating category id
+ * so the picker can show category badges if we ever surface them.
+ *
+ * The API switched from a single-level `{ _id, clips }[]` shape to a
+ * nested `{ categoryId, subcategories: [{ clips }] }[]` shape (see
+ * `NestedCategoryGroup`). We walk both levels here so the picker keeps
+ * working with the current backend without touching the rest of the
+ * component.
+ */
+function flattenClips(
+  groups: Array<{
+    categoryId?: string | null;
+    subcategories?: Array<{ clips?: unknown[] }>;
+  }>
+): any[] {
   const out: any[] = [];
   for (const g of groups || []) {
-    for (const c of g.clips || []) {
-      out.push({ ...c, _category: g._id });
+    const categoryId = g.categoryId ?? null;
+    for (const sub of g.subcategories ?? []) {
+      for (const c of sub.clips ?? []) {
+        out.push({ ...(c as Record<string, unknown>), _category: categoryId });
+      }
     }
   }
   return out;

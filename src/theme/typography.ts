@@ -61,6 +61,13 @@ function build(scale: number) {
   return {
     displayLg: mk(40, 48, "800", -0.5, FONT_BOLD),
     displayMd: mk(32, 40, "800", -0.4, FONT_BOLD),
+    /**
+     * `displaySm` — the smallest display tier, used for hero amounts
+     * (wallet balance, earnings) where we want something punchier than
+     * `titleLg` but lighter than `displayMd`. Inserted between the two
+     * for a clean 32 / 28 / 24 step.
+     */
+    displaySm: mk(28, 36, "800", -0.3, FONT_BOLD),
     titleLg: mk(24, 32, "700", -0.2, FONT_BOLD),
     titleMd: mk(20, 28, "700", -0.1, FONT_BOLD),
     titleSm: mk(17, 24, "700", 0, FONT_BOLD),
@@ -68,6 +75,12 @@ function build(scale: number) {
     bodyLg: mk(16, 24, "400", 0, FONT_REGULAR),
     bodyMd: mk(14, 22, "400", 0, FONT_REGULAR),
     bodySm: mk(13, 20, "400", 0, FONT_REGULAR),
+    /**
+     * `body` — alias for `bodyMd`. Predates the explicit Md/Sm split and
+     * is kept so historical call-sites (`ActiveSessionsScreen`, etc.)
+     * keep compiling. New code should use `bodyMd` directly.
+     */
+    body: mk(14, 22, "400", 0, FONT_REGULAR),
     label: mk(13, 18, "600", 0.1, FONT_MEDIUM),
     overline: mk(11, 16, "700", 0.6, FONT_BOLD),
     caption: mk(12, 16, "400", 0, FONT_REGULAR),

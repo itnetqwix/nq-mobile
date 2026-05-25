@@ -1,4 +1,3 @@
-import type { NavigationProp } from "@react-navigation/native";
 import { CommonActions } from "@react-navigation/native";
 import type { ChatTabOpenPayload, MainTabParamList } from "../../../navigation/types";
 
@@ -8,9 +7,17 @@ import type { ChatTabOpenPayload, MainTabParamList } from "../../../navigation/t
  * Always jumps to the bottom-tab Chats screen (so the active tab is correctly
  * highlighted and the conversation lives inside the Chats stack), and asks
  * `ChatsScreen` to open the given conversation via the `open` route param.
+ *
+ * `navigation` is intentionally typed as `any` because every caller comes
+ * from a different navigator (tabs / stack / drawer composed via
+ * `useNavigation()`), and react-navigation's strict `NavigationProp<any>`
+ * disallows the (legal) "current screen has no parent state yet" case
+ * that `getParent()` walks through here. The function body already
+ * defensively probes `getState`, `dispatch`, and `getParent`, so the
+ * looser type matches the runtime contract.
  */
 export function openChatInTab(
-  navigation: NavigationProp<any>,
+  navigation: any,
   payload: ChatTabOpenPayload,
 ): void {
   let cursor: any = navigation;

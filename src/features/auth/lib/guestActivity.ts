@@ -136,7 +136,7 @@ export async function replayGuestData(): Promise<{
           await apiClient.post(
             API_ROUTES.trainee.favoriteTrainer(id),
             undefined,
-            { _skipAuthSignOut: true } as { _skipAuthSignOut: boolean }
+            { _skipAuthSignOut: true }
           );
           favoritesReplayed += 1;
         } catch {
@@ -159,7 +159,7 @@ export async function replayGuestData(): Promise<{
     await apiClient.post(
       API_ROUTES.trainee.guestActivity,
       payload,
-      { _skipAuthSignOut: true } as { _skipAuthSignOut: boolean }
+      { _skipAuthSignOut: true }
     );
     await clearAllGuestData();
     return { delivered: true, favoritesReplayed };

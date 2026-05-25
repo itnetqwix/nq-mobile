@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import {
   Canvas,
+  matchFont,
   Path,
   Skia,
   Text as SkiaText,
@@ -350,6 +351,14 @@ export function DrawingOverlay({
             {allText.map((t, i) => {
               const p = t.points[0];
               if (!p || !t.text) return null;
+              /**
+               * Skia v1 reworked `<Text>`: instead of a top-level
+               * `fontSize` prop, it now requires a `font: SkFont`. We
+               * cheaply build one per-label via `matchFont` — these
+               * annotations are static (no per-frame animation) so the
+               * extra allocation is negligible.
+               */
+              const labelFont = matchFont({ fontSize: 18 });
               return (
                 <SkiaText
                   key={`text-${i}-${t.text}`}
@@ -357,7 +366,7 @@ export function DrawingOverlay({
                   y={p.y}
                   text={t.text}
                   color={Skia.Color(t.color)}
-                  fontSize={18}
+                  font={labelFont}
                 />
               );
             })}

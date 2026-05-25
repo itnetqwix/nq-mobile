@@ -48,11 +48,22 @@ export async function completeFaceLiveness(sessionId?: string) {
 
 /** Fallback when `/verification/status` is unavailable — mirrors backend rules. */
 export function needsTrainerOnboarding(
-  user: { account_type?: string; status?: string; trainer_verification?: Record<string, unknown> } | null
+  user: {
+    account_type?: string;
+    status?: string;
+    trainer_verification?: Record<string, unknown>;
+    /**
+     * Optional onboarding metadata. The backend started returning this
+     * field once we shipped the new trainer wizard, but older clients +
+     * the legacy user shape don't include it. Declare it explicitly so
+     * call-sites (e.g. session bootstrap) keep typechecking.
+     */
+    onboarding?: { required?: boolean } | null;
+  } | null
 ): boolean {
   if (!user || user.account_type !== "Trainer") return false;
 
-  const onboarding = user.onboarding as { required?: boolean } | undefined;
+  const onboarding = user.onboarding ?? undefined;
   if (typeof onboarding?.required === "boolean") return onboarding.required;
 
   const tv = (user.trainer_verification || {}) as Record<string, unknown>;

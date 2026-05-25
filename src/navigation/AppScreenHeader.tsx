@@ -20,11 +20,22 @@ function resolveTitle(options: Props["options"]): string {
 }
 
 /** Balanced top bar: drawer mark (left), centered title, optional headerRight. */
-export function AppScreenHeader({ options }: Props) {
+export function AppScreenHeader(props: Props) {
+  const { options, navigation } = props;
   const insets = useSafeAreaInsets();
   const c = useThemeColors();
   const title = resolveTitle(options);
   const HeaderRight = options.headerRight;
+  /**
+   * React Navigation 7 made `canGoBack` a required prop on the
+   * `headerRight` render fn (previously it was optional). Both stack
+   * and tab headers expose `navigation.canGoBack()`, so we forward
+   * that here.
+   */
+  const canGoBack =
+    typeof (navigation as { canGoBack?: () => boolean })?.canGoBack === "function"
+      ? !!(navigation as { canGoBack: () => boolean }).canGoBack()
+      : false;
 
   return (
     <View
@@ -48,7 +59,11 @@ export function AppScreenHeader({ options }: Props) {
         </View>
         <View style={[styles.sideSlot, styles.sideSlotRight]}>
           {HeaderRight ? (
-            <HeaderRight tintColor={c.headerTint} pressColor={c.headerTint} />
+            <HeaderRight
+              tintColor={c.headerTint}
+              pressColor={c.headerTint}
+              canGoBack={canGoBack}
+            />
           ) : null}
         </View>
       </View>

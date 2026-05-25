@@ -154,9 +154,9 @@ export function WalletScreen() {
           ${(balance?.balances?.available ?? 0).toFixed(2)}{" "}
           <Text style={styles.currency}>{balance?.currency ?? "USD"}</Text>
         </Text>
-        {balance?.balances?.pending_release > 0 && (
+        {(balance?.balances?.pending_release ?? 0) > 0 && (
           <Text style={styles.sub}>
-            Pending release: ${balance.balances.pending_release.toFixed(2)}
+            Pending release: ${(balance?.balances?.pending_release ?? 0).toFixed(2)}
           </Text>
         )}
       </View>

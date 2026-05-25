@@ -118,18 +118,26 @@ export function TimeRemaining({
       ? "00:00"
       : format(remainingSeconds);
 
+  /**
+   * `leadingTools` is `React.ReactNode` which TS treats as potentially
+   * `0 | ""` — both of those are invalid as RN style array entries (they
+   * pass through and trip the View overload check). Coerce to a strict
+   * boolean before using as a short-circuit guard.
+   */
+  const hasLeading = !!leadingTools;
+
   return (
     <View
       style={[
         styles.wrap,
         { top: topInset },
-        alignRight && !leadingTools && styles.wrapRight,
-        leadingTools && styles.wrapSplit,
+        alignRight && !hasLeading && styles.wrapRight,
+        hasLeading && styles.wrapSplit,
       ]}
       pointerEvents="box-none"
     >
-      {leadingTools ? <View style={styles.leading}>{leadingTools}</View> : null}
-      <View style={[styles.pill, leadingTools && alignRight && styles.pillRight]}>
+      {hasLeading ? <View style={styles.leading}>{leadingTools}</View> : null}
+      <View style={[styles.pill, hasLeading && alignRight && styles.pillRight]}>
         <Text style={styles.label}>{timerLabel}</Text>
         <Text style={[styles.value, { color }]}>{display}</Text>
         {!isAuthoritative && remainingSeconds != null && (

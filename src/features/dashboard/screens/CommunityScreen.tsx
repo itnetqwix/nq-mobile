@@ -266,7 +266,13 @@ export function CommunityScreen() {
         if (action === "add") {
           await postSendFriendRequest(userId);
           emitNotification({
-            title: NOTIFICATION_TITLES.friendRequest ?? "Friend Request",
+            /**
+             * Use the canonical "received friend request" title from
+             * the shared notification dictionary so notification
+             * preferences + read/unread grouping stay aligned with the
+             * rest of the app.
+             */
+            title: NOTIFICATION_TITLES.friendRequestReceived,
             description: "You have a new friend request.",
             receiverId: userId,
             type: NOTIFICATION_TYPES.TRANSCATIONAL,
