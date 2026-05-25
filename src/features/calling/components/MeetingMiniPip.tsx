@@ -9,6 +9,8 @@ import type { MediaStream } from "react-native-webrtc";
 import { meetingTheme } from "../meetingTheme";
 import type { CallParticipant } from "../types";
 import { UserBox } from "./UserBox";
+import { useCallPreferences } from "../useCallPreferences";
+import { BackgroundBlurBadge } from "./BackgroundBlurBadge";
 
 type Props = {
   user: CallParticipant | null;
@@ -17,6 +19,12 @@ type Props = {
   muted?: boolean;
   label: string;
   onPress?: () => void;
+  /**
+   * When true, this PIP represents the local participant — we show the
+   * "Blur ON" badge in the corner if the preference is enabled so the
+   * user has visible feedback that the toggle is honoured.
+   */
+  isLocal?: boolean;
 };
 
 export function MeetingMiniPip({
@@ -26,7 +34,9 @@ export function MeetingMiniPip({
   muted,
   label,
   onPress,
+  isLocal,
 }: Props) {
+  const { blurEnabled } = useCallPreferences();
   return (
     <Pressable
       style={styles.wrap}
@@ -42,6 +52,7 @@ export function MeetingMiniPip({
         fallbackLabel={label}
         style={styles.box}
       />
+      <BackgroundBlurBadge visible={!!isLocal && blurEnabled} position="top-right" />
       <View style={styles.labelChip}>
         <Text style={styles.labelText} numberOfLines={1}>
           {label}

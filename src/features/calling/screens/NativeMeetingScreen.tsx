@@ -1279,6 +1279,7 @@ function MeetingSurface({
             }
             muted={!focusedIsLocal}
             label={focusedIsLocal ? peerDisplayName.split(" ")[0] || "Partner" : "You"}
+            isLocal={!focusedIsLocal}
             onPress={
               isTrainer
                 ? () => meetingLayout.focusStream(focusedIsLocal ? peerId : myId)

@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -22,8 +21,7 @@ import {
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { haptics } from "../../../lib/haptics";
 import { radii, space, typography, useThemedStyles, useThemeColors } from "../../../theme";
-
-const BLUR_PREF_KEY = "@netqwix:precall.blurEnabled";
+import { useCallPreferences } from "../useCallPreferences";
 
 type Quality = "fast" | "good" | "weak" | "unknown";
 
@@ -63,7 +61,7 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [cameraOn, setCameraOn] = useState(true);
   const [micOn, setMicOn] = useState(true);
-  const [blurEnabled, setBlurEnabled] = useState(false);
+  const { blurEnabled, setBlurEnabled: persistBlurEnabled } = useCallPreferences();
   const [network, setNetwork] = useState<NetworkProbe>({
     loading: true,
     quality: "unknown",
@@ -73,12 +71,6 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
 
   const micPulseRef = useRef(new Animated.Value(0.2)).current;
   const streamRef = useRef<MediaStream | null>(null);
-
-  useEffect(() => {
-    AsyncStorage.getItem(BLUR_PREF_KEY).then((raw) => {
-      if (raw === "1") setBlurEnabled(true);
-    });
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -204,8 +196,7 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
   }, [runNetworkProbe]);
 
   const handleBlurToggle = async (next: boolean) => {
-    setBlurEnabled(next);
-    await AsyncStorage.setItem(BLUR_PREF_KEY, next ? "1" : "0");
+    await persistBlurEnabled(next);
   };
 
   const handleJoin = () => {
