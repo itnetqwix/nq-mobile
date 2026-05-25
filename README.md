@@ -2,7 +2,7 @@
 
 React Native (Expo) app for NetQwix.
 
-## Open next to `nq-frontend` / `nq-backend` in Cursor
+## Open next to `nq-frontend` / `nq-backend` in Cursor... edited
 
 1. **Multi-root workspace (recommended):** in Cursor use **File → Open Workspace from File…** and choose  
    `/Users/kumarsatyam/Desktop/netqwix/netqwix.code-workspace`  
