@@ -21,6 +21,7 @@ import { queryKeys } from "../../../lib/queryKeys";
 import { fetchTrainerSlots } from "../../home/api/homeApi";
 import { UpcomingSessionsScreen } from "../../sessions/screens/UpcomingSessionsScreen";
 import type { MainTabScreenProps } from "../../../navigation/types";
+import { CoachMark } from "../../onboarding";
 
 const WEEK_ORDER = [
   "monday",
@@ -106,13 +107,26 @@ function TrainerSchedule() {
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>{t("schedule.mySchedule")}</Text>
         </View>
-        <Button
-          label={t("schedule.editSchedule")}
-          leftIcon="create-outline"
-          onPress={openScheduleEditor}
-          size="sm"
-          fullWidth={false}
-        />
+        <CoachMark
+          id="schedule.editAvailability.v1"
+          title={t("coachMarks.scheduleEdit.title", {
+            defaultValue: "Publish your availability",
+          })}
+          description={t("coachMarks.scheduleEdit.description", {
+            defaultValue:
+              "Add weekly slots so trainees can book you. Empty calendars don't show up in browse.",
+          })}
+          icon="create"
+          placement="bottom"
+        >
+          <Button
+            label={t("schedule.editSchedule")}
+            leftIcon="create-outline"
+            onPress={openScheduleEditor}
+            size="sm"
+            fullWidth={false}
+          />
+        </CoachMark>
       </View>
 
       <SectionList

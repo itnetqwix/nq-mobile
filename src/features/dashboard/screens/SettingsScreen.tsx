@@ -17,6 +17,7 @@ import {
   Avatar,
   Button,
   Card,
+  InlineSavedIndicator,
   LanguagePickerModal,
   ListRow,
   Pill,
@@ -24,6 +25,7 @@ import {
   SectionHeader,
   TimeZoneSearchModal,
 } from "../../../components/ui";
+import { useInlineSaved } from "../../../lib/forms/useInlineSaved";
 import { WEB_APP_ORIGIN } from "../../../config/env";
 import { AccountType } from "../../../constants/accountType";
 import { WebRoutes } from "../../../constants/webRoutes";
@@ -54,6 +56,12 @@ import i18n from "../../../i18n";
 import { applyRtlLocale } from "../../../i18n/applyRtlLocale";
 import { bcp47ForAppLocale, languageLabelForCode, normalizeAppLocale } from "../../../i18n/languages";
 import { persistAppLocale } from "../../../i18n/localeStorage";
+import {
+  readProfileVisibility,
+  updateProfileVisibility,
+  type ProfileVisibility,
+} from "../../settings/api/privacyApi";
+import { OnboardingWalkthrough, resetCoachMarks } from "../../onboarding";
 
 const REMINDER_CADENCES: BookingReminderCadence[] = [
   "standard",
@@ -89,6 +97,14 @@ export function SettingsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MenuStackParamList>>();
 
   const defaultTz = "America/New_York";
+
+  /**
+   * Replay-tour state — when set, mounts {@link OnboardingWalkthrough} in
+   * `forceOpen` mode (it normally suppresses itself for returning users).
+   * Closing the modal resets this and also clears the coach-mark "seen"
+   * map so the user can re-discover the in-place hints.
+   */
+  const [replayTourOpen, setReplayTourOpen] = useState(false);
 
   const openShell = useCallback(
     (id: ShellSurfaceRouteId) => {
@@ -191,6 +207,10 @@ export function SettingsScreen() {
   const [notifBusy, setNotifBusy] = useState<string | null>(null);
   const [appUnlockOn, setAppUnlockOn] = useState(false);
   const [unlockLabel, setUnlockLabel] = useState(() => t("settings.biometricsDefault"));
+  const [visibility, setVisibility] = useState<ProfileVisibility>(() =>
+    readProfileVisibility(user as Record<string, unknown> | null)
+  );
+  const [visibilityBusy, setVisibilityBusy] = useState<keyof ProfileVisibility | null>(null);
 
   useEffect(() => {
     void isAppUnlockEnabled().then(setAppUnlockOn);
@@ -200,7 +220,38 @@ export function SettingsScreen() {
   useEffect(() => {
     setIsPrivate(Boolean(user?.isPrivate));
     setNotif(readNotificationPrefs(user));
+    setVisibility(readProfileVisibility(user as Record<string, unknown> | null));
   }, [user]);
+
+  /**
+   * Tracks transient "Saved ✓" pills next to each toggle so the user
+   * sees an in-place confirmation instead of a noisy toast every time
+   * they flip a switch.
+   */
+  const saved = useInlineSaved();
+
+  const handleVisibilityToggle = async (key: keyof ProfileVisibility, value: boolean) => {
+    const prev = visibility;
+    const next = { ...visibility, [key]: value };
+    setVisibility(next);
+    setVisibilityBusy(key);
+    try {
+      const result = await updateProfileVisibility({ [key]: value });
+      const merged = { ...next, ...result };
+      setVisibility(merged);
+      patchUser({ privacy_visibility: merged } as Record<string, unknown>);
+      saved.ping(`visibility.${key}`);
+    } catch (e: any) {
+      setVisibility(prev);
+      saved.fail(`visibility.${key}`);
+      Alert.alert(
+        t("settings.privacyAlertTitle"),
+        e?.message ?? t("settings.privacyUpdateError")
+      );
+    } finally {
+      setVisibilityBusy(null);
+    }
+  };
 
   const openWeb = useCallback(async (path: string) => {
     const url = `${WEB_APP_ORIGIN.replace(/\/$/, "")}${path}`;
@@ -215,8 +266,10 @@ export function SettingsScreen() {
     try {
       await postAccountPrivacy(next);
       patchUser({ isPrivate: next });
+      saved.ping("privateAccount");
     } catch (e: any) {
       setIsPrivate(!next);
+      saved.fail("privateAccount");
       Alert.alert(
         t("settings.privacyAlertTitle"),
         e?.message ?? t("settings.privacyUpdateError")
@@ -242,8 +295,10 @@ export function SettingsScreen() {
     try {
       await patchUserNotificationSettings(updated);
       patchUser({ notifications: updated });
+      saved.ping(`notif.${key}`);
     } catch (e: any) {
       setNotif(prev);
+      saved.fail(`notif.${key}`);
       Alert.alert(
         t("settings.notificationsAlertTitle"),
         e?.message ?? t("settings.notificationsUpdateError")
@@ -388,6 +443,16 @@ export function SettingsScreen() {
       icon: "person-add-outline",
       label: t("settings.inviteFriends"),
       onPress: () => openShell("invite"),
+    });
+    /**
+     * Replay onboarding — runs the full modal tour again. Coach marks
+     * fire automatically the first time the user lands on a screen, so
+     * this is an opt-in for users who want the higher-level tour back.
+     */
+    rows.push({
+      icon: "play-circle-outline",
+      label: t("settings.replayTour", { defaultValue: "Replay onboarding tour" }),
+      onPress: () => setReplayTourOpen(true),
     });
     return rows;
   }, [isTrainer, openWeb, openDashboard, openShell, t]);
@@ -548,6 +613,7 @@ export function SettingsScreen() {
               }}
               trackColor={{ false: c.neutral200, true: c.brandAccentSubtle }}
               thumbColor={appUnlockOn ? c.brandAccent : c.neutral100}
+              accessibilityLabel={t("settings.appUnlockTitle", { label: unlockLabel })}
             />
           }
         />
@@ -580,6 +646,7 @@ export function SettingsScreen() {
                 onValueChange={handlePrivacy}
                 trackColor={{ false: c.neutral200, true: c.brandAccentSubtle }}
                 thumbColor={isPrivate ? c.brandAccent : c.neutral100}
+                accessibilityLabel={t("settings.privateAccount")}
               />
             )
           }
@@ -617,10 +684,170 @@ export function SettingsScreen() {
                 }}
                 trackColor={{ false: c.neutral200, true: c.brandAccentSubtle }}
                 thumbColor={readReceipts ? c.brandAccent : c.neutral100}
+                accessibilityLabel={t("settings.readReceipts", { defaultValue: "Read receipts" })}
               />
             )
           }
         />
+        <Divider />
+        <ListRow
+          icon="time-outline"
+          title={t("settings.showLastActive", { defaultValue: "Show last active" })}
+          subtitle={t("settings.showLastActiveHint", {
+            defaultValue: "Let people see when you were last online.",
+          })}
+          rightAdornment={
+            visibilityBusy === "show_last_active" ? (
+              <ActivityIndicator size="small" color={c.brandAccent} />
+            ) : (
+              <View style={styles.rightAdornmentRow}>
+                <InlineSavedIndicator
+                  visible={saved.is("visibility.show_last_active")}
+                  tone={saved.tone("visibility.show_last_active")}
+                />
+                <Switch
+                  value={visibility.show_last_active}
+                  onValueChange={(v) => void handleVisibilityToggle("show_last_active", v)}
+                  trackColor={{ false: c.neutral200, true: c.brandAccentSubtle }}
+                  thumbColor={visibility.show_last_active ? c.brandAccent : c.neutral100}
+                  accessibilityLabel={t("settings.showLastActive", { defaultValue: "Show last active" })}
+                />
+              </View>
+            )
+          }
+        />
+        <Divider />
+        <ListRow
+          icon="radio-button-on-outline"
+          title={t("settings.showOnlineStatus", { defaultValue: "Show online status" })}
+          subtitle={t("settings.showOnlineStatusHint", {
+            defaultValue: "Display the green presence dot to non-friends.",
+          })}
+          rightAdornment={
+            visibilityBusy === "show_online_status" ? (
+              <ActivityIndicator size="small" color={c.brandAccent} />
+            ) : (
+              <View style={styles.rightAdornmentRow}>
+                <InlineSavedIndicator
+                  visible={saved.is("visibility.show_online_status")}
+                  tone={saved.tone("visibility.show_online_status")}
+                />
+                <Switch
+                  value={visibility.show_online_status}
+                  onValueChange={(v) => void handleVisibilityToggle("show_online_status", v)}
+                  trackColor={{ false: c.neutral200, true: c.brandAccentSubtle }}
+                  thumbColor={visibility.show_online_status ? c.brandAccent : c.neutral100}
+                  accessibilityLabel={t("settings.showOnlineStatus", { defaultValue: "Show online status" })}
+                />
+              </View>
+            )
+          }
+        />
+        <Divider />
+        <ListRow
+          icon="search-outline"
+          title={t("settings.showInCommunitySearch", {
+            defaultValue: "Show in community search",
+          })}
+          subtitle={t("settings.showInCommunitySearchHint", {
+            defaultValue: "Let other members find your profile via search.",
+          })}
+          rightAdornment={
+            visibilityBusy === "show_in_community_search" ? (
+              <ActivityIndicator size="small" color={c.brandAccent} />
+            ) : (
+              <View style={styles.rightAdornmentRow}>
+                <InlineSavedIndicator
+                  visible={saved.is("visibility.show_in_community_search")}
+                  tone={saved.tone("visibility.show_in_community_search")}
+                />
+                <Switch
+                  value={visibility.show_in_community_search}
+                  onValueChange={(v) =>
+                    void handleVisibilityToggle("show_in_community_search", v)
+                  }
+                  trackColor={{ false: c.neutral200, true: c.brandAccentSubtle }}
+                  thumbColor={visibility.show_in_community_search ? c.brandAccent : c.neutral100}
+                  accessibilityLabel={t("settings.showInCommunitySearch", {
+                    defaultValue: "Show in community search",
+                  })}
+                />
+              </View>
+            )
+          }
+        />
+        <Divider />
+        <ListRow
+          icon="chatbox-ellipses-outline"
+          title={t("settings.allowMessageRequests", {
+            defaultValue: "Allow message requests from non-friends",
+          })}
+          subtitle={t("settings.allowMessageRequestsHint", {
+            defaultValue:
+              "Off means only friends can DM you. Booked trainers can always reach you.",
+          })}
+          rightAdornment={
+            visibilityBusy === "allow_message_requests_from_non_friends" ? (
+              <ActivityIndicator size="small" color={c.brandAccent} />
+            ) : (
+              <View style={styles.rightAdornmentRow}>
+                <InlineSavedIndicator
+                  visible={saved.is("visibility.allow_message_requests_from_non_friends")}
+                  tone={saved.tone("visibility.allow_message_requests_from_non_friends")}
+                />
+                <Switch
+                  value={visibility.allow_message_requests_from_non_friends}
+                  onValueChange={(v) =>
+                    void handleVisibilityToggle(
+                      "allow_message_requests_from_non_friends",
+                      v
+                    )
+                  }
+                  trackColor={{ false: c.neutral200, true: c.brandAccentSubtle }}
+                  thumbColor={
+                    visibility.allow_message_requests_from_non_friends
+                      ? c.brandAccent
+                      : c.neutral100
+                  }
+                  accessibilityLabel={t("settings.allowMessageRequests", {
+                    defaultValue: "Allow message requests from non-friends",
+                  })}
+                />
+              </View>
+            )
+          }
+        />
+        <Divider />
+        <ListRow
+          icon="ban-outline"
+          title={t("settings.blockedAccounts", { defaultValue: "Blocked accounts" })}
+          subtitle={t("settings.blockedAccountsSubtitle", {
+            defaultValue: "Review or unblock people you've blocked.",
+          })}
+          onPress={() => navigation.navigate("BlockedUsers" as never)}
+        />
+        <Divider />
+        <ListRow
+          icon="cloud-download-outline"
+          title={t("settings.exportMyData", { defaultValue: "Export my data" })}
+          subtitle={t("settings.exportMyDataSubtitle", {
+            defaultValue: "Download an archive of everything we hold (GDPR / DPDP).",
+          })}
+          onPress={() => navigation.navigate("DataExport" as never)}
+        />
+        {isTrainer ? (
+          <>
+            <Divider />
+            <ListRow
+              icon="shield-checkmark-outline"
+              title={t("settings.twoFactor", { defaultValue: "Two-factor authentication" })}
+              subtitle={t("settings.twoFactorSubtitle", {
+                defaultValue: "Extra OTP step for trainer accounts on new devices.",
+              })}
+              onPress={() => navigation.navigate("TwoFactor" as never)}
+            />
+          </>
+        ) : null}
       </Card>
 
       <SectionHeader
@@ -764,6 +991,18 @@ export function SettingsScreen() {
       >
         {t("settings.footerVersion")}
       </Text>
+
+      {/* Opt-in replay of the legacy modal tour. Coach marks remain the
+          default first-run UX — this is for users who want the overview. */}
+      {replayTourOpen ? (
+        <OnboardingWalkthrough
+          forceOpen
+          onDismiss={() => {
+            setReplayTourOpen(false);
+            void resetCoachMarks();
+          }}
+        />
+      ) : null}
     </ScreenContainer>
   );
 }
@@ -788,4 +1027,14 @@ const styles = StyleSheet.create({
     gap: space.md,
   },
   sectionCard: { marginBottom: space.sm },
+  /**
+   * Inline confirmation pill sits next to the switch — this row keeps
+   * them on the same horizontal axis without disturbing existing
+   * adornment alignment on smaller phones.
+   */
+  rightAdornmentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.sm,
+  },
 });

@@ -14,7 +14,7 @@ import {
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { Button, TimeZoneSearchModal } from "../../../components/ui";
+import { Button, HelpBubble, TimeZoneSearchModal } from "../../../components/ui";
 import { colors, radii, space, typography } from "../../../theme";
 import {
   fetchTrainerSlots,
@@ -380,7 +380,17 @@ export function TrainerScheduleScreen() {
         </Text> */}
 
         <View style={styles.tzCard}>
-          <Text style={styles.tzTitle}>{t("trainerAvailability.timezoneTitle")}</Text>
+          <View style={styles.tzTitleRow}>
+            <Text style={styles.tzTitle}>{t("trainerAvailability.timezoneTitle")}</Text>
+            <HelpBubble
+              topic={t("help.slotLength.topic", { defaultValue: "Slot length & timezone" })}
+            >
+              {t("help.slotLength.body", {
+                defaultValue:
+                  "Trainees see your weekly slots in their own timezone. Each block is the duration of one bookable session — keep it consistent so bookings don't overlap. Update the timezone if you travel so the slots line up with your local hours.",
+              })}
+            </HelpBubble>
+          </View>
           <Text style={styles.tzHint}>{t("trainerAvailability.timezoneSubtitle")}</Text>
           <Pressable
             onPress={() => setTzModalOpen(true)}
@@ -565,6 +575,7 @@ const styles = StyleSheet.create({
     gap: space.sm,
   },
   tzTitle: { ...typography.titleSm, color: colors.brandNavy },
+  tzTitleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   tzHint: { ...typography.bodySm, color: colors.textMuted },
   tzChip: {
     flexDirection: "row",

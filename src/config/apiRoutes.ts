@@ -60,8 +60,27 @@ export const API_ROUTES = {
     friends: "/user/friends",
     removeFriend: "/user/remove-friend",
     blockUser: "/user/block-user",
+    unblockUser: "/user/unblock-user",
+    blockedUsers: "/user/blocked-users",
     reportUser: "/user/report-user",
     updateAccountPrivacy: "/user/update-account-privacy",
+    /** Profile-visibility settings (last active, search visibility, message
+     *  requests from non-friends). Persisted on the user document under
+     *  `privacy_visibility`. */
+    updateProfileVisibility: "/user/update-profile-visibility",
+    /** GDPR / India DPDP data-export request. Backend enqueues a job and
+     *  emails the user when the archive is ready. */
+    requestDataExport: "/user/data-export/request",
+    dataExportStatus: "/user/data-export/status",
+    /** Trainer 2FA — enrol a trusted device, send/verify OTP, list/revoke. */
+    twoFactorStatus: "/user/2fa/status",
+    twoFactorEnable: "/user/2fa/enable",
+    twoFactorDisable: "/user/2fa/disable",
+    twoFactorChallenge: "/user/2fa/challenge",
+    twoFactorVerify: "/user/2fa/verify",
+    twoFactorTrustedDevices: "/user/2fa/trusted-devices",
+    twoFactorRevokeTrustedDevice: (id: string) =>
+      `/user/2fa/trusted-devices/${encodeURIComponent(id)}` as const,
     getAllTrainee: "/user/get-all-trainee",
     getAllUsers: "/user/get-all-users",
     getAllTrainer: "/user/get-all-trainer",
@@ -288,6 +307,7 @@ export const API_ROUTES = {
   ai: {
     recommendTrainers: "/ai/recommend-trainers",
     chatAssistant: "/ai/chat-assistant",
+    transcribeInput: "/ai/transcribe-input",
     lessonSummary: (sessionId: string) => `/ai/lesson-summary/${sessionId}` as const,
     tagClip: (clipId: string) => `/ai/tag-clip/${clipId}` as const,
     enhanceProfile: "/ai/enhance-profile",

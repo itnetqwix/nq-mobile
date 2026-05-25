@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Alert,
   LayoutAnimation,
@@ -7,17 +7,19 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   UIManager,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Button, FormField } from "../../../components/ui";
-import { radii, space, typography, useThemedStyles } from "../../../theme";
+import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
 import { postWriteUs } from "../../home/api/homeApi";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
-import { FAQ_SECTIONS } from "../content/faqContent";
+import { FAQ_SECTIONS, type FaqItem, type FaqSection } from "../content/faqContent";
+import { fuzzySearch } from "../../../lib/search/fuzzyMatch";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -28,11 +30,42 @@ const SUPPORT_EMAIL = "support@netqwix.com";
 export function FaqScreen() {
   const { t } = useAppTranslation();
   const styles = useFaqStyles();
+  const c = useThemeColors();
   const { user } = useAuth();
   const [openId, setOpenId] = useState<string | null>(null);
   const [topic, setTopic] = useState("");
   const [question, setQuestion] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [query, setQuery] = useState("");
+
+  /**
+   * Fuzzy search across every FAQ item. We pre-pack each item with its
+   * `q` + `a` + section title as searchable fields so a query like
+   * "instant join" matches "How does an instant lesson work?" under the
+   * "Instant lessons" section even with no exact substring overlap.
+   *
+   * When the query is empty we fall back to the original section grouping.
+   */
+  const filteredSections: FaqSection[] = useMemo(() => {
+    const q = query.trim();
+    if (!q) return FAQ_SECTIONS;
+    const haystack: { item: FaqItem & { __section: string }; fields: string[] }[] = [];
+    for (const section of FAQ_SECTIONS) {
+      for (const item of section.items) {
+        haystack.push({
+          item: { ...item, __section: section.title },
+          fields: [item.q, item.a, section.title],
+        });
+      }
+    }
+    const hits = fuzzySearch(q, haystack, { fieldWeights: [1, 0.7, 0.5] });
+    const bySection: Record<string, FaqItem[]> = {};
+    for (const hit of hits) {
+      const { __section, ...rest } = hit.item;
+      (bySection[__section] ??= []).push(rest);
+    }
+    return Object.entries(bySection).map(([title, items]) => ({ title, items }));
+  }, [query]);
 
   const presetName = (user?.fullname as string) ?? (user?.fullName as string) ?? "";
   const presetEmail = (user?.email as string) ?? "";
@@ -70,7 +103,44 @@ export function FaqScreen() {
       <Text style={styles.heroTitle}>{t("faq.heroTitle")}</Text>
       <Text style={styles.heroSub}>{t("faq.heroSub")}</Text>
 
-      {FAQ_SECTIONS.map((section) => (
+      <View style={styles.searchRow}>
+        <Ionicons name="search" size={18} color={c.iconMuted} />
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder={t("faq.searchPlaceholder", { defaultValue: "Search FAQ…" })}
+          placeholderTextColor={c.textMuted}
+          style={[styles.searchInput, { color: c.text }]}
+          autoCorrect={false}
+          autoCapitalize="none"
+          returnKeyType="search"
+          clearButtonMode="while-editing"
+          accessibilityLabel={t("faq.searchA11y", { defaultValue: "Search frequently asked questions" })}
+        />
+        {query.length > 0 ? (
+          <Pressable
+            onPress={() => setQuery("")}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={t("common.clear", { defaultValue: "Clear" })}
+          >
+            <Ionicons name="close-circle" size={18} color={c.iconMuted} />
+          </Pressable>
+        ) : null}
+      </View>
+
+      {query.trim().length > 0 && filteredSections.length === 0 ? (
+        <View style={styles.emptySearch}>
+          <Ionicons name="search" size={20} color={c.iconMuted} />
+          <Text style={[typography.bodySm, { color: c.textMuted, textAlign: "center" }]}>
+            {t("faq.noResults", {
+              defaultValue: "No matches yet — try simpler keywords or ask the team below.",
+            })}
+          </Text>
+        </View>
+      ) : null}
+
+      {filteredSections.map((section) => (
         <View key={section.title} style={styles.section}>
           <Text style={styles.sectionTitle}>{section.title}</Text>
           {section.items.map((item) => {
@@ -160,6 +230,30 @@ function useFaqStyles() {
       },
       askTitle: { ...typography.titleSm, color: palette.text },
       askSub: { ...typography.bodySm, color: palette.textMuted, lineHeight: 20 },
+      searchRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: space.sm,
+        backgroundColor: palette.surfaceElevated,
+        borderRadius: radii.md,
+        borderWidth: 1,
+        borderColor: palette.border,
+        paddingHorizontal: space.md,
+        paddingVertical: 10,
+      },
+      searchInput: {
+        flex: 1,
+        ...typography.bodyMd,
+        paddingVertical: 0,
+      },
+      emptySearch: {
+        marginTop: space.md,
+        padding: space.md,
+        borderRadius: radii.md,
+        backgroundColor: palette.surfaceMuted,
+        gap: space.xs,
+        alignItems: "center",
+      },
     })
   );
 }

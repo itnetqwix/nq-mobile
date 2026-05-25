@@ -64,6 +64,14 @@ import { TrainerProfileModal } from "../../bookexpert/components/TrainerProfileM
 import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
 import { ScheduledBookingWizardModal } from "../../scheduled-booking/ScheduledBookingWizardModal";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import {
+  CoachMark,
+  PreClassChecklistSheet,
+  ProfileCompletionPill,
+} from "../../onboarding";
+import { useHapticRefresh } from "../../../lib/refresh/useHapticRefresh";
+import { MorphRefreshHeader } from "../../../components/ui";
+import { useMorphRefresh } from "../../../lib/refresh/useMorphRefresh";
 
 function useDashboardHomeStyles() {
   return useThemedStyles((palette) => StyleSheet.create({
@@ -394,40 +402,48 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
     staleTime: 120_000,
   });
 
-  /** Only true during an explicit pull-to-refresh — not background refetches
-   *  (binding to isFetching breaks iOS scrolling / UIRefreshControl). */
-  const [pullRefreshing, setPullRefreshing] = useState(false);
-
-  const onRefresh = useCallback(async () => {
-    setPullRefreshing(true);
-    try {
-      const tasks = [
-        queryClient.refetchQueries({ queryKey: queryKeys.sessions.upcoming }),
-        queryClient.refetchQueries({ queryKey: queryKeys.friends.requests }),
-        queryClient.refetchQueries({ queryKey: queryKeys.presence.recentTrainees }),
-        isTrainee
-          ? queryClient.refetchQueries({ queryKey: queryKeys.presence.recentTrainers })
-          : Promise.resolve(),
-      ];
-      if (isTrainee) {
-        tasks.push(
-          queryClient.refetchQueries({ queryKey: queryKeys.presence.onlineUsers }),
-          queryClient.refetchQueries({ queryKey: queryKeys.presence.bookExpertOnline }),
-          queryClient.refetchQueries({ queryKey: ["trainersDirectory"] }),
-          queryClient.refetchQueries({ queryKey: queryKeys.trainee.favorites })
-        );
-      } else {
-        tasks.push(
-          queryClient.refetchQueries({ queryKey: queryKeys.presence.onlineUsers }),
-          queryClient.refetchQueries({ queryKey: queryKeys.wallet.earnings }),
-          queryClient.refetchQueries({ queryKey: queryKeys.trainer.slots })
-        );
-      }
-      await Promise.all(tasks);
-    } finally {
-      setPullRefreshing(false);
+  /**
+   * Wrap the multi-query refetch in `useHapticRefresh` so the user gets
+   * a tick on trigger + a success/error notification haptic on resolve.
+   * Dropping the manual `pullRefreshing` flag keeps the spinner in
+   * lockstep with the haptic state.
+   */
+  const refreshDashboard = useCallback(async () => {
+    const tasks = [
+      queryClient.refetchQueries({ queryKey: queryKeys.sessions.upcoming }),
+      queryClient.refetchQueries({ queryKey: queryKeys.friends.requests }),
+      queryClient.refetchQueries({ queryKey: queryKeys.presence.recentTrainees }),
+      isTrainee
+        ? queryClient.refetchQueries({ queryKey: queryKeys.presence.recentTrainers })
+        : Promise.resolve(),
+    ];
+    if (isTrainee) {
+      tasks.push(
+        queryClient.refetchQueries({ queryKey: queryKeys.presence.onlineUsers }),
+        queryClient.refetchQueries({ queryKey: queryKeys.presence.bookExpertOnline }),
+        queryClient.refetchQueries({ queryKey: ["trainersDirectory"] }),
+        queryClient.refetchQueries({ queryKey: queryKeys.trainee.favorites })
+      );
+    } else {
+      tasks.push(
+        queryClient.refetchQueries({ queryKey: queryKeys.presence.onlineUsers }),
+        queryClient.refetchQueries({ queryKey: queryKeys.wallet.earnings }),
+        queryClient.refetchQueries({ queryKey: queryKeys.trainer.slots })
+      );
     }
+    await Promise.all(tasks);
   }, [queryClient, isTrainee]);
+
+  const { refreshing: pullRefreshing, onRefresh } = useHapticRefresh(refreshDashboard);
+
+  /**
+   * `useMorphRefresh` augments the system RefreshControl with a
+   * WhatsApp-Status-style arrow that morphs into a check the moment the
+   * user crosses the threshold (a haptic also fires at the morph).
+   * The hook's onRefreshControl handler delegates to our hapticised
+   * `onRefresh` so spinners + completion haptics still flow.
+   */
+  const morphRefresh = useMorphRefresh({ onRefresh });
 
   const openFeature = (id: DashboardRouteId, extra?: Partial<{ bookLessonTrainerId: string }>) => {
     // Some dashboard “features” map directly to bottom tabs for correct tab highlighting.
@@ -558,6 +574,8 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
         onInstant={(t) => setWizardTrainer(t)}
         onSchedule={(t) => setScheduleTrainer(t)}
       />
+    <View style={{ flex: 1 }}>
+    <MorphRefreshHeader {...morphRefresh.headerProps} />
     <ScrollView
       style={[styles.root, { backgroundColor: themeColors.background }]}
       contentContainerStyle={[
@@ -567,10 +585,11 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
       ]}
       nestedScrollEnabled
       keyboardShouldPersistTaps="handled"
+      {...morphRefresh.scrollProps}
       refreshControl={
         <RefreshControl
           refreshing={pullRefreshing}
-          onRefresh={onRefresh}
+          onRefresh={morphRefresh.onRefreshControl}
           tintColor={themeColors.brandNavy}
         />
       }
@@ -578,22 +597,63 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
       {/* Quick Actions — trainee only (trainer hub has shortcuts) */}
       {isTrainee && (
         <View style={styles.quickRow}>
-          <QuickActionButton
-            icon="calendar-outline"
-            label={t("dashboardHome.quickSessions")}
-            onPress={() => openFeature("upcoming-sessions")}
-          />
-          <QuickActionButton
-            icon="chatbubbles-outline"
-            label={t("dashboardHome.quickChats")}
-            onPress={() => navigation.getParent()?.navigate("Chats" as never)}
-          />
+          <CoachMark
+            id="dashboard.quickSessions.v1"
+            title={t("coachMarks.dashboardSessions.title", {
+              defaultValue: "Track your lessons here",
+            })}
+            description={t("coachMarks.dashboardSessions.description", {
+              defaultValue:
+                "Tap to see upcoming, active, and past lessons all in one place.",
+            })}
+            icon="calendar"
+            placement="bottom"
+            style={{ flex: 1 }}
+          >
+            <QuickActionButton
+              icon="calendar-outline"
+              label={t("dashboardHome.quickSessions")}
+              onPress={() => openFeature("upcoming-sessions")}
+            />
+          </CoachMark>
+          <CoachMark
+            id="dashboard.quickChats.v1"
+            title={t("coachMarks.dashboardChats.title", {
+              defaultValue: "Message trainers and friends",
+            })}
+            description={t("coachMarks.dashboardChats.description", {
+              defaultValue:
+                "Chats live in the bottom tab — and this shortcut takes you straight there.",
+            })}
+            icon="chatbubbles"
+            placement="bottom"
+            style={{ flex: 1 }}
+          >
+            <QuickActionButton
+              icon="chatbubbles-outline"
+              label={t("dashboardHome.quickChats")}
+              onPress={() => navigation.getParent()?.navigate("Chats" as never)}
+            />
+          </CoachMark>
         </View>
       )}
+
+      {/* Profile completion pill — shows until 100%, snoozable for 14 days. */}
+      <View style={{ paddingHorizontal: space.md, paddingTop: space.sm }}>
+        <ProfileCompletionPill />
+      </View>
 
       <View style={{ paddingHorizontal: space.md, paddingTop: space.sm }}>
         <CallRejoinBanner />
       </View>
+
+      {/* Pre-class checklist surfaces when next confirmed session is ≤5 min out. */}
+      <PreClassChecklistSheet
+        sessions={sessions}
+        tick={sessionListTick}
+        onJoin={openSession}
+      />
+      
 
       <View style={isTrainee ? { paddingTop: space.md } : undefined}>
         {isTrainer && (
@@ -711,6 +771,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
         )}
       </View>
     </ScrollView>
+    </View>
 
       <AIFloatingButton onPress={() => setAiOpen(true)} />
 

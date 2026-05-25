@@ -14,6 +14,7 @@ import { SettingsScreen } from "./SettingsScreen";
 import { TrainerScheduleScreen } from "./TrainerScheduleScreen";
 import { WalletNavigator } from "../../wallet/navigation/WalletNavigator";
 import { StackSwipeBackShell } from "../../../navigation/StackSwipeBackShell";
+import { SupportChatScreen } from "../../support/SupportChatScreen";
 
 export type ShellSurfaceScreenProps = NativeStackScreenProps<HomeStackParamList, "ShellSurface">;
 
@@ -54,6 +55,8 @@ export function ShellSurfaceScreen({ route }: ShellSurfaceScreenProps) {
       return wrap(<ProfessionalProfileScreen />);
     case "reportIssue":
       return wrap(<ReportIssueScreen />);
+    case "supportChat":
+      return wrap(<SupportChatScreen />);
     default:
       return null;
   }

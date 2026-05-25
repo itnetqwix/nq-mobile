@@ -13,6 +13,7 @@ const SHELL_KEYS: Record<string, string> = {
   trainerSchedule: "shell.trainerSchedule",
   editProfile: "shell.editProfile",
   reportIssue: "shell.reportIssue",
+  supportChat: "shell.supportChat",
 };
 
 export function localizedShellTitle(t: TFunction, meta: Pick<ShellSurfaceMeta, "id" | "title">): string {

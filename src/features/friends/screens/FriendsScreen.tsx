@@ -486,6 +486,28 @@ export function FriendsScreen() {
                 ? t("friends.emptySentDescription")
                 : t("friends.emptyRequestsDescription")
             }
+            /**
+             * Smart CTAs — every empty state should point to the next
+             * action. "No friends yet → Explore community" mirrors the
+             * pattern across the app so users always have a forward path.
+             */
+            actionLabel={
+              tabKey === "friends"
+                ? t("friends.emptyFriendsCta", { defaultValue: "Explore community" })
+                : tabKey === "sent"
+                ? t("friends.emptySentCta", { defaultValue: "Find someone to add" })
+                : t("friends.emptyRequestsCta", { defaultValue: "Discover people you may know" })
+            }
+            onAction={() => {
+              try {
+                (navigation as { navigate: (name: string, params?: unknown) => void }).navigate(
+                  "DashboardFeature",
+                  { featureId: "my-community" }
+                );
+              } catch {
+                /* Older navigators — best-effort. */
+              }
+            }}
           />
         }
       />

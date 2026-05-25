@@ -16,11 +16,12 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
-import { Button, Card, EmptyState, Pill, Skeleton, Stack } from "../../../components/ui";
+import { Button, Card, EmptyState, Pill, SessionRowSkeleton, Skeleton, SkeletonGroup, Stack } from "../../../components/ui";
 import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { queryKeys } from "../../../lib/queryKeys";
 import { fetchScheduledMeetings } from "../../home/api/homeApi";
+import { useHapticRefresh } from "../../../lib/refresh/useHapticRefresh";
 import {
   canEnterLesson,
   canJoinSession,
@@ -279,6 +280,8 @@ function isSameDay(dateStr: string | undefined, target: string): boolean {
 export function UpcomingSessionsScreen() {
   const { t } = useAppTranslation();
   const { accountType } = useAuth();
+  const isTrainerOuter = accountType === AccountType.TRAINER;
+  const outerNavigation = useNavigation<NativeStackNavigationProp<any>>();
   const [activeTab, setActiveTab] = useState<StatusTab>("upcoming");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [monthAnchor, setMonthAnchor] = useState(() => {
@@ -311,7 +314,7 @@ export function UpcomingSessionsScreen() {
    * trainer joined yet. This ensures rejoinable instant lessons always surface
    * regardless of server-side bookkeeping.
    */
-  const { data: rawSessions = [], isLoading, isRefetching, refetch } = useQuery({
+  const { data: rawSessions = [], isLoading, refetch } = useQuery({
     queryKey: queryKeys.sessions.list(activeTab),
     queryFn: async () => {
       if (activeTab === "upcoming" || activeTab === "confirmed") {
@@ -331,6 +334,9 @@ export function UpcomingSessionsScreen() {
     const id = setInterval(() => setTick((n) => n + 1), 30_000);
     return () => clearInterval(id);
   }, []);
+
+  /** Pull-to-refresh haptics — tick on trigger, success/error on resolve. */
+  const { refreshing: isRefetching, onRefresh: onRefreshSessions } = useHapticRefresh(refetch);
 
   const sessions = useMemo(() => {
     const nowMs = Date.now();
@@ -408,23 +414,19 @@ export function UpcomingSessionsScreen() {
       />
 
       {isLoading ? (
-        <Stack gap="sm" style={styles.list}>
-          {[0, 1, 2].map((i) => (
-            <Card key={i} variant="outlined" padding="md">
-              <Stack gap="xs">
-                <Skeleton width="60%" height={14} />
-                <Skeleton width="40%" height={12} />
-                <Skeleton width="80%" height={12} />
-                <Skeleton width="30%" height={32} radius={radii.sm} />
-              </Stack>
-            </Card>
-          ))}
-        </Stack>
+        /** Session-row shape skeleton: avatar + 3 stacked lines + CTA pill,
+         *  mirroring the upcoming session card so the page doesn't jolt. */
+        <SkeletonGroup
+          count={3}
+          gap={space.sm}
+          renderRow={() => <SessionRowSkeleton />}
+          style={styles.list}
+        />
       ) : (
         <ScrollView
           contentContainerStyle={styles.list}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brand} />
+            <RefreshControl refreshing={isRefetching} onRefresh={onRefreshSessions} tintColor={colors.brand} />
           }
         >
           {sessions.length === 0 ? (
@@ -443,6 +445,34 @@ export function UpcomingSessionsScreen() {
                     : activeTab === "cancelled"
                       ? t("sessions.emptyCancelledDescription")
                       : t("sessions.emptyTabDescription", { tab: t(TAB_LABEL_KEYS[activeTab]) })
+              }
+              actionLabel={
+                activeTab === "upcoming" && !selectedDate
+                  ? isTrainerOuter
+                    ? t("sessions.emptyCtaTrainer", { defaultValue: "Edit availability" })
+                    : t("sessions.emptyCtaTrainee", { defaultValue: "Find a trainer" })
+                  : undefined
+              }
+              onAction={
+                activeTab === "upcoming" && !selectedDate
+                  ? () => {
+                      try {
+                        if (isTrainerOuter) {
+                          outerNavigation.navigate("Home", {
+                            screen: "ShellSurface",
+                            params: { surfaceId: "trainerSchedule" },
+                          });
+                        } else {
+                          outerNavigation.navigate("Home", {
+                            screen: "DashboardFeature",
+                            params: { featureId: "book-lesson" },
+                          });
+                        }
+                      } catch {
+                        /* Older navigators — best effort. */
+                      }
+                    }
+                  : undefined
               }
             />
           ) : (

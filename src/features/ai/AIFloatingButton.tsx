@@ -1,6 +1,7 @@
 import React, { useRef } from "react";
 import { Animated, Pressable, StyleSheet, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useReduceMotion } from "../../lib/a11y";
 import { useThemeColors, typography } from "../../theme";
 
 /** Screen content already ends at the tab bar; only a small inset is needed. */
@@ -17,8 +18,13 @@ export default function AIFloatingButton({ onPress, label }: Props) {
 
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(0.4)).current;
+  const reduceMotion = useReduceMotion();
 
   React.useEffect(() => {
+    if (reduceMotion) {
+      pulseAnim.setValue(0.55);
+      return;
+    }
     const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 0.8, duration: 1500, useNativeDriver: true }),
@@ -27,12 +33,20 @@ export default function AIFloatingButton({ onPress, label }: Props) {
     );
     pulse.start();
     return () => pulse.stop();
-  }, [pulseAnim]);
+  }, [pulseAnim, reduceMotion]);
 
   const handlePressIn = () => {
+    if (reduceMotion) {
+      scaleAnim.setValue(0.96);
+      return;
+    }
     Animated.spring(scaleAnim, { toValue: 0.9, useNativeDriver: true }).start();
   };
   const handlePressOut = () => {
+    if (reduceMotion) {
+      scaleAnim.setValue(1);
+      return;
+    }
     Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start();
   };
 
@@ -55,6 +69,8 @@ export default function AIFloatingButton({ onPress, label }: Props) {
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         style={[styles.button, { backgroundColor: colors.brand }]}
+        accessibilityRole="button"
+        accessibilityLabel={label ? `${label} (NetQwix AI assistant)` : "Open NetQwix AI assistant"}
       >
         <Ionicons name="sparkles" size={22} color="#fff" />
         {label && (

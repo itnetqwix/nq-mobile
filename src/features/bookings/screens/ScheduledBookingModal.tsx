@@ -18,6 +18,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { idempotencyHeaders, newIdempotencyKey } from "../../../lib/idempotency";
+import { notifyError } from "../../../lib/support/notifyError";
 import { queryKeys } from "../../../lib/queryKeys";
 import { unwrapApiData } from "../../../lib/http/unwrapApiData";
 import { colors, radii, space, typography } from "../../../theme";
@@ -371,7 +372,19 @@ export function ScheduledBookingModal({ visible, trainer, onDismiss }: Props) {
       const conflict =
         typeof msg === "string" &&
         /booking during this time|conflict|unavailable/i.test(msg);
-      Alert.alert(conflict ? "Scheduling conflict" : "Booking failed", msg);
+      /**
+       * Hand-off to `notifyError` so the alert includes a "Report a
+       * problem" CTA. The CTA deep-links into the support form with
+       * the trainer + selected slot already in the description, so
+       * support tickets aren't missing context.
+       */
+      void notifyError({
+        title: conflict ? "Scheduling conflict" : "Booking failed",
+        message: msg,
+        action: "Schedule booking",
+        error: e,
+        hideReport: conflict,
+      });
     } finally {
       setBookingLoading(false);
     }

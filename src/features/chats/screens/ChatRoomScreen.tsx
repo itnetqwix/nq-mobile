@@ -1740,7 +1740,13 @@ export function ChatRoomScreen({
           },
         ]}
       >
-        <Pressable onPress={onGoBack} hitSlop={12} style={styles.backBtn}>
+        <Pressable
+          onPress={onGoBack}
+          hitSlop={12}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Back to chats"
+        >
           <Ionicons name="chevron-back" size={26} color={themeColors.text} />
         </Pressable>
         <Pressable
@@ -1811,7 +1817,14 @@ export function ChatRoomScreen({
             <Ionicons name="time-outline" size={18} color={themeColors.brandNavy} />
           </Pressable>
         ) : null}
-        <Pressable onPress={handleProfileAction} hitSlop={10} style={styles.headerMore}>
+        <Pressable
+          onPress={handleProfileAction}
+          hitSlop={10}
+          style={styles.headerMore}
+          accessibilityRole="button"
+          accessibilityLabel="More chat actions"
+          accessibilityHint="Open mute, archive, block, or report"
+        >
           <Ionicons name="ellipsis-vertical" size={20} color={themeColors.textMuted} />
         </Pressable>
       </View>
@@ -1902,7 +1915,12 @@ export function ChatRoomScreen({
                   {chatE2E.decryptForDisplay(replyTo.content)}
                 </Text>
               </View>
-              <Pressable onPress={() => setReplyTo(null)} hitSlop={8}>
+              <Pressable
+                onPress={() => setReplyTo(null)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel reply"
+              >
                 <Ionicons name="close-circle" size={22} color={themeColors.textMuted} />
               </Pressable>
             </View>
@@ -1930,10 +1948,22 @@ export function ChatRoomScreen({
               <Text style={styles.recordTime}>{formatDuration(recordSecs * 1000)}</Text>
               <Text style={styles.recordLabel}>Recording...</Text>
               <View style={{ flex: 1 }} />
-              <Pressable onPress={cancelRecording} hitSlop={10} style={styles.recordCancel}>
+              <Pressable
+                onPress={cancelRecording}
+                hitSlop={10}
+                style={styles.recordCancel}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel voice message"
+              >
                 <Ionicons name="trash-outline" size={22} color={themeColors.danger} />
               </Pressable>
-              <Pressable onPress={finishRecording} hitSlop={10} style={styles.recordSend}>
+              <Pressable
+                onPress={finishRecording}
+                hitSlop={10}
+                style={styles.recordSend}
+                accessibilityRole="button"
+                accessibilityLabel="Send voice message"
+              >
                 <Ionicons name="send" size={20} color="#fff" />
               </Pressable>
             </View>
@@ -1958,6 +1988,9 @@ export function ChatRoomScreen({
                       }}
                       hitSlop={6}
                       style={styles.inputAccessoryBtn}
+                      accessibilityRole="button"
+                      accessibilityLabel={showEmoji ? "Hide emoji picker" : "Show emoji picker"}
+                      accessibilityState={{ expanded: showEmoji }}
                     >
                       <Ionicons
                         name={showEmoji ? "happy" : "happy-outline"}
@@ -1982,6 +2015,8 @@ export function ChatRoomScreen({
                       }}
                       hitSlop={6}
                       style={styles.inputAccessoryBtn}
+                      accessibilityRole="button"
+                      accessibilityLabel="Attach photo, video, document, or location"
                     >
                       <Ionicons name="attach" size={22} color={themeColors.textMuted} />
                     </Pressable>

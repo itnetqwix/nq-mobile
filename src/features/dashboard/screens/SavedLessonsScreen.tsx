@@ -1,6 +1,8 @@
 import React, { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { EmptyState } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
@@ -14,6 +16,7 @@ import { queryKeys } from "../../../lib/queryKeys";
 export function SavedLessonsScreen() {
   const { t } = useAppTranslation();
   const c = useThemeColors();
+  const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const styles = useThemedStyles((palette) =>
     StyleSheet.create({
       card: {
@@ -86,6 +89,14 @@ export function SavedLessonsScreen() {
             icon="bookmark-outline"
             title={t("savedLessons.emptyTitle")}
             description={t("savedLessons.emptyDescription")}
+            actionLabel={t("savedLessons.emptyCta", { defaultValue: "Browse clips" })}
+            onAction={() => {
+              try {
+                navigation.navigate("ShellSurface", { surfaceId: "clips" });
+              } catch {
+                /* Older navigators — best effort. */
+              }
+            }}
           />
         ) : (
           (savedQ.data ?? []).map((s: Record<string, unknown>) => {

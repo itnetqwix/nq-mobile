@@ -19,6 +19,7 @@ export const UTILITY_SURFACE_IDS = [
   "editProfile",
   "professionalProfile",
   "reportIssue",
+  "supportChat",
 ] as const;
 export type UtilitySurfaceId = (typeof UTILITY_SURFACE_IDS)[number];
 
@@ -114,6 +115,14 @@ export const SHELL_SURFACES: readonly ShellSurfaceMeta[] = [
     subtitle:
       "Pick a session and report a technical issue or request a refund",
     webContext: "Web Contact Us → Report Technical / Refund (`POST /user/raise-concern`).",
+    allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
+  },
+  {
+    id: "supportChat",
+    title: "Chat with support",
+    subtitle:
+      "Talk to a NetQwix team-member in a chat. Reuses the in-app chat infra so context follows you.",
+    webContext: "Mobile-only live-chat shim on top of `/chat` conversations.",
     allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
   },
   {

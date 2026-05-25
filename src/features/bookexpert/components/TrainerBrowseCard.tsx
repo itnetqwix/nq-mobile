@@ -1,6 +1,7 @@
 import React from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { VerifiedBadge } from "../../../components/ui";
 import { type AppColors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import {
@@ -158,7 +159,7 @@ export function TrainerBrowseCard({
               </Text>
               {verified ? (
                 <View style={styles.verifiedBadge}>
-                  <Ionicons name="checkmark-circle" size={12} color={themeColors.success} />
+                  <VerifiedBadge size={12} tint={themeColors.success} />
                   <Text style={styles.verifiedText}>{t("traineeDiscover.verified")}</Text>
                 </View>
               ) : null}

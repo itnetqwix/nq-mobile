@@ -39,6 +39,7 @@ import {
 import { warmLoaderTipsCache } from "../components/brand/loaderTips/loaderTipsService";
 import { ThemeProvider } from "../theme/ThemeContext";
 import { ThemedNavigationContainer } from "./ThemedNavigationContainer";
+import { CoachMarkOverlay, CoachMarkProvider } from "../features/onboarding";
 import i18n from "../i18n";
 import { normalizeAppLocale } from "../i18n/languages";
 import { loadPersistedAppLocale } from "../i18n/localeStorage";
@@ -122,12 +123,15 @@ export function AppRoot() {
                       <NotificationProvider>
                         <SessionBookingProvider>
                           <InstantLessonProvider onNavigateToMeeting={navigateToMeeting}>
-                            <PushNotificationBridge />
-                            <InstantLessonCallKeepBridge />
-                            <TrainerOnlinePresenceBridge />
-                            <SessionLifecycleBridge />
-                            <NetworkStatusBanner />
-                            <ThemedNavigationContainer />
+                            <CoachMarkProvider>
+                              <PushNotificationBridge />
+                              <InstantLessonCallKeepBridge />
+                              <TrainerOnlinePresenceBridge />
+                              <SessionLifecycleBridge />
+                              <NetworkStatusBanner />
+                              <ThemedNavigationContainer />
+                              <CoachMarkOverlay />
+                            </CoachMarkProvider>
                           </InstantLessonProvider>
                         </SessionBookingProvider>
                       </NotificationProvider>

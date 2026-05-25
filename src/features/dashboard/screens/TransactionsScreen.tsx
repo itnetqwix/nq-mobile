@@ -12,7 +12,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { EmptyState, Pill, Skeleton } from "../../../components/ui";
+import { EmptyState, Pill, Skeleton, SkeletonGroup, TransactionRowSkeleton } from "../../../components/ui";
 import { space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { AccountType } from "../../../constants/accountType";
 import { useAuth } from "../../auth/context/AuthContext";
@@ -21,6 +21,7 @@ import type { MenuStackParamList } from "../../../navigation/types";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
 import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
+import { useHapticRefresh } from "../../../lib/refresh/useHapticRefresh";
 
 const PAGE_SIZE = 25;
 
@@ -151,7 +152,6 @@ export function TransactionsScreen() {
   const {
     data,
     isLoading,
-    isRefetching,
     refetch,
     fetchNextPage,
     hasNextPage,
@@ -178,15 +178,17 @@ export function TransactionsScreen() {
     [navigation]
   );
 
+  const { refreshing: transactionsRefreshing, onRefresh: onRefreshTransactions } =
+    useHapticRefresh(refetch);
+
   if (isLoading) {
+    /** Content-shape skeleton mirrors the real wallet row (icon + label +
+     *  amount + pill) so the page doesn't snap into a different layout
+     *  the moment results land. */
     return (
-      <View style={{ padding: space.md }}>
-        <Skeleton width="40%" height={20} style={{ marginBottom: space.md }} />
-        {[0, 1, 2, 3].map((i) => (
-          <View key={i} style={{ marginBottom: space.sm }}>
-            <Skeleton width="100%" height={64} />
-          </View>
-        ))}
+      <View style={{ padding: space.md, gap: space.sm }}>
+        <Skeleton width="40%" height={20} style={{ marginBottom: space.xs }} />
+        <SkeletonGroup count={6} renderRow={() => <TransactionRowSkeleton />} />
       </View>
     );
   }
@@ -210,7 +212,11 @@ export function TransactionsScreen() {
         </View>
       }
       refreshControl={
-        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.iconPrimary} />
+        <RefreshControl
+          refreshing={transactionsRefreshing}
+          onRefresh={onRefreshTransactions}
+          tintColor={c.iconPrimary}
+        />
       }
       onEndReached={() => {
         if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
@@ -226,6 +232,27 @@ export function TransactionsScreen() {
           icon="receipt-outline"
           title={t("transactions.emptyTitle")}
           description={t("transactions.emptyDescription")}
+          /**
+           * Trainees → "Book your first lesson". Trainers → "Publish your
+           * availability". Either way the empty state moves the user
+           * forward instead of being a dead-end.
+           */
+          actionLabel={
+            isTrainer
+              ? t("transactions.emptyCtaTrainer", { defaultValue: "Publish availability" })
+              : t("transactions.emptyCtaTrainee", { defaultValue: "Book a lesson" })
+          }
+          onAction={() => {
+            try {
+              if (isTrainer) {
+                navigation.navigate("ShellSurface", { surfaceId: "trainerSchedule" });
+              } else {
+                navigation.navigate("DashboardFeature", { featureId: "book-lesson" });
+              }
+            } catch {
+              /* Older navigators — best effort. */
+            }
+          }}
         />
       }
     />

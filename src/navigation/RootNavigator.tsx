@@ -110,6 +110,13 @@ export function RootNavigator() {
           gestureEnabled: true,
           gestureDirection: "horizontal",
           animation: "slide_from_right",
+          /**
+           * Uniform 240 ms — same family as `mainStackHeaderOptions`
+           * (220 ms) so the timing reads consistent even when a tap
+           * crosses both navigators. iOS-default is closer to 350 ms
+           * which feels heavy on modern devices.
+           */
+          animationDuration: 240,
         }}
       >
         {signedIn ? (

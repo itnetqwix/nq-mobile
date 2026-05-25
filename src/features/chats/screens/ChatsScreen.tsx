@@ -17,7 +17,7 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { apiClient } from "../../../api/client";
-import { EmptyState, Skeleton } from "../../../components/ui";
+import { ChatRowSkeleton, EmptyState, PresenceDot, Skeleton, SkeletonGroup } from "../../../components/ui";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { queryKeys } from "../../../lib/queryKeys";
 import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
@@ -44,6 +44,8 @@ import {
 } from "../lib/chatMediaUpload";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import type { TFunction } from "i18next";
+import { CoachMark } from "../../onboarding";
+import { useHapticRefresh } from "../../../lib/refresh/useHapticRefresh";
 
 async function fetchConversations(): Promise<any[]> {
   try {
@@ -172,12 +174,6 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
     position: "absolute",
     bottom: 0,
     right: 0,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#4CAF50",
-    borderWidth: 2,
-    borderColor: palette.surface,
   },
   rowContent: { flex: 1 },
   rowTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
@@ -239,10 +235,19 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
   },
   avatarInitial: { color: palette.brandTextOn, fontWeight: "700" },
 
-  fab: {
+  /**
+   * The CoachMark wrapper measures its child for anchor coordinates, so the
+   * absolutely-positioned FAB needs a same-sized absolute wrapper. We mirror
+   * its size+position here and let the inner button fill it.
+   */
+  fabAnchor: {
     position: "absolute",
     right: space.md,
     bottom: space.lg,
+    width: 56,
+    height: 56,
+  },
+  fab: {
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -421,7 +426,7 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route?.params]);
 
-  const { data: conversations = [], isLoading, isRefetching, refetch } = useQuery({
+  const { data: conversations = [], isLoading, refetch } = useQuery({
     queryKey: queryKeys.chats.conversations,
     queryFn: fetchConversations,
     staleTime: 15_000,
@@ -434,6 +439,12 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
     staleTime: 20_000,
     refetchInterval: 30_000,
   });
+
+  /** Pull-to-refresh now refetches both conversations + group invites in
+   *  parallel and emits the trigger/completion haptic via the shared hook. */
+  const { refreshing: isRefetching, onRefresh: onRefreshChats } = useHapticRefresh(
+    () => Promise.all([refetch(), refetchGroupInvites()])
+  );
 
   const { data: friends = [], isLoading: loadingFriends } = useQuery({
     queryKey: queryKeys.friends.list,
@@ -798,17 +809,18 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
       ) : null}
 
       {isLoading ? (
-        <View style={{ padding: space.md }}>
-          {[0, 1, 2, 3].map((i) => (
-            <View key={i} style={{ marginBottom: space.sm, flexDirection: "row", gap: space.sm, alignItems: "center" }}>
-              <Skeleton width={44} height={44} radius={22} />
-              <View style={{ flex: 1, gap: 6 }}>
-                <Skeleton width="60%" height={12} />
-                <Skeleton width="80%" height={10} />
-              </View>
-            </View>
-          ))}
-        </View>
+        /**
+         * Content-shape skeletons mirror the actual chat row (avatar +
+         * title + preview + timestamp + unread badge), so the visual
+         * doesn't reflow when data arrives. This is the cheapest UX win
+         * — same Skeleton primitive, just composed correctly.
+         */
+        <SkeletonGroup
+          count={6}
+          gap={0}
+          renderRow={() => <ChatRowSkeleton />}
+          style={{ paddingTop: space.xs }}
+        />
       ) : (
         <FlatList
           data={filtered}
@@ -893,7 +905,15 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
                   ) : (
                     <>
                       <Avatar uri={partner.profile_picture} name={partner.fullname} />
-                      {partnerOnline && <View style={styles.onlineDot} />}
+                      {partnerOnline && (
+                        <PresenceDot
+                          online
+                          size={12}
+                          ring
+                          style={styles.onlineDot}
+                          accessibilityLabel={t("chats.online", { defaultValue: "Online" })}
+                        />
+                      )}
                     </>
                   )}
                 </View>
@@ -935,28 +955,56 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
             );
           }}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.iconPrimary} />
+            <RefreshControl refreshing={isRefetching} onRefresh={onRefreshChats} tintColor={c.iconPrimary} />
           }
           ListEmptyComponent={
             <EmptyState
               icon="chatbubbles-outline"
               title={search ? t("chats.noMatchingConversations") : t("chats.noConversations")}
               description={search ? t("chats.noMatchingDescription") : t("chats.emptyDescription")}
+              actionLabel={
+                search
+                  ? undefined
+                  : t("chats.emptyCta", { defaultValue: "Start your first chat" })
+              }
+              onAction={
+                search
+                  ? undefined
+                  : () => {
+                      haptics.press();
+                      setShowNewChat(true);
+                    }
+              }
             />
           }
         />
       )}
 
-      {/* New Chat FAB */}
-      <Pressable
-        style={({ pressed }) => [styles.fab, pressed && { transform: [{ scale: 0.92 }] }]}
-        onPress={() => {
-          haptics.press();
-          setShowNewChat(true);
-        }}
+      {/* New Chat FAB — wrapped in a CoachMark so first-time users see what it does. */}
+      <CoachMark
+        id="chats.newChatFab.v1"
+        title={t("coachMarks.chatsFab.title", { defaultValue: "Start your first chat" })}
+        description={t("coachMarks.chatsFab.description", {
+          defaultValue:
+            "Tap here to pick a friend or trainer and start a 1-on-1 or group chat.",
+        })}
+        icon="create"
+        placement="top"
+        style={styles.fabAnchor}
       >
-        <Ionicons name="create-outline" size={24} color={c.brandTextOn} />
-      </Pressable>
+        <Pressable
+          style={({ pressed }) => [styles.fab, pressed && { transform: [{ scale: 0.92 }] }]}
+          onPress={() => {
+            haptics.press();
+            setShowNewChat(true);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={t("chats.newChat", { defaultValue: "Start a new chat" })}
+          accessibilityHint={t("chats.newChatHint", { defaultValue: "Opens the friend picker" })}
+        >
+          <Ionicons name="create-outline" size={24} color={c.brandTextOn} />
+        </Pressable>
+      </CoachMark>
 
       {/* New Chat Modal — Friend Picker + Group */}
       <Modal
@@ -984,7 +1032,11 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
                 setShowNewChat(false);
                 setFriendSearch("");
               }
-            }} hitSlop={12}>
+            }}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel={showGroupCreate ? "Back to new chat picker" : "Close new chat picker"}
+            >
               <Ionicons name={showGroupCreate ? "arrow-back" : "close"} size={24} color={c.text} />
             </Pressable>
             <Text style={styles.modalTitle}>
@@ -1001,7 +1053,12 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
                 )}
               </Pressable>
             ) : (
-              <Pressable onPress={() => setShowGroupCreate(true)} hitSlop={12}>
+              <Pressable
+                onPress={() => setShowGroupCreate(true)}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Create a new group chat"
+              >
                 <Ionicons name="people" size={24} color={c.iconPrimary} />
               </Pressable>
             )}
@@ -1128,6 +1185,29 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
                   title={t("chats.noFriendsFound")}
                   description={
                     friendSearch ? t("chats.noFriendsMatch") : t("chats.addFriendsFromCommunity")
+                  }
+                  actionLabel={
+                    friendSearch
+                      ? undefined
+                      : t("chats.emptyFriendsCta", { defaultValue: "Find people" })
+                  }
+                  onAction={
+                    friendSearch
+                      ? undefined
+                      : () => {
+                          setShowNewChat(false);
+                          try {
+                            (navigation as { navigate: (n: string, p?: unknown) => void }).navigate(
+                              "Home",
+                              {
+                                screen: "DashboardFeature",
+                                params: { featureId: "my-community" },
+                              }
+                            );
+                          } catch {
+                            /* fallback */
+                          }
+                        }
                   }
                 />
               }

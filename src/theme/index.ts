@@ -15,7 +15,12 @@ export { useStaticStyles } from "./useStaticStyles";
 export { buildNavigationTheme } from "./navigationTheme";
 
 export { colorsDark, colorsLight, type AppColors } from "./colors";
-export { typography, type TypographyToken } from "./typography";
+export {
+  typography,
+  useScaledTypography,
+  scaledFontSize,
+  type TypographyToken,
+} from "./typography";
 export { shadows, type ShadowToken } from "./shadows";
 export { durations, easings, type DurationToken, type EasingToken } from "./motion";
 

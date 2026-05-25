@@ -15,8 +15,21 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../auth/context/AuthContext";
 import { colors, radii, space, typography } from "../../theme";
 
-/** `expo-secure-store` keys must match `[A-Za-z0-9._-]`. */
+/**
+ * `expo-secure-store` keys must match `[A-Za-z0-9._-]`. Two keys exist:
+ *
+ *   STORAGE_KEY     — set when the user finishes or actively dismisses the
+ *                     tour. Used to suppress the auto-trigger forever.
+ *   SKIP_AUTO_KEY   — set the *first* time the app sees the user. We rely on
+ *                     in-place coach marks for the actual hint surface and
+ *                     only fall back to this full tour when the user has
+ *                     opted in from Settings.
+ *
+ * The legacy auto-trigger is preserved for accounts already mid-flow, but
+ * new installs never see it — coach marks lead the experience instead.
+ */
 const STORAGE_KEY = "nq.onboarding-completed";
+const SKIP_AUTO_KEY = "nq.onboarding-auto-suppressed";
 const { width: SCREEN_W } = Dimensions.get("window");
 
 type Step = {
@@ -84,7 +97,21 @@ const STEPS: Step[] = [
   },
 ];
 
-export function OnboardingWalkthrough() {
+type OnboardingWalkthroughProps = {
+  /**
+   * Force the tour open even if the user has already dismissed it. Used by
+   * the "Replay onboarding" button in Settings — bypasses the auto-suppress
+   * check entirely.
+   */
+  forceOpen?: boolean;
+  /** Called when the tour is dismissed (so the host can clear `forceOpen`). */
+  onDismiss?: () => void;
+};
+
+export function OnboardingWalkthrough({
+  forceOpen = false,
+  onDismiss,
+}: OnboardingWalkthroughProps = {}) {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [visible, setVisible] = useState(false);
@@ -94,45 +121,38 @@ export function OnboardingWalkthrough() {
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (forceOpen) {
+      setVisible(true);
+      Animated.parallel([
+        Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 60, friction: 8 }),
+        Animated.timing(slideAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
+      ]).start();
+      return;
+    }
     if (!user) return;
     let cancelled = false;
     (async () => {
-      const done = await SecureStore.getItemAsync(STORAGE_KEY);
-      if (done || cancelled) return;
+      const [done, autoSuppressed] = await Promise.all([
+        SecureStore.getItemAsync(STORAGE_KEY),
+        SecureStore.getItemAsync(SKIP_AUTO_KEY),
+      ]);
+      if (done || autoSuppressed || cancelled) return;
 
-      const createdAt = (user as any)?.createdAt
-        ? new Date((user as any).createdAt)
-        : null;
-      const now = new Date();
-      const isNew =
-        createdAt &&
-        now.getTime() - createdAt.getTime() < 7 * 24 * 60 * 60 * 1000;
-
-      if (isNew || !createdAt) {
-        setTimeout(() => {
-          if (!cancelled) {
-            setVisible(true);
-            Animated.parallel([
-              Animated.spring(scaleAnim, {
-                toValue: 1,
-                useNativeDriver: true,
-                tension: 60,
-                friction: 8,
-              }),
-              Animated.timing(slideAnim, {
-                toValue: 1,
-                duration: 350,
-                useNativeDriver: true,
-              }),
-            ]).start();
-          }
-        }, 800);
+      /**
+       * New flow: we *suppress* the auto-trigger immediately and rely on
+       * coach marks instead. The legacy modal tour stays available via
+       * Settings → "Replay tour" for users who want the overview.
+       */
+      try {
+        await SecureStore.setItemAsync(SKIP_AUTO_KEY, "1");
+      } catch {
+        /* non-blocking */
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [forceOpen, user]);
 
   const animateTransition = useCallback(
     (nextStep: number) => {
@@ -155,7 +175,8 @@ export function OnboardingWalkthrough() {
   const dismiss = useCallback(async () => {
     await SecureStore.setItemAsync(STORAGE_KEY, "1");
     setVisible(false);
-  }, []);
+    onDismiss?.();
+  }, [onDismiss]);
 
   const goNext = useCallback(() => {
     if (step >= STEPS.length - 1) {

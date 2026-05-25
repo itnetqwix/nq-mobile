@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, StyleSheet, View, type ViewStyle } from "react-native";
+import { useReduceMotion } from "../../lib/a11y";
 import { durations, easings, radii, useThemedStyles } from "../../theme";
 
 export type SkeletonProps = {
@@ -25,8 +26,18 @@ export function Skeleton({ width = "100%", height = 16, radius = radii.sm, style
   );
 
   const pulse = useRef(new Animated.Value(0)).current;
+  const reduceMotion = useReduceMotion();
 
   useEffect(() => {
+    if (reduceMotion) {
+      /**
+       * Reduced-motion mode: park the shimmer at a static, lightly-tinted
+       * opacity so the placeholder still reads as "loading" without the
+       * pulsing motion that triggers vestibular discomfort for some users.
+       */
+      pulse.setValue(0.5);
+      return;
+    }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, {
@@ -45,7 +56,7 @@ export function Skeleton({ width = "100%", height = 16, radius = radii.sm, style
     );
     loop.start();
     return () => loop.stop();
-  }, [pulse]);
+  }, [pulse, reduceMotion]);
 
   const opacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.8] });
 

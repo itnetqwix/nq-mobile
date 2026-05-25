@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ImageWithSkeleton } from "../../../components/ui";
+import { useReduceMotion } from "../../../lib/a11y";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { colors, radii, space, typography } from "../../../theme";
 import { confirmTrainerDecline } from "../confirmTrainerDecline";
@@ -32,6 +33,7 @@ export function InstantLessonIncomingCallOverlay() {
     minimizeTrainerIncoming,
   } = useInstantLesson();
   const pulse = useRef(new Animated.Value(1)).current;
+  const reduceMotion = useReduceMotion();
 
   const visible =
     !nativeCallUi &&
@@ -40,7 +42,12 @@ export function InstantLessonIncomingCallOverlay() {
     !trainerIncoming.minimized;
 
   useEffect(() => {
-    if (!visible) {
+    if (!visible || reduceMotion) {
+      /**
+       * Static pulse for reduce-motion users — the avatar still pops via
+       * the static brand-coloured ring around it instead of a heartbeat
+       * animation that can be distracting or trigger motion sickness.
+       */
       pulse.setValue(1);
       return;
     }
@@ -52,7 +59,7 @@ export function InstantLessonIncomingCallOverlay() {
     );
     loop.start();
     return () => loop.stop();
-  }, [visible, pulse]);
+  }, [visible, pulse, reduceMotion]);
 
   if (!visible || !trainerIncoming) return null;
 

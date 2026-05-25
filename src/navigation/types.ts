@@ -44,6 +44,9 @@ export type HomeStackParamList = {
   StoragePlan: undefined;
   ArchivedChats: undefined;
   NotificationPreferences: undefined;
+  BlockedUsers: undefined;
+  DataExport: undefined;
+  TwoFactor: undefined;
 };
 
 /** @deprecated Use HomeStackParamList */

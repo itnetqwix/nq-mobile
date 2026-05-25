@@ -46,11 +46,17 @@ export function listItemKey(
   return `${prefix}${id || "row"}-${index}`;
 }
 
-/** FlatList `keyExtractor` — always includes index so duplicate ids cannot collide. */
-export function flatListKeyExtractor(
-  row: { _id?: unknown; id?: unknown },
-  index: number
-): string {
+/**
+ * FlatList `keyExtractor` — always includes index so duplicate ids cannot
+ * collide. The `row` parameter is typed `any` on purpose: when a typed
+ * `keyExtractor` is passed to `<FlatList<T>>`, TS otherwise infers `T`
+ * from this signature (the narrowest constraint wins), which forces
+ * `renderItem({ item })` to that same narrow shape on every list in the
+ * app. Accepting `any` lets `FlatList` infer the item type from `data`
+ * (where the caller owns the schema) while we still hand off to
+ * `listItemKey` for the actual stringification.
+ */
+export function flatListKeyExtractor(row: any, index: number): string {
   return listItemKey(row, index);
 }
 

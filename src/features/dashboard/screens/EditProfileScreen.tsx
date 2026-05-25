@@ -9,6 +9,7 @@ import {
   Button,
   Card,
   FormField,
+  HelpBubble,
   ScreenContainer,
   SectionHeader,
 } from "../../../components/ui";
@@ -243,6 +244,16 @@ export function EditProfileScreen() {
                 onChangeText={setHourlyRate}
                 placeholder={t("profile.hourlyRatePlaceholder")}
                 keyboardType="numeric"
+                labelAdornment={
+                  <HelpBubble
+                    topic={t("help.hourlyRate.topic", { defaultValue: "Hourly rate" })}
+                  >
+                    {t("help.hourlyRate.body", {
+                      defaultValue:
+                        "Charge per booked hour. NetQwix takes a platform commission (typically 15%) and the rest is your earnings. Set this where your bookings are competitive — you can update it any time and existing bookings keep their original price.",
+                    })}
+                  </HelpBubble>
+                }
               />
               <FormField
                 label={t("profile.bioLabel")}

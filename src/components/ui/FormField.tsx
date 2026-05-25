@@ -23,6 +23,12 @@ export type FormFieldProps = TextInputProps & {
   leading?: React.ReactNode;
   /** Show a trailing slot (e.g. eye toggle, clear button). */
   trailing?: React.ReactNode;
+  /**
+   * Optional slot rendered immediately after the label text (e.g. a
+   * `HelpBubble` explaining the field). Sits on the same baseline as
+   * the label so it doesn't bloat the row.
+   */
+  labelAdornment?: React.ReactNode;
 };
 
 /** Tokenised text input — replaces ad-hoc `TextInput` wrappers across forms. */
@@ -35,6 +41,7 @@ export function FormField({
   inputStyle,
   leading,
   trailing,
+  labelAdornment,
   onFocus,
   onBlur,
   ...rest
@@ -47,6 +54,12 @@ export function FormField({
     StyleSheet.create({
       wrap: { width: "100%" },
       label: { color: colors.text, marginBottom: 6 },
+      labelRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        marginBottom: 6,
+      },
       inputWrap: {
         flexDirection: "row",
         alignItems: "center",
@@ -66,10 +79,20 @@ export function FormField({
   return (
     <View style={[styles.wrap, containerStyle]}>
       {label ? (
-        <Text style={[typography.label, styles.label]}>
-          {label}
-          {required ? <Text style={{ color: c.danger }}> *</Text> : null}
-        </Text>
+        labelAdornment ? (
+          <View style={styles.labelRow}>
+            <Text style={[typography.label, styles.label, { marginBottom: 0 }]}>
+              {label}
+              {required ? <Text style={{ color: c.danger }}> *</Text> : null}
+            </Text>
+            {labelAdornment}
+          </View>
+        ) : (
+          <Text style={[typography.label, styles.label]}>
+            {label}
+            {required ? <Text style={{ color: c.danger }}> *</Text> : null}
+          </Text>
+        )
       ) : null}
 
       <View style={[styles.inputWrap, { borderColor }]}>

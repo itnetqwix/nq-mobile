@@ -134,8 +134,13 @@ export const colorsDark: typeof colorsLight = {
   surfaceMuted: "#222227",
 
   text: "#f9fafb",
-  textSecondary: "#d4d4d8",
-  textMuted: "#9ca3af",
+  textSecondary: "#e4e4e7",
+  /**
+   * Bumped from `#9ca3af` to `#b1b8c2` so 13–14 px copy still hits WCAG AA
+   * (≥ 4.5:1) against the lighter dark surfaces (`surfaceMuted #222227`,
+   * `chatBubbleIncoming #2a2a32`). Previously bordered AA at small sizes.
+   */
+  textMuted: "#b1b8c2",
   textInverse: "#111827",
 
   border: NEUTRALS.neutral700,
@@ -149,7 +154,7 @@ export const colorsDark: typeof colorsLight = {
   tabBarBorder: NEUTRALS.neutral700,
   tabBar: "#0f0f12",
   tabBarActive: "#64b5f6",
-  tabBarInactive: "#9ca3af",
+  tabBarInactive: "#b1b8c2",
 
   headerTitle: "#f9fafb",
   headerTint: "#f9fafb",
@@ -161,14 +166,14 @@ export const colorsDark: typeof colorsLight = {
   chatBubbleIncoming: "#2a2a32",
   chatBubbleOutgoing: "#3d5afe",
   chatBubbleOutgoingText: BRAND.brandTextOn,
-  chatDayPill: "rgba(255, 255, 255, 0.12)",
-  chatDayPillText: "#a1a1aa",
+  chatDayPill: "rgba(255, 255, 255, 0.16)",
+  chatDayPillText: "#c7ccd4",
   divider: NEUTRALS.neutral700,
 
   /** Readable blues on dark surfaces (fixes invisible navy icons). */
   iconPrimary: "#64b5f6",
   iconSecondary: "#90caf9",
-  iconMuted: "#9ca3af",
+  iconMuted: "#b1b8c2",
 
   brand: "#7c9cff",
   brandNavy: "#7c9cff",

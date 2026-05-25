@@ -15,5 +15,11 @@ export function mainStackHeaderOptions(
     contentStyle: { backgroundColor: c.background },
     gestureEnabled: false,
     animation: "fade",
+    /**
+     * Anchor every stack push to the same 220 ms duration so transitions
+     * feel uniform whether they fade, slide, or modal-up. Anything shorter
+     * makes the header pop; anything longer feels sluggish.
+     */
+    animationDuration: 220,
   };
 }

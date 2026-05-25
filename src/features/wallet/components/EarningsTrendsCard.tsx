@@ -7,6 +7,7 @@ import { apiClient } from "../../../api/client";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
 import { radii, space, typography, useThemedStyles, useThemeColors } from "../../../theme";
+import { HelpBubble } from "../../../components/ui";
 import {
   buildTrainerEarningsCsvUrl,
   fetchTrainerEarningsSeries,
@@ -78,9 +79,19 @@ export function EarningsTrendsCard() {
   return (
     <View style={[styles.card, { backgroundColor: c.surfaceElevated, borderColor: c.border }]}>
       <View style={styles.headerRow}>
-        <Text style={[styles.title, { color: c.text }]}>
-          {t("earningsTrends.title")}
-        </Text>
+        <View style={styles.titleRow}>
+          <Text style={[styles.title, { color: c.text }]}>
+            {t("earningsTrends.title")}
+          </Text>
+          <HelpBubble
+            topic={t("help.commission.topic", { defaultValue: "How commission works" })}
+          >
+            {t("help.commission.body", {
+              defaultValue:
+                "NetQwix charges a small platform commission (usually 15%) on each booking. The amounts you see in this card are your earnings after commission and refunds. Payouts move to your bank or Stripe account on the platform schedule.",
+            })}
+          </HelpBubble>
+        </View>
         <Pressable
           onPress={handleExport}
           disabled={downloading || isLoading}
@@ -195,6 +206,7 @@ function useStyles() {
         alignItems: "center",
         justifyContent: "space-between",
       },
+      titleRow: { flexDirection: "row", alignItems: "center", gap: 6, flex: 1 },
       title: { ...typography.titleSm, fontWeight: "800" },
       exportBtn: {
         flexDirection: "row",
