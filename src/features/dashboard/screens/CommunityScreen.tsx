@@ -35,8 +35,9 @@ import {
   NOTIFICATION_TYPES,
   useNotifications,
 } from "../../notifications/NotificationContext";
-import { useChatRoomChrome } from "../../chats/hooks/useChatRoomChrome";
-import { ChatRoomScreen } from "../../chats/screens/ChatRoomScreen";
+import { openChatInTab } from "../../chats/lib/openChatTab";
+import { useNavigation } from "@react-navigation/native";
+import { haptics } from "../../../lib/haptics";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 async function fetchCommunityUsers(search?: string): Promise<any[]> {
@@ -113,7 +114,10 @@ function MemberCard({
         {status === "none" && (
           <Pressable
             style={styles.addBtn}
-            onPress={() => onAction(String(user._id), "add")}
+            onPress={() => {
+              haptics.press();
+              onAction(String(user._id), "add");
+            }}
             disabled={actionBusy}
           >
             <Ionicons name="person-add" size={14} color={colors.brandTextOn} />
@@ -142,7 +146,10 @@ function MemberCard({
             </Pressable>
             <Pressable
               style={styles.chatBtn}
-              onPress={() => onMessage(String(user._id), name, user?.profile_picture)}
+              onPress={() => {
+                haptics.tap();
+                onMessage(String(user._id), name, user?.profile_picture);
+              }}
               disabled={messageBusy}
             >
               {messageBusy ? (
@@ -169,11 +176,7 @@ export function CommunityScreen() {
   const [search, setSearch] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
   const [messageBusy, setMessageBusy] = useState(false);
-  const [activeChat, setActiveChat] = useState<{
-    conversationId: string;
-    partner: { _id: string; fullname?: string; profile_picture?: string };
-  } | null>(null);
-  useChatRoomChrome(!!activeChat);
+  const navigation = useNavigation();
   const currentUserId = String((user as any)?._id ?? (user as any)?.id ?? "");
 
   const listPad = useMemo(
@@ -313,8 +316,8 @@ export function CommunityScreen() {
         const convId = conversation?._id ?? conversation?.conversationId;
         if (convId) {
           queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
-          setActiveChat({
-            conversationId: convId,
+          openChatInTab(navigation, {
+            conversationId: String(convId),
             partner: { _id: userId, fullname: name, profile_picture: picture },
           });
         }
@@ -331,19 +334,6 @@ export function CommunityScreen() {
     },
     [queryClient, t]
   );
-
-  if (activeChat) {
-    return (
-      <ChatRoomScreen
-        conversationId={activeChat.conversationId}
-        partner={activeChat.partner}
-        onGoBack={() => {
-          setActiveChat(null);
-          queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
-        }}
-      />
-    );
-  }
 
   if (isLoading) {
     return (

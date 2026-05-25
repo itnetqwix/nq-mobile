@@ -35,8 +35,8 @@ import {
 } from "../../home/api/homeApi";
 
 import { ShareClipsPanel } from "../components/ShareClipsPanel";
-import { useChatRoomChrome } from "../../chats/hooks/useChatRoomChrome";
-import { ChatRoomScreen } from "../../chats/screens/ChatRoomScreen";
+import { openChatInTab } from "../../chats/lib/openChatTab";
+import { useNavigation } from "@react-navigation/native";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 const TABS = [
@@ -244,11 +244,7 @@ export function FriendsScreen() {
   const [tab, setTab] = useState<Tab>("friends");
   const [messageBusy, setMessageBusy] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
-  const [activeChat, setActiveChat] = useState<{
-    conversationId: string;
-    partner: { _id: string; fullname?: string; profile_picture?: string };
-  } | null>(null);
-  useChatRoomChrome(!!activeChat);
+  const navigation = useNavigation();
   const queryClient = useQueryClient();
 
   const { data: friends = [], isLoading: loadingFriends, isRefetching: refreshingFriends, refetch: refetchFriends } = useQuery({
@@ -382,8 +378,8 @@ export function FriendsScreen() {
         const convId = conversation?._id ?? conversation?.conversationId;
         if (convId) {
           queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
-          setActiveChat({
-            conversationId: convId,
+          openChatInTab(navigation, {
+            conversationId: String(convId),
             partner: { _id: userId, fullname: name, profile_picture: picture },
           });
         } else {
@@ -495,19 +491,6 @@ export function FriendsScreen() {
       />
     );
   };
-
-  if (activeChat) {
-    return (
-      <ChatRoomScreen
-        conversationId={activeChat.conversationId}
-        partner={activeChat.partner}
-        onGoBack={() => {
-          setActiveChat(null);
-          queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
-        }}
-      />
-    );
-  }
 
   return (
     <View style={styles.root}>

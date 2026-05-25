@@ -55,6 +55,7 @@ import {
 } from "../lib/chatSearchUtils";
 import { useChatE2E } from "../hooks/useChatE2E";
 import { isEncryptedChatContent } from "../crypto/chatEncryption";
+import { haptics } from "../../../lib/haptics";
 
 type Props = {
   conversationId: string;
@@ -200,6 +201,53 @@ const statusStyles = StyleSheet.create({
   row: { marginLeft: 4 },
 });
 
+// ─── Animated typing dots ──────────────────────────────────────────────────
+
+function TypingDots({ color = "#4CAF50" }: { color?: string }) {
+  const dot1 = useRef(new Animated.Value(0)).current;
+  const dot2 = useRef(new Animated.Value(0)).current;
+  const dot3 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const bounce = (v: Animated.Value, delay: number) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(v, { toValue: 1, duration: 350, useNativeDriver: true }),
+          Animated.timing(v, { toValue: 0, duration: 350, useNativeDriver: true }),
+        ])
+      );
+    const a1 = bounce(dot1, 0);
+    const a2 = bounce(dot2, 120);
+    const a3 = bounce(dot3, 240);
+    a1.start();
+    a2.start();
+    a3.start();
+    return () => {
+      a1.stop();
+      a2.stop();
+      a3.stop();
+    };
+  }, [dot1, dot2, dot3]);
+
+  const dotStyle = (v: Animated.Value) => ({
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: color,
+    opacity: v.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] }),
+    transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [0, -2] }) }],
+  });
+
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+      <Animated.View style={dotStyle(dot1)} />
+      <Animated.View style={dotStyle(dot2)} />
+      <Animated.View style={dotStyle(dot3)} />
+    </View>
+  );
+}
+
 function useChatRoomStyles() {
   return useThemedStyles((themeColors) => StyleSheet.create({
   root: { flex: 1, backgroundColor: themeColors.surface },
@@ -207,11 +255,16 @@ function useChatRoomStyles() {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    paddingHorizontal: 12,
-    paddingBottom: 12,
+    paddingHorizontal: 8,
+    paddingBottom: 10,
     backgroundColor: themeColors.surfaceElevated,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: themeColors.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
   },
   keyboardWrap: { flex: 1 },
   backBtn: { marginRight: -2 },
@@ -248,27 +301,35 @@ function useChatRoomStyles() {
   messageRow: {
     width: "100%",
     flexDirection: "row",
-    paddingVertical: 3,
+    paddingVertical: 2,
   },
   messageRowMine: { justifyContent: "flex-end" },
   messageRowTheirs: { justifyContent: "flex-start" },
   bubble: {
-    maxWidth: "80%",
+    maxWidth: "82%",
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 16,
+    borderRadius: 18,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 1.5,
+    elevation: 1,
   },
-  bubbleMine: { backgroundColor: themeColors.brandNavy, borderBottomRightRadius: 4 },
+  bubbleMine: { backgroundColor: themeColors.brandNavy, borderBottomRightRadius: 6 },
   bubbleTheirs: {
     backgroundColor: themeColors.surfaceElevated,
-    borderBottomLeftRadius: 4,
-    borderWidth: 1,
-    borderColor: themeColors.border,
+    borderBottomLeftRadius: 6,
   },
   composer: {
     backgroundColor: themeColors.surfaceElevated,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: themeColors.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 4,
   },
   replyBar: {
     flexDirection: "row",
@@ -322,17 +383,48 @@ function useChatRoomStyles() {
   inputBar: {
     flexDirection: "row",
     alignItems: "flex-end",
-    gap: 4,
-    paddingHorizontal: 8,
+    gap: 6,
+    paddingHorizontal: 10,
     paddingTop: 8,
   },
-  iconBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
-  textInput: {
-    flex: 1, fontSize: 15, color: themeColors.text, backgroundColor: themeColors.surfaceMuted,
-    borderRadius: 20, paddingHorizontal: 14, paddingTop: 8, paddingBottom: 8,
-    maxHeight: 100, textAlignVertical: "center",
+  iconBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  inputWrap: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    backgroundColor: themeColors.surfaceMuted,
+    borderRadius: 24,
+    paddingLeft: 14,
+    paddingRight: 6,
+    paddingVertical: 4,
+    minHeight: 44,
+    gap: 4,
   },
-  sendBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: themeColors.brandNavy, alignItems: "center", justifyContent: "center" },
+  textInput: {
+    flex: 1, fontSize: 15.5, lineHeight: 20, color: themeColors.text,
+    paddingTop: Platform.OS === "ios" ? 10 : 6,
+    paddingBottom: Platform.OS === "ios" ? 10 : 6,
+    maxHeight: 120, textAlignVertical: "center",
+  },
+  inputAccessoryBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center", marginBottom: Platform.OS === "ios" ? 2 : 4 },
+  sendBtn: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: themeColors.brandNavy,
+    alignItems: "center", justifyContent: "center",
+    shadowColor: themeColors.brandNavy,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  micBtn: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: themeColors.brandNavy,
+    alignItems: "center", justifyContent: "center",
+    shadowColor: themeColors.brandNavy,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   recordBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -346,12 +438,26 @@ function useChatRoomStyles() {
     justifyContent: "center",
     paddingVertical: space.xl,
     paddingHorizontal: space.lg,
+    gap: space.sm,
+  },
+  emptyChatIcon: {
+    width: 76, height: 76, borderRadius: 38,
+    backgroundColor: `${themeColors.brandNavy}10`,
+    alignItems: "center", justifyContent: "center",
+  },
+  emptyChatTitle: {
+    ...typography.titleSm,
+    color: themeColors.text,
+    textAlign: "center",
   },
   emptyChatText: {
     ...typography.bodyMd,
     color: themeColors.textMuted,
     textAlign: "center",
+    lineHeight: 20,
   },
+  typingDots: { flexDirection: "row", alignItems: "center", gap: 3, marginRight: 6 },
+  typingDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: "#4CAF50" },
   recordDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: "#F44336" },
   recordTime: { fontSize: 16, fontWeight: "600", color: themeColors.text, fontVariant: ["tabular-nums"] },
   recordLabel: { fontSize: 13, color: themeColors.textMuted },
@@ -878,6 +984,7 @@ export function ChatRoomScreen({
     const plain = text.trim();
     if (!plain || isSendingMessage) return;
     if (!isGroup && !partner?._id) return;
+    haptics.press();
     const content = chatE2E.canEncrypt ? chatE2E.encryptForSend(plain) : plain;
     setText("");
     setShowEmoji(false);
@@ -924,10 +1031,13 @@ export function ChatRoomScreen({
       setLocalMessages((prev) => prev.filter((m) => m._id !== tempId));
       const status = e?.response?.status;
       if (status === 429) {
+        haptics.warning();
         setRateLimited(true);
         const msg = e?.response?.data?.data?.error ?? e?.response?.data?.error ?? "Message limit reached.";
         setChatPolicy((p) => p ? { ...p, remainingToday: 0 } : p);
         Alert.alert("Limit Reached", msg);
+      } else {
+        haptics.error();
       }
     } finally {
       setIsSendingMessage(false);
@@ -1069,6 +1179,7 @@ export function ChatRoomScreen({
       if (!perm.granted) { Alert.alert("Permission", "Microphone access is required."); return; }
       await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
       const { recording: rec } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      haptics.impact();
       setRecording(rec);
       setRecordSecs(0);
       recordTimerRef.current = setInterval(() => setRecordSecs((s) => s + 1), 1000);
@@ -1078,6 +1189,7 @@ export function ChatRoomScreen({
   }, []);
 
   const cancelRecording = useCallback(async () => {
+    haptics.warning();
     if (recordTimerRef.current) clearInterval(recordTimerRef.current);
     try { await recording?.stopAndUnloadAsync(); } catch { /* already stopped */ }
     setRecording(null);
@@ -1094,15 +1206,20 @@ export function ChatRoomScreen({
       setRecording(null);
       setRecordSecs(0);
       if (!uri) return;
+      haptics.press();
       await sendMediaMessage(uri, `voice_${Date.now()}.m4a`, "audio/mp4", "voice");
     } catch (e: any) {
       setRecording(null);
       setRecordSecs(0);
+      haptics.error();
       Alert.alert("Error", e?.message ?? "Could not send voice note.");
     }
   }, [recording, sendMediaMessage]);
 
-  const insertEmoji = useCallback((emoji: string) => setText((prev) => prev + emoji), []);
+  const insertEmoji = useCallback((emoji: string) => {
+    haptics.select();
+    setText((prev) => prev + emoji);
+  }, []);
 
   // ─── Profile actions ──────────────────────────────────────────────────────
 
@@ -1250,6 +1367,7 @@ export function ChatRoomScreen({
         : null;
 
       const onLongPressMsg = () => {
+        haptics.impact();
         const buttons: { text: string; style?: "destructive" | "cancel"; onPress?: () => void }[] =
           [
             {
@@ -1453,11 +1571,14 @@ export function ChatRoomScreen({
           </View>
           <View style={styles.headerInfo}>
             <Text style={styles.headerName} numberOfLines={1}>{partnerName}</Text>
-            {!!headerSubtitle && (
-              <Text style={[styles.headerSub, partnerTyping && styles.headerSubTyping]} numberOfLines={1}>
-                {headerSubtitle}
-              </Text>
-            )}
+            {partnerTyping ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 1 }}>
+                <TypingDots color="#4CAF50" />
+                <Text style={[styles.headerSub, styles.headerSubTyping]}>typing…</Text>
+              </View>
+            ) : !!headerSubtitle ? (
+              <Text style={styles.headerSub} numberOfLines={1}>{headerSubtitle}</Text>
+            ) : null}
           </View>
         </Pressable>
         <Pressable onPress={handleProfileAction} hitSlop={10} style={styles.headerMore}>
@@ -1496,8 +1617,20 @@ export function ChatRoomScreen({
           ]}
           ListEmptyComponent={
             <View style={styles.emptyChat}>
+              <View style={styles.emptyChatIcon}>
+                <Ionicons
+                  name={isGroup ? "people-outline" : "chatbubbles-outline"}
+                  size={36}
+                  color={themeColors.brandNavy}
+                />
+              </View>
+              <Text style={styles.emptyChatTitle}>
+                {isGroup ? `Say hi to ${partnerName}` : `Start chatting with ${partnerName}`}
+              </Text>
               <Text style={styles.emptyChatText}>
-                Say hello — your messages are private and secure.
+                {chatE2E.isE2EActive
+                  ? "Messages here are end-to-end encrypted. Only you and the other person can read them."
+                  : "Send a message to break the ice. Photos, videos and voice notes are supported."}
               </Text>
             </View>
           }
@@ -1562,39 +1695,53 @@ export function ChatRoomScreen({
                 </View>
               ) : (
                 <>
-                  <Pressable onPress={() => setShowAttach(true)} hitSlop={8} style={styles.iconBtn}>
-                    <Ionicons name="add-circle-outline" size={26} color={themeColors.brandNavy} />
-                  </Pressable>
-                  <Pressable
-                    onPress={() => {
-                      if (showEmoji) {
-                        setShowEmoji(false);
-                      } else {
-                        Keyboard.dismiss();
-                        setShowEmoji(true);
-                      }
-                    }}
-                    hitSlop={8}
-                    style={styles.iconBtn}
-                  >
-                    <Ionicons
-                      name={showEmoji ? "happy" : "happy-outline"}
-                      size={24}
-                      color={showEmoji ? themeColors.brandNavy : themeColors.textMuted}
+                  <View style={styles.inputWrap}>
+                    <Pressable
+                      onPress={() => {
+                        if (showEmoji) {
+                          setShowEmoji(false);
+                        } else {
+                          Keyboard.dismiss();
+                          setShowEmoji(true);
+                        }
+                      }}
+                      hitSlop={6}
+                      style={styles.inputAccessoryBtn}
+                    >
+                      <Ionicons
+                        name={showEmoji ? "happy" : "happy-outline"}
+                        size={22}
+                        color={showEmoji ? themeColors.brandNavy : themeColors.textMuted}
+                      />
+                    </Pressable>
+                    <TextInput
+                      style={styles.textInput}
+                      value={text}
+                      onChangeText={handleTextChange}
+                      placeholder="Message"
+                      placeholderTextColor={themeColors.textMuted}
+                      multiline
+                      maxLength={2000}
+                      onFocus={() => setShowEmoji(false)}
                     />
-                  </Pressable>
-                  <TextInput
-                    style={styles.textInput}
-                    value={text}
-                    onChangeText={handleTextChange}
-                    placeholder="Message..."
-                    placeholderTextColor={themeColors.textMuted}
-                    multiline
-                    maxLength={2000}
-                    onFocus={() => setShowEmoji(false)}
-                  />
+                    <Pressable
+                      onPress={() => {
+                        haptics.tap();
+                        setShowAttach(true);
+                      }}
+                      hitSlop={6}
+                      style={styles.inputAccessoryBtn}
+                    >
+                      <Ionicons name="attach" size={22} color={themeColors.textMuted} />
+                    </Pressable>
+                  </View>
                   {text.trim() ? (
-                    <Pressable style={styles.sendBtn} onPress={sendMessage} disabled={isSendingMessage}>
+                    <Pressable
+                      style={({ pressed }) => [styles.sendBtn, pressed && { transform: [{ scale: 0.94 }] }]}
+                      onPress={sendMessage}
+                      disabled={isSendingMessage}
+                      accessibilityLabel="Send message"
+                    >
                       {isSendingMessage ? (
                         <ActivityIndicator size={16} color="#fff" />
                       ) : (
@@ -1602,8 +1749,12 @@ export function ChatRoomScreen({
                       )}
                     </Pressable>
                   ) : (
-                    <Pressable style={styles.iconBtn} onPress={startRecording}>
-                      <Ionicons name="mic-outline" size={26} color={themeColors.brandNavy} />
+                    <Pressable
+                      style={({ pressed }) => [styles.micBtn, pressed && { transform: [{ scale: 0.94 }] }]}
+                      onPress={startRecording}
+                      accessibilityLabel="Record voice message"
+                    >
+                      <Ionicons name="mic" size={20} color="#fff" />
                     </Pressable>
                   )}
                 </>

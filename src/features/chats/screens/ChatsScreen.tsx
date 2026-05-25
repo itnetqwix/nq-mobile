@@ -23,6 +23,7 @@ import { queryKeys } from "../../../lib/queryKeys";
 import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
+import { haptics } from "../../../lib/haptics";
 import { useAuth } from "../../auth/context/AuthContext";
 import { useOnlinePresence } from "../../socket/useOnlinePresence";
 import { fetchFriends } from "../../home/api/homeApi";
@@ -61,16 +62,23 @@ function formatLastMessagePreview(raw: string, t: TFunction): string {
   return s;
 }
 
-function timeAgo(dateStr?: string): string {
+function formatRowTimestamp(dateStr?: string): string {
   if (!dateStr) return "";
   try {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const minutes = Math.floor(diff / 60000);
-    if (minutes < 1) return "now";
-    if (minutes < 60) return `${minutes}m`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h`;
-    return `${Math.floor(hours / 24)}d`;
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return "";
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const diffDays = Math.round(
+      (startOfToday.getTime() - startOfDay.getTime()) / (24 * 60 * 60 * 1000)
+    );
+    if (diffDays === 0) {
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return d.toLocaleDateString([], { weekday: "short" });
+    return d.toLocaleDateString([], { day: "2-digit", month: "short" });
   } catch {
     return "";
   }
@@ -113,7 +121,7 @@ type ChatPartner = {
   profile_picture?: string;
 };
 
-export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
+export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const styles = useThemedStyles((palette) => StyleSheet.create({
@@ -175,19 +183,54 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
   rowName: { ...typography.subtitle, color: palette.text, flex: 1, marginRight: 8 },
   rowTime: { ...typography.caption, color: palette.textMuted },
   rowBottom: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 3 },
-  rowPreviewWrap: { flex: 1, marginRight: 8, minWidth: 0 },
-  rowOnline: { fontSize: 12, fontWeight: "600", color: "#43A047", marginBottom: 1 },
-  rowPreview: { ...typography.bodySm, color: palette.textMuted },
+  rowPreviewWrap: { flex: 1, marginRight: 8, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 4 },
+  rowOnline: { fontSize: 11, fontWeight: "600", color: "#43A047" },
+  rowPreview: { ...typography.bodySm, color: palette.textMuted, flex: 1 },
+  rowPreviewUnread: { color: palette.text, fontWeight: "600" },
   unreadBadge: {
     backgroundColor: palette.brandNavy,
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+    borderRadius: 11,
+    minWidth: 22,
+    height: 22,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 5,
+    paddingHorizontal: 6,
   },
   unreadText: { fontSize: 11, color: palette.brandTextOn, fontWeight: "700" },
+  filterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: space.md,
+    paddingBottom: 6,
+  },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: palette.surfaceElevated,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  filterChipActive: {
+    backgroundColor: palette.brandNavy,
+    borderColor: palette.brandNavy,
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: palette.textMuted,
+  },
+  filterChipTextActive: { color: palette.brandTextOn },
+  filterChipCount: {
+    fontSize: 10,
+    color: palette.textMuted,
+    fontWeight: "700",
+  },
+  filterChipCountActive: { color: palette.brandTextOn },
   avatarFallback: {
     backgroundColor: palette.brandNavy,
     alignItems: "center",
@@ -341,6 +384,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
     groupAdminId?: string;
     groupDescription?: string;
   } | null>(null);
+  const [listFilter, setListFilter] = useState<"all" | "unread" | "groups">("all");
   useChatRoomChrome(!!activeChat);
   const [showNewChat, setShowNewChat] = useState(false);
   const [friendSearch, setFriendSearch] = useState("");
@@ -353,6 +397,24 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
   const [groupAvatarUri, setGroupAvatarUri] = useState<string | null>(null);
   const [showAllSelectedMembers, setShowAllSelectedMembers] = useState(false);
   const { isOnline } = useOnlinePresence();
+
+  // Open a conversation requested from another screen (Community / Friends /
+  // dashboard quick action). We clear the param once handled so the same
+  // payload doesn't reopen on every navigation event.
+  React.useEffect(() => {
+    const payload = (route?.params as { open?: any } | undefined)?.open;
+    if (!payload?.conversationId) return;
+    setActiveChat({
+      conversationId: String(payload.conversationId),
+      partner: payload.partner,
+      isGroup: !!payload.isGroup,
+      memberCount: payload.memberCount,
+      groupAdminId: payload.groupAdminId,
+      groupDescription: payload.groupDescription,
+    });
+    navigation.setParams({ open: undefined } as never);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route?.params]);
 
   const { data: conversations = [], isLoading, isRefetching, refetch } = useQuery({
     queryKey: queryKeys.chats.conversations,
@@ -418,13 +480,32 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
   }, []);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return conversations;
+    let list = conversations as any[];
+    if (listFilter === "unread") {
+      list = list.filter((c: any) => (c?.unreadCount ?? 0) > 0);
+    } else if (listFilter === "groups") {
+      list = list.filter((c: any) => !!c?.isGroup);
+    }
+    if (!search.trim()) return list;
     const q = search.toLowerCase();
-    return conversations.filter((c: any) => {
+    return list.filter((c: any) => {
       const p = getPartner(c);
-      return (p.fullname ?? "").toLowerCase().includes(q);
+      const lastMsg = String(c?.lastMessage ?? c?.last_message ?? "").toLowerCase();
+      return (
+        (p.fullname ?? "").toLowerCase().includes(q) ||
+        lastMsg.includes(q)
+      );
     });
-  }, [conversations, search, getPartner]);
+  }, [conversations, search, getPartner, listFilter]);
+
+  const totalUnread = useMemo(
+    () => conversations.reduce((acc: number, c: any) => acc + (c?.unreadCount ?? 0), 0),
+    [conversations]
+  );
+  const groupCount = useMemo(
+    () => conversations.filter((c: any) => !!c?.isGroup).length,
+    [conversations]
+  );
 
   const friendsList = useMemo(() => {
     const items: ChatPartner[] = [];
@@ -615,6 +696,38 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
         </Pressable>
       </View>
 
+      <View style={styles.filterRow}>
+        {(
+          [
+            { id: "all", label: t("chats.filterAll", { defaultValue: "All" }), count: conversations.length },
+            { id: "unread", label: t("chats.filterUnread", { defaultValue: "Unread" }), count: totalUnread },
+            { id: "groups", label: t("chats.filterGroups", { defaultValue: "Groups" }), count: groupCount },
+          ] as const
+        ).map((chip) => {
+          const active = listFilter === chip.id;
+          return (
+            <Pressable
+              key={chip.id}
+              onPress={() => {
+                haptics.select();
+                setListFilter(chip.id as typeof listFilter);
+              }}
+              style={[styles.filterChip, active && styles.filterChipActive]}
+              hitSlop={4}
+            >
+              <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+                {chip.label}
+              </Text>
+              {chip.count > 0 ? (
+                <Text style={[styles.filterChipCount, active && styles.filterChipCountActive]}>
+                  {chip.count > 99 ? "99+" : chip.count}
+                </Text>
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </View>
+
       {groupInvites.length > 0 ? (
         <View style={styles.inviteSection}>
           <Text style={styles.inviteTitle}>{t("chats.groupRequests")}</Text>
@@ -675,8 +788,15 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
             const partner = getPartner(item);
             const lastMsg = item.lastMessage ?? item.last_message ?? "";
             const unread = item.unreadCount ?? 0;
-            const time = timeAgo(item.lastMessageAt ?? item.updatedAt);
+            const time = formatRowTimestamp(item.lastMessageAt ?? item.updatedAt);
             const isGroup = !!(item.isGroup || (partner as any).isGroup);
+            const lastMsgKind = (() => {
+              const s = String(lastMsg).trim();
+              if (s === "[image]") return "image" as const;
+              if (s === "[video]" || s === "[clip]") return "video" as const;
+              if (s === "[voice]") return "voice" as const;
+              return "text" as const;
+            })();
             const participants: any[] = item?.participants ?? [];
             const otherParticipant = participants.find(
               (p: any) => String(p?._id) !== currentUserId
@@ -688,7 +808,8 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
             return (
               <Pressable
                 style={({ pressed }) => [styles.row, pressed && { opacity: 0.8 }]}
-                onPress={() =>
+                onPress={() => {
+                  haptics.tap();
                   setActiveChat({
                     conversationId: item._id,
                     isGroup,
@@ -701,9 +822,10 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
                       profile_picture: partner.profile_picture,
                       isGroup,
                     },
-                  })
-                }
+                  });
+                }}
                 onLongPress={() => {
+                  haptics.impact();
                   Alert.alert(partner.fullname ?? t("chats.chat"), undefined, [
                     {
                       text: t("chats.archive"),
@@ -755,20 +877,29 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
                   </View>
                   <View style={styles.rowBottom}>
                     <View style={styles.rowPreviewWrap}>
-                      {partnerOnline && (
-                        <Text style={styles.rowOnline}>{t("chats.online")}</Text>
-                      )}
-                      <Text style={styles.rowPreview} numberOfLines={1}>
+                      {lastMsgKind === "image" ? (
+                        <Ionicons name="image-outline" size={14} color={c.textMuted} />
+                      ) : lastMsgKind === "video" ? (
+                        <Ionicons name="videocam-outline" size={14} color={c.textMuted} />
+                      ) : lastMsgKind === "voice" ? (
+                        <Ionicons name="mic-outline" size={14} color={c.textMuted} />
+                      ) : null}
+                      <Text
+                        style={[styles.rowPreview, unread > 0 && styles.rowPreviewUnread]}
+                        numberOfLines={1}
+                      >
                         {formatLastMessagePreview(lastMsg, t) || t("chats.tapToChat")}
                       </Text>
                     </View>
-                    {unread > 0 && (
+                    {unread > 0 ? (
                       <View style={styles.unreadBadge}>
                         <Text style={styles.unreadText}>
                           {unread > 99 ? "99+" : unread}
                         </Text>
                       </View>
-                    )}
+                    ) : partnerOnline ? (
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#4CAF50" }} />
+                    ) : null}
                   </View>
                 </View>
               </Pressable>
@@ -790,7 +921,10 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
       {/* New Chat FAB */}
       <Pressable
         style={({ pressed }) => [styles.fab, pressed && { transform: [{ scale: 0.92 }] }]}
-        onPress={() => setShowNewChat(true)}
+        onPress={() => {
+          haptics.press();
+          setShowNewChat(true);
+        }}
       >
         <Ionicons name="create-outline" size={24} color={c.brandTextOn} />
       </Pressable>

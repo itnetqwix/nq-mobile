@@ -1,6 +1,7 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import { useNavigation } from "@react-navigation/native";
+import React, { useEffect } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChatsScreen } from "../features/chats/screens/ChatsScreen";
 import { GuestTabGateScreen } from "../features/auth/screens/GuestTabGateScreen";
@@ -10,6 +11,7 @@ import { useThemeColors } from "../theme";
 import { AppScreenHeader } from "./AppScreenHeader";
 import { HomeNavigator } from "./HomeNavigator";
 import { TabSwipeShell } from "./TabSwipeShell";
+import { haptics } from "../lib/haptics";
 import i18n from "../i18n";
 import type { MainTabParamList } from "./types";
 
@@ -31,12 +33,28 @@ export function MainTabs() {
   const insets = useSafeAreaInsets();
   const c = useThemeColors();
   const isGuest = useGuestMode();
+  const navigation = useNavigation();
   const tabPadBottom = Math.max(insets.bottom, 6);
   const tabPadTop = 6;
   const tabMinHeight = 52 + tabPadTop + tabPadBottom;
 
+  // Defensive: any ancestor of MainTabs (the Drawer "Tabs" screen and the
+  // root Stack "Main" screen) should *never* show its own header. A previous
+  // buggy version of useChatRoomChrome could flip those to `headerShown:true`
+  // and persist the override, leaking the route name "Main" and the drawer
+  // title "NetQwix" above the dashboard. Force them headerless on mount.
+  useEffect(() => {
+    const parent: any = navigation?.getParent?.();        // Drawer
+    const grandparent: any = parent?.getParent?.();        // Root Stack
+    try { parent?.setOptions?.({ headerShown: false }); } catch {}
+    try { grandparent?.setOptions?.({ headerShown: false }); } catch {}
+  }, [navigation]);
+
   return (
     <Tab.Navigator
+      screenListeners={{
+        tabPress: () => haptics.tap(),
+      }}
       screenOptions={{
         headerShown: false,
         lazy: true,

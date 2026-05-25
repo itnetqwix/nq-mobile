@@ -46,10 +46,29 @@ export type HomeStackParamList = {
 /** @deprecated Use HomeStackParamList */
 export type MenuStackParamList = HomeStackParamList;
 
+export type ChatTabOpenPayload = {
+  conversationId: string;
+  partner: {
+    _id: string;
+    fullname?: string;
+    profile_picture?: string;
+    isGroup?: boolean;
+  };
+  isGroup?: boolean;
+  memberCount?: number;
+  groupAdminId?: string;
+  groupDescription?: string;
+};
+
 export type MainTabParamList = {
   Home: NavigatorScreenParams<HomeStackParamList>;
   Schedule: undefined;
-  Chats: undefined;
+  Chats:
+    | {
+        /** Open a specific conversation immediately. */
+        open?: ChatTabOpenPayload;
+      }
+    | undefined;
 };
 
 /** Drawer wraps the bottom-tab shell — mirrors web `DashboardLayout` + left rail. */

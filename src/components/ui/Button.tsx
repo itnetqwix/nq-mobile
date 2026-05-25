@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import {
   ActivityIndicator,
+  type GestureResponderEvent,
   Pressable,
   type PressableProps,
   StyleSheet,
@@ -21,6 +22,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import type { AppColors } from "../../theme";
+import { haptics } from "../../lib/haptics";
 import { radii, space, typography, useThemeColors } from "../../theme";
 
 export type ButtonVariant =
@@ -43,6 +45,13 @@ export type ButtonProps = Omit<PressableProps, "children"> & {
   rightIcon?: keyof typeof Ionicons.glyphMap;
   /** Full width by default — pass false to shrink to content. */
   fullWidth?: boolean;
+  /**
+   * Haptic feedback played on tap. Defaults to a light selection-style
+   * "tap" for ghost/link/secondary buttons, a firmer "press" for the
+   * primary CTA, and a warning thump for `danger`. Pass `"none"` to opt
+   * out entirely.
+   */
+  haptic?: "auto" | "none" | "tap" | "press" | "impact" | "warning" | "error" | "success";
   style?: ViewStyle;
 };
 
@@ -56,6 +65,8 @@ export function Button({
   leftIcon,
   rightIcon,
   fullWidth = true,
+  haptic = "auto",
+  onPress,
   style,
   ...rest
 }: ButtonProps) {
@@ -66,9 +77,28 @@ export function Button({
   const sizing = SIZE_MAP[size];
   const labelColor = palette.text;
 
+  const handlePress = React.useCallback(
+    (e: GestureResponderEvent) => {
+      if (haptic !== "none" && !isDisabled) {
+        const resolved =
+          haptic === "auto"
+            ? variant === "primary"
+              ? "press"
+              : variant === "danger"
+                ? "warning"
+                : "tap"
+            : haptic;
+        haptics[resolved]?.();
+      }
+      onPress?.(e);
+    },
+    [haptic, isDisabled, onPress, variant]
+  );
+
   return (
     <Pressable
       {...rest}
+      onPress={handlePress}
       disabled={isDisabled}
       accessibilityRole="button"
       accessibilityState={{ disabled: isDisabled, busy: !!loading }}

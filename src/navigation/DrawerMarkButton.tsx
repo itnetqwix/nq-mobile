@@ -2,6 +2,7 @@ import { DrawerActions, useNavigation } from "@react-navigation/native";
 import React from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { NetqwixMark } from "../components/brand/NetqwixMark";
+import { haptics } from "../lib/haptics";
 import { radii, useThemeColors } from "../theme";
 
 const BOX_SIZE = 40;
@@ -15,7 +16,10 @@ export function DrawerMarkButton() {
 
   return (
     <Pressable
-      onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+      onPress={() => {
+        haptics.tap();
+        navigation.dispatch(DrawerActions.openDrawer());
+      }}
       style={({ pressed }) => [styles.hit, pressed && styles.pressed]}
       accessibilityRole="button"
       accessibilityLabel="Open menu"
