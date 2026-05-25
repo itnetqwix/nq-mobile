@@ -193,6 +193,14 @@ export const API_ROUTES = {
     withdraw: "/wallet/withdraw",
     config: "/wallet/config",
     transactionDetail: (id: string) => `/wallet/transactions/${id}` as const,
+    /** Saved Stripe payment methods (last-4, brand, expiry). */
+    paymentMethods: "/wallet/payment-methods",
+    paymentMethod: (id: string) => `/wallet/payment-methods/${id}` as const,
+    paymentMethodDefault: (id: string) => `/wallet/payment-methods/${id}/default` as const,
+    /** Auto top-up rule (server-stored: threshold + reload amount + source). */
+    autoTopUp: "/wallet/auto-topup",
+    /** Refund + payment timeline events for a transaction. */
+    refundTimeline: (id: string) => `/wallet/transactions/${id}/timeline` as const,
   },
   storage: {
     clipsPresign: "/storage/clips/presign",

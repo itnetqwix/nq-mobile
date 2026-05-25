@@ -204,3 +204,143 @@ export function buildTrainerEarningsCsvUrl(
 ): string {
   return `${API_ROUTES.wallet.trainerEarningsCsv}?range=${range}`;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Saved payment methods
+ * ─────────────────────────────────────────────────────────────────────────
+ * The backend mirrors what Stripe returns on `PaymentMethod.list` plus a
+ * `default` flag. We keep the shape small and stable so older app versions
+ * keep working even if Stripe adds more brands.
+ */
+
+export type SavedPaymentMethod = {
+  id: string;
+  brand: "visa" | "mastercard" | "amex" | "discover" | "diners" | "jcb" | "unionpay" | "unknown" | string;
+  last4: string;
+  expMonth?: number;
+  expYear?: number;
+  isDefault?: boolean;
+  /** ISO timestamp from Stripe for "added on" rows in the saved-cards UI. */
+  addedAt?: string;
+  /** Optional wallet provider for non-card methods (e.g. apple_pay). */
+  walletType?: "apple_pay" | "google_pay" | null;
+};
+
+export async function fetchSavedPaymentMethods(): Promise<SavedPaymentMethod[]> {
+  try {
+    const res = await apiClient.get(API_ROUTES.wallet.paymentMethods);
+    const root = res.data as { data?: SavedPaymentMethod[] | { items?: SavedPaymentMethod[] } };
+    const inner = root?.data;
+    if (Array.isArray(inner)) return inner;
+    if (inner && Array.isArray((inner as { items?: SavedPaymentMethod[] }).items)) {
+      return (inner as { items: SavedPaymentMethod[] }).items;
+    }
+    return Array.isArray(res.data) ? (res.data as SavedPaymentMethod[]) : [];
+  } catch {
+    /**
+     * Returning [] keeps the saved-cards screen rendering its empty state
+     * instead of an error banner — endpoint is optional on legacy backends.
+     */
+    return [];
+  }
+}
+
+export async function deleteSavedPaymentMethod(id: string): Promise<void> {
+  await apiClient.delete(API_ROUTES.wallet.paymentMethod(id));
+}
+
+export async function makePaymentMethodDefault(id: string): Promise<void> {
+  await apiClient.post(API_ROUTES.wallet.paymentMethodDefault(id));
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Auto top-up rule
+ * ─────────────────────────────────────────────────────────────────────────
+ * Server stores one rule per wallet. Trainees can set a threshold (when
+ * balance drops below) and a reload amount. `paymentMethodId` lets us
+ * charge silently — falls back to the default card if missing.
+ */
+
+export type AutoTopUpRule = {
+  enabled: boolean;
+  /** Threshold in minor units of the wallet currency. */
+  thresholdMinor: number;
+  /** Reload amount in minor units. */
+  reloadMinor: number;
+  /** Stripe payment-method id used for the silent charge. */
+  paymentMethodId?: string | null;
+  /** Server-issued snapshot of when the rule last fired. */
+  lastTriggeredAt?: string | null;
+  /** "succeeded" | "failed" | "pending" for the last attempt. */
+  lastStatus?: "succeeded" | "failed" | "pending" | null;
+  currency?: string;
+};
+
+export async function fetchAutoTopUpRule(): Promise<AutoTopUpRule | null> {
+  try {
+    const res = await apiClient.get(API_ROUTES.wallet.autoTopUp);
+    const root = res.data as { data?: AutoTopUpRule | null };
+    return (root?.data ?? null) as AutoTopUpRule | null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveAutoTopUpRule(rule: Partial<AutoTopUpRule>): Promise<AutoTopUpRule> {
+  const res = await apiClient.put(API_ROUTES.wallet.autoTopUp, rule);
+  return ((res.data as { data?: AutoTopUpRule })?.data ?? res.data) as AutoTopUpRule;
+}
+
+export async function disableAutoTopUpRule(): Promise<void> {
+  await apiClient.delete(API_ROUTES.wallet.autoTopUp);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Refund + payment timeline
+ * ─────────────────────────────────────────────────────────────────────────
+ * One transaction can produce multiple events: charged → refund initiated
+ * → bank settlement → received. Each event has an ISO timestamp and an
+ * optional payload (Stripe charge id, bank reference, etc.).
+ */
+
+export type RefundTimelineEvent = {
+  id?: string;
+  /**
+   * Backend uses a short kebab key like "charge", "refund-initiated",
+   * "refund-bank", "refund-completed", "withdrawal-bank", "payout-paid".
+   * Unknown keys fall through to a generic icon so future event types
+   * still render gracefully.
+   */
+  type: string;
+  /** Human label fallback if the client doesn't translate `type`. */
+  label?: string;
+  timestamp?: string | null;
+  status?: "pending" | "completed" | "failed" | string;
+  detail?: string | null;
+  /** Optional Stripe / bank reference id. */
+  reference?: string | null;
+};
+
+export type RefundTimelineResponse = {
+  /** Sorted oldest → newest. */
+  events: RefundTimelineEvent[];
+  /** Mirror of the underlying transaction's currency. */
+  currency?: string;
+};
+
+export async function fetchRefundTimeline(id: string): Promise<RefundTimelineResponse> {
+  try {
+    const res = await apiClient.get(API_ROUTES.wallet.refundTimeline(id));
+    const root = (res.data as { data?: RefundTimelineResponse })?.data ?? res.data;
+    const events = (root as { events?: RefundTimelineEvent[] })?.events ?? [];
+    const currency = (root as { currency?: string })?.currency;
+    return { events: Array.isArray(events) ? events : [], currency };
+  } catch {
+    /**
+     * Returning empty keeps the timeline UI hidden gracefully on backends
+     * that don't expose the endpoint yet — same behaviour as before but
+     * without a thrown error logged in dev.
+     */
+    return { events: [] };
+  }
+}

@@ -26,6 +26,9 @@ export const queryKeys = {
     trainerPulse: ["wallet", "trainerPulse"] as const,
     trainerEarningsSeries: (range: "weekly" | "monthly") =>
       ["wallet", "earningsSeries", range] as const,
+    paymentMethods: ["wallet", "paymentMethods"] as const,
+    autoTopUp: ["wallet", "autoTopUp"] as const,
+    refundTimeline: (id: string) => ["wallet", "refundTimeline", id] as const,
   },
   friends: {
     all: ["friends"] as const,

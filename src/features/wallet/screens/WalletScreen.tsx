@@ -17,6 +17,7 @@ import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { queryKeys } from "../../../lib/queryKeys";
+import { useCurrencyFormatter } from "../../../lib/intl";
 import {
   createTopUpIntent,
   fetchWalletBalance,
@@ -72,6 +73,7 @@ export function WalletScreen() {
   const [loading, setLoading] = useState(false);
 
   const isTrainee = accountType === AccountType.TRAINEE;
+  const fmt = useCurrencyFormatter();
 
   const { data: balance, isLoading } = useQuery({
     queryKey: queryKeys.wallet.balance,
@@ -151,12 +153,12 @@ export function WalletScreen() {
       <View style={styles.card}>
         <Text style={styles.label}>Available balance</Text>
         <Text style={styles.amount}>
-          ${(balance?.balances?.available ?? 0).toFixed(2)}{" "}
-          <Text style={styles.currency}>{balance?.currency ?? "USD"}</Text>
+          {fmt(balance?.balances?.available ?? 0, { currency: balance?.currency })}
         </Text>
         {(balance?.balances?.pending_release ?? 0) > 0 && (
           <Text style={styles.sub}>
-            Pending release: ${(balance?.balances?.pending_release ?? 0).toFixed(2)}
+            Pending release:{" "}
+            {fmt(balance?.balances?.pending_release ?? 0, { currency: balance?.currency })}
           </Text>
         )}
       </View>

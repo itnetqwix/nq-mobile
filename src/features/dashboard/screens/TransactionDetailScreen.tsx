@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useQuery } from "@tanstack/react-query";
-import React from "react";
+import React, { useMemo } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -15,12 +15,60 @@ import {
 import { Button, Pill } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import type { MenuStackParamList } from "../../../navigation/types";
-import { fetchBookingDetail, fetchWalletTransactionDetail } from "../../wallet/walletApi";
+import {
+  fetchBookingDetail,
+  fetchRefundTimeline,
+  fetchWalletTransactionDetail,
+  type RefundTimelineEvent,
+} from "../../wallet/walletApi";
+import { useCurrencyFormatter } from "../../../lib/intl";
+import { queryKeys } from "../../../lib/queryKeys";
 
 type Props = NativeStackScreenProps<MenuStackParamList, "TransactionDetail">;
 
+/**
+ * Friendly label for a timeline event `type`. Adding a new event server-side
+ * means a single line here; missing types still render the raw token so
+ * we never blank-out a section while waiting on copy.
+ */
+function timelineLabel(type: string): string {
+  switch (type) {
+    case "charge":
+      return "Payment charged";
+    case "refund-initiated":
+      return "Refund initiated";
+    case "refund-bank":
+      return "At bank";
+    case "refund-completed":
+      return "Refund received";
+    case "withdrawal-bank":
+      return "Sent to bank";
+    case "payout-paid":
+      return "Payout completed";
+    case "topup-pending":
+      return "Top-up pending";
+    case "topup-succeeded":
+      return "Top-up succeeded";
+    default:
+      return type.replace(/[-_]/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+  }
+}
+
+/**
+ * Step in the visible refund/payment progress strip. Each step renders
+ * as a dot with a label and (optional) timestamp; completed steps are
+ * filled in brand colour, active is outlined, pending is muted.
+ *
+ * Backend `type` strings drive which step group we belong to — we treat
+ * anything starting with `refund-` as a refund event so future granular
+ * states (`refund-rejected`, `refund-partial`) automatically appear in
+ * the strip without a frontend deploy.
+ */
+type TimelineStepStatus = "completed" | "active" | "pending" | "failed";
+
 export function TransactionDetailScreen({ navigation, route }: Props) {
   const c = useThemeColors();
+  const fmt = useCurrencyFormatter();
   const styles = useThemedStyles((palette) => StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: space.lg },
   errorText: { ...typography.bodyMd, color: palette.textMuted },
@@ -49,6 +97,40 @@ export function TransactionDetailScreen({ navigation, route }: Props) {
   rowValue: { ...typography.bodyMd, color: palette.text, fontWeight: "500" },
   copyRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   actions: { marginTop: space.lg, gap: space.sm },
+  timelineCard: {
+    backgroundColor: palette.surfaceElevated,
+    borderRadius: radii.md,
+    padding: space.md,
+    borderWidth: 1,
+    borderColor: palette.border,
+    gap: space.sm,
+  },
+  timelineRow: { flexDirection: "row", alignItems: "flex-start", gap: space.md },
+  /** Dot column (24px wide); the vertical connector line is drawn as a
+   *  taller view that hides under the next dot — that keeps each row a
+   *  single component and avoids a SVG dependency. */
+  timelineDotCol: { width: 24, alignItems: "center" },
+  timelineDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: palette.border,
+    backgroundColor: palette.surface,
+  },
+  timelineDotCompleted: { backgroundColor: palette.success, borderColor: palette.success },
+  timelineDotActive: { borderColor: palette.brandNavy, backgroundColor: palette.brandNavy },
+  timelineDotFailed: { backgroundColor: palette.danger, borderColor: palette.danger },
+  timelineConnector: {
+    flex: 1,
+    width: 2,
+    backgroundColor: palette.border,
+    marginVertical: 2,
+  },
+  timelineConnectorCompleted: { backgroundColor: palette.success },
+  timelineBody: { flex: 1, paddingBottom: space.md },
+  timelineLabel: { ...typography.bodyMd, fontWeight: "600", color: palette.text },
+  timelineMeta: { ...typography.caption, color: palette.textMuted, marginTop: 2 },
 }));
 
   function DetailRow({ label, value }: { label: string; value?: string | null }) {
@@ -62,6 +144,7 @@ export function TransactionDetailScreen({ navigation, route }: Props) {
   }
 
   const { bookingId, ledgerEntryId } = route.params;
+  const timelineKey = ledgerEntryId ?? bookingId ?? "";
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["transaction-detail", bookingId, ledgerEntryId],
@@ -72,6 +155,59 @@ export function TransactionDetailScreen({ navigation, route }: Props) {
     },
     enabled: !!(bookingId || ledgerEntryId),
   });
+
+  /**
+   * Refund / payment timeline. Tolerates a 404 / network failure by
+   * returning `events: []` — the UI hides the section when empty so a
+   * missing endpoint doesn't break the rest of the screen.
+   */
+  const { data: timelineData } = useQuery({
+    queryKey: queryKeys.wallet.refundTimeline(timelineKey),
+    queryFn: () => fetchRefundTimeline(timelineKey),
+    enabled: !!timelineKey,
+    staleTime: 30_000,
+  });
+
+  /**
+   * Synthesise a fallback timeline from the booking / ledger payload when
+   * the dedicated endpoint hasn't returned events. This lets us show a
+   * useful "charged → refund initiated → received" strip even on
+   * backends that haven't shipped `/wallet/transactions/:id/timeline`.
+   */
+  const synthesizedTimeline = useMemo<RefundTimelineEvent[]>(() => {
+    if (!data) return [];
+    const events: RefundTimelineEvent[] = [];
+    const createdAt =
+      data.timeline?.createdAt ?? data.createdAt ?? data.session?.booked_date;
+    if (createdAt) {
+      events.push({ type: "charge", timestamp: createdAt, status: "completed" });
+    }
+    const refundStatus = String(
+      data.timeline?.refund_status ?? data.refund_status ?? ""
+    ).toLowerCase();
+    if (refundStatus) {
+      const refundInitiatedAt = data.timeline?.refund_initiated_at ?? data.refund_initiated_at;
+      if (refundInitiatedAt || refundStatus.includes("init") || refundStatus.includes("pending")) {
+        events.push({
+          type: "refund-initiated",
+          timestamp: refundInitiatedAt ?? null,
+          status: refundStatus.includes("complete") ? "completed" : "pending",
+        });
+      }
+      if (refundStatus.includes("bank") || refundStatus.includes("processing")) {
+        events.push({ type: "refund-bank", timestamp: null, status: "active" });
+      }
+      if (refundStatus.includes("complete") || refundStatus.includes("received") || refundStatus.includes("succeeded")) {
+        const completedAt = data.timeline?.refund_completed_at ?? data.refund_completed_at;
+        events.push({ type: "refund-completed", timestamp: completedAt ?? null, status: "completed" });
+      }
+    }
+    return events;
+  }, [data]);
+
+  const events = (timelineData?.events && timelineData.events.length > 0)
+    ? timelineData.events
+    : synthesizedTimeline;
 
   const supportBookingId =
     data?.support?.booking_id ?? bookingId ?? data?.booking_id ?? undefined;
@@ -127,7 +263,9 @@ export function TransactionDetailScreen({ navigation, route }: Props) {
       <View style={styles.summaryCard}>
         <Text style={styles.amountLabel}>Amount</Text>
         <Text style={styles.amountValue}>
-          ${typeof amount === "number" ? amount.toFixed(2) : amount ?? "0.00"}
+          {fmt(typeof amount === "number" ? amount : Number(amount ?? 0), {
+            currency: data?.currency ?? data?.amounts?.currency,
+          })}
         </Text>
         {status ? <Pill label={String(status)} tone="neutral" /> : null}
       </View>
@@ -165,19 +303,58 @@ export function TransactionDetailScreen({ navigation, route }: Props) {
         </Pressable>
       </View>
 
-      {data.timeline ? (
+      {events.length > 0 ? (
         <>
           <Text style={styles.sectionTitle}>Timeline</Text>
-          <View style={styles.card}>
-            <DetailRow
-              label="Created"
-              value={
-                data.timeline.createdAt
-                  ? new Date(data.timeline.createdAt).toLocaleString()
-                  : undefined
-              }
-            />
-            <DetailRow label="Refund status" value={data.timeline.refund_status} />
+          <View style={styles.timelineCard}>
+            {events.map((event, idx) => {
+              const status: TimelineStepStatus =
+                event.status === "completed"
+                  ? "completed"
+                  : event.status === "failed"
+                    ? "failed"
+                    : event.status === "active" || event.status === "pending"
+                      ? "active"
+                      : "pending";
+              const isLast = idx === events.length - 1;
+              const dotStyle = [
+                styles.timelineDot,
+                status === "completed" && styles.timelineDotCompleted,
+                status === "active" && styles.timelineDotActive,
+                status === "failed" && styles.timelineDotFailed,
+              ];
+              return (
+                <View key={event.id ?? `${event.type}-${idx}`} style={styles.timelineRow}>
+                  <View style={styles.timelineDotCol}>
+                    <View style={dotStyle} />
+                    {!isLast ? (
+                      <View
+                        style={[
+                          styles.timelineConnector,
+                          status === "completed" && styles.timelineConnectorCompleted,
+                        ]}
+                      />
+                    ) : null}
+                  </View>
+                  <View style={styles.timelineBody}>
+                    <Text style={styles.timelineLabel}>
+                      {event.label ??
+                        timelineLabel(event.type)}
+                    </Text>
+                    <Text style={styles.timelineMeta}>
+                      {event.timestamp
+                        ? new Date(event.timestamp).toLocaleString()
+                        : status === "active"
+                          ? "In progress"
+                          : status === "pending"
+                            ? "Not yet"
+                            : "—"}
+                      {event.reference ? ` · Ref ${event.reference}` : ""}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
           </View>
         </>
       ) : null}

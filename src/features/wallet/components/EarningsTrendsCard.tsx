@@ -8,6 +8,7 @@ import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
 import { radii, space, typography, useThemedStyles, useThemeColors } from "../../../theme";
 import { HelpBubble } from "../../../components/ui";
+import { useCurrencyFormatter } from "../../../lib/intl";
 import {
   buildTrainerEarningsCsvUrl,
   fetchTrainerEarningsSeries,
@@ -25,6 +26,7 @@ export function EarningsTrendsCard() {
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const styles = useStyles();
+  const fmt = useCurrencyFormatter();
   const [range, setRange] = useState<Range>("weekly");
   const [downloading, setDownloading] = useState(false);
 
@@ -180,7 +182,7 @@ export function EarningsTrendsCard() {
           {t("earningsTrends.total")}
         </Text>
         <Text style={[styles.totalValue, { color: c.text }]}>
-          ${(data?.total ?? 0).toFixed(2)}
+          {fmt(data?.total ?? 0, { currency: data?.currency })}
         </Text>
       </View>
     </View>

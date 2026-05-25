@@ -11,6 +11,7 @@ import { useWalletBalance } from "../hooks/useWalletBalance";
 import type { WalletStackParamList } from "../navigation/WalletNavigator";
 import { TrainerWalletHome } from "../components/TrainerWalletHome";
 import { useShellHeaderTitle } from "../../../navigation/useShellHeaderTitle";
+import { useCurrencyFormatter } from "../../../lib/intl";
 
 type Props = NativeStackScreenProps<WalletStackParamList, "WalletHome">;
 
@@ -96,6 +97,7 @@ function TraineeWalletHome({ navigation }: Props) {
   const styles = useWalletHomeStyles();
   const { data: balance, isLoading, isRefetching, refetch } = useWalletBalance();
   const available = balance?.balances?.available ?? 0;
+  const fmt = useCurrencyFormatter();
 
   const benefits = useMemo(
     () => [
@@ -135,12 +137,15 @@ function TraineeWalletHome({ navigation }: Props) {
         {isLoading && !balance ? (
           <View style={styles.balanceSkeleton} />
         ) : (
-          <Text style={styles.balanceValue}>${available.toFixed(2)}</Text>
+          <Text style={styles.balanceValue}>
+            {fmt(available, { currency: balance?.currency })}
+          </Text>
         )}
         {(balance?.balances?.pending_topup ?? 0) > 0 && (
           <Text style={styles.pendingText}>
             {t("wallet.pendingTopUp", {
-              amount: balance!.balances.pending_topup.toFixed(2),
+              amount: fmt(balance!.balances.pending_topup, { currency: balance?.currency }),
+              defaultValue: "{{amount}} pending",
             })}
           </Text>
         )}
@@ -172,6 +177,18 @@ function TraineeWalletHome({ navigation }: Props) {
           label={t("wallet.activity")}
           sub={t("wallet.activitySub")}
           onPress={() => navigation.navigate("WalletActivity")}
+        />
+        <MenuRow
+          icon="card-outline"
+          label={t("wallet.cards.title", { defaultValue: "Payment methods" })}
+          sub={t("wallet.cards.sub", { defaultValue: "Manage saved cards and Apple/Google Pay" })}
+          onPress={() => navigation.navigate("WalletPaymentMethods")}
+        />
+        <MenuRow
+          icon="refresh-outline"
+          label={t("wallet.autoTopUp.menuLabel", { defaultValue: "Auto top-up" })}
+          sub={t("wallet.autoTopUp.menuSub", { defaultValue: "Reload automatically when low" })}
+          onPress={() => navigation.navigate("WalletAutoTopUp")}
         />
         <MenuRow
           icon="lock-closed-outline"

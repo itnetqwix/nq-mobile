@@ -18,6 +18,8 @@ import { useWalletPaymentOption } from "../../../wallet/hooks/useWalletPaymentOp
 import { verifyWalletPin } from "../../../wallet/walletApi";
 import { INSTANT_LESSON_DURATIONS } from "../constants";
 import { useSharedStepStyles } from "../sharedStepStyles";
+import { PlatformPayButtonRow } from "../../../../components/payments/PlatformPayButtonRow";
+import { useActiveCurrency, useCurrencyFormatter } from "../../../../lib/intl";
 
 export type PaymentCompletePayload = {
   paymentIntentId: string | null;
@@ -64,6 +66,10 @@ export function WizardStepPayment({
   const sharedStepStyles = useSharedStepStyles();
   const styles = usePaymentStyles();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const fmt = useCurrencyFormatter();
+  /** Server-side payment intent is denominated in this currency; trainee
+   *  locale picks the symbol if the server didn't return one explicitly. */
+  const activeCurrency = useActiveCurrency();
   const [loading, setLoading] = useState(false);
   const [paymentReady, setPaymentReady] = useState(false);
   const [pin, setPin] = useState("");
@@ -248,12 +254,14 @@ export function WizardStepPayment({
           <>
             <View style={styles.summaryLine}>
               <Text style={styles.summaryKey}>Subtotal</Text>
-              <Text style={styles.summaryValue}>${expectedPrice.toFixed(2)}</Text>
+              <Text style={styles.summaryValue}>
+                {fmt(expectedPrice, { currency: activeCurrency })}
+              </Text>
             </View>
             <View style={styles.summaryLine}>
               <Text style={styles.summaryKey}>Discount</Text>
               <Text style={[styles.summaryValue, styles.promoApplied]}>
-                -${promoResult!.discount_amount!.toFixed(2)}
+                -{fmt(promoResult!.discount_amount!, { currency: activeCurrency })}
                 {promoResult?.display_label ? ` (${promoResult.display_label})` : ""}
               </Text>
             </View>
@@ -262,7 +270,7 @@ export function WizardStepPayment({
         <View style={styles.summaryLine}>
           <Text style={styles.summaryKey}>Total</Text>
           <Text style={[styles.summaryValue, styles.bold]}>
-            {isFree ? "Free" : `$${payableAmount.toFixed(2)}`}
+            {isFree ? "Free" : fmt(payableAmount, { currency: activeCurrency })}
           </Text>
         </View>
         {couponCode.trim() ? (
@@ -296,7 +304,8 @@ export function WizardStepPayment({
           <Pressable style={sharedStepStyles.primaryBtn} onPress={handleWalletPay}>
             <Ionicons name="wallet-outline" size={18} color={c.brandTextOn} />
             <Text style={sharedStepStyles.primaryBtnText}>
-              Pay ${payableAmount.toFixed(2)} with wallet (${wallet.available.toFixed(2)} available)
+              Pay {fmt(payableAmount, { currency: activeCurrency })} with wallet (
+              {fmt(wallet.available, { currency: activeCurrency })} available)
             </Text>
           </Pressable>
           <Pressable
@@ -315,7 +324,7 @@ export function WizardStepPayment({
       {!loading && wallet.walletPayEnabled && !isFree && !wallet.canPayWithWallet && wallet.shortfall > 0 ? (
         <View style={styles.shortfallBox}>
           <Text style={sharedStepStyles.muted}>
-            Need ${wallet.shortfall.toFixed(2)} more in your wallet.
+            Need {fmt(wallet.shortfall, { currency: activeCurrency })} more in your wallet.
           </Text>
           {onAddFunds ? (
             <Pressable onPress={() => onAddFunds(wallet.shortfall)} style={styles.addFundsLink}>
@@ -351,10 +360,33 @@ export function WizardStepPayment({
               ? "Continue (free)"
               : wallet.canPayWithWallet && wallet.walletPayEnabled
                 ? "Pay with card"
-                : `Pay $${payableAmount.toFixed(2)}`}
+                : `Pay ${fmt(payableAmount, { currency: activeCurrency })}`}
           </Text>
         </Pressable>
       )}
+
+      {/**
+       * Apple Pay / Google Pay sits *below* the card CTA so it doesn't
+       * out-compete the primary action for shoppers that don't have a
+       * platform wallet set up. The button hides itself when unsupported,
+       * so users on plain Android phones / web don't see an empty row.
+       */}
+      {!loading && !isFree && priceInfo?.clientSecret ? (
+        <PlatformPayButtonRow
+          clientSecret={priceInfo.clientSecret}
+          amount={payableAmount}
+          currency={activeCurrency}
+          merchantName="NetQwix"
+          onSuccess={(intentId) => {
+            completePayment({
+              paymentIntentId: intentId,
+              chargingPrice: payableAmount,
+              paymentMethod: "card",
+            });
+          }}
+          onError={(msg) => Alert.alert("Payment failed", msg)}
+        />
+      ) : null}
     </View>
   );
 }

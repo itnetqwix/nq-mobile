@@ -39,9 +39,15 @@
     "faq": "FAQ"
   },
   "tabs": {
-    "home": "Dashboard",
+    "home": "Home",
     "sessions": "Sessions",
     "chats": "Chats"
+  },
+  "terminology": {
+    "trainer": "Trainer",
+    "trainerPlural": "Trainers",
+    "trainee": "Trainee",
+    "traineePlural": "Trainees"
   },
   "auth": {
     "signIn": "Sign in",
@@ -697,7 +703,52 @@
     "verifyWalletPinPrompt": "Verify wallet PIN",
     "enableBiometricPrompt": "Enable {{label}}",
     "biometricsDefault": "Biometrics",
-    "errorTitle": "Error"
+    "errorTitle": "Error",
+    "cards": {
+      "title": "Payment methods",
+      "sub": "Manage saved cards and Apple/Google Pay",
+      "default": "Default",
+      "makeDefault": "Make default",
+      "remove": "Remove",
+      "removeTitle": "Remove this card?",
+      "removeBody": "You can re-add it any time. Active subscriptions on this card will be paused.",
+      "expires": "Expires {{value}}",
+      "emptyTitle": "No saved cards yet",
+      "emptyDescription": "When you pay with a card on NetQwix, you can save it here for faster checkout."
+    },
+    "autoTopUp": {
+      "menuLabel": "Auto top-up",
+      "menuSub": "Reload automatically when low",
+      "title": "Auto top-up",
+      "intro": "Avoid running out mid-lesson. We'll top up your wallet automatically when it dips below your threshold.",
+      "enableLabel": "Enable auto top-up",
+      "enabledHint": "If below {{threshold}}, add {{reload}}",
+      "disabledHint": "Currently disabled",
+      "threshold": "When balance falls below",
+      "thresholdPlaceholder": "Threshold amount",
+      "reloadAmount": "Add this amount",
+      "reloadPlaceholder": "Reload amount",
+      "payWith": "Charge to",
+      "methodHint": "Manage cards from the wallet settings",
+      "noMethod": "No saved card",
+      "noMethodHint": "Add one from the wallet settings to enable auto top-up.",
+      "lastFired": "Last reload",
+      "save": "Save changes",
+      "disable": "Turn off auto top-up",
+      "invalidThreshold": "Invalid threshold",
+      "invalidThresholdBody": "Enter a threshold amount greater than zero.",
+      "invalidReload": "Invalid reload",
+      "invalidReloadBody": "Enter a reload amount greater than zero.",
+      "reloadBelowThresholdTitle": "Reload should be larger",
+      "reloadBelowThresholdBody": "Set the reload higher than the threshold — otherwise the wallet would re-trigger immediately.",
+      "savedTitle": "Auto top-up updated",
+      "savedBody": "Your wallet will reload automatically when it drops below the threshold.",
+      "status": {
+        "succeeded": "Succeeded",
+        "failed": "Failed",
+        "pending": "Pending"
+      }
+    }
   },
   "precall": {
     "title": "Ready when you are",
@@ -1491,7 +1542,29 @@
     "emptyTitle": "No booking history",
     "emptyDescription": "Sessions you book or teach will appear here with payment details.",
     "emptyCtaTrainee": "Book a lesson",
-    "emptyCtaTrainer": "Publish availability"
+    "emptyCtaTrainer": "Publish availability",
+    "filtersTitle": "Filter transactions",
+    "openFilters": "Open filters",
+    "filterAll": "All transactions",
+    "clearFilters": "Clear filters",
+    "filteredEmptyTitle": "No transactions match",
+    "filteredEmptyDescription": "Try widening the date range or clearing the type filter.",
+    "filterTypeLabel": "Type",
+    "dateRangeLabel": "Date range",
+    "filterType": {
+      "all": "All",
+      "lesson": "Lessons",
+      "refund": "Refunds",
+      "topup": "Top-ups",
+      "withdrawal": "Withdrawals"
+    },
+    "dateRange": {
+      "all": "Any time",
+      "thisWeek": "This week",
+      "thisMonth": "This month",
+      "last30": "Last 30 days",
+      "last90": "Last 90 days"
+    }
   },
   "sessions": {
     "tabUpcoming": "Upcoming",
