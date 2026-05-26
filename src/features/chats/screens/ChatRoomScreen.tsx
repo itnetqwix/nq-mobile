@@ -21,7 +21,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
@@ -875,19 +875,54 @@ export function ChatRoomScreen({
     emitTyping();
   }, [emitTyping]);
 
-  const { data: serverMessages = [] } = useQuery<Message[]>({
+  /**
+   * Message pagination — initial page is 30 (snappy first paint), subsequent
+   * pages are 10 at a time (user's spec for "Load 10 earlier"). Backend sort
+   * is DESC (newest first); page=1 returns the latest slice and the user
+   * paginates BACKWARDS through history via the "Load 10 earlier" button at
+   * the top of the list (and auto-load on near-top scroll).
+   */
+  const FIRST_PAGE_LIMIT = 30;
+  const OLDER_PAGE_LIMIT = 10;
+  const messagesQuery = useInfiniteQuery<
+    { page: number; limit: number; rows: Message[] }
+  >({
     queryKey: queryKeys.chats.messages(conversationId),
-    queryFn: async () => {
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }) => {
+      const page = (pageParam as number) ?? 1;
+      const limit = page === 1 ? FIRST_PAGE_LIMIT : OLDER_PAGE_LIMIT;
       const res = await apiClient.get(API_ROUTES.chat.messages(conversationId), {
-        params: { page: 1, limit: 200 },
+        params: { page, limit },
       });
       const body = (res as any)?.data ?? res;
-      return body?.data ?? body?.result ?? [];
+      const rows: Message[] = (body?.data ?? body?.result ?? []) as Message[];
+      return { page, limit, rows };
+    },
+    getNextPageParam: (lastPage) => {
+      // No older messages left if the server returned fewer rows than asked.
+      if (!lastPage?.rows || lastPage.rows.length < lastPage.limit) return undefined;
+      return lastPage.page + 1;
     },
     enabled: !!conversationId,
     staleTime: 10_000,
     refetchInterval: 15_000,
   });
+
+  const serverMessages = useMemo<Message[]>(() => {
+    const pages = messagesQuery.data?.pages ?? [];
+    const all: Message[] = [];
+    for (const p of pages) {
+      for (const m of p.rows) all.push(m);
+    }
+    return all;
+  }, [messagesQuery.data]);
+
+  const loadOlderMessages = useCallback(() => {
+    if (messagesQuery.hasNextPage && !messagesQuery.isFetchingNextPage) {
+      void messagesQuery.fetchNextPage();
+    }
+  }, [messagesQuery]);
 
   const allMessages = useMemo(() => {
     const seen = new Set<string>();
@@ -1879,6 +1914,56 @@ export function ChatRoomScreen({
             styles.messageList,
             allMessages.length === 0 && styles.messageListEmpty,
           ]}
+          ListHeaderComponent={
+            messagesQuery.hasNextPage ? (
+              <Pressable
+                onPress={loadOlderMessages}
+                disabled={messagesQuery.isFetchingNextPage}
+                style={({ pressed }) => [
+                  {
+                    alignSelf: "center",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                    paddingVertical: 8,
+                    paddingHorizontal: 14,
+                    marginTop: 8,
+                    borderRadius: 16,
+                    backgroundColor: themeColors.surfaceElevated,
+                    borderWidth: StyleSheet.hairlineWidth,
+                    borderColor: themeColors.borderSubtle,
+                  },
+                  pressed && { opacity: 0.85 },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Load 10 earlier messages"
+              >
+                {messagesQuery.isFetchingNextPage ? (
+                  <ActivityIndicator size="small" color={themeColors.brandNavy} />
+                ) : (
+                  <Ionicons name="arrow-up-circle-outline" size={16} color={themeColors.brandNavy} />
+                )}
+                <Text style={{ color: themeColors.brandNavy, fontSize: 13, fontWeight: "700" }}>
+                  {messagesQuery.isFetchingNextPage ? "Loading..." : "Load 10 earlier"}
+                </Text>
+              </Pressable>
+            ) : null
+          }
+          // Trigger an auto-load of older messages when the user scrolls
+          // within ~80 px of the top. Lookback threshold uses
+          // `onEndReachedThreshold` analogue via `onScroll` because
+          // SectionList doesn't have a built-in "start reached" callback.
+          onScroll={(e) => {
+            const y = e.nativeEvent.contentOffset.y;
+            if (
+              y <= 80 &&
+              messagesQuery.hasNextPage &&
+              !messagesQuery.isFetchingNextPage
+            ) {
+              loadOlderMessages();
+            }
+          }}
+          scrollEventThrottle={64}
           ListEmptyComponent={
             <View style={styles.emptyChat}>
               <View style={styles.emptyChatIcon}>

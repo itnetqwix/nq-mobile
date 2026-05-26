@@ -4,7 +4,7 @@ import { Platform } from "react-native";
 import { createStorageCheckout } from "../../home/api/homeApi";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 
-export type StorageCheckoutInterval = "monthly" | "yearly" | "one_time";
+export type StorageCheckoutInterval = "monthly" | "yearly";
 
 export function useStorageCheckoutFlow() {
   const { initPaymentSheet, presentPaymentSheet } = useStripe();

@@ -69,6 +69,7 @@ export const queryKeys = {
     directory: (hash: string) => ["trainersDirectory", hash] as const,
     directorySearch: (search: string, filterHash: string) =>
       ["trainersDirectory", search, filterHash] as const,
+    myStats: ["trainerMyStats"] as const,
   },
   instant: {
     eligibility: (trainerId: string, durationMinutes: number) =>

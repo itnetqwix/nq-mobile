@@ -61,53 +61,64 @@ export function PinnedMessageBanner({ conversationId, decryptText, onJump }: Pro
         styles.row,
         pressed && { backgroundColor: "rgba(0,0,0,0.04)" },
       ]}
+      accessibilityRole="button"
+      accessibilityLabel={`Pinned message: ${previewText}`}
     >
       <View style={styles.indicatorBar} />
-      <View style={{ flex: 1 }}>
-        <Text style={styles.label}>
-          <Ionicons name="pin" size={11} color="#2563EB" /> Pinned message
-        </Text>
-        <Text style={styles.preview} numberOfLines={1}>
-          {previewText}
-        </Text>
-      </View>
-      <Pressable hitSlop={12} onPress={handleUnpin} style={styles.unpinBtn}>
-        <Ionicons name="close" size={16} color="#6B7280" />
+      <Ionicons name="pin" size={13} color="#2563EB" style={styles.pinIcon} />
+      <Text style={styles.preview} numberOfLines={1}>
+        {previewText}
+      </Text>
+      <Pressable
+        hitSlop={10}
+        onPress={() => onJump?.(String(m._id))}
+        style={styles.viewBtn}
+      >
+        <Ionicons name="chevron-forward" size={14} color="#2563EB" />
+        <Text style={styles.viewBtnText}>View</Text>
+      </Pressable>
+      <Pressable hitSlop={10} onPress={handleUnpin} style={styles.unpinBtn}>
+        <Ionicons name="close" size={14} color="#6B7280" />
       </Pressable>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
+  // Compact single-line banner, ~36 px tall. Pin icon + preview + View
+  // affordance + unpin X all on one line so it doesn't crowd the chat.
   row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 8,
+    height: 36,
     paddingRight: 8,
     paddingLeft: 0,
     backgroundColor: "#EFF6FF",
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "#DBEAFE",
-    gap: 10,
+    gap: 8,
   },
   indicatorBar: {
     width: 3,
-    height: 30,
+    height: 24,
     backgroundColor: "#2563EB",
     marginLeft: 12,
     borderRadius: 2,
   },
-  label: {
-    color: "#2563EB",
-    fontWeight: "700",
-    fontSize: 12,
-    marginBottom: 2,
+  pinIcon: { marginRight: 2 },
+  preview: { flex: 1, fontSize: 13, color: "#1F2937" },
+  viewBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
   },
-  preview: { fontSize: 13, color: "#1F2937" },
+  viewBtnText: { color: "#2563EB", fontSize: 12, fontWeight: "700" },
   unpinBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.6)",

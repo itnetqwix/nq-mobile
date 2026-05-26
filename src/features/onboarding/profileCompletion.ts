@@ -62,6 +62,77 @@ function isNonEmptyArray(v: unknown): boolean {
   return Array.isArray(v) && v.length > 0;
 }
 
+/**
+ * Backend writes some trainer fields under `extraInfo.*` (signup default in
+ * `authService.ts`: `extraInfo.hourly_rate`, `extraInfo.bio`,
+ * `extraInfo.availabilityInfo.availability`). Other places update the top-level
+ * field. We therefore probe BOTH locations from this helper so the completion
+ * pill flips to "done" regardless of which writer touched the doc last.
+ *
+ * `paths` are dot-delimited; each segment is looked up as a plain property.
+ */
+function readPath(u: Record<string, unknown>, path: string): unknown {
+  const parts = path.split(".");
+  let cur: unknown = u;
+  for (const p of parts) {
+    if (cur == null || typeof cur !== "object") return undefined;
+    cur = (cur as Record<string, unknown>)[p];
+  }
+  return cur;
+}
+
+function anyNonEmptyString(u: Record<string, unknown>, paths: string[]): boolean {
+  return paths.some((p) => isNonEmptyString(readPath(u, p)));
+}
+
+function anyNonEmptyArray(u: Record<string, unknown>, paths: string[]): boolean {
+  return paths.some((p) => isNonEmptyArray(readPath(u, p)));
+}
+
+/**
+ * Hourly-rate detection. Accepts:
+ *  - number > 0 (top-level or `extraInfo.hourly_rate` — both observed in db)
+ *  - numeric-castable non-empty string ("20", "1500.50")
+ *  - rejects "" / "0" / null
+ */
+function hasMeaningfulRate(u: Record<string, unknown>): boolean {
+  const candidates: unknown[] = [
+    readPath(u, "hourly_rate"),
+    readPath(u, "hourlyRate"),
+    readPath(u, "extraInfo.hourly_rate"),
+    readPath(u, "extraInfo.hourlyRate"),
+    readPath(u, "pricing.hourlyRate"),
+    readPath(u, "pricing.hourly_rate"),
+  ];
+  for (const c of candidates) {
+    if (typeof c === "number" && Number.isFinite(c) && c > 0) return true;
+    if (typeof c === "string" && c.trim().length > 0) {
+      const n = Number(c.trim());
+      if (Number.isFinite(n) && n > 0) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Trainer weekly availability detection. Backend signup defaults populate
+ * `extraInfo.availabilityInfo.availability` as a `{ Mon: [...], Tue: [...] }`
+ * object, while the trainer-schedule painter may write a top-level `slots`
+ * array. Either one is enough to flip "done".
+ */
+function hasPublishedAvailability(u: Record<string, unknown>): boolean {
+  if (anyNonEmptyArray(u, ["slots", "availability", "extraInfo.slots"])) {
+    return true;
+  }
+  const availability = readPath(u, "extraInfo.availabilityInfo.availability");
+  if (availability && typeof availability === "object") {
+    for (const v of Object.values(availability as Record<string, unknown>)) {
+      if (Array.isArray(v) && v.length > 0) return true;
+    }
+  }
+  return false;
+}
+
 export function computeProfileCompletion(
   user: Record<string, unknown> | null | undefined,
   /**
@@ -82,7 +153,11 @@ export function computeProfileCompletion(
       hint: "Profiles with photos get 3× more bookings.",
       icon: "person-circle-outline",
       weight: 18,
-      done: isNonEmptyString(u.profile_picture),
+      done: anyNonEmptyString(u, [
+        "profile_picture",
+        "profilePicture",
+        "avatar",
+      ]),
       cta: { kind: "shell", surfaceId: "editProfile" },
     },
     {
@@ -91,7 +166,7 @@ export function computeProfileCompletion(
       hint: "Make sure your full name is set so others recognise you.",
       icon: "id-card-outline",
       weight: 6,
-      done: isNonEmptyString(u.fullname) || isNonEmptyString(u.fullName),
+      done: anyNonEmptyString(u, ["fullname", "fullName", "name"]),
       cta: { kind: "shell", surfaceId: "editProfile" },
     },
     {
@@ -102,7 +177,12 @@ export function computeProfileCompletion(
         : "Trainers love seeing a sentence about your goals.",
       icon: "document-text-outline",
       weight: isTrainer ? 12 : 8,
-      done: isNonEmptyString(u.bio),
+      done: anyNonEmptyString(u, [
+        "bio",
+        "about",
+        "extraInfo.bio",
+        "extraInfo.about",
+      ]),
       cta: { kind: "shell", surfaceId: "editProfile" },
     },
     {
@@ -111,7 +191,12 @@ export function computeProfileCompletion(
       hint: "Helps us reach you for booking confirmations and OTP.",
       icon: "call-outline",
       weight: 8,
-      done: isNonEmptyString(u.mobile_no) || isNonEmptyString(u.mobile),
+      done: anyNonEmptyString(u, [
+        "mobile_no",
+        "mobile",
+        "phone",
+        "phoneNumber",
+      ]),
       cta: { kind: "shell", surfaceId: "editProfile" },
     },
     {
@@ -120,7 +205,12 @@ export function computeProfileCompletion(
       hint: "We use this to show every session in your local time.",
       icon: "globe-outline",
       weight: 6,
-      done: isNonEmptyString(u.time_zone),
+      done: anyNonEmptyString(u, [
+        "time_zone",
+        "timeZone",
+        "timezone",
+        "extraInfo.availabilityInfo.timeZone",
+      ]),
       cta: { kind: "settings-section", section: "regional" },
     },
     {
@@ -129,7 +219,11 @@ export function computeProfileCompletion(
       hint: "Switch between English, Hindi, Spanish and more.",
       icon: "language-outline",
       weight: 4,
-      done: isNonEmptyString(u.preferred_locale),
+      done: anyNonEmptyString(u, [
+        "preferred_locale",
+        "preferredLocale",
+        "locale",
+      ]),
       cta: { kind: "settings-section", section: "regional" },
     },
   ];
@@ -141,7 +235,13 @@ export function computeProfileCompletion(
       hint: "Trainees filter by sport when browsing — this unlocks discovery.",
       icon: "tennisball-outline",
       weight: 16,
-      done: isNonEmptyString(u.category) || isNonEmptyArray((u as { categories?: unknown }).categories),
+      done:
+        anyNonEmptyString(u, ["category", "extraInfo.category"]) ||
+        anyNonEmptyArray(u, [
+          "categories",
+          "categoryList",
+          "extraInfo.categories",
+        ]),
       cta: { kind: "shell", surfaceId: "editProfile" },
     },
     {
@@ -150,9 +250,7 @@ export function computeProfileCompletion(
       hint: "Required before you can accept paid bookings.",
       icon: "pricetag-outline",
       weight: 14,
-      done:
-        isNonEmptyString(u.hourly_rate) ||
-        (typeof u.hourly_rate === "number" && (u.hourly_rate as number) > 0),
+      done: hasMeaningfulRate(u),
       cta: { kind: "shell", surfaceId: "editProfile" },
     },
     {
@@ -161,10 +259,12 @@ export function computeProfileCompletion(
       hint: "Verified credentials build trust and unlock the badge sooner.",
       icon: "ribbon-outline",
       weight: 10,
-      done: isNonEmptyArray(
-        (u as { certifications?: unknown }).certifications ??
-          (u as { extraInfo?: { certifications?: unknown } }).extraInfo?.certifications
-      ),
+      done: anyNonEmptyArray(u, [
+        "certifications",
+        "certificates",
+        "extraInfo.certifications",
+        "extraInfo.certificates",
+      ]),
       cta: { kind: "shell", surfaceId: "professionalProfile" },
     },
     {
@@ -173,7 +273,7 @@ export function computeProfileCompletion(
       hint: "Empty calendars mean zero bookings. Add at least one slot.",
       icon: "calendar-outline",
       weight: 14,
-      done: isNonEmptyArray((u as { slots?: unknown }).slots),
+      done: hasPublishedAvailability(u),
       cta: { kind: "shell", surfaceId: "trainerSchedule" },
     },
   ];
@@ -186,9 +286,8 @@ export function computeProfileCompletion(
       icon: "trophy-outline",
       weight: 14,
       done:
-        isNonEmptyString((u as { sport?: unknown }).sport) ||
-        isNonEmptyString(u.category) ||
-        isNonEmptyArray((u as { interests?: unknown }).interests),
+        anyNonEmptyString(u, ["sport", "category", "extraInfo.sport"]) ||
+        anyNonEmptyArray(u, ["interests", "categories"]),
       cta: { kind: "shell", surfaceId: "editProfile" },
     },
     {
@@ -197,7 +296,11 @@ export function computeProfileCompletion(
       hint: "Save coaches you like — they appear instantly on your home.",
       icon: "heart-outline",
       weight: 8,
-      done: isNonEmptyArray((u as { favorite_trainers?: unknown }).favorite_trainers),
+      done: anyNonEmptyArray(u, [
+        "favorite_trainers",
+        "favoriteTrainers",
+        "favourites",
+      ]),
       cta: { kind: "feature", featureId: "book-lesson" },
     },
   ];

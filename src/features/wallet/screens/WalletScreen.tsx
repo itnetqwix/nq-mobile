@@ -3,16 +3,17 @@ import { useStripe } from "@stripe/stripe-react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
-import { Button } from "../../../components/ui";
+import { Button, Skeleton } from "../../../components/ui";
+import { useHapticRefresh } from "../../../lib/refresh/useHapticRefresh";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
@@ -75,7 +76,7 @@ export function WalletScreen() {
   const isTrainee = accountType === AccountType.TRAINEE;
   const fmt = useCurrencyFormatter();
 
-  const { data: balance, isLoading } = useQuery({
+  const { data: balance, isLoading, isRefetching, refetch } = useQuery({
     queryKey: queryKeys.wallet.balance,
     queryFn: fetchWalletBalance,
   });
@@ -84,6 +85,8 @@ export function WalletScreen() {
     queryKey: queryKeys.wallet.ledger,
     queryFn: () => fetchWalletLedger(1, 20),
   });
+
+  const { refreshing: hapticRefreshing, onRefresh } = useHapticRefresh(refetch);
 
   const handleTopUp = async () => {
     const dollars = parseFloat(topUpDollars);
@@ -142,14 +145,41 @@ export function WalletScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color={c.iconPrimary} />
-      </View>
+      <ScrollView
+        style={styles.root}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={hapticRefreshing || isRefetching}
+            onRefresh={onRefresh}
+            tintColor={c.iconPrimary}
+          />
+        }
+      >
+        <View style={styles.card}>
+          <Skeleton width={120} height={12} />
+          <View style={{ height: space.sm }} />
+          <Skeleton width={180} height={28} radius={6} />
+          <View style={{ height: space.sm }} />
+          <Skeleton width={"60%"} height={10} />
+        </View>
+        <Skeleton width={"100%"} height={120} radius={radii.lg} />
+      </ScrollView>
     );
   }
 
   return (
-    <ScrollView style={styles.root} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.root}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl
+          refreshing={hapticRefreshing || isRefetching}
+          onRefresh={onRefresh}
+          tintColor={c.iconPrimary}
+        />
+      }
+    >
       <View style={styles.card}>
         <Text style={styles.label}>Available balance</Text>
         <Text style={styles.amount}>

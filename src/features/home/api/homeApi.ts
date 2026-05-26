@@ -157,6 +157,34 @@ export async function fetchRecentTrainees(): Promise<any[]> {
   return res.data?.result ?? res.data ?? [];
 }
 
+export type MyTrainerStats = {
+  avgRating: number | null;
+  reviewCount: number;
+  reviews: Array<{
+    _id?: string;
+    updatedAt?: string;
+    status?: string;
+    trainee_fullname?: string;
+    trainee_picture?: string;
+    ratings?: {
+      trainee?: { sessionRating?: number; comment?: string };
+    };
+  }>;
+};
+
+export async function fetchMyTrainerStats(): Promise<MyTrainerStats> {
+  const res = await apiClient.get(API_ROUTES.trainer.myStats);
+  const raw = (res.data?.data ?? res.data?.result ?? res.data ?? {}) as Partial<MyTrainerStats>;
+  return {
+    avgRating: typeof raw.avgRating === "number" ? raw.avgRating : null,
+    reviewCount:
+      typeof raw.reviewCount === "number" && Number.isFinite(raw.reviewCount)
+        ? raw.reviewCount
+        : 0,
+    reviews: Array.isArray(raw.reviews) ? raw.reviews : [],
+  };
+}
+
 export async function fetchRecentTrainers(): Promise<any[]> {
   const res = await apiClient.get(API_ROUTES.trainee.recentTrainers);
   const raw = res.data?.result ?? res.data ?? [];
@@ -490,7 +518,7 @@ export async function fetchStorageInfo(): Promise<StoragePlanInfo> {
 
 export async function createStorageCheckout(
   planId: string,
-  interval: "monthly" | "yearly" | "one_time"
+  interval: "monthly" | "yearly"
 ): Promise<{ client_secret: string; paymentIntentId?: string; subscriptionId?: string }> {
   const res = await apiClient.post(API_ROUTES.user.storageCheckout, { planId, interval });
   return (res.data?.data ?? res.data?.result ?? res.data) as {

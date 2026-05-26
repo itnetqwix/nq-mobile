@@ -4,6 +4,7 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DrawerMarkButton } from "./DrawerMarkButton";
+import { HeaderBackButton } from "./HeaderBackButton";
 import {
   APP_HEADER_BAR_HEIGHT,
   APP_HEADER_HORIZONTAL_PADDING,
@@ -50,7 +51,10 @@ export function AppScreenHeader(props: Props) {
     >
       <View style={[styles.bar, { paddingHorizontal: APP_HEADER_HORIZONTAL_PADDING }]}>
         <View style={styles.sideSlot}>
-          <DrawerMarkButton />
+          {/* Show the back arrow on every nested screen so the user always
+              has a visible way back. The root home stack frames (where
+              `canGoBack` is false) keep the drawer mark instead. */}
+          {canGoBack ? <HeaderBackButton /> : <DrawerMarkButton />}
         </View>
         <View style={styles.titleSlot}>
           <Text style={[styles.title, { color: c.headerTitle }]} numberOfLines={1}>

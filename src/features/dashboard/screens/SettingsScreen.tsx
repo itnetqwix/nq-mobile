@@ -26,7 +26,7 @@ import {
   TimeZoneSearchModal,
 } from "../../../components/ui";
 import { useInlineSaved } from "../../../lib/forms/useInlineSaved";
-import { WEB_APP_ORIGIN } from "../../../config/env";
+import { DEVDUDES_LABEL, DEVDUDES_URL, WEB_APP_ORIGIN } from "../../../config/env";
 import { AccountType } from "../../../constants/accountType";
 import { WebRoutes } from "../../../constants/webRoutes";
 import type { MenuStackParamList, ShellSurfaceRouteId } from "../../../navigation/types";
@@ -986,11 +986,55 @@ export function SettingsScreen() {
           textAlign: "center",
           fontSize: 12,
           color: c.textMuted,
-          paddingVertical: space.sm,
+          paddingTop: space.sm,
         }}
       >
         {t("settings.footerVersion")}
       </Text>
+
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          paddingBottom: space.md,
+          paddingTop: 4,
+        }}
+        accessibilityRole="text"
+        accessibilityLabel={t("settings.footerCreditA11y", {
+          defaultValue: "Made with love by {{label}}",
+          label: DEVDUDES_LABEL,
+        })}
+      >
+        <Text style={{ fontSize: 12, color: c.textMuted }}>
+          {t("settings.footerCreditPrefix", { defaultValue: "Made with " })}
+        </Text>
+        <Text style={{ fontSize: 12 }}>{"\u2764\uFE0F"}</Text>
+        <Text style={{ fontSize: 12, color: c.textMuted }}>
+          {t("settings.footerCreditBy", { defaultValue: " by " })}
+        </Text>
+        <Pressable
+          onPress={() => {
+            void Linking.openURL(DEVDUDES_URL).catch(() => {
+              /* best-effort external link */
+            });
+          }}
+          hitSlop={6}
+          accessibilityRole="link"
+          accessibilityLabel={DEVDUDES_LABEL}
+        >
+          <Text
+            style={{
+              fontSize: 12,
+              color: c.brandNavy,
+              fontWeight: "700",
+              textDecorationLine: "underline",
+            }}
+          >
+            {DEVDUDES_LABEL}
+          </Text>
+        </Pressable>
+      </View>
 
       {/* Opt-in replay of the legacy modal tour. Coach marks remain the
           default first-run UX — this is for users who want the overview. */}

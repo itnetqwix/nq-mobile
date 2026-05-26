@@ -112,7 +112,7 @@ export function StoragePlanScreen() {
         )}
 
         <View style={styles.segment}>
-          {(["monthly", "yearly", "one_time"] as const).map((iv) => (
+          {(["monthly", "yearly"] as const).map((iv) => (
             <Pressable
               key={iv}
               style={[styles.segBtn, interval === iv && styles.segOn]}
@@ -137,12 +137,7 @@ export function StoragePlanScreen() {
         ) : null}
 
         {paidPlans.map((plan) => {
-          const price =
-            interval === "yearly"
-              ? plan.yearlyPrice
-              : interval === "one_time"
-                ? plan.monthlyPrice
-                : plan.monthlyPrice;
+          const price = interval === "yearly" ? plan.yearlyPrice : plan.monthlyPrice;
           const isCurrent = info?.planId === plan.id;
           return (
             <View
@@ -158,7 +153,7 @@ export function StoragePlanScreen() {
                 </View>
                 <Text style={[typography.titleSm, { color: c.brandNavy }]}>
                   ${price.toFixed(2)}
-                  {interval === "monthly" ? t("storage.perMonth") : interval === "yearly" ? t("storage.perYear") : ""}
+                  {interval === "monthly" ? t("storage.perMonth") : t("storage.perYear")}
                 </Text>
               </View>
               {!isCurrent && plan.id !== "free" ? (

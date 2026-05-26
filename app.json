@@ -117,6 +117,10 @@
     "extra": {
       "eas": {
         "projectId": "fc0cbae6-e93e-4661-8a6b-0339b19391ad"
+      },
+      "devdudes": {
+        "url": "https://devdudes.dev",
+        "label": "DEVDUDES"
       }
     },
     "owner": "netqwix"

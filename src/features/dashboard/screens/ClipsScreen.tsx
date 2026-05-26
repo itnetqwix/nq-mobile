@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { EmptyState, ImageWithSkeleton } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { getClipPlaybackUrl, getClipThumbnailUrl } from "../../../lib/clipMediaUrl";
@@ -194,7 +194,16 @@ export function ClipsScreen() {
 
   const styles = useThemedStyles((palette) =>
     StyleSheet.create({
-      toolbarRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
+      // Two-row toolbar so the segmented control gets full width on small
+      // devices instead of fighting the action icons for space.
+      toolbar: { gap: space.sm },
+      toolbarRowTop: { flexDirection: "row", alignItems: "center" },
+      toolbarRowBottom: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "flex-end",
+        gap: space.sm,
+      },
       segment: {
         flex: 1,
         flexDirection: "row",
@@ -268,6 +277,8 @@ export function ClipsScreen() {
     queryFn: () => postMyClipsGrouped({}),
     enabled: tab === "mine",
     staleTime: 30_000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
   const sharedQ = useQuery({
@@ -275,6 +286,8 @@ export function ClipsScreen() {
     queryFn: () => postSharedClipsGrouped(),
     enabled: tab === "shared",
     staleTime: 30_000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
   const libraryQ = useQuery({
@@ -282,9 +295,26 @@ export function ClipsScreen() {
     queryFn: () => postLibraryClipsGrouped(),
     enabled: tab === "library",
     staleTime: 30_000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
   const active = tab === "mine" ? myQ : tab === "shared" ? sharedQ : libraryQ;
+
+  /**
+   * Invalidate all clip-related queries when the user returns to this screen
+   * (e.g. after submitting a clip from a different surface, or after an
+   * upload modal closed). The query client takes care of skipping the
+   * refetch when data is still fresh within `staleTime`, so this is cheap.
+   */
+  useFocusEffect(
+    useCallback(() => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.locker.myClips });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.locker.sharedClips });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.locker.libraryClips });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.clips.mySubmissions });
+    }, [queryClient])
+  );
 
   const onRefresh = useCallback(() => {
     void myQ.refetch();
@@ -308,35 +338,40 @@ export function ClipsScreen() {
 
   const toolbar = useMemo(
     () => (
-      <View style={styles.toolbarRow}>
-        <View style={styles.segment}>
-          <Pressable
-            style={[styles.segBtn, tab === "mine" && styles.segBtnOn]}
-            onPress={() => setTab("mine")}
-          >
-            <Text style={[styles.segLabel, tab === "mine" && styles.segLabelOn]}>
-              {t("locker.myClips")}
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.segBtn, tab === "shared" && styles.segBtnOn]}
-            onPress={() => setTab("shared")}
-          >
-            <Text style={[styles.segLabel, tab === "shared" && styles.segLabelOn]}>
-              {t("locker.sharedClips")}
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.segBtn, tab === "library" && styles.segBtnOn]}
-            onPress={() => setTab("library")}
-          >
-            <Text style={[styles.segLabel, tab === "library" && styles.segLabelOn]}>
-              {t("locker.netqwixLibrary")}
-            </Text>
-          </Pressable>
+      <View style={styles.toolbar}>
+        {/* Top row: segmented tab control, full-width on every device. */}
+        <View style={styles.toolbarRowTop}>
+          <View style={styles.segment}>
+            <Pressable
+              style={[styles.segBtn, tab === "mine" && styles.segBtnOn]}
+              onPress={() => setTab("mine")}
+            >
+              <Text style={[styles.segLabel, tab === "mine" && styles.segLabelOn]}>
+                {t("locker.myClips")}
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.segBtn, tab === "shared" && styles.segBtnOn]}
+              onPress={() => setTab("shared")}
+            >
+              <Text style={[styles.segLabel, tab === "shared" && styles.segLabelOn]}>
+                {t("locker.sharedClips")}
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.segBtn, tab === "library" && styles.segBtnOn]}
+              onPress={() => setTab("library")}
+            >
+              <Text style={[styles.segLabel, tab === "library" && styles.segLabelOn]}>
+                {t("locker.netqwixLibrary")}
+              </Text>
+            </Pressable>
+          </View>
         </View>
+        {/* Bottom row: actions, right-aligned. Only visible on the Mine tab
+            since Shared and Library don't have user actions here. */}
         {tab === "mine" ? (
-          <>
+          <View style={styles.toolbarRowBottom}>
             <Pressable
               style={({ pressed }) => [styles.submissionsBtn, pressed && { opacity: 0.88 }]}
               onPress={() => {
@@ -363,7 +398,7 @@ export function ClipsScreen() {
             >
               <Ionicons name="cloud-upload-outline" size={20} color={c.brandTextOn} />
             </Pressable>
-          </>
+          </View>
         ) : null}
       </View>
     ),

@@ -268,6 +268,8 @@ export function TrainerScheduleScreen() {
 
   const [days, setDays] = useState<DayState[]>(buildDefaultDays);
   const [mode, setMode] = useState<"painter" | "list">("painter");
+  /** True while the painter pan gesture is mid-drag; suspends outer scroll. */
+  const [isPainting, setIsPainting] = useState(false);
 
   useEffect(() => {
     if (Array.isArray(data)) setDays(mergeServerWithDefaults(data));
@@ -366,6 +368,10 @@ export function TrainerScheduleScreen() {
     <View style={styles.root}>
       <ScrollView
         contentContainerStyle={styles.content}
+        // While the trainer is mid-drag inside `WeeklyAvailabilityPainter`,
+        // we suspend the outer scroll so a downward sweep across cells
+        // doesn't accidentally scroll the page out from under them.
+        scrollEnabled={!isPainting}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -472,6 +478,7 @@ export function TrainerScheduleScreen() {
             <WeeklyAvailabilityPainter
               initialDays={days}
               onChange={(next) => setDays(next as DayState[])}
+              onPaintingChange={setIsPainting}
             />
           </View>
         ) : null}

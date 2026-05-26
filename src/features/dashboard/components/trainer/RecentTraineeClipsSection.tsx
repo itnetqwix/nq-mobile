@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "../../../../components/ui";
-import { getS3ImageUrl } from "../../../../lib/imageUtils";
+import { getClipThumbnailUrl } from "../../../../lib/clipMediaUrl";
 import { postTraineeClipsGrouped } from "../../../home/api/homeApi";
 import { DashboardSection } from "../shared/DashboardSection";
 import { radii, space, typography, useThemedStyles } from "../../../../theme";
@@ -10,7 +10,8 @@ import { useAppTranslation } from "../../../../i18n/useAppTranslation";
 
 type ClipTile = {
   id: string;
-  thumb?: string;
+  /** Already-resolved absolute URL (S3 bucket prefix applied for stored keys). */
+  thumbUrl: string;
   label: string;
   createdAt: number;
 };
@@ -35,9 +36,14 @@ export function RecentTraineeClipsSection({ onOpenClips }: Props) {
       const clips = Array.isArray(g.clips) ? g.clips : [];
       for (const c of clips) {
         const created = new Date(String(c.createdAt ?? c.created_at ?? 0)).getTime();
+        // Resolve to a full URL via the shared clip-media helper so we get the
+        // same S3 prod-bucket handling as the locker grid (the previous
+        // `getS3ImageUrl(thumb)` path didn't prepend the bucket for raw keys
+        // like `clips/<userId>/<file>.jpg`, so tiles rendered blank).
+        const thumbUrl = getClipThumbnailUrl(c);
         flat.push({
           id: String(c._id ?? c.id ?? `${g._id}-${flat.length}`),
-          thumb: (c.thumbnail ?? c.thumb ?? c.url) as string | undefined,
+          thumbUrl,
           label: String(c.title ?? c.name ?? "Clip"),
           createdAt: Number.isFinite(created) ? created : 0,
         });
@@ -73,7 +79,7 @@ export function RecentTraineeClipsSection({ onOpenClips }: Props) {
         contentContainerStyle={{ gap: space.sm }}
       >
         {tiles.map((item) => {
-          const uri = getS3ImageUrl(item.thumb);
+          const uri = item.thumbUrl;
           return (
             <Pressable
               key={item.id}

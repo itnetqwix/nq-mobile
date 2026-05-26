@@ -1,5 +1,5 @@
 import * as SecureStore from "expo-secure-store";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -10,6 +10,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -280,10 +281,14 @@ function isSameDay(dateStr: string | undefined, target: string): boolean {
 export function UpcomingSessionsScreen() {
   const { t } = useAppTranslation();
   const { accountType } = useAuth();
+  const insets = useSafeAreaInsets();
   const isTrainerOuter = accountType === AccountType.TRAINER;
   const outerNavigation = useNavigation<NativeStackNavigationProp<any>>();
   const [activeTab, setActiveTab] = useState<StatusTab>("upcoming");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  /** Inner list ScrollView ref — reset to top on tab change so an old offset
+   *  from a long list doesn't show as a tall blank area on a short list. */
+  const listScrollRef = useRef<ScrollView | null>(null);
   const [monthAnchor, setMonthAnchor] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -391,6 +396,7 @@ export function UpcomingSessionsScreen() {
             onPress={() => {
               setActiveTab(tab.key);
               setSelectedDate(null);
+              listScrollRef.current?.scrollTo({ y: 0, animated: false });
             }}
           >
             <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
@@ -424,7 +430,11 @@ export function UpcomingSessionsScreen() {
         />
       ) : (
         <ScrollView
-          contentContainerStyle={styles.list}
+          ref={listScrollRef}
+          contentContainerStyle={[
+            styles.list,
+            { flexGrow: 1, paddingBottom: insets.bottom + space.md },
+          ]}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={onRefreshSessions} tintColor={colors.brand} />
           }
@@ -499,15 +509,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceElevated,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
+    maxHeight: 44,
   },
   tabs: {
     flexDirection: "row",
     paddingHorizontal: space.sm,
     gap: 8,
+    alignItems: "center",
   },
   tab: {
-    paddingVertical: space.md,
+    paddingVertical: 8,
     paddingHorizontal: space.md,
+    height: 44,
+    justifyContent: "center",
     alignItems: "center",
     borderBottomWidth: 2,
     borderBottomColor: "transparent",
@@ -516,7 +530,7 @@ const styles = StyleSheet.create({
   tabText: { ...typography.label, color: colors.textMuted },
   tabTextActive: { color: colors.brandNavy },
 
-  list: { padding: space.md, gap: space.sm, paddingBottom: space.xl },
+  list: { padding: space.md, gap: space.sm },
 
   card: {
     backgroundColor: colors.surfaceElevated,

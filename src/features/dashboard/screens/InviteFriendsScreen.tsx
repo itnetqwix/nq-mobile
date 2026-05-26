@@ -1,9 +1,10 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
   Alert,
-  FlatList,
+  Linking,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -11,30 +12,98 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+
 import { Banner, Button, Skeleton } from "../../../components/ui";
-import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
+import {
+  radii,
+  space,
+  typography,
+  useThemeColors,
+  useThemedStyles,
+} from "../../../theme";
 import { postInviteFriendEmail, fetchMyReferrals } from "../../home/api/homeApi";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
+import { useAuth } from "../../auth/context/AuthContext";
+import { WEB_APP_ORIGIN } from "../../../config/env";
+import { haptics } from "../../../lib/haptics";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type TrackerTab = "all" | "pending" | "joined";
+
+type ReferralRow = {
+  _id?: string;
+  email?: string;
+  createdAt?: string;
+  joined?: boolean;
+  joinedAt?: string | null;
+  joinedUserId?: string | null;
+};
+
+/**
+ * Build a referral link that the deep-link signup screen can consume.
+ *
+ * The web signup page reads `?ref=<referrerUserId>` to attribute a new
+ * account back to its inviter (see backend `inviteFriend` which writes the
+ * referrer id on the `ReferredUser` record). Falls back to the bare web
+ * origin if we don't have a user id (e.g. mid-onboarding before /auth/me
+ * has populated).
+ */
+function buildReferralLink(userId: string | null | undefined): string {
+  if (!userId) return WEB_APP_ORIGIN;
+  return `${WEB_APP_ORIGIN}/signup?ref=${encodeURIComponent(userId)}`;
+}
 
 export function InviteFriendsScreen() {
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const styles = useInviteStyles();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [text, setText] = useState("");
   const [chips, setChips] = useState<string[]>([]);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
+  const [tab, setTab] = useState<TrackerTab>("all");
+  const [composerOpen, setComposerOpen] = useState(false);
 
-  const { data: referrals = [], isLoading: loadingHistory } = useQuery({
+  const referralLink = useMemo(
+    () => buildReferralLink((user as { _id?: string } | null | undefined)?._id),
+    [user]
+  );
+
+  const referralMessage = useMemo(
+    () =>
+      t("invites.shareMessage", {
+        defaultValue:
+          "I'm using NetQwix to find personalised coaching. Sign up here and we both get a free intro lesson: {{link}}",
+        link: referralLink,
+      }),
+    [referralLink, t]
+  );
+
+  const { data: referrals = [], isLoading: loadingHistory, isRefetching } = useQuery({
     queryKey: queryKeys.user.referrals,
     queryFn: fetchMyReferrals,
     staleTime: 60_000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
+
+  const stats = useMemo(() => {
+    const total = referrals.length;
+    const joined = referrals.filter((r: ReferralRow) => r.joined).length;
+    return { total, joined, pending: total - joined };
+  }, [referrals]);
+
+  const filteredReferrals = useMemo(() => {
+    const rows = referrals as ReferralRow[];
+    if (tab === "pending") return rows.filter((r) => !r.joined);
+    if (tab === "joined") return rows.filter((r) => r.joined);
+    return rows;
+  }, [referrals, tab]);
 
   const handleTextChange = (val: string) => {
     if (val.endsWith(",") || val.endsWith(" ") || val.endsWith(";")) {
@@ -87,7 +156,6 @@ export function InviteFriendsScreen() {
       setErr(t("invites.maxTen"));
       return;
     }
-
     setLoading(true);
     const ok: string[] = [];
     const failed: { email: string; reason: string }[] = [];
@@ -100,7 +168,6 @@ export function InviteFriendsScreen() {
       }
     }
     setLoading(false);
-
     if (failed.length && ok.length) {
       Alert.alert(
         t("invites.someFailedTitle"),
@@ -124,99 +191,452 @@ export function InviteFriendsScreen() {
     queryClient.invalidateQueries({ queryKey: queryKeys.user.referrals });
   }, [allEmails, queryClient, t]);
 
+  const handleShareWhatsApp = async () => {
+    haptics.tap();
+    const url = `whatsapp://send?text=${encodeURIComponent(referralMessage)}`;
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+        return;
+      }
+    } catch {
+      /* fall through to fallback */
+    }
+    // Fall back to the universal share sheet so the user can still send via
+    // any other installed messaging app.
+    void Share.share({ message: referralMessage });
+  };
+
+  const handleShareSms = async () => {
+    haptics.tap();
+    const url = `sms:?body=${encodeURIComponent(referralMessage)}`;
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+        return;
+      }
+    } catch {
+      /* fall through */
+    }
+    void Share.share({ message: referralMessage });
+  };
+
+  const handleCopyLink = async () => {
+    haptics.tap();
+    try {
+      // `expo-clipboard` is loaded via runtime require so this file does not
+      // hard-import a module that may be absent from `package.json` on slim
+      // builds. The same trick is used elsewhere (e.g. ChatRoomScreen) and
+      // matches Expo's recommended pattern when a clipboard fallback exists.
+      //
+      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+      const Clipboard = require("expo-clipboard") as {
+        setStringAsync: (s: string) => Promise<void>;
+      };
+      await Clipboard.setStringAsync(referralLink);
+      Alert.alert(
+        t("invites.linkCopiedTitle", { defaultValue: "Link copied" }),
+        t("invites.linkCopiedBody", {
+          defaultValue: "Paste it anywhere to share.",
+        })
+      );
+    } catch {
+      // Fall back to the share sheet so the user still has a way out.
+      void Share.share({ message: referralLink });
+    }
+  };
+
+  const handleShareNative = () => {
+    haptics.tap();
+    void Share.share({ message: referralMessage });
+  };
+
   return (
     <ScrollView
       style={styles.root}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <View style={styles.card}>
-        <Text style={styles.title}>{t("invites.title")}</Text>
-        <Text style={styles.sub}>{t("invites.subtitle")}</Text>
-
-        <Text style={styles.label}>{t("invites.emailLabel")}</Text>
-        <View style={styles.chipContainer}>
-          {chips.map((email) => (
-            <View key={email} style={styles.chip}>
-              <Text style={styles.chipText} numberOfLines={1}>{email}</Text>
-              <Pressable onPress={() => removeChip(email)} hitSlop={8}>
-                <Ionicons name="close-circle" size={16} color={c.textMuted} />
-              </Pressable>
-            </View>
-          ))}
-          <TextInput
-            style={styles.chipInput}
-            placeholder={chips.length === 0 ? t("invites.emailPlaceholder") : t("invites.addMorePlaceholder")}
-            placeholderTextColor={c.textMuted}
-            value={text}
-            onChangeText={handleTextChange}
-            onSubmitEditing={handleSubmitEditing}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="email-address"
-            returnKeyType="done"
-            blurOnSubmit={false}
-          />
+      {/* Hero card with perk callout */}
+      <View style={styles.hero}>
+        <View style={[styles.heroIconWrap, { backgroundColor: c.brandSubtle }]}>
+          <Ionicons name="gift-outline" size={32} color={c.brandNavy} />
         </View>
+        <Text style={[styles.heroTitle, { color: c.text }]}>
+          {t("invites.heroTitle", {
+            defaultValue: "Invite a friend, both get a free intro lesson",
+          })}
+        </Text>
+        <Text style={[styles.heroSub, { color: c.textMuted }]}>
+          {t("invites.heroSubtitle", {
+            defaultValue:
+              "Share NetQwix with your training partner. When they sign up using your link you both earn one complimentary intro session.",
+          })}
+        </Text>
+      </View>
 
-        <View style={styles.metaRow}>
-          <Text style={styles.meta}>
-            {t("invites.emailsReady", { count: allEmails.length })}
-          </Text>
-          <Text style={styles.metaMuted}>{t("invites.maxPerSend")}</Text>
-        </View>
-
-        {!!err && <Banner tone="danger" title={t("common.error")} description={err} />}
-
-        <Button
-          label={
-            allEmails.length > 0
-              ? t("invites.sendInvites", { count: allEmails.length })
-              : t("invites.sendInvites", { count: 0 })
-          }
-          onPress={sendInvites}
-          disabled={loading || allEmails.length === 0}
-          loading={loading}
-          size="lg"
+      {/* Stats card */}
+      <View style={styles.statsCard}>
+        <StatBlock
+          icon="paper-plane-outline"
+          label={t("invites.statInvited", { defaultValue: "Invited" })}
+          value={stats.total}
+        />
+        <View style={styles.statDivider} />
+        <StatBlock
+          icon="people-outline"
+          label={t("invites.statJoined", { defaultValue: "Joined" })}
+          value={stats.joined}
+          highlight
         />
       </View>
 
-      {/* Invite History */}
-      <View style={styles.historySection}>
+      {/* Quick share row */}
+      <View style={styles.card}>
+        <Text style={[styles.cardTitle, { color: c.text }]}>
+          {t("invites.shareLinkTitle", { defaultValue: "Share your link" })}
+        </Text>
+        <Text style={[styles.cardSub, { color: c.textMuted }]} numberOfLines={1}>
+          {referralLink}
+        </Text>
+        <View style={styles.shareRow}>
+          <ShareAction
+            icon="logo-whatsapp"
+            label={t("invites.shareWhatsapp", { defaultValue: "WhatsApp" })}
+            onPress={handleShareWhatsApp}
+            tint="#25D366"
+          />
+          <ShareAction
+            icon="chatbox-outline"
+            label={t("invites.shareSms", { defaultValue: "SMS" })}
+            onPress={handleShareSms}
+          />
+          <ShareAction
+            icon="link-outline"
+            label={t("invites.shareCopyLink", { defaultValue: "Copy link" })}
+            onPress={handleCopyLink}
+          />
+          <ShareAction
+            icon="share-outline"
+            label={t("invites.shareMore", { defaultValue: "More" })}
+            onPress={handleShareNative}
+          />
+        </View>
+      </View>
+
+      {/* Email composer — de-emphasised as a secondary path */}
+      <View style={styles.card}>
+        <Pressable
+          onPress={() => setComposerOpen((v) => !v)}
+          style={styles.composerHeader}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.cardTitle, { color: c.text }]}>
+              {t("invites.title")}
+            </Text>
+            <Text style={[styles.cardSub, { color: c.textMuted }]}>
+              {t("invites.subtitle")}
+            </Text>
+          </View>
+          <Ionicons
+            name={composerOpen ? "chevron-up" : "chevron-down"}
+            size={20}
+            color={c.textMuted}
+          />
+        </Pressable>
+
+        {composerOpen ? (
+          <View style={{ gap: space.sm }}>
+            <Text style={styles.label}>{t("invites.emailLabel")}</Text>
+            <View style={styles.chipContainer}>
+              {chips.map((email) => (
+                <View key={email} style={styles.chip}>
+                  <Text style={styles.chipText} numberOfLines={1}>
+                    {email}
+                  </Text>
+                  <Pressable onPress={() => removeChip(email)} hitSlop={8}>
+                    <Ionicons name="close-circle" size={16} color={c.textMuted} />
+                  </Pressable>
+                </View>
+              ))}
+              <TextInput
+                style={styles.chipInput}
+                placeholder={
+                  chips.length === 0
+                    ? t("invites.emailPlaceholder")
+                    : t("invites.addMorePlaceholder")
+                }
+                placeholderTextColor={c.textMuted}
+                value={text}
+                onChangeText={handleTextChange}
+                onSubmitEditing={handleSubmitEditing}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                returnKeyType="done"
+                blurOnSubmit={false}
+              />
+            </View>
+
+            <View style={styles.metaRow}>
+              <Text style={styles.meta}>
+                {t("invites.emailsReady", { count: allEmails.length })}
+              </Text>
+              <Text style={styles.metaMuted}>{t("invites.maxPerSend")}</Text>
+            </View>
+
+            {!!err && (
+              <Banner tone="danger" title={t("common.error")} description={err} />
+            )}
+
+            <Button
+              label={
+                allEmails.length > 0
+                  ? t("invites.sendInvites", { count: allEmails.length })
+                  : t("invites.sendInvites", { count: 0 })
+              }
+              onPress={sendInvites}
+              disabled={loading || allEmails.length === 0}
+              loading={loading}
+              size="lg"
+            />
+          </View>
+        ) : null}
+      </View>
+
+      {/* Segmented tracker */}
+      <View style={styles.trackerSection}>
         <Text style={styles.historyTitle}>{t("invites.pastInvitations")}</Text>
+
+        <View style={styles.trackerSegment}>
+          {(["all", "pending", "joined"] as const).map((tk) => {
+            const active = tab === tk;
+            const count =
+              tk === "all" ? stats.total : tk === "pending" ? stats.pending : stats.joined;
+            return (
+              <Pressable
+                key={tk}
+                onPress={() => setTab(tk)}
+                style={[
+                  styles.trackerSegBtn,
+                  active && { backgroundColor: c.surfaceElevated },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.trackerSegText,
+                    { color: active ? c.brandNavy : c.textMuted },
+                  ]}
+                >
+                  {tk === "all"
+                    ? t("invites.trackerAll", { defaultValue: "All" })
+                    : tk === "pending"
+                      ? t("invites.trackerPending", { defaultValue: "Pending" })
+                      : t("invites.trackerJoined", { defaultValue: "Joined" })}
+                  {"  "}
+                  <Text style={styles.trackerSegCount}>{count}</Text>
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
         {loadingHistory ? (
           <View style={{ gap: 8 }}>
             {[0, 1, 2].map((i) => (
-              <Skeleton key={i} width="100%" height={40} radius={radii.sm} />
+              <Skeleton key={i} width="100%" height={56} radius={radii.sm} />
             ))}
           </View>
-        ) : referrals.length === 0 ? (
+        ) : filteredReferrals.length === 0 ? (
           <View style={styles.emptyHistory}>
             <Ionicons name="mail-outline" size={28} color={c.textMuted} />
-            <Text style={styles.emptyHistoryText}>{t("invites.noInvitationsYet")}</Text>
+            <Text style={styles.emptyHistoryText}>
+              {tab === "joined"
+                ? t("invites.noJoinedYet", {
+                    defaultValue: "Nobody has joined yet — keep sharing!",
+                  })
+                : t("invites.noInvitationsYet")}
+            </Text>
           </View>
         ) : (
-          referrals.map((ref: any) => (
-            <View key={ref._id ?? ref.email} style={styles.historyRow}>
-              <View style={styles.historyIcon}>
-                <Ionicons name="mail-outline" size={18} color={c.iconPrimary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.historyEmail} numberOfLines={1}>{ref.email}</Text>
-                <Text style={styles.historyDate}>
-                  {ref.createdAt
-                    ? new Date(ref.createdAt).toLocaleDateString(undefined, {
-                        month: "short", day: "numeric", year: "numeric",
-                      })
-                    : ""}
-                </Text>
-              </View>
-              <Ionicons name="checkmark-circle" size={18} color={c.success} />
-            </View>
+          filteredReferrals.map((ref, i) => (
+            <ReferralRowView
+              key={ref._id ?? `${ref.email ?? "row"}-${i}`}
+              row={ref}
+              t={t}
+              c={c}
+              styles={styles}
+            />
           ))
         )}
+
+        {isRefetching ? (
+          <Text style={{ color: c.textMuted, ...typography.caption }}>
+            {t("invites.refreshing", { defaultValue: "Refreshing..." })}
+          </Text>
+        ) : null}
       </View>
     </ScrollView>
+  );
+}
+
+function ReferralRowView({
+  row,
+  t,
+  c,
+  styles,
+}: {
+  row: ReferralRow;
+  t: (k: string, opts?: any) => string;
+  c: ReturnType<typeof useThemeColors>;
+  styles: ReturnType<typeof useInviteStyles>;
+}) {
+  const joined = !!row.joined;
+  const subtitle = joined
+    ? t("invites.statusJoined", {
+        defaultValue: "Joined {{date}}",
+        date: row.joinedAt
+          ? new Date(row.joinedAt).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })
+          : "",
+      })
+    : t("invites.statusPending", {
+        defaultValue: "Invited {{date}}",
+        date: row.createdAt
+          ? new Date(row.createdAt).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })
+          : "",
+      });
+  return (
+    <View style={styles.historyRow}>
+      <View
+        style={[
+          styles.historyIcon,
+          {
+            backgroundColor: joined ? c.successSubtle ?? c.brandSubtle : c.brandSubtle,
+          },
+        ]}
+      >
+        <Ionicons
+          name={joined ? "checkmark-circle-outline" : "mail-outline"}
+          size={18}
+          color={joined ? c.success : c.iconPrimary}
+        />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.historyEmail} numberOfLines={1}>
+          {row.email ?? ""}
+        </Text>
+        <Text style={styles.historyDate}>{subtitle}</Text>
+      </View>
+      <View
+        style={[
+          styles.statusPill,
+          {
+            backgroundColor: joined ? c.successSubtle ?? c.brandSubtle : c.surfaceMuted,
+          },
+        ]}
+      >
+        <Text
+          style={[
+            styles.statusPillText,
+            { color: joined ? c.success : c.textMuted },
+          ]}
+        >
+          {joined
+            ? t("invites.pillJoined", { defaultValue: "Joined" })
+            : t("invites.pillPending", { defaultValue: "Pending" })}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function StatBlock({
+  icon,
+  label,
+  value,
+  highlight,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>["name"];
+  label: string;
+  value: number;
+  highlight?: boolean;
+}) {
+  const c = useThemeColors();
+  return (
+    <View style={{ alignItems: "center", flex: 1 }}>
+      <View
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          backgroundColor: highlight ? c.success : c.brandSubtle,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Ionicons name={icon} size={20} color={highlight ? c.brandTextOn : c.brandNavy} />
+      </View>
+      <Text style={{ ...typography.titleLg, color: c.text, marginTop: 6 }}>{value}</Text>
+      <Text style={{ ...typography.caption, color: c.textMuted }}>{label}</Text>
+    </View>
+  );
+}
+
+function ShareAction({
+  icon,
+  label,
+  onPress,
+  tint,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>["name"];
+  label: string;
+  onPress: () => void | Promise<void>;
+  tint?: string;
+}) {
+  const c = useThemeColors();
+  return (
+    <Pressable
+      onPress={() => void onPress()}
+      style={({ pressed }) => [
+        {
+          flex: 1,
+          alignItems: "center",
+          gap: 6,
+          paddingVertical: 10,
+        },
+        pressed && { opacity: 0.85 },
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <View
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          backgroundColor: c.surfaceElevated,
+          borderWidth: 1,
+          borderColor: c.borderSubtle,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Ionicons name={icon} size={22} color={tint ?? c.brandNavy} />
+      </View>
+      <Text style={{ ...typography.caption, color: c.text, fontWeight: "600" }}>
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -225,6 +645,33 @@ function useInviteStyles() {
     StyleSheet.create({
       root: { flex: 1, backgroundColor: palette.background },
       content: { padding: space.md, paddingBottom: space.xl, gap: space.md },
+      hero: {
+        backgroundColor: palette.surfaceElevated,
+        borderRadius: radii.lg,
+        borderWidth: 1,
+        borderColor: palette.borderSubtle,
+        padding: space.lg,
+        alignItems: "center",
+        gap: 10,
+      },
+      heroIconWrap: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        alignItems: "center",
+        justifyContent: "center",
+      },
+      heroTitle: { ...typography.titleMd, textAlign: "center", fontWeight: "800" },
+      heroSub: { ...typography.bodySm, textAlign: "center", lineHeight: 20 },
+      statsCard: {
+        flexDirection: "row",
+        backgroundColor: palette.surfaceElevated,
+        borderRadius: radii.lg,
+        borderWidth: 1,
+        borderColor: palette.borderSubtle,
+        paddingVertical: space.md,
+      },
+      statDivider: { width: 1, backgroundColor: palette.borderSubtle },
       card: {
         backgroundColor: palette.surfaceElevated,
         borderRadius: radii.md,
@@ -233,8 +680,16 @@ function useInviteStyles() {
         padding: space.md,
         gap: space.sm,
       },
-      title: { ...typography.titleMd, color: palette.iconPrimary },
-      sub: { ...typography.bodySm, color: palette.textMuted },
+      cardTitle: { ...typography.titleSm, fontWeight: "700" },
+      cardSub: { ...typography.caption, color: palette.textMuted },
+      shareRow: {
+        flexDirection: "row",
+        gap: space.xs,
+      },
+      composerHeader: {
+        flexDirection: "row",
+        alignItems: "center",
+      },
       label: { ...typography.label, color: palette.textSecondary, marginTop: space.sm },
       chipContainer: {
         flexDirection: "row",
@@ -259,7 +714,12 @@ function useInviteStyles() {
         paddingVertical: 5,
         maxWidth: "90%",
       },
-      chipText: { ...typography.bodySm, color: palette.iconPrimary, fontWeight: "600", flexShrink: 1 },
+      chipText: {
+        ...typography.bodySm,
+        color: palette.iconPrimary,
+        fontWeight: "600",
+        flexShrink: 1,
+      },
       chipInput: {
         flex: 1,
         minWidth: 120,
@@ -274,7 +734,7 @@ function useInviteStyles() {
       },
       meta: { ...typography.caption, color: palette.textMuted },
       metaMuted: { ...typography.caption, color: palette.textMuted },
-      historySection: {
+      trackerSection: {
         backgroundColor: palette.surfaceElevated,
         borderRadius: radii.md,
         borderWidth: 1,
@@ -283,26 +743,46 @@ function useInviteStyles() {
         gap: space.sm,
       },
       historyTitle: { ...typography.subtitle, color: palette.text, marginBottom: 4 },
+      trackerSegment: {
+        flexDirection: "row",
+        padding: 4,
+        borderRadius: radii.md,
+        backgroundColor: palette.surfaceMuted,
+        gap: 2,
+      },
+      trackerSegBtn: {
+        flex: 1,
+        paddingVertical: 8,
+        borderRadius: radii.sm,
+        alignItems: "center",
+      },
+      trackerSegText: { ...typography.caption, fontWeight: "700" },
+      trackerSegCount: { fontWeight: "700", opacity: 0.7 },
       emptyHistory: { alignItems: "center", gap: 6, paddingVertical: space.md },
-      emptyHistoryText: { ...typography.bodySm, color: palette.textMuted },
+      emptyHistoryText: { ...typography.bodySm, color: palette.textMuted, textAlign: "center" },
       historyRow: {
         flexDirection: "row",
         alignItems: "center",
         gap: space.sm,
-        paddingVertical: 8,
+        paddingVertical: 10,
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: palette.border,
       },
       historyIcon: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: palette.brandSubtle,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         alignItems: "center",
         justifyContent: "center",
       },
       historyEmail: { ...typography.bodySm, color: palette.text, fontWeight: "600" },
       historyDate: { ...typography.caption, color: palette.textMuted, marginTop: 1 },
+      statusPill: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: radii.pill,
+      },
+      statusPillText: { ...typography.caption, fontWeight: "700" },
     })
   );
 }

@@ -1,3 +1,5 @@
+import Constants from "expo-constants";
+
 import {
   isLocalDevApiHost,
   resolveDevApiBaseUrl,
@@ -5,6 +7,8 @@ import {
 
 const DEFAULT_API_BASE = "https://api-netqwix.com";
 const DEFAULT_WEB_APP_ORIGIN = "https://netqwix.com";
+const DEFAULT_DEVDUDES_URL = "https://devdudes.dev";
+const DEFAULT_DEVDUDES_LABEL = "DEVDUDES";
 
 function stripTrailingSlash(url: string): string {
   return url.replace(/\/+$/, "");
@@ -65,6 +69,37 @@ export const GOOGLE_WEB_CLIENT_ID =
   (process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "").trim() ||
   GOOGLE_CLIENT_ID_SHARED ||
   "";
+
+/**
+ * Settings-footer "Made with [heart] by DEVDUDES" credit. Resolves in this order:
+ *   1. `EXPO_PUBLIC_DEVDUDES_URL` / `EXPO_PUBLIC_DEVDUDES_LABEL` from `.env`
+ *   2. `expo.extra.devdudes` block in `app.json` (or `app.config.ts`)
+ *   3. Hard-coded default below
+ * The label is kept env-driven so the rebrand to a partner agency only takes
+ * an `app.json` edit, no JS code change.
+ */
+function readExtraDevdudes(): { url?: unknown; label?: unknown } {
+  const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, unknown>;
+  const dd = (extra as { devdudes?: unknown }).devdudes;
+  if (!dd || typeof dd !== "object") return {};
+  return dd as { url?: unknown; label?: unknown };
+}
+const _extraDevdudes = readExtraDevdudes();
+
+export const DEVDUDES_URL = normalizeEnvUrl(
+  process.env.EXPO_PUBLIC_DEVDUDES_URL ??
+    (typeof _extraDevdudes.url === "string" ? _extraDevdudes.url : undefined),
+  DEFAULT_DEVDUDES_URL
+);
+export const DEVDUDES_LABEL = (() => {
+  const fromEnv = (process.env.EXPO_PUBLIC_DEVDUDES_LABEL ?? "").trim();
+  if (fromEnv) return fromEnv;
+  const fromExtra =
+    typeof _extraDevdudes.label === "string"
+      ? _extraDevdudes.label.trim()
+      : "";
+  return fromExtra || DEFAULT_DEVDUDES_LABEL;
+})();
 
 if (__DEV__) {
   // eslint-disable-next-line no-console

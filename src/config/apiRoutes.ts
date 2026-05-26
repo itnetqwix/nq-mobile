@@ -142,6 +142,7 @@ export const API_ROUTES = {
     getTrainers: "/trainer/get-trainers",
     getRecentTrainees: "/trainer/get-recent-trainees",
     getTraineeClips: "/trainer/get-trainee-clips",
+    myStats: "/trainer/my-stats",
     profile: "/trainer/profile",
     createMoneyRequest: "/trainer/create-money-request",
     getMoneyRequest: "/trainer/get-money-request",
