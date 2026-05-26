@@ -6,6 +6,7 @@ import { LoginScreen } from "../features/auth/screens/LoginScreen";
 import { MagicLinkRequestScreen } from "../features/auth/screens/MagicLinkRequestScreen";
 import { MagicLinkVerifyScreen } from "../features/auth/screens/MagicLinkVerifyScreen";
 import { SignUpScreen } from "../features/auth/screens/SignUpScreen";
+import { WakeUpScreen } from "../features/auth/screens/WakeUpScreen";
 import type { RootStackParamList } from "./types";
 import type { AuthStackParamList } from "./types";
 import type { NavigatorScreenParams, RouteProp } from "@react-navigation/native";
@@ -40,6 +41,11 @@ export function AuthNavigator() {
       />
       <Stack.Screen name="MagicLinkRequest" component={MagicLinkRequestScreen} />
       <Stack.Screen name="MagicLinkVerify" component={MagicLinkVerifyScreen} />
+      <Stack.Screen
+        name="WakeUp"
+        component={WakeUpScreen}
+        options={{ title: "Wake up account" }}
+      />
     </Stack.Navigator>
   );
 }

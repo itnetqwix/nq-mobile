@@ -16,6 +16,8 @@ import { TrainerScheduleScreen } from "./TrainerScheduleScreen";
 import { WalletNavigator } from "../../wallet/navigation/WalletNavigator";
 import { StackSwipeBackShell } from "../../../navigation/StackSwipeBackShell";
 import { SupportChatScreen } from "../../support/SupportChatScreen";
+import { DeleteAccountScreen } from "../../account-lifecycle/screens/DeleteAccountScreen";
+import { HibernateAccountScreen } from "../../account-lifecycle/screens/HibernateAccountScreen";
 
 export type ShellSurfaceScreenProps = NativeStackScreenProps<HomeStackParamList, "ShellSurface">;
 
@@ -60,6 +62,10 @@ export function ShellSurfaceScreen({ route }: ShellSurfaceScreenProps) {
       return wrap(<ReportIssueScreen />);
     case "supportChat":
       return wrap(<SupportChatScreen />);
+    case "deleteAccount":
+      return wrap(<DeleteAccountScreen />);
+    case "hibernateAccount":
+      return wrap(<HibernateAccountScreen />);
     default:
       return null;
   }

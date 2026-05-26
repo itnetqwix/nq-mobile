@@ -21,6 +21,8 @@ export type AuthStackParamList = {
   ForgotPassword: undefined;
   MagicLinkRequest: { prefillEmail?: string } | undefined;
   MagicLinkVerify: { email: string; expiresInMinutes?: number };
+  /** Hibernation wake-up OTP flow (Phase 2 item 16). */
+  WakeUp: { contact?: string } | undefined;
 };
 
 export type ShellSurfaceRouteId = ShellSurfaceMeta["id"];

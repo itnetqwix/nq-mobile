@@ -118,6 +118,13 @@ export const queryKeys = {
   trainerRole: {
     dashboardSummary: ["trainer", "dashboardSummary"] as const,
   },
+  content: {
+    tips: ["content", "tips"] as const,
+    banners: ["content", "banners"] as const,
+  },
+  lifecycle: {
+    state: ["lifecycle", "state"] as const,
+  },
 } as const;
 
 /** Root prefixes for broad invalidation (e.g. after socket reconnect). */

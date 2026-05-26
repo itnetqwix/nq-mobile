@@ -20,6 +20,8 @@ import { PerformanceTipsCard } from "./PerformanceTipsCard";
 import { TrainerRecentTraineesSection } from "./TrainerRecentTraineesSection";
 import { TrainerFriendRequestsSection } from "./TrainerFriendRequestsSection";
 import { TrainerLockerSection } from "./TrainerLockerSection";
+import { HomeBannerStrip } from "../../../content/components/HomeBannerStrip";
+import { TipsCarousel } from "../../../content/components/TipsCarousel";
 import { createTrainerDashboardStyles } from "./trainerDashboardTheme";
 import { useThemeColors, useThemedStyles } from "../../../../theme";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
@@ -83,6 +85,8 @@ export function TrainerDashboardHub({
         onOpenStudents={onOpenSessions}
       />
 
+      <HomeBannerStrip />
+
       <TrainerRecentTraineesSection trainees={recentTrainees} />
 
       <View style={[theme.card, theme.cardPadding, theme.cardGap]}>
@@ -143,6 +147,8 @@ export function TrainerDashboardHub({
         showAsOnline={showAsOnline}
         scheduleSlots={scheduleSlots}
       />
+
+      <TipsCarousel />
 
       <RecentTraineeClipsSection onOpenClips={onOpenClips} />
 

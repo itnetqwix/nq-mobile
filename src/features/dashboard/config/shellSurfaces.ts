@@ -21,6 +21,8 @@ export const UTILITY_SURFACE_IDS = [
   "professionalProfile",
   "reportIssue",
   "supportChat",
+  "deleteAccount",
+  "hibernateAccount",
 ] as const;
 export type UtilitySurfaceId = (typeof UTILITY_SURFACE_IDS)[number];
 
@@ -133,6 +135,22 @@ export const SHELL_SURFACES: readonly ShellSurfaceMeta[] = [
     subtitle:
       "Talk to a NetQwix team-member in a chat. Reuses the in-app chat infra so context follows you.",
     webContext: "Mobile-only live-chat shim on top of `/chat` conversations.",
+    allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
+  },
+  {
+    id: "deleteAccount",
+    title: "Delete account",
+    subtitle:
+      "Two-step delete with a 15-day support-restore window before everything is permanently removed.",
+    webContext: "Mobile-only — backend: POST /user/me/deletion/request + confirm.",
+    allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
+  },
+  {
+    id: "hibernateAccount",
+    title: "Pause account",
+    subtitle:
+      "Take a break — sign out, hide from search, and come back later with a one-time wake-up code.",
+    webContext: "Mobile-only — backend: POST /user/me/hibernate/request + confirm.",
     allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
   },
   {

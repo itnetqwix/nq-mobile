@@ -45,7 +45,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (email: string, password: string) => {
       const result = await dispatch(signInThunk({ email, password }));
       if (signInThunk.rejected.match(result)) {
-        throw new Error(String(result.payload ?? "Sign in failed."));
+        const payload = result.payload as
+          | {
+              message?: string;
+              accountState?: string | null;
+              wakeUpRequired?: boolean;
+              pendingDeletion?: boolean;
+            }
+          | string
+          | undefined;
+        const message =
+          typeof payload === "string"
+            ? payload
+            : payload?.message ?? "Sign in failed.";
+        const err: Error & {
+          accountState?: string | null;
+          wakeUpRequired?: boolean;
+          pendingDeletion?: boolean;
+        } = new Error(message);
+        if (payload && typeof payload !== "string") {
+          err.accountState = payload.accountState ?? null;
+          err.wakeUpRequired = !!payload.wakeUpRequired;
+          err.pendingDeletion = !!payload.pendingDeletion;
+        }
+        throw err;
       }
     },
     [dispatch]

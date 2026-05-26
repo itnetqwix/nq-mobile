@@ -32,6 +32,8 @@ import { sortTrainersForDiscover } from "../../lib/sortTrainersForDiscover";
 import { ForYouTrainersSection } from "./ForYouTrainersSection";
 import { PastBookedTrainersSection } from "./PastBookedTrainersSection";
 import { RecentlyViewedTrainersRow } from "./RecentlyViewedTrainersRow";
+import { HomeBannerStrip } from "../../../content/components/HomeBannerStrip";
+import { TipsCarousel } from "../../../content/components/TipsCarousel";
 import { ContinueWhereYouLeftOffCard } from "../trainee/ContinueWhereYouLeftOffCard";
 import { CategoryEmptySuggestions } from "../trainee/CategoryEmptySuggestions";
 import { FavoriteCoachesSection } from "../trainee/FavoriteCoachesSection";
@@ -311,6 +313,8 @@ export function TraineeDiscoverDashboard({
         </Pressable>
       </View>
 
+      <HomeBannerStrip guest={isGuest} />
+
       {onOpenWallet && !isGuest ? (
         <Pressable
           style={({ pressed }) => [styles.walletCard, pressed && { opacity: 0.92 }]}
@@ -349,6 +353,8 @@ export function TraineeDiscoverDashboard({
           onViewTrainer(tr);
         }}
       />
+
+      <TipsCarousel />
 
       <View style={styles.searchBar}>
         <Ionicons name="search-outline" size={20} color={themeColors.textMuted} />

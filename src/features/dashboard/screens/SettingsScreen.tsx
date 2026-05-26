@@ -32,7 +32,6 @@ import { WebRoutes } from "../../../constants/webRoutes";
 import type { MenuStackParamList, ShellSurfaceRouteId } from "../../../navigation/types";
 import { space, typography, useThemeColors } from "../../../theme";
 import { useTheme, type ThemeMode } from "../../../theme/ThemeContext";
-import { requestAccountDeletion } from "../../auth/api/accountDeletionApi";
 import { revokeAllAuthSessions } from "../../auth/api/authSessionsApi";
 import { useAuth } from "../../auth/context/AuthContext";
 import {
@@ -372,39 +371,17 @@ export function SettingsScreen() {
    * sign-in-required flow already gates it, but the second alert is
    * intentionally explicit about consequences.
    */
+  /**
+   * Routes to the OTP-gated delete flow (Phase 2 item 15). The legacy
+   * `requestAccountDeletion()` is left intact in `accountDeletionApi.ts`
+   * for any tests / dev tools that still call it directly.
+   */
   const handleDeleteAccount = () => {
-    Alert.alert(t("settings.deleteAccount"), t("settings.deleteAccountWarn"), [
-      { text: t("common.cancel"), style: "cancel" },
-      {
-        text: t("settings.deleteAccountContinue"),
-        style: "destructive",
-        onPress: () => {
-          Alert.alert(
-            t("settings.deleteAccountFinalTitle"),
-            t("settings.deleteAccountFinalBody"),
-            [
-              { text: t("common.cancel"), style: "cancel" },
-              {
-                text: t("settings.deleteAccountFinalConfirm"),
-                style: "destructive",
-                onPress: async () => {
-                  try {
-                    await requestAccountDeletion();
-                  } catch (e) {
-                    Alert.alert(
-                      t("settings.deleteAccount"),
-                      getApiErrorMessage(e, t("settings.deleteAccount"))
-                    );
-                    return;
-                  }
-                  await signOut();
-                },
-              },
-            ]
-          );
-        },
-      },
-    ]);
+    openShell("deleteAccount");
+  };
+
+  const handleHibernateAccount = () => {
+    openShell("hibernateAccount");
   };
 
   const supportRows = useMemo(() => {
@@ -972,12 +949,21 @@ export function SettingsScreen() {
       <SectionHeader label={t("settings.dangerZone")} />
       <Card variant="outlined" padding={0} style={styles.sectionCard}>
         <ListRow
+          icon="moon-outline"
+          title={t("settings.hibernateAccount", { defaultValue: "Pause my account" })}
+          subtitle={t("settings.hibernateSubtitle", {
+            defaultValue:
+              "Hide your profile, pause messages and bookings. Come back anytime with a one-time code.",
+          })}
+          onPress={handleHibernateAccount}
+        />
+        <Divider />
+        <ListRow
           icon="trash-outline"
           title={t("settings.deleteAccount")}
           subtitle={t("settings.deleteAccountSubtitle")}
           destructive
           onPress={handleDeleteAccount}
-          hideChevron
         />
       </Card>
 

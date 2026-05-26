@@ -38,6 +38,8 @@ export const API_ROUTES = {
     verifyAppleLogin: "/auth/verify-apple-login",
     magicLinkRequest: "/auth/magic-link/request",
     magicLinkVerify: "/auth/magic-link/verify",
+    wakeUpStart: "/auth/wake-up/start",
+    wakeUpConfirm: "/auth/wake-up/confirm",
   },
   user: {
     me: "/user/me",
@@ -113,6 +115,24 @@ export const API_ROUTES = {
     approveExpert: (id: string) => `/user/approve-expert/${id}` as const,
     storage: "/user/storage",
     storageCheckout: "/user/storage/checkout",
+    /** Phase 2 — current lifecycle state (deleted / hibernated / pending). */
+    lifecycle: "/user/me/lifecycle",
+    /** Phase 2 — OTP-gated deletion (step 1: password + reason → OTP sent). */
+    deletionRequest: "/user/me/deletion/request",
+    /** Phase 2 — OTP-gated deletion (step 2: OTP → freeze + 15d window). */
+    deletionConfirm: "/user/me/deletion/confirm",
+    /** Phase 2 — clear pending deletion. */
+    deletionCancel: "/user/me/deletion/cancel",
+    /** Phase 2 — start hibernation (sends OTP). */
+    hibernateRequest: "/user/me/hibernate/request",
+    /** Phase 2 — confirm hibernation (OTP → hibernated_at). */
+    hibernateConfirm: "/user/me/hibernate/confirm",
+  },
+  tips: {
+    list: "/tips",
+  },
+  banners: {
+    list: "/banners",
   },
   verification: {
     status: "/verification/status",

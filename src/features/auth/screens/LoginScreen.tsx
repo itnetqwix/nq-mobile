@@ -11,6 +11,7 @@ import { useAuth } from "../context/AuthContext";
 import { AuthModalChrome } from "../components/AuthModalChrome";
 import { AuthScreenLayout } from "../components/AuthScreenLayout";
 import { SocialAuthButtons } from "../components/SocialAuthButtons";
+import { HomeBannerStrip } from "../../content/components/HomeBannerStrip";
 import type { AuthScreenProps } from "../../../navigation/types";
 import { promptEnableAppUnlock } from "../security/appUnlock";
 import { peekLastAuthMethod, setLastAuthMethod } from "../lib/lastAuthMethod";
@@ -100,6 +101,16 @@ export function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
     },
     onError: (err) => {
       if ((err as Error).message === "validation") return;
+      const enriched = err as Error & {
+        accountState?: string | null;
+        wakeUpRequired?: boolean;
+        pendingDeletion?: boolean;
+      };
+      if (enriched.wakeUpRequired || enriched.accountState === "hibernated") {
+        navigation.navigate("WakeUp", { contact: email.trim() });
+
+        return;
+      }
       Alert.alert(
         t("auth.signInFailed"),
         getApiErrorMessage(err, t("auth.signInFailedBody"))
@@ -156,6 +167,18 @@ export function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
       }
     >
       <Stack gap="md">
+        <HomeBannerStrip
+          guest
+          onDeepLink={(url) => {
+            try {
+              if (url.includes("wake-up")) {
+                navigation.navigate("WakeUp" as never);
+              }
+            } catch {
+              /* ignore — banners often link out */
+            }
+          }}
+        />
         {lastMethod ? (
           <View style={styles.lastUsedBanner}>
             <Ionicons
