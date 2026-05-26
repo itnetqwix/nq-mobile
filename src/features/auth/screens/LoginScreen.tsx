@@ -147,13 +147,6 @@ export function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
             <Text style={styles.link}>{t("auth.forgotPassword")}</Text>
           </Pressable>
           <Pressable
-            onPress={() => navigation.navigate("SignUp")}
-            style={styles.linkWrap}
-            accessibilityRole="link"
-          >
-            <Text style={styles.link}>{t("auth.createAccountLink")}</Text>
-          </Pressable>
-          <Pressable
             onPress={() => navigation.getParent()?.goBack()}
             style={styles.guestRow}
             accessibilityRole="link"
@@ -183,9 +176,7 @@ export function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
           <View style={styles.lastUsedBanner}>
             <Ionicons
               name={
-                lastMethod === "apple"
-                  ? "logo-apple"
-                  : lastMethod === "google"
+                lastMethod === "google"
                   ? "logo-google"
                   : lastMethod === "magic-link"
                   ? "link"

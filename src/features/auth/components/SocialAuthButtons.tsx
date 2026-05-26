@@ -1,12 +1,9 @@
-import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
-import { Alert, Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import { useLoader } from "../../../components/brand/LoaderProvider";
+import { StyleSheet, Text, View } from "react-native";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
-import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
-import { radii, space, typography, useThemeColors } from "../../../theme";
-import { isGoogleConfigured, postAppleVerify, signInWithAppleNative } from "../api/socialAuth";
-import { peekLastAuthMethod, setLastAuthMethod } from "../lib/lastAuthMethod";
+import { space, typography, useThemeColors } from "../../../theme";
+import { isGoogleConfigured } from "../api/socialAuth";
+import { peekLastAuthMethod } from "../lib/lastAuthMethod";
 import { GoogleSignInButton } from "./GoogleSignInButton";
 import type { AuthScreenProps } from "../../../navigation/types";
 
@@ -16,88 +13,39 @@ type Props = {
   mode?: "login" | "signup";
 };
 
+/**
+ * Social sign-in row — Google only (Apple removed per product decision).
+ */
 export function SocialAuthButtons({ navigation, onTokens, mode = "login" }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
-  const { showLoader, hideLoader } = useLoader();
   const [busy, setBusy] = useState(false);
 
-  const showApple = Platform.OS === "ios";
-  const showGoogle = isGoogleConfigured();
-  const lastMethod = peekLastAuthMethod();
-
-  if (!showApple && !showGoogle) {
+  if (!isGoogleConfigured()) {
     return null;
   }
 
-  const handleApple = async () => {
-    setBusy(true);
-    showLoader("Signing in with Apple…");
-    try {
-      const { identityToken, email } = await signInWithAppleNative();
-      const result = await postAppleVerify({
-        identity_token: identityToken,
-        email: email ?? undefined,
-      });
-      if (result.kind === "register_pending") {
-        navigation.navigate("SignUp", {
-          prefillEmail: result.email,
-          ssoProvider: "apple",
-          appleIdentityToken: identityToken,
-        } as never);
-        return;
-      }
-      await setLastAuthMethod("apple");
-      await onTokens(result);
-    } catch (e: unknown) {
-      const code = (e as { code?: string })?.code;
-      if (code === "ERR_REQUEST_CANCELED") return;
-      Alert.alert("Apple Sign In failed", getApiErrorMessage(e));
-    } finally {
-      hideLoader();
-      setBusy(false);
-    }
-  };
+  const lastMethod = peekLastAuthMethod();
 
   return (
     <View style={styles.wrap}>
       <View style={styles.dividerRow}>
         <View style={[styles.line, { backgroundColor: c.border }]} />
-        <Text style={[styles.or, { color: c.textMuted }]}>or continue with</Text>
+        <Text style={[styles.or, { color: c.textMuted }]}>
+          {t("auth.orContinueWith", { defaultValue: "or continue with" })}
+        </Text>
         <View style={[styles.line, { backgroundColor: c.border }]} />
       </View>
 
-      <View style={styles.socialRow}>
-        {showGoogle ? (
-          <View style={[styles.providerCol, { flex: 1 }]}>
-            <GoogleSignInButton
-              navigation={navigation}
-              onTokens={onTokens}
-              busy={busy}
-              setBusy={setBusy}
-              mode={mode}
-            />
-            {lastMethod === "google" ? <LastUsedBadge label={t("auth.lastUsed")} /> : null}
-          </View>
-        ) : null}
-        {showApple ? (
-          <View style={[styles.providerCol, !showGoogle && { flex: 1 }]}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.socialBtn,
-                { borderColor: c.border, backgroundColor: c.text, opacity: busy ? 0.5 : 1 },
-                !showGoogle && styles.socialBtnFull,
-                pressed && !busy && { opacity: 0.88 },
-              ]}
-              onPress={handleApple}
-              disabled={busy}
-            >
-              <Ionicons name="logo-apple" size={22} color={c.background} />
-              <Text style={[styles.socialLabel, { color: c.background }]}>Apple</Text>
-            </Pressable>
-            {lastMethod === "apple" ? <LastUsedBadge label={t("auth.lastUsed")} /> : null}
-          </View>
-        ) : null}
+      <View style={styles.providerCol}>
+        <GoogleSignInButton
+          navigation={navigation}
+          onTokens={onTokens}
+          busy={busy}
+          setBusy={setBusy}
+          mode={mode}
+        />
+        {lastMethod === "google" ? <LastUsedBadge label={t("auth.lastUsed")} /> : null}
       </View>
     </View>
   );
@@ -107,7 +55,6 @@ function LastUsedBadge({ label }: { label: string }) {
   const c = useThemeColors();
   return (
     <View style={[styles.lastUsedPill, { backgroundColor: c.brandAccent }]}>
-      <Ionicons name="checkmark-circle" size={11} color="#fff" />
       <Text style={styles.lastUsedText}>{label}</Text>
     </View>
   );
@@ -123,35 +70,12 @@ const styles = StyleSheet.create({
   },
   line: { flex: 1, height: StyleSheet.hairlineWidth },
   or: { ...typography.caption, fontWeight: "600" },
-  socialRow: {
-    flexDirection: "row",
-    alignItems: "stretch",
-    gap: space.sm,
-  },
-  providerCol: { gap: 6 },
+  providerCol: { gap: 6, alignItems: "stretch" },
   lastUsedPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
     alignSelf: "center",
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: 999,
   },
   lastUsedText: { color: "#fff", fontWeight: "800", fontSize: 10, letterSpacing: 0.4 },
-  socialBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: space.sm,
-    paddingVertical: space.md,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    minHeight: 52,
-  },
-  socialBtnFull: {
-    flex: 1,
-  },
-  socialLabel: { ...typography.label, fontWeight: "700" },
 });

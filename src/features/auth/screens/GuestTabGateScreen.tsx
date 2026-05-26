@@ -59,7 +59,7 @@ export function GuestTabGateScreen({ icon, titleKey, bodyKey, flavor = "generic"
     return t(bodyKey);
   }, [trainerName, pending?.intent, t, bodyKey]);
 
-  const primaryScreen: "Login" | "SignUp" = "SignUp";
+  const primaryScreen: "Login" | "SignUp" = "Login";
 
   return (
     <View style={[styles.root, { backgroundColor: c.background }]}>
@@ -137,20 +137,11 @@ export function GuestTabGateScreen({ icon, titleKey, bodyKey, flavor = "generic"
           <Text style={[styles.body, { color: c.textMuted }]}>{ctaBody}</Text>
 
           <Button
-            label={t("auth.createAccount")}
+            label={t("auth.signIn")}
             size="lg"
             onPress={() => openAuth(primaryScreen, ctxFor(flavor, pending?.intent))}
             fullWidth
           />
-          <Pressable
-            onPress={() => openAuth("Login", ctxFor(flavor, pending?.intent))}
-            style={styles.linkBtn}
-            accessibilityRole="button"
-          >
-            <Text style={[styles.linkText, { color: c.brandAccent }]}>
-              {t("guest.lock.alreadyHave")}
-            </Text>
-          </Pressable>
         </View>
       </View>
     </View>

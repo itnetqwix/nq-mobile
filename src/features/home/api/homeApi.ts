@@ -167,7 +167,14 @@ export type MyTrainerStats = {
     trainee_fullname?: string;
     trainee_picture?: string;
     ratings?: {
-      trainee?: { sessionRating?: number; comment?: string };
+      trainee?: {
+        sessionRating?: number;
+        audioVideoRating?: number;
+        recommendRating?: number;
+        title?: string;
+        remarksInfo?: string;
+        comment?: string;
+      };
     };
   }>;
 };

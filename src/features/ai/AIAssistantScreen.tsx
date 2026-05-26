@@ -29,10 +29,16 @@ import { useVoiceInput } from "./useVoiceInput";
 import { haptics } from "../../lib/haptics";
 import {
   describeAiAction,
-  parseAiActions,
   runAiAction,
   type AiAction,
 } from "./aiActions";
+import {
+  buildChatHistoryForApi,
+  isPoisonedAssistantContent,
+  parseChatAssistantFromAxiosError,
+  parseChatAssistantPayload,
+} from "./parseChatAssistantResponse";
+import { getApiErrorMessage } from "../../lib/http/getApiErrorMessage";
 
 type Message = {
   id: string;
@@ -75,7 +81,7 @@ const WELCOME_MESSAGE: Message = {
 };
 
 function toStored(m: Message): StoredAiMessage | null {
-  if (m.id === "welcome") return null;
+  if (m.id === "welcome" || m.id.startsWith("error-")) return null;
   return { id: m.id, role: m.role, content: m.content, ts: m.timestamp.getTime() };
 }
 
@@ -110,7 +116,10 @@ export default function AIAssistantScreen({ onClose }: { onClose?: () => void })
       if (rows.length === 0) {
         setMessages([WELCOME_MESSAGE]);
       } else {
-        setMessages([WELCOME_MESSAGE, ...rows.map(fromStored)]);
+        const restored = rows
+          .map(fromStored)
+          .filter((m) => !isPoisonedAssistantContent(m.content));
+        setMessages([WELCOME_MESSAGE, ...restored]);
       }
       setHydrating(false);
     });
@@ -139,41 +148,65 @@ export default function AIAssistantScreen({ onClose }: { onClose?: () => void })
       if (userStored) void appendAiMessage(userId, userStored);
 
       try {
-        const history = newMessages
-          .filter((m) => m.id !== "welcome")
-          .map((m) => ({ role: m.role, content: m.content }));
+        const history = buildChatHistoryForApi(newMessages);
+        if (history.length === 0) {
+          throw new Error("No valid messages to send.");
+        }
 
         const res = await apiClient.post(API_ROUTES.ai.chatAssistant, {
-          messages: history.slice(-10),
+          messages: history,
         });
 
-        const reply = res.data?.result?.reply || "Sorry, I couldn't process that.";
-        const actions = parseAiActions(res.data?.result?.actions);
+        const { reply, actions } = parseChatAssistantPayload(res.data);
+        const text =
+          reply?.trim() ||
+          (res.data?.status === "FAIL"
+            ? String(res.data?.error ?? "")
+            : "") ||
+          t("ai.emptyReply", { defaultValue: "Sorry, I couldn't process that." });
 
         const assistantMsg: Message = {
           id: `assistant-${Date.now()}`,
           role: "assistant",
-          content: reply,
+          content: text,
           timestamp: new Date(),
           actions: actions.length > 0 ? actions : undefined,
         };
         setMessages((prev) => [...prev, assistantMsg]);
         const stored = toStored(assistantMsg);
         if (stored) void appendAiMessage(userId, stored);
-      } catch {
-        const errMsg: Message = {
-          id: `error-${Date.now()}`,
-          role: "assistant",
-          content: t("ai.connectError", {
-            defaultValue:
-              "I'm having trouble connecting right now. Please try again in a moment.",
-          }),
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, errMsg]);
-        const stored = toStored(errMsg);
-        if (stored) void appendAiMessage(userId, stored);
-        haptics.error();
+      } catch (err) {
+        const recovered = parseChatAssistantFromAxiosError(err);
+        if (recovered.reply?.trim()) {
+          const assistantMsg: Message = {
+            id: `assistant-${Date.now()}`,
+            role: "assistant",
+            content: recovered.reply.trim(),
+            timestamp: new Date(),
+            actions: recovered.actions.length > 0 ? recovered.actions : undefined,
+          };
+          setMessages((prev) => [...prev, assistantMsg]);
+          const stored = toStored(assistantMsg);
+          if (stored) void appendAiMessage(userId, stored);
+        } else {
+          const errMsg: Message = {
+            id: `error-${Date.now()}`,
+            role: "assistant",
+            content: t("ai.connectError", {
+              defaultValue:
+                "I'm having trouble connecting right now. Please try again in a moment.",
+            }),
+            timestamp: new Date(),
+          };
+          if (__DEV__) {
+            const detail = getApiErrorMessage(err);
+            if (detail && detail !== errMsg.content) {
+              errMsg.content = `${errMsg.content}\n\n(${detail})`;
+            }
+          }
+          setMessages((prev) => [...prev, errMsg]);
+          haptics.error();
+        }
       } finally {
         setLoading(false);
       }

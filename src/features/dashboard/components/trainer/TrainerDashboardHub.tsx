@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
@@ -15,7 +15,8 @@ import { TodayScheduleTimeline } from "./TodayScheduleTimeline";
 import { TrainerEarningsSnapshot } from "./TrainerEarningsSnapshot";
 import { TrainerPulseHero } from "./TrainerPulseHero";
 import { RecentTraineeClipsSection } from "./RecentTraineeClipsSection";
-import { RatingFeedbackPulse } from "./RatingFeedbackPulse";
+import { TrainerGreetingRating } from "./TrainerGreetingRating";
+import { TrainerReviewsSheet } from "./TrainerReviewsSheet";
 import { PerformanceTipsCard } from "./PerformanceTipsCard";
 import { TrainerRecentTraineesSection } from "./TrainerRecentTraineesSection";
 import { TrainerFriendRequestsSection } from "./TrainerFriendRequestsSection";
@@ -51,7 +52,6 @@ export function TrainerDashboardHub({
   accountType,
   profilePicture,
   showAsOnline,
-  user,
   recentTrainees = [],
   friendRequests = [],
   onAcceptFriend,
@@ -69,6 +69,7 @@ export function TrainerDashboardHub({
   const c = useThemeColors();
   const theme = useThemedStyles((palette) => createTrainerDashboardStyles(palette));
   const { pendingSessions, todayTimeline } = useDashboardSessions(accountType);
+  const [reviewsOpen, setReviewsOpen] = useState(false);
 
   const { data: scheduleSlots = [] } = useQuery({
     queryKey: queryKeys.trainer.slots,
@@ -100,6 +101,7 @@ export function TrainerDashboardHub({
           <View style={theme.flex1}>
             <Text style={theme.welcome}>{t("trainerDashboard.welcome", { name })}</Text>
             <Text style={theme.role}>{t("trainerDashboard.roleTrainer")}</Text>
+            <TrainerGreetingRating onPress={() => setReviewsOpen(true)} />
           </View>
           <Ionicons name="chevron-forward" size={20} color={c.textMuted} />
         </Pressable>
@@ -140,8 +142,6 @@ export function TrainerDashboardHub({
         />
       ) : null}
 
-      <RatingFeedbackPulse user={user} />
-
       <PerformanceTipsCard
         pendingCount={pendingSessions.length}
         showAsOnline={showAsOnline}
@@ -155,6 +155,8 @@ export function TrainerDashboardHub({
       <ReviewAnalysisCard embedded />
 
       <TrainerLockerSection accountType={accountType} onOpenSurface={onOpenSurface} />
+
+      <TrainerReviewsSheet visible={reviewsOpen} onClose={() => setReviewsOpen(false)} />
     </View>
   );
 }

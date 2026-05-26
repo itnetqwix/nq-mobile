@@ -124,23 +124,29 @@ export function RatingsModal({
                 />
               )}
 
-              {!isFromCall && (
+              {!isTrainer && (
                 <>
+                  {!isFromCall ? (
+                    <TextInput
+                      placeholder="Title (optional)"
+                      placeholderTextColor="#888"
+                      value={title}
+                      onChangeText={setTitle}
+                      style={styles.input}
+                    />
+                  ) : null}
                   <TextInput
-                    placeholder="Title"
-                    placeholderTextColor="#888"
-                    value={title}
-                    onChangeText={setTitle}
-                    style={styles.input}
-                  />
-                  <TextInput
-                    placeholder="Tell us more (optional)"
+                    placeholder={
+                      isFromCall
+                        ? "Write a review for your coach (optional)"
+                        : "Tell us more (optional)"
+                    }
                     placeholderTextColor="#888"
                     value={remarks}
                     onChangeText={setRemarks}
                     style={[styles.input, styles.textarea]}
                     multiline
-                    numberOfLines={4}
+                    numberOfLines={isFromCall ? 3 : 4}
                   />
                 </>
               )}
