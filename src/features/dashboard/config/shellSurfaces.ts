@@ -8,6 +8,7 @@ import { WebRoutes } from "../../../constants/webRoutes";
  */
 export const UTILITY_SURFACE_IDS = [
   "clips",
+  "clipSubmissions",
   "gamePlans",
   "savedLessons",
   "invite",
@@ -37,6 +38,15 @@ export const SHELL_SURFACES: readonly ShellSurfaceMeta[] = [
     title: "Clips",
     subtitle: "Locker videos grouped by category (and trainee clips for trainers).",
     webContext: "Left sidebar → My Uploads → My clips / Enthusiasts (`FileSection`).",
+    allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
+  },
+  {
+    id: "clipSubmissions",
+    title: "My library submissions",
+    subtitle:
+      "Track the status of every clip you've submitted to the Netqwix master library.",
+    webContext:
+      "Mobile-only tracker. Backend: `GET /clips/library-submissions/mine`.",
     allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
   },
   {

@@ -141,6 +141,14 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
     group: "tools",
   },
   {
+    id: "clipSubmissions",
+    label: "Library submissions",
+    icon: "library-outline",
+    target: { kind: "shell", surfaceId: "clipSubmissions" },
+    surfaces: ["more"],
+    group: "tools",
+  },
+  {
     id: "gamePlans",
     label: "Game plans",
     icon: "clipboard-outline",

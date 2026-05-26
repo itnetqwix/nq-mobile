@@ -53,7 +53,15 @@ async function readList(userId: string | null): Promise<RecentTrainerRow[]> {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed;
+    const seen = new Set<string>();
+    const cleaned: RecentTrainerRow[] = [];
+    for (const r of parsed as RecentTrainerRow[]) {
+      const id = r?._id ? String(r._id) : "";
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      cleaned.push(r);
+    }
+    return cleaned;
   } catch {
     return [];
   }

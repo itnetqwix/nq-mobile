@@ -5,6 +5,7 @@ import { NotificationsScreen } from "../../notifications/screens/NotificationsSc
 import { InviteFriendsScreen } from "./InviteFriendsScreen";
 import { TransactionsScreen } from "./TransactionsScreen";
 import { ClipsScreen } from "./ClipsScreen";
+import { MyLibrarySubmissionsScreen } from "../../clips/screens/MyLibrarySubmissionsScreen";
 import { EditProfileScreen } from "./EditProfileScreen";
 import { ProfessionalProfileScreen } from "../../trainer-profile/screens/ProfessionalProfileScreen";
 import { GamePlansScreen } from "./GamePlansScreen";
@@ -39,6 +40,8 @@ export function ShellSurfaceScreen({ route }: ShellSurfaceScreenProps) {
       return wrap(<TransactionsScreen />);
     case "clips":
       return wrap(<ClipsScreen />);
+    case "clipSubmissions":
+      return wrap(<MyLibrarySubmissionsScreen />);
     case "gamePlans":
       return wrap(<GamePlansScreen />);
     case "savedLessons":

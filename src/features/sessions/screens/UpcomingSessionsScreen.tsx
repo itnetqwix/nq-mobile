@@ -476,9 +476,9 @@ export function UpcomingSessionsScreen() {
               }
             />
           ) : (
-            sessions.map((session: any) => (
+            sessions.map((session: any, idx: number) => (
               <SessionCard
-                key={session._id}
+                key={`sess-${session?._id ?? "row"}-${idx}`}
                 session={session}
                 accountType={accountType}
                 activeTab={activeTab}

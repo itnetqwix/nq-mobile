@@ -705,9 +705,9 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
                 justifyContent: "center",
               }}
             >
-              {friendRequests.map((req: any) => (
+              {friendRequests.map((req: any, idx: number) => (
                 <FriendRequestWebTile
-                  key={req._id}
+                  key={`fr-${req?._id ?? "row"}-${idx}`}
                   request={req}
                   onAccept={handleAccept}
                   onReject={handleReject}

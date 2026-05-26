@@ -43,12 +43,12 @@ export function MeetingRoomScreen() {
       ) : liveSessions.length > 0 ? (
         <View style={styles.sessionsList}>
           <Text style={styles.sectionTitle}>Active Sessions</Text>
-          {liveSessions.map((session: any) => {
+          {liveSessions.map((session: any, idx: number) => {
             const isTrainerRole = accountType === AccountType.TRAINER;
             const other = isTrainerRole ? session.trainee_info : session.trainer_info;
             const name = other?.fullname || other?.fullName || "Session";
             return (
-              <View key={session._id} style={styles.sessionCard}>
+              <View key={`live-${session?._id ?? "row"}-${idx}`} style={styles.sessionCard}>
                 <View style={styles.sessionInfo}>
                   <Text style={styles.sessionName}>{name}</Text>
                   <Text style={styles.sessionTime}>

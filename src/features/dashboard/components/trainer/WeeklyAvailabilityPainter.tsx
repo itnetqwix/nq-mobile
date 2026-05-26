@@ -69,14 +69,38 @@ export function WeeklyAvailabilityPainter({ initialDays, onChange }: Props) {
     w: 0,
     h: 0,
   });
+  // We keep `onChange` in a ref so effects that emit upwards don't depend on
+  // its identity. Parents typically pass an inline arrow which would otherwise
+  // re-fire the emit-effect on every render and create a feedback loop with
+  // the `initialDays` sync below.
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+  const lastEmittedJsonRef = useRef<string>("");
+  const lastInitialJsonRef = useRef<string>(JSON.stringify(daysToGrid(initialDays)));
 
   useEffect(() => {
     cellsRef.current = cells;
-    onChange(gridToDays(cells));
-  }, [cells, onChange]);
+    // Only bubble up if the grid content actually changed since the last emit,
+    // and skip the very first render — the parent already owns this value.
+    const json = JSON.stringify(cells);
+    if (json === lastEmittedJsonRef.current) return;
+    lastEmittedJsonRef.current = json;
+    onChangeRef.current(gridToDays(cells));
+  }, [cells]);
 
+  // Re-sync from `initialDays` only when its structural content changes (e.g.
+  // the user reloads the screen / a fresh fetch returns new data). Comparing
+  // by reference would loop forever because parents typically rebuild the
+  // array on every setState.
   useEffect(() => {
-    setCells(daysToGrid(initialDays));
+    const next = daysToGrid(initialDays);
+    const json = JSON.stringify(next);
+    if (json === lastInitialJsonRef.current) return;
+    lastInitialJsonRef.current = json;
+    lastEmittedJsonRef.current = json;
+    setCells(next);
   }, [initialDays]);
 
   const onGridLayout = (e: LayoutChangeEvent) => {

@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import { EmptyState, ImageWithSkeleton } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { getClipPlaybackUrl, getClipThumbnailUrl } from "../../../lib/clipMediaUrl";
@@ -179,6 +180,7 @@ function libraryStatusChip(status: string, t: (k: string) => string): string | n
 export function ClipsScreen() {
   const { t } = useAppTranslation();
   const queryClient = useQueryClient();
+  const navigation = useNavigation<any>();
   const c = useThemeColors();
   const [tab, setTab] = useState<ClipTab>("mine");
   const [uploadVisible, setUploadVisible] = useState(false);
@@ -210,6 +212,16 @@ export function ClipsScreen() {
         height: 44,
         borderRadius: 22,
         backgroundColor: palette.brandNavy,
+        alignItems: "center",
+        justifyContent: "center",
+      },
+      submissionsBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: palette.surfaceElevated,
+        borderWidth: 1,
+        borderColor: palette.borderSubtle,
         alignItems: "center",
         justifyContent: "center",
       },
@@ -324,18 +336,38 @@ export function ClipsScreen() {
           </Pressable>
         </View>
         {tab === "mine" ? (
-          <Pressable
-            style={({ pressed }) => [styles.uploadFab, pressed && { opacity: 0.88 }]}
-            onPress={() => setUploadVisible(true)}
-            accessibilityRole="button"
-            accessibilityLabel={t("locker.uploadClip")}
-          >
-            <Ionicons name="cloud-upload-outline" size={20} color={c.brandTextOn} />
-          </Pressable>
+          <>
+            <Pressable
+              style={({ pressed }) => [styles.submissionsBtn, pressed && { opacity: 0.88 }]}
+              onPress={() => {
+                try {
+                  navigation.navigate("ShellSurface", {
+                    surfaceId: "clipSubmissions",
+                  });
+                } catch {
+                  /* older navigators - best-effort */
+                }
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={t("locker.openSubmissions", {
+                defaultValue: "View my library submissions",
+              })}
+            >
+              <Ionicons name="library-outline" size={20} color={c.brandNavy} />
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.uploadFab, pressed && { opacity: 0.88 }]}
+              onPress={() => setUploadVisible(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t("locker.uploadClip")}
+            >
+              <Ionicons name="cloud-upload-outline" size={20} color={c.brandTextOn} />
+            </Pressable>
+          </>
         ) : null}
       </View>
     ),
-    [tab, styles, c, t]
+    [tab, styles, c, t, navigation]
   );
 
   const renderClipRow = (
@@ -523,6 +555,9 @@ export function ClipsScreen() {
         onClose={() => setLibrarySheetClip(null)}
         onSubmitted={() => {
           void queryClient.invalidateQueries({ queryKey: queryKeys.locker.myClips });
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.clips.mySubmissions,
+          });
         }}
       />
     </>

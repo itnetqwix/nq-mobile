@@ -36,9 +36,9 @@ export function RecentlyViewedTrainersRow({ rows, onSelectTrainer }: Props) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
       >
-        {rows.map((trainer) => (
+        {rows.map((trainer, idx) => (
           <Pressable
-            key={trainer._id}
+            key={`rv-${trainer?._id ?? "row"}-${idx}`}
             onPress={() => onSelectTrainer(trainer as unknown as Record<string, unknown>)}
             style={({ pressed }) => [
               styles.card,

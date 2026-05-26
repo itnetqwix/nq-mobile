@@ -133,7 +133,18 @@ export async function fetchSessionDetail(bookingId: string): Promise<SessionDeta
 
 export async function fetchFriendRequests(): Promise<any[]> {
   const res = await apiClient.get(API_ROUTES.user.friendRequests);
-  return res.data?.friendRequests ?? res.data ?? [];
+  const rows: any[] = res.data?.friendRequests ?? res.data ?? [];
+  const seen = new Set<string>();
+  const out: any[] = [];
+  for (const r of rows) {
+    const id = r?._id ? String(r._id) : "";
+    if (id) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+    }
+    out.push(r);
+  }
+  return out;
 }
 
 export async function fetchSentFriendRequests(): Promise<any[]> {
