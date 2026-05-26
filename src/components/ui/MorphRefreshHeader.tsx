@@ -35,9 +35,11 @@ export type MorphRefreshHeaderProps = {
   pullValue: Animated.Value;
   /** `true` once the threshold is crossed — pass from the hook. */
   released: boolean;
+  /** While the refetch promise is running — keeps the green check visible. */
+  refreshing?: boolean;
 };
 
-export function MorphRefreshHeader({ pullValue, released }: MorphRefreshHeaderProps) {
+export function MorphRefreshHeader({ pullValue, released, refreshing }: MorphRefreshHeaderProps) {
   const c = useThemeColors();
 
   /** Negative offset → positive pull distance in [0, MORPH_THRESHOLD+]. */
@@ -60,14 +62,16 @@ export function MorphRefreshHeader({ pullValue, released }: MorphRefreshHeaderPr
     extrapolate: "clamp",
   });
 
+  const showCheck = released || refreshing;
+
   return (
     <Animated.View
       pointerEvents="none"
       style={[
         styles.wrap,
         {
-          height: pullDistance,
-          opacity,
+          height: refreshing ? 52 : pullDistance,
+          opacity: refreshing ? 1 : opacity,
         },
       ]}
     >
@@ -75,12 +79,12 @@ export function MorphRefreshHeader({ pullValue, released }: MorphRefreshHeaderPr
         style={[
           styles.bubble,
           {
-            backgroundColor: released ? c.success : c.brandAccentSubtle,
-            borderColor: released ? c.success : c.brandAccent,
+            backgroundColor: showCheck ? c.success : c.brandAccentSubtle,
+            borderColor: showCheck ? c.success : c.brandAccent,
           },
         ]}
       >
-        {released ? (
+        {showCheck ? (
           <Ionicons name="checkmark" size={20} color={"#fff"} />
         ) : (
           <Animated.View style={{ transform: [{ rotate }] }}>

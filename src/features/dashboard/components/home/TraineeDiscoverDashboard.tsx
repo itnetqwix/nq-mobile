@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,6 +12,7 @@ import {
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Skeleton } from "../../../../components/ui";
+import { NetQwixLoader } from "../../../../components/brand/NetQwixLoader";
 import { AccountType } from "../../../../constants/accountType";
 import { fetchSportCategories } from "../../../auth/api/masterApi";
 import { TrainerBrowseCard } from "../../../bookexpert/components/TrainerBrowseCard";
@@ -548,7 +548,7 @@ export function TraineeDiscoverDashboard({
               accessibilityLabel={t("traineeDiscover.showMoreA11y")}
             >
               {isFetchingNextPage ? (
-                <ActivityIndicator color={themeColors.brandNavy} />
+                <NetQwixLoader variant="inline" size="sm" motion="quick" message="" />
               ) : (
                 <>
                   <Text style={styles.showMoreText}>{t("traineeDiscover.showMore")}</Text>
@@ -558,7 +558,13 @@ export function TraineeDiscoverDashboard({
             </Pressable>
           )}
           {(isRefetching || isFetchingNextPage) && visibleRows.length > 0 && !canShowMore && (
-            <ActivityIndicator style={{ marginVertical: space.md }} color={themeColors.brandNavy} />
+            <NetQwixLoader
+              variant="inline"
+              size="sm"
+              motion="quick"
+              message=""
+              style={{ marginVertical: space.md }}
+            />
           )}
         </View>
       )}

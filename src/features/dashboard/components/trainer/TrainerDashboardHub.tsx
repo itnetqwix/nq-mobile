@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
@@ -16,7 +16,6 @@ import { TrainerEarningsSnapshot } from "./TrainerEarningsSnapshot";
 import { TrainerPulseHero } from "./TrainerPulseHero";
 import { RecentTraineeClipsSection } from "./RecentTraineeClipsSection";
 import { TrainerGreetingRating } from "./TrainerGreetingRating";
-import { TrainerReviewsSheet } from "./TrainerReviewsSheet";
 import { PerformanceTipsCard } from "./PerformanceTipsCard";
 import { TrainerRecentTraineesSection } from "./TrainerRecentTraineesSection";
 import { TrainerFriendRequestsSection } from "./TrainerFriendRequestsSection";
@@ -44,6 +43,7 @@ type Props = {
   onOpenSessions: () => void;
   onOpenClips: () => void;
   onOpenSurface: (id: UtilitySurfaceId) => void;
+  onOpenReviews?: () => void;
   onSessionPress: (session: Record<string, unknown>) => void;
 };
 
@@ -63,14 +63,13 @@ export function TrainerDashboardHub({
   onOpenSessions,
   onOpenClips,
   onOpenSurface,
+  onOpenReviews,
   onSessionPress,
 }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const theme = useThemedStyles((palette) => createTrainerDashboardStyles(palette));
   const { pendingSessions, todayTimeline } = useDashboardSessions(accountType);
-  const [reviewsOpen, setReviewsOpen] = useState(false);
-
   const { data: scheduleSlots = [] } = useQuery({
     queryKey: queryKeys.trainer.slots,
     queryFn: fetchTrainerSlots,
@@ -101,7 +100,7 @@ export function TrainerDashboardHub({
           <View style={theme.flex1}>
             <Text style={theme.welcome}>{t("trainerDashboard.welcome", { name })}</Text>
             <Text style={theme.role}>{t("trainerDashboard.roleTrainer")}</Text>
-            <TrainerGreetingRating onPress={() => setReviewsOpen(true)} />
+            <TrainerGreetingRating onPress={() => onOpenReviews?.()} />
           </View>
           <Ionicons name="chevron-forward" size={20} color={c.textMuted} />
         </Pressable>
@@ -155,8 +154,6 @@ export function TrainerDashboardHub({
       <ReviewAnalysisCard embedded />
 
       <TrainerLockerSection accountType={accountType} onOpenSurface={onOpenSurface} />
-
-      <TrainerReviewsSheet visible={reviewsOpen} onClose={() => setReviewsOpen(false)} />
     </View>
   );
 }

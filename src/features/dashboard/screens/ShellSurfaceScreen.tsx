@@ -18,6 +18,7 @@ import { StackSwipeBackShell } from "../../../navigation/StackSwipeBackShell";
 import { SupportChatScreen } from "../../support/SupportChatScreen";
 import { DeleteAccountScreen } from "../../account-lifecycle/screens/DeleteAccountScreen";
 import { HibernateAccountScreen } from "../../account-lifecycle/screens/HibernateAccountScreen";
+import { TrainerReviewsScreen } from "./TrainerReviewsScreen";
 
 export type ShellSurfaceScreenProps = NativeStackScreenProps<HomeStackParamList, "ShellSurface">;
 
@@ -66,6 +67,8 @@ export function ShellSurfaceScreen({ route }: ShellSurfaceScreenProps) {
       return wrap(<DeleteAccountScreen />);
     case "hibernateAccount":
       return wrap(<HibernateAccountScreen />);
+    case "trainerReviews":
+      return wrap(<TrainerReviewsScreen />);
     default:
       return null;
   }

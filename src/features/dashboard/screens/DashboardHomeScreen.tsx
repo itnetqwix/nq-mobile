@@ -575,7 +575,10 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
         onSchedule={(t) => setScheduleTrainer(t)}
       />
     <View style={{ flex: 1 }}>
-    <MorphRefreshHeader {...morphRefresh.headerProps} />
+    <MorphRefreshHeader
+      {...morphRefresh.headerProps}
+      refreshing={pullRefreshing || morphRefresh.refreshing}
+    />
     <ScrollView
       style={[styles.root, { backgroundColor: themeColors.background }]}
       contentContainerStyle={[
@@ -588,9 +591,11 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
       {...morphRefresh.scrollProps}
       refreshControl={
         <RefreshControl
-          refreshing={pullRefreshing}
+          refreshing={false}
           onRefresh={morphRefresh.onRefreshControl}
-          tintColor={themeColors.brandNavy}
+          tintColor="transparent"
+          colors={["transparent"]}
+          progressBackgroundColor="transparent"
         />
       }
     >
@@ -674,6 +679,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
             onOpenSessions={() => openFeature("upcoming-sessions")}
             onOpenClips={() => openShell("clips")}
             onOpenSurface={openShell}
+            onOpenReviews={() => openShell("trainerReviews")}
             onSessionPress={openSession}
           />
         )}
