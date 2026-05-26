@@ -326,6 +326,14 @@ function useChatRoomStyles() {
     flexGrow: 1,
     paddingTop: space.lg,
   },
+  /**
+   * Two-level layout:
+   *   `messageRow` is a horizontal flex row that aligns the *column*
+   *   (mine = right, theirs = left). The column then stacks the optional
+   *   sender label on top of the bubble. Previously the sender label
+   *   rendered as a sibling of the bubble inside a row, which made it
+   *   appear *next to* the bubble in group chats.
+   */
   messageRow: {
     width: "100%",
     flexDirection: "row",
@@ -333,8 +341,13 @@ function useChatRoomStyles() {
   },
   messageRowMine: { justifyContent: "flex-end" },
   messageRowTheirs: { justifyContent: "flex-start" },
-  bubble: {
+  messageColumn: {
     maxWidth: "82%",
+    flexDirection: "column",
+  },
+  messageColumnMine: { alignItems: "flex-end" },
+  messageColumnTheirs: { alignItems: "flex-start" },
+  bubble: {
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 18,
@@ -344,9 +357,12 @@ function useChatRoomStyles() {
     shadowRadius: 1.5,
     elevation: 1,
   },
-  bubbleMine: { backgroundColor: themeColors.brandNavy, borderBottomRightRadius: 6 },
+  bubbleMine: {
+    backgroundColor: themeColors.chatBubbleOutgoing,
+    borderBottomRightRadius: 6,
+  },
   bubbleTheirs: {
-    backgroundColor: themeColors.surfaceElevated,
+    backgroundColor: themeColors.chatBubbleIncoming,
     borderBottomLeftRadius: 6,
   },
   composer: {
@@ -358,6 +374,27 @@ function useChatRoomStyles() {
     shadowOpacity: 0.04,
     shadowRadius: 2,
     elevation: 4,
+  },
+  /** Pin-to-bottom FAB shown when the user has scrolled away. Bottom
+      offset clears the composer; tweak if the composer height changes. */
+  scrollToBottomFab: {
+    position: "absolute",
+    right: space.md,
+    bottom: 80,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: themeColors.surfaceElevated,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: themeColors.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 6,
+    zIndex: 5,
   },
   replyBar: {
     flexDirection: "row",
@@ -379,20 +416,23 @@ function useChatRoomStyles() {
     opacity: 0.85,
   },
   replyQuoteText: { fontSize: 12, color: themeColors.textMuted },
+  /**
+   * Sender label that renders ABOVE the bubble in group chats. With the
+   * column-based message layout we rely on the parent column for
+   * alignment; the label just contributes its own colour + leading.
+   */
   senderName: {
     fontSize: 12,
     fontWeight: "700",
-    color: themeColors.brandNavy,
+    color: themeColors.brandAccent,
     marginBottom: 4,
-    marginLeft: 4,
+    marginHorizontal: 4,
   },
   senderNameMine: {
-    alignSelf: "flex-end",
-    marginRight: 4,
     color: themeColors.textMuted,
   },
   bubbleText: { ...typography.bodyMd, color: themeColors.text, lineHeight: 20 },
-  bubbleTextMine: { color: "#fff" },
+  bubbleTextMine: { color: themeColors.chatBubbleOutgoingText },
   bubbleFooter: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", marginTop: 2 },
   bubbleTime: { ...typography.caption, color: themeColors.textMuted, fontSize: 10 },
   bubbleTimeMine: { color: "rgba(255,255,255,0.6)" },
@@ -705,6 +745,14 @@ export function ChatRoomScreen({
   const { isOnline: isUserOnline } = useOnlinePresence();
   const queryClient = useQueryClient();
   const sectionListRef = useRef<SectionList<Message>>(null);
+  /**
+   * Tracks how far the user has scrolled away from the latest message.
+   * `> 200` triggers the scroll-to-bottom FAB so the user can re-pin to
+   * live without dragging back manually. Also drives the auto-scroll
+   * behavior when a new socket message arrives (we only scroll-pin if
+   * the user is already near the bottom — never yank them away).
+   */
+  const [isNearBottom, setIsNearBottom] = useState(true);
   const [text, setText] = useState("");
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -906,7 +954,12 @@ export function ChatRoomScreen({
     },
     enabled: !!conversationId,
     staleTime: 10_000,
-    refetchInterval: 15_000,
+    /**
+     * Previously polled every 15s. Disabled because:
+     *   1. The socket `CHAT_MESSAGE` event already invalidates this query.
+     *   2. The refetch interrupted user scroll & visibly redrew bubbles.
+     *   3. Pagination state (`fetchNextPage`) gets unstable under polling.
+     */
   });
 
   const serverMessages = useMemo<Message[]>(() => {
@@ -987,11 +1040,19 @@ export function ChatRoomScreen({
 
   useEffect(() => {
     if (allMessages.length === 0) return;
-    const animated = didInitialScrollRef.current;
-    if (!didInitialScrollRef.current) didInitialScrollRef.current = true;
+    const isInitial = !didInitialScrollRef.current;
+    const animated = !isInitial;
+    if (isInitial) didInitialScrollRef.current = true;
+    /**
+     * Only auto-pin when the user is already near the bottom (or this
+     * is the initial mount). If they've scrolled up to read history,
+     * don't yank them away when a new message lands — surface the FAB
+     * instead.
+     */
+    if (!isInitial && !isNearBottom) return;
     const t = setTimeout(() => scrollToLatestMessage(animated), 60);
     return () => clearTimeout(t);
-  }, [allMessages.length, scrollToLatestMessage]);
+  }, [allMessages.length, scrollToLatestMessage, isNearBottom]);
 
   useEffect(() => {
     const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
@@ -1565,11 +1626,17 @@ export function ChatRoomScreen({
 
       return (
         <View style={[styles.messageRow, isMine ? styles.messageRowMine : styles.messageRowTheirs]}>
-          {senderLabel ? (
-            <Text style={[styles.senderName, isMine && styles.senderNameMine]}>{senderLabel}</Text>
-          ) : null}
+          <View
+            style={[
+              styles.messageColumn,
+              isMine ? styles.messageColumnMine : styles.messageColumnTheirs,
+            ]}
+          >
+            {senderLabel ? (
+              <Text style={[styles.senderName, isMine && styles.senderNameMine]}>{senderLabel}</Text>
+            ) : null}
           <Pressable
-            style={{ maxWidth: "82%" }}
+            style={{ maxWidth: "100%" }}
             onLongPress={onLongPressMsg}
           >
           <View
@@ -1699,6 +1766,7 @@ export function ChatRoomScreen({
             </View>
           ) : null}
           </Pressable>
+          </View>
         </View>
       );
     },
@@ -1722,8 +1790,16 @@ export function ChatRoomScreen({
   const partnerAvatar = getS3ImageUrl(partner?.profile_picture);
   const showPolicyBanner = !isGroup && !!(chatPolicy && !chatPolicy.hasPaidSession);
   const composerBottomInset = Math.max(insets.bottom, space.sm);
-  const chatHeaderHeight = insets.top + 60;
-  const keyboardVerticalOffset = chatHeaderHeight;
+  /**
+   * `chromeHeight` is the real, measured height of everything *above*
+   * the KeyboardAvoidingView: the chat header + the pinned-message banner
+   * + the trainer-only pinned note + any other pre-list chrome. We
+   * measure it via `onLayout` instead of guessing with `insets.top + 60`
+   * so the keyboard offset stays correct when the banners appear /
+   * disappear.
+   */
+  const [chromeHeight, setChromeHeight] = useState(insets.top + 60);
+  const keyboardVerticalOffset = chromeHeight;
 
   const sharedMedia = chatMediaItems;
 
@@ -1764,6 +1840,17 @@ export function ChatRoomScreen({
 
   return (
     <View style={[styles.root, { backgroundColor: themeColors.background }]}>
+      {/*
+        Chrome wrapper — measured on every layout pass so the
+        KeyboardAvoidingView's offset always matches the real height of
+        the header + banners. See `chromeHeight` state above.
+      */}
+      <View
+        onLayout={(e) => {
+          const h = Math.round(e.nativeEvent.layout.height);
+          if (h > 0 && Math.abs(h - chromeHeight) > 1) setChromeHeight(h);
+        }}
+      >
       {/* Header */}
       <View
         style={[
@@ -1885,6 +1972,7 @@ export function ChatRoomScreen({
         decryptText={(raw) => chatE2E.decryptForDisplay(raw)}
         onJump={(id) => jumpToMessage(id)}
       />
+      </View>
 
       <KeyboardAvoidingView
         style={styles.keyboardWrap}
@@ -1954,7 +2042,9 @@ export function ChatRoomScreen({
           // `onEndReachedThreshold` analogue via `onScroll` because
           // SectionList doesn't have a built-in "start reached" callback.
           onScroll={(e) => {
-            const y = e.nativeEvent.contentOffset.y;
+            const { contentOffset, contentSize, layoutMeasurement } =
+              e.nativeEvent;
+            const y = contentOffset.y;
             if (
               y <= 80 &&
               messagesQuery.hasNextPage &&
@@ -1962,6 +2052,11 @@ export function ChatRoomScreen({
             ) {
               loadOlderMessages();
             }
+            // Distance from the bottom of the scrollable area.
+            const distanceFromBottom =
+              contentSize.height - (y + layoutMeasurement.height);
+            const near = distanceFromBottom < 200;
+            if (near !== isNearBottom) setIsNearBottom(near);
           }}
           scrollEventThrottle={64}
           ListEmptyComponent={
@@ -1990,6 +2085,26 @@ export function ChatRoomScreen({
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
         />
+
+        {/* Scroll-to-bottom FAB. Only shown when the user has scrolled
+            away from the most recent messages — taps re-pin the list to
+            the latest message via the existing `scrollToLatestMessage`
+            helper, which handles empty-section edge cases. */}
+        {!isNearBottom && messageSections.length > 0 ? (
+          <Pressable
+            onPress={() => {
+              haptics.tap?.();
+              scrollToLatestMessage(true);
+              setIsNearBottom(true);
+            }}
+            style={styles.scrollToBottomFab}
+            accessibilityRole="button"
+            accessibilityLabel="Scroll to latest message"
+            hitSlop={6}
+          >
+            <Ionicons name="chevron-down" size={22} color={themeColors.text} />
+          </Pressable>
+        ) : null}
 
         <View style={styles.composer}>
           {replyTo ? (

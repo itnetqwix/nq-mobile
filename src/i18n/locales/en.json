@@ -399,6 +399,48 @@
     "gotIt": "Got it",
     "dismiss": "Dismiss hint"
   },
+  "onboarding": {
+    "skip": "Skip",
+    "next": "Next",
+    "done": "Get started",
+    "counter": "{{current}} of {{total}}",
+    "goToStep": "Go to step {{n}}",
+    "steps": {
+      "welcome": {
+        "title": "Welcome to NetQwix",
+        "body": "Your all-in-one platform for live, personalised coaching. Swipe to take the quick tour."
+      },
+      "locker": {
+        "title": "Your Locker",
+        "body": "Home base for clips, uploads, saved sessions and progress — everything you've worked on, one tap away.",
+        "tip": "Home tab"
+      },
+      "book": {
+        "title": "Book a Lesson",
+        "body": "Browse trainers, view ratings, and book a scheduled lesson at a time that fits your week.",
+        "tip": "Book Expert"
+      },
+      "instant": {
+        "title": "Instant Lessons",
+        "body": "See who's online right now, choose your duration, pay, and connect in seconds.",
+        "tip": "When trainers are online"
+      },
+      "chat": {
+        "title": "Chat & Community",
+        "body": "Message friends, share clips, and build your network — react, reply, schedule, and forward without leaving the chat.",
+        "tip": "Chats tab"
+      },
+      "notify": {
+        "title": "Stay Notified",
+        "body": "Real-time pings for bookings, messages, friend requests, and 5-minute session reminders.",
+        "tip": "Settings → Notifications"
+      },
+      "ready": {
+        "title": "You're All Set",
+        "body": "Explore the app, book your first session, and start your journey. We're glad to have you on NetQwix."
+      }
+    }
+  },
   "coachMarks": {
     "dashboardSessions": {
       "title": "Track your lessons here",
