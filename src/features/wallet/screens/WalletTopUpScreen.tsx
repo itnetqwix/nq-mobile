@@ -26,6 +26,7 @@ import type { WalletStackParamList } from "../navigation/WalletNavigator";
 import { useShellHeaderTitle } from "../../../navigation/useShellHeaderTitle";
 import { queryKeys } from "../../../lib/queryKeys";
 import { fetchWalletConfig } from "../walletApi";
+import { STRIPE_APPLE_MERCHANT_IDENTIFIER } from "../../../config/env";
 
 const PRESETS = [25, 50, 100, 200];
 
@@ -280,7 +281,10 @@ export function WalletTopUpScreen({ navigation, route }: Props) {
           <Ionicons name="lock-closed-outline" size={18} color={c.textMuted} />
           <Text style={styles.methodsText}>
             {t("wallet.securedByStripe", {
-              applePay: Platform.OS === "ios" ? t("wallet.applePaySuffix") : "",
+              applePay:
+                Platform.OS === "ios" && STRIPE_APPLE_MERCHANT_IDENTIFIER
+                  ? t("wallet.applePaySuffix")
+                  : "",
               googlePay: Platform.OS === "android" ? t("wallet.googlePaySuffix") : "",
             })}
           </Text>

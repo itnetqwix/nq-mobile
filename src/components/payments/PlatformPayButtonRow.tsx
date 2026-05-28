@@ -30,6 +30,7 @@ import {
   isPlatformPaySupported,
 } from "@stripe/stripe-react-native";
 import { space, typography, useThemeColors, useThemedStyles } from "../../theme";
+import { STRIPE_APPLE_MERCHANT_IDENTIFIER } from "../../config/env";
 
 type Props = {
   /** Stripe PaymentIntent client secret to confirm against the native sheet. */
@@ -84,6 +85,10 @@ export function PlatformPayButtonRow({
   useEffect(() => {
     let mounted = true;
     (async () => {
+      if (Platform.OS === "ios" && !STRIPE_APPLE_MERCHANT_IDENTIFIER) {
+        if (mounted) setSupported(false);
+        return;
+      }
       try {
         const ok = await isPlatformPaySupported({
           googlePay: { testEnv },

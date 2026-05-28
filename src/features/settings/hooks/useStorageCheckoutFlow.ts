@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 import { Platform } from "react-native";
 import { createStorageCheckout } from "../../home/api/homeApi";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
+import { STRIPE_APPLE_MERCHANT_IDENTIFIER } from "../../../config/env";
 
 export type StorageCheckoutInterval = "monthly" | "yearly";
 
@@ -23,7 +24,10 @@ export function useStorageCheckoutFlow() {
           merchantDisplayName: "NetQwix",
           allowsDelayedPaymentMethods: false,
           returnURL: "netqwix://storage-checkout",
-          applePay: Platform.OS === "ios" ? { merchantCountryCode: "US" } : undefined,
+          applePay:
+            Platform.OS === "ios" && !!STRIPE_APPLE_MERCHANT_IDENTIFIER
+              ? { merchantCountryCode: "US" }
+              : undefined,
           googlePay:
             Platform.OS === "android" ? { merchantCountryCode: "US", testEnv: __DEV__ } : undefined,
         });

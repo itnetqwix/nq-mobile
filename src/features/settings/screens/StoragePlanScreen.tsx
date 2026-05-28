@@ -30,6 +30,7 @@ export function StoragePlanScreen() {
   const queryClient = useQueryClient();
   const { busy, subscribe } = useStorageCheckoutFlow();
   const [interval, setInterval] = useState<StorageCheckoutInterval>("monthly");
+  const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
 
   const q = useQuery({
     queryKey: queryKeys.storage.info,
@@ -80,7 +81,10 @@ export function StoragePlanScreen() {
 
   const onSelectPlan = async (planId: string) => {
     if (planId === "free" || planId === info?.planId) return;
-    const result = await subscribe(planId, interval);
+    setPendingPlanId(planId);
+    const result = await subscribe(planId, interval).finally(() => {
+      setPendingPlanId(null);
+    });
     if (result.ok) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.storage.all });
       Alert.alert(t("storage.upgradedTitle"), t("storage.upgradedBody"));
@@ -158,7 +162,7 @@ export function StoragePlanScreen() {
               </View>
               {!isCurrent && plan.id !== "free" ? (
                 <Button
-                  label={busy ? t("common.loading") : t("storage.subscribe")}
+                  label={busy && pendingPlanId === plan.id ? t("common.loading") : t("storage.subscribe")}
                   onPress={() => void onSelectPlan(plan.id)}
                   disabled={busy}
                   size="sm"
