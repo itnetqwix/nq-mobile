@@ -5,6 +5,7 @@
  */
 
 export { Avatar, type AvatarProps, type AvatarSize } from "./Avatar";
+export { ProfileAvatar } from "./ProfileAvatar";
 export { Banner, type BannerProps, type BannerTone } from "./Banner";
 export {
   Button,

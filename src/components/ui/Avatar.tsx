@@ -1,12 +1,19 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { colors, typography } from "../../theme";
+import {
+  pickProfileImageKey,
+  resolveProfileImageFallback,
+  resolveProfileImageUrl,
+} from "../../lib/profileImage";
 import { ImageWithSkeleton } from "./ImageWithSkeleton";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl";
 export type AvatarProps = {
-  /** Already-resolved URI; pass undefined to render initials. */
+  /** Raw storage key or absolute URL. */
   uri?: string | null;
+  /** When set, reads `profile_picture` / `profilePicture` / nested sender fields. */
+  user?: Record<string, unknown> | null;
   /** Used to compute the initials fallback. */
   name?: string | null;
   size?: AvatarSize;
@@ -21,25 +28,48 @@ const SIZE_MAP: Record<AvatarSize, { dim: number; font: number }> = {
   xl: { dim: 80, font: 28 },
 };
 
-export function Avatar({ uri, name, size = "md", style }: AvatarProps) {
+export function Avatar({ uri, user, name, size = "md", style }: AvatarProps) {
   const { dim, font } = SIZE_MAP[size];
   const initials = pickInitials(name);
+  const storageKey = useMemo(
+    () => uri ?? pickProfileImageKey(user) ?? null,
+    [uri, user]
+  );
+  const primaryUrl = useMemo(
+    () => resolveProfileImageUrl(storageKey ?? undefined),
+    [storageKey]
+  );
+  const fallbackUrl = useMemo(
+    () => resolveProfileImageFallback(storageKey ?? undefined),
+    [storageKey]
+  );
+
+  const [activeUrl, setActiveUrl] = useState(primaryUrl);
   const [imageFailed, setImageFailed] = useState(false);
 
   useEffect(() => {
+    setActiveUrl(primaryUrl);
     setImageFailed(false);
-  }, [uri]);
+  }, [primaryUrl]);
 
-  if (uri && !imageFailed) {
+  const handleError = () => {
+    if (fallbackUrl && activeUrl !== fallbackUrl) {
+      setActiveUrl(fallbackUrl);
+      return;
+    }
+    setImageFailed(true);
+  };
+
+  if (activeUrl && !imageFailed) {
     return (
       <ImageWithSkeleton
-        uri={uri}
+        uri={activeUrl}
         width={dim}
         height={dim}
         borderRadius={dim / 2}
         resizeMode="cover"
         style={style}
-        onLoadError={() => setImageFailed(true)}
+        onLoadError={handleError}
         accessibilityLabel={name ? `Profile photo, ${name}` : "Profile photo"}
       />
     );

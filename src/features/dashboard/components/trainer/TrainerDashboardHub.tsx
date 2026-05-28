@@ -52,6 +52,7 @@ export function TrainerDashboardHub({
   name,
   accountType,
   profilePicture,
+  user,
   showAsOnline,
   recentTrainees = [],
   friendRequests = [],
@@ -95,6 +96,7 @@ export function TrainerDashboardHub({
         <Pressable style={theme.rowStart} onPress={onSettings}>
           <HomeUserAvatar
             uri={profilePicture}
+            user={user ?? undefined}
             name={name}
             size={64}
             onlineStatus={showAsOnline ? "online" : "offline"}

@@ -20,7 +20,7 @@ import { Skeleton, ImageWithSkeleton } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { queryKeys } from "../../../lib/queryKeys";
 import { haptics } from "../../../lib/haptics";
-import { getS3ImageUrl } from "../../../lib/imageUtils";
+import { ProfileAvatar } from "../../../components/ui/ProfileAvatar";
 import { resolveShowAsOnline } from "../../../lib/user/resolveShowAsOnline";
 import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
 import {
@@ -185,61 +185,6 @@ function useDashboardHomeStyles() {
 }));
 }
 
-function Avatar({
-  uri,
-  name,
-  size = 56,
-  onlineStatus,
-}: {
-  uri?: string;
-  name?: string;
-  size?: number;
-  onlineStatus?: "online" | "offline";
-}) {
-  const { t } = useAppTranslation();
-  const styles = useDashboardHomeStyles();
-  const [failed, setFailed] = React.useState(false);
-  const url = getS3ImageUrl(uri);
-
-  React.useEffect(() => {
-    setFailed(false);
-  }, [uri]);
-
-  const inner =
-    !url || failed ? (
-      <View style={[styles.avatarFallback, { width: size, height: size, borderRadius: size / 2 }]}>
-        <Text style={[styles.avatarInitial, { fontSize: size * 0.38 }]}>
-          {(name ?? "?")[0]?.toUpperCase()}
-        </Text>
-      </View>
-    ) : (
-      <ImageWithSkeleton
-        uri={url}
-        width={size}
-        height={size}
-        borderRadius={size / 2}
-        resizeMode="cover"
-        onLoadError={() => setFailed(true)}
-        accessibilityLabel={
-          name ? t("dashboardHome.photoOf", { name }) : t("dashboardHome.profilePhoto")
-        }
-      />
-    );
-
-  if (!onlineStatus) return inner;
-
-  return (
-    <View style={{ width: size, height: size }}>
-      {inner}
-      <View
-        style={
-          onlineStatus === "online" ? styles.avatarOnlineDot : styles.avatarOfflineDot
-        }
-      />
-    </View>
-  );
-}
-
 function SectionHeader({ title }: { title: string }) {
   const styles = useDashboardHomeStyles();
   return <Text style={styles.sectionHeader}>{title}</Text>;
@@ -263,7 +208,7 @@ function FriendRequestWebTile({
   const name = sender?.fullname || sender?.fullName || t("dashboardHome.userDefault");
   return (
     <View style={webHomeStyles.friendRequestTile}>
-      <Avatar uri={sender?.profile_picture} name={name} size={72} />
+      <ProfileAvatar user={sender} name={name} size={72} />
       <Text style={[styles.friendName, { marginTop: 10, textAlign: "center" }]} numberOfLines={2}>
         {name}
       </Text>

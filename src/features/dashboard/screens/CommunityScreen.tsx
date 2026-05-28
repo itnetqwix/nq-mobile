@@ -17,7 +17,7 @@ import { EmptyState, ImageWithSkeleton, Pill, Skeleton } from "../../../componen
 import { colors, radii, space, typography } from "../../../theme";
 import { queryKeys } from "../../../lib/queryKeys";
 import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
-import { getS3ImageUrl } from "../../../lib/imageUtils";
+import { ProfileAvatar } from "../../../components/ui/ProfileAvatar";
 import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
@@ -47,31 +47,6 @@ async function fetchCommunityUsers(search?: string): Promise<any[]> {
   return res.data?.result ?? res.data ?? [];
 }
 
-function Avatar({ uri, name, size = 48 }: { uri?: string; name?: string; size?: number }) {
-  const [failed, setFailed] = React.useState(false);
-  const url = getS3ImageUrl(uri);
-  React.useEffect(() => { setFailed(false); }, [uri]);
-  if (!url || failed) {
-    return (
-      <View style={[styles.avatarFallback, { width: size, height: size, borderRadius: size / 2 }]}>
-        <Text style={[styles.avatarInitial, { fontSize: size * 0.38 }]}>
-          {(name ?? "?")[0]?.toUpperCase()}
-        </Text>
-      </View>
-    );
-  }
-  return (
-    <ImageWithSkeleton
-      uri={url}
-      width={size}
-      height={size}
-      borderRadius={size / 2}
-      resizeMode="cover"
-      onLoadError={() => setFailed(true)}
-    />
-  );
-}
-
 type FriendStatus = "none" | "friends" | "request_sent" | "request_received";
 
 function MemberCard({
@@ -98,7 +73,7 @@ function MemberCard({
 
   return (
     <View style={styles.card}>
-      <Avatar uri={user?.profile_picture} name={name} size={52} />
+      <ProfileAvatar user={user} name={name} size={52} />
       <View style={styles.cardInfo}>
         <Text style={styles.memberName}>{name}</Text>
         {!!role && (

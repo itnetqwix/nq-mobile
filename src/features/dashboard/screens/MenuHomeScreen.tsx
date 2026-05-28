@@ -71,7 +71,7 @@ export function MenuHomeScreen() {
   return (
     <ScreenContainer scroll padding="md" background={colors.surface}>
       <Card variant="outlined" padding="md" style={styles.profileCard}>
-        <Avatar name={name} size="lg" />
+        <Avatar name={name} size="lg" user={user as Record<string, unknown>} />
         <View style={styles.profileInfo}>
           <Text style={[typography.titleSm, { color: colors.text }]} numberOfLines={1}>
             {name}

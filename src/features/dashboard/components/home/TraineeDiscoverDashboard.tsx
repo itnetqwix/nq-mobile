@@ -312,7 +312,7 @@ export function TraineeDiscoverDashboard({
           accessibilityRole="button"
           accessibilityLabel={t("traineeDiscover.profileA11y")}
         >
-          <HomeUserAvatar uri={profilePicture} name={name} size={72} />
+          <HomeUserAvatar uri={profilePicture} user={user ?? undefined} name={name} size={72} />
         </Pressable>
       </View>
 

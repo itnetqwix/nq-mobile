@@ -21,6 +21,7 @@ import { ChatRowSkeleton, EmptyState, PresenceDot, Skeleton, SkeletonGroup } fro
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { queryKeys } from "../../../lib/queryKeys";
 import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
+import { ProfileAvatar } from "../../../components/ui/ProfileAvatar";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { haptics } from "../../../lib/haptics";
@@ -87,36 +88,6 @@ function formatRowTimestamp(dateStr?: string): string {
   }
 }
 
-function Avatar({ uri, name, size = 48 }: { uri?: string; name?: string; size?: number }) {
-  const c = useThemeColors();
-  const [failed, setFailed] = React.useState(false);
-  const url = getS3ImageUrl(uri);
-  if (!url || failed) {
-    return (
-      <View
-        style={{
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: c.brandAccent,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Text style={{ fontSize: size * 0.4, color: c.brandTextOn, fontWeight: "700" }}>
-          {(name ?? "?")[0]?.toUpperCase()}
-        </Text>
-      </View>
-    );
-  }
-  return (
-    <Image
-      source={{ uri: url }}
-      style={{ width: size, height: size, borderRadius: size / 2 }}
-      onError={() => setFailed(true)}
-    />
-  );
-}
 
 type ChatPartner = {
   _id: string;
@@ -892,8 +863,9 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
                 <View style={styles.avatarWrap}>
                   {isGroup ? (
                     getS3ImageUrl(item.groupAvatar ?? partner.profile_picture) ? (
-                      <Avatar
+                      <ProfileAvatar
                         uri={item.groupAvatar ?? partner.profile_picture}
+                        user={partner}
                         name={partner.fullname}
                         size={48}
                       />
@@ -904,7 +876,7 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
                     )
                   ) : (
                     <>
-                      <Avatar uri={partner.profile_picture} name={partner.fullname} />
+                      <ProfileAvatar user={partner} name={partner.fullname} />
                       {partnerOnline && (
                         <PresenceDot
                           online
@@ -1113,7 +1085,7 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
                     {selectedMemberList.slice(0, 10).map((m, mi) => (
                       <View key={`${m._id}-${mi}`} style={{ alignItems: "center", marginRight: 10, width: 56 }}>
-                        <Avatar uri={m.profile_picture} name={m.fullname} size={44} />
+                        <ProfileAvatar user={m} name={m.fullname} size={44} />
                         <Text style={{ fontSize: 10, color: c.textMuted, marginTop: 4 }} numberOfLines={1}>
                           {(m.fullname ?? "").split(" ")[0]}
                         </Text>
@@ -1164,7 +1136,7 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
                     onPress={() => showGroupCreate ? toggleGroupMember(item._id) : openChatWithFriend(item)}
                     disabled={creatingChat}
                   >
-                    <Avatar uri={item.profile_picture} name={item.fullname} size={44} />
+                    <ProfileAvatar user={item} name={item.fullname} size={44} />
                     <Text style={styles.friendName} numberOfLines={1}>
                       {item.fullname}
                     </Text>
@@ -1235,7 +1207,7 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
             keyExtractor={flatListKeyExtractor}
             renderItem={({ item }) => (
               <View style={styles.friendRow}>
-                <Avatar uri={item.profile_picture} name={item.fullname} size={44} />
+                <ProfileAvatar user={item} name={item.fullname} size={44} />
                 <Text style={styles.friendName}>{item.fullname}</Text>
               </View>
             )}

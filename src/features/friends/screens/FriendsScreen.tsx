@@ -22,7 +22,7 @@ import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { Ionicons } from "@expo/vector-icons";
 import { Button, EmptyState, Skeleton } from "../../../components/ui";
 import { colors, radii, space, typography } from "../../../theme";
-import { getS3ImageUrl } from "../../../lib/imageUtils";
+import { ProfileAvatar } from "../../../components/ui/ProfileAvatar";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { useOnlinePresence } from "../../socket/useOnlinePresence";
@@ -54,27 +54,6 @@ const REPORT_REASON_KEYS = [
   "friends.reportReasons.fake",
   "friends.reportReasons.other",
 ] as const;
-
-function Avatar({ uri, name, size = 48 }: { uri?: string; name?: string; size?: number }) {
-  const [failed, setFailed] = React.useState(false);
-  const url = getS3ImageUrl(uri);
-  if (!url || failed) {
-    return (
-      <View style={[styles.avatarFallback, { width: size, height: size, borderRadius: size / 2 }]}>
-        <Text style={[styles.avatarInitial, { fontSize: size * 0.38 }]}>
-          {(name ?? "?")[0]?.toUpperCase()}
-        </Text>
-      </View>
-    );
-  }
-  return (
-    <Image
-      source={{ uri: url }}
-      style={{ width: size, height: size, borderRadius: size / 2 }}
-      onError={() => setFailed(true)}
-    />
-  );
-}
 
 function FriendCard({
   friend,
@@ -128,7 +107,7 @@ function FriendCard({
 
   return (
     <View style={styles.row}>
-      <Avatar uri={user?.profile_picture} name={name} />
+      <ProfileAvatar user={user} name={name} />
       <View style={styles.rowInfo}>
         <Text style={styles.rowName}>{name}</Text>
         {!!user?.email && <Text style={styles.rowSub}>{user.email}</Text>}
@@ -171,7 +150,7 @@ function RequestCard({
   const name = sender?.fullname || sender?.fullName || t("friends.userDefault");
   return (
     <View style={styles.row}>
-      <Avatar uri={sender?.profile_picture} name={name} />
+      <ProfileAvatar user={sender} name={name} />
       <View style={styles.rowInfo}>
         <Text style={styles.rowName}>{name}</Text>
         <Text style={styles.rowSub}>{t("friends.sentYouRequest")}</Text>
@@ -212,7 +191,7 @@ function SentRequestCard({
 
   return (
     <View style={styles.row}>
-      <Avatar uri={receiver?.profile_picture} name={name} />
+      <ProfileAvatar user={receiver} name={name} />
       <View style={styles.rowInfo}>
         <Text style={styles.rowName}>{name}</Text>
         <View style={styles.statusRow}>

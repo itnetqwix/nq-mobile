@@ -15,7 +15,7 @@ import {
 } from "../../../components/ui";
 import { AccountType } from "../../../constants/accountType";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
-import { getS3ImageUrl } from "../../../lib/imageUtils";
+import { resolveProfileImageUrl } from "../../../lib/profileImage";
 import type { MenuStackParamList } from "../../../navigation/types";
 import { space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
@@ -85,7 +85,8 @@ export function EditProfileScreen() {
   const [enhancing, setEnhancing] = useState(false);
   const [localAvatar, setLocalAvatar] = useState<string | null>(null);
 
-  const currentAvatar = localAvatar ?? getS3ImageUrl((user?.profile_picture as string) ?? "");
+  const currentAvatar =
+    localAvatar ?? resolveProfileImageUrl(user as Record<string, unknown>);
 
   const pickAndUploadAvatar = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();

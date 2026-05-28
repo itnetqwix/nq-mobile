@@ -39,7 +39,6 @@ import {
   isAppUnlockEnabled,
   setAppUnlockEnabled,
 } from "../../auth/security/appUnlock";
-import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { runSystemStateAction } from "../../system-states/navigation/linkActions";
 import {
@@ -123,7 +122,6 @@ export function SettingsScreen() {
   const { user, accountType, signOut, patchUser } = useAuth();
   const name = (user?.fullname as string) || (user?.fullName as string) || t("settings.defaultUser");
   const email = (user?.email as string) ?? "";
-  const profileUri = getS3ImageUrl((user as any)?.profile_picture);
   const isTrainer = accountType === AccountType.TRAINER;
 
   const [localeDraft, setLocaleDraft] = useState(() => normalizeAppLocale(i18n.language));
@@ -438,7 +436,7 @@ export function SettingsScreen() {
     <ScreenContainer scroll padding="md" background={c.surface}>
       <Pressable onPress={() => openShell("editProfile")}>
         <Card variant="outlined" padding="md" style={styles.profileCard}>
-          <Avatar name={name} size="xl" uri={profileUri} />
+          <Avatar name={name} size="xl" user={user as Record<string, unknown>} />
           <View style={{ flex: 1 }}>
             <Text style={[typography.titleMd, { color: c.text }]} numberOfLines={1}>
               {name}

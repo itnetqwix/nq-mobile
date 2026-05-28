@@ -3,7 +3,7 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { VerifiedBadge } from "../../../components/ui";
 import { type AppColors, radii, space, typography } from "../../../theme";
-import { getS3ImageUrl } from "../../../lib/imageUtils";
+import { ProfileAvatar } from "../../../components/ui/ProfileAvatar";
 import {
   getTrainerAvgRating,
   getTrainerCategories,
@@ -17,37 +17,6 @@ import {
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { FavoriteHeartButton } from "../../dashboard/components/trainee/FavoriteHeartButton";
 import { FriendSocialStrip } from "../../dashboard/components/trainee/FriendSocialStrip";
-
-function Avatar({
-  uri,
-  name,
-  size = 64,
-  styles: st,
-}: {
-  uri?: string;
-  name?: string;
-  size?: number;
-  styles: ReturnType<typeof makeCardStyles>;
-}) {
-  const [failed, setFailed] = React.useState(false);
-  const url = getS3ImageUrl(uri);
-  if (!url || failed) {
-    return (
-      <View style={[st.avatarFallback, { width: size, height: size, borderRadius: size / 2 }]}>
-        <Text style={[st.avatarInitial, { fontSize: size * 0.38 }]}>
-          {(name ?? "?")[0]?.toUpperCase()}
-        </Text>
-      </View>
-    );
-  }
-  return (
-    <Image
-      source={{ uri: url }}
-      style={{ width: size, height: size, borderRadius: size / 2 }}
-      onError={() => setFailed(true)}
-    />
-  );
-}
 
 export type TrainerBrowseCardProps = {
   trainer: Record<string, unknown>;
@@ -140,7 +109,7 @@ export function TrainerBrowseCard({
       >
         <View style={styles.cardRow}>
           <View>
-            <Avatar uri={trainer?.profile_picture as string} name={name} size={compact ? 52 : 64} styles={styles} />
+            <ProfileAvatar user={trainer as Record<string, unknown>} name={name} size={compact ? 52 : 64} />
             {showOnline ? (
               <View style={styles.livePill}>
                 <View style={styles.liveDot} />
