@@ -4,6 +4,7 @@ import { AccountType } from "../../../constants/accountType";
 import { queryKeys } from "../../../lib/queryKeys";
 import {
   isSessionInProgress,
+  isSessionToday,
   shouldShowInDashboardRequests,
   shouldShowInDashboardUpcoming,
 } from "../../../lib/sessions/sessionUtils";
@@ -54,7 +55,12 @@ export function useDashboardSessions(accountType: string | null) {
 
   const todayTimeline = useMemo(() => {
     const pool = [...nowSessions, ...upcomingConfirmed];
-    return [...pool].sort((a, b) => sessionStartMs(a) - sessionStartMs(b)).slice(0, 3);
+    const todayOrLive = pool.filter(
+      (s: Record<string, unknown>) => isSessionInProgress(s) || isSessionToday(s)
+    );
+    return [...todayOrLive]
+      .sort((a, b) => sessionStartMs(a) - sessionStartMs(b))
+      .slice(0, 4);
   }, [nowSessions, upcomingConfirmed]);
 
   return {

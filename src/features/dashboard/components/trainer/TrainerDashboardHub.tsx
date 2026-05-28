@@ -134,6 +134,7 @@ export function TrainerDashboardHub({
         sessions={todayTimeline}
         onSessionPress={onSessionPress}
         onSeeAll={onOpenSessions}
+        onOpenSchedule={onOpenSchedule}
       />
 
       {friendRequests.length > 0 && onAcceptFriend && onRejectFriend ? (

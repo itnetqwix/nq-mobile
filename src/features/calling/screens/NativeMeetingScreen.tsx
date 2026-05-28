@@ -241,6 +241,10 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
     [session]
   );
 
+  useEffect(() => {
+    peerNameRef.current = peer?.fullname ?? peer?.fullName ?? undefined;
+  }, [peer]);
+
   if (isLoading || permState === "checking" || !me) {
     return (
       <View style={styles.center}>
@@ -280,10 +284,6 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
 
   const peerDisplayName =
     peer?.fullname ?? peer?.fullName ?? "Your partner";
-
-  useEffect(() => {
-    peerNameRef.current = peer?.fullname ?? peer?.fullName ?? undefined;
-  }, [peer]);
 
   return (
     <CallProvider

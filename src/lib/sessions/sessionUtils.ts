@@ -56,6 +56,17 @@ export function getSessionStart(session: any): Date | null {
   );
 }
 
+/** Whether the session start falls on the local calendar day. */
+export function isSessionToday(session: any, now = new Date()): boolean {
+  const start = getSessionStart(session);
+  if (!start) return false;
+  return (
+    start.getFullYear() === now.getFullYear() &&
+    start.getMonth() === now.getMonth() &&
+    start.getDate() === now.getDate()
+  );
+}
+
 export function getSessionEnd(session: any): Date | null {
   if (session?.end_time) {
     const d = new Date(session.end_time);
