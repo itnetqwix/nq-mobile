@@ -16,12 +16,11 @@ import { TrainerEarningsSnapshot } from "./TrainerEarningsSnapshot";
 import { TrainerPulseHero } from "./TrainerPulseHero";
 import { RecentTraineeClipsSection } from "./RecentTraineeClipsSection";
 import { TrainerGreetingRating } from "./TrainerGreetingRating";
-import { PerformanceTipsCard } from "./PerformanceTipsCard";
 import { TrainerRecentTraineesSection } from "./TrainerRecentTraineesSection";
 import { TrainerFriendRequestsSection } from "./TrainerFriendRequestsSection";
 import { TrainerLockerSection } from "./TrainerLockerSection";
 import { HomeBannerStrip } from "../../../content/components/HomeBannerStrip";
-import { TipsCarousel } from "../../../content/components/TipsCarousel";
+import { TipsForYouSection } from "../shared/TipsForYouSection";
 import { createTrainerDashboardStyles } from "./trainerDashboardTheme";
 import { useThemeColors, useThemedStyles } from "../../../../theme";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
@@ -90,8 +89,6 @@ export function TrainerDashboardHub({
 
       <HomeBannerStrip onDeepLink={onContentDeepLink} />
 
-      <TipsCarousel onDeepLink={onContentDeepLink} />
-
       <TrainerRecentTraineesSection trainees={recentTrainees} />
 
       <View style={[theme.card, theme.cardPadding, theme.cardGap]}>
@@ -147,10 +144,13 @@ export function TrainerDashboardHub({
         />
       ) : null}
 
-      <PerformanceTipsCard
-        pendingCount={pendingSessions.length}
-        showAsOnline={showAsOnline}
-        scheduleSlots={scheduleSlots}
+      <TipsForYouSection
+        onDeepLink={onContentDeepLink}
+        trainerContext={{
+          pendingCount: pendingSessions.length,
+          showAsOnline,
+          scheduleSlots,
+        }}
       />
 
       <RecentTraineeClipsSection onOpenClips={onOpenClips} />

@@ -33,7 +33,7 @@ import { ForYouTrainersSection } from "./ForYouTrainersSection";
 import { PastBookedTrainersSection } from "./PastBookedTrainersSection";
 import { RecentlyViewedTrainersRow } from "./RecentlyViewedTrainersRow";
 import { HomeBannerStrip } from "../../../content/components/HomeBannerStrip";
-import { TipsCarousel } from "../../../content/components/TipsCarousel";
+import { TipsForYouSection } from "../shared/TipsForYouSection";
 import { ContinueWhereYouLeftOffCard } from "../trainee/ContinueWhereYouLeftOffCard";
 import { CategoryEmptySuggestions } from "../trainee/CategoryEmptySuggestions";
 import { FavoriteCoachesSection } from "../trainee/FavoriteCoachesSection";
@@ -318,7 +318,7 @@ export function TraineeDiscoverDashboard({
 
       <HomeBannerStrip guest={isGuest} onDeepLink={onContentDeepLink} />
 
-      <TipsCarousel guest={isGuest} onDeepLink={onContentDeepLink} />
+      <TipsForYouSection guest={isGuest} onDeepLink={onContentDeepLink} />
 
       {onOpenWallet && !isGuest ? (
         <Pressable

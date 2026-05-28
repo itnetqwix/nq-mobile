@@ -1,7 +1,7 @@
 /**
  * Admin-driven Tips + Banners (Phase 2 items 5 & 17).
  *
- * Tips render as a horizontal carousel on the dashboard.
+ * Tips render in the dashboard “Tips for you” section (admin + contextual).
  * Banners render as a single dismissible card at the top of the dashboard
  * (and as a guest-visible banner on the login screen — that fetch is made
  * without auth so the response can include guest-targeted rows).
