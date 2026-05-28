@@ -14,6 +14,7 @@ import { Skeleton } from "../../../components/ui";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { radii, space, typography, useThemeColors } from "../../../theme";
 import { queryKeys } from "../../../lib/queryKeys";
+import { useAuth } from "../../auth/context/AuthContext";
 import { fetchHomeTips, type Tip } from "../api/contentApi";
 import { isReactNavigationDeepLink } from "../lib/deepLinks";
 
@@ -32,12 +33,15 @@ type Props = {
 export function TipsCarousel({ onDeepLink }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
+  const { status } = useAuth();
 
   const { data: tips, isLoading } = useQuery({
     queryKey: queryKeys.content.tips,
     queryFn: fetchHomeTips,
+    enabled: status === "signedIn",
     staleTime: 5 * 60_000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
+    retry: 1,
   });
 
   const handleOpen = useCallback(

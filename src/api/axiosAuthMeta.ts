@@ -57,6 +57,9 @@ const AUTH_NO_SIGNOUT_PATHS = [
  */
 const TRAINEE_ONLY_SOFT_401_PATHS = ["/trainee/favorite-trainers"];
 
+/** Optional dashboard content — must not sign the user out on 401/404. */
+const OPTIONAL_CONTENT_SOFT_401_PATHS = ["/tips", "/banners"];
+
 export function isAuthNoSignOutPath(url: string | undefined): boolean {
   if (!url) return false;
   const path = url.split("?")[0] ?? url;
@@ -68,7 +71,10 @@ export function isAuthNoSignOutPath(url: string | undefined): boolean {
 export function isSoft401Path(url: string | undefined): boolean {
   if (!url) return false;
   const path = url.split("?")[0] ?? url;
-  return TRAINEE_ONLY_SOFT_401_PATHS.some(
-    (p) => path === p || path.endsWith(p)
+  return (
+    TRAINEE_ONLY_SOFT_401_PATHS.some((p) => path === p || path.endsWith(p)) ||
+    OPTIONAL_CONTENT_SOFT_401_PATHS.some(
+      (p) => path === p || path.endsWith(p)
+    )
   );
 }

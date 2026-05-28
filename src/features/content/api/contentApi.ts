@@ -50,7 +50,9 @@ function unwrap<T>(raw: unknown): T[] {
 
 export async function fetchHomeTips(): Promise<Tip[]> {
   try {
-    const res = await apiClient.get(API_ROUTES.tips.list);
+    const res = await apiClient.get(API_ROUTES.tips.list, {
+      _skipAuthSignOut: true,
+    });
     return unwrap<Tip>(res.data);
   } catch {
     return [];
@@ -67,7 +69,9 @@ export async function fetchHomeBanners(opts?: {
       });
       return unwrap<HomeBanner>(res.data);
     }
-    const res = await apiClient.get(API_ROUTES.banners.list);
+    const res = await apiClient.get(API_ROUTES.banners.list, {
+      _skipAuthSignOut: true,
+    });
     return unwrap<HomeBanner>(res.data);
   } catch {
     return [];
