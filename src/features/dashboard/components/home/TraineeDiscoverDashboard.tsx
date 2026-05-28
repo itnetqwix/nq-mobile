@@ -318,6 +318,8 @@ export function TraineeDiscoverDashboard({
 
       <HomeBannerStrip guest={isGuest} onDeepLink={onContentDeepLink} />
 
+      <TipsCarousel guest={isGuest} onDeepLink={onContentDeepLink} />
+
       {onOpenWallet && !isGuest ? (
         <Pressable
           style={({ pressed }) => [styles.walletCard, pressed && { opacity: 0.92 }]}
@@ -356,8 +358,6 @@ export function TraineeDiscoverDashboard({
           onViewTrainer(tr);
         }}
       />
-
-      <TipsCarousel guest={isGuest} onDeepLink={onContentDeepLink} />
 
       <View style={styles.searchBar}>
         <Ionicons name="search-outline" size={20} color={themeColors.textMuted} />

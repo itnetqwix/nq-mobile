@@ -90,6 +90,8 @@ export function TrainerDashboardHub({
 
       <HomeBannerStrip onDeepLink={onContentDeepLink} />
 
+      <TipsCarousel onDeepLink={onContentDeepLink} />
+
       <TrainerRecentTraineesSection trainees={recentTrainees} />
 
       <View style={[theme.card, theme.cardPadding, theme.cardGap]}>
@@ -150,8 +152,6 @@ export function TrainerDashboardHub({
         showAsOnline={showAsOnline}
         scheduleSlots={scheduleSlots}
       />
-
-      <TipsCarousel onDeepLink={onContentDeepLink} />
 
       <RecentTraineeClipsSection onOpenClips={onOpenClips} />
 

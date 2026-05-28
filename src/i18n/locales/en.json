@@ -1390,6 +1390,10 @@
     "favoriteA11y": "Toggle favorite for {{name}}",
     "noFavorites": "Star coaches to save them here"
   },
+  "tips": {
+    "heading": "Tips for you",
+    "loadError": "Could not load tips. Tap to try again."
+  },
   "trainerDashboard": {
     "welcome": "Hi, {{name}}",
     "roleTrainer": "Trainer",

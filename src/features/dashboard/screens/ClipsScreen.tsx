@@ -244,11 +244,17 @@ export function ClipsScreen() {
         borderTopColor: palette.border,
       },
       thumbWrap: {
-        width: 64,
-        height: 64,
-        borderRadius: radii.sm,
+        width: 80,
+        height: 80,
+        borderRadius: radii.md,
         overflow: "hidden",
         backgroundColor: palette.surfaceMuted,
+      },
+      playBadge: {
+        ...StyleSheet.absoluteFillObject,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "rgba(0,0,0,0.22)",
       },
       thumbPh: {
         flex: 1,
@@ -419,20 +425,34 @@ export function ClipsScreen() {
       sub?.status !== "accepted";
 
     return (
-      <Pressable key={key} style={styles.clipCard} onPress={() => openClip(clip)}>
+      <Pressable
+        key={key}
+        style={({ pressed }) => [styles.clipCard, pressed && { opacity: 0.92 }]}
+        onPress={() => openClip(clip)}
+        accessibilityRole="button"
+        accessibilityLabel={t("locker.playClipA11y", {
+          defaultValue: "Play {{title}}",
+          title: String(clip.title ?? clip.file_name ?? t("locker.clipDefault")),
+        })}
+      >
         <View style={styles.thumbWrap}>
           {thumb ? (
-            <ImageWithSkeleton
-              uri={thumb}
-              width={64}
-              height={64}
-              borderRadius={radii.sm}
-              resizeMode="cover"
-              accessibilityLabel={String(clip.title ?? clip.file_name ?? t("locker.clipDefault"))}
-            />
+            <>
+              <ImageWithSkeleton
+                uri={thumb}
+                width={80}
+                height={80}
+                borderRadius={radii.md}
+                resizeMode="cover"
+                accessibilityLabel={String(clip.title ?? clip.file_name ?? t("locker.clipDefault"))}
+              />
+              <View style={styles.playBadge} pointerEvents="none">
+                <Ionicons name="play-circle" size={36} color="#fff" />
+              </View>
+            </>
           ) : (
             <View style={styles.thumbPh}>
-              <Ionicons name="play-circle" size={28} color={c.brandAccent} />
+              <Ionicons name="play-circle" size={32} color={c.brandAccent} />
             </View>
           )}
         </View>

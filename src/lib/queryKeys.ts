@@ -122,6 +122,9 @@ export const queryKeys = {
     tips: ["content", "tips"] as const,
     banners: ["content", "banners"] as const,
   },
+  ai: {
+    reviewAnalysis: ["ai", "reviewAnalysis"] as const,
+  },
   lifecycle: {
     state: ["lifecycle", "state"] as const,
   },

@@ -6,74 +6,47 @@ import {
   Linking,
   Modal,
   Pressable,
+  StatusBar,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
-import { colors, space } from "../../../../theme";
+import { MediaViewerChrome } from "../../../../components/media/MediaViewerChrome";
+import { NativeMediaSurface } from "../../../../components/media/NativeMediaSurface";
+import { useMediaViewport } from "../../../../components/media/useMediaViewport";
 import { isLikelyPdf } from "../../../../lib/clipMediaUrl";
+import { colors, space } from "../../../../theme";
 
 export type LockerViewerMode = "video" | "pdf" | "image";
 
 type Props = {
   visible: boolean;
   onClose: () => void;
-  /** Absolute URL (S3, R2, or https image/PDF). */
   uri: string;
   title?: string;
   mode: LockerViewerMode;
-  /** When set, shows a chip for friend-shared clips. */
   sharedBy?: string;
 };
 
-function buildVideoHtml(src: string): string {
-  const safe = src.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <style>html,body{margin:0;padding:0;background:#000;height:100%;} video{width:100%;height:100%;object-fit:contain;background:#000;}</style>
-</head>
-<body>
-  <video controls playsinline webkit-playsinline src="${safe}"></video>
-</body>
-</html>`;
-}
-
-/**
- * Try the Mozilla PDF.js CDN viewer as the primary PDF embed. It tolerates a wider range
- * of CORS configurations than `docs.google.com/gviewer` (which silently fails on private
- * or non-public-cors S3 URLs — the original "save plan can't open" symptom).
- */
 function buildPdfEmbedUrl(url: string): string {
   return `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(url)}`;
 }
 
-/** Image fallback HTML — guarantees content-fit + dark background even when WebView opens raw image. */
-function buildImageHtml(src: string): string {
-  const safe = src.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes" />
-  <style>html,body{margin:0;padding:0;background:#000;height:100%;display:flex;align-items:center;justify-content:center;}img{max-width:100%;max-height:100%;object-fit:contain;}</style>
-</head>
-<body>
-  <img src="${safe}" />
-</body>
-</html>`;
-}
+const HEADER_BLOCK = 72;
+const FOOTER_BLOCK = 36;
 
 export function LockerViewerModal({ visible, onClose, uri, title, mode, sharedBy }: Props) {
   const insets = useSafeAreaInsets();
+  const { width, height: mediaHeight } = useMediaViewport({
+    headerHeight: HEADER_BLOCK + insets.top,
+    footerHeight: FOOTER_BLOCK + insets.bottom,
+  });
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  /** Reset the error/loading state every time a new file is opened. */
   useEffect(() => {
     if (visible) {
       setLoading(true);
@@ -89,16 +62,7 @@ export function LockerViewerModal({ visible, onClose, uri, title, mode, sharedBy
     return mode;
   }, [mode, uri]);
 
-  const source = useMemo(() => {
-    if (!uri) return null;
-    if (resolvedMode === "video") {
-      return { html: buildVideoHtml(uri), baseUrl: undefined } as const;
-    }
-    if (resolvedMode === "pdf") {
-      return { uri: buildPdfEmbedUrl(uri) } as const;
-    }
-    return { html: buildImageHtml(uri) } as const;
-  }, [uri, resolvedMode]);
+  const nativeMode = resolvedMode === "video" ? "video" : "image";
 
   const openExternally = useCallback(async () => {
     try {
@@ -113,155 +77,137 @@ export function LockerViewerModal({ visible, onClose, uri, title, mode, sharedBy
     }
   }, [uri]);
 
-  if (!visible || !source) return null;
+  if (!visible || !uri) return null;
+
+  const subtitle = sharedBy ? `Shared by ${sharedBy}` : undefined;
 
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType="fade"
       presentationStyle="fullScreen"
       onRequestClose={onClose}
     >
-      <View style={[styles.chrome, { paddingTop: insets.top + 8 }]}>
-        <View style={styles.topBar}>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={styles.title} numberOfLines={1}>
-              {title ?? "Preview"}
-            </Text>
-            {sharedBy ? (
-              <View style={styles.sharedChip}>
-                <Ionicons name="person-outline" size={12} color="#fff" />
-                <Text style={styles.sharedChipText} numberOfLines={1}>
-                  Shared by {sharedBy}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-
-          {/* Web parity: an explicit "open externally" affordance — many PDFs and S3 videos
-              render better in Safari / Chrome / a system PDF reader than embedded. */}
-          <Pressable onPress={openExternally} style={styles.iconBtn} hitSlop={10}>
-            <Ionicons name="open-outline" size={22} color="#fff" />
-          </Pressable>
-          <Pressable onPress={onClose} style={styles.iconBtn} hitSlop={12}>
-            <Ionicons name="close" size={26} color="#fff" />
-          </Pressable>
-        </View>
-        <Text style={styles.hint}>
-          {resolvedMode === "pdf"
-            ? "Tap the arrow icon to open in your browser if the preview doesn't load."
-            : "Opens inside the app — tap the arrow to open in your browser."}
-        </Text>
+      <StatusBar barStyle="light-content" />
+      <View style={[styles.root, { paddingTop: insets.top }]}>
+        <MediaViewerChrome
+          title={title ?? "Preview"}
+          subtitle={subtitle}
+          onClose={onClose}
+          onOpenExternal={openExternally}
+        />
 
         {error ? (
-          <View style={styles.centerMsg}>
-            <Ionicons name="alert-circle-outline" size={40} color={colors.danger} />
-            <Text style={styles.errText}>Could not load this file inside the app.</Text>
-            <Pressable onPress={openExternally} style={styles.openExtBtn}>
+          <View style={[styles.center, { width, height: mediaHeight }]}>
+            <Ionicons name="alert-circle-outline" size={44} color={colors.danger} />
+            <Text style={styles.errTitle}>Couldn&apos;t load preview</Text>
+            <Text style={styles.errBody}>
+              Try opening in your browser or check your connection.
+            </Text>
+            <Pressable onPress={openExternally} style={styles.primaryBtn}>
               <Ionicons name="open-outline" size={18} color="#fff" />
-              <Text style={styles.openExtText}>Open in browser</Text>
-            </Pressable>
-            <Pressable onPress={onClose} style={styles.openExtBtnAlt}>
-              <Text style={styles.openExtTextAlt}>Close</Text>
+              <Text style={styles.primaryBtnText}>Open in browser</Text>
             </Pressable>
           </View>
+        ) : resolvedMode === "pdf" ? (
+          <View style={{ width, height: mediaHeight }}>
+            <WebView
+              source={{ uri: buildPdfEmbedUrl(uri) }}
+              style={styles.fill}
+              onLoadStart={() => {
+                setLoading(true);
+                setError(false);
+              }}
+              onLoadEnd={() => setLoading(false)}
+              onError={() => {
+                setLoading(false);
+                setError(true);
+              }}
+              onHttpError={() => {
+                setLoading(false);
+                setError(true);
+              }}
+              allowsInlineMediaPlayback
+              mediaPlaybackRequiresUserAction={false}
+              originWhitelist={["*"]}
+              javaScriptEnabled
+              domStorageEnabled
+            />
+          </View>
         ) : (
-          <WebView
-            source={source as any}
-            style={styles.web}
-            onLoadStart={() => {
-              setLoading(true);
-              setError(false);
-            }}
-            onLoadEnd={() => setLoading(false)}
+          <NativeMediaSurface
+            uri={uri}
+            mode={nativeMode}
+            width={width}
+            height={mediaHeight}
+            isActive={visible}
+            onReady={() => setLoading(false)}
             onError={() => {
               setLoading(false);
               setError(true);
             }}
-            onHttpError={() => {
-              setLoading(false);
-              setError(true);
-            }}
-            allowsInlineMediaPlayback
-            mediaPlaybackRequiresUserAction={false}
-            originWhitelist={["*"]}
-            javaScriptEnabled
-            domStorageEnabled
           />
         )}
 
-        {loading && !error && (
-          <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color={colors.brandNavy} />
+        {loading && !error ? (
+          <View style={styles.loadingOverlay} pointerEvents="none">
+            <ActivityIndicator size="large" color="#fff" />
+            <Text style={styles.loadingText}>Loading…</Text>
           </View>
-        )}
+        ) : null}
+
+        <View style={[styles.footer, { paddingBottom: insets.bottom + 8 }]}>
+          <Text style={styles.footerText}>
+            {resolvedMode === "video"
+              ? "Use player controls to scrub · Pinch-friendly fullscreen"
+              : resolvedMode === "pdf"
+                ? "PDF preview · Open externally if it doesn’t render"
+                : "Pinch to zoom in system viewer when opened externally"}
+          </Text>
+        </View>
       </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  chrome: { flex: 1, backgroundColor: "#000" },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: space.md,
-    paddingBottom: 6,
-    gap: space.sm,
-  },
-  title: { fontSize: 16, fontWeight: "700", color: "#fff" },
-  sharedChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginTop: 4,
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.15)",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-    maxWidth: "100%",
-  },
-  sharedChipText: { color: "#e5e7eb", fontSize: 11, fontWeight: "600", flexShrink: 1 },
-  iconBtn: { padding: 4 },
-  hint: {
-    fontSize: 11,
-    color: "#9ca3af",
-    paddingHorizontal: space.md,
-    marginBottom: 4,
-  },
-  web: { flex: 1, backgroundColor: "#000" },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.25)",
-  },
-  centerMsg: {
-    flex: 1,
+  root: { flex: 1, backgroundColor: "#000" },
+  fill: { flex: 1, backgroundColor: "#000" },
+  center: {
     justifyContent: "center",
     alignItems: "center",
     padding: space.lg,
     gap: space.sm,
   },
-  errText: { color: "#fca5a5", textAlign: "center", fontSize: 15 },
-  openExtBtn: {
-    marginTop: space.sm,
+  errTitle: { color: "#fff", fontSize: 17, fontWeight: "700", textAlign: "center" },
+  errBody: { color: "#9ca3af", fontSize: 14, textAlign: "center", lineHeight: 20 },
+  primaryBtn: {
+    marginTop: space.md,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     backgroundColor: colors.brandNavy,
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 10,
   },
-  openExtText: { color: "#fff", fontWeight: "700", fontSize: 14 },
-  openExtBtnAlt: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#374151",
+  primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.4)",
+    gap: space.sm,
   },
-  openExtTextAlt: { color: "#cbd5f5", fontWeight: "600", fontSize: 13 },
+  loadingText: { color: "#fff", fontSize: 14 },
+  footer: {
+    paddingHorizontal: space.md,
+    paddingTop: space.xs,
+    backgroundColor: "rgba(0,0,0,0.85)",
+  },
+  footerText: {
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 12,
+    textAlign: "center",
+  },
 });

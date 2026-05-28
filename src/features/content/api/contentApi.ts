@@ -42,9 +42,19 @@ export type HomeBanner = {
 };
 
 function unwrap<T>(raw: unknown): T[] {
-  const body = raw as any;
-  const data = body?.data ?? body?.result ?? body;
+  const body = raw as Record<string, unknown> | null | undefined;
+  if (!body || typeof body !== "object") return [];
+
+  if (body.status === "FAIL" || body.status === "fail") return [];
+
+  const data = body.data ?? body.result;
   if (Array.isArray(data)) return data as T[];
+
+  if (data && typeof data === "object" && Array.isArray((data as { items?: unknown }).items)) {
+    return (data as { items: T[] }).items;
+  }
+
+  if (Array.isArray(body)) return body as T[];
   return [];
 }
 

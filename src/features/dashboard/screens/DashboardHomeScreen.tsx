@@ -356,6 +356,8 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
    */
   const refreshDashboard = useCallback(async () => {
     const tasks = [
+      queryClient.refetchQueries({ queryKey: queryKeys.content.tips }),
+      queryClient.refetchQueries({ queryKey: queryKeys.content.banners }),
       queryClient.refetchQueries({ queryKey: queryKeys.sessions.upcoming }),
       queryClient.refetchQueries({ queryKey: queryKeys.friends.requests }),
       queryClient.refetchQueries({ queryKey: queryKeys.presence.recentTrainees }),
