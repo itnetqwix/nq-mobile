@@ -61,6 +61,8 @@ import {
   type ProfileVisibility,
 } from "../../settings/api/privacyApi";
 import { OnboardingWalkthrough, resetCoachMarks } from "../../onboarding";
+import { fuzzySearch } from "../../../lib/search/fuzzyMatch";
+import { useDebouncedValue } from "../../../lib/search/useDebouncedValue";
 
 const REMINDER_CADENCES: BookingReminderCadence[] = [
   "standard",
@@ -68,31 +70,6 @@ const REMINDER_CADENCES: BookingReminderCadence[] = [
   "aggressive",
   "off",
 ];
-
-function normalizeSearchText(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function isSubsequence(query: string, text: string): boolean {
-  if (!query) return true;
-  let qi = 0;
-  for (let i = 0; i < text.length && qi < query.length; i += 1) {
-    if (text[i] === query[qi]) qi += 1;
-  }
-  return qi === query.length;
-}
-
-function matchesElasticSearch(query: string, ...candidates: Array<string | undefined>): boolean {
-  const q = normalizeSearchText(query);
-  if (!q) return true;
-  const corpus = normalizeSearchText(candidates.filter(Boolean).join(" "));
-  if (!corpus) return false;
-
-  if (corpus.includes(q)) return true;
-  const qTokens = q.split(" ").filter(Boolean);
-  if (qTokens.length > 1 && qTokens.every((t) => corpus.includes(t))) return true;
-  return isSubsequence(q.replace(/\s+/g, ""), corpus.replace(/\s+/g, ""));
-}
 
 function readNotificationPrefs(user: Record<string, unknown> | null): UserNotificationPrefs {
   const n = (user?.notifications ?? {}) as Partial<UserNotificationPrefs>;
@@ -235,6 +212,7 @@ export function SettingsScreen() {
   );
   const [visibilityBusy, setVisibilityBusy] = useState<keyof ProfileVisibility | null>(null);
   const [settingsSearch, setSettingsSearch] = useState("");
+  const debouncedSettingsSearch = useDebouncedValue(settingsSearch, 280);
 
   useEffect(() => {
     void isAppUnlockEnabled().then(setAppUnlockOn);
@@ -602,11 +580,19 @@ export function SettingsScreen() {
   ]);
 
   const searchResults = useMemo(() => {
-    if (!settingsSearch.trim()) return [];
-    return searchableRows.filter((row) =>
-      matchesElasticSearch(settingsSearch, row.title, row.subtitle, row.keywords)
-    );
-  }, [searchableRows, settingsSearch]);
+    const q = debouncedSettingsSearch.trim();
+    if (!q) return [];
+    return fuzzySearch(
+      q,
+      searchableRows.map((row) => ({
+        item: row,
+        fields: [row.title, row.subtitle ?? "", row.keywords ?? ""],
+      })),
+      { limit: 16, fieldWeights: [1, 0.9, 0.7] }
+    ).map((hit) => hit.item);
+  }, [searchableRows, debouncedSettingsSearch]);
+
+  const suggestionRows = useMemo(() => searchResults.slice(0, 6), [searchResults]);
 
   return (
     <ScreenContainer scroll padding="md" background={c.surface}>
@@ -666,6 +652,27 @@ export function SettingsScreen() {
                   defaultValue: "No matching settings. Try words like privacy, language, wallet, or notifications.",
                 })}
           </Text>
+        ) : null}
+        {settingsSearch.trim().length > 0 && suggestionRows.length > 0 ? (
+          <View style={styles.suggestionWrap}>
+            {suggestionRows.map((row) => (
+              <Pressable
+                key={`suggest-${row.key}`}
+                onPress={row.interactive === false ? undefined : row.onPress}
+                style={({ pressed }) => [
+                  styles.suggestionChip,
+                  { borderColor: c.border, backgroundColor: c.surface },
+                  pressed && row.interactive !== false && { opacity: 0.86 },
+                ]}
+                disabled={row.interactive === false}
+              >
+                <Ionicons name={row.icon} size={14} color={c.textMuted} />
+                <Text style={[typography.caption, { color: c.text }]}>
+                  {row.title}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         ) : null}
       </Card>
 
@@ -1302,6 +1309,21 @@ const styles = StyleSheet.create({
     flex: 1,
     ...typography.bodyMd,
     paddingVertical: 0,
+  },
+  suggestionWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 10,
+  },
+  suggestionChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
   /**
    * Inline confirmation pill sits next to the switch — this row keeps

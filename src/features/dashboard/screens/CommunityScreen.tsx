@@ -39,6 +39,7 @@ import { openChatInTab } from "../../chats/lib/openChatTab";
 import { useNavigation } from "@react-navigation/native";
 import { haptics } from "../../../lib/haptics";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import { useDebouncedValue } from "../../../lib/search/useDebouncedValue";
 
 async function fetchCommunityUsers(search?: string): Promise<any[]> {
   const res = await apiClient.get(API_ROUTES.user.getAllUsers, {
@@ -164,10 +165,12 @@ export function CommunityScreen() {
     [gutter, insets.bottom]
   );
 
-  const trimmedSearch = search.trim();
+  const debouncedSearch = useDebouncedValue(search, 350);
+  const trimmedSearch = debouncedSearch.trim();
+  const shouldSearch = trimmedSearch.length >= 2;
   const { data: members = [], isLoading, isRefetching, refetch } = useQuery({
-    queryKey: queryKeys.presence.community(trimmedSearch),
-    queryFn: () => fetchCommunityUsers(trimmedSearch || undefined),
+    queryKey: queryKeys.presence.community(shouldSearch ? trimmedSearch : ""),
+    queryFn: () => fetchCommunityUsers(shouldSearch ? trimmedSearch : undefined),
     staleTime: 120_000,
   });
 
@@ -354,6 +357,15 @@ export function CommunityScreen() {
           </Pressable>
         )}
       </View>
+      {search.trim().length === 1 ? (
+        <View style={styles.searchHintWrap}>
+          <Text style={styles.searchHint}>
+            {t("community.searchHintMinChars", {
+              defaultValue: "Type at least 2 characters to search.",
+            })}
+          </Text>
+        </View>
+      ) : null}
       <FlatList
         data={filteredMembers}
         keyExtractor={flatListKeyExtractor}
@@ -415,6 +427,15 @@ const styles = StyleSheet.create({
     color: colors.text,
     paddingVertical: 0,
     textAlignVertical: "center",
+  },
+  searchHintWrap: {
+    paddingHorizontal: space.md,
+    paddingTop: 6,
+    paddingBottom: 2,
+  },
+  searchHint: {
+    ...typography.caption,
+    color: colors.textMuted,
   },
   headerCard: {
     backgroundColor: colors.brandSubtle,
