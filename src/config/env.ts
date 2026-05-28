@@ -120,6 +120,12 @@ if (__DEV__) {
     "| WEB_APP_ORIGIN =",
     WEB_APP_ORIGIN
   );
+  // eslint-disable-next-line no-console
+  console.log(
+    "[nq-mobile] STRIPE_PUBLISHABLE_KEY prefix/len =",
+    STRIPE_PUBLISHABLE_KEY ? `${STRIPE_PUBLISHABLE_KEY.slice(0, 12)}…` : "<empty>",
+    STRIPE_PUBLISHABLE_KEY.length
+  );
 }
 
 export { isLocalDevApiHost };
