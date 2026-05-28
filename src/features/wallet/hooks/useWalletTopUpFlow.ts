@@ -2,6 +2,7 @@ import { useStripe } from "@stripe/stripe-react-native";
 import { useCallback, useState } from "react";
 import { Platform } from "react-native";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
+import { STRIPE_APPLE_MERCHANT_IDENTIFIER } from "../../../config/env";
 import {
   confirmTopUp,
   createTopUpIntent,
@@ -34,7 +35,7 @@ export function useWalletTopUpFlow() {
           name: "NetQwix member",
         },
         applePay:
-          Platform.OS === "ios"
+          Platform.OS === "ios" && !!STRIPE_APPLE_MERCHANT_IDENTIFIER
             ? {
                 merchantCountryCode: "US",
               }

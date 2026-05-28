@@ -9,7 +9,10 @@ import React, { useCallback, useEffect, useMemo } from "react";
 import { StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { STRIPE_PUBLISHABLE_KEY } from "../config/env";
+import {
+  STRIPE_APPLE_MERCHANT_IDENTIFIER,
+  STRIPE_PUBLISHABLE_KEY,
+} from "../config/env";
 import { AuthProvider } from "../features/auth/context/AuthContext";
 import { hydrateLastAuthMethod } from "../features/auth/lib/lastAuthMethod";
 import { hydratePendingAuthIntent } from "../features/auth/lib/pendingAuthIntent";
@@ -99,7 +102,12 @@ export function AppRoot() {
     <GestureHandlerRootView style={styles.flex}>
       <StoreProvider>
       <SafeAreaProvider>
-        <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
+        <StripeProvider
+          publishableKey={STRIPE_PUBLISHABLE_KEY}
+          merchantIdentifier={
+            STRIPE_APPLE_MERCHANT_IDENTIFIER || undefined
+          }
+        >
           <ThemeProvider>
             <LoaderProvider>
             <PersistQueryClientProvider

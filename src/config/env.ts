@@ -57,6 +57,10 @@ export const WEB_APP_ORIGIN = normalizeEnvUrl(
 export const STRIPE_PUBLISHABLE_KEY =
   (process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "").trim() || "";
 
+/** Optional Apple Pay merchant id (required only when Apple Pay is enabled). */
+export const STRIPE_APPLE_MERCHANT_IDENTIFIER =
+  (process.env.EXPO_PUBLIC_STRIPE_APPLE_MERCHANT_IDENTIFIER ?? "").trim() || "";
+
 /** Same value as web `NEXT_PUBLIC_GOOGLE_CLIENT_ID` when only one Web OAuth client exists. */
 const GOOGLE_CLIENT_ID_SHARED =
   (process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? "").trim() || "";
