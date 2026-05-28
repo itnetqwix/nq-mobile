@@ -22,6 +22,7 @@ function normalizeRoute(raw: unknown): AudioRouteKind {
 export function useAudioRoute() {
   const [route, setRoute] = useState<AudioRouteKind>("unknown");
   const [hasBluetooth, setHasBluetooth] = useState(false);
+  const [hasWired, setHasWired] = useState(false);
 
   useEffect(() => {
     const onRoute = DeviceEventEmitter.addListener("onAudioRouteChanged", (evt: any) => {
@@ -34,6 +35,7 @@ export function useAudioRoute() {
 
     const onWired = DeviceEventEmitter.addListener("WiredHeadset", (evt: any) => {
       const plugged = !!(evt?.isPlugged ?? evt?.isPluggedIn ?? evt?.state);
+      setHasWired(plugged);
       if (plugged) setRoute("wired");
       else if (route === "wired") setRoute("unknown");
     });
@@ -59,24 +61,49 @@ export function useAudioRoute() {
     }
   }, [route]);
 
+  const setAudioRoute = useCallback(
+    (next: "speaker" | "earpiece" | "bluetooth" | "auto") => {
+      try {
+        if (next === "speaker") {
+          InCallManager.setForceSpeakerphoneOn(true);
+          InCallManager.setSpeakerphoneOn(true);
+          setRoute("speaker");
+          return;
+        }
+
+        // "auto" and route-specific non-speaker options should release force speaker.
+        InCallManager.setForceSpeakerphoneOn(null as any);
+        InCallManager.setSpeakerphoneOn(false);
+
+        if (next === "bluetooth" && hasBluetooth) {
+          setRoute("bluetooth");
+          return;
+        }
+        if (next === "earpiece") {
+          setRoute("earpiece");
+          return;
+        }
+        setRoute(hasBluetooth ? "bluetooth" : hasWired ? "wired" : "earpiece");
+      } catch {
+        // no-op
+      }
+    },
+    [hasBluetooth, hasWired]
+  );
+
   const toggleAudioRoute = useCallback(() => {
     const toSpeaker = route !== "speaker";
     try {
       if (toSpeaker) {
-        InCallManager.setForceSpeakerphoneOn(true);
-        InCallManager.setSpeakerphoneOn(true);
-        setRoute("speaker");
+        setAudioRoute("speaker");
         return;
       }
-      // Auto route lets the OS pick BT/wired/earpiece.
-      InCallManager.setForceSpeakerphoneOn(null as any);
-      InCallManager.setSpeakerphoneOn(false);
-      setRoute(hasBluetooth ? "bluetooth" : "earpiece");
+      setAudioRoute("auto");
     } catch {
       // no-op
     }
-  }, [route, hasBluetooth]);
+  }, [route, setAudioRoute]);
 
-  return { route, routeLabel, hasBluetooth, toggleAudioRoute };
+  return { route, routeLabel, hasBluetooth, hasWired, toggleAudioRoute, setAudioRoute };
 }
 

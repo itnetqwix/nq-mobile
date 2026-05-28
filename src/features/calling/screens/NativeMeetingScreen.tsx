@@ -392,6 +392,30 @@ function MeetingSurface({
       ? presence.partnerConnected
       : (bothJoined || !!peerJoined) && !partnerDisconnected;
   const { pushLocalToast } = useNotifications();
+  const openAudioOutputPicker = useCallback(() => {
+    const options: Array<{ text: string; onPress?: () => void; style?: "cancel" }> = [
+      {
+        text: `Speaker${audioRoute.route === "speaker" ? " (current)" : ""}`,
+        onPress: () => audioRoute.setAudioRoute("speaker"),
+      },
+      {
+        text: `Earpiece${audioRoute.route === "earpiece" ? " (current)" : ""}`,
+        onPress: () => audioRoute.setAudioRoute("earpiece"),
+      },
+    ];
+    if (audioRoute.hasBluetooth) {
+      options.push({
+        text: `Bluetooth${audioRoute.route === "bluetooth" ? " (current)" : ""}`,
+        onPress: () => audioRoute.setAudioRoute("bluetooth"),
+      });
+    }
+    options.push({
+      text: "Auto",
+      onPress: () => audioRoute.setAudioRoute("auto"),
+    });
+    options.push({ text: "Cancel", style: "cancel" });
+    Alert.alert("Audio output", "Choose where call audio plays.", options);
+  }, [audioRoute]);
 
   /** Small client-side buffer (5 s) before the trainer auto-starts the timer —
    *  same as the web. Lets both sides settle their connection. */
@@ -1411,7 +1435,7 @@ function MeetingSurface({
         <ConnectionQualityPill />
         <View style={{ marginTop: 8 }}>
           <TopToolButton
-            onPress={audioRoute.toggleAudioRoute}
+            onPress={openAudioOutputPicker}
             label={`Audio: ${audioRoute.routeLabel}`}
           >
             <Ionicons name="volume-high-outline" size={16} color={meetingTheme.text} />
@@ -1497,7 +1521,7 @@ function MeetingSurface({
         isTrainer={isTrainer}
         bottomInset={chrome.bottomChrome}
         audioRouteLabel={audioRoute.routeLabel}
-        onToggleAudioRoute={audioRoute.toggleAudioRoute}
+        onToggleAudioRoute={isTrainer ? undefined : audioRoute.toggleAudioRoute}
         onEndCall={confirmExit}
         inClipMode={inClipMode}
         onToggleBigVideo={isTrainer ? handleToggleBigVideo : undefined}

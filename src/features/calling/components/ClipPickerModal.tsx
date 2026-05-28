@@ -23,6 +23,12 @@ import {
   fetchMyClipsGrouped,
   type ClipRow,
 } from "../../instant-lesson/instantLessonClipsApi";
+import {
+  postLibraryClipsNested,
+  postSharedClipsBySharer,
+  type NestedCategoryGroup,
+  type SharedClipsGroup,
+} from "../../clips/api/clipsApi";
 
 const MAX_CLIPS = 2;
 
@@ -40,45 +46,78 @@ export function ClipPickerModal({
   visible,
   onClose,
   onDone,
-  traineeId,
+  traineeId: _traineeId,
   selectedClipIds = [],
 }: Props) {
   const [loading, setLoading] = useState(false);
-  const [trainerClips, setTrainerClips] = useState<ClipRow[]>([]);
-  const [traineeClips, setTraineeClips] = useState<ClipRow[]>([]);
+  const [lockerClips, setLockerClips] = useState<ClipRow[]>([]);
+  const [sharedClips, setSharedClips] = useState<ClipRow[]>([]);
+  const [libraryClips, setLibraryClips] = useState<ClipRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState<"locker" | "shared" | "library">("locker");
+
+  const dedupeClips = useCallback((rows: ClipRow[]): ClipRow[] => {
+    const seen = new Set<string>();
+    const out: ClipRow[] = [];
+    for (const row of rows) {
+      const id = String(row?._id ?? "");
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      out.push(row);
+    }
+    return out;
+  }, []);
+
+  const flattenNestedGroups = useCallback(
+    (groups: NestedCategoryGroup[]): ClipRow[] => {
+      const out: ClipRow[] = [];
+      for (const group of groups ?? []) {
+        for (const sub of group?.subcategories ?? []) {
+          for (const clip of sub?.clips ?? []) {
+            if (clip?._id) out.push(clip as ClipRow);
+          }
+        }
+      }
+      return dedupeClips(out);
+    },
+    [dedupeClips]
+  );
+
+  const flattenSharedGroups = useCallback(
+    (groups: SharedClipsGroup[]): ClipRow[] => {
+      const out: ClipRow[] = [];
+      for (const group of groups ?? []) {
+        for (const clip of group?.clips ?? []) {
+          if (clip?._id) out.push(clip as ClipRow);
+        }
+      }
+      return dedupeClips(out);
+    },
+    [dedupeClips]
+  );
 
   useEffect(() => {
     if (!visible) return;
     setPicked(new Set(selectedClipIds.map(String)));
+    setActiveTab("locker");
     let active = true;
     setLoading(true);
     setError(null);
 
     (async () => {
       try {
-        const groups = await fetchMyClipsGrouped();
-        if (active) setTrainerClips(flattenGroupedClips(groups));
+        const [mineGroups, sharedGroups, libraryGroups] = await Promise.all([
+          fetchMyClipsGrouped(),
+          postSharedClipsBySharer(),
+          postLibraryClipsNested(),
+        ]);
+        if (!active) return;
+        setLockerClips(dedupeClips(flattenGroupedClips(mineGroups)));
+        setSharedClips(flattenSharedGroups(sharedGroups));
+        setLibraryClips(flattenNestedGroups(libraryGroups));
       } catch (err: any) {
-        if (active) setError(err?.message ?? "Failed to load trainer clips");
-      }
-
-      if (traineeId) {
-        try {
-          const res = await apiClient.post(API_ROUTES.common.traineeClips, {
-            id: traineeId,
-          });
-          const raw = res.data?.data ?? res.data?.result ?? res.data ?? [];
-          const flat: ClipRow[] = Array.isArray(raw)
-            ? raw.flatMap((g: any) => (Array.isArray(g?.clips) ? g.clips : []))
-            : [];
-          if (active) setTraineeClips(flat);
-        } catch (err: any) {
-          if (active && !error) {
-            setError(err?.message ?? "Failed to load trainee clips");
-          }
-        }
+        if (active) setError(err?.message ?? "Failed to load clips");
       }
       if (active) setLoading(false);
     })();
@@ -86,11 +125,11 @@ export function ClipPickerModal({
     return () => {
       active = false;
     };
-  }, [visible, traineeId]);
+  }, [visible, selectedClipIds, dedupeClips, flattenNestedGroups, flattenSharedGroups]);
 
   const allClips = useMemo(
-    () => [...trainerClips, ...traineeClips],
-    [trainerClips, traineeClips]
+    () => dedupeClips([...lockerClips, ...sharedClips, ...libraryClips]),
+    [lockerClips, sharedClips, libraryClips, dedupeClips]
   );
 
   const toggleClip = useCallback((clip: ClipRow) => {
@@ -124,13 +163,20 @@ export function ClipPickerModal({
     onClose();
   }, [allClips, onClose, onDone, picked]);
 
-  const data = useMemo(() => {
-    const out: Array<{ key: string; title: string; clips: ClipRow[] }> = [];
-    if (trainerClips.length) out.push({ key: "mine", title: "My clips", clips: trainerClips });
-    if (traineeClips.length)
-      out.push({ key: "trainee", title: "Trainee clips", clips: traineeClips });
-    return out;
-  }, [trainerClips, traineeClips]);
+  const tabCounts = useMemo(
+    () => ({
+      locker: lockerClips.length,
+      shared: sharedClips.length,
+      library: libraryClips.length,
+    }),
+    [lockerClips.length, sharedClips.length, libraryClips.length]
+  );
+
+  const activeClips = useMemo(() => {
+    if (activeTab === "shared") return sharedClips;
+    if (activeTab === "library") return libraryClips;
+    return lockerClips;
+  }, [activeTab, lockerClips, sharedClips, libraryClips]);
 
   const selectionLabel = `${picked.size}/${MAX_CLIPS} selected`;
 
@@ -161,73 +207,100 @@ export function ClipPickerModal({
             <ActivityIndicator size="large" color="#111" />
             <Text style={styles.muted}>Loading clips…</Text>
           </View>
-        ) : data.length === 0 ? (
+        ) : allClips.length === 0 ? (
           <View style={styles.center}>
             <Text style={styles.muted}>{error ?? "No clips available yet."}</Text>
           </View>
         ) : (
-          <FlatList
-            data={data}
-            keyExtractor={(item) => item.key}
-            contentContainerStyle={{ padding: 16, gap: 18 }}
-            renderItem={({ item }) => (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>{item.title}</Text>
-                <View style={styles.grid}>
-                  {item.clips.map((clip) => {
-                    const id = String(clip._id);
-                    const selected = picked.has(id);
-                    const atMax = picked.size >= MAX_CLIPS && !selected;
-                    const thumb = getClipThumbnailUrl(clip);
-                    return (
-                      <Pressable
-                        key={id}
-                        style={[
-                          styles.clipCard,
-                          selected && styles.clipCardActive,
-                          atMax && styles.clipCardDisabled,
-                        ]}
-                        onPress={() => toggleClip(clip)}
-                        disabled={atMax}
-                      >
-                        <View style={styles.thumbWrap}>
-                          {thumb ? (
-                            <ImageWithSkeleton
-                              uri={thumb}
-                              width={160}
-                              height={100}
-                              borderRadius={8}
-                              resizeMode="cover"
-                            />
-                          ) : (
-                            <View style={[styles.thumb, styles.thumbFallback]}>
-                              <Ionicons name="film-outline" size={28} color="#888" />
-                            </View>
-                          )}
-                          <View style={styles.checkWrap}>
-                            <Ionicons
-                              name={selected ? "checkbox" : "square-outline"}
-                              size={22}
-                              color={selected ? "#fff" : "rgba(255,255,255,0.9)"}
-                            />
-                          </View>
-                        </View>
-                        <Text style={styles.clipTitle} numberOfLines={2}>
-                          {clip.title || clip.name || "Untitled clip"}
-                        </Text>
-                        {clip.category ? (
-                          <Text style={styles.clipMeta}>{clip.category}</Text>
-                        ) : null}
-                        {!getClipPlaybackUrl(clip) ? (
-                          <Text style={styles.clipWarning}>Cannot play this clip</Text>
-                        ) : null}
-                      </Pressable>
-                    );
-                  })}
-                </View>
+          <View style={styles.body}>
+            <View style={styles.tabsRow}>
+              <Pressable
+                style={[styles.tabBtn, activeTab === "locker" && styles.tabBtnActive]}
+                onPress={() => setActiveTab("locker")}
+              >
+                <Text style={[styles.tabLabel, activeTab === "locker" && styles.tabLabelActive]}>
+                  Locker ({tabCounts.locker})
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.tabBtn, activeTab === "shared" && styles.tabBtnActive]}
+                onPress={() => setActiveTab("shared")}
+              >
+                <Text style={[styles.tabLabel, activeTab === "shared" && styles.tabLabelActive]}>
+                  Shared ({tabCounts.shared})
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.tabBtn, activeTab === "library" && styles.tabBtnActive]}
+                onPress={() => setActiveTab("library")}
+              >
+                <Text style={[styles.tabLabel, activeTab === "library" && styles.tabLabelActive]}>
+                  NetQwix ({tabCounts.library})
+                </Text>
+              </Pressable>
+            </View>
+
+            {activeClips.length === 0 ? (
+              <View style={styles.center}>
+                <Text style={styles.muted}>No clips in this tab yet.</Text>
               </View>
+            ) : (
+              <FlatList
+                data={activeClips}
+                keyExtractor={(item, index) => `${activeTab}-${String(item._id)}-${index}`}
+                contentContainerStyle={{ padding: 16 }}
+                numColumns={2}
+                columnWrapperStyle={styles.gridRow}
+                renderItem={({ item: clip }) => {
+                  const id = String(clip._id);
+                  const selected = picked.has(id);
+                  const atMax = picked.size >= MAX_CLIPS && !selected;
+                  const thumb = getClipThumbnailUrl(clip);
+                  return (
+                    <Pressable
+                      style={[
+                        styles.clipCard,
+                        selected && styles.clipCardActive,
+                        atMax && styles.clipCardDisabled,
+                      ]}
+                      onPress={() => toggleClip(clip)}
+                      disabled={atMax}
+                    >
+                      <View style={styles.thumbWrap}>
+                        {thumb ? (
+                          <ImageWithSkeleton
+                            uri={thumb}
+                            width={160}
+                            height={100}
+                            borderRadius={8}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View style={[styles.thumb, styles.thumbFallback]}>
+                            <Ionicons name="film-outline" size={28} color="#888" />
+                          </View>
+                        )}
+                        <View style={styles.checkWrap}>
+                          <Ionicons
+                            name={selected ? "checkbox" : "square-outline"}
+                            size={22}
+                            color={selected ? "#fff" : "rgba(255,255,255,0.9)"}
+                          />
+                        </View>
+                      </View>
+                      <Text style={styles.clipTitle} numberOfLines={2}>
+                        {clip.title || clip.name || "Untitled clip"}
+                      </Text>
+                      {clip.category ? <Text style={styles.clipMeta}>{clip.category}</Text> : null}
+                      {!getClipPlaybackUrl(clip) ? (
+                        <Text style={styles.clipWarning}>Cannot play this clip</Text>
+                      ) : null}
+                    </Pressable>
+                  );
+                }}
+              />
             )}
-          />
+          </View>
         )}
       </View>
     </Modal>
@@ -262,6 +335,38 @@ const styles = StyleSheet.create({
     borderBottomColor: "#eee",
   },
   clearText: { fontSize: 14, fontWeight: "600", color: "#b91c1c", textAlign: "center" },
+  body: { flex: 1 },
+  tabsRow: {
+    flexDirection: "row",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    gap: 8,
+  },
+  tabBtn: {
+    flex: 1,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    paddingVertical: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+  },
+  tabBtnActive: {
+    borderColor: "#111",
+    backgroundColor: "#111",
+  },
+  tabLabel: {
+    color: "#333",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  tabLabelActive: {
+    color: "#fff",
+  },
   center: {
     flex: 1,
     alignItems: "center",
@@ -269,13 +374,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   muted: { color: "#666", fontSize: 14 },
-  section: {},
-  sectionTitle: { fontSize: 14, fontWeight: "700", color: "#444", marginBottom: 8 },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-  },
+  gridRow: { justifyContent: "space-between", marginBottom: 12 },
   clipCard: {
     width: "47%",
     backgroundColor: "#fff",
