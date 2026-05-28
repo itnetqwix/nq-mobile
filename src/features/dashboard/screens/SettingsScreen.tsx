@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
@@ -67,6 +68,31 @@ const REMINDER_CADENCES: BookingReminderCadence[] = [
   "aggressive",
   "off",
 ];
+
+function normalizeSearchText(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function isSubsequence(query: string, text: string): boolean {
+  if (!query) return true;
+  let qi = 0;
+  for (let i = 0; i < text.length && qi < query.length; i += 1) {
+    if (text[i] === query[qi]) qi += 1;
+  }
+  return qi === query.length;
+}
+
+function matchesElasticSearch(query: string, ...candidates: Array<string | undefined>): boolean {
+  const q = normalizeSearchText(query);
+  if (!q) return true;
+  const corpus = normalizeSearchText(candidates.filter(Boolean).join(" "));
+  if (!corpus) return false;
+
+  if (corpus.includes(q)) return true;
+  const qTokens = q.split(" ").filter(Boolean);
+  if (qTokens.length > 1 && qTokens.every((t) => corpus.includes(t))) return true;
+  return isSubsequence(q.replace(/\s+/g, ""), corpus.replace(/\s+/g, ""));
+}
 
 function readNotificationPrefs(user: Record<string, unknown> | null): UserNotificationPrefs {
   const n = (user?.notifications ?? {}) as Partial<UserNotificationPrefs>;
@@ -208,6 +234,7 @@ export function SettingsScreen() {
     readProfileVisibility(user as Record<string, unknown> | null)
   );
   const [visibilityBusy, setVisibilityBusy] = useState<keyof ProfileVisibility | null>(null);
+  const [settingsSearch, setSettingsSearch] = useState("");
 
   useEffect(() => {
     void isAppUnlockEnabled().then(setAppUnlockOn);
@@ -432,6 +459,155 @@ export function SettingsScreen() {
     return rows;
   }, [isTrainer, openWeb, openDashboard, openShell, t]);
 
+  const searchableRows = useMemo(() => {
+    const rows: Array<{
+      key: string;
+      icon: keyof typeof Ionicons.glyphMap;
+      title: string;
+      subtitle?: string;
+      keywords?: string;
+      interactive?: boolean;
+      onPress: () => void;
+    }> = [
+      {
+        key: "editProfile",
+        icon: "create-outline",
+        title: t("settings.editProfile"),
+        subtitle: t("settings.name"),
+        keywords: "profile bio photo username account",
+        onPress: () => openShell("editProfile"),
+      },
+      {
+        key: "appUnlock",
+        icon: "finger-print-outline",
+        title: t("settings.appUnlockTitle", { label: unlockLabel }),
+        subtitle: t("settings.appUnlockSubtitle"),
+        keywords: "face id fingerprint biometric unlock security",
+        interactive: false,
+        onPress: () => {}, // discoverability-only row
+      },
+      {
+        key: "walletSecurity",
+        icon: "wallet-outline",
+        title: t("settings.walletSecurity"),
+        keywords: "wallet pin security payment",
+        onPress: () => navigation.navigate("ShellSurface", { surfaceId: "wallet" }),
+      },
+      {
+        key: "activeSessions",
+        icon: "laptop-outline",
+        title: t("settings.activeSessions"),
+        subtitle: t("settings.activeSessionsSubtitle"),
+        keywords: "devices login sessions",
+        onPress: () => navigation.navigate("ActiveSessions"),
+      },
+      {
+        key: "notificationPreferences",
+        icon: "notifications-circle-outline",
+        title: t("settings.notificationPreferencesTitle", { defaultValue: "Notification preferences" }),
+        subtitle: t("settings.notificationPreferencesHint", {
+          defaultValue: "Categories, channels, mute, quiet hours",
+        }),
+        keywords: "notification reminders sms email push",
+        onPress: () => navigation.navigate("NotificationPreferences" as never),
+      },
+      {
+        key: "privateAccount",
+        icon: "eye-off-outline",
+        title: t("settings.privateAccount"),
+        keywords: "privacy private profile",
+        interactive: false,
+        onPress: () => {},
+      },
+      {
+        key: "blockedUsers",
+        icon: "ban-outline",
+        title: t("settings.blockedAccounts", { defaultValue: "Blocked accounts" }),
+        subtitle: t("settings.blockedAccountsSubtitle", {
+          defaultValue: "Review or unblock people you've blocked.",
+        }),
+        keywords: "block blocked users community safety",
+        onPress: () => navigation.navigate("BlockedUsers" as never),
+      },
+      {
+        key: "language",
+        icon: "language-outline",
+        title: t("settings.language"),
+        subtitle: languageLabelForCode(localeDraft),
+        keywords: "language locale regional",
+        onPress: () => setLangOpen(true),
+      },
+      {
+        key: "timezone",
+        icon: "globe-outline",
+        title: t("settings.timezone"),
+        subtitle: tzDraft,
+        keywords: "timezone region country time",
+        onPress: () => setTzOpen(true),
+      },
+      {
+        key: "contact",
+        icon: "mail-outline",
+        title: t("settings.contactUs"),
+        keywords: "support help contact",
+        onPress: () => openDashboard("contact-us"),
+      },
+      {
+        key: "faq",
+        icon: "help-circle-outline",
+        title: t("settings.faq"),
+        keywords: "faq help docs support",
+        onPress: () => openDashboard("faq"),
+      },
+      {
+        key: "delete",
+        icon: "trash-outline",
+        title: t("settings.deleteAccount"),
+        subtitle: t("settings.deleteAccountSubtitle"),
+        keywords: "delete account remove danger",
+        onPress: handleDeleteAccount,
+      },
+    ];
+    if (isTrainer) {
+      rows.push({
+        key: "schedule",
+        icon: "calendar-outline",
+        title: t("settings.mySchedule"),
+        keywords: "trainer schedule availability slots",
+        onPress: () => openShell("trainerSchedule"),
+      });
+      rows.push({
+        key: "twoFactor",
+        icon: "shield-checkmark-outline",
+        title: t("settings.twoFactor", { defaultValue: "Two-factor authentication" }),
+        subtitle: t("settings.twoFactorSubtitle", {
+          defaultValue: "Extra OTP step for trainer accounts on new devices.",
+        }),
+        keywords: "2fa otp auth security trainer",
+        onPress: () => navigation.navigate("TwoFactor" as never),
+      });
+    }
+    return rows;
+  }, [
+    handleDeleteAccount,
+    isTrainer,
+    languageLabelForCode,
+    localeDraft,
+    navigation,
+    openDashboard,
+    openShell,
+    t,
+    tzDraft,
+    unlockLabel,
+  ]);
+
+  const searchResults = useMemo(() => {
+    if (!settingsSearch.trim()) return [];
+    return searchableRows.filter((row) =>
+      matchesElasticSearch(settingsSearch, row.title, row.subtitle, row.keywords)
+    );
+  }, [searchableRows, settingsSearch]);
+
   return (
     <ScreenContainer scroll padding="md" background={c.surface}>
       <Pressable onPress={() => openShell("editProfile")}>
@@ -452,6 +628,63 @@ export function SettingsScreen() {
           <Ionicons name="chevron-forward" size={20} color={c.textMuted} />
         </Card>
       </Pressable>
+
+      <Card variant="outlined" padding="md" style={styles.searchCard}>
+        <View style={[styles.searchInputWrap, { borderColor: c.border, backgroundColor: c.surfaceElevated }]}>
+          <Ionicons name="search-outline" size={18} color={c.textMuted} />
+          <TextInput
+            value={settingsSearch}
+            onChangeText={setSettingsSearch}
+            placeholder={t("settings.searchPlaceholder", {
+              defaultValue: "Search settings, privacy, notifications, security...",
+            })}
+            placeholderTextColor={c.textMuted}
+            style={[styles.searchInput, { color: c.text }]}
+            returnKeyType="search"
+            autoCorrect={false}
+            autoCapitalize="none"
+          />
+          {settingsSearch ? (
+            <Pressable
+              onPress={() => setSettingsSearch("")}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t("common.clear", { defaultValue: "Clear search" })}
+            >
+              <Ionicons name="close-circle" size={18} color={c.textMuted} />
+            </Pressable>
+          ) : null}
+        </View>
+        {settingsSearch ? (
+          <Text style={[typography.caption, { color: c.textMuted, marginTop: 8 }]}>
+            {searchResults.length > 0
+              ? t("settings.searchResultsCount", {
+                  defaultValue: "{{count}} results",
+                  count: searchResults.length,
+                })
+              : t("settings.searchNoResults", {
+                  defaultValue: "No matching settings. Try words like privacy, language, wallet, or notifications.",
+                })}
+          </Text>
+        ) : null}
+      </Card>
+
+      {settingsSearch.trim() ? (
+        <Card variant="outlined" padding={0} style={styles.sectionCard}>
+          {searchResults.map((row, idx) => (
+            <React.Fragment key={row.key}>
+              {idx > 0 ? <Divider /> : null}
+              <ListRow
+                icon={row.icon}
+                title={row.title}
+                subtitle={row.subtitle}
+                onPress={row.onPress}
+                hideChevron={row.interactive === false}
+              />
+            </React.Fragment>
+          ))}
+        </Card>
+      ) : null}
 
       <SectionHeader label={t("settings.account")} />
       <Card variant="outlined" padding={0} style={styles.sectionCard}>
@@ -1055,6 +1288,21 @@ const styles = StyleSheet.create({
     gap: space.md,
   },
   sectionCard: { marginBottom: space.sm },
+  searchCard: { marginBottom: space.sm },
+  searchInputWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.sm,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: space.sm,
+    minHeight: 42,
+  },
+  searchInput: {
+    flex: 1,
+    ...typography.bodyMd,
+    paddingVertical: 0,
+  },
   /**
    * Inline confirmation pill sits next to the switch — this row keeps
    * them on the same horizontal axis without disturbing existing

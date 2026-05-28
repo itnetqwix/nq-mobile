@@ -43,7 +43,9 @@ export function RootNavigator() {
   const [startVerificationEarly, setStartVerificationEarly] = useState(false);
 
   useEffect(() => {
-    if (status !== "signedIn") setStartVerificationEarly(false);
+    // Keep manual verification intent through transient auth "loading" states.
+    // Only clear it when the user is truly signed out.
+    if (status === "signedOut") setStartVerificationEarly(false);
   }, [status]);
 
   const authLoading = status === "loading";

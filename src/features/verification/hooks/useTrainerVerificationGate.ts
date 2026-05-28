@@ -107,9 +107,15 @@ export function useTrainerVerificationGate(): VerificationGateState & {
         const s = await getVerificationStatus();
         if (cancelled) return;
         const rejected = s.status === "rejected" || s.step === "rejected";
+        const step = String(s.step ?? "").toLowerCase();
+        const status = String(s.status ?? "").toLowerCase();
+        // Keep trainers in the verification flow while the application is
+        // submitted/under review even if the backend marks `required: false`.
+        const forceRequiredDuringReview =
+          status !== "approved" && (step === "under_review" || step === "completed");
         applyGate({
           loading: false,
-          required: rejected ? false : Boolean(s.required),
+          required: rejected ? false : Boolean(s.required || forceRequiredDuringReview),
           inGracePeriod: Boolean(s.in_grace_period),
           graceDaysRemaining: s.grace_days_remaining ?? 0,
         });

@@ -4,6 +4,7 @@ import * as SecureStore from "expo-secure-store";
 import { getAccessToken } from "../session/tokenStorage";
 
 const APP_UNLOCK_KEY = "nq.app.biometric.unlock";
+const APP_UNLOCK_PROMPT_SEEN_KEY = "nq.app.biometric.prompt.seen";
 
 export async function isAppUnlockEnabled(): Promise<boolean> {
   try {
@@ -32,6 +33,8 @@ export async function promptEnableAppUnlock(): Promise<void> {
   const hasHardware = await LocalAuthentication.hasHardwareAsync();
   const enrolled = await LocalAuthentication.isEnrolledAsync();
   if (!hasHardware || !enrolled) return;
+  // Ask only once; after that, users can opt-in from Settings.
+  if ((await SecureStore.getItemAsync(APP_UNLOCK_PROMPT_SEEN_KEY)) === "1") return;
   if (await isAppUnlockEnabled()) return;
 
   const label = await biometricLabel();
@@ -40,11 +43,19 @@ export async function promptEnableAppUnlock(): Promise<void> {
       `Enable ${label}?`,
       `Use ${label} to unlock NetQwix faster next time you open the app.`,
       [
-        { text: "Not now", style: "cancel", onPress: () => resolve() },
+        {
+          text: "Not now",
+          style: "cancel",
+          onPress: async () => {
+            await SecureStore.setItemAsync(APP_UNLOCK_PROMPT_SEEN_KEY, "1");
+            resolve();
+          },
+        },
         {
           text: "Enable",
           onPress: async () => {
             await setAppUnlockEnabled(true);
+            await SecureStore.setItemAsync(APP_UNLOCK_PROMPT_SEEN_KEY, "1");
             resolve();
           },
         },

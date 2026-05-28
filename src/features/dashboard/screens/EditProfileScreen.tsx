@@ -251,7 +251,7 @@ export function EditProfileScreen() {
                   >
                     {t("help.hourlyRate.body", {
                       defaultValue:
-                        "Charge per booked hour. NetQwix takes a platform commission (typically 15%) and the rest is your earnings. Set this where your bookings are competitive — you can update it any time and existing bookings keep their original price.",
+                        "Charge per booked hour. NetQwix takes a platform commission (typically 20%) and the rest is your earnings. Set this where your bookings are competitive — you can update it any time and existing bookings keep their original price.",
                     })}
                   </HelpBubble>
                 }
