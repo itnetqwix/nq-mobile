@@ -1226,14 +1226,6 @@ function MeetingSurface({
                 ) : null}
               </View>
             )}
-            <DrawingOverlay
-              key={drawingOverlayKey}
-              enabled={canDraw}
-              tool={annotationTool}
-              color={annotationColor}
-              remoteStrokes={drawingSync.remoteStrokes}
-              onStrokeComplete={emitAnnotationStroke}
-            />
           </View>
         ) : (
           <View style={styles.liveStage}>
@@ -1262,16 +1254,16 @@ function MeetingSurface({
               }
               onSelectRemote={() => meetingLayout.focusStream(peerId)}
             />
-            <DrawingOverlay
-              key={`live-${drawingOverlayKey}`}
-              enabled={canDraw}
-              tool={annotationTool}
-              color={annotationColor}
-              remoteStrokes={drawingSync.remoteStrokes}
-              onStrokeComplete={emitAnnotationStroke}
-            />
           </View>
         )}
+        <DrawingOverlay
+          key={`stage-${drawingOverlayKey}`}
+          enabled={canDraw}
+          tool={annotationTool}
+          color={annotationColor}
+          remoteStrokes={drawingSync.remoteStrokes}
+          onStrokeComplete={emitAnnotationStroke}
+        />
       </View>
 
       {presence.presenceMessage ? (
