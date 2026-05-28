@@ -54,7 +54,7 @@ export function ListRow({
         justifyContent: "center",
       },
       text: { flex: 1, gap: 2 },
-      right: { marginLeft: "auto" },
+      right: { marginLeft: "auto", flexShrink: 0 },
     })
   );
 
@@ -68,12 +68,20 @@ export function ListRow({
           <Ionicons name={icon} size={20} color={tint} />
         </View>
       ) : null}
-      <View style={styles.text}>
-        <Text style={[typography.subtitle, { color: titleColor }]} numberOfLines={1}>
+      <View style={[styles.text, { minWidth: 0 }]}>
+        <Text
+          style={[typography.subtitle, { color: titleColor, flexShrink: 1 }]}
+          numberOfLines={2}
+          ellipsizeMode="tail"
+        >
           {title}
         </Text>
         {subtitle ? (
-          <Text style={[typography.bodySm, { color: c.textMuted }]} numberOfLines={2}>
+          <Text
+            style={[typography.bodySm, { color: c.textMuted, flexShrink: 1 }]}
+            numberOfLines={2}
+            ellipsizeMode="tail"
+          >
             {subtitle}
           </Text>
         ) : null}

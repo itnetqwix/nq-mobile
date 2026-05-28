@@ -310,9 +310,9 @@ function useChatRoomStyles() {
     width: 10, height: 10, borderRadius: 5, backgroundColor: "#4CAF50",
     position: "absolute", bottom: 0, right: -1, borderWidth: 2, borderColor: themeColors.surfaceElevated,
   },
-  headerInfo: { flex: 1 },
-  headerName: { ...typography.titleSm, color: themeColors.text, fontSize: 16 },
-  headerSub: { fontSize: 12, color: themeColors.textMuted, marginTop: 1 },
+  headerInfo: { flex: 1, minWidth: 0 },
+  headerName: { ...typography.titleSm, color: themeColors.text, fontSize: 16, flexShrink: 1 },
+  headerSub: { fontSize: 12, color: themeColors.textMuted, marginTop: 1, flexShrink: 1 },
   headerSubTyping: { color: "#4CAF50", fontStyle: "italic" },
   headerMore: { padding: 6 },
   messageArea: { flex: 1 },
@@ -407,7 +407,7 @@ function useChatRoomStyles() {
     backgroundColor: themeColors.surfaceMuted,
   },
   replyBarLabel: { fontSize: 11, fontWeight: "700", color: themeColors.brandNavy },
-  replyBarText: { fontSize: 13, color: themeColors.textMuted, marginTop: 2 },
+  replyBarText: { fontSize: 13, color: themeColors.textMuted, marginTop: 2, flexShrink: 1 },
   replyQuote: {
     borderLeftWidth: 3,
     borderLeftColor: themeColors.brandNavy,
@@ -640,7 +640,7 @@ function useChatRoomStyles() {
     flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 8, paddingVertical: 10,
   },
-  limitedText: { fontSize: 14, color: themeColors.textMuted, fontWeight: "500" },
+  limitedText: { fontSize: 14, color: themeColors.textMuted, fontWeight: "500", flexShrink: 1 },
   previewBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.95)", justifyContent: "center", alignItems: "center" },
   previewClose: { position: "absolute", right: 16, zIndex: 10 },
   profileBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)" },
@@ -1799,7 +1799,7 @@ export function ChatRoomScreen({
    * disappear.
    */
   const [chromeHeight, setChromeHeight] = useState(insets.top + 60);
-  const keyboardVerticalOffset = chromeHeight;
+  const keyboardVerticalOffset = 0;
 
   const sharedMedia = chatMediaItems;
 

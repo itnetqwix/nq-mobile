@@ -76,7 +76,9 @@ function MemberCard({
     <View style={styles.card}>
       <ProfileAvatar user={user} name={name} size={52} />
       <View style={styles.cardInfo}>
-        <Text style={styles.memberName}>{name}</Text>
+        <Text style={styles.memberName} numberOfLines={1} ellipsizeMode="tail">
+          {name}
+        </Text>
         {!!role && (
           <Pill
             label={role}
@@ -459,8 +461,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  cardInfo: { flex: 1 },
-  memberName: { ...typography.subtitle, color: colors.text },
+  cardInfo: { flex: 1, minWidth: 0 },
+  memberName: { ...typography.subtitle, color: colors.text, flexShrink: 1 },
   actionCol: { alignItems: "flex-end", gap: 6 },
   onlineDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.success },
   addBtn: {

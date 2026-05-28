@@ -667,7 +667,11 @@ export function SettingsScreen() {
                 disabled={row.interactive === false}
               >
                 <Ionicons name={row.icon} size={14} color={c.textMuted} />
-                <Text style={[typography.caption, { color: c.text }]}>
+                <Text
+                  style={[typography.caption, { color: c.text, flexShrink: 1 }]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
                   {row.title}
                 </Text>
               </Pressable>
@@ -1324,6 +1328,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 6,
+    maxWidth: "100%",
   },
   /**
    * Inline confirmation pill sits next to the switch — this row keeps
