@@ -55,7 +55,11 @@ export const WEB_APP_ORIGIN = normalizeEnvUrl(
 
 /** Stripe publishable key for mobile payment sheet. */
 export const STRIPE_PUBLISHABLE_KEY =
-  (process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "").trim() || "";
+  (process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "")
+    .replace(/^\uFEFF/, "")
+    .replace(/^["']|["']$/g, "")
+    .replace(/\s+/g, "")
+    .trim() || "";
 
 /** Optional Apple Pay merchant id (required only when Apple Pay is enabled). */
 export const STRIPE_APPLE_MERCHANT_IDENTIFIER =
