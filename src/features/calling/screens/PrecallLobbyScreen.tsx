@@ -2,10 +2,9 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Animated,
-  Easing,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -62,6 +61,7 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
   const [cameraOn, setCameraOn] = useState(true);
   const [micOn, setMicOn] = useState(true);
   const { blurEnabled, setBlurEnabled: persistBlurEnabled } = useCallPreferences();
+  const [localBlurEnabled, setLocalBlurEnabled] = useState(blurEnabled);
   const [network, setNetwork] = useState<NetworkProbe>({
     loading: true,
     quality: "unknown",
@@ -69,7 +69,6 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
     mbps: null,
   });
 
-  const micPulseRef = useRef(new Animated.Value(0.2)).current;
   const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
@@ -109,37 +108,6 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
     };
   }, []);
 
-  /**
-   * Mic level "meter". react-native-webrtc doesn't expose realtime audio
-   * levels easily without a peer connection, so we fall back to a
-   * heart-beat pulse — visual feedback that the audio track is alive and
-   * un-muted. The pulse stops as soon as the user toggles the mic off.
-   */
-  useEffect(() => {
-    if (!micOn || !stream) {
-      micPulseRef.setValue(0.2);
-      return;
-    }
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(micPulseRef, {
-          toValue: 1,
-          duration: 380,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: false,
-        }),
-        Animated.timing(micPulseRef, {
-          toValue: 0.25,
-          duration: 540,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: false,
-        }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [micOn, stream, micPulseRef]);
-
   useEffect(() => {
     if (!stream) return;
     stream.getAudioTracks().forEach((track: MediaStreamTrack) => {
@@ -156,25 +124,28 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
 
   const runNetworkProbe = useCallback(async () => {
     setNetwork({ loading: true, quality: "unknown", rttMs: null, mbps: null });
-    /**
-     * Two-step probe: a tiny ping for RTT, then a small payload to
-     * estimate downstream bandwidth. We use the favicon endpoint to keep
-     * the request <30 KB and CORS-safe across environments.
-     */
-    const target = "https://www.google.com/generate_204";
-    const start = Date.now();
-    let rttMs: number | null = null;
-    try {
-      await fetch(target, { method: "GET", cache: "no-store" as any });
-      rttMs = Date.now() - start;
-    } catch {
+    const pingUrl = `https://www.google.com/generate_204?ts=${Date.now()}`;
+    const pingSamples: number[] = [];
+    for (let i = 0; i < 3; i += 1) {
+      const started = Date.now();
+      try {
+        await fetch(`${pingUrl}&p=${i}`, { method: "GET", cache: "no-store" as any });
+        pingSamples.push(Date.now() - started);
+      } catch {
+        // keep trying next sample
+      }
+    }
+    const rttMs = pingSamples.length
+      ? Math.round(pingSamples.reduce((sum, v) => sum + v, 0) / pingSamples.length)
+      : null;
+    if (rttMs == null) {
       setNetwork({ loading: false, quality: "weak", rttMs: null, mbps: null });
       return;
     }
 
     let mbps: number | null = null;
     try {
-      const probeUrl = "https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png";
+      const probeUrl = `https://speed.cloudflare.com/__down?bytes=250000&ts=${Date.now()}`;
       const dlStart = Date.now();
       const res = await fetch(probeUrl, { cache: "no-store" as any });
       const blob = await res.blob();
@@ -195,13 +166,25 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
     void runNetworkProbe();
   }, [runNetworkProbe]);
 
+  useEffect(() => {
+    setLocalBlurEnabled(blurEnabled);
+  }, [blurEnabled]);
+
   const handleBlurToggle = async (next: boolean) => {
+    setLocalBlurEnabled(next);
     await persistBlurEnabled(next);
+  };
+
+  const handleFlipCamera = () => {
+    const track = stream?.getVideoTracks?.()[0] as (MediaStreamTrack & { _switchCamera?: () => void }) | undefined;
+    if (track?._switchCamera) {
+      track._switchCamera();
+    }
   };
 
   const handleJoin = () => {
     haptics.success();
-    onJoin({ blurEnabled });
+    onJoin({ blurEnabled: localBlurEnabled });
   };
 
   const videoTrack = stream?.getVideoTracks?.()[0];
@@ -226,7 +209,12 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
           : t("precall.netChecking");
 
   return (
-    <View style={[styles.shell, { paddingTop: insets.top + 8 }]}>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={[styles.shell, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 }]}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
       <View style={styles.headerRow}>
         <Pressable onPress={onCancel} hitSlop={8} accessibilityLabel="Cancel">
           <Ionicons name="close" size={26} color={c.text} />
@@ -298,6 +286,13 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
           >
             <Ionicons name={micOn ? "mic" : "mic-off"} size={18} color="#fff" />
           </Pressable>
+          <Pressable
+            onPress={handleFlipCamera}
+            style={styles.previewToggle}
+            accessibilityLabel="Switch front and back camera"
+          >
+            <Ionicons name="camera-reverse-outline" size={18} color="#fff" />
+          </Pressable>
         </View>
       </View>
 
@@ -311,14 +306,9 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
           </View>
           <View style={styles.micMeterRow}>
             {[0, 1, 2, 3, 4].map((i) => {
-              const threshold = (i + 1) / 5;
-              const opacity = micPulseRef.interpolate({
-                inputRange: [threshold - 0.2, threshold, 1],
-                outputRange: [0.15, 0.9, 0.9],
-                extrapolate: "clamp",
-              });
+              const activeBars = micOn && stream ? 4 : 0;
               return (
-                <Animated.View
+                <View
                   key={i}
                   style={[
                     styles.micBar,
@@ -329,7 +319,7 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
                           : i < 4
                             ? c.warning
                             : c.error,
-                      opacity: micOn ? opacity : 0.1,
+                      opacity: i <= activeBars ? 0.9 : 0.12,
                     },
                   ]}
                 />
@@ -337,7 +327,9 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
             })}
           </View>
           <Text style={[styles.statHint, { color: c.textMuted }]}>
-            {micOn ? t("precall.micHintOn") : t("precall.micHintOff")}
+            {micOn && stream
+              ? t("precall.micHintOn")
+              : t("precall.micHintOff")}
           </Text>
         </View>
 
@@ -396,7 +388,7 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
         />
       </View>
 
-      <View style={[styles.actions, { paddingBottom: insets.bottom + 12 }]}>
+      <View style={styles.actions}>
         <Pressable
           onPress={handleJoin}
           style={[
@@ -415,7 +407,7 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
           {t("precall.lessonId", { id: lessonId })}
         </Text>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -423,11 +415,12 @@ function useStyles() {
   return useThemedStyles((palette) =>
     StyleSheet.create({
       shell: {
-        flex: 1,
         backgroundColor: palette.background,
         paddingHorizontal: space.md,
         gap: space.md,
+        flexGrow: 1,
       },
+      scroll: { flex: 1, backgroundColor: palette.background },
       headerRow: { flexDirection: "row", alignItems: "center", gap: 12 },
       headerTitle: { ...typography.titleMd, fontWeight: "800" },
       headerSub: { ...typography.bodySm, marginTop: 2 },

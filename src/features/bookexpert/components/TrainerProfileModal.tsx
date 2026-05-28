@@ -1,8 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -12,7 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
-import { Button } from "../../../components/ui";
+import { Button, ImageWithSkeleton } from "../../../components/ui";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { fetchTrainersWithSlots } from "../../home/api/homeApi";
 import { useOnlinePresence } from "../../socket/useOnlinePresence";
@@ -64,7 +63,14 @@ function ProfileAvatar({
     );
   }
   return (
-    <Image source={{ uri: url }} style={styles.avatar} onError={() => setFailed(true)} />
+    <ImageWithSkeleton
+      uri={url}
+      width={96}
+      height={96}
+      borderRadius={48}
+      style={styles.avatar}
+      onLoadError={() => setFailed(true)}
+    />
   );
 }
 
@@ -96,6 +102,11 @@ export function TrainerProfileModal({
     staleTime: 60_000,
   });
 
+  const [showAllReviews, setShowAllReviews] = useState(false);
+  useEffect(() => {
+    if (!visible) setShowAllReviews(false);
+  }, [visible, trainerId]);
+
   const data = (enriched ?? trainer) as Record<string, unknown> | null;
   if (!data) return null;
 
@@ -113,9 +124,12 @@ export function TrainerProfileModal({
   const workRows = getTrainerWorkExperience(data);
   const degreeRows = getTrainerDegrees(data);
 
+  const visibleReviews = showAllReviews ? reviews : reviews.slice(0, 5);
+  const hiddenReviewCount = Math.max(0, reviews.length - 5);
+
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onDismiss}>
-      <View style={[styles.root, { paddingTop: insets.top }]}>
+    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onDismiss}>
+      <View style={[styles.root, { paddingTop: insets.top + 4 }]}>
         <View style={styles.header}>
           <Pressable onPress={onDismiss} hitSlop={12}>
             <Ionicons name="close" size={26} color={themeColors.text} />
@@ -280,9 +294,18 @@ export function TrainerProfileModal({
             <View style={styles.block}>
               <Text style={styles.blockTitle}>Reviews</Text>
               {reviews.length === 0 ? (
-                <Text style={styles.emptyReviews}>No reviews yet — be the first to book a session.</Text>
+                <View style={styles.emptyReviewBox}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={18} color={themeColors.textMuted} />
+                  <Text style={styles.emptyReviews}>No reviews yet - be the first to book a session.</Text>
+                </View>
               ) : (
-                reviews.slice(0, 12).map((r) => (
+                <>
+                  <View style={styles.reviewMetaRow}>
+                    <Text style={styles.reviewMetaText}>
+                      Showing {Math.min(visibleReviews.length, reviews.length)} of {reviews.length} reviews
+                    </Text>
+                  </View>
+                {visibleReviews.map((r) => (
                   <View key={r.id} style={styles.reviewCard}>
                     <View style={styles.reviewTop}>
                       <Text style={styles.reviewName}>{r.traineeName}</Text>
@@ -294,7 +317,17 @@ export function TrainerProfileModal({
                     {!!r.title && <Text style={styles.reviewTitle}>{r.title}</Text>}
                     {!!r.remarks && <Text style={styles.reviewBody}>{r.remarks}</Text>}
                   </View>
-                ))
+                ))}
+                  {hiddenReviewCount > 0 ? (
+                    <Pressable style={styles.viewMoreBtn} onPress={() => setShowAllReviews(true)}>
+                      <Text style={styles.viewMoreText}>View more reviews ({hiddenReviewCount})</Text>
+                    </Pressable>
+                  ) : reviews.length > 5 ? (
+                    <Pressable style={styles.viewMoreBtn} onPress={() => setShowAllReviews(false)}>
+                      <Text style={styles.viewMoreText}>Show less</Text>
+                    </Pressable>
+                  ) : null}
+                </>
               )}
             </View>
           </ScrollView>
@@ -399,6 +432,20 @@ function makeStyles(colors: AppColors) {
     },
     catChipText: { ...typography.caption, color: colors.brandNavy, fontWeight: "600" },
     emptyReviews: { ...typography.bodySm, color: colors.textMuted, fontStyle: "italic" },
+    emptyReviewBox: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingVertical: 4,
+    },
+    reviewMetaRow: {
+      marginBottom: 8,
+    },
+    reviewMetaText: {
+      ...typography.caption,
+      color: colors.textMuted,
+      fontWeight: "600",
+    },
     reviewCard: {
       paddingVertical: space.sm,
       borderBottomWidth: StyleSheet.hairlineWidth,
@@ -410,6 +457,21 @@ function makeStyles(colors: AppColors) {
     reviewScore: { ...typography.caption, fontWeight: "700", color: colors.text },
     reviewTitle: { ...typography.bodySm, fontWeight: "600", color: colors.text, marginTop: 4 },
     reviewBody: { ...typography.bodySm, color: colors.textMuted, marginTop: 4, lineHeight: 20 },
+    viewMoreBtn: {
+      marginTop: space.sm,
+      alignSelf: "flex-start",
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: radii.pill,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    viewMoreText: {
+      ...typography.bodySm,
+      color: colors.brandNavy,
+      fontWeight: "700",
+    },
     credentialCard: {
       marginBottom: space.sm,
       paddingBottom: space.sm,

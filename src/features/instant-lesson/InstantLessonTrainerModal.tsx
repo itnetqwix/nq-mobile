@@ -6,6 +6,7 @@ import { getS3ImageUrl } from "../../lib/imageUtils";
 import { Button, ImageWithSkeleton } from "../../components/ui";
 import { InstantLessonDeadlineChip } from "./components/InstantLessonDeadlineChip";
 import { colors, radii, space, typography } from "../../theme";
+import { useNativeIncomingCallUi } from "./useNativeIncomingCallUi";
 
 export function InstantLessonTrainerModal() {
   const {
@@ -16,14 +17,16 @@ export function InstantLessonTrainerModal() {
     joinTrainerLesson,
     minimizeTrainerAccepted,
   } = useInstantLesson();
+  const nativeIncomingUi = useNativeIncomingCallUi();
   const [avatarFailed, setAvatarFailed] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pulseRef = useRef<Animated.CompositeAnimation | null>(null);
 
-  /** Incoming requests use InstantLessonIncomingCallOverlay; this modal is for post-accept. */
+  /** Trainer modal on dashboard for both incoming and accepted phases. */
   const showModal =
     !!trainerIncoming &&
-    trainerIncoming.step === "accepted" &&
+    (trainerIncoming.step === "accepted" ||
+      (trainerIncoming.step === "incoming" && !nativeIncomingUi)) &&
     !trainerIncoming.minimized;
 
   const avatarUrl = trainerIncoming

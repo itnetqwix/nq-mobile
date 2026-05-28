@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Easing,
+  PanResponder,
   Pressable,
   StyleSheet,
   Text,
@@ -57,11 +58,21 @@ export function InstantLessonStatusBanner() {
   const rejoinLessonId = rejoinSession
     ? String(rejoinSession._id ?? rejoinSession.id ?? "")
     : "";
-  const showRejoinPill = isTrainer && !!rejoinLessonId && !trainerIncoming;
+  const showRejoinPillBase = isTrainer && !!rejoinLessonId && !trainerIncoming;
+  const [dismissedRejoin, setDismissedRejoin] = useState(false);
+  const showRejoinPill = showRejoinPillBase && !dismissedRejoin;
 
   const fade = useRef(new Animated.Value(0)).current;
   const slide = useRef(new Animated.Value(-32)).current;
   const pulse = useRef(new Animated.Value(1)).current;
+  const rejoinDragY = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (showRejoinPillBase) {
+      setDismissedRejoin(false);
+      rejoinDragY.setValue(0);
+    }
+  }, [showRejoinPillBase, rejoinLessonId, rejoinDragY]);
 
   /** Show the floating accepted banner only when the user explicitly tapped
    *  "Join later" / minimized — otherwise the InstantLessonTraineeModal owns
@@ -111,6 +122,44 @@ export function InstantLessonStatusBanner() {
   }, [traineeAccepted, trainerAccepted, pulse]);
 
   if (!visible) return null;
+
+  const dismissRejoinBanner = () => {
+    setDismissedRejoin(true);
+    rejoinDragY.setValue(0);
+  };
+
+  const rejoinPanResponder = PanResponder.create({
+    onMoveShouldSetPanResponder: (_, gesture) =>
+      showRejoinPill && Math.abs(gesture.dy) > 8,
+    onPanResponderMove: (_, gesture) => {
+      if (!showRejoinPill) return;
+      rejoinDragY.setValue(Math.min(0, gesture.dy));
+    },
+    onPanResponderRelease: (_, gesture) => {
+      if (!showRejoinPill) return;
+      if (gesture.dy < -36) {
+        Animated.timing(rejoinDragY, {
+          toValue: -80,
+          duration: 130,
+          useNativeDriver: true,
+        }).start(() => dismissRejoinBanner());
+      } else {
+        Animated.spring(rejoinDragY, {
+          toValue: 0,
+          useNativeDriver: true,
+          bounciness: 0,
+        }).start();
+      }
+    },
+    onPanResponderTerminate: () => {
+      if (!showRejoinPill) return;
+      Animated.spring(rejoinDragY, {
+        toValue: 0,
+        useNativeDriver: true,
+        bounciness: 0,
+      }).start();
+    },
+  });
 
   return (
     <Animated.View
@@ -222,7 +271,13 @@ export function InstantLessonStatusBanner() {
           ) : null}
         </Pressable>
       ) : showRejoinPill ? (
-        <View style={styles.acceptedBanner}>
+        <Animated.View
+          style={[
+            styles.acceptedBanner,
+            { transform: [{ translateY: rejoinDragY }] },
+          ]}
+          {...rejoinPanResponder.panHandlers}
+        >
           <View style={styles.acceptedIcon}>
             <Ionicons name="videocam" size={18} color={colors.brandTextOn} />
           </View>
@@ -242,7 +297,10 @@ export function InstantLessonStatusBanner() {
           >
             <Text style={styles.joinBtnText}>Rejoin lesson</Text>
           </Pressable>
-        </View>
+          <Pressable hitSlop={8} onPress={dismissRejoinBanner} style={styles.closeIcon}>
+            <Ionicons name="close" size={16} color={colors.brandTextOn} />
+          </Pressable>
+        </Animated.View>
       ) : null}
     </Animated.View>
   );

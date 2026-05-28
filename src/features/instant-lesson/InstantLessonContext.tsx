@@ -159,6 +159,12 @@ export function InstantLessonProvider({
     }
   }, []);
 
+  const invalidateSessionLists = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.upcoming });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.confirmed });
+  }, [queryClient]);
+
   const scheduleExpiry = useCallback(
     (deadlineMs: number, onFire: () => void) => {
       clearExpiryTimer();
@@ -366,10 +372,6 @@ export function InstantLessonProvider({
       applyPhase(payload);
     };
 
-    const invalidateSessionLists = () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
-    };
-
     const handleDecline = (payload: any) => {
       const { lessonId } = payload || {};
       if (lessonId) markLessonDismissed(String(lessonId));
@@ -435,7 +437,7 @@ export function InstantLessonProvider({
       socket.off(EVENTS.PHASE, handlePhase);
       socket.off(EVENTS.TRAINEE_CANCELLED, handleTraineeCancelled);
     };
-  }, [socket, clearExpiryTimer, scheduleExpiry, startRinging, queryClient, markLessonDismissed]);
+  }, [socket, clearExpiryTimer, scheduleExpiry, startRinging, markLessonDismissed, invalidateSessionLists]);
 
   useEffect(() => {
     if (
@@ -496,8 +498,9 @@ export function InstantLessonProvider({
         };
       });
       scheduleExpiry(joinMs, () => setTrainerIncoming(null));
+      invalidateSessionLists();
     });
-  }, [trainerIncoming, socket, emitAccept, scheduleExpiry]);
+  }, [trainerIncoming, socket, emitAccept, scheduleExpiry, invalidateSessionLists]);
 
   const expireRequest = useCallback(() => {
     if (!trainerIncoming || !socket) return;
@@ -835,11 +838,12 @@ export function InstantLessonProvider({
             };
           });
           scheduleExpiry(joinMs, () => setTrainerIncoming(null));
+          invalidateSessionLists();
           resolve();
         });
       });
     },
-    [socket, userId, focusTrainerRequestFromSession, emitAccept, scheduleExpiry]
+    [socket, userId, focusTrainerRequestFromSession, emitAccept, scheduleExpiry, invalidateSessionLists]
   );
 
   const declineInstantSession = useCallback(

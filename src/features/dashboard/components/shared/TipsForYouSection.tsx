@@ -78,7 +78,18 @@ export function TipsForYouSection({ guest = false, onDeepLink, trainerContext }:
   }, [trainerContext, t]);
 
   const rows = useMemo<Row[]>(() => {
-    const admin: Row[] = adminTips.map((tip) => ({ kind: "admin", tip }));
+    const seen = new Set<string>();
+    const admin: Row[] = [];
+    for (const tip of adminTips) {
+      const key = String(tip._id ?? `${tip.title ?? ""}-${tip.body ?? ""}`).trim();
+      if (!key) {
+        admin.push({ kind: "admin", tip });
+        continue;
+      }
+      if (seen.has(key)) continue;
+      seen.add(key);
+      admin.push({ kind: "admin", tip });
+    }
     const context: Row[] = contextualTips.map((text) => ({ kind: "context", text }));
     return [...admin, ...context];
   }, [adminTips, contextualTips]);
@@ -157,20 +168,20 @@ export function TipsForYouSection({ guest = false, onDeepLink, trainerContext }:
           const { tip } = row;
           const tappable = !!tip.cta_url;
           const Wrapper = tappable ? Pressable : View;
+          const iconName =
+            typeof tip.icon === "string" && tip.icon in Ionicons.glyphMap
+              ? (tip.icon as keyof typeof Ionicons.glyphMap)
+              : "bulb-outline";
 
           return (
             <Wrapper
-              key={tip._id ?? `admin-${i}`}
+              key={`${String(tip._id ?? "admin")}-${i}`}
               onPress={tappable ? () => openTip(tip) : undefined}
               style={[styles.row, i > 0 && styles.rowBorder, tappable && styles.tappable]}
               accessibilityRole={tappable ? "button" : "text"}
               accessibilityLabel={tip.title}
             >
-              <Ionicons
-                name={(tip.icon as keyof typeof Ionicons.glyphMap) || "bulb-outline"}
-                size={18}
-                color={c.brandNavy}
-              />
+              <Ionicons name={iconName} size={18} color={c.brandNavy} />
               <View style={styles.copy}>
                 <Text style={styles.tipTitle}>{tip.title}</Text>
                 {tip.body ? <Text style={styles.tipBody}>{tip.body}</Text> : null}

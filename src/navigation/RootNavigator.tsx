@@ -12,7 +12,6 @@ import { AccountRejectedScreen } from "../features/verification/screens/AccountR
 import { GracePeriodBanner } from "../features/verification/components/GracePeriodBanner";
 import { InstantLessonStatusBanner } from "../features/instant-lesson/InstantLessonStatusBanner";
 import { InstantLessonTraineeModal } from "../features/instant-lesson/InstantLessonTraineeModal";
-import { InstantLessonIncomingCallOverlay } from "../features/instant-lesson/components/InstantLessonIncomingCallOverlay";
 import { InstantLessonTrainerModal } from "../features/instant-lesson/InstantLessonTrainerModal";
 import { MeetingRouter } from "../features/calling/screens/MeetingRouter";
 import { NotificationToast } from "../features/notifications/NotificationToast";
@@ -188,7 +187,6 @@ export function RootNavigator() {
               onCompleteVerification={() => setStartVerificationEarly(true)}
             />
           ) : null}
-          <InstantLessonIncomingCallOverlay />
           <InstantLessonTrainerModal />
           <InstantLessonTraineeModal />
           <InstantLessonStatusBanner />

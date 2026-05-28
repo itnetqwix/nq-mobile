@@ -104,7 +104,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
     label: "My trainees",
     icon: "school-outline",
     target: { kind: "feature", featureId: "students" },
-    surfaces: ["drawer", "more"],
+    surfaces: ["more"],
     group: "dashboard",
     roles: [AccountType.TRAINER],
   },

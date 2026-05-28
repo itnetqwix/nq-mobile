@@ -74,6 +74,7 @@ import { DisappearingMessagesSheet } from "../components/DisappearingMessagesShe
 import { ScheduledMessageComposer } from "../components/ScheduledMessageComposer";
 import { ScheduledMessagesSheet } from "../components/ScheduledMessagesSheet";
 import { enqueueChatMessage } from "../lib/offlineChatQueue";
+import { ImageWithSkeleton } from "../../../components/ui";
 
 type Props = {
   conversationId: string;
@@ -2337,14 +2338,20 @@ export function ChatRoomScreen({
       {/* User profile modal */}
       <Modal visible={showProfile} transparent animationType="slide" onRequestClose={() => setShowProfile(false)}>
         <View style={styles.profileBackdrop}>
-          <View style={[styles.profileCard, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
-            <Pressable onPress={() => setShowProfile(false)} style={styles.profileClose}>
+          <View style={[styles.profileCard, { paddingTop: insets.top + 6, paddingBottom: insets.bottom + 14 }]}>
+            <Pressable onPress={() => setShowProfile(false)} style={[styles.profileClose, { top: insets.top + 8 }]}>
               <Ionicons name="close" size={28} color={themeColors.text} />
             </Pressable>
             <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
               <View style={styles.profileCenter}>
                 {partnerAvatar ? (
-                  <Image source={{ uri: partnerAvatar }} style={styles.profileAvatar} />
+                  <ImageWithSkeleton
+                    uri={partnerAvatar}
+                    width={100}
+                    height={100}
+                    borderRadius={50}
+                    style={styles.profileAvatar}
+                  />
                 ) : (
                   <View style={[styles.profileAvatar, styles.profileAvatarFb]}>
                     <Text style={styles.profileAvatarInitial}>{partnerName[0]?.toUpperCase()}</Text>
@@ -2455,7 +2462,13 @@ export function ChatRoomScreen({
                               }}
                             />
                           ) : (
-                            <Image source={{ uri: item.uri }} style={styles.mediaGridItem} resizeMode="cover" />
+                            <ImageWithSkeleton
+                              uri={item.uri}
+                              width={100}
+                              height={100}
+                              borderRadius={radii.sm}
+                              style={styles.mediaGridItem}
+                            />
                           )}
                         </Pressable>
                       ))}

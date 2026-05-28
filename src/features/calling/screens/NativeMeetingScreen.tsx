@@ -131,7 +131,7 @@ function useSessionLookup(lessonId: string) {
     return null;
   }, [queryClient, lessonId]);
 
-  const { data: fetched, isLoading } = useQuery<SessionRow | undefined>({
+  const { data: fetched, isLoading } = useQuery<SessionRow | null>({
     queryKey: queryKeys.sessions.lookup(lessonId),
     enabled: !cached && !!lessonId,
     queryFn: async () => {
@@ -141,8 +141,10 @@ function useSessionLookup(lessonId: string) {
         fetchScheduledMeetings("upcoming").catch(() => []),
         fetchScheduledMeetings("confirmed").catch(() => []),
       ]);
-      return [...upcoming, ...confirmed].find(
-        (s) => String(s?._id) === String(lessonId)
+      return (
+        [...upcoming, ...confirmed].find(
+          (s) => String(s?._id) === String(lessonId)
+        ) ?? null
       );
     },
     staleTime: 30_000,
@@ -401,7 +403,7 @@ function MeetingSurface({
   const bothUsersForTimer =
     presence.trainerConnected != null && presence.traineeConnected != null
       ? presence.trainerConnected && presence.traineeConnected
-      : partnerInSession;
+      : !!bothJoined;
 
   const lessonTimer = useLessonTimer({
     socket,

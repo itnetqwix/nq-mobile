@@ -799,7 +799,7 @@
     "cameraOff": "Camera off",
     "permissionDenied": "Camera or microphone permission denied. Update in Settings.",
     "micLabel": "Mic test",
-    "micHintOn": "Speaking? Bars should bounce.",
+    "micHintOn": "System mic is active and ready.",
     "micHintOff": "Mic is muted",
     "netLabel": "Network",
     "netFast": "Strong",
