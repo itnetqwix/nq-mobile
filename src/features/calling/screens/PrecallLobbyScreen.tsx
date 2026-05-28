@@ -21,6 +21,7 @@ import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { haptics } from "../../../lib/haptics";
 import { radii, space, typography, useThemedStyles, useThemeColors } from "../../../theme";
 import { useCallPreferences } from "../useCallPreferences";
+import { useAudioRoute } from "../useAudioRoute";
 
 type Quality = "fast" | "good" | "weak" | "unknown";
 
@@ -70,6 +71,7 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
   });
 
   const streamRef = useRef<MediaStream | null>(null);
+  const audioRoute = useAudioRoute();
 
   useEffect(() => {
     let cancelled = false;
@@ -388,6 +390,25 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
         />
       </View>
 
+      <View style={[styles.blurRow, { borderColor: c.border, backgroundColor: c.surfaceElevated }]}>
+        <Ionicons name="volume-high-outline" size={16} color={c.brandNavy} />
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.blurTitle, { color: c.text }]}>Audio device</Text>
+          <Text style={[styles.blurSub, { color: c.textMuted }]}>
+            {audioRoute.routeLabel}
+            {audioRoute.hasBluetooth ? " (Bluetooth connected)" : ""}
+          </Text>
+        </View>
+        <Pressable
+          onPress={audioRoute.toggleAudioRoute}
+          style={[styles.routeBtn, { borderColor: c.border }]}
+          accessibilityRole="button"
+          accessibilityLabel="Switch audio route"
+        >
+          <Text style={[styles.routeBtnText, { color: c.brandNavy }]}>Switch</Text>
+        </Pressable>
+      </View>
+
       <View style={styles.actions}>
         <Pressable
           onPress={handleJoin}
@@ -485,6 +506,13 @@ function useStyles() {
       },
       blurTitle: { ...typography.bodyMd, fontWeight: "700" },
       blurSub: { ...typography.caption, marginTop: 2 },
+      routeBtn: {
+        borderWidth: 1,
+        borderRadius: radii.sm,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+      },
+      routeBtnText: { ...typography.bodySm, fontWeight: "700" },
       actions: { marginTop: "auto", gap: 6 },
       joinBtn: {
         flexDirection: "row",

@@ -22,6 +22,8 @@ type Props = {
   onToggleDrawing?: () => void;
   onEndCall?: () => void;
   bottomInset?: number;
+  audioRouteLabel?: string;
+  onToggleAudioRoute?: () => void;
 };
 
 const BTN = 36;
@@ -39,6 +41,8 @@ export function ActionButtons({
   onToggleDrawing,
   onEndCall,
   bottomInset = 12,
+  audioRouteLabel,
+  onToggleAudioRoute,
 }: Props) {
   const { micEnabled, cameraEnabled, toggleMute, toggleCamera, switchCamera, endCall } =
     useCall();
@@ -74,6 +78,15 @@ export function ActionButtons({
         <RoundButton onPress={switchCamera} accessibilityLabel="Switch camera">
           <Ionicons name="camera-reverse-outline" size={ICON} color={meetingTheme.text} />
         </RoundButton>
+
+        {onToggleAudioRoute ? (
+          <RoundButton
+            onPress={onToggleAudioRoute}
+            accessibilityLabel={`Audio route ${audioRouteLabel ?? "Auto"}`}
+          >
+            <Ionicons name="volume-high-outline" size={ICON} color={meetingTheme.text} />
+          </RoundButton>
+        ) : null}
 
         {isTrainer && onToggleBigVideo ? (
           <RoundButton

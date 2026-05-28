@@ -55,6 +55,7 @@ import { fetchSessionReport } from "../meetingReportApi";
 import { CallProvider, useCall } from "../CallContext";
 import { ensureCallPermissions } from "../permissions";
 import { useLessonTimer } from "../useLessonTimer";
+import { useAudioRoute } from "../useAudioRoute";
 import { useClipSync } from "../useClipSync";
 import type { CallParticipant, SessionRole } from "../types";
 import {
@@ -355,6 +356,7 @@ function MeetingSurface({
   peerDisplayName: string;
 }) {
   const { user: authUser } = useAuth();
+  const audioRoute = useAudioRoute();
   const [activeClipUri, setActiveClipUri] = useState<string | null>(null);
   const chrome = useMeetingChromeInsets({ inClipMode: !!activeClipUri });
   const { width: winW, height: winH } = useWindowDimensions();
@@ -1407,6 +1409,14 @@ function MeetingSurface({
         }}
       >
         <ConnectionQualityPill />
+        <View style={{ marginTop: 8 }}>
+          <TopToolButton
+            onPress={audioRoute.toggleAudioRoute}
+            label={`Audio: ${audioRoute.routeLabel}`}
+          >
+            <Ionicons name="volume-high-outline" size={16} color={meetingTheme.text} />
+          </TopToolButton>
+        </View>
       </View>
 
       {/* Top chrome */}
@@ -1486,6 +1496,8 @@ function MeetingSurface({
       <ActionButtons
         isTrainer={isTrainer}
         bottomInset={chrome.bottomChrome}
+        audioRouteLabel={audioRoute.routeLabel}
+        onToggleAudioRoute={audioRoute.toggleAudioRoute}
         onEndCall={confirmExit}
         inClipMode={inClipMode}
         onToggleBigVideo={isTrainer ? handleToggleBigVideo : undefined}
