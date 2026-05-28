@@ -43,7 +43,7 @@ export function NotificationToast() {
     >
       {toastQueue.map((toast, idx) => (
         <ToastRow
-          key={toast._id ?? `t-${idx}`}
+          key={`${String(toast._id ?? "t")}-${idx}`}
           toast={toast}
           /** Older toasts shrink slightly so the freshest entry pops; the
            *  newest is at the bottom of the stack (idx === length - 1). */

@@ -199,6 +199,10 @@ export function CallProvider({
         if (!active) return;
         setRemoteStream(stream);
         if (stream) {
+          // Remote media arrived: ensure stale "camera off" / "muted" flags
+          // from previous reconnect phases do not keep the UI on avatar fallback.
+          setRemoteCameraOff(false);
+          setRemoteMicMuted(false);
           setPartnerDisconnected(false);
           setBothJoined(true);
         }
