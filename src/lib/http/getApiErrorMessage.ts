@@ -30,6 +30,16 @@ function isTlsCertificateMessage(msg: string | undefined): boolean {
   );
 }
 
+function isIpRestrictedApiKeyMessage(msg: string | undefined): boolean {
+  if (!msg) return false;
+  const m = msg.toLowerCase();
+  return (
+    m.includes("api key provided") &&
+    m.includes("ip address") &&
+    (m.includes("doesn't allow") || m.includes("not allowed"))
+  );
+}
+
 /** Appends nested `cause` messages (Expo fetch often puts TLS text on the cause). */
 function collectCauseChain(error: unknown): string {
   if (!error || typeof error !== "object") return "";
@@ -76,9 +86,16 @@ export function getApiErrorMessage(error: unknown, fallback = "Something went wr
   const tlsHint =
     "TLS / certificate error — often a filtered network: firewalls that block “API” sites or SSL‑inspect traffic show this on iPhone (and “Web page blocked” in Safari). Try cellular or another Wi‑Fi, turn off VPN and DNS filters (NextDNS, AdGuard, “child safety”). If it works on a clean network, whitelist api-netqwix.com on the blocking router or filter. Otherwise check date/time, update Expo Go, and have ops verify SSL at https://www.ssllabs.com/ssltest/ for api-netqwix.com.";
 
+  const keyIpHint =
+    "Payment gateway key is restricted by IP. This is a server/payment config issue (not your phone). Use a mobile-safe publishable key in the app, and ensure backend Stripe secret key does not block your server egress IP. If IP allow-listing is enabled, add the backend's public IP(s) or remove the restriction.";
+
   const combinedAxiosText = isAxiosError(error)
     ? `${error.message ?? ""} ${collectCauseChain(error)}`.trim()
     : "";
+
+  if (isIpRestrictedApiKeyMessage(combinedAxiosText)) {
+    return keyIpHint;
+  }
 
   if (isAxiosError(error) && isTlsCertificateMessage(combinedAxiosText)) {
     return tlsHint;
@@ -95,10 +112,14 @@ export function getApiErrorMessage(error: unknown, fallback = "Something went wr
     const status = error.response?.status;
     const raw = error.response?.data;
     if (typeof raw === "string" && raw.length > 0) {
+      if (isIpRestrictedApiKeyMessage(raw)) return keyIpHint;
       const snippet = raw.replace(/\s+/g, " ").slice(0, 120);
       return status ? `Server returned ${status}: ${snippet}` : snippet;
     }
     const data = raw as { error?: string; message?: string; status?: string } | undefined;
+    if (isIpRestrictedApiKeyMessage(data?.error) || isIpRestrictedApiKeyMessage(data?.message)) {
+      return keyIpHint;
+    }
     if (typeof data?.error === "string") return data.error;
     if (typeof data?.message === "string") return data.message;
     if (status) return `Request failed (${status}).`;
