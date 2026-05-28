@@ -14,9 +14,7 @@ import {
   View,
 } from "react-native";
 
-import { apiClient } from "../../../api/client";
 import { ImageWithSkeleton } from "../../../components/ui";
-import { API_ROUTES } from "../../../config/apiRoutes";
 import { getClipPlaybackUrl, getClipThumbnailUrl } from "../../../lib/clipMediaUrl";
 import {
   flattenGroupedClips,
@@ -106,18 +104,35 @@ export function ClipPickerModal({
     setError(null);
 
     (async () => {
-      try {
-        const [mineGroups, sharedGroups, libraryGroups] = await Promise.all([
-          fetchMyClipsGrouped(),
-          postSharedClipsBySharer(),
-          postLibraryClipsNested(),
-        ]);
-        if (!active) return;
-        setLockerClips(dedupeClips(flattenGroupedClips(mineGroups)));
-        setSharedClips(flattenSharedGroups(sharedGroups));
-        setLibraryClips(flattenNestedGroups(libraryGroups));
-      } catch (err: any) {
-        if (active) setError(err?.message ?? "Failed to load clips");
+      const [mineResult, sharedResult, libraryResult] = await Promise.allSettled([
+        fetchMyClipsGrouped(),
+        postSharedClipsBySharer(),
+        postLibraryClipsNested(),
+      ]);
+      if (!active) return;
+
+      if (mineResult.status === "fulfilled") {
+        setLockerClips(dedupeClips(flattenGroupedClips(mineResult.value)));
+      } else {
+        setLockerClips([]);
+      }
+      if (sharedResult.status === "fulfilled") {
+        setSharedClips(flattenSharedGroups(sharedResult.value));
+      } else {
+        setSharedClips([]);
+      }
+      if (libraryResult.status === "fulfilled") {
+        setLibraryClips(flattenNestedGroups(libraryResult.value));
+      } else {
+        setLibraryClips([]);
+      }
+
+      if (
+        mineResult.status === "rejected" &&
+        sharedResult.status === "rejected" &&
+        libraryResult.status === "rejected"
+      ) {
+        setError("Failed to load clips");
       }
       if (active) setLoading(false);
     })();
@@ -125,7 +140,7 @@ export function ClipPickerModal({
     return () => {
       active = false;
     };
-  }, [visible, selectedClipIds, dedupeClips, flattenNestedGroups, flattenSharedGroups]);
+  }, [visible, dedupeClips, flattenNestedGroups, flattenSharedGroups]);
 
   const allClips = useMemo(
     () => dedupeClips([...lockerClips, ...sharedClips, ...libraryClips]),

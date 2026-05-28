@@ -123,6 +123,28 @@ export function useClipSync({
 
   const userInfo: ClipUserInfo = { from_user: fromUserId, to_user: toUserId };
 
+  // Hard reset clip state when call/session pair changes, so a previous call's
+  // selected clips never leak into a fresh meeting with no booking clips.
+  useEffect(() => {
+    bookingPreloadedRef.current = false;
+    lockModeRef.current = false;
+    pendingPlayAfterLockRef.current = null;
+    lastSeekEmit.current = 0;
+    setSelectedClips([]);
+    setActiveClipId(null);
+    setActiveClipUrl(null);
+    setIsPlaying(false);
+    setPlayingByClipId({});
+    setHiddenVideos(EMPTY_HIDDEN);
+    setSeekHint(null);
+    setLockMode(false);
+    setLockPoint(0);
+    setLayoutMode("default");
+    setClipFullscreen(false);
+    setClipFocusIndex(null);
+    setZoomPanByVideoId({});
+  }, [sessionId, fromUserId, toUserId]);
+
   useEffect(() => {
     if (!socket) return;
 
