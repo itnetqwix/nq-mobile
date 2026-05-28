@@ -45,6 +45,7 @@ type Props = {
   onOpenSurface: (id: UtilitySurfaceId) => void;
   onOpenReviews?: () => void;
   onSessionPress: (session: Record<string, unknown>) => void;
+  onContentDeepLink?: (url: string) => void;
 };
 
 export function TrainerDashboardHub({
@@ -65,6 +66,7 @@ export function TrainerDashboardHub({
   onOpenSurface,
   onOpenReviews,
   onSessionPress,
+  onContentDeepLink,
 }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
@@ -85,7 +87,7 @@ export function TrainerDashboardHub({
         onOpenStudents={onOpenSessions}
       />
 
-      <HomeBannerStrip />
+      <HomeBannerStrip onDeepLink={onContentDeepLink} />
 
       <TrainerRecentTraineesSection trainees={recentTrainees} />
 
@@ -147,7 +149,7 @@ export function TrainerDashboardHub({
         scheduleSlots={scheduleSlots}
       />
 
-      <TipsCarousel />
+      <TipsCarousel onDeepLink={onContentDeepLink} />
 
       <RecentTraineeClipsSection onOpenClips={onOpenClips} />
 

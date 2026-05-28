@@ -72,6 +72,7 @@ import {
 import { useHapticRefresh } from "../../../lib/refresh/useHapticRefresh";
 import { MorphRefreshHeader } from "../../../components/ui";
 import { useMorphRefresh } from "../../../lib/refresh/useMorphRefresh";
+import { useContentDeepLink } from "../../content/hooks/useContentDeepLink";
 
 function useDashboardHomeStyles() {
   return useThemedStyles((palette) => StyleSheet.create({
@@ -473,6 +474,8 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
     navigation.navigate("ShellSurface", { surfaceId: id });
   };
 
+  const handleContentDeepLink = useContentDeepLink({ openShell });
+
   useLayoutEffect(() => {
     void queryClient.prefetchQuery({
       queryKey: queryKeys.wallet.balance,
@@ -681,6 +684,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
             onOpenSurface={openShell}
             onOpenReviews={() => openShell("trainerReviews")}
             onSessionPress={openSession}
+            onContentDeepLink={handleContentDeepLink}
           />
         )}
         {isTrainee && (
@@ -695,6 +699,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
             onScheduleBook={setScheduleTrainer}
             onOpenWallet={() => openShell("wallet")}
             onOpenSession={openSession}
+            onContentDeepLink={handleContentDeepLink}
           />
         )}
 

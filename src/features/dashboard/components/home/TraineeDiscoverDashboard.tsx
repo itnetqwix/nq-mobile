@@ -80,6 +80,8 @@ type Props = {
   onToggleFavoriteGuest?: (t: Record<string, unknown>) => void;
   onOpenWallet?: () => void;
   onOpenSession?: (session: Record<string, unknown>) => void;
+  /** Tip/banner CTA deep links (`netqwix://…`). */
+  onContentDeepLink?: (url: string) => void;
   /** Guest home: own vertical scroll (no parent ScrollView). */
   scrollable?: boolean;
   leadingContent?: React.ReactNode;
@@ -99,6 +101,7 @@ export function TraineeDiscoverDashboard({
   onToggleFavoriteGuest,
   onOpenWallet,
   onOpenSession,
+  onContentDeepLink,
   scrollable = false,
   leadingContent,
   contentContainerStyle,
@@ -313,7 +316,7 @@ export function TraineeDiscoverDashboard({
         </Pressable>
       </View>
 
-      <HomeBannerStrip guest={isGuest} />
+      <HomeBannerStrip guest={isGuest} onDeepLink={onContentDeepLink} />
 
       {onOpenWallet && !isGuest ? (
         <Pressable
@@ -354,7 +357,7 @@ export function TraineeDiscoverDashboard({
         }}
       />
 
-      <TipsCarousel />
+      <TipsCarousel guest={isGuest} onDeepLink={onContentDeepLink} />
 
       <View style={styles.searchBar}>
         <Ionicons name="search-outline" size={20} color={themeColors.textMuted} />

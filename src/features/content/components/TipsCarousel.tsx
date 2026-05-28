@@ -19,6 +19,8 @@ import { fetchHomeTips, type Tip } from "../api/contentApi";
 import { isReactNavigationDeepLink } from "../lib/deepLinks";
 
 type Props = {
+  /** Guest browse: unauthenticated fetch (audience “all” tips only). */
+  guest?: boolean;
   /** Optional handler for app-internal deep links like `netqwix://wallet`. */
   onDeepLink?: (url: string) => void;
 };
@@ -30,15 +32,15 @@ type Props = {
  * space on day-one accounts. Hidden entirely if the API returns no
  * active tips for this audience.
  */
-export function TipsCarousel({ onDeepLink }: Props) {
+export function TipsCarousel({ guest = false, onDeepLink }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const { status } = useAuth();
 
   const { data: tips, isLoading } = useQuery({
-    queryKey: queryKeys.content.tips,
-    queryFn: fetchHomeTips,
-    enabled: status === "signedIn",
+    queryKey: [...queryKeys.content.tips, guest ? "guest" : "auth"] as const,
+    queryFn: () => fetchHomeTips({ guest }),
+    enabled: guest || status === "signedIn",
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
     retry: 1,

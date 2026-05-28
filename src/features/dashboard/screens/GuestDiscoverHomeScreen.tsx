@@ -17,6 +17,7 @@ import { GuestSavedCoachesStrip } from "../components/guest/GuestSavedCoachesStr
 import { TraineeDiscoverDashboard } from "../components/home/TraineeDiscoverDashboard";
 import { useGuestFavoriteTrainers } from "../hooks/useGuestFavoriteTrainers";
 import { GuestBrowsingNudge } from "../components/guest/GuestBrowsingNudge";
+import { useContentDeepLink } from "../../content/hooks/useContentDeepLink";
 
 type Nav = NativeStackNavigationProp<HomeStackParamList, "DashboardHome">;
 
@@ -27,6 +28,10 @@ export function GuestDiscoverHomeScreen() {
   const gutter = useHorizontalGutter("md");
   const navigation = useNavigation<Nav>();
   const { requireAuth, openAuth } = useRequireAuth();
+  const handleContentDeepLink = useContentDeepLink({
+    openShell: () => openAuth("Login"),
+    onRequireAuth: () => openAuth("Login"),
+  });
   const [profileTrainer, setProfileTrainer] = useState<Record<string, unknown> | null>(null);
   const { favorites: savedTrainers } = useGuestFavoriteTrainers(true);
 
@@ -131,6 +136,7 @@ export function GuestDiscoverHomeScreen() {
             })
           }
           onToggleFavoriteGuest={undefined}
+          onContentDeepLink={handleContentDeepLink}
         />
     </>
   );

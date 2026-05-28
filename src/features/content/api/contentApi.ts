@@ -48,8 +48,14 @@ function unwrap<T>(raw: unknown): T[] {
   return [];
 }
 
-export async function fetchHomeTips(): Promise<Tip[]> {
+export async function fetchHomeTips(opts?: { guest?: boolean }): Promise<Tip[]> {
   try {
+    if (opts?.guest) {
+      const res = await axios.get(`${API_BASE_URL}${API_ROUTES.tips.list}`, {
+        timeout: 15_000,
+      });
+      return unwrap<Tip>(res.data);
+    }
     const res = await apiClient.get(API_ROUTES.tips.list, {
       _skipAuthSignOut: true,
     });
