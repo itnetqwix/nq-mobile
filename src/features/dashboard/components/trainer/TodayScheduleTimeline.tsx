@@ -19,6 +19,7 @@ import {
 } from "../../../../lib/sessions/sessionUtils";
 import { InstantLessonDeadlineChip } from "../../../instant-lesson/components/InstantLessonDeadlineChip";
 import { DashboardSection } from "../shared/DashboardSection";
+import { listItemKey } from "../../../../lib/lists/trainerListUtils";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
 
@@ -161,7 +162,7 @@ export function TodayScheduleTimeline({
       <View style={styles.card}>
         {sessions.map((session, index) => (
           <ScheduleTimelineItem
-            key={String(session._id ?? index)}
+            key={listItemKey(session, index, "today-sched-")}
             session={session}
             isLast={index === sessions.length - 1}
             onPress={() => onSessionPress(session)}

@@ -58,9 +58,9 @@ export function WizardStepClips({
             />
           }
         >
-          {flatClips.map((clip) => (
+          {flatClips.map((clip, index) => (
             <ClipPickerRow
-              key={clip._id}
+              key={`wizard-clip-${String(clip._id ?? "row")}-${index}`}
               clip={clip}
               selected={selectedClipIds.includes(clip._id)}
               onToggle={onToggleClip}

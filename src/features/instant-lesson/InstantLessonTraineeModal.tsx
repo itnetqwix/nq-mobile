@@ -159,9 +159,9 @@ export function InstantLessonTraineeModal() {
               <RefreshControl refreshing={clipsRefetching} onRefresh={() => refetchClips()} tintColor={colors.brandNavy} />
             }
           >
-            {flatClips.map((clip) => (
+            {flatClips.map((clip, index) => (
               <ClipPickerRow
-                key={clip._id}
+                key={`il-clip-${String(clip._id ?? "row")}-${index}`}
                 clip={clip}
                 selected={selectedIds.includes(clip._id)}
                 onToggle={toggleClip}

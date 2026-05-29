@@ -8,6 +8,7 @@ import {
   shouldShowInDashboardRequests,
   shouldShowInDashboardUpcoming,
 } from "../../../lib/sessions/sessionUtils";
+import { dedupeRowsById } from "../../../lib/lists/trainerListUtils";
 import { fetchScheduledMeetings } from "../../home/api/homeApi";
 
 function sessionStartMs(session: Record<string, unknown>): number {
@@ -48,13 +49,13 @@ export function useDashboardSessions(accountType: string | null) {
   );
 
   const nextSession = useMemo(() => {
-    const pool = [...nowSessions, ...upcomingConfirmed];
+    const pool = dedupeRowsById([...nowSessions, ...upcomingConfirmed]);
     if (!pool.length) return null;
     return [...pool].sort((a, b) => sessionStartMs(a) - sessionStartMs(b))[0] ?? null;
   }, [nowSessions, upcomingConfirmed]);
 
   const todayTimeline = useMemo(() => {
-    const pool = [...nowSessions, ...upcomingConfirmed];
+    const pool = dedupeRowsById([...nowSessions, ...upcomingConfirmed]);
     const todayOrLive = pool.filter(
       (s: Record<string, unknown>) => isSessionInProgress(s) || isSessionToday(s)
     );

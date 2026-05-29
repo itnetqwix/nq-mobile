@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ImageWithSkeleton } from "../../components/ui";
 import { getS3ImageUrl } from "../../lib/imageUtils";
 import { navigateToNotifications } from "../../navigation/navigationRef";
+import { listItemKey } from "../../lib/lists/trainerListUtils";
 import { colors, radii, typography } from "../../theme";
 import {
   IncomingNotification,
@@ -43,7 +44,7 @@ export function NotificationToast() {
     >
       {toastQueue.map((toast, idx) => (
         <ToastRow
-          key={`${String(toast._id ?? "t")}-${idx}`}
+          key={listItemKey(toast, idx, "toast-")}
           toast={toast}
           /** Older toasts shrink slightly so the freshest entry pops; the
            *  newest is at the bottom of the stack (idx === length - 1). */

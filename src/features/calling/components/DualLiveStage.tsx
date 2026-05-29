@@ -48,7 +48,7 @@ export function DualLiveStage({
           muted
           fallbackLabel={localLabel}
           onPress={onSelectLocal}
-          style={styles.video}
+          style={styles.videoFill}
         />
         <Text style={styles.label}>{localLabel}</Text>
       </View>
@@ -59,7 +59,7 @@ export function DualLiveStage({
           isStreamOff={remoteStreamOff}
           fallbackLabel={remoteLabel}
           onPress={onSelectRemote}
-          style={styles.video}
+          style={styles.videoFill}
         />
         <Text style={styles.label}>{remoteLabel}</Text>
       </View>
@@ -70,9 +70,11 @@ export function DualLiveStage({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    minHeight: 0,
     flexDirection: "column",
     gap: 8,
     paddingHorizontal: 4,
+    width: "100%",
   },
   rootLandscape: {
     flexDirection: "row",
@@ -81,15 +83,20 @@ const styles = StyleSheet.create({
   pane: {
     flex: 1,
     minHeight: 120,
+    minWidth: 0,
     borderRadius: 16,
     overflow: "hidden",
     backgroundColor: meetingTheme.videoPlaceholder,
+    position: "relative",
   },
   paneLandscape: {
     minHeight: 0,
   },
-  video: {
+  videoFill: {
     flex: 1,
+    width: "100%",
+    alignSelf: "stretch",
+    minHeight: 120,
     borderRadius: 16,
   },
   label: {

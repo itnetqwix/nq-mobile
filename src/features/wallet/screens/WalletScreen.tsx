@@ -236,8 +236,8 @@ export function WalletScreen() {
       )}
 
       <Text style={styles.section}>Recent activity</Text>
-      {(ledger as { items?: Array<Record<string, unknown>> })?.items?.map((entry) => (
-        <View key={String(entry.entry_id)} style={styles.ledgerRow}>
+      {(ledger as { items?: Array<Record<string, unknown>> })?.items?.map((entry, index) => (
+        <View key={`ledger-${String(entry.entry_id ?? "row")}-${index}`} style={styles.ledgerRow}>
           <Text style={styles.ledgerType}>
             {String(entry.reference_type)} · {String(entry.entry_type)}
           </Text>

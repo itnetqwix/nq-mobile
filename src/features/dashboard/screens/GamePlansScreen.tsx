@@ -180,7 +180,7 @@ export function GamePlansScreen() {
                 const kind = planKind(item);
                 return (
                   <Pressable
-                    key={String(item._id ?? index)}
+                    key={`plan-${String(item._id ?? "row")}-${index}`}
                     style={styles.planCard}
                     onPress={() => openPlan(item)}
                   >

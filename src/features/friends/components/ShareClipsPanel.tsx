@@ -355,14 +355,14 @@ export function ShareClipsPanel() {
       </View>
 
       <View style={styles.grid}>
-        {clips.map((clip) => {
+        {clips.map((clip, clipIndex) => {
           const id = String(clip._id);
           const on = !!selected[id];
           const thumb =
             getS3ImageUrl(clip.thumbnail ?? clip.thumbnail_url ?? clip.poster) || "";
           return (
             <Pressable
-              key={id}
+              key={`share-clip-${id || "row"}-${clipIndex}`}
               style={[styles.tile, on && styles.tileOn]}
               onPress={() => toggle(id)}
             >

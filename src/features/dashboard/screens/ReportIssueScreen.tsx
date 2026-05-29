@@ -357,8 +357,8 @@ export function ReportIssueScreen() {
                 description="Reports you submit will appear here with their status."
               />
             ) : (
-              pastReports.map((r: any) => (
-                <ReportTrackerCard key={r._id} report={r} />
+              pastReports.map((r: any, index: number) => (
+                <ReportTrackerCard key={`report-${String(r._id ?? "row")}-${index}`} report={r} />
               ))
             )}
           </ScrollView>
@@ -497,9 +497,9 @@ export function ReportIssueScreen() {
               description="Once you've booked or completed a session, you can report issues on it here."
             />
           ) : (
-            sessions.map((s: any) => (
+            sessions.map((s: any, index: number) => (
               <SessionCard
-                key={String(s._id)}
+                key={`issue-session-${String(s._id ?? "row")}-${index}`}
                 session={s}
                 isTrainer={accountType === AccountType.TRAINER}
                 onPress={() => { setSelected(s); setMode("form"); }}

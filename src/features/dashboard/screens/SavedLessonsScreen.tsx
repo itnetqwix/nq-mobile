@@ -99,11 +99,11 @@ export function SavedLessonsScreen() {
             }}
           />
         ) : (
-          (savedQ.data ?? []).map((s: Record<string, unknown>) => {
+          (savedQ.data ?? []).map((s: Record<string, unknown>, index) => {
             const playable = !!getClipPlaybackUrl(s);
             return (
               <Pressable
-                key={String(s._id)}
+                key={`saved-${String(s._id ?? "row")}-${index}`}
                 style={[styles.card, !playable && styles.cardDisabled]}
                 onPress={() => playable && openSaved(s)}
                 disabled={!playable}

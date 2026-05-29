@@ -82,9 +82,9 @@ export function CompareTrainersModal({
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {rows.map((row) => (
+          {rows.map((row, index) => (
             <CompareColumn
-              key={row._id}
+              key={`compare-${String(row._id ?? "row")}-${index}`}
               row={row}
               onSchedule={() => {
                 haptics.tap();

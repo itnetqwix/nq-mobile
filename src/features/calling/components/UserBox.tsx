@@ -16,6 +16,7 @@ import {
   Animated,
   Image,
   PanResponder,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -66,41 +67,50 @@ export function UserBox({
     [user?.profile_picture]
   );
 
-  const content = (
-    <View style={[styles.box, style]}>
-      {!isStreamOff && streamId ? (
-        <RTCView
-          key={streamId}
-          streamURL={streamId}
-          objectFit="cover"
-          mirror={muted /* local preview only */}
-          style={StyleSheet.absoluteFill}
-        />
+  const boxStyle = [styles.box, style];
+
+  const media = !isStreamOff && streamId ? (
+    <RTCView
+      key={streamId}
+      streamURL={streamId}
+      objectFit="cover"
+      mirror={muted /* local preview only */}
+      style={StyleSheet.absoluteFill}
+    />
+  ) : (
+    <View style={styles.avatarWrap}>
+      {avatarUri ? (
+        <Image source={{ uri: avatarUri }} style={styles.avatar} />
       ) : (
-        <View style={styles.avatarWrap}>
-          {avatarUri ? (
-            <Image source={{ uri: avatarUri }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <Text style={styles.avatarInitial}>
-                {(displayName?.[0] ?? "?").toUpperCase()}
-              </Text>
-            </View>
-          )}
-          <Text style={styles.fallbackName}>{displayName}</Text>
+        <View style={[styles.avatar, styles.avatarPlaceholder]}>
+          <Text style={styles.avatarInitial}>
+            {(displayName?.[0] ?? "?").toUpperCase()}
+          </Text>
         </View>
       )}
+      <Text style={styles.fallbackName}>{displayName}</Text>
+      {isStreamOff ? (
+        <Text style={styles.waitingHint}>
+          {streamId ? "Camera off" : "Connecting video…"}
+        </Text>
+      ) : null}
     </View>
   );
 
   if (onPress) {
     return (
-      <View onTouchEnd={onPress} accessible accessibilityRole="imagebutton">
-        {content}
-      </View>
+      <Pressable
+        onPress={onPress}
+        style={boxStyle}
+        accessibilityRole="button"
+        accessibilityLabel={displayName}
+      >
+        {media}
+      </Pressable>
     );
   }
-  return content;
+
+  return <View style={boxStyle}>{media}</View>;
 }
 
 export type UserBoxMiniProps = UserBoxProps & {
@@ -192,6 +202,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
     paddingHorizontal: 12,
+  },
+  waitingHint: {
+    color: meetingTheme.textMuted,
+    fontSize: 12,
+    marginTop: 4,
+    textAlign: "center",
   },
   miniWrap: {
     position: "absolute",

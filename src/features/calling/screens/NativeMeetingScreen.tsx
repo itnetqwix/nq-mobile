@@ -358,7 +358,6 @@ function MeetingSurface({
   const { user: authUser } = useAuth();
   const audioRoute = useAudioRoute();
   const [activeClipUri, setActiveClipUri] = useState<string | null>(null);
-  const chrome = useMeetingChromeInsets({ inClipMode: !!activeClipUri });
   const { width: winW, height: winH } = useWindowDimensions();
   const [localPipSize, setLocalPipSize] = useState({ w: PIP_WIDTH, h: PIP_HEIGHT });
   const [remotePipSize, setRemotePipSize] = useState({ w: PIP_WIDTH, h: PIP_HEIGHT });
@@ -517,6 +516,11 @@ function MeetingSurface({
     sessionId: lessonId,
     isTrainer,
   });
+
+  const hasClipStage =
+    Boolean(activeClipUri) &&
+    (clipSync.selectedClips.length > 0 || Boolean(clipSync.activeClipId));
+  const chrome = useMeetingChromeInsets({ inClipMode: hasClipStage });
 
   useEffect(() => {
     if (!socket || !isTrainer) return;
@@ -950,7 +954,7 @@ function MeetingSurface({
 
   const pipBounds = meetingBounds ?? { width: winW, height: winH };
 
-  const inClipMode = !!activeClipUri;
+  const inClipMode = hasClipStage;
   const inLiveFocus = meetingLayout.focusedStreamId != null;
 
   const handleAnnotationToggle = useCallback(() => {
@@ -1133,7 +1137,7 @@ function MeetingSurface({
             isTrainer={isTrainer}
             onClearFocus={isTrainer ? () => meetingLayout.clearFocus() : undefined}
           />
-        ) : activeClipUri ? (
+        ) : hasClipStage ? (
           <View
             ref={screenshot.captureTargetRef}
             collapsable={false}
@@ -1195,7 +1199,7 @@ function MeetingSurface({
                   const singlePane = makeClipPlayerProps(0);
                   return (
                     <View style={styles.singleClipPlayer}>
-                      <ClipPlayer uri={activeClipUri} {...singlePane} />
+                      <ClipPlayer uri={activeClipUri!} {...singlePane} />
                       {!screenshot.capturing &&
                       singlePane.showZoomControls &&
                       singlePane.onZoomIn &&
