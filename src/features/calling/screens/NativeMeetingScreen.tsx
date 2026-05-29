@@ -80,6 +80,12 @@ import { useNativeMeetingPip } from "../hooks/useNativeMeetingPip";
 import { useCallForegroundRecovery } from "../hooks/useCallForegroundRecovery";
 import { useCallDegradation } from "../hooks/useCallDegradation";
 import { useCallQualityReporter } from "../hooks/useCallQualityReporter";
+import { useInCallPermissions } from "../hooks/useInCallPermissions";
+import { ReconnectFailedOverlay } from "../components/ReconnectFailedOverlay";
+import {
+  hasShownSessionRating,
+  markSessionRatingShown,
+} from "../postSessionRatingStore";
 import { MeetingLiveStage } from "../components/MeetingLiveStage";
 import { MeetingMiniPip } from "../components/MeetingMiniPip";
 import { ClipMiniPip } from "../components/ClipMiniPip";
@@ -332,6 +338,12 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
         isTrainer={role === "Trainer"}
         accountType={accountType}
         onExit={goHome}
+        onRejoinLesson={() => {
+          navigation.replace("Meeting", {
+            lessonId: String(lessonId),
+            skipLobby: true,
+          });
+        }}
         onPostCallFlowStart={beginPostCallFlow}
         myId={me._id}
         peerId={peer._id}
@@ -347,6 +359,7 @@ function MeetingSurface({
   isTrainer,
   accountType,
   onExit,
+  onRejoinLesson,
   onPostCallFlowStart,
   myId,
   peerId,
@@ -357,6 +370,7 @@ function MeetingSurface({
   isTrainer: boolean;
   accountType: string | null;
   onExit: () => void;
+  onRejoinLesson: () => void;
   onPostCallFlowStart: () => void;
   myId: string;
   peerId: string;
@@ -381,6 +395,8 @@ function MeetingSurface({
     recoverConnection,
     getNetworkStats,
     lastError,
+    joinDeniedCanTakeOver,
+    requestCallTakeover,
   } = useCall();
 
   useEffect(() => {
@@ -453,6 +469,10 @@ function MeetingSurface({
     accountType,
     session,
   });
+
+  const inCallPerms = useInCallPermissions(
+    partnerInSession || bothJoined || !!peerJoined
+  );
 
   /** Two-party paid extension flow. Single hook drives both the trainee
    *  picker/payment modal and the trainer accept/reject modal — the relevant
@@ -532,8 +552,16 @@ function MeetingSurface({
     isTrainer,
   });
 
+  const clipPaneUrisEarly = useMemo(
+    () =>
+      clipSync.selectedClips
+        .slice(0, 2)
+        .map((c) => resolveClipPlayback(c).url)
+        .filter((u): u is string => !!u),
+    [clipSync.selectedClips]
+  );
   const hasClipStage =
-    Boolean(activeClipUri) &&
+    clipPaneUrisEarly.length > 0 &&
     (clipSync.selectedClips.length > 0 || Boolean(clipSync.activeClipId));
   const chrome = useMeetingChromeInsets({ inClipMode: hasClipStage });
 
@@ -614,15 +642,33 @@ function MeetingSurface({
       drawingSync.replaySocketState();
     };
 
+    const requestMediaReplay = () => {
+      if (isTrainer) return;
+      socket.emit("LESSON_MEDIA_REPLAY_REQUEST", { sessionId: lessonId });
+    };
+
+    const handleMediaReplayRequest = (payload: { sessionId?: string }) => {
+      if (!isTrainer) return;
+      if (String(payload?.sessionId) !== String(lessonId)) return;
+      replayTrainerState();
+    };
+
     socket.on("connect", replayTrainerState);
     socket.on("reconnect", replayTrainerState);
+    socket.on("connect", requestMediaReplay);
+    socket.on("reconnect", requestMediaReplay);
+    socket.on("LESSON_MEDIA_REPLAY_REQUEST", handleMediaReplayRequest);
     return () => {
       socket.off("connect", replayTrainerState);
       socket.off("reconnect", replayTrainerState);
+      socket.off("connect", requestMediaReplay);
+      socket.off("reconnect", requestMediaReplay);
+      socket.off("LESSON_MEDIA_REPLAY_REQUEST", handleMediaReplayRequest);
     };
   }, [
     socket,
     isTrainer,
+    lessonId,
     clipSync.replayClipSocketState,
     meetingLayout.replayLayoutState,
     drawingSync.replaySocketState,
@@ -741,12 +787,7 @@ function MeetingSurface({
     }
   }, [clipSync.activeClipId, clipSync.activeClipUrl]);
 
-  const clipPaneUris = useMemo(() => {
-    return clipSync.selectedClips
-      .slice(0, 2)
-      .map((c) => resolveClipPlayback(c).url)
-      .filter((u): u is string => !!u);
-  }, [clipSync.selectedClips]);
+  const clipPaneUris = clipPaneUrisEarly;
 
   const dualClip = clipPaneUris.length >= 2;
 
@@ -1124,25 +1165,76 @@ function MeetingSurface({
     };
   }, [socket, lessonId]);
 
-  /** Fire an inbox + toast when the lesson timer hits 0 (status "ended"),
-   *  matching the web "Session Ended → Rate your coach" prompt. */
+  /** Close extension UI and surface ratings once when the lesson ends. */
   const endedNotifiedRef = useRef(false);
   useEffect(() => {
     if (lessonTimer.status !== "ended") {
       endedNotifiedRef.current = false;
       return;
     }
+    setTraineeExtendOpen(false);
+    setActiveWarning(null);
+    extensionFlow.reset();
     if (endedNotifiedRef.current) return;
     endedNotifiedRef.current = true;
-    pushLocalToast({
-      title: NOTIFICATION_TITLES.sessionEnded,
-      description: "Your lesson has ended. Tap to rate the session.",
-      type: NOTIFICATION_TYPES.TRANSCATIONAL,
-      bookingInfo: { lessonId },
-      persistInInbox: true,
-    });
-    setRatingsOpen(true);
-  }, [lessonTimer.status, pushLocalToast, lessonId]);
+    void (async () => {
+      const already = await hasShownSessionRating(lessonId);
+      pushLocalToast({
+        title: NOTIFICATION_TITLES.sessionEnded,
+        description: already
+          ? "Your lesson has ended."
+          : "Your lesson has ended. Tap to rate the session.",
+        type: NOTIFICATION_TYPES.TRANSCATIONAL,
+        bookingInfo: { lessonId },
+        persistInInbox: true,
+      });
+      if (!already) setRatingsOpen(true);
+    })();
+  }, [lessonTimer.status, pushLocalToast, lessonId, extensionFlow]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const onWarning = (data: { sessionId?: string; kind?: string }) => {
+      if (String(data?.sessionId) !== String(lessonId)) return;
+      const kind = data?.kind;
+      if (kind === "five" || kind === "two" || kind === "one" || kind === "thirty") {
+        onTimerCrossThreshold(kind);
+      }
+    };
+    socket.on("LESSON_TIME_WARNING", onWarning);
+    return () => {
+      socket.off("LESSON_TIME_WARNING", onWarning);
+    };
+  }, [socket, lessonId, onTimerCrossThreshold]);
+
+  const handleReconnectFailedRejoin = useCallback(() => {
+    void endCall();
+    onRejoinLesson();
+  }, [endCall, onRejoinLesson]);
+
+  const handleReconnectFailedLeave = useCallback(() => {
+    void endCall();
+    onExit();
+  }, [endCall, onExit]);
+
+  const lobbyPresenceMessage = useMemo(() => {
+    if (partnerInSession) return presence.presenceMessage;
+    if (!isTrainer && presence.trainerConnected && !bothJoined) {
+      return `Your coach is in the lesson — connecting live video…`;
+    }
+    if (isTrainer && presence.traineeConnected === false) {
+      return `${peerDisplayName} is still joining. Video and timer start when you are both connected.`;
+    }
+    return presence.presenceMessage;
+  }, [
+    partnerInSession,
+    isTrainer,
+    presence.trainerConnected,
+    presence.traineeConnected,
+    presence.presenceMessage,
+    bothJoined,
+    peerDisplayName,
+  ]);
 
   return (
     <View
@@ -1320,9 +1412,17 @@ function MeetingSurface({
         />
       </View>
 
-      {presence.presenceMessage ? (
+      {inCallPerms.cameraRevoked ? (
         <MeetingJoinBanner
-          message={presence.presenceMessage}
+          message="Camera access was turned off. Re-enable it in Settings to restore your video."
+          variant="warning"
+          topOffset={chrome.insets.top + 48}
+        />
+      ) : null}
+
+      {lobbyPresenceMessage ? (
+        <MeetingJoinBanner
+          message={lobbyPresenceMessage}
           variant={presence.presenceVariant}
           topOffset={chrome.insets.top + 48}
         />
@@ -1563,6 +1663,10 @@ function MeetingSurface({
       ) : null}
 
       {/* Bottom chrome */}
+      <View
+        pointerEvents={reconnectFailed ? "none" : "auto"}
+        style={{ opacity: reconnectFailed ? 0.35 : 1 }}
+      >
       <ActionButtons
         isTrainer={isTrainer}
         bottomInset={chrome.bottomChrome}
@@ -1577,13 +1681,13 @@ function MeetingSurface({
         onToggleDrawing={isTrainer ? handleAnnotationToggle : undefined}
         onOpenClipPicker={isTrainer ? () => setPickerOpen(true) : undefined}
       />
+      </View>
 
       {reconnectFailed ? (
-        <View style={[styles.errorBanner, { top: chrome.insets.top + 8 }]}>
-          <Text style={styles.errorText}>
-            Connection lost. Check your internet and rejoin the lesson if video does not recover.
-          </Text>
-        </View>
+        <ReconnectFailedOverlay
+          onRejoin={handleReconnectFailedRejoin}
+          onLeave={handleReconnectFailedLeave}
+        />
       ) : null}
 
       {lastError ? (
@@ -1594,6 +1698,16 @@ function MeetingSurface({
           ]}
         >
           <Text style={styles.errorText}>{lastError}</Text>
+          {joinDeniedCanTakeOver ? (
+            <Pressable
+              onPress={requestCallTakeover}
+              style={styles.takeoverBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Take over lesson on this device"
+            >
+              <Text style={styles.takeoverBtnText}>Take over on this device</Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 
@@ -1702,6 +1816,7 @@ function MeetingSurface({
       <RatingsModal
         visible={ratingsOpen}
         onClose={() => {
+          void markSessionRatingShown(lessonId);
           setRatingsOpen(false);
           onExit();
         }}
@@ -1885,8 +2000,17 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 8,
     paddingHorizontal: 12,
+    gap: 8,
   },
   errorText: { color: "#fff", fontSize: 13 },
+  takeoverBtn: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  takeoverBtnText: { color: "#fff", fontSize: 13, fontWeight: "700" },
   captureOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.45)",

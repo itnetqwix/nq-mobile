@@ -78,6 +78,15 @@ export type NativeCallEngineEvents = {
   onPeerLeft?: () => void;
   /** Non-fatal warning. */
   onError?: (err: Error) => void;
+  /** Server rejected join — lesson active on another device. */
+  onJoinDenied?: (payload: {
+    sessionId?: string;
+    reason?: string;
+    message?: string;
+    canTakeOver?: boolean;
+  }) => void;
+  /** Another device took over this session. */
+  onSlotTakenOver?: (payload: { sessionId?: string; message?: string }) => void;
 };
 
 const log = (...args: any[]) => {
@@ -494,7 +503,56 @@ export class NativeCallEngine {
       this.dispose();
     };
 
+    const onJoinDenied = (payload: {
+      sessionId?: string;
+      reason?: string;
+      message?: string;
+      canTakeOver?: boolean;
+    }) => {
+      if (
+        payload?.sessionId != null &&
+        String(payload.sessionId) !== String(this.sessionId)
+      ) {
+        return;
+      }
+      log("CALL_JOIN_DENIED", payload);
+      this.events.onJoinDenied?.(payload);
+      if (payload?.canTakeOver) {
+        return;
+      }
+      this.events.onError?.(
+        new Error(
+          payload?.message ??
+            "This lesson is already active on another device."
+        )
+      );
+      this.dispose();
+    };
+
+    const onSlotTakenOver = (payload: {
+      sessionId?: string;
+      message?: string;
+    }) => {
+      if (
+        payload?.sessionId != null &&
+        String(payload.sessionId) !== String(this.sessionId)
+      ) {
+        return;
+      }
+      log("CALL_SLOT_TAKEN_OVER", payload);
+      this.events.onSlotTakenOver?.(payload);
+      this.events.onError?.(
+        new Error(
+          payload?.message ??
+            "This lesson was continued on another device."
+        )
+      );
+      this.dispose();
+    };
+
     socket.on(CALL_EVENTS.ON_CALL_JOIN, offCallJoin);
+    socket.on(CALL_EVENTS.CALL_JOIN_DENIED, onJoinDenied);
+    socket.on(CALL_EVENTS.CALL_SLOT_TAKEN_OVER, onSlotTakenOver);
     socket.on(CALL_EVENTS.ON_BOTH_JOIN, onBothJoin);
     socket.on(CALL_EVENTS.ON_OFFER, onOffer);
     socket.on(CALL_EVENTS.ON_ANSWER, onAnswer);
@@ -507,6 +565,12 @@ export class NativeCallEngine {
 
     this.socketBindings.push(() =>
       socket.off(CALL_EVENTS.ON_CALL_JOIN, offCallJoin)
+    );
+    this.socketBindings.push(() =>
+      socket.off(CALL_EVENTS.CALL_JOIN_DENIED, onJoinDenied)
+    );
+    this.socketBindings.push(() =>
+      socket.off(CALL_EVENTS.CALL_SLOT_TAKEN_OVER, onSlotTakenOver)
     );
     this.socketBindings.push(() =>
       socket.off(CALL_EVENTS.ON_BOTH_JOIN, onBothJoin)
@@ -610,6 +674,21 @@ export class NativeCallEngine {
     const send = () => {
       log("emitting ON_CALL_JOIN", userInfo);
       this.socket.emit(CALL_EVENTS.ON_CALL_JOIN, { userInfo });
+    };
+    if (this.socket.connected) {
+      send();
+    } else {
+      this.socket.once("connect", send);
+    }
+  }
+
+  /** Displace the other device and re-run the join handshake on this socket. */
+  requestTakeover(): void {
+    if (this.disposed) return;
+    const userInfo = this.buildUserInfo();
+    const send = () => {
+      log("emitting CALL_JOIN_TAKEOVER", userInfo);
+      this.socket.emit(CALL_EVENTS.CALL_JOIN_TAKEOVER, { userInfo });
     };
     if (this.socket.connected) {
       send();

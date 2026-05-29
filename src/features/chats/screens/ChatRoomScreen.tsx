@@ -40,8 +40,6 @@ import {
 } from "../lib/chatMediaUtils";
 import { ChatDaySeparator } from "../components/ChatDaySeparator";
 import {
-  deleteChatMessage,
-  editChatMessage,
   fetchGroupMembers,
   pinChatMessage,
   reactToMessage,
@@ -76,10 +74,16 @@ import { ScheduledMessagesSheet } from "../components/ScheduledMessagesSheet";
 import {
   enqueueChatMessage,
   flushOfflineChatQueue,
+  removeFromOfflineChatQueue,
   subscribeOfflineChatQueueEvents,
   type QueuedChatMessage,
 } from "../lib/offlineChatQueue";
 import {
+  performDeleteChatMessage,
+  performEditChatMessage,
+} from "../lib/chatMessageActions";
+import {
+  abortChatMediaUpload,
   getPresignedUploadUrl,
   isNetworkSendError,
   uploadToS3,
@@ -808,10 +812,12 @@ export function ChatRoomScreen({
   }, [groupMembersData]);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [composerBlocked, setComposerBlocked] = useState<string | null>(null);
   const [chatPolicy, setChatPolicy] = useState<{
     hasPaidSession: boolean;
     remainingToday: number;
     dailyLimit: number;
+    blocked?: boolean;
   } | null>(null);
   const [rateLimited, setRateLimited] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
@@ -856,7 +862,12 @@ export function ChatRoomScreen({
       try {
         const res = await apiClient.get(API_ROUTES.chat.policy(partner._id));
         const data = (res as any)?.data?.data ?? (res as any)?.data;
-        if (data) setChatPolicy(data);
+        if (data) {
+          setChatPolicy(data);
+          if (data.blocked) {
+            setComposerBlocked("You cannot message this user.");
+          }
+        }
       } catch { /* non-critical */ }
     })();
   }, [partner?._id, isGroup]);
@@ -1200,6 +1211,8 @@ export function ChatRoomScreen({
         socket.emit("JOIN_CHAT", { conversationId });
         queryClient.invalidateQueries({ queryKey: ["chatMessages", conversationId] });
         void flushOfflineChatQueue();
+        const { flushOfflineChatMutations } = require("../lib/offlineChatMutations");
+        void flushOfflineChatMutations();
       }
     };
     socket.on("connect", rejoin);
@@ -1245,10 +1258,46 @@ export function ChatRoomScreen({
     socket.on("CHAT_PINNED", onPinned);
     socket.on("CHAT_CONVERSATION_UPDATED", onConvUpdated);
     socket.on("CHAT_TRANSCRIPT_READY", onTranscriptReady);
+    const onMessageEdited = (p: {
+      conversationId?: string;
+      messageId?: string;
+      content?: string;
+      editedAt?: string;
+    }) => {
+      if (p?.conversationId !== conversationId || !p?.messageId) return;
+      setLocalMessages((prev) =>
+        prev.map((m) =>
+          m._id === String(p.messageId)
+            ? {
+                ...m,
+                content: p.content ?? m.content,
+                editedAt: p.editedAt ?? new Date().toISOString(),
+              }
+            : m
+        )
+      );
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.chats.messages(conversationId),
+      });
+    };
+    const onMessageDeleted = (p: { conversationId?: string; messageId?: string }) => {
+      if (p?.conversationId !== conversationId || !p?.messageId) return;
+      setLocalMessages((prev) =>
+        prev.filter((m) => m._id !== String(p.messageId))
+      );
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.chats.messages(conversationId),
+      });
+    };
+    socket.on("CHAT_MESSAGE_EDITED", onMessageEdited);
+    socket.on("CHAT_MESSAGE_DELETED", onMessageDeleted);
+    socket.on("CHAT_TRANSCRIPT_READY", onTranscriptReady);
     return () => {
       socket.off("CHAT_REACTION_UPDATED", onReactionUpdated);
       socket.off("CHAT_PINNED", onPinned);
       socket.off("CHAT_CONVERSATION_UPDATED", onConvUpdated);
+      socket.off("CHAT_MESSAGE_EDITED", onMessageEdited);
+      socket.off("CHAT_MESSAGE_DELETED", onMessageDeleted);
       socket.off("CHAT_TRANSCRIPT_READY", onTranscriptReady);
     };
   }, [socket, conversationId, queryClient]);
@@ -1326,6 +1375,7 @@ export function ChatRoomScreen({
   const sendMessage = useCallback(async () => {
     const plain = text.trim();
     if (!plain || isSendingMessage) return;
+    if (composerBlocked) return;
     if (!isGroup && !partner?._id) return;
     haptics.press();
     const content = chatE2E.canEncrypt ? chatE2E.encryptForSend(plain) : plain;
@@ -1408,6 +1458,21 @@ export function ChatRoomScreen({
         const msg = e?.response?.data?.data?.error ?? e?.response?.data?.error ?? "Message limit reached.";
         setChatPolicy((p) => (p ? { ...p, remainingToday: 0 } : p));
         Alert.alert("Limit Reached", msg);
+      } else if (status === 400) {
+        const msg =
+          e?.response?.data?.data?.error ??
+          e?.response?.data?.error ??
+          "Message could not be sent.";
+        if (/cannot message|blocked/i.test(String(msg))) {
+          setComposerBlocked(String(msg));
+        }
+        setLocalMessages((prev) =>
+          prev.map((m) =>
+            m._id === tempId ? { ...m, status: "failed", pending: false } : m
+          )
+        );
+        haptics.error();
+        Alert.alert("Cannot send", msg);
       } else {
         setLocalMessages((prev) =>
           prev.map((m) =>
@@ -1429,6 +1494,7 @@ export function ChatRoomScreen({
     queryClient,
     chatPolicy,
     isSendingMessage,
+    composerBlocked,
     chatE2E,
     replyTo,
   ]);
@@ -1455,8 +1521,12 @@ export function ChatRoomScreen({
         uploadFileName: fileName,
         uploadMimeType: mimeType,
       }]);
+      let uploadedKey: string | undefined;
+      let remoteMediaUrl: string | undefined;
       try {
-        const { uploadUrl, mediaUrl } = await getPresignedUploadUrl(fileName, mimeType);
+        const { uploadUrl, mediaUrl, key } = await getPresignedUploadUrl(fileName, mimeType);
+        uploadedKey = key;
+        remoteMediaUrl = mediaUrl;
         await uploadToS3(uploadUrl, fileUri, mimeType);
         const res = await apiClient.post(API_ROUTES.chat.send, {
           ...(isGroup ? {} : { receiverId: partner._id }),
@@ -1487,6 +1557,9 @@ export function ChatRoomScreen({
         if (socket) socket.emit("CHAT_MESSAGE", { ...data?.message, conversationId });
         queryClient.invalidateQueries({ queryKey: ["conversations"] });
       } catch (e: any) {
+        if (!isNetworkSendError(e)) {
+          await abortChatMediaUpload(uploadedKey);
+        }
         if (isNetworkSendError(e)) {
           await enqueueChatMessage({
             clientId: tempId,
@@ -1494,9 +1567,11 @@ export function ChatRoomScreen({
             receiverId: isGroup ? null : partner._id,
             content: label,
             type,
-            localFileUri: fileUri,
+            localFileUri: uploadedKey ? undefined : fileUri,
             fileName,
             mimeType,
+            mediaUrl: remoteMediaUrl,
+            mediaS3Key: uploadedKey,
             enqueuedAt: Date.now(),
             attempts: 0,
           });
@@ -2172,7 +2247,13 @@ export function ChatRoomScreen({
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? keyboardVerticalOffset : 0}
       >
-        {showPolicyBanner && (
+        {composerBlocked ? (
+          <View style={styles.policyBanner}>
+            <Ionicons name="ban-outline" size={16} color="#dc2626" />
+            <Text style={[styles.policyText, { color: "#991b1b" }]}>{composerBlocked}</Text>
+          </View>
+        ) : null}
+        {showPolicyBanner && !composerBlocked ? (
           <View style={styles.policyBanner}>
             <Ionicons name="information-circle-outline" size={16} color="#f59e0b" />
             <Text style={styles.policyText}>
@@ -2181,7 +2262,7 @@ export function ChatRoomScreen({
                 : `${chatPolicy!.remainingToday} message${chatPolicy!.remainingToday === 1 ? "" : "s"} remaining today. Book a lesson to chat freely.`}
             </Text>
           </View>
-        )}
+        ) : null}
         <SectionList
           ref={sectionListRef}
           sections={messageSections}
@@ -2461,8 +2542,32 @@ export function ChatRoomScreen({
               <Pressable
                 onPress={() => {
                   if (!editTarget || !editDraft.trim()) return;
-                  void editChatMessage(editTarget._id, editDraft.trim()).then(() => {
-                    queryClient.invalidateQueries({ queryKey: ["chatMessages", conversationId] });
+                  if (!isServerBackedChatMessage(editTarget)) {
+                    setEditTarget(null);
+                    return;
+                  }
+                  void performEditChatMessage({
+                    messageId: editTarget._id,
+                    content: editDraft.trim(),
+                    conversationId,
+                  }).then(({ queued }) => {
+                    if (queued) {
+                      setLocalMessages((prev) =>
+                        prev.map((m) =>
+                          m._id === editTarget._id
+                            ? {
+                                ...m,
+                                content: editDraft.trim(),
+                                editedAt: new Date().toISOString(),
+                              }
+                            : m
+                        )
+                      );
+                      haptics.warning();
+                    }
+                    queryClient.invalidateQueries({
+                      queryKey: queryKeys.chats.messages(conversationId),
+                    });
                     setEditTarget(null);
                   });
                 }}
@@ -2767,6 +2872,11 @@ export function ChatRoomScreen({
           setEditDraft,
           setEditTarget,
           setForwardTarget,
+          setLocalMessages,
+          onRemovePendingMessage: (id) => {
+            void removeFromOfflineChatQueue(id);
+            setLocalMessages((prev) => prev.filter((m) => m._id !== id));
+          },
         })}
       />
 
@@ -2806,6 +2916,15 @@ export function ChatRoomScreen({
   );
 }
 
+/** Messages still on device (temp id / queue) must not hit edit/delete APIs. */
+function isServerBackedChatMessage(item: Message): boolean {
+  if (item._id.startsWith("temp_")) return false;
+  if (item.pending || item.status === "sending" || item.status === "failed") {
+    return false;
+  }
+  return true;
+}
+
 /**
  * Build the contextual action list for the long-press sheet. Lives at
  * module scope so it can be reused / tree-shaken and doesn't bloat the
@@ -2821,6 +2940,8 @@ function buildMessageActions(args: {
   setEditDraft: (v: string) => void;
   setEditTarget: (m: Message) => void;
   setForwardTarget: (m: Message) => void;
+  setLocalMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  onRemovePendingMessage: (clientId: string) => void;
 }): MessageAction[] {
   const {
     item,
@@ -2832,8 +2953,11 @@ function buildMessageActions(args: {
     setEditDraft,
     setEditTarget,
     setForwardTarget,
+    setLocalMessages,
+    onRemovePendingMessage,
   } = args;
   if (!item) return [];
+  const serverBacked = isServerBackedChatMessage(item);
   const actions: MessageAction[] = [
     {
       id: "reply",
@@ -2876,7 +3000,7 @@ function buildMessageActions(args: {
       },
     });
   }
-  if (isMine && item.type === "text") {
+  if (isMine && item.type === "text" && serverBacked) {
     const ageMs = Date.now() - new Date(item.createdAt).getTime();
     if (ageMs < 30 * 60 * 1000) {
       actions.push({
@@ -2891,11 +3015,28 @@ function buildMessageActions(args: {
               undefined,
               (t?: string) => {
                 if (!t?.trim()) return;
-                void editChatMessage(item._id, t.trim()).then(() =>
+                void performEditChatMessage({
+                  messageId: item._id,
+                  content: t.trim(),
+                  conversationId,
+                }).then(({ queued }) => {
+                  if (queued) {
+                    setLocalMessages((prev) =>
+                      prev.map((m) =>
+                        m._id === item._id
+                          ? {
+                              ...m,
+                              content: t.trim(),
+                              editedAt: new Date().toISOString(),
+                            }
+                          : m
+                      )
+                    );
+                  }
                   queryClient.invalidateQueries({
                     queryKey: queryKeys.chats.messages(conversationId),
-                  })
-                );
+                  });
+                });
               },
               "plain-text",
               plain
@@ -2911,15 +3052,25 @@ function buildMessageActions(args: {
   if (isMine) {
     actions.push({
       id: "delete",
-      label: "Delete",
+      label: serverBacked ? "Delete" : "Remove",
       icon: "trash-outline",
       destructive: true,
       onPress: () => {
-        void deleteChatMessage(item._id).then(() =>
+        if (!serverBacked) {
+          onRemovePendingMessage(item._id);
+          return;
+        }
+        void performDeleteChatMessage({
+          messageId: item._id,
+          conversationId,
+        }).then(({ queued }) => {
+          if (queued) {
+            setLocalMessages((prev) => prev.filter((m) => m._id !== item._id));
+          }
           queryClient.invalidateQueries({
             queryKey: queryKeys.chats.messages(conversationId),
-          })
-        );
+          });
+        });
       },
     });
   }

@@ -30,7 +30,16 @@ export function useAudioRoute() {
         evt?.currentRoute ?? evt?.route ?? evt?.output ?? evt?.audioRoute
       );
       setRoute(next);
-      setHasBluetooth(next === "bluetooth");
+      const isBt = next === "bluetooth";
+      setHasBluetooth(isBt);
+      if (isBt) {
+        try {
+          InCallManager.setForceSpeakerphoneOn(null as any);
+          InCallManager.setSpeakerphoneOn(false);
+        } catch {
+          /* noop */
+        }
+      }
     });
 
     const onWired = DeviceEventEmitter.addListener("WiredHeadset", (evt: any) => {

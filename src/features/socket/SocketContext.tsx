@@ -8,7 +8,8 @@ import { selectSocketConnected, selectSocketReconnectFailed } from "../../store/
 import { reportOpsEvent } from "../ops/opsEventsApi";
 import { getBrowserLikeRequestHeaders } from "../../api/browserRequestHeaders";
 import { API_BASE_URL } from "../../config/env";
-import { getAccessToken } from "../auth/session/tokenStorage";
+import { getClientSessionHeaders } from "../auth/session/clientSessionHeaders";
+import { getAccessToken, getSessionId } from "../auth/session/tokenStorage";
 
 /** JWT for Socket.IO — must match what `JWT.verifyAuthToken` expects (no `Bearer ` prefix). */
 function normalizeSocketAuthToken(raw: string): string {
@@ -59,6 +60,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       if (!tokenRaw || cancelled) return;
       const token = normalizeSocketAuthToken(tokenRaw);
       if (!token) return;
+      const authSessionId = await getSessionId();
+      const clientHeaders = getClientSessionHeaders();
 
       /**
        * Web parity: JWT only in handshake `auth` (not query) so the WebSocket URL stays
@@ -67,9 +70,17 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
        */
       createdSocket = io(API_BASE_URL, {
         path: "/socket.io",
-        auth: { authorization: token },
+        auth: {
+          authorization: token,
+          deviceId: clientHeaders["X-NQ-Device-Id"],
+          ...(authSessionId ? { authSessionId } : {}),
+        },
         /** Polling uses XHR — same Origin/UA as REST or Cloudflare may block (`xhr poll error`). */
-        extraHeaders: getBrowserLikeRequestHeaders(),
+        extraHeaders: {
+          ...getBrowserLikeRequestHeaders(),
+          ...clientHeaders,
+          ...(authSessionId ? { "X-NQ-Auth-Session-Id": authSessionId } : {}),
+        },
         transports: ["polling", "websocket"],
         forceNew: true,
         reconnection: true,

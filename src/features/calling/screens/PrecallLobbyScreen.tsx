@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -20,6 +21,10 @@ import {
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { haptics } from "../../../lib/haptics";
 import { radii, space, typography, useThemedStyles, useThemeColors } from "../../../theme";
+import {
+  fetchLessonCallSlotStatus,
+  postLessonCallSlotTakeover,
+} from "../api/lessonCallSlotApi";
 import { useCallPreferences } from "../useCallPreferences";
 import { useAudioRoute } from "../useAudioRoute";
 
@@ -69,6 +74,11 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
     rttMs: null,
     mbps: null,
   });
+  const [callSlotBlocked, setCallSlotBlocked] = useState(false);
+  const [callSlotCanTakeOver, setCallSlotCanTakeOver] = useState(false);
+  const [callSlotMessage, setCallSlotMessage] = useState<string | null>(null);
+  const [callSlotChecking, setCallSlotChecking] = useState(true);
+  const [takeoverBusy, setTakeoverBusy] = useState(false);
 
   const streamRef = useRef<MediaStream | null>(null);
   const audioRoute = useAudioRoute();
@@ -169,6 +179,40 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
   }, [runNetworkProbe]);
 
   useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setCallSlotChecking(true);
+      try {
+        const status = await fetchLessonCallSlotStatus(lessonId);
+        if (cancelled) return;
+        if (!status.canJoin) {
+          setCallSlotBlocked(true);
+          setCallSlotCanTakeOver(!!status.canTakeOver);
+          setCallSlotMessage(
+            status.canTakeOver
+              ? "This lesson is open on another device. You can take over here to continue on this phone."
+              : "This lesson is already active on another device. Leave that session first, then try again."
+          );
+        } else {
+          setCallSlotBlocked(false);
+          setCallSlotCanTakeOver(false);
+          setCallSlotMessage(null);
+        }
+      } catch {
+        if (!cancelled) {
+          setCallSlotBlocked(false);
+          setCallSlotMessage(null);
+        }
+      } finally {
+        if (!cancelled) setCallSlotChecking(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [lessonId]);
+
+  useEffect(() => {
     setLocalBlurEnabled(blurEnabled);
   }, [blurEnabled]);
 
@@ -184,9 +228,52 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
     }
   };
 
+  const releasePreviewTracks = () => {
+    const s = streamRef.current;
+    if (s) {
+      try {
+        s.getTracks().forEach((t: MediaStreamTrack) => t.stop());
+      } catch {
+        /* noop */
+      }
+    }
+    streamRef.current = null;
+    setStream(null);
+  };
+
   const handleJoin = () => {
+    if (callSlotBlocked && !callSlotCanTakeOver) {
+      Alert.alert(
+        "Session active elsewhere",
+        callSlotMessage ??
+          "This lesson is already open on another device."
+      );
+      return;
+    }
     haptics.success();
+    releasePreviewTracks();
     onJoin({ blurEnabled: localBlurEnabled });
+  };
+
+  const handleTakeoverAndJoin = async () => {
+    if (!callSlotCanTakeOver || takeoverBusy) return;
+    setTakeoverBusy(true);
+    try {
+      await postLessonCallSlotTakeover(lessonId);
+      setCallSlotBlocked(false);
+      setCallSlotCanTakeOver(false);
+      setCallSlotMessage(null);
+      haptics.success();
+      releasePreviewTracks();
+      onJoin({ blurEnabled: localBlurEnabled });
+    } catch {
+      Alert.alert(
+        "Could not take over",
+        "Another device may still be in this lesson. Try again in a moment."
+      );
+    } finally {
+      setTakeoverBusy(false);
+    }
   };
 
   const videoTrack = stream?.getVideoTracks?.()[0];
@@ -409,19 +496,83 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
         </Pressable>
       </View>
 
+      {callSlotBlocked && callSlotMessage ? (
+        <View
+          style={[
+            styles.slotBanner,
+            {
+              backgroundColor: (callSlotCanTakeOver ? c.warning : c.error) + "22",
+              borderColor: callSlotCanTakeOver ? c.warning : c.error,
+            },
+          ]}
+        >
+          <Ionicons
+            name="phone-portrait-outline"
+            size={18}
+            color={callSlotCanTakeOver ? c.warning : c.error}
+          />
+          <Text
+            style={[
+              styles.slotBannerText,
+              { color: callSlotCanTakeOver ? c.warning : c.error },
+            ]}
+          >
+            {callSlotMessage}
+          </Text>
+        </View>
+      ) : null}
+
       <View style={styles.actions}>
+        {callSlotBlocked && callSlotCanTakeOver ? (
+          <Pressable
+            onPress={() => void handleTakeoverAndJoin()}
+            style={[
+              styles.joinBtn,
+              {
+                backgroundColor: c.brandAccent,
+                opacity:
+                  permissionDenied || callSlotChecking || takeoverBusy ? 0.45 : 1,
+              },
+            ]}
+            disabled={permissionDenied || callSlotChecking || takeoverBusy}
+            accessibilityRole="button"
+          >
+            {takeoverBusy ? (
+              <ActivityIndicator color={c.brandTextOn} />
+            ) : (
+              <Ionicons name="swap-horizontal" size={18} color={c.brandTextOn} />
+            )}
+            <Text style={[styles.joinText, { color: c.brandTextOn }]}>
+              Take over on this device
+            </Text>
+          </Pressable>
+        ) : null}
         <Pressable
           onPress={handleJoin}
           style={[
             styles.joinBtn,
-            { backgroundColor: c.brandNavy, opacity: permissionDenied ? 0.45 : 1 },
+            {
+              backgroundColor: c.brandNavy,
+              opacity:
+                permissionDenied ||
+                callSlotChecking ||
+                (callSlotBlocked && !callSlotCanTakeOver)
+                  ? 0.45
+                  : 1,
+            },
           ]}
-          disabled={permissionDenied}
+          disabled={
+            permissionDenied ||
+            callSlotChecking ||
+            (callSlotBlocked && !callSlotCanTakeOver)
+          }
           accessibilityRole="button"
         >
           <Ionicons name="videocam" size={18} color={c.brandTextOn} />
           <Text style={[styles.joinText, { color: c.brandTextOn }]}>
-            {t("precall.joinCta")}
+            {callSlotCanTakeOver && callSlotBlocked
+              ? "Join without taking over"
+              : t("precall.joinCta")}
           </Text>
         </Pressable>
         <Text style={[styles.legalText, { color: c.textMuted }]}>
@@ -445,6 +596,14 @@ function useStyles() {
       headerRow: { flexDirection: "row", alignItems: "center", gap: 12 },
       headerTitle: { ...typography.titleMd, fontWeight: "800" },
       headerSub: { ...typography.bodySm, marginTop: 2 },
+      slotBanner: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+        padding: 12,
+        borderRadius: radii.md,
+      },
+      slotBannerText: { ...typography.bodySm, flex: 1 },
       previewWrap: {
         borderRadius: radii.lg,
         overflow: "hidden",

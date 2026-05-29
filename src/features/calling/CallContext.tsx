@@ -78,6 +78,10 @@ type CallContextValue = {
   acknowledgePeerJoined: () => void;
   /** Last engine error, surfaced for toasts/banners. */
   lastError: string | null;
+  /** Another device holds the slot; user can emit CALL_JOIN_TAKEOVER. */
+  joinDeniedCanTakeOver: boolean;
+  /** Displace the other device and re-join on this socket. */
+  requestCallTakeover: () => void;
 };
 
 const noop = () => undefined;
@@ -108,6 +112,8 @@ const CallContext = createContext<CallContextValue>({
   }),
   acknowledgePeerJoined: noop,
   lastError: null,
+  joinDeniedCanTakeOver: false,
+  requestCallTakeover: noop,
 });
 
 export function useCall(): CallContextValue {
@@ -149,6 +155,7 @@ export function CallProvider({
   const [remoteMicMuted, setRemoteMicMuted] = useState(false);
   const [remoteCameraOff, setRemoteCameraOff] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
+  const [joinDeniedCanTakeOver, setJoinDeniedCanTakeOver] = useState(false);
 
   partnerDisconnectedRef.current = partnerDisconnected;
 
@@ -240,6 +247,29 @@ export function CallProvider({
         onEndedRef.current?.();
       },
       onError: (err) => active && setLastError(err.message),
+      onJoinDenied: (payload) => {
+        if (!active) return;
+        setLastError(
+          payload?.message ??
+            "This lesson is already active on another device."
+        );
+        if (payload?.canTakeOver) {
+          setJoinDeniedCanTakeOver(true);
+          return;
+        }
+        setJoinDeniedCanTakeOver(false);
+        setStatus("ended");
+      },
+      onSlotTakenOver: (payload) => {
+        if (!active) return;
+        setJoinDeniedCanTakeOver(false);
+        setLastError(
+          payload?.message ??
+            "This lesson was continued on another device."
+        );
+        setStatus("ended");
+        onEndedRef.current?.();
+      },
     });
     engineRef.current = engine;
 
@@ -333,6 +363,12 @@ export function CallProvider({
 
   const acknowledgePeerJoined = useCallback(() => setPeerJoined(null), []);
 
+  const requestCallTakeover = useCallback(() => {
+    setJoinDeniedCanTakeOver(false);
+    setLastError(null);
+    engineRef.current?.requestTakeover();
+  }, []);
+
   const value = useMemo<CallContextValue>(
     () => ({
       status,
@@ -355,6 +391,8 @@ export function CallProvider({
       getNetworkStats,
       acknowledgePeerJoined,
       lastError,
+      joinDeniedCanTakeOver,
+      requestCallTakeover,
     }),
     [
       status,
@@ -377,6 +415,8 @@ export function CallProvider({
       getNetworkStats,
       acknowledgePeerJoined,
       lastError,
+      joinDeniedCanTakeOver,
+      requestCallTakeover,
     ]
   );
 

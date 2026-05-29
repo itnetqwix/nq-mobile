@@ -28,6 +28,12 @@ export const CALL_EVENTS = {
   ON_CALL_LEAVE: "ON_CALL_LEAVE",
   /** Backend-level end (timer expired, admin closed). */
   CALL_END: "CALL_END",
+  /** Same account already active on another device for this session. */
+  CALL_JOIN_DENIED: "CALL_JOIN_DENIED",
+  /** Displace the other device and join this session here. */
+  CALL_JOIN_TAKEOVER: "CALL_JOIN_TAKEOVER",
+  /** This device was displaced by another device joining the same session. */
+  CALL_SLOT_TAKEN_OVER: "CALL_SLOT_TAKEN_OVER",
 } as const;
 
 export type CallEventName = (typeof CALL_EVENTS)[keyof typeof CALL_EVENTS];

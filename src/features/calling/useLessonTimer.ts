@@ -30,6 +30,7 @@ const TIMER_EVENTS = {
   PAUSED: "LESSON_TIME_PAUSED",
   RESUMED: "LESSON_TIME_RESUMED",
   ENDED: "LESSON_TIME_ENDED",
+  WARNING: "LESSON_TIME_WARNING",
   EXTENDED: "LESSON_TIMER_EXTENDED",
   ERROR: "LESSON_TIMER_ERROR",
   STATE_REQUEST: "LESSON_STATE_REQUEST",
@@ -83,6 +84,8 @@ type Args = {
    *  derive a best-effort countdown from this for web parity. See
    *  `nq-frontend-main/app/components/portrait-calling/index.jsx` ~ line 2722. */
   session?: LessonTimerSessionInput;
+  /** Server-scheduled 5/2/1/0.5 min warnings (authoritative when connected). */
+  onServerTimeWarning?: (kind: "five" | "two" | "one" | "thirty") => void;
 };
 
 const TIMER_BUFFER_SECONDS = 5;
@@ -153,6 +156,7 @@ export function useLessonTimer({
   timerBufferElapsed,
   accountType,
   session,
+  onServerTimeWarning,
 }: Args) {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fallbackIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
@@ -389,6 +393,14 @@ export function useLessonTimer({
       setTimeout(() => setRetryToken((t) => t + 1), 2000);
     };
 
+    const handleWarning = (data: any) => {
+      if (!matches(data)) return;
+      const kind = data?.kind;
+      if (kind === "five" || kind === "two" || kind === "one" || kind === "thirty") {
+        onServerTimeWarning?.(kind);
+      }
+    };
+
     /** Mobile sockets churn on background/foreground — re-emit the state
      *  request every time we (re)connect so we don't sit on a stale timer. */
     const handleReconnect = () => {
@@ -401,6 +413,7 @@ export function useLessonTimer({
     socket.on(TIMER_EVENTS.PAUSED, handlePaused);
     socket.on(TIMER_EVENTS.RESUMED, handleResumed);
     socket.on(TIMER_EVENTS.ENDED, handleEnded);
+    socket.on(TIMER_EVENTS.WARNING, handleWarning);
     socket.on(TIMER_EVENTS.EXTENDED, handleExtended);
     socket.on(TIMER_EVENTS.ERROR, handleTimerError);
     socket.on("connect", handleReconnect);
@@ -412,13 +425,14 @@ export function useLessonTimer({
       socket.off(TIMER_EVENTS.PAUSED, handlePaused);
       socket.off(TIMER_EVENTS.RESUMED, handleResumed);
       socket.off(TIMER_EVENTS.ENDED, handleEnded);
+      socket.off(TIMER_EVENTS.WARNING, handleWarning);
       socket.off(TIMER_EVENTS.EXTENDED, handleExtended);
       socket.off(TIMER_EVENTS.ERROR, handleTimerError);
       socket.off("connect", handleReconnect);
       socket.off("reconnect", handleReconnect);
       stopInterval();
     };
-  }, [socket, sessionId, startLessonTimer, stopInterval]);
+  }, [socket, sessionId, startLessonTimer, stopInterval, onServerTimeWarning]);
 
   useEffect(() => {
     if (!socket || !sessionId) return;

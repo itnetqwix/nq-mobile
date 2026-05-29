@@ -295,6 +295,11 @@ export const API_ROUTES = {
     send: "/common/chat-send",
     conversation: "/common/chat-conversation",
     mediaUploadUrl: "/common/chat-media-upload-url",
+    mediaUploadAbort: "/common/chat-media-upload-abort",
+    lessonCallSlot: (sessionId: string) =>
+      `/common/lesson-call-slot/${encodeURIComponent(sessionId)}` as const,
+    lessonCallSlotTakeover: (sessionId: string) =>
+      `/common/lesson-call-slot/${encodeURIComponent(sessionId)}/takeover` as const,
     createGroup: "/common/chat-create-group",
     createGroupInvite: "/common/chat-create-group-invite",
     editMessage: "/common/chat-edit-message",

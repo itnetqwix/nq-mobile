@@ -40,6 +40,7 @@ import {
   hydrateOfflineChatQueue,
   useOfflineChatQueueFlusher,
 } from "../features/chats/lib/offlineChatQueue";
+import { useOfflineChatMutationsFlusher } from "../features/chats/lib/offlineChatMutations";
 import { warmLoaderTipsCache } from "../components/brand/loaderTips/loaderTipsService";
 import { ThemeProvider } from "../theme/ThemeContext";
 import { ThemedNavigationContainer } from "./ThemedNavigationContainer";
@@ -58,6 +59,7 @@ function SystemStateHooks() {
   useSessionExpiredNavigation();
   useUpdateRequiredGate(true);
   useOfflineChatQueueFlusher();
+  useOfflineChatMutationsFlusher();
   return null;
 }
 

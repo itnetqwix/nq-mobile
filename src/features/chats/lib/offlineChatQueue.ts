@@ -19,6 +19,7 @@ import { useSyncExternalStore } from "react";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import {
+  abortChatMediaUpload,
   getPresignedUploadUrl,
   uploadToS3,
 } from "./mediaSendUtils";
@@ -42,6 +43,8 @@ export type QueuedChatMessage = {
   localFileUri?: string | null;
   fileName?: string | null;
   mimeType?: string | null;
+  /** S3 key from presign — used to abort orphan objects if send fails. */
+  mediaS3Key?: string | null;
   replyToMessageId?: string | null;
   /** Used for "X queued · sending now" UI sorting. */
   enqueuedAt: number;
@@ -138,13 +141,15 @@ export async function flushOfflineChatQueue(): Promise<{ sent: number; failed: n
     const pending = [...queue];
     for (const item of pending) {
       if (!isNetworkOnline()) break;
+      let uploadedKey: string | undefined = item.mediaS3Key ?? undefined;
       try {
         let mediaUrl = item.mediaUrl ?? undefined;
-        if (item.localFileUri && item.fileName && item.mimeType) {
-          const { uploadUrl, mediaUrl: remoteUrl } = await getPresignedUploadUrl(
+        if (!mediaUrl && item.localFileUri && item.fileName && item.mimeType) {
+          const { uploadUrl, mediaUrl: remoteUrl, key } = await getPresignedUploadUrl(
             item.fileName,
             item.mimeType
           );
+          uploadedKey = key;
           await uploadToS3(uploadUrl, item.localFileUri, item.mimeType);
           mediaUrl = remoteUrl;
         }
@@ -165,6 +170,9 @@ export async function flushOfflineChatQueue(): Promise<{ sent: number; failed: n
         }
         sent += 1;
       } catch (err: any) {
+        if (uploadedKey) {
+          await abortChatMediaUpload(uploadedKey);
+        }
         const isNetwork =
           !err?.response &&
           (err?.code === "ERR_NETWORK" ||
