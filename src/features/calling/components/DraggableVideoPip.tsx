@@ -78,6 +78,49 @@ function clampPipPosition(
   };
 }
 
+/** Magnetize near corners so tiles settle predictably after drag. */
+function snapPipToCorner(
+  x: number,
+  y: number,
+  bounds: Pick<LayoutRectangle, "width" | "height">,
+  safeTop: number,
+  reservedBottom: number,
+  pipW = PIP_WIDTH,
+  pipH = PIP_HEIGHT
+): { x: number; y: number } {
+  const margin = 12;
+  const corners = [
+    { x: margin, y: safeTop + margin },
+    { x: bounds.width - pipW - margin, y: safeTop + margin },
+    { x: margin, y: bounds.height - reservedBottom - pipH - margin },
+    {
+      x: bounds.width - pipW - margin,
+      y: bounds.height - reservedBottom - pipH - margin,
+    },
+  ];
+  let best = corners[0];
+  let bestDist = Number.POSITIVE_INFINITY;
+  for (const c of corners) {
+    const d = (c.x - x) ** 2 + (c.y - y) ** 2;
+    if (d < bestDist) {
+      bestDist = d;
+      best = c;
+    }
+  }
+  if (bestDist <= 96 * 96) {
+    return clampPipPosition(
+      best.x,
+      best.y,
+      bounds,
+      safeTop,
+      reservedBottom,
+      pipW,
+      pipH
+    );
+  }
+  return clampPipPosition(x, y, bounds, safeTop, reservedBottom, pipW, pipH);
+}
+
 /**
  * Hide PIP only when dragged off the screen (visible area drops below 50%).
  * Edge picked by which boundary the tile crossed (left/right/top/bottom).
@@ -220,7 +263,7 @@ export function DraggableVideoPip({
             return;
           }
 
-          const clamped = clampPipPosition(
+          const clamped = snapPipToCorner(
             rawX,
             rawY,
             bounds,
@@ -237,7 +280,7 @@ export function DraggableVideoPip({
           const rawX = dragStart.current.x + gesture.dx;
           const rawY = dragStart.current.y + gesture.dy;
           if (!bounds) return;
-          const clamped = clampPipPosition(
+          const clamped = snapPipToCorner(
             rawX,
             rawY,
             bounds,

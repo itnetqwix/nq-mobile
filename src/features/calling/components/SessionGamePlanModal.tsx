@@ -61,6 +61,7 @@ export function SessionGamePlanModal({
   const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveStep, setSaveStep] = useState<"idle" | "pdf" | "upload" | "report">("idle");
 
   const buildPdfHtml = useCallback(
     (imgKeys: string[], heading: string, notes: string) => {
@@ -142,7 +143,9 @@ export function SessionGamePlanModal({
       return;
     }
     setSaving(true);
+    setSaveStep("pdf");
     try {
+      let pdfAttached = false;
       // Generate + upload PDF (web parity) when screenshots exist.
       if (images.length > 0) {
         const html = buildPdfHtml(images, title.trim(), topic.trim());
@@ -173,6 +176,7 @@ export function SessionGamePlanModal({
               return;
             }
           }
+          setSaveStep("upload");
           const sign = await apiClient.post(API_ROUTES.common.pdfUploadUrl, {
             session_id: sessionId,
             sizeBytes: pdfBytes,
@@ -180,13 +184,16 @@ export function SessionGamePlanModal({
           const uploadUrl = sign?.data?.url;
           if (!uploadUrl) throw new Error("Could not prepare PDF upload.");
           await putFileToPresignedUrl(uploadUrl, pdfUri, "application/pdf");
-        } else if (__DEV__) {
-          console.warn(
-            "[SessionGamePlanModal] PDF skipped (rebuild app with expo-print: npx expo run:ios --device)"
+          pdfAttached = true;
+        } else {
+          Alert.alert(
+            "PDF not available",
+            "Screenshots will still be saved. Update the app to attach a PDF to this game plan."
           );
         }
       }
 
+      setSaveStep("report");
       await apiClient.post(API_ROUTES.report.create, {
         sessions: sessionId,
         trainer: trainerId,
@@ -204,12 +211,18 @@ export function SessionGamePlanModal({
         bookingInfo: { sessionId },
       });
 
-      Alert.alert("Game plan saved", "Screenshots are in your locker under Game plans.");
+      Alert.alert(
+        "Game plan saved",
+        pdfAttached
+          ? "PDF and screenshots are in your locker under Game plans."
+          : "Screenshots are in your locker under Game plans."
+      );
       onClose();
     } catch (e: any) {
       Alert.alert("Could not save", e?.message ?? "Try again.");
     } finally {
       setSaving(false);
+      setSaveStep("idle");
     }
   };
 
@@ -266,9 +279,13 @@ export function SessionGamePlanModal({
           >
             <Text style={styles.btnPrimaryText}>
               {saving
-                ? images.length > 0
-                  ? "Generating PDF…"
-                  : "Saving…"
+                ? saveStep === "pdf"
+                  ? "Building PDF…"
+                  : saveStep === "upload"
+                    ? "Uploading PDF…"
+                    : saveStep === "report"
+                      ? "Saving plan…"
+                      : "Saving…"
                 : "Save game plan"}
             </Text>
           </Pressable>

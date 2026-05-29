@@ -5,7 +5,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   Modal,
   Pressable,
@@ -14,8 +13,13 @@ import {
   View,
 } from "react-native";
 
+import { MediaLoadingOverlay } from "../../../components/media/MediaLoadingOverlay";
 import { ImageWithSkeleton } from "../../../components/ui";
-import { getClipPlaybackUrl, getClipThumbnailUrl } from "../../../lib/clipMediaUrl";
+import {
+  getClipPlaybackUrl,
+  getClipThumbnailUrl,
+  isLikelyPdf,
+} from "../../../lib/clipMediaUrl";
 import {
   flattenGroupedClips,
   fetchMyClipsGrouped,
@@ -44,7 +48,7 @@ export function ClipPickerModal({
   visible,
   onClose,
   onDone,
-  traineeId: _traineeId,
+  traineeId,
   selectedClipIds = [],
 }: Props) {
   const [loading, setLoading] = useState(false);
@@ -169,9 +173,12 @@ export function ClipPickerModal({
   const confirm = useCallback(() => {
     const selected = allClips.filter((c) => picked.has(String(c._id))).slice(0, MAX_CLIPS);
     if (selected.length === 0) return;
-    const playable = selected.filter((c) => getClipPlaybackUrl(c));
+    const playable = selected.filter((c) => {
+      const name = String(c.title ?? c.name ?? (c as { file_name?: string }).file_name ?? "");
+      return getClipPlaybackUrl(c) && !isLikelyPdf(name);
+    });
     if (playable.length === 0) {
-      setError("Selected clips cannot be played.");
+      setError("Selected items cannot play in a live lesson (PDFs open after the call).");
       return;
     }
     onDone(playable);
@@ -219,8 +226,7 @@ export function ClipPickerModal({
 
         {loading ? (
           <View style={styles.center}>
-            <ActivityIndicator size="large" color="#111" />
-            <Text style={styles.muted}>Loading clips…</Text>
+            <MediaLoadingOverlay message="Loading clips" />
           </View>
         ) : allClips.length === 0 ? (
           <View style={styles.center}>
@@ -271,15 +277,20 @@ export function ClipPickerModal({
                   const selected = picked.has(id);
                   const atMax = picked.size >= MAX_CLIPS && !selected;
                   const thumb = getClipThumbnailUrl(clip);
+                  const clipName = String(
+                    clip.title ?? clip.name ?? (clip as { file_name?: string }).file_name ?? ""
+                  );
+                  const isPdf = isLikelyPdf(clipName);
+                  const canPlay = !isPdf && !!getClipPlaybackUrl(clip);
                   return (
                     <Pressable
                       style={[
                         styles.clipCard,
                         selected && styles.clipCardActive,
-                        atMax && styles.clipCardDisabled,
+                        (atMax || isPdf) && styles.clipCardDisabled,
                       ]}
                       onPress={() => toggleClip(clip)}
-                      disabled={atMax}
+                      disabled={atMax || isPdf}
                     >
                       <View style={styles.thumbWrap}>
                         {thumb ? (
@@ -307,8 +318,10 @@ export function ClipPickerModal({
                         {clip.title || clip.name || "Untitled clip"}
                       </Text>
                       {clip.category ? <Text style={styles.clipMeta}>{clip.category}</Text> : null}
-                      {!getClipPlaybackUrl(clip) ? (
-                        <Text style={styles.clipWarning}>Cannot play this clip</Text>
+                      {isPdf ? (
+                        <Text style={styles.clipWarning}>PDF — open after lesson</Text>
+                      ) : !canPlay ? (
+                        <Text style={styles.clipWarning}>Cannot play in call</Text>
                       ) : null}
                     </Pressable>
                   );

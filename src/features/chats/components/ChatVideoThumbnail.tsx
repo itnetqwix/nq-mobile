@@ -1,15 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as VideoThumbnails from "expo-video-thumbnails";
 import React, { useEffect, useState } from "react";
+import { Image } from "expo-image";
 import {
-  ActivityIndicator,
-  Image,
   Pressable,
   StyleSheet,
   View,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+import { MediaLoadingOverlay } from "../../../components/media/MediaLoadingOverlay";
 import { useThemeColors } from "../../../theme";
 
 type Props = {
@@ -49,11 +49,11 @@ export function ChatVideoThumbnail({ uri, style, onPress, isMine }: Props) {
   return (
     <Pressable onPress={onPress} style={[styles.container, style]}>
       {thumbUri ? (
-        <Image source={{ uri: thumbUri }} style={styles.thumb} resizeMode="cover" />
+        <Image source={{ uri: thumbUri }} style={styles.thumb} contentFit="cover" />
       ) : (
         <View style={styles.fallback}>
           {loading ? (
-            <ActivityIndicator color={isMine ? "#fff" : c.brandNavy} />
+            <MediaLoadingOverlay message="" size="compact" style={styles.thumbLoader} />
           ) : (
             <Ionicons name="videocam" size={28} color={isMine ? "#fff" : c.brandNavy} />
           )}
@@ -81,6 +81,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(0,0,0,0.1)",
+  },
+  thumbLoader: {
+    backgroundColor: "rgba(0,0,0,0.2)",
   },
   playOverlay: {
     ...StyleSheet.absoluteFillObject,

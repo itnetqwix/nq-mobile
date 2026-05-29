@@ -17,8 +17,9 @@ export function ReconnectFailedOverlay({ onRejoin, onLeave }: Props) {
       <View style={styles.card}>
         <Text style={styles.title}>Connection lost</Text>
         <Text style={styles.body}>
-          We could not restore your lesson connection. Rejoin to continue, or leave
-          the call and try again from your dashboard.
+          We could not restore your lesson connection. Check Wi‑Fi or switch to
+          cellular, then tap Rejoin. You can also leave and open the lesson again
+          from your dashboard.
         </Text>
         <Pressable style={styles.primary} onPress={onRejoin} accessibilityRole="button">
           <Text style={styles.primaryText}>Rejoin lesson</Text>

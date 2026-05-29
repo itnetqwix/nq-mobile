@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   Modal,
   Pressable,
@@ -13,7 +12,11 @@ import {
   type NativeSyntheticEvent,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { NativeMediaSurface } from "../../../components/media/NativeMediaSurface";
+import {
+  MediaLoadingOverlay,
+  MediaViewerChrome,
+  NativeMediaSurface,
+} from "../../../components/media";
 import { useMediaViewport } from "../../../components/media/useMediaViewport";
 import type { ChatMediaItem } from "../lib/chatMediaUtils";
 
@@ -24,7 +27,7 @@ type Props = {
   onClose: () => void;
 };
 
-const HEADER_BLOCK = 52;
+const HEADER_BLOCK = 56;
 
 export function ChatMediaViewerModal({ visible, items, initialIndex, onClose }: Props) {
   const insets = useSafeAreaInsets();
@@ -76,15 +79,12 @@ export function ChatMediaViewerModal({ visible, items, initialIndex, onClose }: 
     >
       <StatusBar barStyle="light-content" />
       <View style={styles.root}>
-        <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
-          <Pressable onPress={onClose} hitSlop={12} accessibilityLabel="Close">
-            <Ionicons name="close" size={28} color="#fff" />
-          </Pressable>
-          <Text style={styles.counter}>
-            {index + 1} / {items.length}
-          </Text>
-          <View style={styles.topSpacer} />
-        </View>
+        <MediaViewerChrome
+          title={`${index + 1} of ${items.length}`}
+          subtitle={current?.type === "video" ? "Video" : "Photo"}
+          onClose={onClose}
+          style={{ paddingTop: insets.top + 4 }}
+        />
 
         <FlatList
           ref={listRef}
@@ -149,9 +149,7 @@ export function ChatMediaViewerModal({ visible, items, initialIndex, onClose }: 
             size={16}
             color="rgba(255,255,255,0.85)"
           />
-          <Text style={styles.hintText}>
-            Swipe for more · {current?.type === "video" ? "Video" : "Photo"}
-          </Text>
+          <Text style={styles.hintText}>Swipe for more</Text>
         </View>
       </View>
     </Modal>
@@ -172,6 +170,11 @@ function MediaPage({
   const [failed, setFailed] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    setFailed(false);
+    setLoading(true);
+  }, [item.uri, item.type]);
+
   if (failed) {
     return (
       <View style={[styles.failBox, { width, height }]}>
@@ -189,43 +192,26 @@ function MediaPage({
         width={width}
         height={height}
         isActive={isActive}
+        loadingMode="parent"
+        onLoadingChange={setLoading}
+        useNativeVideoControls={false}
+        showCustomControls={item.type === "video"}
         onReady={() => setLoading(false)}
         onError={() => {
           setLoading(false);
           setFailed(true);
         }}
       />
-      {loading ? (
-        <View style={styles.pageLoading} pointerEvents="none">
-          <ActivityIndicator size="large" color="#fff" />
-        </View>
-      ) : null}
+      {loading ? <MediaLoadingOverlay message="Loading" /> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#000" },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    zIndex: 20,
-    backgroundColor: "rgba(0,0,0,0.75)",
-  },
-  counter: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  topSpacer: { width: 28 },
+  root: { flex: 1, backgroundColor: "#0a0a12" },
   page: {
     alignItems: "center",
     justifyContent: "center",
-  },
-  pageLoading: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.25)",
   },
   failBox: {
     alignItems: "center",
@@ -239,7 +225,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0,0,128,0.65)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 15,
@@ -256,7 +244,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingTop: 10,
-    backgroundColor: "rgba(0,0,0,0.7)",
+    backgroundColor: "rgba(0,0,0,0.75)",
   },
   hintText: { color: "rgba(255,255,255,0.8)", fontSize: 13 },
 });

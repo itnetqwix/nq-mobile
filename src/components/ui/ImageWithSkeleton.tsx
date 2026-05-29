@@ -103,7 +103,7 @@ export function ImageWithSkeleton({
         style={[styles.img, { opacity: loaded ? 1 : 0 }]}
         contentFit={(RESIZE_MAP[resizeMode] as any) ?? "cover"}
         cachePolicy="disk"
-        transition={200}
+        transition={280}
         recyclingKey={isRemoteUri ? (resolved as { uri: string }).uri : undefined}
         onLoad={handleLoad}
         onError={handleError}

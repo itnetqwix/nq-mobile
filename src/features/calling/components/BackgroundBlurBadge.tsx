@@ -40,7 +40,7 @@ export function BackgroundBlurBadge({ visible, position = "top-right" }: Props) 
       <View style={styles.pill}>
         <Ionicons name="eye-off-outline" size={12} color="#fff" />
         <Text style={styles.text}>
-          {t("call.backgroundBlur.on", { defaultValue: "Blur ON" })}
+          {t("call.backgroundBlur.on", { defaultValue: "Background dim" })}
         </Text>
       </View>
     </View>

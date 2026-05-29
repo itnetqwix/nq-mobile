@@ -91,7 +91,9 @@ import { MeetingMiniPip } from "../components/MeetingMiniPip";
 import { ClipMiniPip } from "../components/ClipMiniPip";
 import { ActionButtons } from "../components/ActionButtons";
 import { TimeRemaining } from "../components/TimeRemaining";
-import { PeerJoinedModal } from "../components/PeerJoinedModal";
+import { MeetingPeerJoinedToast } from "../components/MeetingPeerJoinedToast";
+import { MeetingCoachChip } from "../components/MeetingCoachChip";
+import { resolveMeetingStatusBanner } from "../meetingUx";
 import { ConnectionQualityPill } from "../components/ConnectionQualityPill";
 import { ClipPickerModal } from "../components/ClipPickerModal";
 import { LockedDualClipStage } from "../components/LockedDualClipStage";
@@ -515,6 +517,25 @@ function MeetingSurface({
     null
   );
   const seenWarningsRef = useRef<Set<SessionWarningKind>>(new Set());
+
+  /** Extension + time-warning modals must not stack (only one blocking sheet). */
+  const extensionUiBlocking = useMemo(() => {
+    const phase = extensionFlow.state.phase;
+    return (
+      traineeExtendOpen ||
+      phase === "awaiting_trainer" ||
+      phase === "awaiting_payment" ||
+      phase === "paying"
+    );
+  }, [traineeExtendOpen, extensionFlow.state.phase]);
+
+  useEffect(() => {
+    if (extensionUiBlocking) {
+      setActiveWarning(null);
+    }
+  }, [extensionUiBlocking]);
+
+  const timeWarningVisible = activeWarning != null && !extensionUiBlocking;
 
   const timerStatusHint = useMemo(() => {
     if (
@@ -1130,6 +1151,7 @@ function MeetingSurface({
       const partner = peerDisplayName;
       if (key === "five" || key === "two") {
         if (seenWarningsRef.current.has(key)) return;
+        if (extensionUiBlocking) return;
         seenWarningsRef.current.add(key);
         setActiveWarning(key);
         return;
@@ -1148,7 +1170,7 @@ function MeetingSurface({
         });
       }
     },
-    [pushLocalToast, peerDisplayName]
+    [pushLocalToast, peerDisplayName, extensionUiBlocking]
   );
 
   /** Reset the "already shown" guards whenever the timer is extended so the
@@ -1217,24 +1239,45 @@ function MeetingSurface({
     onExit();
   }, [endCall, onExit]);
 
-  const lobbyPresenceMessage = useMemo(() => {
-    if (partnerInSession) return presence.presenceMessage;
-    if (!isTrainer && presence.trainerConnected && !bothJoined) {
-      return `Your coach is in the lesson — connecting live video…`;
-    }
-    if (isTrainer && presence.traineeConnected === false) {
-      return `${peerDisplayName} is still joining. Video and timer start when you are both connected.`;
-    }
-    return presence.presenceMessage;
-  }, [
-    partnerInSession,
-    isTrainer,
-    presence.trainerConnected,
-    presence.traineeConnected,
-    presence.presenceMessage,
-    bothJoined,
-    peerDisplayName,
-  ]);
+  const meetingStatusBanner = useMemo(
+    () =>
+      resolveMeetingStatusBanner({
+        cameraRevoked: inCallPerms.cameraRevoked,
+        partnerReconnecting: presence.partnerReconnecting,
+        partnerInSession,
+        hasRemoteStream: !!remoteStream,
+        partnerDisconnected,
+        peerDisplayName,
+        isTrainer,
+        trainerConnected: presence.trainerConnected,
+        traineeConnected: presence.traineeConnected,
+        bothJoined,
+        presenceMessage: partnerInSession ? presence.presenceMessage : null,
+        presenceVariant: presence.presenceVariant,
+        extensionPausedHint:
+          lessonTimer.status === "paused" &&
+          (lessonTimer.pauseReason === "extension_pending" ||
+            lessonTimer.pauseReason === "extension_accepted")
+            ? "Paused — extension in progress"
+            : null,
+      }),
+    [
+      inCallPerms.cameraRevoked,
+      presence.partnerReconnecting,
+      partnerInSession,
+      remoteStream,
+      partnerDisconnected,
+      peerDisplayName,
+      isTrainer,
+      presence.trainerConnected,
+      presence.traineeConnected,
+      bothJoined,
+      presence.presenceMessage,
+      presence.presenceVariant,
+      lessonTimer.status,
+      lessonTimer.pauseReason,
+    ]
+  );
 
   return (
     <View
@@ -1265,6 +1308,19 @@ function MeetingSurface({
           clipSync.clipFullscreen && styles.mainPaneFullscreen,
         ]}
       >
+        {!isTrainer && hasClipStage ? (
+          <View style={styles.coachChipRow} pointerEvents="none">
+            <MeetingCoachChip
+              icon="play-circle-outline"
+              label="Coach is controlling clips"
+            />
+          </View>
+        ) : null}
+        {isTrainer && annotationArmed ? (
+          <View style={[styles.coachChipRow, styles.coachChipRowDraw]} pointerEvents="none">
+            <MeetingCoachChip icon="brush-outline" label="Drawing on" tone="danger" />
+          </View>
+        ) : null}
         {inLiveFocus ? (
           <MeetingLiveStage
             user={focusedIsRemote ? peerUser : null}
@@ -1412,34 +1468,15 @@ function MeetingSurface({
         />
       </View>
 
-      {inCallPerms.cameraRevoked ? (
+      {meetingStatusBanner ? (
         <MeetingJoinBanner
-          message="Camera access was turned off. Re-enable it in Settings to restore your video."
-          variant="warning"
+          message={meetingStatusBanner.message}
+          variant={meetingStatusBanner.variant}
           topOffset={chrome.insets.top + 48}
         />
       ) : null}
 
-      {lobbyPresenceMessage ? (
-        <MeetingJoinBanner
-          message={lobbyPresenceMessage}
-          variant={presence.presenceVariant}
-          topOffset={chrome.insets.top + 48}
-        />
-      ) : !partnerInSession ? (
-        <MeetingJoinBanner
-          message={`Waiting for ${peerDisplayName} to join the session…`}
-          topOffset={chrome.insets.top + 48}
-        />
-      ) : null}
-
-      {partnerInSession && !remoteStream && !partnerDisconnected ? (
-        <MeetingJoinBanner
-          message="Connecting video…"
-          variant="info"
-          topOffset={chrome.insets.top + 48}
-        />
-      ) : null}
+      <MeetingPeerJoinedToast topOffset={chrome.insets.top + (meetingStatusBanner ? 108 : 48)} />
 
       {inLiveFocus ? (
         <>
@@ -1711,7 +1748,6 @@ function MeetingSurface({
         </View>
       ) : null}
 
-      <PeerJoinedModal />
 
       <ClipPickerModal
         visible={pickerOpen}
@@ -1783,7 +1819,7 @@ function MeetingSurface({
       ) : null}
 
       <SessionTimeWarningModal
-        visible={activeWarning != null}
+        visible={timeWarningVisible}
         kind={activeWarning ?? "five"}
         canExtend={!isTrainer && activeWarning === "two"}
         onExtend={() => {
@@ -2011,6 +2047,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   takeoverBtnText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  coachChipRow: {
+    position: "absolute",
+    top: 8,
+    alignSelf: "center",
+    zIndex: 12,
+  },
+  coachChipRowDraw: {
+    top: 40,
+  },
   captureOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.45)",

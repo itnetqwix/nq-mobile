@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Linking,
   Modal,
@@ -13,8 +12,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
-import { MediaViewerChrome } from "../../../../components/media/MediaViewerChrome";
-import { NativeMediaSurface } from "../../../../components/media/NativeMediaSurface";
+import {
+  MediaLoadingOverlay,
+  MediaViewerChrome,
+  NativeMediaSurface,
+} from "../../../../components/media";
 import { useMediaViewport } from "../../../../components/media/useMediaViewport";
 import { isLikelyPdf } from "../../../../lib/clipMediaUrl";
 import { colors, space } from "../../../../theme";
@@ -141,6 +143,10 @@ export function LockerViewerModal({ visible, onClose, uri, title, mode, sharedBy
             width={width}
             height={mediaHeight}
             isActive={visible}
+            loadingMode="parent"
+            onLoadingChange={setLoading}
+            useNativeVideoControls={false}
+            showCustomControls={nativeMode === "video"}
             onReady={() => setLoading(false)}
             onError={() => {
               setLoading(false);
@@ -150,10 +156,9 @@ export function LockerViewerModal({ visible, onClose, uri, title, mode, sharedBy
         )}
 
         {loading && !error ? (
-          <View style={styles.loadingOverlay} pointerEvents="none">
-            <ActivityIndicator size="large" color="#fff" />
-            <Text style={styles.loadingText}>Loading…</Text>
-          </View>
+          <MediaLoadingOverlay
+            message={resolvedMode === "video" ? "Loading video" : "Loading preview"}
+          />
         ) : null}
 
         <View style={[styles.footer, { paddingBottom: insets.bottom + 8 }]}>
@@ -192,14 +197,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.4)",
-    gap: space.sm,
-  },
-  loadingText: { color: "#fff", fontSize: 14 },
   footer: {
     paddingHorizontal: space.md,
     paddingTop: space.xs,

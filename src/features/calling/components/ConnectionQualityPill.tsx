@@ -76,6 +76,7 @@ export function ConnectionQualityPill() {
                   ? stats.packetLossPct.toFixed(1)
                   : "—",
             })}
+            {stats.jitterMs != null ? ` · jitter ${Math.round(stats.jitterMs)}ms` : ""}
           </Text>
         </View>
       ) : null}

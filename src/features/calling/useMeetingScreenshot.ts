@@ -201,7 +201,7 @@ export function useMeetingScreenshot({
 
         if (!localUri) {
           throw new Error(
-            "Could not capture this view. Try again after clips finish loading."
+            "Could not capture this frame. Wait until the clip finishes loading, then try again."
           );
         }
 
@@ -212,6 +212,12 @@ export function useMeetingScreenshot({
         setCaptureCount((n) => n + 1);
         setScreenshotKeys((prev) => [...new Set([...prev, imageKey])]);
         onCaptured?.({ localUri, imageKey });
+        Alert.alert(
+          "Screenshot saved",
+          fallbackSources?.length
+            ? "Saved from the clip preview. Add a description for your game plan if you like."
+            : "Added to this lesson. You can describe it when building the game plan."
+        );
       } catch (e: unknown) {
         await disposePendingPreview();
         const msg = e instanceof Error ? e.message : "Could not save screenshot.";

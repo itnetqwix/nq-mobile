@@ -2,7 +2,7 @@
  * ClipPlayer — large-screen video player for the active lesson clip.
  */
 
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   LayoutChangeEvent,
   PanResponder,
@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { ResizeMode, Video, type AVPlaybackStatus } from "expo-av";
+import { MediaLoadingOverlay } from "../../../components/media/MediaLoadingOverlay";
 
 export type ClipPlayerHandle = {
   play: () => Promise<void> | void;
@@ -68,6 +69,7 @@ export function ClipPlayer({
   onEnded,
 }: Props) {
   const videoRef = React.useRef<Video>(null);
+  const [initialLoading, setInitialLoading] = useState(true);
   const frameSize = useRef({ w: 0, h: 0 });
   const panStart = useRef({ x: 0, y: 0 });
   const panAtGrant = useRef({ x: 0, y: 0 });
@@ -87,6 +89,10 @@ export function ClipPlayer({
   useEffect(() => {
     currentZoomRef.current = z;
   }, [z]);
+
+  useEffect(() => {
+    setInitialLoading(true);
+  }, [uri]);
 
   useEffect(() => {
     const player = videoRef.current;
@@ -174,6 +180,14 @@ export function ClipPlayer({
             useNativeControls={false}
             onPlaybackStatusUpdate={(status: AVPlaybackStatus) => {
               if (!status.isLoaded) return;
+              if (
+                initialLoading &&
+                (status.durationMillis != null ||
+                  (status.positionMillis ?? 0) > 0 ||
+                  status.isPlaying)
+              ) {
+                setInitialLoading(false);
+              }
               if (status.didJustFinish) onEnded?.();
               if (
                 typeof status.durationMillis === "number" &&
@@ -191,6 +205,9 @@ export function ClipPlayer({
           />
         </View>
       </View>
+      {initialLoading ? (
+        <MediaLoadingOverlay message="Loading clip" size="compact" />
+      ) : null}
     </View>
   );
 }

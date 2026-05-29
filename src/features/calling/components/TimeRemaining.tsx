@@ -141,7 +141,9 @@ export function TimeRemaining({
         <Text style={styles.label}>{timerLabel}</Text>
         <Text style={[styles.value, { color }]}>{display}</Text>
         {!isAuthoritative && remainingSeconds != null && (
-          <Text style={styles.syncHint}>syncing…</Text>
+          <Text style={styles.syncHint} accessibilityLabel="Matching server time">
+            syncing…
+          </Text>
         )}
         {statusHint ? <Text style={styles.statusHint}>{statusHint}</Text> : null}
 
@@ -238,10 +240,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   value: {
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: "Menlo",
     fontWeight: "700",
     letterSpacing: 1,
+    minWidth: 52,
+    textAlign: "center",
   },
   syncHint: {
     fontSize: 11,

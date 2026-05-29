@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -25,6 +26,7 @@ import {
   fetchLessonCallSlotStatus,
   postLessonCallSlotTakeover,
 } from "../api/lessonCallSlotApi";
+import { precallNetworkLabel } from "../meetingUx";
 import { useCallPreferences } from "../useCallPreferences";
 import { useAudioRoute } from "../useAudioRoute";
 
@@ -288,14 +290,7 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
           ? c.warning
           : c.textMuted;
 
-  const networkLabel =
-    network.quality === "fast"
-      ? t("precall.netFast")
-      : network.quality === "good"
-        ? t("precall.netGood")
-        : network.quality === "weak"
-          ? t("precall.netWeak")
-          : t("precall.netChecking");
+  const networkLabel = precallNetworkLabel(network.quality, network.loading);
 
   return (
     <ScrollView
@@ -335,6 +330,14 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
                 <Text style={styles.previewText}>
                   {t("precall.permissionDenied")}
                 </Text>
+                <Pressable
+                  onPress={() => void Linking.openSettings()}
+                  style={[styles.settingsLink, { borderColor: c.brandAccent }]}
+                >
+                  <Text style={[styles.settingsLinkText, { color: c.brandAccent }]}>
+                    Open Settings
+                  </Text>
+                </Pressable>
               </>
             ) : !stream ? (
               <>
@@ -462,10 +465,10 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
         <Ionicons name="contrast-outline" size={16} color={c.brandNavy} />
         <View style={{ flex: 1 }}>
           <Text style={[styles.blurTitle, { color: c.text }]}>
-            {t("precall.blurTitle")}
+            Background dim
           </Text>
           <Text style={[styles.blurSub, { color: c.textMuted }]}>
-            {t("precall.blurSub")}
+            Softens your background on this device (not full blur yet).
           </Text>
         </View>
         <Switch
@@ -619,6 +622,14 @@ function useStyles() {
         gap: 8,
       },
       previewText: { color: "#fff", fontWeight: "700", marginTop: 6 },
+      settingsLink: {
+        marginTop: 10,
+        borderWidth: 1,
+        borderRadius: radii.pill,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+      },
+      settingsLinkText: { fontSize: 13, fontWeight: "700" },
       previewControls: {
         position: "absolute",
         bottom: 12,
