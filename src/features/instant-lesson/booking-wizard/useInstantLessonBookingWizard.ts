@@ -15,6 +15,8 @@ import { parseInstantBookingMeta } from "./parseInstantBookingLessonId";
 import type { WizardStep, WizardTrainer } from "./types";
 import { idempotencyHeaders, newIdempotencyKey } from "../../../lib/idempotency";
 import { queryKeys } from "../../../lib/queryKeys";
+import { confirmProceedToPaymentIfWalletShort } from "../../../lib/booking/bookingWalletGuard";
+import { navigateToWalletTopUp } from "../../../navigation/navigationRef";
 import { fetchWalletBalance } from "../../wallet/walletApi";
 import { fetchInstantLessonEligibility } from "../../home/api/homeApi";
 
@@ -196,11 +198,28 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     setCouponError("");
   }, []);
 
+  const payableAmount = useMemo(() => {
+    if (promoResult?.valid && promoResult.final_amount != null) {
+      return Number(promoResult.final_amount);
+    }
+    return expectedPrice;
+  }, [promoResult, expectedPrice]);
+
   const goNext = useCallback(() => {
     const i = wizardStepIndex(step);
     if (step === "duration" && !validateCoupon()) return;
+    const nextStep = WIZARD_STEPS[i + 1];
+    if (step === "clips" && nextStep === "payment" && requiresPayment && payableAmount > 0) {
+      void (async () => {
+        const ok = await confirmProceedToPaymentIfWalletShort(payableAmount, (shortfall) => {
+          navigateToWalletTopUp(shortfall);
+        });
+        if (ok) setStep("payment");
+      })();
+      return;
+    }
     if (i < WIZARD_STEPS.length - 1) setStep(WIZARD_STEPS[i + 1]!);
-  }, [step, validateCoupon]);
+  }, [step, validateCoupon, requiresPayment, payableAmount]);
 
   const goBack = useCallback(() => {
     const i = wizardStepIndex(step);

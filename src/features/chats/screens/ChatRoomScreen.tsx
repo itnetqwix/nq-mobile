@@ -76,6 +76,7 @@ import {
   flushOfflineChatQueue,
   removeFromOfflineChatQueue,
   subscribeOfflineChatQueueEvents,
+  usePendingChatQueueCountForConversation,
   type QueuedChatMessage,
 } from "../lib/offlineChatQueue";
 import {
@@ -2084,17 +2085,26 @@ export function ChatRoomScreen({
     [searchHits]
   );
 
+  const pendingQueueCount = usePendingChatQueueCountForConversation(
+    conversationId,
+    isGroup ? undefined : partner?._id
+  );
+
   const headerSubtitle = isGroup
     ? `${liveMemberCount || memberCount || 0} member${(liveMemberCount || memberCount || 0) === 1 ? "" : "s"}`
-    : partnerTyping
-      ? "typing..."
-      : chatE2E.isE2EActive
-        ? "🔒 End-to-end encrypted"
-        : partnerOnline
-          ? "online"
-          : partnerLastSeen
-            ? `last seen ${formatLastSeen(partnerLastSeen)}`
-            : "";
+    : pendingQueueCount > 0
+      ? pendingQueueCount === 1
+        ? "1 message sending…"
+        : `${pendingQueueCount} messages sending…`
+      : partnerTyping
+        ? "typing..."
+        : chatE2E.isE2EActive
+          ? "🔒 End-to-end encrypted"
+          : partnerOnline
+            ? "online"
+            : partnerLastSeen
+              ? `last seen ${formatLastSeen(partnerLastSeen)}`
+              : "";
 
   const openPartnerProfile = useCallback(() => {
     if (isGroup) {

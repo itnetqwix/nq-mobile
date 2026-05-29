@@ -949,7 +949,16 @@
     "notAvailableTitle": "Not available",
     "notAvailableDescription": "This section is only available for trainer accounts.",
     "emptyTitle": "No trainees yet",
-    "emptyDescription": "Trainees you have booked sessions with will appear here — not the full NetQwix directory."
+    "emptyDescription": "Trainees you have booked sessions with will appear here — not the full NetQwix directory.",
+    "message": "Message",
+    "messageA11y": "Message {{name}}",
+    "nudgeBook": "Nudge",
+    "nudgeA11y": "Nudge {{name}} to book",
+    "noteA11y": "Private note for {{name}}",
+    "noteTitle": "Note — {{name}}",
+    "nudgeSentTitle": "Nudge sent",
+    "nudgeSentBody": "{{name}} received a booking reminder.",
+    "nudgeFailed": "Could not send nudge."
   },
   "bookExpert": {
     "heroTitle": "Book a coach",
@@ -1058,7 +1067,11 @@
     "trySport": "Try {{sport}}",
     "favoriteCoaches": "Favorite coaches",
     "favoriteA11y": "Toggle favorite for {{name}}",
-    "noFavorites": "Star coaches to save them here"
+    "noFavorites": "Star coaches to save them here",
+    "guestSeededTitle": "Coaches you were checking out",
+    "guestSeededSub": "From your browsing before you signed up",
+    "guestSeededCta": "View profile",
+    "guestSeededA11y": "View profile for {{name}}"
   },
   "trainerDashboard": {
     "welcome": "Hi, {{name}}",
@@ -1085,5 +1098,44 @@
     "tipPendingRequests": "You have {{count}} booking requests waiting — respond soon.",
     "tipAddSlots": "Add more open slots this week to get more bookings.",
     "tipGoLive": "Turn on Go live when you're ready for instant lessons."
+  },
+  "continueBooking": {
+    "title": "Finish your booking",
+    "bodyInstant": "You were booking an instant lesson with {{name}}.",
+    "bodySchedule": "You were scheduling with {{name}} before signing in.",
+    "continue": "Continue",
+    "continueA11y": "Continue booking",
+    "dismissA11y": "Dismiss",
+    "coachFallback": "your coach"
+  },
+  "postSessionRating": {
+    "title": "Rate your lesson",
+    "body": "How was your session with {{name}}? It only takes a moment.",
+    "rate": "Rate",
+    "rateA11y": "Rate session",
+    "dismissA11y": "Dismiss rating reminder",
+    "coachFallback": "your coach",
+    "modalTitle": "How was your session?",
+    "modalSub": "Your feedback helps us improve every lesson.",
+    "overall": "Overall",
+    "av": "Audio / Video",
+    "recommend": "Would you recommend?",
+    "skip": "Not now",
+    "submit": "Submit",
+    "thanksTitle": "Thank you for your feedback!",
+    "alertStarsTitle": "Please rate",
+    "alertStarsBody": "Choose stars for session and audio/video.",
+    "alertRecommend": "Tell us whether you'd recommend your coach.",
+    "alertDetailsTitle": "Add details",
+    "alertDetailsBody": "Please include a title and short remark.",
+    "submitFailedTitle": "Could not submit",
+    "submitFailedBody": "Please try again."
+  },
+  "ai": {
+    "action": {
+      "students": "My students",
+      "chats": "Open chats",
+      "instantRequests": "Instant lesson requests"
+    }
   }
 }

@@ -6,8 +6,11 @@ import { AccountType } from "../../../constants/accountType";
 import { queryKeys } from "../../../lib/queryKeys";
 import type { HomeStackParamList } from "../../../navigation/types";
 import { useAuth } from "../context/AuthContext";
+import { openChatWithUser } from "../../chats/lib/openChatWithUser";
 import { replayGuestData } from "../lib/guestActivity";
+import { setDeferredBookResume } from "../lib/deferredBookResume";
 import { consumePendingAuthIntent } from "../lib/pendingAuthIntent";
+import { getTrainerId, getTrainerName } from "../../bookexpert/lib/trainerUtils";
 
 type HomeNav = NativeStackNavigationProp<HomeStackParamList>;
 
@@ -55,7 +58,10 @@ export function PendingAuthResumeBridge({ onResumeBook }: Props) {
     if (!pending) return;
 
     if (pending.intent === "book" && pending.trainer && onResumeBook) {
-      onResumeBook(pending.trainer, pending.bookMode ?? "instant");
+      setDeferredBookResume({
+        trainer: pending.trainer,
+        mode: pending.bookMode ?? "instant",
+      });
       return;
     }
 
@@ -64,8 +70,28 @@ export function PendingAuthResumeBridge({ onResumeBook }: Props) {
       return;
     }
 
+    if (pending.intent === "chat" && pending.trainer) {
+      const trainerId = getTrainerId(pending.trainer);
+      if (trainerId) {
+        void openChatWithUser(
+          navigation,
+          {
+            _id: trainerId,
+            fullname: getTrainerName(pending.trainer) || "Coach",
+            profile_picture: pending.trainer.profile_picture as string | undefined,
+          },
+          (key, opts) => String(opts?.defaultValue ?? key)
+        );
+        return;
+      }
+    }
+
     if (pending.intent === "chat") {
-      navigation.navigate("DashboardFeature", { featureId: "my-community" });
+      try {
+        (navigation as any).getParent()?.navigate("Chats");
+      } catch {
+        navigation.navigate("DashboardFeature", { featureId: "my-community" });
+      }
       return;
     }
 

@@ -24,6 +24,7 @@ import { API_ROUTES } from "../../../config/apiRoutes";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { putFileToPresignedUrl } from "../../../lib/presignedPut";
 import { fetchSessionReport } from "../meetingReportApi";
+import { sendChatTextMessage } from "../../chats/lib/sendChatText";
 import {
   NOTIFICATION_TITLES,
   useNotifications,
@@ -137,7 +138,22 @@ export function SessionGamePlanModal({
     if (visible) void load();
   }, [visible, load]);
 
-  const save = async () => {
+  const sendSummaryToChat = useCallback(
+    async (heading: string, notes: string) => {
+      const lines = [
+        `📋 Game plan: ${heading}`,
+        notes.trim() ? notes.trim() : null,
+        images.length > 0 ? `${images.length} screenshot(s) saved to your locker.` : null,
+      ].filter(Boolean);
+      await sendChatTextMessage({
+        receiverId: traineeId,
+        content: lines.join("\n\n"),
+      });
+    },
+    [traineeId, images.length]
+  );
+
+  const save = async (alsoSendToChat: boolean) => {
     if (!title.trim()) {
       Alert.alert("Title required", "Add a title for this game plan.");
       return;
@@ -211,11 +227,26 @@ export function SessionGamePlanModal({
         bookingInfo: { sessionId },
       });
 
+      if (alsoSendToChat) {
+        try {
+          await sendSummaryToChat(title.trim(), topic.trim());
+        } catch {
+          Alert.alert(
+            "Saved to locker",
+            "Game plan was saved but could not be sent in chat. You can paste a link from Game plans in Chats."
+          );
+          onClose();
+          return;
+        }
+      }
+
       Alert.alert(
-        "Game plan saved",
-        pdfAttached
-          ? "PDF and screenshots are in your locker under Game plans."
-          : "Screenshots are in your locker under Game plans."
+        alsoSendToChat ? "Game plan saved & sent" : "Game plan saved",
+        alsoSendToChat
+          ? "Your trainee received a chat message and can open Game plans in their locker."
+          : pdfAttached
+            ? "PDF and screenshots are in your locker under Game plans."
+            : "Screenshots are in your locker under Game plans."
       );
       onClose();
     } catch (e: any) {
@@ -268,16 +299,22 @@ export function SessionGamePlanModal({
           </ScrollView>
         )}
 
-        <View style={styles.actions}>
-          <Pressable style={styles.btnSecondary} onPress={onClose}>
-            <Text style={styles.btnSecondaryText}>Skip</Text>
-          </Pressable>
+        <View style={styles.actionsCol}>
           <Pressable
             style={[styles.btnPrimary, saving && { opacity: 0.6 }]}
-            onPress={() => void save()}
+            onPress={() => void save(true)}
             disabled={saving}
           >
             <Text style={styles.btnPrimaryText}>
+              {saving ? "Saving…" : "Save & send to chat"}
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.btnSecondary, saving && { opacity: 0.6 }]}
+            onPress={() => void save(false)}
+            disabled={saving}
+          >
+            <Text style={styles.btnSecondaryText}>
               {saving
                 ? saveStep === "pdf"
                   ? "Building PDF…"
@@ -286,8 +323,11 @@ export function SessionGamePlanModal({
                     : saveStep === "report"
                       ? "Saving plan…"
                       : "Saving…"
-                : "Save game plan"}
+                : "Save to locker only"}
             </Text>
+          </Pressable>
+          <Pressable style={styles.btnGhost} onPress={onClose} disabled={saving}>
+            <Text style={styles.btnGhostText}>Skip</Text>
           </Pressable>
         </View>
       </View>
@@ -313,7 +353,9 @@ const styles = StyleSheet.create({
   empty: { marginTop: 20, color: "#666", fontSize: 14 },
   strip: { marginTop: 16, maxHeight: 120 },
   thumb: { width: 100, height: 100, borderRadius: 8, marginRight: 10, backgroundColor: "#eee" },
-  actions: { flexDirection: "row", gap: 12, marginTop: "auto", paddingBottom: 24 },
+  actionsCol: { gap: 10, marginTop: "auto", paddingBottom: 24 },
+  btnGhost: { paddingVertical: 12, alignItems: "center" },
+  btnGhostText: { color: "#666", fontWeight: "600" },
   btnSecondary: {
     flex: 1,
     paddingVertical: 14,

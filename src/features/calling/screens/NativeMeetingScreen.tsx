@@ -85,6 +85,7 @@ import { ReconnectFailedOverlay } from "../components/ReconnectFailedOverlay";
 import {
   hasShownSessionRating,
   markSessionRatingShown,
+  stashPendingSessionRating,
 } from "../postSessionRatingStore";
 import { MeetingLiveStage } from "../components/MeetingLiveStage";
 import { MeetingMiniPip } from "../components/MeetingMiniPip";
@@ -1852,9 +1853,15 @@ function MeetingSurface({
       <RatingsModal
         visible={ratingsOpen}
         onClose={() => {
-          void markSessionRatingShown(lessonId);
           setRatingsOpen(false);
           onExit();
+        }}
+        onSkip={() => {
+          void markSessionRatingShown(lessonId);
+          void stashPendingSessionRating(lessonId);
+        }}
+        onSubmitted={() => {
+          void markSessionRatingShown(lessonId);
         }}
         bookingId={lessonId}
         accountType={accountType}

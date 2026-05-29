@@ -30,6 +30,7 @@ import {
 } from "../../lib/traineeDiscoverConstants";
 import { sortTrainersForDiscover } from "../../lib/sortTrainersForDiscover";
 import { ForYouTrainersSection } from "./ForYouTrainersSection";
+import { GuestSeededCoachesSection } from "./GuestSeededCoachesSection";
 import { PastBookedTrainersSection } from "./PastBookedTrainersSection";
 import { RecentlyViewedTrainersRow } from "./RecentlyViewedTrainersRow";
 import { HomeBannerStrip } from "../../../content/components/HomeBannerStrip";
@@ -339,6 +340,10 @@ export function TraineeDiscoverDashboard({
           session={nextSession}
           onOpenSession={onOpenSession ? () => onOpenSession(nextSession) : undefined}
         />
+      ) : null}
+
+      {!isGuest ? (
+        <GuestSeededCoachesSection onSelectTrainer={onViewTrainer} />
       ) : null}
 
       {!isGuest ? (

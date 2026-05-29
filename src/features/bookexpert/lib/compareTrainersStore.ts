@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSyncExternalStore } from "react";
 import {
   getTrainerAvgRating,
@@ -9,6 +10,7 @@ import {
 } from "./trainerUtils";
 
 export const MAX_COMPARE_TRAINERS = 3;
+const STORAGE_KEY = "nq.compare.trainers.v1";
 
 export type CompareTrainerRow = {
   _id: string;
@@ -25,6 +27,7 @@ export type CompareTrainerRow = {
 };
 
 let state: CompareTrainerRow[] = [];
+let hydrated = false;
 const listeners = new Set<() => void>();
 
 function emit(): void {
@@ -70,10 +73,39 @@ function buildRow(trainer: Record<string, unknown>, id: string): CompareTrainerR
   };
 }
 
+async function persist(): Promise<void> {
+  try {
+    const payload = state.map((row) => row.raw);
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    /* best effort */
+  }
+}
+
+export async function hydrateCompareTrainersStore(): Promise<void> {
+  if (hydrated) return;
+  hydrated = true;
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const list = JSON.parse(raw) as Record<string, unknown>[];
+    if (!Array.isArray(list)) return;
+    state = list
+      .map((trainer) => {
+        const id = getTrainerId(trainer);
+        return id ? buildRow(trainer, id) : null;
+      })
+      .filter((row): row is CompareTrainerRow => row !== null)
+      .slice(0, MAX_COMPARE_TRAINERS);
+    emit();
+  } catch {
+    state = [];
+  }
+}
+
 /**
- * Compare-trainers tray. Lives in-memory only — the tray is a transient
- * shopping basket while the user is browsing, not a saved-list feature.
- * Closing the app drops it; favorites/saved lists are the durable store.
+ * Compare-trainers tray. Persisted locally so a short app restart does not
+ * drop the user's comparison list while browsing coaches.
  */
 export const compareTrainersStore = {
   subscribe,
@@ -95,6 +127,7 @@ export const compareTrainersStore = {
     if (existing) {
       state = state.filter((row) => row._id !== id);
       emit();
+      void persist();
       return { pinned: false, full: false };
     }
 
@@ -104,6 +137,7 @@ export const compareTrainersStore = {
 
     state = [...state, buildRow(trainer, id)];
     emit();
+    void persist();
     return { pinned: true, full: false };
   },
 
@@ -111,12 +145,14 @@ export const compareTrainersStore = {
     if (!state.some((row) => row._id === trainerId)) return;
     state = state.filter((row) => row._id !== trainerId);
     emit();
+    void persist();
   },
 
   clear(): void {
     if (state.length === 0) return;
     state = [];
     emit();
+    void persist();
   },
 };
 

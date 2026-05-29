@@ -87,6 +87,18 @@ function countSnapshot(): number {
   return queue.length;
 }
 
+function countForConversationSnapshot(
+  conversationId: string | undefined,
+  receiverId: string | undefined
+): number {
+  if (!conversationId && !receiverId) return 0;
+  return queue.filter((item) => {
+    if (conversationId && item.conversationId === conversationId) return true;
+    if (receiverId && item.receiverId === receiverId) return true;
+    return false;
+  }).length;
+}
+
 async function persist() {
   try {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(queue));
@@ -204,6 +216,18 @@ export async function flushOfflineChatQueue(): Promise<{ sent: number; failed: n
  */
 export function usePendingChatQueueCount(): number {
   return useSyncExternalStore(subscribe, countSnapshot, countSnapshot);
+}
+
+/** Pending sends for the open conversation (header badge). */
+export function usePendingChatQueueCountForConversation(
+  conversationId: string | undefined,
+  receiverId: string | undefined
+): number {
+  return useSyncExternalStore(
+    subscribe,
+    () => countForConversationSnapshot(conversationId, receiverId),
+    () => countForConversationSnapshot(conversationId, receiverId)
+  );
 }
 
 /**

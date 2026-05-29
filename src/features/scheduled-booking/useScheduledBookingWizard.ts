@@ -18,6 +18,8 @@ import {
   type ScheduledWizardStep,
 } from "./constants";
 import { queryKeys } from "../../lib/queryKeys";
+import { confirmProceedToPaymentIfWalletShort } from "../../lib/booking/bookingWalletGuard";
+import { navigateToWalletTopUp } from "../../navigation/navigationRef";
 import { bookScheduledSession, fetchDayAvailability, validateSlotRange } from "./scheduledBookingApi";
 import {
   buildStartCandidates,
@@ -253,6 +255,16 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
       if (skipPayment) {
         setChargingPrice(0);
         setStep("confirm");
+        return;
+      }
+      const nextStep = SCHEDULED_WIZARD_STEPS[scheduledStepIndex(step) + 1];
+      if (nextStep === "payment") {
+        void (async () => {
+          const ok = await confirmProceedToPaymentIfWalletShort(payableAmount, (shortfall) => {
+            navigateToWalletTopUp(shortfall);
+          });
+          if (ok) setStep("payment");
+        })();
         return;
       }
     }

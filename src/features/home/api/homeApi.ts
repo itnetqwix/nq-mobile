@@ -198,6 +198,18 @@ export async function fetchRecentTrainers(): Promise<any[]> {
   return Array.isArray(raw) ? dedupeRowsById(raw) : [];
 }
 
+/** Coaches ranked from pre-signup guest browsing (`guest-activity` ingest). */
+export async function fetchGuestSeededTrainers(limit = 12): Promise<any[]> {
+  const res = await apiClient.get(API_ROUTES.trainee.guestSeededTrainers, {
+    params: { limit },
+  });
+  const raw =
+    (res.data as { data?: unknown })?.data ??
+    (res.data as { result?: unknown })?.result ??
+    res.data;
+  return Array.isArray(raw) ? dedupeRowsById(raw) : [];
+}
+
 export type PersonalizedReason =
   | "past_session_repeat"
   | "past_session_same_category"

@@ -16,7 +16,7 @@ import * as Notifications from "expo-notifications";
 import { AppState } from "react-native";
 
 import { useAuth } from "../auth/context/AuthContext";
-import { navigationRef, navigateToNotifications } from "../../navigation/navigationRef";
+import { routePushNotificationTap } from "../../lib/notifications/notificationRouting";
 import { presentNativeInstantLessonIncoming } from "../instant-lesson/InstantLessonCallKeepBridge";
 import {
   configureInstantLessonNotificationCategories,
@@ -165,58 +165,11 @@ export function PushNotificationBridge() {
 
 function handlePushTap(title: string, data: Record<string, unknown>) {
   const kind = String(data.kind ?? "").toLowerCase();
-  const lessonId =
-    (data.lessonId as string) ??
-    (data.bookingId as string) ??
-    (data.booking_id as string) ??
-    null;
-
   if (kind === "instant_lesson_request") {
     const payload = parseInstantLessonNotificationData(data);
     if (payload) {
       emitInstantLessonIncomingRequest(payload);
     }
-    if (navigationRef.isReady()) {
-      (navigationRef as any).navigate("Main", {
-        screen: "Tabs",
-        params: {
-          screen: "Schedule",
-        },
-      });
-    }
-    return;
   }
-
-  if (
-    kind === "meeting" ||
-    kind === "instant_lesson_accept" ||
-    kind === "instant_lesson_accepted" ||
-    kind === "instant_lesson_join_reminder" ||
-    (data.isInstant && data.outcome === "accepted")
-  ) {
-    if (lessonId && navigationRef.isReady()) {
-      (navigationRef as any).navigate("Meeting", { lessonId });
-      return;
-    }
-  }
-
-  const lower = title.toLowerCase();
-  if (
-    lower.includes("book") ||
-    lower.includes("session") ||
-    lower.includes("confirm") ||
-    lessonId
-  ) {
-    if (navigationRef.isReady()) {
-      (navigationRef as any).navigate("Main", {
-        screen: "Tabs",
-        params: {
-          screen: "Schedule",
-        },
-      });
-      return;
-    }
-  }
-
-  navigateToNotifications();
+  routePushNotificationTap(title, data);
 }

@@ -13,7 +13,11 @@ import {
   View,
 } from "react-native";
 import { EmptyState, Skeleton } from "../../../components/ui";
-import type { RootStackParamList, ShellSurfaceRouteId } from "../../../navigation/types";
+import type { RootStackParamList } from "../../../navigation/types";
+import {
+  buildNotificationRoute,
+  navigateNotificationRoute,
+} from "../../../lib/notifications/notificationRouting";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { queryKeys } from "../../../lib/queryKeys";
 import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
@@ -103,43 +107,6 @@ function NotificationItem({
 
 type ShellNav = NativeStackNavigationProp<RootStackParamList>;
 
-/** Map a notification (title + bookingInfo) onto a navigation action. The
- *  same title-based routing the toast uses, plus bookingInfo deep-linking
- *  when the backend supplies it. */
-function buildNotificationRoute(item: any) {
-  const title = String(item?.title ?? "").toLowerCase();
-  const booking = item?.bookingInfo ?? item?.booking_info ?? null;
-
-  if (
-    title.includes("book") ||
-    title.includes("session") ||
-    title.includes("confirm") ||
-    title.includes("reminder") ||
-    title.includes("minute") ||
-    title.includes("ended") ||
-    title.includes("cancel") ||
-    booking?.lessonId
-  ) {
-    return { kind: "feature", featureId: "upcoming-sessions" } as const;
-  }
-  if (title.includes("friend")) {
-    return { kind: "feature", featureId: "friends" } as const;
-  }
-  if (title.includes("clip")) {
-    return { kind: "shell", surfaceId: "clips" as ShellSurfaceRouteId } as const;
-  }
-  if (title.includes("plan")) {
-    return { kind: "shell", surfaceId: "gamePlans" as ShellSurfaceRouteId } as const;
-  }
-  if (title.includes("payment") || title.includes("transaction")) {
-    return { kind: "shell", surfaceId: "transactions" as ShellSurfaceRouteId } as const;
-  }
-  if (title.includes("message") || title.includes("chat")) {
-    return { kind: "tab", tab: "Chats" as const } as const;
-  }
-  return null;
-}
-
 export function NotificationsScreen() {
   const c = useThemeColors();
   const styles = useNotificationListStyles();
@@ -171,25 +138,24 @@ export function NotificationsScreen() {
 
   const handleNotificationPress = useCallback(
     (item: any) => {
-      const route = buildNotificationRoute(item);
+      const route = buildNotificationRoute({
+        title: item?.title,
+        bookingInfo: item?.bookingInfo ?? item?.booking_info,
+        data: (item?.data ?? item?.payload ?? {}) as Record<string, unknown>,
+      });
       if (!route) return;
-      /**
-       * We are already inside Main → Menu → ShellSurface (Notifications). Use
-       * relative navigation so we stay in the same tab stack when possible.
-       */
       try {
         if (route.kind === "shell") {
           (navigation as any).push("ShellSurface", { surfaceId: route.surfaceId });
-        } else if (route.kind === "feature") {
+          return;
+        }
+        if (route.kind === "feature") {
           (navigation as any).push("DashboardFeature", {
             featureId: route.featureId,
           });
-        } else if (route.kind === "tab") {
-          (navigation as any).navigate("Main", {
-            screen: "Tabs",
-            params: { screen: route.tab },
-          });
+          return;
         }
+        navigateNotificationRoute(route);
       } catch {
         /* swallow — non-blocking */
       }

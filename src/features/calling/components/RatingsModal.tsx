@@ -24,6 +24,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { AccountType } from "../../../constants/accountType";
 import { postRating } from "../postSessionApi";
 import LessonSummaryCard from "../../ai/LessonSummaryCard";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { useThemeColors } from "../../../theme";
 
 type Props = {
@@ -34,6 +35,10 @@ type Props = {
   /** When true, the modal hides the "title + remarks" requirement (web sets
    *  this when ratings open immediately after a call). */
   isFromCall?: boolean;
+  /** Fired after a successful submit (home banner + in-call flow). */
+  onSubmitted?: () => void;
+  /** Skip / not now — caller may stash a dashboard reminder. */
+  onSkip?: () => void;
 };
 
 export function RatingsModal({
@@ -42,7 +47,10 @@ export function RatingsModal({
   bookingId,
   accountType,
   isFromCall = true,
+  onSubmitted,
+  onSkip,
 }: Props) {
+  const { t } = useAppTranslation();
   const c = useThemeColors();
   const [submitted, setSubmitted] = useState(false);
   const [session, setSession] = useState(0);
@@ -64,15 +72,30 @@ export function RatingsModal({
 
   const handleSubmit = async () => {
     if (session === 0 || audio === 0) {
-      Alert.alert("Please rate", "Choose stars for session and audio/video.");
+      Alert.alert(
+        t("postSessionRating.alertStarsTitle", { defaultValue: "Please rate" }),
+        t("postSessionRating.alertStarsBody", {
+          defaultValue: "Choose stars for session and audio/video.",
+        })
+      );
       return;
     }
     if (!isTrainer && recommend === 0) {
-      Alert.alert("Please rate", "Tell us whether you'd recommend your coach.");
+      Alert.alert(
+        t("postSessionRating.alertStarsTitle", { defaultValue: "Please rate" }),
+        t("postSessionRating.alertRecommend", {
+          defaultValue: "Tell us whether you'd recommend your coach.",
+        })
+      );
       return;
     }
     if (!isFromCall && (!title.trim() || !remarks.trim())) {
-      Alert.alert("Add details", "Please include a title and short remark.");
+      Alert.alert(
+        t("postSessionRating.alertDetailsTitle", { defaultValue: "Add details" }),
+        t("postSessionRating.alertDetailsBody", {
+          defaultValue: "Please include a title and short remark.",
+        })
+      );
       return;
     }
     try {
@@ -88,10 +111,13 @@ export function RatingsModal({
       });
       reset();
       setSubmitted(true);
+      onSubmitted?.();
     } catch (err: any) {
       Alert.alert(
-        "Could not submit",
-        err?.response?.data?.message ?? err?.message ?? "Please try again."
+        t("postSessionRating.submitFailedTitle", { defaultValue: "Could not submit" }),
+        err?.response?.data?.message ??
+          err?.message ??
+          t("postSessionRating.submitFailedBody", { defaultValue: "Please try again." })
       );
     } finally {
       setSubmitting(false);
@@ -109,18 +135,32 @@ export function RatingsModal({
         <View style={[styles.card, { backgroundColor: c.surfaceElevated }]}>
           {!submitted ? (
             <>
-              <Text style={styles.title}>How was your session?</Text>
+              <Text style={styles.title}>
+                {t("postSessionRating.modalTitle", { defaultValue: "How was your session?" })}
+              </Text>
               <Text style={styles.subtitle}>
-                Your feedback helps us improve every lesson.
+                {t("postSessionRating.modalSub", {
+                  defaultValue: "Your feedback helps us improve every lesson.",
+                })}
               </Text>
 
-              <StarsRow value={session} onChange={setSession} label="Overall" />
-              <StarsRow value={audio} onChange={setAudio} label="Audio / Video" />
+              <StarsRow
+                value={session}
+                onChange={setSession}
+                label={t("postSessionRating.overall", { defaultValue: "Overall" })}
+              />
+              <StarsRow
+                value={audio}
+                onChange={setAudio}
+                label={t("postSessionRating.av", { defaultValue: "Audio / Video" })}
+              />
               {!isTrainer && (
                 <StarsRow
                   value={recommend}
                   onChange={setRecommend}
-                  label="Would you recommend?"
+                  label={t("postSessionRating.recommend", {
+                    defaultValue: "Would you recommend?",
+                  })}
                 />
               )}
 
@@ -152,32 +192,51 @@ export function RatingsModal({
               )}
 
               <View style={styles.row}>
-                <Pressable onPress={onClose} style={[styles.btn, styles.btnGhost]}>
-                  <Text style={styles.btnGhostText}>Skip</Text>
+                <Pressable
+                  onPress={() => {
+                    onSkip?.();
+                    onClose();
+                  }}
+                  style={[styles.btn, styles.btnGhost]}
+                >
+                  <Text style={styles.btnGhostText}>
+                    {t("postSessionRating.skip", { defaultValue: "Not now" })}
+                  </Text>
                 </Pressable>
                 <Pressable
-                  onPress={handleSubmit}
+                  onPress={() => void handleSubmit()}
                   style={[styles.btn, styles.btnPrimary]}
                   disabled={submitting}
                 >
                   {submitting ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.btnPrimaryText}>Submit</Text>
+                    <Text style={styles.btnPrimaryText}>
+                      {t("postSessionRating.submit", { defaultValue: "Submit" })}
+                    </Text>
                   )}
                 </Pressable>
               </View>
             </>
           ) : (
             <>
-              <Text style={styles.title}>Thank you for your feedback!</Text>
+              <Text style={styles.title}>
+                {t("postSessionRating.thanksTitle", {
+                  defaultValue: "Thank you for your feedback!",
+                })}
+              </Text>
               <LessonSummaryCard sessionId={bookingId} />
               <View style={[styles.row, { marginTop: 12 }]}>
                 <Pressable
-                  onPress={() => { setSubmitted(false); onClose(); }}
+                  onPress={() => {
+                    setSubmitted(false);
+                    onClose();
+                  }}
                   style={[styles.btn, styles.btnPrimary]}
                 >
-                  <Text style={styles.btnPrimaryText}>Done</Text>
+                  <Text style={styles.btnPrimaryText}>
+                    {t("common.done", { defaultValue: "Done" })}
+                  </Text>
                 </Pressable>
               </View>
             </>

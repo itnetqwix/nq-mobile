@@ -31,7 +31,10 @@ export type AiActionType =
   | "open-wallet-topup"
   | "open-support-chat"
   | "open-report-issue"
-  | "open-faq";
+  | "open-faq"
+  | "open-students"
+  | "open-chats"
+  | "open-instant-requests";
 
 export type AiAction = {
   type: AiActionType;
@@ -60,6 +63,12 @@ export function describeAiAction(action: AiAction): string {
       return i18n.t("ai.action.reportIssue", { defaultValue: "Report an issue" });
     case "open-faq":
       return i18n.t("ai.action.faq", { defaultValue: "Open FAQ" });
+    case "open-students":
+      return i18n.t("ai.action.students", { defaultValue: "My students" });
+    case "open-chats":
+      return i18n.t("ai.action.chats", { defaultValue: "Open chats" });
+    case "open-instant-requests":
+      return i18n.t("ai.action.instantRequests", { defaultValue: "Instant lesson requests" });
     default:
       return i18n.t("ai.action.open", { defaultValue: "Open" });
   }
@@ -121,6 +130,21 @@ export function runAiAction(action: AiAction): boolean {
       return navShell("reportIssue");
     case "open-faq":
       return navFeature("faq");
+    case "open-students":
+      return navFeature("students");
+    case "open-chats":
+      if (!navigationRef.isReady()) return false;
+      try {
+        (navigationRef as any).navigate("Main", {
+          screen: "Tabs",
+          params: { screen: "Chats" },
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    case "open-instant-requests":
+      return navFeature("upcoming-sessions");
     default:
       return false;
   }
@@ -143,6 +167,9 @@ export function parseAiActions(value: unknown): AiAction[] {
     "open-support-chat",
     "open-report-issue",
     "open-faq",
+    "open-students",
+    "open-chats",
+    "open-instant-requests",
   ];
   const out: AiAction[] = [];
   for (const raw of value) {

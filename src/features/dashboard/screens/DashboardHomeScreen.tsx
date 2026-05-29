@@ -13,6 +13,11 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { PendingAuthResumeBridge } from "../../auth/components/PendingAuthResumeBridge";
+import {
+  clearDeferredBookResume,
+  useDeferredBookResume,
+} from "../../auth/lib/deferredBookResume";
+import { ContinueBookingBanner } from "../components/home/ContinueBookingBanner";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -60,6 +65,8 @@ import {
   shouldShowInDashboardUpcoming,
 } from "../../../lib/sessions/sessionUtils";
 import { PostLessonConcernBanner } from "../../sessions/components/PostLessonConcernBanner";
+import { PostSessionRatingBanner } from "../../sessions/components/PostSessionRatingBanner";
+import { hasViewerRated } from "../../../lib/sessions/sessionRatingUtils";
 import { TrainerProfileModal } from "../../bookexpert/components/TrainerProfileModal";
 import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
 import { ScheduledBookingWizardModal } from "../../scheduled-booking/ScheduledBookingWizardModal";
@@ -319,7 +326,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
     staleTime: 120_000,
   });
 
-  const recentCompletedForConcern = useMemo(() => {
+  const recentCompletedSession = useMemo(() => {
     const completed = completedSessions.filter(
       (s: any) => normalizeSessionStatus(s?.status) === "completed"
     );
@@ -334,6 +341,14 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
     if (Date.now() - endedAt > 7 * 24 * 60 * 60 * 1000) return null;
     return latest;
   }, [completedSessions]);
+
+  const recentCompletedForConcern = recentCompletedSession;
+
+  const recentCompletedForRating = useMemo(() => {
+    if (!recentCompletedSession) return null;
+    if (hasViewerRated(recentCompletedSession, isTrainer)) return null;
+    return recentCompletedSession;
+  }, [recentCompletedSession, isTrainer]);
 
   const { data: friendRequests = [], isLoading: loadingFriends } = useQuery({
     queryKey: queryKeys.friends.requests,
@@ -492,6 +507,8 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
     pendingSessions.length === 0 &&
     upcomingConfirmed.length === 0;
 
+  const deferredBook = useDeferredBookResume();
+
   const resumeBook = useCallback(
     (trainer: Record<string, unknown>, mode: "instant" | "schedule") => {
       if (mode === "schedule") {
@@ -502,6 +519,12 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
     },
     []
   );
+
+  const handleContinueDeferredBook = useCallback(() => {
+    if (!deferredBook) return;
+    resumeBook(deferredBook.trainer, deferredBook.mode);
+    clearDeferredBookResume();
+  }, [deferredBook, resumeBook]);
 
   return (
     <>
@@ -602,6 +625,15 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
         <CallRejoinBanner />
       </View>
 
+      {isTrainee && deferredBook ? (
+        <ContinueBookingBanner
+          trainer={deferredBook.trainer}
+          mode={deferredBook.mode}
+          onContinue={handleContinueDeferredBook}
+          onDismiss={clearDeferredBookResume}
+        />
+      ) : null}
+
       {/* Pre-class checklist surfaces when next confirmed session is ≤5 min out. */}
       <PreClassChecklistSheet
         sessions={sessions}
@@ -684,6 +716,17 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
               onOpenClips={() => openShell("clips")}
             />
           </HomeMainCont>
+        ) : null}
+
+        {recentCompletedForRating ? (
+          <PostSessionRatingBanner
+            session={recentCompletedForRating}
+            accountType={accountType}
+            otherPartyName={
+              getOtherParty(recentCompletedForRating, isTrainer)?.fullname ||
+              getOtherParty(recentCompletedForRating, isTrainer)?.fullName
+            }
+          />
         ) : null}
 
         {recentCompletedForConcern ? (

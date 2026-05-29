@@ -114,6 +114,7 @@ export const queryKeys = {
   },
   trainee: {
     favorites: ["trainee", "favoriteTrainers"] as const,
+    guestSeededTrainers: ["guestSeededTrainers"] as const,
   },
   trainerRole: {
     dashboardSummary: ["trainer", "dashboardSummary"] as const,

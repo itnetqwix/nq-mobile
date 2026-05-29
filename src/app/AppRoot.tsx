@@ -16,6 +16,7 @@ import {
 import { AuthProvider } from "../features/auth/context/AuthContext";
 import { hydrateLastAuthMethod } from "../features/auth/lib/lastAuthMethod";
 import { hydratePendingAuthIntent } from "../features/auth/lib/pendingAuthIntent";
+import { hydrateCompareTrainersStore } from "../features/bookexpert/lib/compareTrainersStore";
 import { bootstrapCallRejoinStore } from "../features/calling/callRejoinStore";
 import {
   SystemGateProvider,
@@ -79,6 +80,7 @@ export function AppRoot() {
     void hydrateLastAuthMethod();
     void bootstrapCallRejoinStore();
     void hydrateOfflineChatQueue();
+    void hydrateCompareTrainersStore();
   }, []);
 
   useEffect(() => {
