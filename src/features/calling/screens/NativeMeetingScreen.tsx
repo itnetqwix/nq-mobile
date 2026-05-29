@@ -1858,7 +1858,9 @@ function MeetingSurface({
         }}
         onSkip={() => {
           void markSessionRatingShown(lessonId);
-          void stashPendingSessionRating(lessonId);
+          if (endedNotifiedRef.current || lessonTimer.status === "ended") {
+            void stashPendingSessionRating(lessonId);
+          }
         }}
         onSubmitted={() => {
           void markSessionRatingShown(lessonId);

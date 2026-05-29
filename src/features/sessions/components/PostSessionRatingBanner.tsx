@@ -7,10 +7,11 @@ import { RatingsModal } from "../../calling/components/RatingsModal";
 import {
   consumePendingSessionRating,
   dismissRatingBanner,
+  hasShownSessionRating,
   isRatingBannerDismissed,
   markSessionRatingShown,
 } from "../../calling/postSessionRatingStore";
-import { hasViewerRated } from "../../../lib/sessions/sessionRatingUtils";
+import { shouldOfferSessionRating } from "../../../lib/sessions/shouldOfferSessionRating";
 import { queryKeys } from "../../../lib/queryKeys";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { colors, radii, space, typography } from "../../../theme";
@@ -19,6 +20,8 @@ type Props = {
   session: Record<string, unknown>;
   accountType: string | null;
   otherPartyName?: string;
+  /** Upcoming / live sessions — suppress rating while any lesson is in progress. */
+  activeSessions?: Array<Record<string, unknown>>;
 };
 
 /**
@@ -67,7 +70,7 @@ export function PostSessionRatingBanner({ session, accountType, otherPartyName }
     void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
   }, [queryClient, sessionId]);
 
-  if (hidden || alreadyRated || !sessionId) return null;
+  if (hidden || !eligible || !sessionId) return null;
 
   const name = otherPartyName?.trim() || t("postSessionRating.coachFallback", { defaultValue: "your coach" });
 

@@ -66,7 +66,7 @@ import {
 } from "../../../lib/sessions/sessionUtils";
 import { PostLessonConcernBanner } from "../../sessions/components/PostLessonConcernBanner";
 import { PostSessionRatingBanner } from "../../sessions/components/PostSessionRatingBanner";
-import { hasViewerRated } from "../../../lib/sessions/sessionRatingUtils";
+import { shouldOfferSessionRating } from "../../../lib/sessions/shouldOfferSessionRating";
 import { TrainerProfileModal } from "../../bookexpert/components/TrainerProfileModal";
 import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
 import { ScheduledBookingWizardModal } from "../../scheduled-booking/ScheduledBookingWizardModal";
@@ -346,9 +346,15 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
 
   const recentCompletedForRating = useMemo(() => {
     if (!recentCompletedSession) return null;
-    if (hasViewerRated(recentCompletedSession, isTrainer)) return null;
+    if (
+      !shouldOfferSessionRating(recentCompletedSession, isTrainer, {
+        activeSessions: sessions,
+      })
+    ) {
+      return null;
+    }
     return recentCompletedSession;
-  }, [recentCompletedSession, isTrainer]);
+  }, [recentCompletedSession, isTrainer, sessions]);
 
   const { data: friendRequests = [], isLoading: loadingFriends } = useQuery({
     queryKey: queryKeys.friends.requests,
@@ -722,6 +728,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
           <PostSessionRatingBanner
             session={recentCompletedForRating}
             accountType={accountType}
+            activeSessions={sessions}
             otherPartyName={
               getOtherParty(recentCompletedForRating, isTrainer)?.fullname ||
               getOtherParty(recentCompletedForRating, isTrainer)?.fullName
