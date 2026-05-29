@@ -178,6 +178,26 @@ export function useMeetingLayout({
   const stageMode =
     focusedStreamId != null ? ("liveFocus" as const) : ("default" as const);
 
+  /** Re-broadcast layout after trainer socket reconnect so trainee PIP stays aligned. */
+  const replayLayoutState = useCallback(() => {
+    if (!isTrainer || !socket?.connected) return;
+    const payload: MeetingLayoutPayload = {
+      focusedStreamId,
+      tiles,
+      userInfo,
+      sessionId,
+    };
+    socket.emit(CLIP_EVENTS.MEETING_TILE_LAYOUT, payload);
+    if (focusedStreamId != null) {
+      socket.emit(CLIP_EVENTS.ON_VIDEO_SELECT, {
+        type: "swap",
+        id: focusedStreamId,
+        userInfo,
+        sessionId,
+      });
+    }
+  }, [focusedStreamId, isTrainer, sessionId, socket, tiles, userInfo]);
+
   return {
     focusedStreamId,
     stageMode,
@@ -186,5 +206,6 @@ export function useMeetingLayout({
     clearFocus: () => focusStream(null),
     updateTile,
     applyPayload,
+    replayLayoutState,
   };
 }

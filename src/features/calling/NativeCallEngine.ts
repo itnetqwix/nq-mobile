@@ -155,8 +155,10 @@ export class NativeCallEngine {
     this.localStream.getAudioTracks().forEach((t: MediaStreamTrack) => {
       t.enabled = enabled;
     });
+    const isMuted = !enabled;
     this.socket.emit(CALL_EVENTS.MUTE_ME, {
-      isMuted: !enabled,
+      isMuted,
+      muteStatus: isMuted,
       userInfo: this.buildUserInfo(),
     });
     return enabled;
@@ -453,7 +455,13 @@ export class NativeCallEngine {
     };
 
     const onMute = (payload: any) => {
-      this.events.onRemoteMute?.(!!payload?.isMuted);
+      const muted =
+        typeof payload?.isMuted === "boolean"
+          ? payload.isMuted
+          : typeof payload?.muteStatus === "boolean"
+            ? payload.muteStatus
+            : false;
+      this.events.onRemoteMute?.(muted);
     };
 
     const onStopFeed = (payload: any) => {
@@ -529,6 +537,14 @@ export class NativeCallEngine {
     this.events.onRemoteStream?.(null);
     this.setStatus("reconnecting");
     this.events.onPeerDisconnected?.();
+  }
+
+  /** Re-announce presence on socket (re)connect without tearing down WebRTC. */
+  rejoinSignal(): void {
+    if (this.disposed) return;
+    const st = this.status;
+    if (st === "idle" || st === "ended" || st === "preparing") return;
+    this.emitJoin();
   }
 
   /** Rebuild WebRTC after partner returns (optional — also handled on ON_CALL_JOIN). */
@@ -623,6 +639,12 @@ export class NativeCallEngine {
         severity: status === "failed" ? "error" : "warning",
         session_id: this.sessionId,
         title: `Native call ${status}`,
+        summary: `Call engine entered ${status}`,
+        payload: {
+          engineStatus: status,
+          iceConnectionState: this.pc?.iceConnectionState ?? "unknown",
+          signalingState: this.pc?.signalingState ?? "unknown",
+        },
         correlation_id: this.sessionId,
       });
     }

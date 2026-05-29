@@ -4,6 +4,7 @@ export const selectAuthStatus = (s: RootState) => s.auth.status;
 export const selectAuthUser = (s: RootState) => s.auth.user;
 export const selectAccountType = (s: RootState) => s.auth.accountType;
 export const selectSocketConnected = (s: RootState) => s.socket.isConnected;
+export const selectSocketReconnectFailed = (s: RootState) => s.socket.reconnectFailed;
 export const selectMaintenanceMode = (s: RootState) => s.system.maintenanceMode;
 export const selectLoaderVisible = (s: RootState) => s.ui.loaderVisible;
 export const selectLoaderMessage = (s: RootState) => s.ui.loaderMessage;

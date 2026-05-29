@@ -3,8 +3,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { io, type Socket } from "socket.io-client";
 import { useAuth } from "../auth/context/AuthContext";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
-import { setSocketConnected } from "../../store/slices/socketSlice";
-import { selectSocketConnected } from "../../store/selectors";
+import { setSocketConnected, setSocketReconnectFailed } from "../../store/slices/socketSlice";
+import { selectSocketConnected, selectSocketReconnectFailed } from "../../store/selectors";
+import { reportOpsEvent } from "../ops/opsEventsApi";
 import { getBrowserLikeRequestHeaders } from "../../api/browserRequestHeaders";
 import { API_BASE_URL } from "../../config/env";
 import { getAccessToken } from "../auth/session/tokenStorage";
@@ -19,9 +20,14 @@ function normalizeSocketAuthToken(raw: string): string {
 type SocketContextValue = {
   socket: Socket | null;
   isConnected: boolean;
+  reconnectFailed: boolean;
 };
 
-const SocketContext = createContext<SocketContextValue>({ socket: null, isConnected: false });
+const SocketContext = createContext<SocketContextValue>({
+  socket: null,
+  isConnected: false,
+  reconnectFailed: false,
+});
 
 /** Avoid flooding Metro when the API is unreachable or WebSocket upgrade fails. */
 let lastSocketErrorLogAt = 0;
@@ -31,6 +37,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const dispatch = useAppDispatch();
   const isConnected = useAppSelector(selectSocketConnected);
+  const reconnectFailed = useAppSelector(selectSocketReconnectFailed);
   const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
@@ -40,6 +47,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         return null;
       });
       dispatch(setSocketConnected(false));
+      dispatch(setSocketReconnectFailed(false));
       return;
     }
 
@@ -81,10 +89,32 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       setSocket(createdSocket);
 
       createdSocket.on("connect", () => {
-        if (!cancelled) dispatch(setSocketConnected(true));
+        if (!cancelled) {
+          dispatch(setSocketConnected(true));
+          dispatch(setSocketReconnectFailed(false));
+        }
         if (__DEV__) {
           // eslint-disable-next-line no-console
           console.log("[socket] connected via", createdSocket?.io.engine?.transport?.name);
+        }
+      });
+
+      createdSocket.on("reconnect", () => {
+        if (!cancelled) {
+          dispatch(setSocketConnected(true));
+          dispatch(setSocketReconnectFailed(false));
+        }
+      });
+
+      createdSocket.on("reconnect_failed", () => {
+        if (!cancelled) {
+          dispatch(setSocketReconnectFailed(true));
+          reportOpsEvent({
+            event_type: "SOCKET_RECONNECT_FAILED",
+            category: "connection",
+            severity: "error",
+            title: "Socket reconnection exhausted",
+          });
         }
       });
 
@@ -129,10 +159,14 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       createdSocket?.disconnect();
       setSocket(null);
       dispatch(setSocketConnected(false));
+      dispatch(setSocketReconnectFailed(false));
     };
   }, [status, queryClient, dispatch]);
 
-  const value = useMemo(() => ({ socket, isConnected }), [socket, isConnected]);
+  const value = useMemo(
+    () => ({ socket, isConnected, reconnectFailed }),
+    [socket, isConnected, reconnectFailed]
+  );
 
   return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;
 }

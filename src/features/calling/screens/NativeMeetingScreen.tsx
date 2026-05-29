@@ -53,6 +53,10 @@ import { useMeetingScreenshot } from "../useMeetingScreenshot";
 import { fetchSessionReport } from "../meetingReportApi";
 
 import { CallProvider, useCall } from "../CallContext";
+import {
+  registerActiveCall,
+  unregisterActiveCall,
+} from "../activeCallRegistry";
 import { ensureCallPermissions } from "../permissions";
 import { useLessonTimer } from "../useLessonTimer";
 import { useAudioRoute } from "../useAudioRoute";
@@ -73,6 +77,9 @@ import {
 import { useVideoPipLayout } from "../useVideoPipLayout";
 import { useMeetingLayout } from "../useMeetingLayout";
 import { useNativeMeetingPip } from "../hooks/useNativeMeetingPip";
+import { useCallForegroundRecovery } from "../hooks/useCallForegroundRecovery";
+import { useCallDegradation } from "../hooks/useCallDegradation";
+import { useCallQualityReporter } from "../hooks/useCallQualityReporter";
 import { MeetingLiveStage } from "../components/MeetingLiveStage";
 import { MeetingMiniPip } from "../components/MeetingMiniPip";
 import { ClipMiniPip } from "../components/ClipMiniPip";
@@ -369,11 +376,19 @@ function MeetingSurface({
     partnerDisconnected,
     cameraEnabled,
     remoteCameraOff,
+    status,
     endCall,
+    recoverConnection,
+    getNetworkStats,
     lastError,
   } = useCall();
 
-  const { socket } = useSocket();
+  useEffect(() => {
+    registerActiveCall({ sessionId: lessonId, onForceEnd: endCall });
+    return () => unregisterActiveCall(lessonId);
+  }, [lessonId, endCall]);
+
+  const { socket, reconnectFailed } = useSocket();
 
   const presence = useSessionPresence({
     socket,
@@ -522,17 +537,6 @@ function MeetingSurface({
     (clipSync.selectedClips.length > 0 || Boolean(clipSync.activeClipId));
   const chrome = useMeetingChromeInsets({ inClipMode: hasClipStage });
 
-  useEffect(() => {
-    if (!socket || !isTrainer) return;
-    const replay = () => clipSync.replayClipSocketState();
-    socket.on("connect", replay);
-    socket.on("reconnect", replay);
-    return () => {
-      socket.off("connect", replay);
-      socket.off("reconnect", replay);
-    };
-  }, [socket, isTrainer, clipSync.replayClipSocketState]);
-
   const meetingLayout = useMeetingLayout({
     socket,
     sessionId: lessonId,
@@ -544,6 +548,28 @@ function MeetingSurface({
   useNativeMeetingPip({
     enabled: partnerInSession && !!localStream,
     preferRemote: true,
+  });
+
+  useCallForegroundRecovery({
+    enabled: partnerInSession,
+    socket,
+    status,
+    partnerDisconnected,
+    recoverConnection,
+    sessionId: lessonId,
+  });
+
+  useCallDegradation({
+    enabled: partnerInSession,
+    sessionId: lessonId,
+    getNetworkStats,
+    recoverConnection,
+  });
+
+  useCallQualityReporter({
+    enabled: partnerInSession && bothJoined,
+    sessionId: lessonId,
+    getNetworkStats,
   });
 
   const [meetingBounds, setMeetingBounds] = useState<{
@@ -577,6 +603,30 @@ function MeetingSurface({
     sessionId: lessonId,
     isTrainer,
   });
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const replayTrainerState = () => {
+      if (!isTrainer) return;
+      clipSync.replayClipSocketState();
+      meetingLayout.replayLayoutState();
+      drawingSync.replaySocketState();
+    };
+
+    socket.on("connect", replayTrainerState);
+    socket.on("reconnect", replayTrainerState);
+    return () => {
+      socket.off("connect", replayTrainerState);
+      socket.off("reconnect", replayTrainerState);
+    };
+  }, [
+    socket,
+    isTrainer,
+    clipSync.replayClipSocketState,
+    meetingLayout.replayLayoutState,
+    drawingSync.replaySocketState,
+  ]);
 
   const screenshot = useMeetingScreenshot({
     sessionId: lessonId,
@@ -1528,8 +1578,21 @@ function MeetingSurface({
         onOpenClipPicker={isTrainer ? () => setPickerOpen(true) : undefined}
       />
 
-      {lastError ? (
+      {reconnectFailed ? (
         <View style={[styles.errorBanner, { top: chrome.insets.top + 8 }]}>
+          <Text style={styles.errorText}>
+            Connection lost. Check your internet and rejoin the lesson if video does not recover.
+          </Text>
+        </View>
+      ) : null}
+
+      {lastError ? (
+        <View
+          style={[
+            styles.errorBanner,
+            { top: chrome.insets.top + (reconnectFailed ? 56 : 8) },
+          ]}
+        >
           <Text style={styles.errorText}>{lastError}</Text>
         </View>
       ) : null}

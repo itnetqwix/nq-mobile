@@ -73,7 +73,17 @@ import { PinnedMessageBanner } from "../components/PinnedMessageBanner";
 import { DisappearingMessagesSheet } from "../components/DisappearingMessagesSheet";
 import { ScheduledMessageComposer } from "../components/ScheduledMessageComposer";
 import { ScheduledMessagesSheet } from "../components/ScheduledMessagesSheet";
-import { enqueueChatMessage } from "../lib/offlineChatQueue";
+import {
+  enqueueChatMessage,
+  flushOfflineChatQueue,
+  subscribeOfflineChatQueueEvents,
+  type QueuedChatMessage,
+} from "../lib/offlineChatQueue";
+import {
+  getPresignedUploadUrl,
+  isNetworkSendError,
+  uploadToS3,
+} from "../lib/mediaSendUtils";
 import { ImageWithSkeleton } from "../../../components/ui";
 
 type Props = {
@@ -106,7 +116,7 @@ type Message = {
   content: string;
   type: string;
   mediaUrl?: string | null;
-  status?: "sent" | "delivered" | "read" | "sending";
+  status?: "sent" | "delivered" | "read" | "sending" | "failed";
   pending?: boolean;
   createdAt: string;
   replyToMessageId?: string | null;
@@ -115,6 +125,10 @@ type Message = {
   forwardedFromMessageId?: string | null;
   transcript?: string | null;
   transcriptStatus?: "idle" | "pending" | "done" | "failed";
+  /** Local media retry metadata (not sent to server). */
+  localFileUri?: string | null;
+  uploadFileName?: string | null;
+  uploadMimeType?: string | null;
 };
 
 const EMOJI_LIST = [
@@ -164,24 +178,6 @@ function formatLastSeen(dateStr?: string | null): string {
   }
 }
 
-async function getPresignedUploadUrl(fileName: string, fileType: string) {
-  const res = await apiClient.post(API_ROUTES.chat.mediaUploadUrl, { fileName, fileType });
-  const body = (res as any)?.data ?? res;
-  if (!body?.uploadUrl) throw new Error(body?.message ?? "Failed to get upload URL");
-  return { uploadUrl: body.uploadUrl as string, mediaUrl: body.mediaUrl as string };
-}
-
-async function uploadToS3(uploadUrl: string, fileUri: string, contentType: string) {
-  const response = await fetch(fileUri);
-  const blob = await response.blob();
-  const res = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: { "Content-Type": contentType },
-    body: blob,
-  });
-  if (!res.ok) throw new Error(`Upload failed with status ${res.status}`);
-}
-
 function delay(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -191,10 +187,19 @@ function delay(ms: number) {
 function MessageStatus({
   status,
   pending,
+  failed,
 }: {
   status?: string;
   pending?: boolean;
+  failed?: boolean;
 }) {
+  if (failed || status === "failed") {
+    return (
+      <View style={statusStyles.row}>
+        <Ionicons name="alert-circle" size={14} color="#ef4444" />
+      </View>
+    );
+  }
   if (pending || status === "sending") {
     return (
       <View style={statusStyles.row}>
@@ -1090,14 +1095,19 @@ export function ChatRoomScreen({
       const ids = data.messageIds ? data.messageIds : data.messageId ? [data.messageId] : [];
       if (!ids.length) return;
       patchMessageStatus((m) =>
-        ids.includes(m._id) && m.status === "sent" ? { ...m, status: "delivered" } : m
+        ids.includes(m._id) && (m.status === "sent" || m.status === "sending")
+          ? { ...m, status: "delivered", pending: false }
+          : m
       );
     };
     const handleRead = (data: any) => {
       if (data?.conversationId !== conversationId) return;
-      patchMessageStatus((m) =>
-        m.senderId === currentUserId && m.status !== "read" ? { ...m, status: "read" } : m
-      );
+      patchMessageStatus((m) => {
+        const senderId = resolveSenderId(m.senderId);
+        return senderId === currentUserId && m.status !== "read"
+          ? { ...m, status: "read" }
+          : m;
+      });
     };
 
     socket.on("CHAT_DELIVERED", handleDelivered);
@@ -1106,25 +1116,73 @@ export function ChatRoomScreen({
       socket.off("CHAT_DELIVERED", handleDelivered);
       socket.off("CHAT_READ", handleRead);
     };
-  }, [socket, conversationId, currentUserId, queryClient]);
+  }, [socket, conversationId, currentUserId, queryClient, resolveSenderId]);
+
+  useEffect(() => {
+    if (!conversationId) return;
+    void flushOfflineChatQueue();
+  }, [conversationId]);
+
+  useEffect(() => {
+    return subscribeOfflineChatQueueEvents((event) => {
+      if (event.type === "sent") {
+        const msg = event.message as Message;
+        setLocalMessages((prev) =>
+          prev.map((m) =>
+            m._id === event.clientId
+              ? {
+                  ...msg,
+                  _id: String(msg._id ?? event.clientId),
+                  status: "sent",
+                  pending: false,
+                }
+              : m
+          )
+        );
+        queryClient.invalidateQueries({ queryKey: ["chatMessages", conversationId] });
+      } else if (event.type === "failed") {
+        setLocalMessages((prev) =>
+          prev.map((m) =>
+            m._id === event.clientId
+              ? { ...m, status: "failed", pending: false }
+              : m
+          )
+        );
+        haptics.error();
+      }
+    });
+  }, [conversationId, queryClient]);
 
   useEffect(() => {
     if (!socket || !conversationId) return;
     const handleReceive = (msg: any) => {
-      if (msg?.conversationId === conversationId) {
-        setLocalMessages((prev) => {
-          if (prev.some((m) => m._id === msg._id)) return prev;
-          return [...prev, msg];
-        });
-        queryClient.invalidateQueries({ queryKey: ["chatMessages", conversationId] });
-        if (msg?.senderId && String(msg.senderId) !== currentUserId && msg?._id) {
-          socket.emit("CHAT_DELIVERED", {
-            messageIds: [String(msg._id)],
-            conversationId,
-          });
+      if (msg?.conversationId !== conversationId) return;
+      const clientId = msg?.clientMessageId ? String(msg.clientMessageId) : null;
+      setLocalMessages((prev) => {
+        if (prev.some((m) => m._id === msg._id)) return prev;
+        if (clientId) {
+          const tempIdx = prev.findIndex((m) => m._id === clientId);
+          if (tempIdx >= 0) {
+            const next = [...prev];
+            next[tempIdx] = {
+              ...msg,
+              _id: String(msg._id),
+              status: msg.status ?? "sent",
+              pending: false,
+            };
+            return next;
+          }
         }
-        socket.emit("CHAT_READ", { conversationId, readerId: currentUserId });
+        return [...prev, msg];
+      });
+      queryClient.invalidateQueries({ queryKey: ["chatMessages", conversationId] });
+      if (msg?.senderId && String(msg.senderId) !== currentUserId && msg?._id) {
+        socket.emit("CHAT_DELIVERED", {
+          messageIds: [String(msg._id)],
+          conversationId,
+        });
       }
+      socket.emit("CHAT_READ", { conversationId, readerId: currentUserId });
     };
     socket.on("CHAT_MESSAGE", handleReceive);
     socket.emit("JOIN_CHAT", { conversationId });
@@ -1133,6 +1191,24 @@ export function ChatRoomScreen({
       socket.emit("LEAVE_CHAT", { conversationId });
     };
   }, [socket, conversationId, queryClient, currentUserId]);
+
+  /** Re-join chat room after socket reconnect so messages keep flowing. */
+  useEffect(() => {
+    if (!socket || !conversationId) return;
+    const rejoin = () => {
+      if (socket.connected) {
+        socket.emit("JOIN_CHAT", { conversationId });
+        queryClient.invalidateQueries({ queryKey: ["chatMessages", conversationId] });
+        void flushOfflineChatQueue();
+      }
+    };
+    socket.on("connect", rejoin);
+    socket.on("reconnect", rejoin);
+    return () => {
+      socket.off("connect", rejoin);
+      socket.off("reconnect", rejoin);
+    };
+  }, [socket, conversationId, queryClient]);
 
   /**
    * Socket sync for the new chat features (reactions, pin updates,
@@ -1180,10 +1256,70 @@ export function ChatRoomScreen({
   useEffect(() => {
     setLocalMessages((prev) => {
       const serverIds = new Set(serverMessages.map((m: Message) => m._id));
-      const remaining = prev.filter((m) => !serverIds.has(m._id));
+      const serverClientIds = new Set(
+        serverMessages
+          .map((m: Message & { clientMessageId?: string }) => m.clientMessageId)
+          .filter(Boolean)
+          .map(String)
+      );
+      const remaining = prev.filter((m) => {
+        if (serverIds.has(m._id)) return false;
+        if (m._id.startsWith("temp_") && serverClientIds.has(m._id)) return false;
+        return true;
+      });
       return remaining.length === prev.length ? prev : remaining;
     });
   }, [serverMessages]);
+
+  const resendFailedMessage = useCallback(
+    async (msg: Message) => {
+      if (msg.status !== "failed") return;
+      haptics.press();
+      setLocalMessages((prev) =>
+        prev.map((m) =>
+          m._id === msg._id ? { ...m, status: "sending", pending: true } : m
+        )
+      );
+
+      if (msg.type === "text" && msg.content) {
+        await enqueueChatMessage({
+          clientId: msg._id,
+          conversationId,
+          receiverId: isGroup ? null : partner?._id,
+          content: msg.content,
+          type: "text",
+          replyToMessageId: msg.replyToMessageId,
+          enqueuedAt: Date.now(),
+          attempts: 0,
+        });
+        void flushOfflineChatQueue();
+        return;
+      }
+
+      const fileUri = msg.localFileUri ?? msg.mediaUrl;
+      if (
+        fileUri &&
+        msg.uploadFileName &&
+        msg.uploadMimeType &&
+        (msg.type === "image" || msg.type === "video" || msg.type === "voice")
+      ) {
+        await enqueueChatMessage({
+          clientId: msg._id,
+          conversationId,
+          receiverId: isGroup ? null : partner?._id,
+          content: msg.content,
+          type: msg.type as QueuedChatMessage["type"],
+          localFileUri: fileUri,
+          fileName: msg.uploadFileName,
+          mimeType: msg.uploadMimeType,
+          enqueuedAt: Date.now(),
+          attempts: 0,
+        });
+        void flushOfflineChatQueue();
+      }
+    },
+    [conversationId, isGroup, partner?._id]
+  );
 
   // ─── Send text ──────────────────────────────────────────────────────────────
 
@@ -1217,6 +1353,7 @@ export function ChatRoomScreen({
         content,
         type: "text",
         conversationId,
+        clientMessageId: tempId,
         ...(replyId ? { replyToMessageId: replyId } : {}),
       });
       const data = (res as any)?.data?.data ?? (res as any)?.data;
@@ -1264,17 +1401,20 @@ export function ChatRoomScreen({
           )
         );
         haptics.warning();
-      } else {
+      } else if (status === 429) {
         setLocalMessages((prev) => prev.filter((m) => m._id !== tempId));
-        if (status === 429) {
-          haptics.warning();
-          setRateLimited(true);
-          const msg = e?.response?.data?.data?.error ?? e?.response?.data?.error ?? "Message limit reached.";
-          setChatPolicy((p) => p ? { ...p, remainingToday: 0 } : p);
-          Alert.alert("Limit Reached", msg);
-        } else {
-          haptics.error();
-        }
+        haptics.warning();
+        setRateLimited(true);
+        const msg = e?.response?.data?.data?.error ?? e?.response?.data?.error ?? "Message limit reached.";
+        setChatPolicy((p) => (p ? { ...p, remainingToday: 0 } : p));
+        Alert.alert("Limit Reached", msg);
+      } else {
+        setLocalMessages((prev) =>
+          prev.map((m) =>
+            m._id === tempId ? { ...m, status: "failed", pending: false } : m
+          )
+        );
+        haptics.error();
       }
     } finally {
       setIsSendingMessage(false);
@@ -1311,6 +1451,9 @@ export function ChatRoomScreen({
         status: "sending",
         pending: true,
         createdAt: new Date().toISOString(),
+        localFileUri: fileUri,
+        uploadFileName: fileName,
+        uploadMimeType: mimeType,
       }]);
       try {
         const { uploadUrl, mediaUrl } = await getPresignedUploadUrl(fileName, mimeType);
@@ -1321,13 +1464,22 @@ export function ChatRoomScreen({
           type,
           mediaUrl,
           conversationId,
+          clientMessageId: tempId,
         });
         const data = (res as any)?.data?.data ?? (res as any)?.data;
         if (data?.message) {
           setLocalMessages((prev) =>
             prev.map((m) =>
               m._id === tempId
-                ? { ...data.message, _id: data.message._id, status: "sent" as const, pending: false }
+                ? {
+                    ...data.message,
+                    _id: data.message._id,
+                    status: "sent" as const,
+                    pending: false,
+                    localFileUri: undefined,
+                    uploadFileName: undefined,
+                    uploadMimeType: undefined,
+                  }
                 : m
             )
           );
@@ -1335,8 +1487,33 @@ export function ChatRoomScreen({
         if (socket) socket.emit("CHAT_MESSAGE", { ...data?.message, conversationId });
         queryClient.invalidateQueries({ queryKey: ["conversations"] });
       } catch (e: any) {
-        setLocalMessages((prev) => prev.filter((m) => m._id !== tempId));
-        Alert.alert("Upload failed", e?.response?.data?.message ?? e?.message ?? "Could not send media.");
+        if (isNetworkSendError(e)) {
+          await enqueueChatMessage({
+            clientId: tempId,
+            conversationId,
+            receiverId: isGroup ? null : partner._id,
+            content: label,
+            type,
+            localFileUri: fileUri,
+            fileName,
+            mimeType,
+            enqueuedAt: Date.now(),
+            attempts: 0,
+          });
+          setLocalMessages((prev) =>
+            prev.map((m) =>
+              m._id === tempId ? { ...m, status: "sending", pending: true } : m
+            )
+          );
+          haptics.warning();
+        } else {
+          setLocalMessages((prev) =>
+            prev.map((m) =>
+              m._id === tempId ? { ...m, status: "failed", pending: false } : m
+            )
+          );
+          haptics.error();
+        }
       } finally {
         setUploading(false);
       }
@@ -1639,6 +1816,11 @@ export function ChatRoomScreen({
           <Pressable
             style={{ maxWidth: "100%" }}
             onLongPress={onLongPressMsg}
+            onPress={
+              isMine && item.status === "failed"
+                ? () => void resendFailedMessage(item)
+                : undefined
+            }
           >
           <View
             style={[
@@ -1730,15 +1912,24 @@ export function ChatRoomScreen({
             </Pressable>
           ) : null}
           <View style={styles.bubbleFooter}>
+            {isMine && item.status === "failed" && (
+              <Text style={[styles.bubbleTime, isMine && styles.bubbleTimeMine, { color: "#ef4444" }]}>
+                Tap to retry
+              </Text>
+            )}
             <Text style={[styles.bubbleTime, isMine && styles.bubbleTimeMine]}>
               {item.editedAt ? "Edited · " : ""}
               {formatTime(item.createdAt)}
             </Text>
-            {isMine && (
+            {isMine && !isGroup && (
               <MessageStatus
                 status={item.status}
                 pending={item.pending || item.status === "sending"}
+                failed={item.status === "failed"}
               />
+            )}
+            {isMine && isGroup && item.status === "failed" && (
+              <MessageStatus status="failed" failed />
             )}
           </View>
           </View>
@@ -1782,6 +1973,7 @@ export function ChatRoomScreen({
       chatE2E,
       senderNameById,
       resolveSenderId,
+      resendFailedMessage,
       transcriptVisible,
       transcribingId,
     ]

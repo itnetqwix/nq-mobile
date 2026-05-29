@@ -15,9 +15,13 @@
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useEffect, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
+import {
+  getPresignedUploadUrl,
+  uploadToS3,
+} from "./mediaSendUtils";
 import {
   isNetworkOnline,
   useNetworkOnline,
@@ -34,6 +38,10 @@ export type QueuedChatMessage = {
   content: string;
   type: "text" | "image" | "video" | "voice";
   mediaUrl?: string | null;
+  /** Local file path for media retry after offline / failed upload. */
+  localFileUri?: string | null;
+  fileName?: string | null;
+  mimeType?: string | null;
   replyToMessageId?: string | null;
   /** Used for "X queued · sending now" UI sorting. */
   enqueuedAt: number;
@@ -41,8 +49,15 @@ export type QueuedChatMessage = {
   attempts: number;
 };
 
+export type OfflineChatQueueEvent =
+  | { type: "sent"; clientId: string; message: Record<string, unknown> }
+  | { type: "failed"; clientId: string; attempts: number };
+
 type Listener = () => void;
+type EventListener = (event: OfflineChatQueueEvent) => void;
+
 const listeners = new Set<Listener>();
+const eventListeners = new Set<EventListener>();
 let queue: QueuedChatMessage[] = [];
 let hydrated = false;
 let flushing = false;
@@ -51,9 +66,18 @@ function emit() {
   for (const l of listeners) l();
 }
 
+function emitQueueEvent(event: OfflineChatQueueEvent) {
+  for (const l of eventListeners) l(event);
+}
+
 function subscribe(l: Listener) {
   listeners.add(l);
   return () => listeners.delete(l);
+}
+
+export function subscribeOfflineChatQueueEvents(listener: EventListener) {
+  eventListeners.add(listener);
+  return () => eventListeners.delete(listener);
 }
 
 function countSnapshot(): number {
@@ -115,15 +139,30 @@ export async function flushOfflineChatQueue(): Promise<{ sent: number; failed: n
     for (const item of pending) {
       if (!isNetworkOnline()) break;
       try {
-        await apiClient.post(API_ROUTES.chat.send, {
+        let mediaUrl = item.mediaUrl ?? undefined;
+        if (item.localFileUri && item.fileName && item.mimeType) {
+          const { uploadUrl, mediaUrl: remoteUrl } = await getPresignedUploadUrl(
+            item.fileName,
+            item.mimeType
+          );
+          await uploadToS3(uploadUrl, item.localFileUri, item.mimeType);
+          mediaUrl = remoteUrl;
+        }
+        const res = await apiClient.post(API_ROUTES.chat.send, {
           receiverId: item.receiverId ?? undefined,
           conversationId: item.conversationId ?? undefined,
           content: item.content,
           type: item.type,
-          mediaUrl: item.mediaUrl ?? undefined,
+          mediaUrl,
           replyToMessageId: item.replyToMessageId ?? undefined,
+          clientMessageId: item.clientId,
         });
+        const data = (res as any)?.data?.data ?? (res as any)?.data;
+        const message = data?.message ?? data;
         await removeFromOfflineChatQueue(item.clientId);
+        if (message && typeof message === "object") {
+          emitQueueEvent({ type: "sent", clientId: item.clientId, message });
+        }
         sent += 1;
       } catch (err: any) {
         const isNetwork =
@@ -135,12 +174,12 @@ export async function flushOfflineChatQueue(): Promise<{ sent: number; failed: n
           // Still offline; stop flushing and try again on next online tick.
           break;
         }
-        // Permanent-ish failure (4xx) — bump attempts and drop after 3.
-        const next = { ...item, attempts: (item.attempts ?? 0) + 1 };
-        if (next.attempts >= 3) {
+        const nextAttempts = (item.attempts ?? 0) + 1;
+        if (nextAttempts >= 3) {
           await removeFromOfflineChatQueue(item.clientId);
+          emitQueueEvent({ type: "failed", clientId: item.clientId, attempts: nextAttempts });
         } else {
-          await enqueueChatMessage(next);
+          await enqueueChatMessage({ ...item, attempts: nextAttempts });
         }
         failed += 1;
       }

@@ -64,6 +64,8 @@ type CallContextValue = {
   toggleCamera: () => void;
   switchCamera: () => void;
   endCall: () => void;
+  /** Re-announce call presence / rebuild WebRTC after reconnect or foreground. */
+  recoverConnection: () => void;
   reconnectPeer: () => void;
   /** Fetch current network stats (RTT, jitter, packet loss). */
   getNetworkStats: () => Promise<{
@@ -96,6 +98,7 @@ const CallContext = createContext<CallContextValue>({
   toggleCamera: noop,
   switchCamera: noop,
   endCall: noop,
+  recoverConnection: noop,
   reconnectPeer: noop,
   getNetworkStats: async () => ({
     rttMs: null,
@@ -133,6 +136,7 @@ export function CallProvider({
 }: ProviderProps) {
   const { socket } = useSocket();
   const engineRef = useRef<NativeCallEngine | null>(null);
+  const partnerDisconnectedRef = useRef(false);
 
   const [status, setStatus] = useState<CallEngineStatus>("idle");
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -145,6 +149,8 @@ export function CallProvider({
   const [remoteMicMuted, setRemoteMicMuted] = useState(false);
   const [remoteCameraOff, setRemoteCameraOff] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
+
+  partnerDisconnectedRef.current = partnerDisconnected;
 
   const iceServersKey = useMemo(
     () => JSON.stringify(startArgs.iceServers ?? []),
@@ -248,6 +254,32 @@ export function CallProvider({
     };
   }, [stableArgs]);
 
+  /** Re-announce call presence when the socket reconnects mid-lesson (web parity). */
+  useEffect(() => {
+    if (!socket) return;
+
+    const recoverCallOnSocket = () => {
+      const engine = engineRef.current;
+      if (!engine) return;
+      const st = engine.getStatus();
+      if (st === "idle" || st === "ended" || st === "preparing") return;
+      if (st === "reconnecting" || partnerDisconnectedRef.current) {
+        engine.reconnectPeer();
+      } else {
+        engine.rejoinSignal();
+      }
+      if (socket.connected && startArgs.sessionId) {
+        socket.emit("LESSON_STATE_REQUEST", { sessionId: startArgs.sessionId });
+      }
+    };
+    socket.on("connect", recoverCallOnSocket);
+    socket.on("reconnect", recoverCallOnSocket);
+    return () => {
+      socket.off("connect", recoverCallOnSocket);
+      socket.off("reconnect", recoverCallOnSocket);
+    };
+  }, [socket, startArgs.sessionId]);
+
   const toggleMute = useCallback(() => {
     const engine = engineRef.current;
     if (!engine) return;
@@ -274,6 +306,18 @@ export function CallProvider({
 
   const reconnectPeer = useCallback(() => {
     engineRef.current?.reconnectPeer();
+  }, []);
+
+  const recoverConnection = useCallback(() => {
+    const engine = engineRef.current;
+    if (!engine) return;
+    const st = engine.getStatus();
+    if (st === "idle" || st === "ended" || st === "preparing") return;
+    if (st === "reconnecting" || partnerDisconnectedRef.current) {
+      engine.reconnectPeer();
+    } else {
+      engine.rejoinSignal();
+    }
   }, []);
 
   const getNetworkStats = useCallback(async () => {
@@ -306,6 +350,7 @@ export function CallProvider({
       toggleCamera,
       switchCamera,
       endCall,
+      recoverConnection,
       reconnectPeer,
       getNetworkStats,
       acknowledgePeerJoined,
@@ -327,6 +372,7 @@ export function CallProvider({
       toggleCamera,
       switchCamera,
       endCall,
+      recoverConnection,
       reconnectPeer,
       getNetworkStats,
       acknowledgePeerJoined,

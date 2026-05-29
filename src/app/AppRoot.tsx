@@ -23,6 +23,7 @@ import {
 } from "../features/system-states";
 import { useSessionExpiredNavigation } from "../features/system-states/hooks/useSessionExpiredNavigation";
 import { useUpdateRequiredGate } from "../features/system-states/hooks/useUpdateRequiredGate";
+import { AuthSessionSocketBridge } from "../features/auth/AuthSessionSocketBridge";
 import { SocketProvider } from "../features/socket/SocketContext";
 import { SocketQueryInvalidationBridge } from "../features/socket/SocketQueryInvalidationBridge";
 import { InstantLessonProvider } from "../features/instant-lesson/InstantLessonContext";
@@ -128,6 +129,7 @@ export function AppRoot() {
                     <SystemStateHooks />
                     <SocketProvider>
                       <SocketQueryInvalidationBridge />
+                      <AuthSessionSocketBridge />
                       <NotificationProvider>
                         <SessionBookingProvider>
                           <InstantLessonProvider onNavigateToMeeting={navigateToMeeting}>

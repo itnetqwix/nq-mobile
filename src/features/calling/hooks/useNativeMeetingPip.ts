@@ -7,7 +7,6 @@
 
 import { useEffect, useRef } from "react";
 import { AppState, NativeModules, Platform, type AppStateStatus } from "react-native";
-import InCallManager from "react-native-incall-manager";
 
 type Args = {
   /** Lesson is active and both peers are connected. */
@@ -35,12 +34,6 @@ export function useNativeMeetingPip({ enabled, preferRemote = true }: Args) {
 
   useEffect(() => {
     if (!enabled) return;
-
-    try {
-      InCallManager.start({ media: "video" });
-    } catch {
-      /* non-fatal */
-    }
 
     const onChange = async (state: AppStateStatus) => {
       const pip = getPipModule();

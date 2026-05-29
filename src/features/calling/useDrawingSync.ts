@@ -134,6 +134,16 @@ export function useDrawingSync({
     [isTrainer, sessionId, socket, userInfo]
   );
 
+  /** Re-broadcast drawing mode after trainer socket reconnect. */
+  const replaySocketState = useCallback(() => {
+    if (!isTrainer || !socket?.connected) return;
+    socket.emit(DRAWING_EVENTS.TOGGLE_DRAWING_MODE, {
+      enabled: drawingEnabled,
+      userInfo,
+      sessionId,
+    });
+  }, [drawingEnabled, isTrainer, sessionId, socket, userInfo]);
+
   return {
     remoteStrokes,
     drawingEnabled,
@@ -141,5 +151,6 @@ export function useDrawingSync({
     emitStroke,
     clearCanvas,
     resetRemote: () => setRemoteStrokes([]),
+    replaySocketState,
   };
 }

@@ -1,5 +1,6 @@
 import { apiClient } from "../../api/client";
 import { API_ROUTES } from "../../config/apiRoutes";
+import { idempotencyHeaders, newIdempotencyKey } from "../../lib/idempotency";
 
 export type ExtensionQuote = {
   allowed: boolean;
@@ -47,7 +48,12 @@ export async function requestSessionExtension(payload: {
 }> {
   const res = await apiClient.post(
     API_ROUTES.trainee.sessionExtensionRequest,
-    payload
+    payload,
+    {
+      headers: idempotencyHeaders(
+        newIdempotencyKey(`ext-req-${payload.sessionId}-${payload.minutes}`)
+      ),
+    }
   );
   return (res.data as { data?: unknown })?.data as {
     request?: ExtensionRequestSnapshot;
@@ -68,7 +74,12 @@ export async function respondToExtensionRequest(payload: {
 }): Promise<{ request: ExtensionRequestSnapshot }> {
   const res = await apiClient.post(
     API_ROUTES.trainer.sessionExtensionRespond,
-    payload
+    payload,
+    {
+      headers: idempotencyHeaders(
+        `ext-respond-${payload.sessionId}-${payload.requestId}-${payload.decision}`
+      ),
+    }
   );
   return (res.data as { data?: { request: ExtensionRequestSnapshot } })?.data as {
     request: ExtensionRequestSnapshot;
@@ -83,7 +94,12 @@ export async function cancelExtensionRequest(payload: {
 }): Promise<{ request: ExtensionRequestSnapshot }> {
   const res = await apiClient.post(
     API_ROUTES.trainee.sessionExtensionCancel,
-    payload
+    payload,
+    {
+      headers: idempotencyHeaders(
+        `ext-cancel-${payload.sessionId}-${payload.requestId}`
+      ),
+    }
   );
   return (res.data as { data?: { request: ExtensionRequestSnapshot } })?.data as {
     request: ExtensionRequestSnapshot;
@@ -102,9 +118,13 @@ export async function createSessionExtensionPaymentIntent(payload: {
   id?: string;
   amount?: number;
 }> {
+  const idemKey = payload.requestId
+    ? `ext-pi-${payload.sessionId}-${payload.requestId}`
+    : newIdempotencyKey(`ext-pi-${payload.sessionId}-${payload.minutes}`);
   const res = await apiClient.post(
     API_ROUTES.trainee.sessionExtensionPaymentIntent,
-    payload
+    payload,
+    { headers: idempotencyHeaders(idemKey) }
   );
   return ((res.data as { data?: unknown })?.data ?? res.data) as {
     skip?: boolean;
@@ -122,9 +142,15 @@ export async function confirmSessionExtension(payload: {
   payment_method?: "wallet" | "card";
   pin_session_token?: string | null;
 }): Promise<unknown> {
+  const idemKey = payload.payment_intent_id
+    ? `ext-confirm-${payload.sessionId}-${payload.payment_intent_id}`
+    : payload.requestId
+      ? `ext-confirm-${payload.sessionId}-${payload.requestId}`
+      : newIdempotencyKey(`ext-confirm-${payload.sessionId}-${payload.minutes}`);
   const res = await apiClient.post(
     API_ROUTES.trainee.sessionExtensionConfirm,
-    payload
+    payload,
+    { headers: idempotencyHeaders(idemKey) }
   );
   return (res.data as { data?: unknown })?.data ?? res.data;
 }
