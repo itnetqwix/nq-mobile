@@ -16,6 +16,7 @@ import {
 } from "react-native";
 
 import { getS3ImageUrl } from "../../../lib/imageUtils";
+import { normalizeReportImageKeys } from "../reportDataUtils";
 import { fetchSessionReport } from "../meetingReportApi";
 
 type Props = {
@@ -27,13 +28,6 @@ type Props = {
   /** Keys already known locally (e.g. after a fresh capture). */
   extraKeys?: string[];
 };
-
-function normalizeReportKeys(raw: unknown): string[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .map((x) => (typeof x === "string" ? x : (x as { name?: string; key?: string })?.name ?? (x as { key?: string })?.key ?? ""))
-    .filter(Boolean);
-}
 
 export function SessionScreenshotSheet({
   visible,
@@ -55,7 +49,7 @@ export function SessionScreenshotSheet({
         trainee: traineeId,
       });
       const data = res?.data ?? res;
-      const fromApi = normalizeReportKeys(data?.reportData);
+      const fromApi = normalizeReportImageKeys(data?.reportData);
       const merged = [...new Set([...fromApi, ...extraKeys])];
       setImages(merged);
     } catch {

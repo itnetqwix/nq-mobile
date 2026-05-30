@@ -110,6 +110,7 @@ import {
 import { SessionGamePlanModal } from "../components/SessionGamePlanModal";
 import { SessionScreenshotSheet } from "../components/SessionScreenshotSheet";
 import { SessionScreenshotDetailsModal } from "../components/SessionScreenshotDetailsModal";
+import { ScreenshotCompositeHost } from "../components/ScreenshotCompositeHost";
 import type { ScreenshotCaptureSource } from "../useMeetingScreenshot";
 import { RecordingBar } from "../components/RecordingBar";
 import { useInstantLessonRecording } from "../useInstantLessonRecording";
@@ -1294,9 +1295,17 @@ function MeetingSurface({
       {screenshot.capturing ? (
         <View style={styles.captureOverlay} pointerEvents="none">
           <ActivityIndicator size="large" color="#fff" />
-          <Text style={styles.captureOverlayText}>Capturing…</Text>
+          <Text style={styles.captureOverlayText}>
+            {screenshot.captureStage === "uploading" ? "Uploading…" : "Preparing frame…"}
+          </Text>
         </View>
       ) : null}
+
+      <ScreenshotCompositeHost
+        frameUris={screenshot.compositeFrameUris}
+        captureRef={screenshot.compositeHostRef}
+        onLayout={() => {}}
+      />
 
       {/* Remote video / clip pane */}
       <View
@@ -1323,7 +1332,12 @@ function MeetingSurface({
           </View>
         ) : null}
         {inLiveFocus ? (
-          <MeetingLiveStage
+          <View
+            ref={screenshot.captureTargetRef}
+            collapsable={false}
+            style={styles.liveStage}
+          >
+            <MeetingLiveStage
             user={focusedIsRemote ? peerUser : null}
             stream={focusedIsLocal ? localStream : remoteStream}
             isStreamOff={
@@ -1336,6 +1350,7 @@ function MeetingSurface({
             isTrainer={isTrainer}
             onClearFocus={isTrainer ? () => meetingLayout.clearFocus() : undefined}
           />
+          </View>
         ) : hasClipStage ? (
           <View
             ref={screenshot.captureTargetRef}
@@ -1431,7 +1446,11 @@ function MeetingSurface({
             )}
           </View>
         ) : (
-          <View style={styles.liveStage}>
+          <View
+            ref={screenshot.captureTargetRef}
+            collapsable={false}
+            style={styles.liveStage}
+          >
             <DualLiveStage
               localUser={
                 authUser

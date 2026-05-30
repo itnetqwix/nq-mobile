@@ -8,11 +8,16 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 
@@ -20,12 +25,11 @@ import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { fetchSessionReport } from "../meetingReportApi";
-
-export type ScreenshotReportItem = {
-  title?: string;
-  description?: string;
-  imageUrl: string;
-};
+import {
+  parseReportScreenshotItems,
+  toReportDataPayload,
+  type ReportScreenshotItem,
+} from "../reportDataUtils";
 
 type Props = {
   visible: boolean;
@@ -54,7 +58,7 @@ export function SessionScreenshotDetailsModal({
   onSaved,
 }: Props) {
   const [description, setDescription] = useState("");
-  const [existingItems, setExistingItems] = useState<ScreenshotReportItem[]>([]);
+  const [existingItems, setExistingItems] = useState<ReportScreenshotItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -73,11 +77,8 @@ export function SessionScreenshotDetailsModal({
           trainee: traineeId,
         });
         const data = res?.data ?? res;
-        const raw = data?.reportData;
-        if (!cancelled && Array.isArray(raw)) {
-          setExistingItems(
-            raw.filter((x: ScreenshotReportItem) => x && typeof x.imageUrl === "string")
-          );
+        if (!cancelled) {
+          setExistingItems(parseReportScreenshotItems(data?.reportData));
         }
       } catch {
         if (!cancelled) setExistingItems([]);
@@ -91,11 +92,16 @@ export function SessionScreenshotDetailsModal({
   }, [visible, sessionId, trainerId, traineeId]);
 
   const previewUri =
-    previewUriProp ||
-    (imageKey ? getS3ImageUrl(imageKey) : null);
+    previewUriProp || (imageKey ? getS3ImageUrl(imageKey) : null);
+
+  const handleClose = () => {
+    Keyboard.dismiss();
+    onClose();
+  };
 
   const handleAdd = async () => {
     if (!imageKey) return;
+    Keyboard.dismiss();
     setSaving(true);
     try {
       const reportData = [...existingItems];
@@ -118,13 +124,15 @@ export function SessionScreenshotDetailsModal({
         trainee: traineeId,
         title: reportTitle || "Session notes",
         topic: reportTopic || reportTitle || "Session notes",
-        reportData,
+        reportData: toReportDataPayload(reportData),
       });
       setDescription("");
       onSaved?.();
-      onClose();
-    } catch (e: any) {
-      const msg = e?.response?.data?.message ?? e?.message ?? "Could not save screenshot.";
+      handleClose();
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } }; message?: string };
+      const msg =
+        err?.response?.data?.message ?? err?.message ?? "Could not save screenshot.";
       Alert.alert("Could not save", msg);
     } finally {
       setSaving(false);
@@ -133,53 +141,77 @@ export function SessionScreenshotDetailsModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <View style={styles.root}>
-        <Pressable style={styles.closeBtn} onPress={onClose} hitSlop={12}>
-          <Ionicons name="close" size={22} color="#fff" />
-        </Pressable>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={styles.root}>
+            <Pressable style={styles.closeBtn} onPress={handleClose} hitSlop={12}>
+              <Ionicons name="close" size={22} color="#fff" />
+            </Pressable>
 
-        <View style={styles.body}>
-          {previewUri ? (
-            <Image source={{ uri: previewUri }} style={styles.preview} resizeMode="contain" />
-          ) : loading ? (
-            <ActivityIndicator size="large" color="#000080" />
-          ) : (
-            <Text style={styles.loadingText}>Loading preview…</Text>
-          )}
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={styles.scrollContent}
+            >
+              <View style={styles.body}>
+                {previewUri ? (
+                  <Image
+                    source={{ uri: previewUri }}
+                    style={styles.preview}
+                    resizeMode="contain"
+                  />
+                ) : loading ? (
+                  <ActivityIndicator size="large" color="#000080" />
+                ) : (
+                  <Text style={styles.loadingText}>Loading preview…</Text>
+                )}
 
-          <TextInput
-            style={styles.input}
-            placeholder="Description"
-            placeholderTextColor="#888"
-            multiline
-            numberOfLines={3}
-            value={description}
-            onChangeText={setDescription}
-          />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Description"
+                  placeholderTextColor="#888"
+                  multiline
+                  numberOfLines={3}
+                  value={description}
+                  onChangeText={setDescription}
+                  blurOnSubmit
+                  returnKeyType="done"
+                  onSubmitEditing={Keyboard.dismiss}
+                />
 
-          <Pressable
-            style={[styles.addBtn, saving && styles.addBtnDisabled]}
-            onPress={() => void handleAdd()}
-            disabled={saving || !imageKey}
-          >
-            {saving ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.addBtnText}>Add</Text>
-            )}
-          </Pressable>
-        </View>
-      </View>
+                <Pressable
+                  style={[styles.addBtn, saving && styles.addBtnDisabled]}
+                  onPress={() => void handleAdd()}
+                  disabled={saving || !imageKey}
+                >
+                  {saving ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.addBtnText}>Add</Text>
+                  )}
+                </Pressable>
+              </View>
+            </ScrollView>
+          </View>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   root: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.35)",
     justifyContent: "center",
     padding: 16,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
   },
   closeBtn: {
     position: "absolute",

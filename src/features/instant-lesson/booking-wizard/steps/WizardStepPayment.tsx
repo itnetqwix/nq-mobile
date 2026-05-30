@@ -26,6 +26,7 @@ export type PaymentCompletePayload = {
   chargingPrice: number;
   paymentMethod?: "wallet" | "card";
   pinSessionToken?: string;
+  quoteId?: string;
 };
 
 export type PromoResultShape = {
@@ -78,6 +79,13 @@ export function WizardStepPayment({
     amount: number;
     skip: boolean;
     clientSecret?: string;
+    quoteId?: string;
+  } | null>(null);
+  const [pricingQuote, setPricingQuote] = useState<{
+    quoteId?: string;
+    breakdown?: Array<{ key: string; label: string; amountMinor: number }>;
+    chargeTotalCents?: number;
+    trainerNetCents?: number;
   } | null>(null);
 
   const hourlyRate = Number(
@@ -120,6 +128,24 @@ export function WizardStepPayment({
     }
     setLoading(true);
     try {
+      const trainerId = String((trainer as any)?._id ?? (trainer as any)?.userInfo?._id ?? "");
+      const quoteRes = await apiClient.post(API_ROUTES.payments.quote, {
+        region: "US",
+        productType: bookingType === "instant" ? "instant_lesson" : "session_booking",
+        sessionSubtotalCents: Math.round(expectedPrice * 100),
+        trainerId,
+        paymentMethodHint: "card_domestic_us",
+        promoDiscountCents: Math.round(Math.max(0, expectedPrice - payableAmount) * 100),
+        billingAddress: { country: "US", state: "TX" },
+      });
+      const quote = unwrapApiData<{
+        quoteId: string;
+        chargeTotalCents: number;
+        breakdown: Array<{ key: string; label: string; amountMinor: number }>;
+        trainerNetCents: number;
+      }>(quoteRes);
+      setPricingQuote(quote);
+
       const res = await apiClient.post(API_ROUTES.transaction.createPaymentIntent, {
         amount: expectedPrice,
         destination: trainerStripeId,
@@ -127,6 +153,9 @@ export function WizardStepPayment({
         customer: userStripeId,
         couponCode: couponCode.trim().toLowerCase() || undefined,
         _bookingType: bookingType,
+        trainer_id: trainerId,
+        quoteId: quote?.quoteId,
+        billingAddress: { country: "US", state: "TX" },
       });
       const data = unwrapApiData<{
         skip?: boolean;
@@ -139,7 +168,13 @@ export function WizardStepPayment({
       }
       const clientSecret = data?.client_secret;
       if (!clientSecret) throw new Error("No client secret returned.");
-      setPriceInfo({ amount: payableAmount, skip: false, clientSecret });
+      const chargeTotal = quote?.chargeTotalCents != null ? quote.chargeTotalCents / 100 : payableAmount;
+      setPriceInfo({
+        amount: chargeTotal,
+        skip: false,
+        clientSecret,
+        quoteId: quote?.quoteId,
+      });
 
       const { error } = await initPaymentSheet({
         paymentIntentClientSecret: clientSecret,
@@ -200,9 +235,10 @@ export function WizardStepPayment({
       }
       completePayment({
         paymentIntentId: null,
-        chargingPrice: payableAmount,
+        chargingPrice: expectedPrice,
         paymentMethod: "wallet",
         pinSessionToken: token,
+        quoteId: pricingQuote?.quoteId ?? priceInfo?.quoteId,
       });
     } catch (e: any) {
       Alert.alert("Wallet payment", e?.response?.data?.error ?? e?.message ?? "Could not verify PIN.");
@@ -224,10 +260,11 @@ export function WizardStepPayment({
     const intentId = priceInfo?.clientSecret?.split("_secret_")[0] ?? null;
     completePayment({
       paymentIntentId: intentId,
-      chargingPrice: payableAmount,
+      chargingPrice: expectedPrice,
       paymentMethod: "card",
+      quoteId: priceInfo?.quoteId,
     });
-  }, [priceInfo, presentPaymentSheet, completePayment, payableAmount]);
+  }, [priceInfo, presentPaymentSheet, completePayment, payableAmount, expectedPrice]);
 
   const isFree = payableAmount <= 0 || priceInfo?.skip === true;
   const hasDiscount =
@@ -270,9 +307,26 @@ export function WizardStepPayment({
         <View style={styles.summaryLine}>
           <Text style={styles.summaryKey}>Total</Text>
           <Text style={[styles.summaryValue, styles.bold]}>
-            {isFree ? "Free" : fmt(payableAmount, { currency: activeCurrency })}
+            {isFree
+              ? "Free"
+              : fmt(
+                  pricingQuote?.chargeTotalCents != null
+                    ? pricingQuote.chargeTotalCents / 100
+                    : payableAmount,
+                  { currency: activeCurrency }
+                )}
           </Text>
         </View>
+        {pricingQuote?.breakdown
+          ?.filter((row) => row.key !== "session_subtotal" && row.key !== "total")
+          .map((row) => (
+            <View key={row.key} style={styles.summaryLine}>
+              <Text style={styles.summaryKey}>{row.label}</Text>
+              <Text style={styles.summaryValue}>
+                {fmt(row.amountMinor / 100, { currency: activeCurrency })}
+              </Text>
+            </View>
+          ))}
         {couponCode.trim() ? (
           <View style={styles.summaryLine}>
             <Text style={styles.summaryKey}>Promo</Text>

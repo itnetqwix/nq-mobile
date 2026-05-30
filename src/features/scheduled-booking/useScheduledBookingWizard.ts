@@ -75,6 +75,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"wallet" | "card" | undefined>();
   const [pinSessionToken, setPinSessionToken] = useState<string | undefined>();
+  const [quoteId, setQuoteId] = useState<string | undefined>();
   const [chargingPrice, setChargingPrice] = useState(0);
   const [trainerTimezone, setTrainerTimezone] = useState<string | null>(null);
 
@@ -109,6 +110,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     setPaymentIntentId(null);
     setPaymentMethod(undefined);
     setPinSessionToken(undefined);
+    setQuoteId(undefined);
     setChargingPrice(0);
     setTrainerTimezone(null);
   }, [traineeTz]);
@@ -227,11 +229,13 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
       chargingPrice: number;
       paymentMethod?: "wallet" | "card";
       pinSessionToken?: string;
+      quoteId?: string;
     }) => {
       setPaymentIntentId(payload.paymentIntentId);
       setChargingPrice(payload.chargingPrice);
       setPaymentMethod(payload.paymentMethod);
       setPinSessionToken(payload.pinSessionToken);
+      setQuoteId(payload.quoteId);
     },
     []
   );
@@ -317,6 +321,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
         time_zone: traineeTz,
       };
       if (couponCode.trim()) bookPayload.coupon_code = couponCode.trim();
+      if (quoteId) bookPayload.quote_id = quoteId;
       if (paymentIntentId) bookPayload.payment_intent_id = paymentIntentId;
       if (paymentMethod === "wallet" && chargingPrice > 0) {
         bookPayload.payment_method = "wallet";

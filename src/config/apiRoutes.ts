@@ -196,6 +196,9 @@ export const API_ROUTES = {
     getPaymentIntent: "/transaction/get-payment-intent",
     createRefund: "/transaction/create-refund",
   },
+  payments: {
+    quote: "/payments/quote",
+  },
   wallet: {
     balance: "/wallet/balance",
     ledger: "/wallet/ledger",

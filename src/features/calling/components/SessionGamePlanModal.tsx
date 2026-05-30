@@ -8,12 +8,16 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 
@@ -24,6 +28,12 @@ import { API_ROUTES } from "../../../config/apiRoutes";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { putFileToPresignedUrl } from "../../../lib/presignedPut";
 import { fetchSessionReport } from "../meetingReportApi";
+import {
+  fetchImageKeysAsBase64DataUrls,
+  parseReportScreenshotItems,
+  type ReportScreenshotItem,
+  toReportDataPayload,
+} from "../reportDataUtils";
 import { sendChatTextMessage } from "../../chats/lib/sendChatText";
 import {
   NOTIFICATION_TITLES,
@@ -49,44 +59,33 @@ async function printHtmlToPdfFile(html: string): Promise<string | null> {
   }
 }
 
-export function SessionGamePlanModal({
-  visible,
-  sessionId,
-  trainerId,
-  traineeId,
-  onClose,
-}: Props) {
-  const { emitNotification } = useNotifications();
-  const [title, setTitle] = useState("");
-  const [topic, setTopic] = useState("");
-  const [images, setImages] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [saveStep, setSaveStep] = useState<"idle" | "pdf" | "upload" | "report">("idle");
+function buildPdfHtmlFromDataUrls(
+  imgDataUrls: string[],
+  heading: string,
+  notes: string,
+  items: ReportScreenshotItem[]
+): string {
+  const esc = (s: string) =>
+    String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
 
-  const buildPdfHtml = useCallback(
-    (imgKeys: string[], heading: string, notes: string) => {
-      const imgs = imgKeys
-        .map((k) => getS3ImageUrl(k))
-        .filter(Boolean)
-        .map(
-          (src) => `
-            <div class="imgWrap">
-              <img src="${src}" />
-            </div>
-          `
-        )
-        .join("\n");
-
-      const esc = (s: string) =>
-        String(s)
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#039;");
-
+  const imgs = imgDataUrls
+    .map((src, i) => {
+      const desc = items[i]?.description?.trim();
       return `
+        <div class="imgWrap">
+          <img src="${src}" />
+          ${desc ? `<p class="caption">${esc(desc)}</p>` : ""}
+        </div>
+      `;
+    })
+    .join("\n");
+
+  return `
 <!doctype html>
 <html>
   <head>
@@ -96,7 +95,8 @@ export function SessionGamePlanModal({
       body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; padding: 16px; }
       h1 { font-size: 20px; margin: 0 0 8px 0; color: #0b1f3a; }
       .notes { font-size: 12px; color: #444; white-space: pre-wrap; margin: 0 0 12px 0; }
-      .imgWrap { margin: 10px 0; }
+      .imgWrap { margin: 10px 0; page-break-inside: avoid; }
+      .caption { font-size: 11px; color: #333; margin: 6px 0 0 0; }
       img { width: 100%; height: auto; border-radius: 10px; }
     </style>
   </head>
@@ -107,6 +107,30 @@ export function SessionGamePlanModal({
   </body>
 </html>
 `;
+}
+
+export function SessionGamePlanModal({
+  visible,
+  sessionId,
+  trainerId,
+  traineeId,
+  onClose,
+}: Props) {
+  const { emitNotification } = useNotifications();
+  const [title, setTitle] = useState("");
+  const [topic, setTopic] = useState("");
+  const [reportItems, setReportItems] = useState<ReportScreenshotItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveStep, setSaveStep] = useState<"idle" | "pdf" | "upload" | "report">("idle");
+
+  const buildPdfHtml = useCallback(
+    async (items: ReportScreenshotItem[], heading: string, notes: string) => {
+      const keys = items.map((i) => i.imageUrl);
+      const dataUrls = await fetchImageKeysAsBase64DataUrls(keys);
+      const srcs =
+        dataUrls.length > 0 ? dataUrls : keys.map((k) => getS3ImageUrl(k));
+      return buildPdfHtmlFromDataUrls(srcs, heading, notes, items);
     },
     []
   );
@@ -120,15 +144,11 @@ export function SessionGamePlanModal({
         trainee: traineeId,
       });
       const data = res?.data ?? res;
-      const raw = data?.reportData;
-      const list = Array.isArray(raw)
-        ? raw.map((x: any) => (typeof x === "string" ? x : x?.name ?? x?.key ?? "")).filter(Boolean)
-        : [];
-      setImages(list);
+      setReportItems(parseReportScreenshotItems(data?.reportData));
       if (data?.title) setTitle(String(data.title));
       if (data?.description) setTopic(String(data.description));
     } catch {
-      setImages([]);
+      setReportItems([]);
     } finally {
       setLoading(false);
     }
@@ -143,14 +163,14 @@ export function SessionGamePlanModal({
       const lines = [
         `📋 Game plan: ${heading}`,
         notes.trim() ? notes.trim() : null,
-        images.length > 0 ? `${images.length} screenshot(s) saved to your locker.` : null,
+        reportItems.length > 0 ? `${reportItems.length} screenshot(s) saved to your locker.` : null,
       ].filter(Boolean);
       await sendChatTextMessage({
         receiverId: traineeId,
         content: lines.join("\n\n"),
       });
     },
-    [traineeId, images.length]
+    [traineeId, reportItems.length]
   );
 
   const save = async (alsoSendToChat: boolean) => {
@@ -163,8 +183,10 @@ export function SessionGamePlanModal({
     try {
       let pdfAttached = false;
       // Generate + upload PDF (web parity) when screenshots exist.
-      if (images.length > 0) {
-        const html = buildPdfHtml(images, title.trim(), topic.trim());
+      const payloadItems = toReportDataPayload(reportItems);
+
+      if (payloadItems.length > 0) {
+        const html = await buildPdfHtml(payloadItems, title.trim(), topic.trim());
         const pdfUri = await printHtmlToPdfFile(html);
         if (pdfUri) {
           let pdfBytes = 0;
@@ -216,7 +238,7 @@ export function SessionGamePlanModal({
         trainee: traineeId,
         title: title.trim(),
         topic: topic.trim() || title.trim(),
-        reportData: images,
+        reportData: payloadItems,
       });
 
       emitNotification({
@@ -249,8 +271,9 @@ export function SessionGamePlanModal({
             : "Screenshots are in your locker under Game plans."
       );
       onClose();
-    } catch (e: any) {
-      Alert.alert("Could not save", e?.message ?? "Try again.");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Try again.";
+      Alert.alert("Could not save", msg);
     } finally {
       setSaving(false);
       setSaveStep("idle");
@@ -259,7 +282,12 @@ export function SessionGamePlanModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <View style={styles.root}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={styles.root}>
         <Text style={styles.heading}>Session game plan</Text>
         <Text style={styles.sub}>
           Review screenshots from this lesson, then save to your locker.
@@ -283,18 +311,24 @@ export function SessionGamePlanModal({
 
         {loading ? (
           <ActivityIndicator style={{ marginTop: 24 }} />
-        ) : images.length === 0 ? (
+        ) : reportItems.length === 0 ? (
           <Text style={styles.empty}>
             No screenshots yet. Use the camera button during the call to capture frames.
           </Text>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.strip}>
-            {images.map((key) => (
-              <Image
-                key={key}
-                source={{ uri: getS3ImageUrl(key) }}
-                style={styles.thumb}
-              />
+            {reportItems.map((item) => (
+              <View key={item.imageUrl} style={styles.thumbWrap}>
+                <Image
+                  source={{ uri: getS3ImageUrl(item.imageUrl) }}
+                  style={styles.thumb}
+                />
+                {item.description ? (
+                  <Text style={styles.thumbCaption} numberOfLines={2}>
+                    {item.description}
+                  </Text>
+                ) : null}
+              </View>
             ))}
           </ScrollView>
         )}
@@ -330,12 +364,15 @@ export function SessionGamePlanModal({
             <Text style={styles.btnGhostText}>Skip</Text>
           </Pressable>
         </View>
-      </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   root: { flex: 1, padding: 20, paddingTop: 48, backgroundColor: "#fff" },
   heading: { fontSize: 22, fontWeight: "700", color: "#0b1f3a" },
   sub: { marginTop: 8, fontSize: 14, color: "#555", lineHeight: 20 },
@@ -351,8 +388,10 @@ const styles = StyleSheet.create({
   },
   inputMulti: { minHeight: 72, textAlignVertical: "top" },
   empty: { marginTop: 20, color: "#666", fontSize: 14 },
-  strip: { marginTop: 16, maxHeight: 120 },
-  thumb: { width: 100, height: 100, borderRadius: 8, marginRight: 10, backgroundColor: "#eee" },
+  strip: { marginTop: 16, maxHeight: 140 },
+  thumbWrap: { marginRight: 10, maxWidth: 100 },
+  thumb: { width: 100, height: 100, borderRadius: 8, backgroundColor: "#eee" },
+  thumbCaption: { fontSize: 10, color: "#555", marginTop: 4 },
   actionsCol: { gap: 10, marginTop: "auto", paddingBottom: 24 },
   btnGhost: { paddingVertical: 12, alignItems: "center" },
   btnGhostText: { color: "#666", fontWeight: "600" },

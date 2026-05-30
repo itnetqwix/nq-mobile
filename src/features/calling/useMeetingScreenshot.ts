@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, type RefObject } from "react";
 import { Alert, View } from "react-native";
 import { captureRef } from "react-native-view-shot";
 import * as FileSystem from "expo-file-system/legacy";
@@ -8,6 +8,7 @@ import {
   captureClipFrameUri,
   captureClipFrames,
 } from "./captureClipScreenshot";
+import { normalizeReportImageKeys } from "./reportDataUtils";
 import { fetchSessionReport, requestScreenshotUpload } from "./meetingReportApi";
 
 export type ScreenshotCaptureSource = {
@@ -20,6 +21,8 @@ export type ScreenshotCapturedPayload = {
   imageKey: string;
 };
 
+export type CaptureStage = "idle" | "preparing" | "uploading";
+
 type Args = {
   sessionId: string;
   trainerId: string;
@@ -28,22 +31,9 @@ type Args = {
   onCaptured?: (payload: ScreenshotCapturedPayload) => void;
 };
 
-const CAPTURE_FRAME_DELAY_MS = 320;
+const CAPTURE_FRAME_DELAY_MS = 200;
+const COMPOSITE_LAYOUT_DELAY_MS = 120;
 const MIN_CAPTURE_BYTES = 8000;
-
-function normalizeReportKeys(raw: unknown): string[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .map((x) =>
-      typeof x === "string"
-        ? x
-        : (x as { name?: string; key?: string })?.name ??
-          (x as { key?: string })?.key ??
-          (x as { imageUrl?: string })?.imageUrl ??
-          ""
-    )
-    .filter(Boolean);
-}
 
 function extractImageKeyFromPresignResponse(
   presign: { data?: { url?: string; filename?: string } },
@@ -67,10 +57,13 @@ export function useMeetingScreenshot({
   onCaptured,
 }: Args) {
   const captureTargetRef = useRef<View>(null);
+  const compositeHostRef = useRef<View>(null);
   const pendingPreviewUriRef = useRef<string | null>(null);
   const [capturing, setCapturing] = useState(false);
+  const [captureStage, setCaptureStage] = useState<CaptureStage>("idle");
   const [captureCount, setCaptureCount] = useState(0);
   const [screenshotKeys, setScreenshotKeys] = useState<string[]>([]);
+  const [compositeFrameUris, setCompositeFrameUris] = useState<string[]>([]);
 
   const disposePendingPreview = useCallback(async () => {
     const uri = pendingPreviewUriRef.current;
@@ -95,7 +88,7 @@ export function useMeetingScreenshot({
         trainee: traineeId,
       });
       const data = res?.data ?? res;
-      setScreenshotKeys(normalizeReportKeys(data?.reportData));
+      setScreenshotKeys(normalizeReportImageKeys(data?.reportData));
     } catch {
       /** keep local list */
     }
@@ -118,31 +111,10 @@ export function useMeetingScreenshot({
     [sessionId, traineeId, trainerId]
   );
 
-  const resolveImageKeyAfterUpload = useCallback(
-    async (uploadedKey: string) => {
-      let imageKey = uploadedKey;
-      try {
-        const res = await fetchSessionReport({
-          sessions: sessionId,
-          trainer: trainerId,
-          trainee: traineeId,
-        });
-        const data = res?.data ?? res;
-        const items = Array.isArray(data?.reportData) ? data.reportData : [];
-        const last = items[items.length - 1] as { imageUrl?: string } | undefined;
-        if (last?.imageUrl) imageKey = last.imageUrl;
-      } catch {
-        /** keep uploadedKey */
-      }
-      return imageKey;
-    },
-    [sessionId, trainerId, traineeId]
-  );
-
-  const captureViewShot = useCallback(async (): Promise<string | null> => {
-    if (!captureTargetRef.current) return null;
+  const captureViewShot = useCallback(async (ref: RefObject<View | null>) => {
+    if (!ref.current) return null;
     try {
-      const uri = await captureRef(captureTargetRef, {
+      const uri = await captureRef(ref, {
         format: "png",
         quality: 1,
         result: "tmpfile",
@@ -159,72 +131,78 @@ export function useMeetingScreenshot({
     }
   }, []);
 
+  const captureCompositeFromFrames = useCallback(
+    async (frameUris: string[]): Promise<string | null> => {
+      if (frameUris.length < 2) return frameUris[0] ?? null;
+      setCompositeFrameUris(frameUris.slice(0, 2));
+      await delay(COMPOSITE_LAYOUT_DELAY_MS);
+      const uri = await captureViewShot(compositeHostRef);
+      setCompositeFrameUris([]);
+      return uri;
+    },
+    [captureViewShot]
+  );
+
   const captureFromFallbackSources = useCallback(
     async (fallbackSources?: ScreenshotCaptureSource[]) => {
       if (!fallbackSources?.length) return null;
-      const frames = await captureClipFrames(
-        fallbackSources.filter((s) => !!s.uri)
-      );
-      if (frames.length > 0) return frames[0];
-      for (const src of fallbackSources) {
-        if (!src.uri) continue;
+      const valid = fallbackSources.filter((s) => !!s.uri);
+
+      const frames = await captureClipFrames(valid);
+      if (frames.length >= 2) {
+        return captureCompositeFromFrames(frames);
+      }
+      if (frames.length === 1) return frames[0];
+
+      for (const src of valid) {
         const frame = await captureClipFrameUri(src.uri, src.progressSeconds);
         if (frame) return frame;
       }
       return null;
     },
-    []
+    [captureCompositeFromFrames]
   );
 
   const takeScreenshot = useCallback(
     async (fallbackSources?: ScreenshotCaptureSource[]) => {
       if (!isTrainer) return;
       setCapturing(true);
+      setCaptureStage("preparing");
       try {
-        /** Give React a frame to remove `capturing`-gated overlays
-         *  (timeline, zoom buttons) before view-shot snapshots the tree. */
         await delay(CAPTURE_FRAME_DELAY_MS);
 
         let localUri: string | null = null;
 
-        /** When clips are loaded, prefer the native video thumbnail because
-         *  `react-native-view-shot` + `expo-av` typically returns a blank
-         *  frame on iOS. Thumbnails reliably contain the actual clip pixels. */
         if (fallbackSources && fallbackSources.length > 0) {
           localUri = await captureFromFallbackSources(fallbackSources);
         }
 
-        /** Fallback to view-shot if no clips are active (live PIP screenshot). */
         if (!localUri) {
-          localUri = await captureViewShot();
+          localUri = await captureViewShot(captureTargetRef);
         }
 
         if (!localUri) {
           throw new Error(
-            "Could not capture this frame. Wait until the clip finishes loading, then try again."
+            "Could not capture this frame. Wait until the clip or video finishes loading, then try again."
           );
         }
 
         pendingPreviewUriRef.current = localUri;
-        const uploadedKey = await uploadPng(localUri);
-        const imageKey = await resolveImageKeyAfterUpload(uploadedKey);
-        await refreshScreenshots();
+        setCaptureStage("uploading");
+
+        const imageKey = await uploadPng(localUri);
         setCaptureCount((n) => n + 1);
         setScreenshotKeys((prev) => [...new Set([...prev, imageKey])]);
         onCaptured?.({ localUri, imageKey });
-        Alert.alert(
-          "Screenshot saved",
-          fallbackSources?.length
-            ? "Saved from the clip preview. Add a description for your game plan if you like."
-            : "Added to this lesson. You can describe it when building the game plan."
-        );
       } catch (e: unknown) {
         await disposePendingPreview();
+        setCompositeFrameUris([]);
         const msg = e instanceof Error ? e.message : "Could not save screenshot.";
         if (__DEV__) console.warn("[meeting] screenshot failed", e);
         Alert.alert("Screenshot failed", msg);
       } finally {
         setCapturing(false);
+        setCaptureStage("idle");
       }
     },
     [
@@ -233,16 +211,17 @@ export function useMeetingScreenshot({
       disposePendingPreview,
       isTrainer,
       onCaptured,
-      refreshScreenshots,
-      resolveImageKeyAfterUpload,
       uploadPng,
     ]
   );
 
   return {
     captureTargetRef,
+    compositeHostRef,
+    compositeFrameUris,
     takeScreenshot,
     capturing,
+    captureStage,
     captureCount,
     screenshotKeys,
     refreshScreenshots,

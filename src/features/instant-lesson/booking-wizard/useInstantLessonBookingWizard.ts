@@ -54,6 +54,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"wallet" | "card" | undefined>();
   const [pinSessionToken, setPinSessionToken] = useState<string | undefined>();
+  const [quoteId, setQuoteId] = useState<string | undefined>();
   const [chargingPrice, setChargingPrice] = useState(0);
   const [promoValidating, setPromoValidating] = useState(false);
   const [promoResult, setPromoResult] = useState<{
@@ -78,11 +79,13 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
       chargingPrice: number;
       paymentMethod?: "wallet" | "card";
       pinSessionToken?: string;
+      quoteId?: string;
     }) => {
       setPaymentIntentId(payload.paymentIntentId);
       setChargingPrice(payload.chargingPrice);
       setPaymentMethod(payload.paymentMethod);
       setPinSessionToken(payload.pinSessionToken);
+      setQuoteId(payload.quoteId);
     },
     []
   );
@@ -96,6 +99,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     setPaymentIntentId(null);
     setPaymentMethod(undefined);
     setPinSessionToken(undefined);
+    setQuoteId(undefined);
     setChargingPrice(0);
     setPromoResult(null);
     setPromoValidating(false);
@@ -245,6 +249,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
         if (pinSessionToken) bookingPayload.pin_session_token = pinSessionToken;
       }
       if (couponCode.trim()) bookingPayload.coupon_code = couponCode.trim();
+      if (quoteId) bookingPayload.quote_id = quoteId;
       const res = await apiClient.post(API_ROUTES.trainee.bookInstantMeeting, bookingPayload, {
         headers: idempotencyHeaders(newIdempotencyKey("book-instant")),
       });
