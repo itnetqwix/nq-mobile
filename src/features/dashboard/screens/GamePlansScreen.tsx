@@ -12,7 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { EmptyState, ImageWithSkeleton } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
-import { isLikelyPdf } from "../../../lib/clipMediaUrl";
+import { isLikelyAudio, isLikelyPdf } from "../../../lib/clipMediaUrl";
 import { postReportsGetAll } from "../../home/api/homeApi";
 import { LockerListShell } from "../components/locker/LockerListShell";
 import { LockerViewerModal, type LockerViewerMode } from "../components/locker/LockerViewerModal";
@@ -146,7 +146,10 @@ export function GamePlansScreen() {
     const session = item.session as { report?: string; sessionRecordingUrl?: string } | undefined;
     if (reportData?.imageUrl) return "image";
     if (session?.report) return "pdf";
-    if (session?.sessionRecordingUrl || item.sessionRecordingUrl) return "video";
+    if (session?.sessionRecordingUrl || item.sessionRecordingUrl) {
+      const rec = String(session?.sessionRecordingUrl ?? item.sessionRecordingUrl ?? "");
+      return isLikelyAudio(rec) ? "audio" : "video";
+    }
     return "none";
   };
 

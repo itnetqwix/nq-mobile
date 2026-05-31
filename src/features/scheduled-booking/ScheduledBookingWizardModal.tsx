@@ -57,6 +57,8 @@ export function ScheduledBookingWizardModal({ visible, trainer, onDismiss, onBoo
               onSelectStart={w.setSelectedStartIso}
               loading={w.dayAvailabilityQuery.isLoading}
               errorMessage={dayMsg}
+              smartSuggestions={w.smartScheduleSuggestions}
+              smartSuggestionsLoading={w.smartScheduleLoading}
               onNext={w.goNext}
             />
           )}

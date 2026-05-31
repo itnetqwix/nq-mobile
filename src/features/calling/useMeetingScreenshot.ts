@@ -234,6 +234,11 @@ export function useMeetingScreenshot({
     ]
   );
 
+  const captureStageFrame = useCallback(
+    () => captureViewShot(captureTargetRef),
+    [captureViewShot]
+  );
+
   return {
     captureTargetRef,
     compositeHostRef,
@@ -247,5 +252,6 @@ export function useMeetingScreenshot({
     refreshScreenshots,
     disposePendingPreview,
     hasCaptures: captureCount > 0 || screenshotKeys.length > 0,
+    captureStageFrame,
   };
 };

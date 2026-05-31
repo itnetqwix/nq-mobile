@@ -81,6 +81,7 @@ import {
 import { useVideoPipLayout } from "../useVideoPipLayout";
 import { useMeetingLayout } from "../useMeetingLayout";
 import { useNativeMeetingPip } from "../hooks/useNativeMeetingPip";
+import { MeetingIosPipHost } from "../components/MeetingIosPipHost";
 import { useCallForegroundRecovery } from "../hooks/useCallForegroundRecovery";
 import { useCallDegradation } from "../hooks/useCallDegradation";
 import { useCallQualityReporter } from "../hooks/useCallQualityReporter";
@@ -737,7 +738,7 @@ function MeetingSurface({
   });
 
   useNativeMeetingPip({
-    enabled: partnerInSession && !!localStream,
+    enabled: partnerInSession && !!remoteStream,
     preferRemote: true,
   });
 
@@ -945,6 +946,7 @@ function MeetingSurface({
     isTrainer,
     isInstantLesson: isInstant,
     lessonTimerStatus: lessonTimer.status,
+    captureStageFrame: screenshot.captureStageFrame,
   });
 
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -1687,6 +1689,11 @@ function MeetingSurface({
       }}
     >
       <StatusBar barStyle="light-content" />
+
+      <MeetingIosPipHost
+        stream={remoteStream}
+        enabled={partnerInSession && !!remoteStream}
+      />
 
       {gamePlanBanner && !isTrainer ? (
         <GamePlanStatusPill

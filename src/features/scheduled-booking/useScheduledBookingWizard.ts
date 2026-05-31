@@ -43,6 +43,7 @@ import {
 } from "./trainerUtils";
 import { fetchSessionPricingQuote } from "../payments/fetchSessionPricingQuote";
 import type { PricingQuote } from "../payments/pricingTypes";
+import { fetchSmartSchedule } from "../ai/smartScheduleApi";
 
 export type ScheduledTrainer = Record<string, unknown> | null;
 
@@ -91,6 +92,13 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
   const [trainerTimezone, setTrainerTimezone] = useState<string | null>(null);
 
   const tid = trainerIdOf(trainer);
+  const smartScheduleQuery = useQuery({
+    queryKey: queryKeys.ai.smartSchedule(tid ?? ""),
+    queryFn: () => fetchSmartSchedule(tid!),
+    enabled: visible && step === "datetime" && !!tid,
+    staleTime: 300_000,
+    retry: 1,
+  });
   const tname = trainerNameOf(trainer);
   const hourlyRate = trainerHourlyRate(trainer);
   const traineeTz = resolveTraineeTimeZone(user as Record<string, unknown> | undefined);
@@ -578,6 +586,8 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     chargingPrice,
     pricingQuote,
     durationPreviewQuote,
+    smartScheduleSuggestions: smartScheduleQuery.data?.suggestions ?? [],
+    smartScheduleLoading: smartScheduleQuery.isLoading,
     parseSlotTimeOnDate: (label: string) => parseSlotTimeOnDate(bookedDateIso, label, traineeTz),
   };
 }

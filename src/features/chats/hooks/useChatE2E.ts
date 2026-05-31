@@ -11,6 +11,7 @@ import { fetchPartnerChatPublicKey, registerMyChatPublicKey } from "../crypto/ch
 export function useChatE2E(partnerUserId: string | undefined) {
   const [ready, setReady] = useState(false);
   const [canEncrypt, setCanEncrypt] = useState(false);
+  const [initFailed, setInitFailed] = useState(false);
   const keysRef = useRef<Awaited<ReturnType<typeof loadOrCreateLocalChatKeys>> | null>(null);
   const partnerPubRef = useRef<Uint8Array | null>(null);
 
@@ -18,6 +19,7 @@ export function useChatE2E(partnerUserId: string | undefined) {
     let cancelled = false;
     setReady(false);
     setCanEncrypt(false);
+    setInitFailed(false);
     void (async () => {
       try {
         const keys = await loadOrCreateLocalChatKeys();
@@ -36,7 +38,8 @@ export function useChatE2E(partnerUserId: string | undefined) {
       } catch {
         if (!cancelled) {
           setCanEncrypt(false);
-          setReady(false);
+          setReady(true);
+          setInitFailed(true);
         }
       }
     })();
@@ -63,11 +66,18 @@ export function useChatE2E(partnerUserId: string | undefined) {
     return decryptChatPayload(content, keys.secretKey, their) ?? "🔒 Unable to decrypt";
   }, []);
 
+  const e2eUnavailable =
+    Boolean(partnerUserId) &&
+    ready &&
+    (initFailed || !canEncrypt);
+
   return {
     ready,
     canEncrypt,
+    initFailed,
     encryptForSend,
     decryptForDisplay,
     isE2EActive: canEncrypt,
+    e2eUnavailable,
   };
 }

@@ -90,3 +90,51 @@ export async function fetchSessionHandoffSummary(
     null;
   return inner;
 }
+
+export type SessionTimeline = {
+  sessionId: string;
+  status: string;
+  isInstant: boolean;
+  instantPhase: string | null;
+  bookedDate?: string;
+  sessionStart?: string;
+  sessionEnd?: string;
+  startTimeUtc?: string | null;
+  endTimeUtc?: string | null;
+  bothJoinedAt?: string | null;
+  acceptedAt?: string | null;
+  joinDeadlineAt?: string | null;
+  timer: {
+    status: string;
+    remainingSeconds: number;
+    duration?: number;
+  } | null;
+  extensionRequests: Array<{
+    requestId: string;
+    status: string;
+    minutes: number;
+    amount: number;
+    requestedAt?: string;
+    expiresAt?: string;
+    paymentIntentId?: string | null;
+  }>;
+  extensions: Array<{
+    minutes: number;
+    amount: number;
+    appliedAt?: string;
+    paymentIntentId?: string | null;
+  }>;
+  updatedAt?: string;
+  createdAt?: string;
+};
+
+export async function fetchSessionTimeline(
+  sessionId: string
+): Promise<SessionTimeline | null> {
+  const { data } = await apiClient.get(API_ROUTES.user.sessionTimeline(sessionId));
+  const inner =
+    (data as { data?: SessionTimeline })?.data ??
+    (data as { result?: SessionTimeline })?.result ??
+    null;
+  return inner;
+}

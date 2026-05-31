@@ -23,6 +23,7 @@ import {
 } from "../../wallet/walletApi";
 import { useCurrencyFormatter } from "../../../lib/intl";
 import { queryKeys } from "../../../lib/queryKeys";
+import { SessionTimelineCard } from "../../support/SessionTimelineCard";
 
 type Props = NativeStackScreenProps<MenuStackParamList, "TransactionDetail">;
 
@@ -292,6 +293,10 @@ export function TransactionDetailScreen({ navigation, route }: Props) {
         <DetailRow label="Trainee" value={parties?.trainee_name} />
         <DetailRow label="Status" value={session?.status ? String(session.status) : undefined} />
       </View>
+
+      {supportBookingId ? (
+        <SessionTimelineCard bookingId={String(supportBookingId)} />
+      ) : null}
 
       <Text style={styles.sectionTitle}>Payment</Text>
       <View style={styles.card}>

@@ -1,5 +1,5 @@
 /**
- * Instant-lesson session recording (socket parity + mobile audio capture upload).
+ * Instant-lesson session recording (socket parity + mobile capture upload).
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -11,13 +11,19 @@ import {
   startInstantLessonAudioCapture,
   type InstantRecordingCaptureHandle,
 } from "./instantLessonRecordingCapture";
+import { muxLessonRecordingUpload } from "./lessonRecordingCompose";
+import {
+  LESSON_STAGE_FRAME_SAMPLER_ENABLED,
+  startLessonStageFrameSampler,
+  type LessonStageFrameSamplerHandle,
+} from "./lessonStageFrameSampler";
 import {
   requestSessionRecordingUpload,
   uploadSessionRecordingFile,
   type SessionRecordingFormat,
 } from "./sessionRecordingApi";
 
-/** Native instant recording (audio upload); set false to hide UI only. */
+/** Native instant recording (audio + stage video); set false to hide UI only. */
 export const INSTANT_RECORDING_CAPTURE_ENABLED = true;
 
 type Args = {
@@ -29,6 +35,7 @@ type Args = {
   isTrainer: boolean;
   isInstantLesson: boolean;
   lessonTimerStatus: string;
+  captureStageFrame?: () => Promise<string | null>;
 };
 
 export function useInstantLessonRecording({
@@ -40,6 +47,7 @@ export function useInstantLessonRecording({
   isTrainer,
   isInstantLesson,
   lessonTimerStatus,
+  captureStageFrame,
 }: Args) {
   const [trainerRecordingEnabled, setTrainerRecordingEnabled] = useState(false);
   const [trainerRecordingLive, setTrainerRecordingLive] = useState(false);
@@ -48,7 +56,26 @@ export function useInstantLessonRecording({
   const [traineeNoticeOpen, setTraineeNoticeOpen] = useState(false);
   const startedRef = useRef(false);
   const captureRef = useRef<InstantRecordingCaptureHandle | null>(null);
+  const frameSamplerRef = useRef<LessonStageFrameSamplerHandle | null>(null);
   const peerLiveWasTrueRef = useRef(false);
+
+  const startStageSamplerIfNeeded = useCallback(() => {
+    if (
+      !LESSON_STAGE_FRAME_SAMPLER_ENABLED ||
+      !captureStageFrame ||
+      frameSamplerRef.current
+    ) {
+      return;
+    }
+    frameSamplerRef.current = startLessonStageFrameSampler(captureStageFrame);
+  }, [captureStageFrame]);
+
+  const stopStageSampler = useCallback(async () => {
+    const sampler = frameSamplerRef.current;
+    frameSamplerRef.current = null;
+    if (!sampler) return [];
+    return sampler.stop();
+  }, []);
 
   const emitRecording = useCallback(
     (enabled: boolean, live: boolean) => {
@@ -63,38 +90,52 @@ export function useInstantLessonRecording({
     [isInstantLesson, isTrainer, myId, peerId, sessionId, socket]
   );
 
-  const uploadCapture = useCallback(async () => {
-    const handle = captureRef.current;
-    captureRef.current = null;
-    if (!handle || !sessionId || !traineeId) return;
-    const uri = await handle.stop();
-    if (!uri) return;
-    try {
+  const uploadRecordingAsset = useCallback(
+    async (localUri: string, format: SessionRecordingFormat) => {
+      if (!sessionId || !traineeId) return;
       setUploading(true);
-      const format: SessionRecordingFormat = "m4a";
-      const url = await requestSessionRecordingUpload({
-        sessions: sessionId,
-        trainee: traineeId,
-        format,
-      });
-      await uploadSessionRecordingFile(url, uri, format);
-      Alert.alert(
-        "Recording saved",
-        "Session audio was saved. Open Locker → Game plans to review."
-      );
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Upload failed.";
-      Alert.alert("Recording", msg);
-    } finally {
-      setUploading(false);
-    }
-  }, [sessionId, traineeId]);
+      try {
+        const url = await requestSessionRecordingUpload({
+          sessions: sessionId,
+          trainee: traineeId,
+          format,
+        });
+        await uploadSessionRecordingFile(url, localUri, format);
+        Alert.alert(
+          "Recording saved",
+          format === "mp4"
+            ? "Session video was saved to the game plan. Open Locker → Game plans to review."
+            : "Session audio was saved. Open Locker → Game plans to review."
+        );
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : "Upload failed.";
+        Alert.alert("Recording", msg);
+      } finally {
+        setUploading(false);
+      }
+    },
+    [sessionId, traineeId]
+  );
 
-  const stopCaptureAndMaybeUpload = useCallback(async () => {
-    if (captureRef.current) {
-      await uploadCapture();
+  const finalizeAndUpload = useCallback(async () => {
+    const frames = await stopStageSampler();
+    const audioHandle = captureRef.current;
+    captureRef.current = null;
+
+    let audioUri: string | null = null;
+    if (audioHandle) {
+      audioUri = await audioHandle.stop();
     }
-  }, [uploadCapture]);
+
+    if (!audioUri && frames.length < 2) return;
+
+    const asset = await muxLessonRecordingUpload({
+      frameUris: frames,
+      audioUri,
+    });
+    if (!asset) return;
+    await uploadRecordingAsset(asset.uri, asset.format);
+  }, [stopStageSampler, uploadRecordingAsset]);
 
   useEffect(() => {
     if (!socket || !isInstantLesson) return;
@@ -147,6 +188,7 @@ export function useInstantLessonRecording({
           return;
         }
         captureRef.current = cap;
+        startStageSamplerIfNeeded();
         setTrainerRecordingLive(true);
         emitRecording(true, true);
       })();
@@ -157,14 +199,15 @@ export function useInstantLessonRecording({
       startedRef.current = false;
       setTrainerRecordingLive(false);
       emitRecording(trainerRecordingEnabled, false);
-      void stopCaptureAndMaybeUpload();
+      void finalizeAndUpload();
     }
   }, [
     emitRecording,
+    finalizeAndUpload,
     isInstantLesson,
     isTrainer,
     lessonTimerStatus,
-    stopCaptureAndMaybeUpload,
+    startStageSamplerIfNeeded,
     trainerRecordingEnabled,
   ]);
 
@@ -176,7 +219,7 @@ export function useInstantLessonRecording({
   const confirmTrainerOptIn = useCallback(() => {
     Alert.alert(
       "Record this lesson?",
-      "Audio from this instant lesson will be saved to the session game plan when the lesson ends. The trainee will see a recording indicator.",
+      "Audio and lesson video snapshots will be saved to the session game plan when the lesson ends. The trainee will see a recording indicator.",
       [
         { text: "Not now", style: "cancel" },
         {
@@ -197,6 +240,7 @@ export function useInstantLessonRecording({
                   return;
                 }
                 captureRef.current = cap;
+                startStageSamplerIfNeeded();
                 setTrainerRecordingLive(true);
                 emitRecording(true, true);
               })();
@@ -207,7 +251,7 @@ export function useInstantLessonRecording({
         },
       ]
     );
-  }, [emitRecording, lessonTimerStatus]);
+  }, [emitRecording, lessonTimerStatus, startStageSamplerIfNeeded]);
 
   const toggleTrainerRecording = useCallback(() => {
     if (trainerRecordingEnabled) {
@@ -215,23 +259,18 @@ export function useInstantLessonRecording({
       setTrainerRecordingLive(false);
       startedRef.current = false;
       emitRecording(false, false);
-      void stopCaptureAndMaybeUpload();
+      void finalizeAndUpload();
       return;
     }
     confirmTrainerOptIn();
-  }, [
-    confirmTrainerOptIn,
-    emitRecording,
-    stopCaptureAndMaybeUpload,
-    trainerRecordingEnabled,
-  ]);
+  }, [confirmTrainerOptIn, emitRecording, finalizeAndUpload, trainerRecordingEnabled]);
 
   const stopTrainerRecording = useCallback(() => {
     setTrainerRecordingLive(false);
     startedRef.current = false;
     emitRecording(trainerRecordingEnabled, false);
-    void stopCaptureAndMaybeUpload();
-  }, [emitRecording, stopCaptureAndMaybeUpload, trainerRecordingEnabled]);
+    void finalizeAndUpload();
+  }, [emitRecording, finalizeAndUpload, trainerRecordingEnabled]);
 
   const dismissTraineeNotice = useCallback(() => {
     setTraineeNoticeOpen(false);

@@ -9,7 +9,7 @@ Use this checklist when verifying releases. Network adaptation is tracked separa
 | Unified post-call (timer end = manual end) | Done | `openPostCallFlow()` on `lessonTimer.status === "ended"` |
 | Recap send → game plan / ratings | Done | `onSent` → `continueAfterRecap()` |
 | Call-slot / join-readiness headers | Done | `X-NQ-Auth-Session-Id` + `X-NQ-Device-Id` on REST; backend fallbacks |
-| Instant recording | Done | Audio capture + S3 upload; `INSTANT_RECORDING_CAPTURE_ENABLED` |
+| Instant recording | Done | Audio + stage MP4 mux upload; `INSTANT_RECORDING_CAPTURE_ENABLED` |
 | Native app lesson notice (precall) | Done | `lesson_client_requirement` + lobby copy |
 
 ## Phase 1 — P1 (important UX)
@@ -57,7 +57,5 @@ Use this checklist when verifying releases. Network adaptation is tracked separa
 
 ## Deferred
 
-- **Composited video recording on mobile** — web canvas + MediaRecorder; native module TBD
-- **iOS system PiP** — native `AVPictureInPicture` module
 - **Mobile ↔ web in same lesson** — precall warns only
-- **Ops session timeline API** — support/disputes dashboard
+- **PiP multi-tile** (coach + trainee composite in PiP window)

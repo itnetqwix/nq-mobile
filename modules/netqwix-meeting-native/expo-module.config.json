@@ -1,0 +1,9 @@
+{
+  "platforms": ["ios", "android"],
+  "ios": {
+    "modules": ["NetQwixMeetingModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.netqwixmeeting.NetQwixMeetingModule"]
+  }
+}

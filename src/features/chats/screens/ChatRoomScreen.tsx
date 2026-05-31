@@ -2022,6 +2022,7 @@ export function ChatRoomScreen({
   const partnerName = partner?.fullname ?? "Chat";
   const partnerAvatar = getS3ImageUrl(partner?.profile_picture);
   const showPolicyBanner = !isGroup && !!(chatPolicy && !chatPolicy.hasPaidSession);
+  const showE2EWarning = !isGroup && chatE2E.e2eUnavailable;
   const composerBottomInset = Math.max(insets.bottom, space.sm);
   /**
    * `chromeHeight` is the real, measured height of everything *above*
@@ -2225,6 +2226,14 @@ export function ChatRoomScreen({
           <View style={styles.policyBanner}>
             <Ionicons name="ban-outline" size={16} color="#dc2626" />
             <Text style={[styles.policyText, { color: "#991b1b" }]}>{composerBlocked}</Text>
+          </View>
+        ) : null}
+        {showE2EWarning && !composerBlocked ? (
+          <View style={[styles.policyBanner, styles.e2eWarningBanner]}>
+            <Ionicons name="shield-outline" size={16} color="#92400e" />
+            <Text style={[styles.policyText, styles.e2eWarningText]}>
+              Secure messaging is unavailable. New messages are not end-to-end encrypted.
+            </Text>
           </View>
         ) : null}
         {showPolicyBanner && !composerBlocked && chatPolicy ? (

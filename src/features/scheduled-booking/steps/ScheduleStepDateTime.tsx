@@ -11,6 +11,7 @@ import {
 import { radii, space, useStaticStyles, useThemeColors } from "../../../theme";
 import { useSharedStepStyles } from "../../instant-lesson/booking-wizard/sharedStepStyles";
 import { nextDays } from "../timeSlotUtils";
+import type { SmartScheduleSuggestion } from "../../ai/smartScheduleApi";
 
 type Props = {
   traineeTz: string;
@@ -22,6 +23,8 @@ type Props = {
   onSelectStart: (iso: string) => void;
   loading: boolean;
   errorMessage?: string;
+  smartSuggestions?: SmartScheduleSuggestion[];
+  smartSuggestionsLoading?: boolean;
   onNext: () => void;
 };
 
@@ -35,6 +38,8 @@ export function ScheduleStepDateTime({
   onSelectStart,
   loading,
   errorMessage,
+  smartSuggestions = [],
+  smartSuggestionsLoading = false,
   onNext,
 }: Props) {
   const c = useThemeColors();
@@ -138,6 +143,18 @@ function useStyles() {
       timeChipText: { fontSize: 15, fontWeight: "600", color: palette.text },
       timeChipTextOn: { color: palette.brandTextOn },
       errorText: { color: palette.danger, marginVertical: space.sm },
+      smartBox: {
+        marginBottom: space.md,
+        padding: space.sm,
+        borderRadius: radii.md,
+        backgroundColor: palette.surfaceMuted,
+        borderWidth: 1,
+        borderColor: palette.border,
+        gap: space.xs,
+      },
+      smartRow: { flexDirection: "row", alignItems: "flex-start", gap: 8, marginTop: 6 },
+      smartTextWrap: { flex: 1, gap: 2 },
+      smartWhen: { fontSize: 14, fontWeight: "600", color: palette.text },
     })
   );
 }

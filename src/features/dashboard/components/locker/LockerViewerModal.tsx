@@ -18,10 +18,11 @@ import {
   NativeMediaSurface,
 } from "../../../../components/media";
 import { useMediaViewport } from "../../../../components/media/useMediaViewport";
-import { isLikelyPdf } from "../../../../lib/clipMediaUrl";
+import { isLikelyAudio, isLikelyPdf } from "../../../../lib/clipMediaUrl";
+import { LockerAudioPlayer } from "./LockerAudioPlayer";
 import { colors, space } from "../../../../theme";
 
-export type LockerViewerMode = "video" | "pdf" | "image";
+export type LockerViewerMode = "video" | "pdf" | "image" | "audio";
 
 type Props = {
   visible: boolean;
@@ -51,12 +52,13 @@ export function LockerViewerModal({ visible, onClose, uri, title, mode, sharedBy
 
   useEffect(() => {
     if (visible) {
-      setLoading(true);
       setError(false);
+      setLoading(mode !== "audio" && !isLikelyAudio(uri));
     }
   }, [visible, uri, mode]);
 
   const resolvedMode: LockerViewerMode = useMemo(() => {
+    if (mode === "audio" || isLikelyAudio(uri)) return "audio";
     if (mode === "pdf") return "pdf";
     if (mode === "image" && isLikelyPdf(uri)) return "pdf";
     if (mode === "video") return "video";
@@ -111,6 +113,10 @@ export function LockerViewerModal({ visible, onClose, uri, title, mode, sharedBy
               <Text style={styles.primaryBtnText}>Open in browser</Text>
             </Pressable>
           </View>
+        ) : resolvedMode === "audio" ? (
+          <View style={{ width, justifyContent: "center", minHeight: mediaHeight * 0.4 }}>
+            <LockerAudioPlayer uri={uri} title={title} />
+          </View>
         ) : resolvedMode === "pdf" ? (
           <View style={{ width, height: mediaHeight }}>
             <WebView
@@ -155,7 +161,7 @@ export function LockerViewerModal({ visible, onClose, uri, title, mode, sharedBy
           />
         )}
 
-        {loading && !error ? (
+        {loading && !error && resolvedMode !== "audio" ? (
           <MediaLoadingOverlay
             message={resolvedMode === "video" ? "Loading video" : "Loading preview"}
           />
@@ -163,11 +169,13 @@ export function LockerViewerModal({ visible, onClose, uri, title, mode, sharedBy
 
         <View style={[styles.footer, { paddingBottom: insets.bottom + 8 }]}>
           <Text style={styles.footerText}>
-            {resolvedMode === "video"
-              ? "Use player controls to scrub · Pinch-friendly fullscreen"
-              : resolvedMode === "pdf"
-                ? "PDF preview · Open externally if it doesn’t render"
-                : "Pinch to zoom in system viewer when opened externally"}
+            {resolvedMode === "audio"
+              ? "Session audio recording"
+              : resolvedMode === "video"
+                ? "Use player controls to scrub · Pinch-friendly fullscreen"
+                : resolvedMode === "pdf"
+                  ? "PDF preview · Open externally if it doesn’t render"
+                  : "Pinch to zoom in system viewer when opened externally"}
           </Text>
         </View>
       </View>

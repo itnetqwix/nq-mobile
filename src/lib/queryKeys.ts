@@ -126,6 +126,7 @@ export const queryKeys = {
   },
   ai: {
     reviewAnalysis: ["ai", "reviewAnalysis"] as const,
+    smartSchedule: (trainerId: string) => ["ai", "smartSchedule", trainerId] as const,
   },
   lifecycle: {
     state: ["lifecycle", "state"] as const,

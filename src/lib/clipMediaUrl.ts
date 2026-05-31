@@ -80,3 +80,8 @@ export function isLikelyPdf(pathOrName?: string | null): boolean {
   if (!pathOrName) return false;
   return /\.pdf(\?|$)/i.test(String(pathOrName));
 }
+
+export function isLikelyAudio(pathOrName?: string | null): boolean {
+  if (!pathOrName) return false;
+  return /\.(m4a|mp3|aac|wav|ogg|caf)(\?|$)/i.test(String(pathOrName));
+}

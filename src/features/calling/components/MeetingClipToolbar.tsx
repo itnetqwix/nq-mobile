@@ -4,6 +4,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { ClipLayoutMode } from "../useClipSync";
 
+/** @deprecated Unused — clip controls live on `TimeRemaining` and `ActionButtons`. */
+
 type Props = {
   layoutMode: ClipLayoutMode;
   lockMode: boolean;

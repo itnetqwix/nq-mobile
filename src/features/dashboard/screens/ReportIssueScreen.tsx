@@ -28,6 +28,7 @@ import {
   fetchMyRaiseConcerns,
   type RaiseConcernReason,
 } from "../../home/api/homeApi";
+import { SessionTimelineCard } from "../../support/SessionTimelineCard";
 
 const REASONS: RaiseConcernReason[] = ["Technical issue", "Request for Refund"];
 
@@ -389,6 +390,8 @@ export function ReportIssueScreen() {
             <Text style={styles.cardSession}>{sessionLabel}</Text>
             <Text style={styles.cardPeer}>with {peerName}</Text>
           </View>
+
+          <SessionTimelineCard bookingId={String(selected._id)} />
 
           <View style={styles.card}>
             <Text style={styles.label}>What's the issue?</Text>
