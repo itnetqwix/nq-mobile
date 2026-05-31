@@ -99,7 +99,7 @@ export function DashboardDrawerContent(props: DrawerContentComponentProps) {
       style={[styles.scroll, { backgroundColor: colors.background }]}
     >
       <View style={[styles.brandBlock, { borderBottomColor: colors.border }]}>
-        <NetqwixLogo variant="wordmark" maxWidth={240} height={68} compact align="start" />
+        <NetqwixLogo variant="wordmark" maxWidth={320} height={104} compact align="start" />
       </View>
 
       {drawerEntries.map((entry) => {
@@ -177,7 +177,8 @@ const styles = StyleSheet.create({
   scrollContent: { flexGrow: 1 },
   brandBlock: {
     paddingHorizontal: space.lg,
-    paddingBottom: space.md,
+    paddingTop: space.sm,
+    paddingBottom: space.lg,
     marginBottom: space.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },

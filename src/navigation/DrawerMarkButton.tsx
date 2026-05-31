@@ -5,9 +5,9 @@ import { NetqwixMark } from "../components/brand/NetqwixMark";
 import { haptics } from "../lib/haptics";
 import { radii, useThemeColors } from "../theme";
 
-const BOX_SIZE = 40;
+const BOX_SIZE = 46;
 /** Pin art fits inside the frame with padding (PNG has a dark matte). */
-const MARK_SIZE = 30;
+const MARK_SIZE = 36;
 
 /** Opens the drawer; pin logo sits inside a rounded frame. */
 export function DrawerMarkButton() {

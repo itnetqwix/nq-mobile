@@ -28,7 +28,7 @@ export function ForgotPasswordScreen({ navigation }: AuthScreenProps<"ForgotPass
   return (
     <ScreenContainer scroll applyTopInset padding="lg" background={colors.background}>
       <View style={styles.brand}>
-        <NetqwixLogo maxWidth={220} />
+        <NetqwixLogo variant="wordmark" fullWidth maxWidth={400} height={120} />
       </View>
       <Text style={[typography.titleLg, { color: colors.text, marginTop: space.md }]}>
         {t("auth.resetPassword")}

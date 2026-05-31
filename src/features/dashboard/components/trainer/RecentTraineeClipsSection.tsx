@@ -3,6 +3,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "../../../../components/ui";
 import { getClipThumbnailUrl } from "../../../../lib/clipMediaUrl";
+import { listItemKey, rowId } from "../../../../lib/lists/trainerListUtils";
 import { postTraineeClipsGrouped } from "../../../home/api/homeApi";
 import { DashboardSection } from "../shared/DashboardSection";
 import { radii, space, typography, useThemedStyles } from "../../../../theme";
@@ -31,25 +32,39 @@ export function RecentTraineeClipsSection({ onOpenClips }: Props) {
 
   const tiles = useMemo(() => {
     const groups = Array.isArray(data) ? data : [];
-    const flat: ClipTile[] = [];
+    const byClipId = new Map<string, ClipTile>();
+
     for (const g of groups) {
-      const clips = Array.isArray(g.clips) ? g.clips : [];
-      for (const c of clips) {
-        const created = new Date(String(c.createdAt ?? c.created_at ?? 0)).getTime();
-        // Resolve to a full URL via the shared clip-media helper so we get the
-        // same S3 prod-bucket handling as the locker grid (the previous
-        // `getS3ImageUrl(thumb)` path didn't prepend the bucket for raw keys
-        // like `clips/<userId>/<file>.jpg`, so tiles rendered blank).
-        const thumbUrl = getClipThumbnailUrl(c);
-        flat.push({
-          id: String(c._id ?? c.id ?? `${g._id}-${flat.length}`),
-          thumbUrl,
-          label: String(c.title ?? c.name ?? "Clip"),
-          createdAt: Number.isFinite(created) ? created : 0,
-        });
+      const rows = Array.isArray(g.clips) ? g.clips : [];
+      for (const row of rows) {
+        // API rows are bookings with a nested `clips` document (web parity).
+        const clip = (row?.clips ?? row) as Record<string, unknown>;
+        const clipId = rowId(clip);
+        if (!clipId) continue;
+
+        const created = new Date(
+          String(
+            clip.createdAt ??
+              clip.created_at ??
+              row?.createdAt ??
+              row?.created_at ??
+              0
+          )
+        ).getTime();
+        const createdAt = Number.isFinite(created) ? created : 0;
+        const thumbUrl = getClipThumbnailUrl(clip);
+        const label = String(clip.title ?? clip.name ?? "Clip");
+
+        const existing = byClipId.get(clipId);
+        if (existing && existing.createdAt >= createdAt) continue;
+
+        byClipId.set(clipId, { id: clipId, thumbUrl, label, createdAt });
       }
     }
-    return flat.sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
+
+    return Array.from(byClipId.values())
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 5);
   }, [data]);
 
   if (isLoading) {
@@ -78,11 +93,11 @@ export function RecentTraineeClipsSection({ onOpenClips }: Props) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ gap: space.sm }}
       >
-        {tiles.map((item) => {
+        {tiles.map((item, index) => {
           const uri = item.thumbUrl;
           return (
             <Pressable
-              key={item.id}
+              key={listItemKey({ _id: item.id }, index, "recent-clip-")}
               style={({ pressed }) => [styles.tile, pressed && { opacity: 0.9 }]}
               onPress={onOpenClips}
             >

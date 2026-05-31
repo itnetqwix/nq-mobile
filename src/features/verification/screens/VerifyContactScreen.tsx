@@ -81,7 +81,7 @@ export function VerifyContactScreen({ onDone }: Props) {
     <ScreenContainer scroll applyTopInset padding="lg" background={colors.background}>
       <AuthEscapeLink variant="signout" />
       <View style={styles.brand}>
-        <NetqwixLogo maxWidth={200} />
+        <NetqwixLogo variant="wordmark" fullWidth maxWidth={400} height={120} />
       </View>
 
       <VerificationProgressHeader

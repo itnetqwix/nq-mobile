@@ -68,6 +68,12 @@ import { MessageActionsSheet } from "../components/MessageActionsSheet";
 import type { MessageAction } from "../components/MessageActionsSheet";
 import { ForwardPickerSheet } from "../components/ForwardPickerSheet";
 import { PinnedMessageBanner } from "../components/PinnedMessageBanner";
+import { ChatMessageStatus } from "../components/ChatMessageStatus";
+import { ChatPolicyBanner } from "../components/ChatPolicyBanner";
+import {
+  mergeOutgoingStatus,
+  normalizeOutgoingStatus,
+} from "../lib/chatDeliveryState";
 import { DisappearingMessagesSheet } from "../components/DisappearingMessagesSheet";
 import { ScheduledMessageComposer } from "../components/ScheduledMessageComposer";
 import { ScheduledMessagesSheet } from "../components/ScheduledMessagesSheet";
@@ -186,59 +192,6 @@ function formatLastSeen(dateStr?: string | null): string {
 function delay(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
-
-// ─── Status checkmarks ──────────────────────────────────────────────────────
-
-function MessageStatus({
-  status,
-  pending,
-  failed,
-}: {
-  status?: string;
-  pending?: boolean;
-  failed?: boolean;
-}) {
-  if (failed || status === "failed") {
-    return (
-      <View style={statusStyles.row}>
-        <Ionicons name="alert-circle" size={14} color="#ef4444" />
-      </View>
-    );
-  }
-  if (pending || status === "sending") {
-    return (
-      <View style={statusStyles.row}>
-        <ActivityIndicator size={10} color="rgba(255,255,255,0.75)" />
-      </View>
-    );
-  }
-  if (!status || status === "sent") {
-    return (
-      <View style={statusStyles.row}>
-        <Ionicons name="checkmark" size={15} color="#9CA3AF" />
-      </View>
-    );
-  }
-  if (status === "delivered") {
-    return (
-      <View style={statusStyles.row}>
-        <Ionicons name="checkmark-done" size={15} color="#54656F" />
-      </View>
-    );
-  }
-  if (status === "read") {
-    return (
-      <View style={statusStyles.row}>
-        <Ionicons name="checkmark-done" size={15} color="#FFFFFF" />
-      </View>
-    );
-  }
-  return null;
-}
-
-const statusStyles = StyleSheet.create({
-  row: { marginLeft: 4 },
-});
 
 // ─── Animated typing dots ──────────────────────────────────────────────────
 
@@ -1104,21 +1057,26 @@ export function ChatRoomScreen({
 
     const handleDelivered = (data: any) => {
       if (data?.conversationId !== conversationId) return;
-      const ids = data.messageIds ? data.messageIds : data.messageId ? [data.messageId] : [];
+      const ids = (data.messageIds ?? (data.messageId ? [data.messageId] : [])).map(String);
       if (!ids.length) return;
-      patchMessageStatus((m) =>
-        ids.includes(m._id) && (m.status === "sent" || m.status === "sending")
-          ? { ...m, status: "delivered", pending: false }
-          : m
-      );
+      patchMessageStatus((m) => {
+        const senderId = resolveSenderId(m.senderId);
+        if (senderId !== currentUserId || !ids.includes(String(m._id))) return m;
+        return {
+          ...m,
+          status: mergeOutgoingStatus(m.status, "delivered"),
+          pending: false,
+        };
+      });
     };
     const handleRead = (data: any) => {
       if (data?.conversationId !== conversationId) return;
+      const readerId = String(data?.readerId ?? "");
+      if (!readerId || readerId === currentUserId) return;
       patchMessageStatus((m) => {
         const senderId = resolveSenderId(m.senderId);
-        return senderId === currentUserId && m.status !== "read"
-          ? { ...m, status: "read" }
-          : m;
+        if (senderId !== currentUserId) return m;
+        return { ...m, status: mergeOutgoingStatus(m.status, "read") };
       });
     };
 
@@ -1145,7 +1103,7 @@ export function ChatRoomScreen({
               ? {
                   ...msg,
                   _id: String(msg._id ?? event.clientId),
-                  status: "sent",
+                  status: normalizeOutgoingStatus(msg.status, false),
                   pending: false,
                 }
               : m
@@ -1179,7 +1137,7 @@ export function ChatRoomScreen({
             next[tempIdx] = {
               ...msg,
               _id: String(msg._id),
-              status: msg.status ?? "sent",
+              status: normalizeOutgoingStatus(msg.status, false),
               pending: false,
             };
             return next;
@@ -1412,7 +1370,12 @@ export function ChatRoomScreen({
         setLocalMessages((prev) =>
           prev.map((m) =>
             m._id === tempId
-              ? { ...data.message, _id: data.message._id, status: "sent" as const, pending: false }
+              ? {
+                  ...data.message,
+                  _id: data.message._id,
+                  status: normalizeOutgoingStatus(data.message?.status, false),
+                  pending: false,
+                }
               : m
           )
         );
@@ -1545,7 +1508,7 @@ export function ChatRoomScreen({
                 ? {
                     ...data.message,
                     _id: data.message._id,
-                    status: "sent" as const,
+                    status: normalizeOutgoingStatus(data.message?.status, false),
                     pending: false,
                     localFileUri: undefined,
                     uploadFileName: undefined,
@@ -1998,14 +1961,15 @@ export function ChatRoomScreen({
               {formatTime(item.createdAt)}
             </Text>
             {isMine && !isGroup && (
-              <MessageStatus
+              <ChatMessageStatus
+                isMine
                 status={item.status}
                 pending={item.pending || item.status === "sending"}
                 failed={item.status === "failed"}
               />
             )}
             {isMine && isGroup && item.status === "failed" && (
-              <MessageStatus status="failed" failed />
+              <ChatMessageStatus isMine status="failed" failed />
             )}
           </View>
           </View>
@@ -2263,15 +2227,12 @@ export function ChatRoomScreen({
             <Text style={[styles.policyText, { color: "#991b1b" }]}>{composerBlocked}</Text>
           </View>
         ) : null}
-        {showPolicyBanner && !composerBlocked ? (
-          <View style={styles.policyBanner}>
-            <Ionicons name="information-circle-outline" size={16} color="#f59e0b" />
-            <Text style={styles.policyText}>
-              {rateLimited || chatPolicy!.remainingToday <= 0
-                ? "Daily message limit reached. Book a lesson to unlock unlimited messaging!"
-                : `${chatPolicy!.remainingToday} message${chatPolicy!.remainingToday === 1 ? "" : "s"} remaining today. Book a lesson to chat freely.`}
-            </Text>
-          </View>
+        {showPolicyBanner && !composerBlocked && chatPolicy ? (
+          <ChatPolicyBanner
+            remainingToday={chatPolicy.remainingToday}
+            dailyLimit={chatPolicy.dailyLimit}
+            rateLimited={rateLimited}
+          />
         ) : null}
         <SectionList
           ref={sectionListRef}

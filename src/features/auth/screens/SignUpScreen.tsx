@@ -270,7 +270,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
         contentStyle={styles.scrollContent}
       >
         <View style={styles.brand}>
-          <NetqwixLogo maxWidth={220} />
+          <NetqwixLogo variant="wordmark" fullWidth maxWidth={400} height={120} />
         </View>
         <Text style={[typography.titleLg, { color: colors.text, marginTop: space.sm }]}>
           {t("auth.createAccount")}

@@ -117,6 +117,15 @@ import { useInstantLessonRecording } from "../useInstantLessonRecording";
 import { RatingsModal } from "../components/RatingsModal";
 import { MeetingJoinBanner } from "../components/MeetingJoinBanner";
 import { SessionRecapSheet } from "../components/SessionRecapSheet";
+import { MeetingAgendaBanner } from "../components/MeetingAgendaBanner";
+import { MeetingLiveNotesPanel } from "../components/MeetingLiveNotesPanel";
+import { SessionHandoffScreen } from "../components/SessionHandoffScreen";
+import { useLessonLiveState } from "../hooks/useLessonLiveState";
+import {
+  fetchSessionHandoffSummary,
+  fetchSessionJoinReadiness,
+  type SessionHandoffSummary,
+} from "../sessionLiveApi";
 import { DualLiveStage } from "../components/DualLiveStage";
 import { useSessionPresence } from "../useSessionPresence";
 import { meetingTheme } from "../meetingTheme";
@@ -474,6 +483,38 @@ function MeetingSurface({
     session,
   });
 
+  const lessonLive = useLessonLiveState(lessonId, isTrainer);
+
+  const { data: joinReadiness } = useQuery({
+    queryKey: ["session", "join-readiness", lessonId],
+    queryFn: () => fetchSessionJoinReadiness(lessonId),
+    staleTime: 60_000,
+  });
+
+  const [handoffOpen, setHandoffOpen] = useState(false);
+  const [handoffSummary, setHandoffSummary] = useState<SessionHandoffSummary | null>(null);
+  const [handoffLoading, setHandoffLoading] = useState(false);
+
+  const openHandoff = useCallback(async () => {
+    setHandoffLoading(true);
+    setHandoffOpen(true);
+    try {
+      const summary = await fetchSessionHandoffSummary(lessonId);
+      setHandoffSummary(summary);
+    } catch {
+      setHandoffSummary(null);
+    } finally {
+      setHandoffLoading(false);
+    }
+  }, [lessonId]);
+
+  const elapsedLessonSeconds = useMemo(() => {
+    const dur = lessonTimer.authoritativeTimer?.duration;
+    const rem = lessonTimer.remainingSeconds;
+    if (dur != null && rem != null) return Math.max(0, dur - rem);
+    return 0;
+  }, [lessonTimer.authoritativeTimer?.duration, lessonTimer.remainingSeconds]);
+
   const inCallPerms = useInCallPermissions(
     partnerInSession || bothJoined || !!peerJoined
   );
@@ -809,6 +850,15 @@ function MeetingSurface({
       setClipProgresses([0, 0]);
     }
   }, [clipSync.activeClipId, clipSync.activeClipUrl]);
+
+  useEffect(() => {
+    if (!isTrainer || !clipSync.activeClipId) return;
+    const clip = clipSync.selectedClips.find(
+      (c) => clipIdOf(c) === clipSync.activeClipId
+    );
+    const title = String(clip?.title ?? clip?.name ?? "Clip");
+    lessonLive.setFocusedClip(String(clipSync.activeClipId), title);
+  }, [isTrainer, clipSync.activeClipId, clipSync.selectedClips, lessonLive.setFocusedClip]);
 
   const clipPaneUris = clipPaneUrisEarly;
 
@@ -1496,6 +1546,13 @@ function MeetingSurface({
         />
       ) : null}
 
+      {!isTrainer ? (
+        <MeetingAgendaBanner
+          focusedClipTitle={lessonLive.liveState.focusedClipTitle}
+          topOffset={chrome.insets.top + (meetingStatusBanner ? 108 : 56)}
+        />
+      ) : null}
+
       <MeetingPeerJoinedToast topOffset={chrome.insets.top + (meetingStatusBanner ? 108 : 48)} />
 
       {inLiveFocus ? (
@@ -1719,6 +1776,17 @@ function MeetingSurface({
         />
       ) : null}
 
+      {isTrainer ? (
+        <MeetingLiveNotesPanel
+          notes={lessonLive.visibleNotes}
+          elapsedSeconds={elapsedLessonSeconds}
+          onAddNote={(text, shared) =>
+            lessonLive.addLiveNote(text, elapsedLessonSeconds, shared)
+          }
+          bottomOffset={chrome.bottomChrome + 88}
+        />
+      ) : null}
+
       {/* Bottom chrome */}
       <View
         pointerEvents={reconnectFailed ? "none" : "auto"}
@@ -1847,16 +1915,11 @@ function MeetingSurface({
           setTraineeExtendOpen(true);
         }}
         onQuickExtendTenMin={
-          !isTrainer && activeWarning === "two"
+          !isTrainer &&
+          activeWarning === "two" &&
+          joinReadiness?.extension_preview?.allowed
             ? async () => {
                 setActiveWarning(null);
-                /**
-                 * "+10 min · charge wallet" — auto-fire a 10 minute
-                 * extension request via the existing flow. The trainee
-                 * modal will surface itself with the price + accept-from-
-                 * wallet path on top, so the user can confirm with a
-                 * single PIN entry instead of crawling the slider.
-                 */
                 try {
                   await extensionFlow.requestExtension(10);
                   setTraineeExtendOpen(true);
@@ -1866,6 +1929,8 @@ function MeetingSurface({
               }
             : undefined
         }
+        quickExtendPrice={joinReadiness?.extension_preview?.amount}
+        quickExtendCurrency="$"
         onDismiss={() => setActiveWarning(null)}
       />
 
@@ -1873,7 +1938,7 @@ function MeetingSurface({
         visible={ratingsOpen}
         onClose={() => {
           setRatingsOpen(false);
-          onExit();
+          void openHandoff();
         }}
         onSkip={() => {
           void markSessionRatingShown(lessonId);
@@ -1904,6 +1969,21 @@ function MeetingSurface({
           }}
         />
       ) : null}
+
+      <SessionHandoffScreen
+        visible={handoffOpen}
+        loading={handoffLoading}
+        summary={handoffSummary}
+        isTrainer={isTrainer}
+        onRate={() => {
+          setHandoffOpen(false);
+          setRatingsOpen(true);
+        }}
+        onDone={() => {
+          setHandoffOpen(false);
+          onExit();
+        }}
+      />
     </View>
   );
 }

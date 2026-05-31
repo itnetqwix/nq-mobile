@@ -79,6 +79,8 @@ export function ConnectionQualityPill() {
             {stats.jitterMs != null ? ` · jitter ${Math.round(stats.jitterMs)}ms` : ""}
           </Text>
         </View>
+      ) : quality === "poor" ? (
+        <Text style={styles.hintText}>Try Wi‑Fi or turn off video</Text>
       ) : null}
     </Pressable>
   );
@@ -137,6 +139,7 @@ function useStyles() {
       label: { fontSize: 10, fontWeight: "800", color: "#fff", letterSpacing: 0.4 },
       detailRow: { marginLeft: 4 },
       detailText: { fontSize: 9, fontWeight: "700", color: "#ffffffd0" },
+      hintText: { fontSize: 9, fontWeight: "700", color: "#fecaca", marginLeft: 2 },
     })
   );
 }

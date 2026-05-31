@@ -19,6 +19,10 @@ import {
 } from "../../dashboard/api/trainerNotesApi";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { haptics } from "../../../lib/haptics";
+import {
+  getTraineeNoteCollapsed,
+  setTraineeNoteCollapsed,
+} from "../lib/chatPinnedUiPrefs";
 import { radii, space, typography, useThemedStyles, useThemeColors } from "../../../theme";
 
 type Props = {
@@ -37,6 +41,7 @@ export function PinnedTraineeNoteCard({ traineeId, traineeName }: Props) {
   const styles = useStyles();
   const queryClient = useQueryClient();
   const [editorOpen, setEditorOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   const queryKey = useMemo(() => ["trainee-note", traineeId], [traineeId]);
   const { data: note, isLoading } = useQuery({
@@ -46,32 +51,46 @@ export function PinnedTraineeNoteCard({ traineeId, traineeName }: Props) {
     enabled: Boolean(traineeId),
   });
 
+  useEffect(() => {
+    void getTraineeNoteCollapsed(traineeId).then(setCollapsed);
+  }, [traineeId]);
+
+  const toggleCollapsed = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    void setTraineeNoteCollapsed(traineeId, next);
+    haptics.tap();
+  };
+
   if (isLoading && !note) {
     return null;
   }
 
   return (
     <>
-      {note ? (
+      <View
+        style={[
+          styles.shell,
+          {
+            borderColor: note ? c.brandAccent : c.borderSubtle,
+            backgroundColor: note ? c.brandAccentSubtle : c.surfaceMuted,
+          },
+        ]}
+      >
         <Pressable
-          onPress={() => {
-            haptics.tap();
-            setEditorOpen(true);
-          }}
-          style={[
-            styles.card,
-            { borderColor: c.brandAccent, backgroundColor: c.brandAccentSubtle },
-          ]}
+          onPress={toggleCollapsed}
+          style={styles.headerRow}
           accessibilityRole="button"
-          accessibilityLabel={t("traineeNote.openA11y")}
+          accessibilityState={{ expanded: !collapsed }}
         >
-          <View style={styles.row}>
-            <View style={[styles.iconBubble, { backgroundColor: c.brandAccent }]}>
-              <Ionicons name="bookmark" size={12} color="#fff" />
-            </View>
-            <Text style={[styles.title, { color: c.brandAccent }]}>
-              {t("traineeNote.pinnedLabel")}
-            </Text>
+          <View style={[styles.iconBubble, { backgroundColor: c.brandAccent }]}>
+            <Ionicons name="bookmark" size={12} color="#fff" />
+          </View>
+          <Text style={[styles.title, { color: c.brandAccent }]}>
+            {t("traineeNote.pinnedLabel")}
+          </Text>
+          <View style={{ flex: 1 }} />
+          {note ? (
             <Pressable
               hitSlop={6}
               onPress={() => setEditorOpen(true)}
@@ -79,38 +98,61 @@ export function PinnedTraineeNoteCard({ traineeId, traineeName }: Props) {
             >
               <Ionicons name="pencil" size={14} color={c.brandAccent} />
             </Pressable>
-          </View>
-          <Text style={[styles.text, { color: c.text }]} numberOfLines={3}>
+          ) : null}
+          <Ionicons
+            name={collapsed ? "chevron-down" : "chevron-up"}
+            size={16}
+            color={c.textMuted}
+          />
+        </Pressable>
+
+        {!collapsed ? (
+          note ? (
+            <Pressable
+              onPress={() => {
+                haptics.tap();
+                setEditorOpen(true);
+              }}
+              style={styles.body}
+              accessibilityRole="button"
+              accessibilityLabel={t("traineeNote.openA11y")}
+            >
+              <Text style={[styles.text, { color: c.text }]} numberOfLines={4}>
+                {note.text}
+              </Text>
+              {note.tags?.length ? (
+                <View style={styles.tagRow}>
+                  {note.tags.map((tag) => (
+                    <View
+                      key={tag}
+                      style={[styles.tagChip, { borderColor: c.brandAccent }]}
+                    >
+                      <Text style={[styles.tagText, { color: c.brandAccent }]}>
+                        {tag}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => setEditorOpen(true)}
+              style={styles.emptyBody}
+              accessibilityRole="button"
+            >
+              <Text style={[styles.emptyText, { color: c.textMuted }]}>
+                {t("traineeNote.addCta", { name: traineeName ?? "this trainee" })}
+              </Text>
+              <Ionicons name="add-circle-outline" size={16} color={c.brandAccent} />
+            </Pressable>
+          )
+        ) : note ? (
+          <Text style={[styles.collapsedHint, { color: c.textMuted }]} numberOfLines={1}>
             {note.text}
           </Text>
-          {note.tags?.length ? (
-            <View style={styles.tagRow}>
-              {note.tags.map((tag) => (
-                <View
-                  key={tag}
-                  style={[styles.tagChip, { borderColor: c.brandAccent }]}
-                >
-                  <Text style={[styles.tagText, { color: c.brandAccent }]}>
-                    {tag}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          ) : null}
-        </Pressable>
-      ) : (
-        <Pressable
-          onPress={() => setEditorOpen(true)}
-          style={[styles.emptyCard, { borderColor: c.borderSubtle, backgroundColor: c.surfaceMuted }]}
-          accessibilityRole="button"
-        >
-          <Ionicons name="bookmark-outline" size={14} color={c.textMuted} />
-          <Text style={[styles.emptyText, { color: c.textMuted }]}>
-            {t("traineeNote.addCta", { name: traineeName ?? "this trainee" })}
-          </Text>
-          <Ionicons name="chevron-forward" size={14} color={c.textMuted} />
-        </Pressable>
-      )}
+        ) : null}
+      </View>
 
       <NoteEditorSheet
         visible={editorOpen}
@@ -336,15 +378,35 @@ function NoteEditorSheet({
 function useStyles() {
   return useThemedStyles((palette) =>
     StyleSheet.create({
-      card: {
+      shell: {
         marginHorizontal: space.md,
-        marginTop: space.sm,
-        padding: space.sm,
+        marginTop: space.xs,
+        marginBottom: space.xs,
         borderRadius: radii.md,
         borderWidth: 1,
-        gap: 4,
+        overflow: "hidden",
       },
-      row: { flexDirection: "row", alignItems: "center", gap: 6 },
+      headerRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        paddingHorizontal: space.sm,
+        paddingVertical: 8,
+      },
+      body: { paddingHorizontal: space.sm, paddingBottom: space.sm, gap: 6 },
+      emptyBody: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        paddingHorizontal: space.sm,
+        paddingBottom: space.sm,
+      },
+      collapsedHint: {
+        ...typography.caption,
+        paddingHorizontal: space.sm,
+        paddingBottom: 8,
+        fontWeight: "600",
+      },
       iconBubble: {
         width: 18,
         height: 18,
@@ -362,18 +424,6 @@ function useStyles() {
         borderWidth: 1,
       },
       tagText: { fontSize: 10, fontWeight: "700" },
-      emptyCard: {
-        marginHorizontal: space.md,
-        marginTop: space.sm,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        paddingVertical: 8,
-        paddingHorizontal: space.sm,
-        borderRadius: radii.md,
-        borderWidth: 1,
-        borderStyle: "dashed",
-      },
       emptyText: { ...typography.bodySm, flex: 1, fontWeight: "600" },
       sheetShell: {
         flex: 1,

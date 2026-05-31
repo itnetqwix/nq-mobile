@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Linking,
   Platform,
   Pressable,
@@ -19,13 +20,16 @@ import {
   type MediaStream,
   type MediaStreamTrack,
 } from "react-native-webrtc";
+import { useQuery } from "@tanstack/react-query";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import { getClipThumbnailUrl } from "../../../lib/clipMediaUrl";
 import { haptics } from "../../../lib/haptics";
 import { radii, space, typography, useThemedStyles, useThemeColors } from "../../../theme";
 import {
   fetchLessonCallSlotStatus,
   postLessonCallSlotTakeover,
 } from "../api/lessonCallSlotApi";
+import { fetchSessionJoinReadiness } from "../sessionLiveApi";
 import { precallNetworkLabel } from "../meetingUx";
 import { useCallPreferences } from "../useCallPreferences";
 import { useAudioRoute } from "../useAudioRoute";
@@ -81,6 +85,12 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
   const [callSlotMessage, setCallSlotMessage] = useState<string | null>(null);
   const [callSlotChecking, setCallSlotChecking] = useState(true);
   const [takeoverBusy, setTakeoverBusy] = useState(false);
+
+  const { data: readiness } = useQuery({
+    queryKey: ["session", "join-readiness", lessonId],
+    queryFn: () => fetchSessionJoinReadiness(lessonId),
+    staleTime: 30_000,
+  });
 
   const streamRef = useRef<MediaStream | null>(null);
   const audioRoute = useAudioRoute();
@@ -388,6 +398,50 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
         </View>
       </View>
 
+      {readiness ? (
+        <View style={[styles.sessionBrief, { borderColor: c.border, backgroundColor: c.surfaceElevated }]}>
+          <Text style={[styles.briefTitle, { color: c.text }]}>
+            {readiness.peer?.fullname
+              ? `Lesson with ${readiness.peer.fullname}`
+              : "Your upcoming lesson"}
+          </Text>
+          {readiness.duration_minutes ? (
+            <Text style={[styles.briefMeta, { color: c.textMuted }]}>
+              {readiness.duration_minutes} min
+              {readiness.is_instant ? " · Instant lesson" : " · Scheduled"}
+            </Text>
+          ) : null}
+          {readiness.clip_count > 0 ? (
+            <Text style={[styles.briefMeta, { color: c.textMuted }]}>
+              {readiness.clip_count} clip{readiness.clip_count === 1 ? "" : "s"} attached
+            </Text>
+          ) : null}
+          {readiness.extension_preview?.allowed ? (
+            <Text style={[styles.briefMeta, { color: c.textMuted }]}>
+              Quick extend available · +10 min from $
+              {readiness.extension_preview.amount.toFixed(0)}
+            </Text>
+          ) : null}
+          {readiness.clips.slice(0, 3).map((clip) => {
+            const thumb = getClipThumbnailUrl(clip);
+            return (
+              <View key={clip._id} style={styles.clipRow}>
+                {thumb ? (
+                  <Image source={{ uri: thumb }} style={styles.clipThumb} />
+                ) : (
+                  <View style={[styles.clipThumb, styles.clipThumbFallback]}>
+                    <Ionicons name="film-outline" size={14} color={c.textMuted} />
+                  </View>
+                )}
+                <Text style={[styles.clipTitle, { color: c.text }]} numberOfLines={1}>
+                  {clip.title}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
+
       <View style={styles.statsGrid}>
         <View style={[styles.statCard, { borderColor: c.border, backgroundColor: c.surfaceElevated }]}>
           <View style={styles.statHeader}>
@@ -599,6 +653,18 @@ function useStyles() {
       headerRow: { flexDirection: "row", alignItems: "center", gap: 12 },
       headerTitle: { ...typography.titleMd, fontWeight: "800" },
       headerSub: { ...typography.bodySm, marginTop: 2 },
+      sessionBrief: {
+        borderWidth: 1,
+        borderRadius: radii.md,
+        padding: space.sm,
+        gap: 6,
+      },
+      briefTitle: { ...typography.bodyMd, fontWeight: "800" },
+      briefMeta: { ...typography.caption, fontWeight: "600" },
+      clipRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
+      clipThumb: { width: 36, height: 36, borderRadius: 6, backgroundColor: palette.border },
+      clipThumbFallback: { alignItems: "center", justifyContent: "center" },
+      clipTitle: { ...typography.bodySm, flex: 1, fontWeight: "600" },
       slotBanner: {
         flexDirection: "row",
         alignItems: "center",

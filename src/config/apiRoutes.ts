@@ -94,6 +94,8 @@ export const API_ROUTES = {
     bookingListById: "/user/booking-list-by-id",
     bookingById: (id: string) => `/user/booking/${id}` as const,
     sessionDetail: (id: string) => `/user/session-detail/${id}` as const,
+    sessionJoinReadiness: (id: string) => `/user/session-join-readiness/${id}` as const,
+    sessionHandoff: (id: string) => `/user/session-handoff/${id}` as const,
     stripeAccountVerification: "/user/stripe-account-verification",
     checkStripeVerification: "/user/check-stripe-verification",
     updateRefundStatus: "/user/update-refund-status",
