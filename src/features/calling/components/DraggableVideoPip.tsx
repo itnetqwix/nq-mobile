@@ -37,6 +37,7 @@ export type DraggableVideoPipProps = {
   isStreamOff?: boolean;
   muted?: boolean;
   fallbackLabel?: string;
+  streamOffHint?: string;
   bounds: Pick<LayoutRectangle, "width" | "height"> | null;
   safeTop?: number;
   safeBottom?: number;
@@ -175,6 +176,7 @@ export function DraggableVideoPip({
   isStreamOff,
   muted,
   fallbackLabel,
+  streamOffHint,
   bounds,
   safeTop = 0,
   safeBottom = 0,
@@ -360,6 +362,7 @@ export function DraggableVideoPip({
         isStreamOff={isStreamOff}
         muted={muted}
         fallbackLabel={fallbackLabel}
+        streamOffHint={streamOffHint}
         style={styles.tileInner}
       />
       {onExpand ? (

@@ -34,6 +34,8 @@ type Args = {
   sessionId?: string;
   isTrainer?: boolean;
   canvasIndex?: number;
+  /** Min ms between DRAW emits when network is degraded. */
+  drawingEmitMinMs?: number;
 };
 
 function parseIncomingStrokePayload(
@@ -113,10 +115,19 @@ export function useDrawingSync({
   sessionId,
   isTrainer = false,
   canvasIndex = 1,
+  drawingEmitMinMs = 0,
 }: Args) {
   const [remoteStrokes, setRemoteStrokes] = useState<RemoteStroke[]>([]);
   const [drawingEnabled, setDrawingEnabled] = useState(false);
   const strokeBufferRef = useRef<RemoteStroke[]>([]);
+  const lastEmitAtRef = useRef(0);
+  const pendingStrokeRef = useRef<{
+    stroke: RemoteStroke;
+    canvasSize: { width: number; height: number };
+  } | null>(null);
+  const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const drawingEmitMinMsRef = useRef(drawingEmitMinMs);
+  drawingEmitMinMsRef.current = drawingEmitMinMs;
 
   const pushStrokeToBuffer = useCallback((stroke: RemoteStroke) => {
     const buf = strokeBufferRef.current;
@@ -180,23 +191,75 @@ export function useDrawingSync({
     };
   }, [socket, userInfo.from_user, isTrainer, sessionId, applyRemoteStroke]);
 
+  const flushPendingStroke = useCallback(() => {
+    const pending = pendingStrokeRef.current;
+    pendingStrokeRef.current = null;
+    if (pendingTimerRef.current) {
+      clearTimeout(pendingTimerRef.current);
+      pendingTimerRef.current = null;
+    }
+    if (!pending || !isTrainer || !socket) return;
+    pushStrokeToBuffer(pending.stroke);
+    lastEmitAtRef.current = Date.now();
+    try {
+      socket.emit(DRAWING_EVENTS.DRAW, {
+        strikes: JSON.stringify({ stroke: pending.stroke }),
+        canvasSize: pending.canvasSize,
+        userInfo,
+        sessionId,
+        canvasIndex,
+      });
+    } catch {
+      /* emit must not crash annotation UI */
+    }
+  }, [canvasIndex, isTrainer, pushStrokeToBuffer, sessionId, socket, userInfo]);
+
   const emitStroke = useCallback(
     (stroke: RemoteStroke, canvasSize: { width: number; height: number }) => {
       if (!isTrainer || !socket) return;
-      pushStrokeToBuffer(stroke);
-      try {
-        socket.emit(DRAWING_EVENTS.DRAW, {
-          strikes: JSON.stringify({ stroke }),
-          canvasSize,
-          userInfo,
-          sessionId,
-          canvasIndex,
-        });
-      } catch {
-        /* emit must not crash annotation UI */
+      const minMs = drawingEmitMinMsRef.current;
+      const now = Date.now();
+      if (minMs <= 0 || now - lastEmitAtRef.current >= minMs) {
+        pushStrokeToBuffer(stroke);
+        lastEmitAtRef.current = now;
+        try {
+          socket.emit(DRAWING_EVENTS.DRAW, {
+            strikes: JSON.stringify({ stroke }),
+            canvasSize,
+            userInfo,
+            sessionId,
+            canvasIndex,
+          });
+        } catch {
+          /* emit must not crash annotation UI */
+        }
+        return;
+      }
+      pendingStrokeRef.current = { stroke, canvasSize };
+      if (!pendingTimerRef.current) {
+        const wait = Math.max(16, minMs - (now - lastEmitAtRef.current));
+        pendingTimerRef.current = setTimeout(() => {
+          pendingTimerRef.current = null;
+          flushPendingStroke();
+        }, wait);
       }
     },
-    [canvasIndex, isTrainer, pushStrokeToBuffer, sessionId, socket, userInfo]
+    [
+      canvasIndex,
+      flushPendingStroke,
+      isTrainer,
+      pushStrokeToBuffer,
+      sessionId,
+      socket,
+      userInfo,
+    ]
+  );
+
+  useEffect(
+    () => () => {
+      if (pendingTimerRef.current) clearTimeout(pendingTimerRef.current);
+    },
+    []
   );
 
   const clearCanvas = useCallback(() => {

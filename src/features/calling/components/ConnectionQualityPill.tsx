@@ -2,10 +2,14 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useCall } from "../CallContext";
+import {
+  bucketizeNetworkQuality,
+  type QualityBucket,
+} from "../callQualityUtils";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { radii, useThemedStyles } from "../../../theme";
 
-type Quality = "good" | "fair" | "poor" | "unknown";
+type Quality = QualityBucket;
 
 /**
  * Tiny pill that overlays the in-call chrome and surfaces real-time
@@ -15,7 +19,11 @@ type Quality = "good" | "fair" | "poor" | "unknown";
  * never fight for screen real estate — single line, slim, and
  * dismissable visually by tapping (just toggles the tooltip).
  */
-export function ConnectionQualityPill() {
+type Props = {
+  videoPausedForNetwork?: boolean;
+};
+
+export function ConnectionQualityPill({ videoPausedForNetwork }: Props = {}) {
   const { t } = useAppTranslation();
   const { getNetworkStats } = useCall();
   const styles = useStyles();
@@ -26,6 +34,7 @@ export function ConnectionQualityPill() {
     jitterMs: number | null;
     packetLossPct: number | null;
     iceConnectionState: string;
+    usingRelay?: boolean;
   }>({
     rttMs: null,
     jitterMs: null,
@@ -39,7 +48,7 @@ export function ConnectionQualityPill() {
       const next = await getNetworkStats();
       if (cancelled) return;
       setStats(next);
-      setQuality(bucketize(next));
+      setQuality(bucketizeNetworkQuality(next));
     };
     void poll();
     const id = setInterval(poll, 2000);
@@ -77,30 +86,16 @@ export function ConnectionQualityPill() {
                   : "—",
             })}
             {stats.jitterMs != null ? ` · jitter ${Math.round(stats.jitterMs)}ms` : ""}
+            {stats.usingRelay ? " · relay" : ""}
           </Text>
         </View>
       ) : quality === "poor" ? (
-        <Text style={styles.hintText}>Try Wi‑Fi or turn off video</Text>
+        <Text style={styles.hintText}>
+          {videoPausedForNetwork ? "Audio only — video paused" : "Try Wi‑Fi or turn off video"}
+        </Text>
       ) : null}
     </Pressable>
   );
-}
-
-function bucketize(stats: {
-  rttMs: number | null;
-  packetLossPct: number | null;
-  iceConnectionState: string;
-}): Quality {
-  if (stats.iceConnectionState === "failed") return "poor";
-  if (stats.iceConnectionState === "disconnected") return "poor";
-  if (stats.rttMs == null && stats.packetLossPct == null) {
-    return stats.iceConnectionState === "connected" ? "good" : "unknown";
-  }
-  const rtt = stats.rttMs ?? 0;
-  const loss = stats.packetLossPct ?? 0;
-  if (rtt > 280 || loss > 5) return "poor";
-  if (rtt > 140 || loss > 1.5) return "fair";
-  return "good";
 }
 
 function qualityVisual(

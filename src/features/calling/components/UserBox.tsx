@@ -48,6 +48,8 @@ export type UserBoxProps = {
   style?: StyleProp<ViewStyle>;
   /** Label shown above the avatar fallback. */
   fallbackLabel?: string;
+  /** Overrides default "Camera off" / "Connecting…" when stream is off. */
+  streamOffHint?: string;
 };
 
 export function UserBox({
@@ -57,6 +59,7 @@ export function UserBox({
   muted = false,
   style,
   fallbackLabel,
+  streamOffHint,
   onPress,
 }: UserBoxProps) {
   const streamId = (stream as any)?.toURL?.() ?? null;
@@ -91,7 +94,8 @@ export function UserBox({
       <Text style={styles.fallbackName}>{displayName}</Text>
       {isStreamOff ? (
         <Text style={styles.waitingHint}>
-          {streamId ? "Camera off" : "Connecting video…"}
+          {streamOffHint ??
+            (streamId ? "Camera off" : "Connecting video…")}
         </Text>
       ) : null}
     </View>

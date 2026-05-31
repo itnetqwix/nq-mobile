@@ -30,6 +30,10 @@ import InCallManager from "react-native-incall-manager";
 import { CALL_EVENTS } from "./callEvents";
 import { reportOpsEvent } from "../ops/opsEventsApi";
 import { buildIceConfig } from "./iceServers";
+import {
+  LESSON_NETWORK_TIER_CONFIG,
+  type LessonNetworkTier,
+} from "./lessonNetworkTier";
 import type {
   CallEngineStatus,
   CallParticipant,
@@ -47,6 +51,8 @@ export type NativeCallEngineConfig = {
   iceServers?: IceServer[];
   /** Whether to default to speakerphone (true for video lessons). */
   speakerphoneOn?: boolean;
+  /** Precall "join audio-only" — start with camera disabled. */
+  startWithCameraOff?: boolean;
 };
 
 export type NativeCallEngineEvents = {
@@ -123,6 +129,10 @@ export class NativeCallEngine {
   private disposed = false;
   private offerInFlight = false;
   private lastHandledJoinPeerId: string | null = null;
+  private networkTier: LessonNetworkTier = "normal";
+  private startWithCameraOff = false;
+  private iceDisconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private usingRelay = false;
 
   constructor(cfg: NativeCallEngineConfig, events: NativeCallEngineEvents = {}) {
     this.socket = cfg.socket;
@@ -132,6 +142,7 @@ export class NativeCallEngine {
     this.role = cfg.role;
     this.iceServers = cfg.iceServers;
     this.speakerphoneOn = cfg.speakerphoneOn ?? true;
+    this.startWithCameraOff = !!cfg.startWithCameraOff;
     this.events = events;
     this.peerId = `${cfg.fromUser._id}_${cfg.sessionId}_${Date.now()}_${Math.random()
       .toString(36)
@@ -146,7 +157,10 @@ export class NativeCallEngine {
 
     try {
       this.attachAudioRouting();
-      await this.acquireLocalStream();
+      await this.acquireLocalStream(this.networkTier);
+      if (this.startWithCameraOff) {
+        this.setCameraEnabled(false);
+      }
       this.buildPeerConnection();
       this.attachSocketHandlers();
       this.emitJoin();
@@ -190,6 +204,21 @@ export class NativeCallEngine {
    * Swap between the front and rear cameras. `react-native-webrtc` exposes a
    * non-standard `_switchCamera()` method on the live video track.
    */
+  /** Apply Meet-style encoder / resolution limits for the current network tier. */
+  setNetworkAdaptation(tier: LessonNetworkTier): void {
+    if (this.disposed) return;
+    this.networkTier = tier;
+    void this.applyVideoAdaptation(tier);
+  }
+
+  getNetworkTier(): LessonNetworkTier {
+    return this.networkTier;
+  }
+
+  isUsingRelay(): boolean {
+    return this.usingRelay;
+  }
+
   switchCamera(): void {
     if (!this.localStream) return;
     const track = this.localStream.getVideoTracks()[0] as
@@ -226,6 +255,7 @@ export class NativeCallEngine {
     if (this.disposed) return;
     this.disposed = true;
     this.setStatus("ended");
+    this.clearIceDisconnectTimer();
 
     this.socketBindings.forEach((off) => off());
     this.socketBindings = [];
@@ -265,24 +295,84 @@ export class NativeCallEngine {
     }
   }
 
-  private async acquireLocalStream() {
-    /**
-     * `react-native-webrtc` mediaDevices.getUserMedia is constraint-compatible
-     * with the browser spec but its `facingMode` value needs to be a plain
-     * string ("user" / "environment"). Mirrors `useUserMedia` flag set in the
-     * web `clip-mode.jsx` defaults.
-     */
+  private videoConstraintsForTier(tier: LessonNetworkTier) {
+    const cfg = LESSON_NETWORK_TIER_CONFIG[tier];
+    return {
+      facingMode: "user" as const,
+      width: { ideal: cfg.videoWidth },
+      height: { ideal: cfg.videoHeight },
+      frameRate: { ideal: cfg.maxFps, max: cfg.maxFps },
+    };
+  }
+
+  private async acquireLocalStream(tier: LessonNetworkTier = "normal") {
     const stream = (await mediaDevices.getUserMedia({
       audio: true,
-      video: {
-        facingMode: "user",
-        width: { ideal: 720 },
-        height: { ideal: 1280 },
-        frameRate: { ideal: 24, max: 30 },
-      },
+      video: this.videoConstraintsForTier(tier),
     })) as unknown as MediaStream;
     this.localStream = stream;
     this.events.onLocalStream?.(stream);
+  }
+
+  private async applyVideoAdaptation(tier: LessonNetworkTier) {
+    const cfg = LESSON_NETWORK_TIER_CONFIG[tier];
+    const track = this.localStream?.getVideoTracks()[0] as
+      | (MediaStreamTrack & {
+          applyConstraints?: (c: object) => Promise<void>;
+        })
+      | undefined;
+    if (track?.applyConstraints) {
+      try {
+        await track.applyConstraints(this.videoConstraintsForTier(tier));
+      } catch (err) {
+        log("applyConstraints failed", err);
+      }
+    }
+    await this.applySenderBitrateCap(cfg.maxVideoBitrate);
+  }
+
+  private async applySenderBitrateCap(maxBitrate: number) {
+    const pc = this.pc as RTCPeerConnection | null;
+    if (!pc?.getSenders) return;
+    try {
+      const senders = pc.getSenders();
+      const videoSender = senders.find((s) => s.track?.kind === "video");
+      if (!videoSender?.getParameters || !videoSender.setParameters) return;
+      const params = videoSender.getParameters();
+      if (!params.encodings?.length) {
+        params.encodings = [{ active: true }];
+      }
+      params.encodings = params.encodings.map((enc, i) => {
+        if (maxBitrate <= 0 || i !== 0) return enc;
+        return { ...enc, maxBitrate };
+      });
+      await videoSender.setParameters(params);
+    } catch (err) {
+      log("setParameters bitrate failed", err);
+    }
+  }
+
+  private clearIceDisconnectTimer() {
+    if (this.iceDisconnectTimer) {
+      clearTimeout(this.iceDisconnectTimer);
+      this.iceDisconnectTimer = null;
+    }
+  }
+
+  private scheduleIceRecovery() {
+    this.clearIceDisconnectTimer();
+    const ms = LESSON_NETWORK_TIER_CONFIG[this.networkTier].iceRecoveryMs;
+    this.iceDisconnectTimer = setTimeout(() => {
+      this.iceDisconnectTimer = null;
+      const ice = (this.pc as any)?.iceConnectionState as string | undefined;
+      if (
+        !this.disposed &&
+        (ice === "disconnected" || ice === "failed")
+      ) {
+        log("ICE recovery — reconnecting peer after sustained disconnect");
+        this.reconnectPeer();
+      }
+    }, ms);
   }
 
   private buildPeerConnection() {
@@ -350,12 +440,26 @@ export class NativeCallEngine {
       const state = (pc as any).connectionState as string;
       this.connectionState = state;
       log("connectionState", state);
-      if (state === "connected") this.setStatus("connected");
-      else if (state === "connecting") this.setStatus("connecting");
-      else if (state === "disconnected" || state === "failed")
+      if (state === "connected") {
+        this.clearIceDisconnectTimer();
+        this.setStatus("connected");
+        void this.applyVideoAdaptation(this.networkTier);
+      } else if (state === "connecting") this.setStatus("connecting");
+      else if (state === "disconnected" || state === "failed") {
         this.setStatus("reconnecting");
-      else if (state === "closed" && !this.disposed) {
+        this.scheduleIceRecovery();
+      } else if (state === "closed" && !this.disposed) {
         this.setStatus("reconnecting");
+        this.scheduleIceRecovery();
+      }
+    };
+
+    (pc as any).oniceconnectionstatechange = () => {
+      const ice = (pc as any).iceConnectionState as string | undefined;
+      if (ice === "connected" || ice === "completed") {
+        this.clearIceDisconnectTimer();
+      } else if (ice === "disconnected" || ice === "failed") {
+        this.scheduleIceRecovery();
       }
     };
   }
@@ -629,6 +733,7 @@ export class NativeCallEngine {
     this.remoteJoined = false;
     if (this.localStream) {
       this.buildPeerConnection();
+      void this.applyVideoAdaptation(this.networkTier);
       this.emitJoin();
       this.setStatus("reconnecting");
     }
@@ -773,6 +878,7 @@ export class NativeCallEngine {
     jitterMs: number | null;
     packetLossPct: number | null;
     iceConnectionState: string;
+    usingRelay: boolean;
   }> {
     const pc = this.pc as any;
     if (!pc?.getStats) {
@@ -781,6 +887,7 @@ export class NativeCallEngine {
         jitterMs: null,
         packetLossPct: null,
         iceConnectionState: "unknown",
+        usingRelay: this.usingRelay,
       };
     }
     try {
@@ -790,14 +897,31 @@ export class NativeCallEngine {
       let packetsLost = 0;
       let packetsReceived = 0;
 
+      let relayLocal = false;
+      let relayRemote = false;
+
       report.forEach((stat: any) => {
         if (!stat) return;
+        if (
+          stat.type === "local-candidate" &&
+          String(stat.candidateType || stat.type) === "relay"
+        ) {
+          relayLocal = true;
+        }
+        if (
+          stat.type === "remote-candidate" &&
+          String(stat.candidateType || "") === "relay"
+        ) {
+          relayRemote = true;
+        }
         if (
           (stat.type === "candidate-pair" || stat.type === "candidatepair") &&
           stat.nominated &&
           typeof stat.currentRoundTripTime === "number"
         ) {
           rttMs = Math.round(stat.currentRoundTripTime * 1000);
+          if (stat.localCandidateType === "relay") relayLocal = true;
+          if (stat.remoteCandidateType === "relay") relayRemote = true;
         }
         if (stat.type === "inbound-rtp" && (stat.kind === "audio" || stat.kind === "video")) {
           if (typeof stat.jitter === "number") {
@@ -816,11 +940,13 @@ export class NativeCallEngine {
       const packetLossPct =
         total > 0 ? Math.min(100, (packetsLost / total) * 100) : null;
       const ice = (this.pc as any)?.iceConnectionState as string | undefined;
+      this.usingRelay = relayLocal || relayRemote;
       return {
         rttMs,
         jitterMs,
         packetLossPct,
         iceConnectionState: ice ?? "unknown",
+        usingRelay: this.usingRelay,
       };
     } catch {
       return {
@@ -828,6 +954,7 @@ export class NativeCallEngine {
         jitterMs: null,
         packetLossPct: null,
         iceConnectionState: "unknown",
+        usingRelay: this.usingRelay,
       };
     }
   }

@@ -3,6 +3,7 @@ import {
   getCallPreferences,
   hydrateCallPreferences,
   setBackgroundBlurEnabled,
+  setJoinAudioOnlyPref,
   subscribeCallPreferences,
   type CallPreferences,
 } from "./callPreferences";
@@ -14,7 +15,9 @@ import {
  */
 export function useCallPreferences(): {
   blurEnabled: boolean;
+  joinAudioOnly: boolean;
   setBlurEnabled: (enabled: boolean) => Promise<void>;
+  setJoinAudioOnly: (enabled: boolean) => Promise<void>;
 } {
   const [snap, setSnap] = useState<CallPreferences>(getCallPreferences());
 
@@ -34,6 +37,8 @@ export function useCallPreferences(): {
 
   return {
     blurEnabled: snap.blurEnabled,
+    joinAudioOnly: snap.joinAudioOnly,
     setBlurEnabled: setBackgroundBlurEnabled,
+    setJoinAudioOnly: setJoinAudioOnlyPref,
   };
 }

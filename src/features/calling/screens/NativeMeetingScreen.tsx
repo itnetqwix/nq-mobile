@@ -84,6 +84,12 @@ import { useNativeMeetingPip } from "../hooks/useNativeMeetingPip";
 import { useCallForegroundRecovery } from "../hooks/useCallForegroundRecovery";
 import { useCallDegradation } from "../hooks/useCallDegradation";
 import { useCallQualityReporter } from "../hooks/useCallQualityReporter";
+import { useCallQualitySocketReporter } from "../hooks/useCallQualitySocketReporter";
+import { useAdaptiveLessonNetwork } from "../hooks/useAdaptiveLessonNetwork";
+import { useLessonNetworkOutagePause } from "../hooks/useLessonNetworkOutagePause";
+import { LESSON_NETWORK_TIER_CONFIG } from "../lessonNetworkTier";
+import { streamOffHintForTile } from "../meetingStreamLabels";
+import { useNetworkOnline } from "../../../lib/networkStatusStore";
 import { useInCallPermissions } from "../hooks/useInCallPermissions";
 import { ReconnectFailedOverlay } from "../components/ReconnectFailedOverlay";
 import {
@@ -100,6 +106,7 @@ import { MeetingPeerJoinedToast } from "../components/MeetingPeerJoinedToast";
 import { MeetingCoachChip } from "../components/MeetingCoachChip";
 import { resolveMeetingStatusBanner } from "../meetingUx";
 import { ConnectionQualityPill } from "../components/ConnectionQualityPill";
+import { NetworkLessonBanner } from "../components/NetworkLessonBanner";
 import { ClipPickerModal } from "../components/ClipPickerModal";
 import { LockedDualClipStage } from "../components/LockedDualClipStage";
 import { UnlockedDualClipStage } from "../components/UnlockedDualClipStage";
@@ -200,7 +207,8 @@ function useSessionLookup(lessonId: string) {
 }
 
 export function NativeMeetingScreen({ navigation, route }: Props) {
-  const { lessonId } = route.params;
+  const { lessonId, joinAudioOnly: joinAudioOnlyParam } = route.params;
+  const startWithCameraOff = Boolean(joinAudioOnlyParam);
   const { accountType, user } = useAuth();
   const { session, isLoading } = useSessionLookup(lessonId);
   const { pushLocalToast } = useNotifications();
@@ -340,6 +348,7 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
       toUser={peer}
       role={role}
       iceServers={iceServers}
+      startWithCameraOff={startWithCameraOff}
       onEnded={handleCallEnded}
       onPeerJoined={() => {
         pushLocalToast({
@@ -429,6 +438,13 @@ function MeetingSurface({
     partnerDisconnected,
     cameraEnabled,
     remoteCameraOff,
+    localCameraOffReason,
+    remoteCameraOffReason,
+    userCameraOffIntent,
+    setCameraPausedForNetwork,
+    setNetworkAdaptation,
+    markPartnerCameraNetworkPaused,
+    toggleCamera,
     status,
     endCall,
     recoverConnection,
@@ -634,12 +650,28 @@ function MeetingSurface({
     lessonTimer.pauseReason,
   ]);
 
+  const networkOnline = useNetworkOnline();
+
+  const networkAdaptive = useAdaptiveLessonNetwork({
+    enabled: partnerInSession && bothJoined,
+    online: networkOnline,
+    cameraEnabled,
+    userCameraOffIntent,
+    setCameraPausedForNetwork,
+    getNetworkStats,
+    onTierChange: setNetworkAdaptation,
+  });
+
+  const networkTierConfig =
+    LESSON_NETWORK_TIER_CONFIG[networkAdaptive.mode];
+
   const clipSync = useClipSync({
     socket,
     fromUserId: myId,
     toUserId: peerId,
     sessionId: lessonId,
     isTrainer,
+    networkTier: networkAdaptive.mode,
   });
 
   const clipPaneUrisEarly = useMemo(
@@ -687,6 +719,39 @@ function MeetingSurface({
   useCallQualityReporter({
     enabled: partnerInSession && bothJoined,
     sessionId: lessonId,
+    getNetworkStats,
+  });
+
+  const partnerQualityLabel = useMemo(() => {
+    const q = isTrainer
+      ? lessonLive.liveState.quality.trainee
+      : lessonLive.liveState.quality.trainer;
+    return q?.label ?? null;
+  }, [isTrainer, lessonLive.liveState.quality]);
+
+  useLessonNetworkOutagePause({
+    enabled: partnerInSession && isTrainer,
+    isTrainer,
+    socket,
+    sessionId: lessonId,
+    networkOnline,
+    partnerDisconnected,
+    timerStatus: lessonTimer.status,
+  });
+
+  const partnerWeak =
+    (partnerQualityLabel ?? "").toLowerCase().includes("weak") ||
+    (partnerQualityLabel ?? "").toLowerCase().includes("poor");
+
+  useEffect(() => {
+    markPartnerCameraNetworkPaused(partnerWeak);
+  }, [markPartnerCameraNetworkPaused, partnerWeak, remoteCameraOff]);
+
+  useCallQualitySocketReporter({
+    enabled: partnerInSession && bothJoined,
+    socket,
+    sessionId: lessonId,
+    role: isTrainer ? "trainer" : "trainee",
     getNetworkStats,
   });
 
@@ -760,6 +825,7 @@ function MeetingSurface({
     userInfo: { from_user: myId, to_user: peerId },
     sessionId: lessonId,
     isTrainer,
+    drawingEmitMinMs: networkTierConfig.drawingEmitMinMs,
   });
 
   useEffect(() => {
@@ -1461,6 +1527,7 @@ function MeetingSurface({
             lessonTimer.pauseReason === "extension_accepted")
             ? "Paused — extension in progress"
             : null,
+        networkOffline: !networkOnline && partnerInSession,
       }),
     [
       inCallPerms.cameraRevoked,
@@ -1477,8 +1544,42 @@ function MeetingSurface({
       presence.presenceVariant,
       lessonTimer.status,
       lessonTimer.pauseReason,
+      networkOnline,
+      partnerInSession,
     ]
   );
+
+  const networkHideLocalPip =
+    networkTierConfig.hideLocalPipInClipMode && inClipMode && !inLiveFocus;
+
+  const localStreamOffHint = streamOffHintForTile({
+    isStreamOff: !cameraEnabled || !localStream,
+    isLocal: true,
+    localCameraOffReason,
+    remoteCameraOffReason,
+    videoPausedForNetwork: networkAdaptive.videoPausedForNetwork,
+    partnerWeak,
+  });
+
+  const remoteStreamOffHint = streamOffHintForTile({
+    isStreamOff: !remoteStream || remoteCameraOff,
+    isLocal: false,
+    localCameraOffReason,
+    remoteCameraOffReason,
+    videoPausedForNetwork: false,
+    partnerWeak,
+  });
+
+  const networkBannerVisible =
+    networkAdaptive.mode !== "normal" ||
+    networkAdaptive.videoPausedForNetwork ||
+    !!partnerQualityLabel;
+
+  const networkBannerTop =
+    chrome.insets.top + (meetingStatusBanner ? 108 : 56) + 8;
+
+  const stackedBannerExtra =
+    networkBannerVisible && partnerInSession && bothJoined ? 52 : 0;
 
   return (
     <View
@@ -1704,10 +1805,28 @@ function MeetingSurface({
         />
       ) : null}
 
+      {partnerInSession && bothJoined ? (
+        <NetworkLessonBanner
+          mode={networkAdaptive.mode}
+          videoPausedForNetwork={networkAdaptive.videoPausedForNetwork}
+          partnerQualityLabel={partnerQualityLabel}
+          usingRelay={networkAdaptive.usingRelay}
+          topOffset={networkBannerTop}
+          onTurnVideoBackOn={() => {
+            networkAdaptive.markManualVideoRestore();
+            if (!cameraEnabled) toggleCamera();
+          }}
+        />
+      ) : null}
+
       {!isTrainer ? (
         <MeetingAgendaBanner
           focusedClipTitle={lessonLive.liveState.focusedClipTitle}
-          topOffset={chrome.insets.top + (meetingStatusBanner ? 108 : 56)}
+          topOffset={
+            chrome.insets.top +
+            (meetingStatusBanner ? 108 : 56) +
+            stackedBannerExtra
+          }
         />
       ) : null}
 
@@ -1718,6 +1837,7 @@ function MeetingSurface({
           topOffset={
             chrome.insets.top +
             (meetingStatusBanner ? 108 : 56) +
+            stackedBannerExtra +
             (!isTrainer ? 44 : 0)
           }
         />
@@ -1736,6 +1856,7 @@ function MeetingSurface({
                 ? !remoteStream || remoteCameraOff
                 : !cameraEnabled || !localStream
             }
+            streamOffHint={focusedIsLocal ? remoteStreamOffHint : localStreamOffHint}
             muted={!focusedIsLocal}
             fallbackLabel={focusedIsLocal ? peerDisplayName : "You"}
             tabLabel={focusedIsLocal ? peerDisplayName.split(" ")[0] || "Partner" : "You"}
@@ -1783,6 +1904,7 @@ function MeetingSurface({
             user={null}
             stream={localStream}
             isStreamOff={!cameraEnabled || !localStream}
+            streamOffHint={localStreamOffHint}
             muted
             fallbackLabel="You"
             tabLabel="You"
@@ -1791,7 +1913,7 @@ function MeetingSurface({
             safeBottom={chrome.insets.bottom}
             pipReservedBottom={chrome.pipSafeBottom}
             position={pipLayout.pipLayout.local.position}
-            isHidden={pipLayout.pipLayout.local.isHidden}
+            isHidden={pipLayout.pipLayout.local.isHidden || networkHideLocalPip}
             hiddenEdge={pipLayout.pipLayout.local.hiddenEdge}
             width={localPipSize.w}
             height={localPipSize.h}
@@ -1829,6 +1951,7 @@ function MeetingSurface({
             user={peerUser}
             stream={remoteStream}
             isStreamOff={!remoteStream || remoteCameraOff}
+            streamOffHint={remoteStreamOffHint}
             tabLabel={peerDisplayName.split(" ")[0] || "Partner"}
             bounds={pipBounds}
             safeTop={chrome.insets.top}
@@ -1907,7 +2030,9 @@ function MeetingSurface({
           zIndex: 20,
         }}
       >
-        <ConnectionQualityPill />
+        <ConnectionQualityPill
+          videoPausedForNetwork={networkAdaptive.videoPausedForNetwork}
+        />
         <View style={{ marginTop: 8 }}>
           <TopToolButton
             onPress={openAudioOutputPicker}

@@ -17,14 +17,16 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const BLUR_PREF_KEY = "@netqwix:precall.blurEnabled";
+const AUDIO_ONLY_PREF_KEY = "@netqwix:precall.joinAudioOnly";
 
 type Listener = (snapshot: CallPreferences) => void;
 
 export type CallPreferences = {
   blurEnabled: boolean;
+  joinAudioOnly: boolean;
 };
 
-let snapshot: CallPreferences = { blurEnabled: false };
+let snapshot: CallPreferences = { blurEnabled: false, joinAudioOnly: false };
 const listeners = new Set<Listener>();
 let hydrated = false;
 
@@ -42,8 +44,15 @@ export async function hydrateCallPreferences(): Promise<CallPreferences> {
   if (hydrated) return snapshot;
   hydrated = true;
   try {
-    const raw = await AsyncStorage.getItem(BLUR_PREF_KEY);
-    snapshot = { ...snapshot, blurEnabled: raw === "1" };
+    const [blurRaw, audioRaw] = await Promise.all([
+      AsyncStorage.getItem(BLUR_PREF_KEY),
+      AsyncStorage.getItem(AUDIO_ONLY_PREF_KEY),
+    ]);
+    snapshot = {
+      ...snapshot,
+      blurEnabled: blurRaw === "1",
+      joinAudioOnly: audioRaw === "1",
+    };
   } catch {
     /* defaults are fine */
   }
@@ -62,6 +71,16 @@ export async function setBackgroundBlurEnabled(enabled: boolean): Promise<void> 
     await AsyncStorage.setItem(BLUR_PREF_KEY, enabled ? "1" : "0");
   } catch {
     /* persist is best-effort; runtime preference still applies */
+  }
+}
+
+export async function setJoinAudioOnlyPref(enabled: boolean): Promise<void> {
+  snapshot = { ...snapshot, joinAudioOnly: enabled };
+  emit();
+  try {
+    await AsyncStorage.setItem(AUDIO_ONLY_PREF_KEY, enabled ? "1" : "0");
+  } catch {
+    /* best-effort */
   }
 }
 

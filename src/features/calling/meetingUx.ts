@@ -19,6 +19,7 @@ type BannerInput = {
   presenceMessage: string | null;
   presenceVariant: PresenceBannerVariant;
   extensionPausedHint?: string | null;
+  networkOffline?: boolean;
 };
 
 /**
@@ -30,6 +31,13 @@ export function resolveMeetingStatusBanner(input: BannerInput): MeetingStatusBan
     return {
       message:
         "Camera access is off. Open Settings to turn the camera back on for this lesson.",
+      variant: "warning",
+    };
+  }
+  if (input.networkOffline) {
+    return {
+      message:
+        "No internet connection. Reconnect to restore video — your lesson stays active during short outages.",
       variant: "warning",
     };
   }

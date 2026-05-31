@@ -5,12 +5,9 @@
 import { useEffect, useRef } from "react";
 import { useNetworkOnline } from "../../../lib/networkStatusStore";
 import { reportOpsEvent } from "../../ops/opsEventsApi";
+import { isPoorNetwork, type NetworkStatsSnapshot } from "../callQualityUtils";
 
-type NetworkStats = {
-  rttMs: number | null;
-  packetLossPct: number | null;
-  iceConnectionState: string;
-};
+type NetworkStats = NetworkStatsSnapshot;
 
 type Args = {
   enabled: boolean;
@@ -22,15 +19,6 @@ type Args = {
   /** Consecutive poor samples before forcing reconnect. */
   poorThreshold?: number;
 };
-
-function isPoor(stats: NetworkStats): boolean {
-  if (stats.iceConnectionState === "failed" || stats.iceConnectionState === "disconnected") {
-    return true;
-  }
-  const rtt = stats.rttMs ?? 0;
-  const loss = stats.packetLossPct ?? 0;
-  return rtt > 280 || loss > 5;
-}
 
 export function useCallDegradation({
   enabled,
@@ -65,7 +53,7 @@ export function useCallDegradation({
       const stats = await getNetworkStats();
       if (cancelled) return;
 
-      if (isPoor(stats)) {
+      if (isPoorNetwork(stats)) {
         poorStreakRef.current += 1;
         const now = Date.now();
         if (now - lastReportAtRef.current > 60_000) {

@@ -26,6 +26,10 @@ import {
   panToNormalized,
   type PanPoint,
 } from "./clipZoomPanUtils";
+import {
+  LESSON_NETWORK_TIER_CONFIG,
+  type LessonNetworkTier,
+} from "./lessonNetworkTier";
 
 type SeekHint = {
   videoId: string;
@@ -57,6 +61,8 @@ type Args = {
   toUserId: string;
   sessionId?: string;
   isTrainer?: boolean;
+  /** Adaptive network tier — throttles progress emits on fair/slow links. */
+  networkTier?: LessonNetworkTier;
 };
 
 const EMPTY_HIDDEN: HiddenVideosMap = { teacher: false, student: false };
@@ -113,7 +119,10 @@ export function useClipSync({
   toUserId,
   sessionId,
   isTrainer = false,
+  networkTier = "normal",
 }: Args) {
+  const networkTierRef = useRef(networkTier);
+  networkTierRef.current = networkTier;
   const [selectedClips, setSelectedClips] = useState<ClipRecord[]>([]);
   const [activeClipId, setActiveClipId] = useState<string | null>(null);
   const [activeClipUrl, setActiveClipUrl] = useState<string | null>(null);
@@ -935,7 +944,9 @@ export function useClipSync({
       lastProgressByClipId.current[String(videoId)] = progressSeconds;
       if (!isPlaying) return;
       const now = Date.now();
-      if (now - lastPeriodicProgressEmit.current < 2500) return;
+      const minMs =
+        LESSON_NETWORK_TIER_CONFIG[networkTierRef.current].clipProgressEmitMs;
+      if (now - lastPeriodicProgressEmit.current < minMs) return;
       lastPeriodicProgressEmit.current = now;
       const bothLocked = lockMode && selectedClips.length >= 2;
       socket.emit(CLIP_EVENTS.ON_VIDEO_TIME, {

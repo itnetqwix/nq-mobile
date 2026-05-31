@@ -45,7 +45,7 @@ type NetworkProbe = {
 
 type Props = {
   lessonId: string;
-  onJoin: (preferences: { blurEnabled: boolean }) => void;
+  onJoin: (preferences: { blurEnabled: boolean; joinAudioOnly?: boolean }) => void;
   onCancel: () => void;
 };
 
@@ -72,7 +72,13 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [cameraOn, setCameraOn] = useState(true);
   const [micOn, setMicOn] = useState(true);
-  const { blurEnabled, setBlurEnabled: persistBlurEnabled } = useCallPreferences();
+  const {
+    blurEnabled,
+    joinAudioOnly: savedJoinAudioOnly,
+    setBlurEnabled: persistBlurEnabled,
+    setJoinAudioOnly: persistJoinAudioOnly,
+  } = useCallPreferences();
+  const [joinAudioOnly, setJoinAudioOnly] = useState(savedJoinAudioOnly);
   const [localBlurEnabled, setLocalBlurEnabled] = useState(blurEnabled);
   const [network, setNetwork] = useState<NetworkProbe>({
     loading: true,
@@ -228,6 +234,10 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
     setLocalBlurEnabled(blurEnabled);
   }, [blurEnabled]);
 
+  useEffect(() => {
+    setJoinAudioOnly(savedJoinAudioOnly);
+  }, [savedJoinAudioOnly]);
+
   const handleBlurToggle = async (next: boolean) => {
     setLocalBlurEnabled(next);
     await persistBlurEnabled(next);
@@ -253,7 +263,7 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
     setStream(null);
   };
 
-  const handleJoin = () => {
+  const handleJoin = (audioOnly = false) => {
     if (callSlotBlocked && !callSlotCanTakeOver) {
       Alert.alert(
         "Session active elsewhere",
@@ -264,7 +274,9 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
     }
     haptics.success();
     releasePreviewTracks();
-    onJoin({ blurEnabled: localBlurEnabled });
+    const useAudioOnly = audioOnly || joinAudioOnly;
+    void persistJoinAudioOnly(useAudioOnly);
+    onJoin({ blurEnabled: localBlurEnabled, joinAudioOnly: useAudioOnly });
   };
 
   const handleTakeoverAndJoin = async () => {
@@ -277,7 +289,10 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
       setCallSlotMessage(null);
       haptics.success();
       releasePreviewTracks();
-      onJoin({ blurEnabled: localBlurEnabled });
+      onJoin({
+        blurEnabled: localBlurEnabled,
+        joinAudioOnly: joinAudioOnly,
+      });
     } catch {
       Alert.alert(
         "Could not take over",
@@ -553,6 +568,43 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
         </Pressable>
       </View>
 
+      {network.quality === "weak" && !network.loading ? (
+        <View
+          style={[
+            styles.slotBanner,
+            {
+              backgroundColor: c.warning + "22",
+              borderColor: c.warning,
+            },
+          ]}
+        >
+          <Ionicons name="warning-outline" size={18} color={c.warning} />
+          <Text style={[styles.slotBannerText, { color: c.warning }]}>
+            Weak connection detected. You can join audio-only — video may pause automatically to save data.
+          </Text>
+        </View>
+      ) : null}
+
+      <View style={[styles.blurRow, { borderColor: c.border, backgroundColor: c.surfaceElevated }]}>
+        <Ionicons name="headset-outline" size={16} color={c.brandNavy} />
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.blurTitle, { color: c.text }]}>Join audio-only</Text>
+          <Text style={[styles.blurSub, { color: c.textMuted }]}>
+            Start with camera off to use less data. You can turn video on later when your network improves.
+          </Text>
+        </View>
+        <Switch
+          value={joinAudioOnly}
+          onValueChange={(v) => {
+            setJoinAudioOnly(v);
+            void persistJoinAudioOnly(v);
+          }}
+          trackColor={{ false: c.surfaceMuted, true: c.brandAccent }}
+          thumbColor="#fff"
+          ios_backgroundColor={c.surfaceMuted}
+        />
+      </View>
+
       {callSlotBlocked && callSlotMessage ? (
         <View
           style={[
@@ -604,8 +656,36 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
             </Text>
           </Pressable>
         ) : null}
+        {network.quality === "weak" && !network.loading ? (
+          <Pressable
+            onPress={() => handleJoin(true)}
+            style={[
+              styles.joinBtn,
+              {
+                backgroundColor: c.brandAccent,
+                opacity:
+                  permissionDenied ||
+                  callSlotChecking ||
+                  (callSlotBlocked && !callSlotCanTakeOver)
+                    ? 0.45
+                    : 1,
+              },
+            ]}
+            disabled={
+              permissionDenied ||
+              callSlotChecking ||
+              (callSlotBlocked && !callSlotCanTakeOver)
+            }
+            accessibilityRole="button"
+          >
+            <Ionicons name="mic" size={18} color={c.brandTextOn} />
+            <Text style={[styles.joinText, { color: c.brandTextOn }]}>
+              Join audio-only (recommended)
+            </Text>
+          </Pressable>
+        ) : null}
         <Pressable
-          onPress={handleJoin}
+          onPress={() => handleJoin(false)}
           style={[
             styles.joinBtn,
             {

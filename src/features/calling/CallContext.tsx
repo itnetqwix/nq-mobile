@@ -28,7 +28,10 @@ import {
   NativeCallEngine,
   type NativeCallEngineConfig,
 } from "./NativeCallEngine";
+import type { LessonNetworkTier } from "./lessonNetworkTier";
 import type { CallEngineStatus, CallParticipant, IceServer, SessionRole } from "./types";
+
+export type CameraOffReason = "user" | "network" | null;
 
 type StartArgs = {
   sessionId: string;
@@ -36,6 +39,8 @@ type StartArgs = {
   toUser: CallParticipant;
   role: SessionRole;
   iceServers?: IceServer[];
+  /** Precall join audio-only — camera starts disabled. */
+  startWithCameraOff?: boolean;
 };
 
 export type PeerJoinedEvent = {
@@ -60,8 +65,20 @@ type CallContextValue = {
   cameraEnabled: boolean;
   remoteMicMuted: boolean;
   remoteCameraOff: boolean;
+  /** Why local camera is off (user toggle vs network adaptation). */
+  localCameraOffReason: CameraOffReason;
+  /** Best-effort reason partner video is off. */
+  remoteCameraOffReason: CameraOffReason;
+  /** User explicitly turned camera off — never auto-enable for network. */
+  userCameraOffIntent: boolean;
   toggleMute: () => void;
   toggleCamera: () => void;
+  /** Apply encoder/resolution tier (from adaptive network hook). */
+  setNetworkAdaptation: (tier: LessonNetworkTier) => void;
+  /** Auto-pause camera for slow network (never touches mic). */
+  setCameraPausedForNetwork: (paused: boolean) => void;
+  /** Partner video off + weak quality → label as network pause. */
+  markPartnerCameraNetworkPaused: (partnerWeak: boolean) => void;
   switchCamera: () => void;
   endCall: () => void;
   /** Re-announce call presence / rebuild WebRTC after reconnect or foreground. */
@@ -98,8 +115,14 @@ const CallContext = createContext<CallContextValue>({
   cameraEnabled: true,
   remoteMicMuted: false,
   remoteCameraOff: false,
+  localCameraOffReason: null,
+  remoteCameraOffReason: null,
+  userCameraOffIntent: false,
   toggleMute: noop,
   toggleCamera: noop,
+  setNetworkAdaptation: noop,
+  setCameraPausedForNetwork: noop,
+  markPartnerCameraNetworkPaused: noop,
   switchCamera: noop,
   endCall: noop,
   recoverConnection: noop,
@@ -154,6 +177,11 @@ export function CallProvider({
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [remoteMicMuted, setRemoteMicMuted] = useState(false);
   const [remoteCameraOff, setRemoteCameraOff] = useState(false);
+  const [localCameraOffReason, setLocalCameraOffReason] =
+    useState<CameraOffReason>(null);
+  const [remoteCameraOffReason, setRemoteCameraOffReason] =
+    useState<CameraOffReason>(null);
+  const [userCameraOffIntent, setUserCameraOffIntent] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const [joinDeniedCanTakeOver, setJoinDeniedCanTakeOver] = useState(false);
 
@@ -192,6 +220,7 @@ export function CallProvider({
       toUser,
       role: startArgs.role,
       iceServers,
+      startWithCameraOff: startArgs.startWithCameraOff,
     };
   }, [
     socket,
@@ -199,6 +228,7 @@ export function CallProvider({
     startArgs.fromUser?._id,
     startArgs.toUser?._id,
     startArgs.role,
+    startArgs.startWithCameraOff,
     iceServersKey,
   ]);
 
@@ -230,7 +260,15 @@ export function CallProvider({
       },
       onBothJoined: () => active && setBothJoined(true),
       onRemoteMute: (isMuted) => active && setRemoteMicMuted(isMuted),
-      onRemoteStopFeed: (videoOn) => active && setRemoteCameraOff(!videoOn),
+      onRemoteStopFeed: (videoOn) => {
+        if (!active) return;
+        setRemoteCameraOff(!videoOn);
+        if (!videoOn) {
+          setRemoteCameraOffReason((prev) => prev ?? "user");
+        } else {
+          setRemoteCameraOffReason(null);
+        }
+      },
       onPeerDisconnected: () => {
         if (!active) return;
         setPartnerDisconnected(true);
@@ -276,6 +314,12 @@ export function CallProvider({
     engine.start().catch((err) => {
       setLastError(err?.message ?? "Failed to start call");
     });
+
+    if (startArgs.startWithCameraOff) {
+      setCameraEnabled(false);
+      setUserCameraOffIntent(true);
+      setLocalCameraOffReason("user");
+    }
 
     return () => {
       active = false;
@@ -324,7 +368,36 @@ export function CallProvider({
     const next = !cameraEnabled;
     engine.setCameraEnabled(next);
     setCameraEnabled(next);
+    if (!next) {
+      setUserCameraOffIntent(true);
+      setLocalCameraOffReason("user");
+    } else {
+      setUserCameraOffIntent(false);
+      setLocalCameraOffReason(null);
+    }
   }, [cameraEnabled]);
+
+  const setCameraPausedForNetwork = useCallback((paused: boolean) => {
+    const engine = engineRef.current;
+    if (!engine || userCameraOffIntent) return;
+    if (paused && cameraEnabled) {
+      engine.setCameraEnabled(false);
+      setCameraEnabled(false);
+      setLocalCameraOffReason("network");
+    }
+  }, [cameraEnabled, userCameraOffIntent]);
+
+  const setNetworkAdaptation = useCallback((tier: LessonNetworkTier) => {
+    engineRef.current?.setNetworkAdaptation(tier);
+  }, []);
+
+  const markPartnerCameraNetworkPaused = useCallback((weak: boolean) => {
+    if (!remoteCameraOff) {
+      setRemoteCameraOffReason(null);
+      return;
+    }
+    if (weak) setRemoteCameraOffReason("network");
+  }, [remoteCameraOff]);
 
   const switchCamera = useCallback(() => {
     engineRef.current?.switchCamera();
@@ -357,6 +430,7 @@ export function CallProvider({
         jitterMs: null,
         packetLossPct: null,
         iceConnectionState: "unknown",
+        usingRelay: false,
       }
     );
   }, []);
@@ -382,6 +456,9 @@ export function CallProvider({
       cameraEnabled,
       remoteMicMuted,
       remoteCameraOff,
+      localCameraOffReason,
+      remoteCameraOffReason,
+      userCameraOffIntent,
       toggleMute,
       toggleCamera,
       switchCamera,
@@ -389,6 +466,9 @@ export function CallProvider({
       recoverConnection,
       reconnectPeer,
       getNetworkStats,
+      setNetworkAdaptation,
+      setCameraPausedForNetwork,
+      markPartnerCameraNetworkPaused,
       acknowledgePeerJoined,
       lastError,
       joinDeniedCanTakeOver,
@@ -406,6 +486,9 @@ export function CallProvider({
       cameraEnabled,
       remoteMicMuted,
       remoteCameraOff,
+      localCameraOffReason,
+      remoteCameraOffReason,
+      userCameraOffIntent,
       toggleMute,
       toggleCamera,
       switchCamera,
@@ -413,6 +496,9 @@ export function CallProvider({
       recoverConnection,
       reconnectPeer,
       getNetworkStats,
+      setNetworkAdaptation,
+      setCameraPausedForNetwork,
+      markPartnerCameraNetworkPaused,
       acknowledgePeerJoined,
       lastError,
       joinDeniedCanTakeOver,

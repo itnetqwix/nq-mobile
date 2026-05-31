@@ -94,7 +94,12 @@ export type DashboardDrawerParamList = {
 export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList> | undefined;
   Main: undefined;
-  Meeting: { lessonId: string; skipLobby?: boolean };
+  Meeting: {
+    lessonId: string;
+    skipLobby?: boolean;
+    /** Precall join audio-only — camera off at call start. */
+    joinAudioOnly?: boolean;
+  };
   SystemState: { stateId: SystemStateId; message?: string };
 };
 

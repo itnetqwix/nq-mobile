@@ -64,8 +64,11 @@ export function MeetingRouter(props: Props) {
     return (
       <PrecallLobbyScreen
         lessonId={lessonId}
-        onJoin={() => {
+        onJoin={(prefs) => {
           setLastInterruptedSession(null);
+          props.navigation.setParams({
+            joinAudioOnly: !!prefs.joinAudioOnly,
+          });
           setJoined(true);
         }}
         onCancel={() => props.navigation.goBack()}
