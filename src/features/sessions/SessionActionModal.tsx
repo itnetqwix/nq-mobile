@@ -278,10 +278,19 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+      <View style={styles.backdrop}>
+        <Pressable
+          style={StyleSheet.absoluteFillObject}
+          onPress={onClose}
+          accessibilityLabel="Close session details"
+        />
+        <View style={styles.sheet}>
           <View style={styles.handle} />
-          <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+            keyboardShouldPersistTaps="handled"
+          >
             <View style={styles.headerRow}>
               <View style={styles.headerIcon}>
                 <Ionicons
@@ -484,8 +493,8 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
               ) : null}
             </View>
           </ScrollView>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
       <BookingDetailsModal
         visible={detailsOpen}
         session={viewSession}

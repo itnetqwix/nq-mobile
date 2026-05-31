@@ -22,6 +22,21 @@ export function isPendingBooking(session: any): boolean {
   return normalizeSessionStatus(session?.status) === "booked";
 }
 
+/** Resolve socket/API ids for instant-lesson accept/decline. */
+export function resolveInstantLessonIds(
+  session: Record<string, unknown> | null | undefined,
+  fallbackCoachId?: string
+) {
+  const lessonId = String(session?._id ?? session?.id ?? "");
+  const trainerInfo = session?.trainer_info as Record<string, unknown> | undefined;
+  const traineeInfo = session?.trainee_info as Record<string, unknown> | undefined;
+  const coachId = String(
+    session?.trainer_id ?? trainerInfo?._id ?? fallbackCoachId ?? ""
+  );
+  const traineeId = String(session?.trainee_id ?? traineeInfo?._id ?? "");
+  return { lessonId, coachId, traineeId };
+}
+
 export function isInstantLesson(session: any): boolean {
   if (typeof session?.is_instant === "boolean") return session.is_instant;
   /** Scheduled bookings always have slot times or ISO start/end. */

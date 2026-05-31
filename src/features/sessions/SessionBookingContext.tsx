@@ -232,7 +232,7 @@ export function SessionBookingProvider({ children }: { children: React.ReactNode
         visible={!!activeSession}
         session={activeSession}
         onClose={closeSession}
-        onSessionUpdated={setActiveSession}
+        onSessionUpdated={(session) => dispatch(setActiveSession(session))}
       />
     </SessionBookingContext.Provider>
   );

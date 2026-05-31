@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Alert, StyleSheet, View } from "react-native";
 import { Button } from "../../../components/ui";
 import { space } from "../../../theme";
 import { isInstantLesson, isPendingBooking } from "../../../lib/sessions/sessionUtils";
@@ -34,6 +34,16 @@ export function InstantLessonSessionActions({
     try {
       await acceptInstantSession(session);
       onActionComplete?.();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "accept_failed";
+      if (msg === "accept_timeout") {
+        Alert.alert(
+          "Accept timed out",
+          "The server did not respond. Check your connection and try again."
+        );
+      } else if (msg !== "missing_session_ids" && msg !== "not_connected") {
+        Alert.alert("Accept failed", "Could not accept this lesson. Please try again.");
+      }
     } finally {
       setBusy(null);
     }
@@ -44,6 +54,11 @@ export function InstantLessonSessionActions({
     try {
       await declineInstantSession(session);
       onActionComplete?.();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "decline_failed";
+      if (msg !== "missing_session_ids" && msg !== "not_connected") {
+        Alert.alert("Decline failed", "Could not decline this lesson. Please try again.");
+      }
     } finally {
       setBusy(null);
     }

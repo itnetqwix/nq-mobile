@@ -150,10 +150,11 @@ function SessionCard({
   };
 
   return (
-    <Pressable
-      style={({ pressed }) => [styles.card, pressed && { opacity: 0.92 }]}
-      onPress={() => openSession(session)}
-    >
+    <View style={styles.card}>
+      <Pressable
+        style={({ pressed }) => [styles.cardBody, pressed && { opacity: 0.92 }]}
+        onPress={() => openSession(session)}
+      >
       <View style={styles.cardTop}>
         <Avatar uri={other?.profile_picture} name={name} size={56} />
         <View style={styles.cardInfo}>
@@ -220,6 +221,8 @@ function SessionCard({
         </View>
       )}
 
+      </Pressable>
+
       <View style={styles.cardFooter}>
         {terminal ? (
           <Button
@@ -264,7 +267,7 @@ function SessionCard({
           </>
         )}
       </View>
-    </Pressable>
+    </View>
   );
 }
 
@@ -544,6 +547,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  cardBody: {},
   cardTop: { flexDirection: "row", alignItems: "flex-start", gap: space.sm },
   cardInfo: { flex: 1 },
   cardName: { ...typography.subtitle, color: colors.text },

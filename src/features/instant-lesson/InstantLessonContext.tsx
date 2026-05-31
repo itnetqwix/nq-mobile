@@ -6,7 +6,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import { AppState, Vibration } from "react-native";
+import { Alert, AppState, Vibration } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../../lib/queryKeys";
 import { useSocket } from "../socket/SocketContext";
@@ -15,7 +15,7 @@ import {
   INSTANT_ACCEPT_WINDOW_MS,
   INSTANT_JOIN_AFTER_ACCEPT_MS,
 } from "../../lib/sessions/instantLessonConstants";
-import { isInstantLesson, normalizeSessionStatus } from "../../lib/sessions/sessionUtils";
+import { isInstantLesson, normalizeSessionStatus, resolveInstantLessonIds } from "../../lib/sessions/sessionUtils";
 import { INSTANT_LESSON_SOCKET as EVENTS } from "./instantLessonSocketEvents";
 import {
   registerInstantLessonActionHandlers,
@@ -456,15 +456,22 @@ export function InstantLessonProvider({
       lessonId: string,
       coachId: string,
       traineeId: string,
-      onOk?: (joinMs: number) => void
+      onOk?: (joinMs: number) => void,
+      onFail?: (error: string) => void
     ) => {
-      if (!socket) return;
+      if (!socket?.connected) {
+        onFail?.("not_connected");
+        return;
+      }
       void stopRinging();
       socket.emit(
         EVENTS.ACCEPT,
         { lessonId, coachId, traineeId },
-        (response?: { ok?: boolean; joinDeadlineAt?: string | number }) => {
-          if (!response?.ok) return;
+        (response?: { ok?: boolean; joinDeadlineAt?: string | number; error?: string }) => {
+          if (!response?.ok) {
+            onFail?.(response?.error || "accept_failed");
+            return;
+          }
           clearExpiryTimer();
           const joinMs = response.joinDeadlineAt
             ? new Date(response.joinDeadlineAt).getTime()
@@ -820,27 +827,51 @@ export function InstantLessonProvider({
 
   const acceptInstantSession = useCallback(
     async (session: Record<string, unknown>) => {
-      const lessonId = String(session._id ?? session.id ?? "");
-      const coachId = String(session.trainer_id ?? userId);
-      const traineeId = String(session.trainee_id ?? "");
-      if (!lessonId || !socket) return;
+      const { lessonId, coachId, traineeId } = resolveInstantLessonIds(session, userId);
+      if (!lessonId || !coachId || !traineeId) {
+        Alert.alert(
+          "Cannot accept",
+          "This session is missing booking details. Close and reopen the session, then try again."
+        );
+        throw new Error("missing_session_ids");
+      }
+      if (!socket?.connected) {
+        Alert.alert(
+          "Not connected",
+          "Reconnect to the server and try again. Check your internet connection."
+        );
+        throw new Error("not_connected");
+      }
       focusTrainerRequestFromSession(session);
-      await new Promise<void>((resolve) => {
-        emitAccept(lessonId, coachId, traineeId, (joinMs) => {
-          setTrainerIncoming((prev) => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              step: "accepted",
-              joinDeadlineAt: joinMs,
-              expiresAt: joinMs,
-              minimized: false,
-            };
-          });
-          scheduleExpiry(joinMs, () => setTrainerIncoming(null));
-          invalidateSessionLists();
-          resolve();
-        });
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          reject(new Error("accept_timeout"));
+        }, 15_000);
+        emitAccept(
+          lessonId,
+          coachId,
+          traineeId,
+          (joinMs) => {
+            clearTimeout(timer);
+            setTrainerIncoming((prev) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                step: "accepted",
+                joinDeadlineAt: joinMs,
+                expiresAt: joinMs,
+                minimized: false,
+              };
+            });
+            scheduleExpiry(joinMs, () => setTrainerIncoming(null));
+            invalidateSessionLists();
+            resolve();
+          },
+          (error) => {
+            clearTimeout(timer);
+            reject(new Error(error));
+          }
+        );
       });
     },
     [socket, userId, focusTrainerRequestFromSession, emitAccept, scheduleExpiry, invalidateSessionLists]
@@ -848,10 +879,21 @@ export function InstantLessonProvider({
 
   const declineInstantSession = useCallback(
     async (session: Record<string, unknown>) => {
-      const lessonId = String(session._id ?? session.id ?? "");
-      const coachId = String(session.trainer_id ?? userId);
-      const traineeId = String(session.trainee_id ?? "");
-      if (!lessonId || !socket) return;
+      const { lessonId, coachId, traineeId } = resolveInstantLessonIds(session, userId);
+      if (!lessonId || !coachId || !traineeId) {
+        Alert.alert(
+          "Cannot decline",
+          "This session is missing booking details. Close and reopen the session, then try again."
+        );
+        throw new Error("missing_session_ids");
+      }
+      if (!socket?.connected) {
+        Alert.alert(
+          "Not connected",
+          "Reconnect to the server and try again. Check your internet connection."
+        );
+        throw new Error("not_connected");
+      }
       void stopRinging();
       markLessonDismissed(lessonId);
       socket.emit(EVENTS.DECLINE, { lessonId, coachId, traineeId });
@@ -859,8 +901,9 @@ export function InstantLessonProvider({
       void dismissInstantLessonIncomingCall(lessonId);
       void endInstantLessonCall(lessonId);
       setTrainerIncoming(null);
+      invalidateSessionLists();
     },
-    [socket, userId, stopRinging, clearExpiryTimer, markLessonDismissed]
+    [socket, userId, stopRinging, clearExpiryTimer, markLessonDismissed, invalidateSessionLists]
   );
 
   const acceptIncomingPayload = useCallback(
