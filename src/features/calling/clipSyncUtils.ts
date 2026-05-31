@@ -10,9 +10,33 @@ export function clipIdOf(clip: ClipRecord | null | undefined): string | null {
 export function clipsFromSession(session: Record<string, any> | null | undefined): ClipRecord[] {
   if (!session) return [];
   const raw = session.trainee_clips ?? session.trainee_clip;
-  if (Array.isArray(raw)) return raw.filter(Boolean);
+  if (Array.isArray(raw)) {
+    return raw.filter(
+      (item): item is ClipRecord =>
+        !!item &&
+        typeof item === "object" &&
+        !Array.isArray(item) &&
+        Boolean(item._id ?? item.id)
+    );
+  }
   if (raw && typeof raw === "object") return [raw];
   return [];
+}
+
+/** True when booking rows only carry clip ids — need a fresh scheduled-meetings fetch. */
+export function sessionNeedsClipHydration(session: Record<string, any> | null | undefined): boolean {
+  if (!session) return false;
+  const idOnly =
+    Array.isArray(session.trainee_clip) &&
+    session.trainee_clip.length > 0 &&
+    (!Array.isArray(session.trainee_clips) || session.trainee_clips.length === 0);
+  if (idOnly) return true;
+  const clips = clipsFromSession(session);
+  if (clips.length === 0) {
+    const rawIds = session.trainee_clip;
+    return Array.isArray(rawIds) && rawIds.length > 0;
+  }
+  return clips.every((c) => !resolveClipPlayback(c).url);
 }
 
 export function isPlayableVideoClip(clip: ClipRecord): boolean {

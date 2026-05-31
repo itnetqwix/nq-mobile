@@ -1,21 +1,26 @@
 import { apiClient } from "../../api/client";
 import { API_ROUTES } from "../../config/apiRoutes";
+import { postMyClipsNested } from "../clips/api/clipsApi";
+import {
+  flattenNestedClipsForPicker,
+  type PickerClipRow,
+} from "../../lib/lists/clipListUtils";
 
-export type ClipRow = {
-  _id: string;
-  title?: string;
-  name?: string;
-  category?: string;
-  thumbnail?: string;
-};
+export type ClipRow = PickerClipRow;
 
+/** POST `/common/get-clips` — same locker data as the Clips tab (nested taxonomy). */
+export async function fetchMyClipsForBooking(): Promise<ClipRow[]> {
+  const nested = await postMyClipsNested();
+  return flattenNestedClipsForPicker(nested);
+}
+
+/** @deprecated Use `fetchMyClipsForBooking` — kept for callers expecting grouped shape. */
 export type ClipGroup = { _id: string; clips: ClipRow[] };
 
-/** POST `/common/get-clips` — same as web `myClips` / locker clip picker. */
 export async function fetchMyClipsGrouped(): Promise<ClipGroup[]> {
-  const res = await apiClient.post(API_ROUTES.common.getClips, {});
-  const raw = res.data?.data ?? res.data?.result ?? res.data;
-  return Array.isArray(raw) ? raw : [];
+  const flat = await fetchMyClipsForBooking();
+  if (flat.length === 0) return [];
+  return [{ _id: "locker", clips: flat }];
 }
 
 export function flattenGroupedClips(groups: ClipGroup[]): ClipRow[] {

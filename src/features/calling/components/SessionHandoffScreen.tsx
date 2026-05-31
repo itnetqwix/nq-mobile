@@ -74,6 +74,27 @@ export function SessionHandoffScreen({
                 value={`${summary.clips_reviewed_count}`}
               />
             ) : null}
+            {!isTrainer && summary?.game_plan_status === "available" ? (
+              <View style={[styles.notesCard, { borderColor: c.border, backgroundColor: c.brandAccentSubtle }]}>
+                <Text style={[styles.notesTitle, { color: c.text }]}>Game plan ready</Text>
+                <Text style={[styles.noteLine, { color: c.textMuted }]}>
+                  {summary.game_plan_title
+                    ? summary.game_plan_title
+                    : "Your coach shared a session plan. Open Game plans in your locker."}
+                </Text>
+              </View>
+            ) : null}
+            {!isTrainer && summary?.game_plan_status === "pending" ? (
+              <View style={[styles.notesCard, { borderColor: c.border, backgroundColor: c.surfaceElevated }]}>
+                <Text style={[styles.notesTitle, { color: c.text }]}>Game plan coming soon</Text>
+                <Text style={[styles.noteLine, { color: c.textMuted }]}>
+                  Your coach will update your game plan within 30 minutes after this lesson.
+                  {summary.game_plan_expected_by
+                    ? ` Expected by ${new Date(summary.game_plan_expected_by).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.`
+                    : ""}
+                </Text>
+              </View>
+            ) : null}
             {!isTrainer && summary?.shared_notes?.length ? (
               <View style={[styles.notesCard, { borderColor: c.border, backgroundColor: c.surfaceElevated }]}>
                 <Text style={[styles.notesTitle, { color: c.text }]}>Coach notes</Text>

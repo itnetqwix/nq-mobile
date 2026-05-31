@@ -4,6 +4,9 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 import { radii, space, useStaticStyles, useThemeColors } from "../../../../theme";
 import { INSTANT_LESSON_DURATIONS } from "../constants";
 import { useSharedStepStyles } from "../sharedStepStyles";
+import { PricingBreakdownSummary } from "../../../payments/PricingBreakdownSummary";
+import type { PricingQuote } from "../../../payments/pricingTypes";
+import { chargeTotalDollars } from "../../../payments/pricingTypes";
 
 type PromoResultShape = {
   valid: boolean;
@@ -20,6 +23,7 @@ type Props = {
   expectedPrice: number;
   promoResult: PromoResultShape | null;
   chargingPrice: number;
+  pricingQuote?: PricingQuote | null;
   isSubmitting: boolean;
   onSubmit: () => void;
 };
@@ -32,6 +36,7 @@ export function WizardStepConfirm({
   expectedPrice,
   promoResult,
   chargingPrice,
+  pricingQuote,
   isSubmitting,
   onSubmit,
 }: Props) {
@@ -73,12 +78,6 @@ export function WizardStepConfirm({
             </View>
           </>
         ) : null}
-        <View style={styles.summaryLine}>
-          <Text style={styles.summaryKey}>Total</Text>
-          <Text style={styles.summaryValue}>
-            {chargingPrice > 0 ? `$${chargingPrice.toFixed(2)}` : "Free"}
-          </Text>
-        </View>
         {couponCode.trim() ? (
           <View style={styles.summaryLine}>
             <Text style={styles.summaryKey}>Promo</Text>
@@ -86,6 +85,17 @@ export function WizardStepConfirm({
           </View>
         ) : null}
       </View>
+      <PricingBreakdownSummary
+        sessionSubtotal={expectedPrice}
+        pricingQuote={pricingQuote}
+        chargeTotal={
+          chargeTotalDollars(pricingQuote) ?? (chargingPrice > 0 ? chargingPrice : undefined)
+        }
+        promoDiscount={
+          promoResult?.valid ? promoResult.discount_amount : undefined
+        }
+        promoLabel={promoResult?.display_label}
+      />
       <Text style={sharedStepStyles.muted}>
         We create the instant booking, attach any clips you choose, then send the request to the coach.
       </Text>

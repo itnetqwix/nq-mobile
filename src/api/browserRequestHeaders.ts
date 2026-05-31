@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
 import { WEB_APP_ORIGIN } from "../config/env";
+import { sanitizeHttpHeaders } from "../lib/http/sanitizeHttpHeaders";
 
 /** Match browser traffic so CDN/WAF rules allow mobile API + Socket.IO polling. */
 export function browserLikeUserAgent(): string {
@@ -10,10 +11,10 @@ export function browserLikeUserAgent(): string {
 }
 
 export function getBrowserLikeRequestHeaders(): Record<string, string> {
-  return {
+  return sanitizeHttpHeaders({
     Accept: "application/json, text/plain, */*",
     Origin: WEB_APP_ORIGIN,
     Referer: `${WEB_APP_ORIGIN}/`,
     "User-Agent": browserLikeUserAgent(),
-  };
+  });
 }

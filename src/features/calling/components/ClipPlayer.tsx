@@ -29,6 +29,8 @@ type Props = {
   onProgressSeconds?: (seconds: number) => void;
   onDurationSeconds?: (seconds: number) => void;
   onEnded?: () => void;
+  /** Fired once the native player has loaded the clip (ready for play/seek). */
+  onReady?: () => void;
 };
 
 const CLIP_BG = "#ffffff";
@@ -67,9 +69,14 @@ export function ClipPlayer({
   onProgressSeconds,
   onDurationSeconds,
   onEnded,
+  onReady,
 }: Props) {
   const videoRef = React.useRef<Video>(null);
   const [initialLoading, setInitialLoading] = useState(true);
+  const loadedRef = useRef(false);
+  const readyNotifiedRef = useRef(false);
+  const pendingPlayRef = useRef(isPlaying);
+  const pendingSeekMsRef = useRef<number | null>(null);
   const frameSize = useRef({ w: 0, h: 0 });
   const panStart = useRef({ x: 0, y: 0 });
   const panAtGrant = useRef({ x: 0, y: 0 });
@@ -92,21 +99,63 @@ export function ClipPlayer({
 
   useEffect(() => {
     setInitialLoading(true);
+    loadedRef.current = false;
+    readyNotifiedRef.current = false;
+    pendingPlayRef.current = false;
+    pendingSeekMsRef.current = null;
   }, [uri]);
 
-  useEffect(() => {
+  const applyPlayState = useCallback(async (playing: boolean) => {
     const player = videoRef.current;
     if (!player) return;
-    if (isPlaying) player.playAsync().catch(() => undefined);
-    else player.pauseAsync().catch(() => undefined);
-  }, [isPlaying]);
+    try {
+      if (playing) await player.playAsync();
+      else await player.pauseAsync();
+    } catch {
+      /* retry when loaded */
+    }
+  }, []);
+
+  const applySeek = useCallback(async (ms: number) => {
+    const player = videoRef.current;
+    if (!player) return;
+    try {
+      await player.setPositionAsync(Math.max(0, ms));
+    } catch {
+      /* retry when loaded */
+    }
+  }, []);
+
+  const flushPending = useCallback(() => {
+    if (!loadedRef.current) return;
+    if (pendingSeekMsRef.current != null) {
+      const ms = pendingSeekMsRef.current;
+      pendingSeekMsRef.current = null;
+      void applySeek(ms);
+    }
+    void applyPlayState(pendingPlayRef.current);
+  }, [applyPlayState, applySeek]);
+
+  useEffect(() => {
+    pendingPlayRef.current = isPlaying;
+    if (!loadedRef.current) return;
+    void applyPlayState(isPlaying);
+  }, [applyPlayState, isPlaying]);
 
   useEffect(() => {
     if (seekTargetMs == null) return;
-    videoRef.current
-      ?.setPositionAsync(Math.max(0, seekTargetMs))
-      .catch(() => undefined);
-  }, [seekTargetMs]);
+    if (!loadedRef.current) {
+      pendingSeekMsRef.current = seekTargetMs;
+      return;
+    }
+    pendingSeekMsRef.current = null;
+    void applySeek(seekTargetMs);
+  }, [applySeek, seekTargetMs]);
+
+  useEffect(() => {
+    if (!loadedRef.current) return;
+    flushPending();
+  }, [flushPending, uri]);
 
   const onLayout = useCallback((e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
@@ -180,6 +229,14 @@ export function ClipPlayer({
             useNativeControls={false}
             onPlaybackStatusUpdate={(status: AVPlaybackStatus) => {
               if (!status.isLoaded) return;
+              if (!loadedRef.current) {
+                loadedRef.current = true;
+                if (!readyNotifiedRef.current) {
+                  readyNotifiedRef.current = true;
+                  onReady?.();
+                }
+                flushPending();
+              }
               if (
                 initialLoading &&
                 (status.durationMillis != null ||

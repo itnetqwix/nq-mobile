@@ -12,6 +12,9 @@ import {
 import { radii, space, useStaticStyles, useThemeColors } from "../../../../theme";
 import { INSTANT_LESSON_DURATIONS } from "../constants";
 import { useSharedStepStyles } from "../sharedStepStyles";
+import { PricingBreakdownSummary } from "../../../payments/PricingBreakdownSummary";
+import type { PricingQuote } from "../../../payments/pricingTypes";
+import { chargeTotalDollars } from "../../../payments/pricingTypes";
 
 type PromoResult = {
   valid: boolean;
@@ -43,6 +46,7 @@ type Props = {
   onRemovePromo?: () => void;
   visiblePromos?: VisiblePromo[];
   expectedPrice?: number;
+  durationPreviewQuote?: PricingQuote | null;
   eligibility?: { eligible: boolean; reasons: string[]; totalWindowMinutes?: number } | null;
   eligibilityLoading?: boolean;
 };
@@ -61,6 +65,7 @@ export function WizardStepDuration({
   onRemovePromo,
   visiblePromos = [],
   expectedPrice = 0,
+  durationPreviewQuote,
   eligibility,
   eligibilityLoading,
 }: Props) {
@@ -187,6 +192,14 @@ export function WizardStepDuration({
           </ScrollView>
         </View>
       )}
+
+      {expectedPrice > 0 ? (
+        <PricingBreakdownSummary
+          sessionSubtotal={expectedPrice}
+          pricingQuote={durationPreviewQuote}
+          chargeTotal={chargeTotalDollars(durationPreviewQuote) ?? expectedPrice}
+        />
+      ) : null}
 
       <Pressable style={sharedStepStyles.primaryBtn} onPress={onNext}>
         <Text style={sharedStepStyles.primaryBtnText}>Next: clips</Text>

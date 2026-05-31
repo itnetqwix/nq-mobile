@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { NetqwixLogo } from "../components/brand/NetqwixLogo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { radii, space, typography, useThemeColors } from "../theme";
+import { layout, radii, space, typography, useThemeColors } from "../theme";
 import { useAuth } from "../features/auth/context/AuthContext";
 import { useGuestMode } from "../features/auth/hooks/useGuestMode";
 import { useRequireAuth } from "../features/auth/hooks/useRequireAuth";
@@ -20,6 +20,13 @@ import type { MainTabParamList } from "./types";
 import type { NavigatorScreenParams } from "@react-navigation/native";
 import { navMatrixFor, type NavMatrixEntry } from "./navMatrix";
 import { getActiveNavState, isNavEntryActive } from "./activeNavState";
+
+/** Wordmark uses full drawer width minus horizontal padding (drawer is 300px). */
+const DRAWER_LOGO_HORIZONTAL_PAD = space.md;
+const DRAWER_LOGO_MAX_WIDTH = layout.drawerWidth - DRAWER_LOGO_HORIZONTAL_PAD * 2;
+const DRAWER_LOGO_HEIGHT = 80;
+/** Cap status-bar inset so the drawer header does not sit too low on notched iPhones. */
+const DRAWER_TOP_INSET_CAP = 14;
 
 export function DashboardDrawerContent(props: DrawerContentComponentProps) {
   const { t } = useTranslation();
@@ -94,14 +101,32 @@ export function DashboardDrawerContent(props: DrawerContentComponentProps) {
       {...props}
       contentContainerStyle={[
         styles.scrollContent,
-        { paddingTop: Math.max(insets.top, space.md), paddingBottom: insets.bottom + space.md },
+        {
+          paddingTop: Math.min(insets.top, DRAWER_TOP_INSET_CAP) + space.xs,
+          paddingBottom: insets.bottom + space.sm,
+        },
       ]}
       style={[styles.scroll, { backgroundColor: colors.background }]}
     >
-      <View style={[styles.brandBlock, { borderBottomColor: colors.border }]}>
-        <NetqwixLogo variant="wordmark" maxWidth={320} height={104} compact align="start" />
+      <View
+        style={[
+          styles.brandBlock,
+          { borderBottomColor: colors.border, backgroundColor: "#000000" },
+        ]}
+      >
+        <View style={styles.brandLogoFrame}>
+          <NetqwixLogo
+            variant="wordmark"
+            fullWidth
+            maxWidth={DRAWER_LOGO_MAX_WIDTH}
+            height={DRAWER_LOGO_HEIGHT}
+            compact
+            align="center"
+          />
+        </View>
       </View>
 
+      <View style={styles.menuList}>
       {drawerEntries.map((entry) => {
         const active = isNavEntryActive(entry, activeNav);
         return (
@@ -138,6 +163,7 @@ export function DashboardDrawerContent(props: DrawerContentComponentProps) {
           </Pressable>
         );
       })}
+      </View>
 
       <View style={styles.spacer} />
 
@@ -176,16 +202,27 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { flexGrow: 1 },
   brandBlock: {
-    paddingHorizontal: space.lg,
+    paddingHorizontal: DRAWER_LOGO_HORIZONTAL_PAD,
     paddingTop: space.sm,
-    paddingBottom: space.lg,
-    marginBottom: space.sm,
+    paddingBottom: space.md,
+    marginBottom: space.xs,
+    alignItems: "center",
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  brandLogoFrame: {
+    width: "100%",
+    maxWidth: DRAWER_LOGO_MAX_WIDTH,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  menuList: {
+    marginTop: space.xs,
+    paddingTop: 0,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: space.sm + 2,
+    paddingVertical: space.sm,
     paddingHorizontal: space.md,
     marginHorizontal: space.sm,
     borderRadius: radii.md,

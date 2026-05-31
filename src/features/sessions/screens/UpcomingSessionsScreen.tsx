@@ -119,10 +119,12 @@ function SessionCard({
   session,
   accountType,
   activeTab,
+  onSessionActionComplete,
 }: {
   session: any;
   accountType: string | null;
   activeTab: StatusTab;
+  onSessionActionComplete?: () => void;
 }) {
   const { t } = useAppTranslation();
   const isTrainer = accountType === AccountType.TRAINER;
@@ -236,7 +238,12 @@ function SessionCard({
         ) : (
           <>
             {isTrainer && pending && instant ? (
-              <InstantLessonSessionActions session={session} layout="row" size="md" />
+              <InstantLessonSessionActions
+                session={session}
+                layout="row"
+                size="md"
+                onActionComplete={onSessionActionComplete}
+              />
             ) : null}
             {isTrainer && pending && !instant ? (
               <Button
@@ -348,13 +355,17 @@ export function UpcomingSessionsScreen() {
 
   const sessions = useMemo(() => {
     const nowMs = Date.now();
+    const now = new Date(nowMs);
     let list = rawSessions;
     if (activeTab === "upcoming" || activeTab === "confirmed") {
-      list = list.filter((s: any) => !isInstantExpiredForLists(s, new Date(nowMs)));
+      list = list.filter((s: any) => !isInstantExpiredForLists(s, now));
       list = list.filter((s: any) => {
-        const status = (s?.status ?? "").toString().toLowerCase();
+        const status = normalizeSessionStatus(s?.status);
         if (activeTab === "confirmed") {
           return status === "confirmed" || isInstantLesson(s);
+        }
+        if (status === "confirmed" && isInstantLesson(s) && canEnterLesson(s, now)) {
+          return true;
         }
         return status !== "confirmed";
       });
@@ -495,6 +506,9 @@ export function UpcomingSessionsScreen() {
                 session={session}
                 accountType={accountType}
                 activeTab={activeTab}
+                onSessionActionComplete={() => {
+                  void refetch();
+                }}
               />
             ))
           )}

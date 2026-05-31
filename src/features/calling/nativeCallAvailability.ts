@@ -3,15 +3,13 @@
  * Expo Go does not ship react-native-webrtc — use a dev client or EAS build.
  */
 
-import Constants from "expo-constants";
+import { isRunningInExpoGo } from "expo";
 import { Platform } from "react-native";
 
 /** True when running inside the Expo Go app (not a custom dev client / store build). */
 export function isExpoGoRuntime(): boolean {
   if (Platform.OS === "web") return false;
-  if (Constants.appOwnership === "expo") return true;
-  if (Constants.executionEnvironment === "storeClient") return true;
-  return false;
+  return isRunningInExpoGo();
 }
 
 /** Best-effort: verify the WebRTC native module is linked. */
@@ -28,7 +26,14 @@ export function isWebRTCModuleLinked(): boolean {
 
 export function canUseNativeCallStack(): boolean {
   if (isExpoGoRuntime()) return false;
-  return isWebRTCModuleLinked();
+  const linked = isWebRTCModuleLinked();
+  if (__DEV__ && !linked) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "[nativeCall] WebRTC module not linked — rebuild dev client: npm run ios:device / android:install-dev"
+    );
+  }
+  return linked;
 }
 
 export function getNativeCallUnavailableMessage(): {

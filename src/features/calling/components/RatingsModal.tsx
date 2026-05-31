@@ -61,6 +61,8 @@ export function RatingsModal({
   const [submitting, setSubmitting] = useState(false);
 
   const isTrainer = accountType === AccountType.TRAINER;
+  /** Trainee must submit after an in-call lesson before leaving (home banner allows skip). */
+  const mandatorySubmit = isFromCall && !isTrainer;
 
   const reset = () => {
     setSession(0);
@@ -129,7 +131,7 @@ export function RatingsModal({
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={onClose}
+      onRequestClose={mandatorySubmit && !submitted ? undefined : onClose}
     >
       <View style={[styles.backdrop, { backgroundColor: c.overlay }]}>
         <View style={[styles.card, { backgroundColor: c.surfaceElevated }]}>
@@ -192,20 +194,26 @@ export function RatingsModal({
               )}
 
               <View style={styles.row}>
-                <Pressable
-                  onPress={() => {
-                    onSkip?.();
-                    onClose();
-                  }}
-                  style={[styles.btn, styles.btnGhost]}
-                >
-                  <Text style={styles.btnGhostText}>
-                    {t("postSessionRating.skip", { defaultValue: "Not now" })}
-                  </Text>
-                </Pressable>
+                {!mandatorySubmit ? (
+                  <Pressable
+                    onPress={() => {
+                      onSkip?.();
+                      onClose();
+                    }}
+                    style={[styles.btn, styles.btnGhost]}
+                  >
+                    <Text style={styles.btnGhostText}>
+                      {t("postSessionRating.skip", { defaultValue: "Not now" })}
+                    </Text>
+                  </Pressable>
+                ) : null}
                 <Pressable
                   onPress={() => void handleSubmit()}
-                  style={[styles.btn, styles.btnPrimary]}
+                  style={[
+                    styles.btn,
+                    styles.btnPrimary,
+                    mandatorySubmit && styles.btnPrimaryFull,
+                  ]}
                   disabled={submitting}
                 >
                   {submitting ? (
@@ -329,5 +337,6 @@ const styles = StyleSheet.create({
   btnGhost: { backgroundColor: "transparent", borderWidth: 1, borderColor: "#ddd" },
   btnGhostText: { color: "#555", fontWeight: "600" },
   btnPrimary: { backgroundColor: "#000080" },
+  btnPrimaryFull: { flex: 1, width: "100%" },
   btnPrimaryText: { color: "#fff", fontWeight: "700" },
 });

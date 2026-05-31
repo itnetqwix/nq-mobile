@@ -157,7 +157,15 @@ export function VerifyContactScreen({ onDone }: Props) {
 }
 
 const styles = StyleSheet.create({
-  brand: { alignItems: "center", marginBottom: space.lg, marginTop: space.md },
+  brand: {
+    alignItems: "center",
+    width: "100%",
+    backgroundColor: "#000000",
+    borderRadius: 12,
+    paddingVertical: space.sm,
+    marginBottom: space.lg,
+    marginTop: space.md,
+  },
   centered: { flex: 1, alignItems: "center", justifyContent: "center" },
   phoneIntro: {
     ...typography.bodyMd,

@@ -31,7 +31,7 @@ If sign-in shows a **network** error, confirm `.env` has the real API origin (no
 
 ## Branding (same logo as web login)
 
-- **Asset:** `assets/netquix_logo_v1.png` — same file as web `nq-frontend-main/public/assets/images/netquix_logo_v1.png` (login / sign-up).
+- **Assets:** `assets/netqwix_logo-fulll.png` (full logo — drawer, auth, loaders), `assets/netqwix_logo.png` (compact pin).
 - **Bundled use:** `src/constants/images.ts` + [`NetqwixLogo`](src/components/brand/NetqwixLogo.tsx) on Login, Sign up, Forgot password, and Home.
 - **Native splash + session loader:** [`app.json`](app.json) `splash.image` uses the same file; while the app restores the session, [`BrandedSessionLoader`](src/components/brand/BrandedSessionLoader.tsx) shows the logo with a pulse + spinner.
 

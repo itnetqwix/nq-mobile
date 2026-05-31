@@ -3,6 +3,7 @@ import { Modal, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, space } from "../../theme";
 import { WizardHeader } from "../instant-lesson/booking-wizard/WizardHeader";
+import { WizardStepClips } from "../instant-lesson/booking-wizard/steps/WizardStepClips";
 import { WizardStepPayment } from "../instant-lesson/booking-wizard/steps/WizardStepPayment";
 import { navigateToWalletTopUp } from "../../navigation/navigationRef";
 import { ScheduleStepConfirm } from "./steps/ScheduleStepConfirm";
@@ -66,8 +67,20 @@ export function ScheduledBookingWizardModal({ visible, trainer, onDismiss, onBoo
               onDurationChange={w.setDurationMinutes}
               hourlyRate={w.hourlyRate}
               expectedPrice={w.expectedPrice}
+              durationPreviewQuote={w.durationPreviewQuote}
               sessionTimeSummary={w.sessionTimeSummary}
               trainerTimeLabel={w.trainerTimeLabel}
+              onNext={w.goNext}
+            />
+          )}
+
+          {w.step === "clips" && (
+            <WizardStepClips
+              clipsQuery={w.clipsQuery}
+              flatClips={w.flatClips}
+              selectedClipIds={w.selectedClipIds}
+              onToggleClip={w.toggleClip}
+              onSkip={w.goNext}
               onNext={w.goNext}
             />
           )}
@@ -117,7 +130,9 @@ export function ScheduledBookingWizardModal({ visible, trainer, onDismiss, onBoo
               expectedPrice={w.expectedPrice}
               promoResult={w.promoResult}
               chargingPrice={w.chargingPrice}
+              pricingQuote={w.pricingQuote}
               couponCode={w.couponCode}
+              selectedClipIds={w.selectedClipIds}
               isSubmitting={w.submitIsPending}
               onSubmit={w.handleSubmit}
             />

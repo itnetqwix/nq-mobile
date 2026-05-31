@@ -2,6 +2,8 @@ import { apiClient } from "../../api/client";
 import { API_ROUTES } from "../../config/apiRoutes";
 import { idempotencyHeaders, newIdempotencyKey } from "../../lib/idempotency";
 
+import type { PricingQuote } from "../payments/pricingTypes";
+
 export type ExtensionQuote = {
   allowed: boolean;
   reason?: string;
@@ -9,6 +11,7 @@ export type ExtensionQuote = {
   minutes: number;
   newEndTimeUtc?: string;
   remainingSeconds?: number | null;
+  pricingQuote?: PricingQuote | null;
 };
 
 /** Snapshot of the in-flight extension request shared between trainer and trainee. */
@@ -112,6 +115,8 @@ export async function createSessionExtensionPaymentIntent(payload: {
   requestId?: string;
   customer?: string;
   couponCode?: string;
+  quoteId?: string;
+  billingAddress?: { country: string; state?: string };
 }): Promise<{
   skip?: boolean;
   client_secret?: string;
@@ -141,6 +146,7 @@ export async function confirmSessionExtension(payload: {
   payment_intent_id?: string | null;
   payment_method?: "wallet" | "card";
   pin_session_token?: string | null;
+  quoteId?: string;
 }): Promise<unknown> {
   const idemKey = payload.payment_intent_id
     ? `ext-confirm-${payload.sessionId}-${payload.payment_intent_id}`

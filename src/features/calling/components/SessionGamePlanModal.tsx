@@ -29,8 +29,8 @@ import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { putFileToPresignedUrl } from "../../../lib/presignedPut";
 import { fetchSessionReport } from "../meetingReportApi";
 import {
-  fetchImageKeysAsBase64DataUrls,
   parseReportScreenshotItems,
+  requireBase64DataUrlsForPdf,
   type ReportScreenshotItem,
   toReportDataPayload,
 } from "../reportDataUtils";
@@ -127,10 +127,8 @@ export function SessionGamePlanModal({
   const buildPdfHtml = useCallback(
     async (items: ReportScreenshotItem[], heading: string, notes: string) => {
       const keys = items.map((i) => i.imageUrl);
-      const dataUrls = await fetchImageKeysAsBase64DataUrls(keys);
-      const srcs =
-        dataUrls.length > 0 ? dataUrls : keys.map((k) => getS3ImageUrl(k));
-      return buildPdfHtmlFromDataUrls(srcs, heading, notes, items);
+      const dataUrls = await requireBase64DataUrlsForPdf(keys);
+      return buildPdfHtmlFromDataUrls(dataUrls, heading, notes, items);
     },
     []
   );

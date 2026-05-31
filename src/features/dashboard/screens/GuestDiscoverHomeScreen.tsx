@@ -39,7 +39,7 @@ export function GuestDiscoverHomeScreen() {
     if (typeof navigation?.setOptions !== "function") return;
     navigation.setOptions({
       headerTitle: () => (
-        <NetqwixLogo variant="wordmark" maxWidth={132} height={34} compact align="center" />
+        <NetqwixLogo variant="pin" maxWidth={40} height={36} compact align="center" />
       ),
       headerRight: () => (
         <Pressable

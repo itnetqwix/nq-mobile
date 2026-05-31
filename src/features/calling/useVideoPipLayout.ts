@@ -147,14 +147,38 @@ export function useVideoPipLayout({
     [isTileHidden, local, remote]
   );
 
+  /** Trainer `local`/`remote` are mirrored onto trainee `remote`/`local`. */
+  const mapTrainerTile = useCallback(
+    (trainerTile: PipTileId): PipTileId => {
+      if (isTrainer) return trainerTile;
+      return trainerTile === "local" ? "remote" : "local";
+    },
+    [isTrainer]
+  );
+
+  const resolvePosition = useCallback(
+    (t: TileLayout, bounds: Bounds | null): { x: number; y: number } | null => {
+      if (bounds && t.nx != null && t.ny != null) {
+        return { x: t.nx * bounds.width, y: t.ny * bounds.height };
+      }
+      if (typeof t.x === "number" && typeof t.y === "number") {
+        return { x: t.x, y: t.y };
+      }
+      return null;
+    },
+    []
+  );
+
   /** Apply trainer-synced tile layout (trainee / reconnect). */
   const applyRemoteTiles = useCallback(
     (tiles: Record<PipTileId, TileLayout>) => {
-      (["local", "remote"] as PipTileId[]).forEach((tile) => {
-        const t = tiles[tile];
+      (["local", "remote"] as PipTileId[]).forEach((trainerTile) => {
+        const tile = mapTrainerTile(trainerTile);
+        const t = tiles[trainerTile];
         if (!t) return;
-        if (typeof t.x === "number" && typeof t.y === "number") {
-          setTileState(tile, { position: { x: t.x, y: t.y } });
+        const pos = resolvePosition(t, bounds);
+        if (pos) {
+          setTileState(tile, { position: { x: pos.x, y: pos.y } });
         }
         if (t.hiddenEdge) {
           setTileState(tile, { hiddenEdge: t.hiddenEdge });
@@ -175,7 +199,7 @@ export function useVideoPipLayout({
         }
       });
     },
-    [isTrainer, setTileState, setVideoHidden]
+    [bounds, isTrainer, mapTrainerTile, resolvePosition, setTileState, setVideoHidden]
   );
 
   return {

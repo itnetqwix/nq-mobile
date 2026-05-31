@@ -1,6 +1,10 @@
 /**
  * Native incoming-call UI via CallKit (iOS) and ConnectionService (Android).
  * Requires a dev build with react-native-callkeep — not available in Expo Go.
+ *
+ * Android: unpatched `react-native-callkeep` crashes under RN New Architecture
+ * (duplicate `displayIncomingCall` / `startCall` @ReactMethod). We ship a patch in
+ * `patches/`; rebuild the dev APK, then set `ANDROID_CALLKEEP_ENABLED` to true.
  */
 
 import * as Crypto from "expo-crypto";
@@ -28,8 +32,21 @@ export function subscribeInstantLessonCallKeepReady(listener: () => void): () =>
   return () => readyListeners.delete(listener);
 }
 
+/** Set true after `npm run android:install-dev` (applies react-native-callkeep patch). */
+const ANDROID_CALLKEEP_ENABLED = false;
+
+/** CallKeep native module — iOS always; Android only after legacy-arch rebuild. */
+export function isCallKeepNativeModuleSupported(): boolean {
+  if (Platform.OS === "ios") return true;
+  if (Platform.OS === "android" && ANDROID_CALLKEEP_ENABLED) return true;
+  return false;
+}
+
 function loadCallKeep(): CallKeepModule | null {
-  if (Platform.OS === "web") return null;
+  if (Platform.OS === "web" || !isCallKeepNativeModuleSupported()) {
+    if (RNCallKeep === undefined) RNCallKeep = null;
+    return null;
+  }
   if (RNCallKeep !== undefined) return RNCallKeep;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports

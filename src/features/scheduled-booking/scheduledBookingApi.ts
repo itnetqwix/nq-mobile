@@ -52,6 +52,7 @@ export type BookSessionPayload = {
   payment_method?: "wallet";
   pin_session_token?: string;
   payment_intent_id?: string;
+  quote_id?: string;
 };
 
 export async function bookScheduledSession(payload: BookSessionPayload): Promise<unknown> {

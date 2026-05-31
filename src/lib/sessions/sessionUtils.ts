@@ -1,6 +1,7 @@
 import {
   INSTANT_ACCEPT_WINDOW_MS,
   INSTANT_JOIN_AFTER_ACCEPT_MS,
+  INSTANT_PHASE,
 } from "./instantLessonConstants";
 import { getRefundReasonI18nKey } from "./refundReasonLabels";
 
@@ -18,7 +19,38 @@ export function normalizeSessionStatus(status?: string | null): string {
   return s || "booked";
 }
 
+function instantPhase(session: any): string {
+  return String(session?.instant_phase ?? "").toLowerCase();
+}
+
+/** Instant lesson still waiting for trainer accept (not yet in join window). */
+export function isInstantAwaitingAccept(session: any): boolean {
+  if (!isInstantLesson(session)) return false;
+  if (session?.accepted_at) return false;
+  const phase = instantPhase(session);
+  if (
+    phase === INSTANT_PHASE.PENDING_JOIN ||
+    phase === INSTANT_PHASE.ACTIVE ||
+    phase === INSTANT_PHASE.COMPLETED
+  ) {
+    return false;
+  }
+  const status = normalizeSessionStatus(session?.status);
+  return status === "booked" || phase === INSTANT_PHASE.PENDING_ACCEPT || !phase;
+}
+
+/** Session is confirmed enough to enter the join / rejoin flow. */
+export function isSessionConfirmedForJoin(session: any): boolean {
+  const status = normalizeSessionStatus(session?.status);
+  if (status === "confirmed" || status === "upcoming") return true;
+  if (!isInstantLesson(session)) return false;
+  if (session?.accepted_at) return true;
+  const phase = instantPhase(session);
+  return phase === INSTANT_PHASE.PENDING_JOIN || phase === INSTANT_PHASE.ACTIVE;
+}
+
 export function isPendingBooking(session: any): boolean {
+  if (isInstantLesson(session)) return isInstantAwaitingAccept(session);
   return normalizeSessionStatus(session?.status) === "booked";
 }
 
@@ -124,8 +156,7 @@ export function getInstantAcceptDeadlineMs(session: any): number | null {
 
 export function getInstantJoinDeadlineMs(session: any): number | null {
   if (!isInstantLesson(session)) return null;
-  const status = normalizeSessionStatus(session?.status);
-  if (status !== "confirmed") return null;
+  if (isInstantAwaitingAccept(session)) return null;
   const raw = session?.join_deadline_at ?? session?.joinDeadlineAt;
   if (!raw) return null;
   const ms = new Date(raw).getTime();
@@ -201,8 +232,7 @@ export function isInstantJoinExpired(session: any, now = new Date()): boolean {
     if (endMs != null) return now.getTime() > endMs;
     return false;
   }
-  const status = normalizeSessionStatus(session?.status);
-  if (status !== "confirmed" && status !== "upcoming") return false;
+  if (!isSessionConfirmedForJoin(session)) return false;
   const deadline = resolveJoinDeadlineMs(session);
   if (deadline == null) return false;
   return now.getTime() > deadline;
@@ -217,11 +247,10 @@ export function isInstantExpiredForLists(session: any, now = new Date()): boolea
   }
   /** Accepted-but-not-yet-joined instant lessons should remain visible in the
    *  Confirmed tab for their full duration window so the trainer can rejoin. */
-  const status = normalizeSessionStatus(session?.status);
   if (
     isInstantLesson(session) &&
     session?.accepted_at &&
-    (status === "confirmed" || status === "upcoming")
+    isSessionConfirmedForJoin(session)
   ) {
     const endMs = getInstantLessonEndMs(session);
     if (endMs != null) return now.getTime() > endMs;
@@ -373,7 +402,7 @@ export function canJoinSession(session: any, now = new Date()): boolean {
   const status = normalizeSessionStatus(session?.status);
   if (status === "cancelled" || status === "completed") return false;
   if (isPendingBooking(session)) return false;
-  if (status !== "confirmed" && status !== "upcoming") return false;
+  if (!isSessionConfirmedForJoin(session)) return false;
 
   const nowMs = now.getTime();
 
@@ -418,7 +447,7 @@ export function getJoinDisabledReason(session: any, now = new Date()): string {
   }
   if (status === "cancelled") return "This session was cancelled.";
   if (status === "completed") return "This session has already ended.";
-  if (status !== "confirmed" && status !== "upcoming") {
+  if (!isSessionConfirmedForJoin(session)) {
     return "This session is not ready to join yet.";
   }
 

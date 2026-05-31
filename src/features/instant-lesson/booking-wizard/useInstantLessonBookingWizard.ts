@@ -7,8 +7,7 @@ import { useAuth } from "../../auth/context/AuthContext";
 import { useInstantLesson } from "../InstantLessonContext";
 import {
   addTraineeClipsToBookedSession,
-  fetchMyClipsGrouped,
-  flattenGroupedClips,
+  fetchMyClipsForBooking,
 } from "../instantLessonClipsApi";
 import { MAX_CLIPS, WIZARD_STEPS, wizardStepIndex } from "./constants";
 import { parseInstantBookingMeta } from "./parseInstantBookingLessonId";
@@ -19,6 +18,8 @@ import { confirmProceedToPaymentIfWalletShort } from "../../../lib/booking/booki
 import { navigateToWalletTopUp } from "../../../navigation/navigationRef";
 import { fetchWalletBalance } from "../../wallet/walletApi";
 import { fetchInstantLessonEligibility } from "../../home/api/homeApi";
+import { fetchSessionPricingQuote } from "../../payments/fetchSessionPricingQuote";
+import type { PricingQuote } from "../../payments/pricingTypes";
 
 function trainerIdOf(t: WizardTrainer): string {
   if (!t) return "";
@@ -56,6 +57,8 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
   const [pinSessionToken, setPinSessionToken] = useState<string | undefined>();
   const [quoteId, setQuoteId] = useState<string | undefined>();
   const [chargingPrice, setChargingPrice] = useState(0);
+  const [pricingQuote, setPricingQuote] = useState<PricingQuote | null>(null);
+  const [durationPreviewQuote, setDurationPreviewQuote] = useState<PricingQuote | null>(null);
   const [promoValidating, setPromoValidating] = useState(false);
   const [promoResult, setPromoResult] = useState<{
     valid: boolean;
@@ -80,12 +83,14 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
       paymentMethod?: "wallet" | "card";
       pinSessionToken?: string;
       quoteId?: string;
+      pricingQuote?: PricingQuote | null;
     }) => {
       setPaymentIntentId(payload.paymentIntentId);
       setChargingPrice(payload.chargingPrice);
       setPaymentMethod(payload.paymentMethod);
       setPinSessionToken(payload.pinSessionToken);
-      setQuoteId(payload.quoteId);
+      setQuoteId(payload.quoteId ?? payload.pricingQuote?.quoteId);
+      if (payload.pricingQuote) setPricingQuote(payload.pricingQuote);
     },
     []
   );
@@ -131,12 +136,12 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
 
   const clipsQuery = useQuery({
     queryKey: queryKeys.instant.wizardClips,
-    queryFn: fetchMyClipsGrouped,
-    enabled: visible && step === "clips",
+    queryFn: fetchMyClipsForBooking,
+    enabled: visible && (step === "clips" || step === "confirm"),
     staleTime: 30_000,
   });
 
-  const flatClips = useMemo(() => flattenGroupedClips(clipsQuery.data ?? []), [clipsQuery.data]);
+  const flatClips = clipsQuery.data ?? [];
 
   const toggleClip = useCallback((id: string) => {
     setSelectedClipIds((prev) => {
@@ -208,6 +213,63 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     }
     return expectedPrice;
   }, [promoResult, expectedPrice]);
+
+  useEffect(() => {
+    if (!visible || step !== "duration" || !tid || payableAmount <= 0) {
+      setDurationPreviewQuote(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchSessionPricingQuote({
+      productType: "instant_lesson",
+      sessionSubtotalCents: Math.round(payableAmount * 100),
+      trainerId: tid,
+      promoDiscountCents: Math.round(Math.max(0, expectedPrice - payableAmount) * 100),
+    })
+      .then((q) => {
+        if (!cancelled) setDurationPreviewQuote(q);
+      })
+      .catch(() => {
+        if (!cancelled) setDurationPreviewQuote(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, step, tid, payableAmount, expectedPrice, durationMinutes]);
+
+  useEffect(() => {
+    if (!visible || step !== "confirm" || !tid || payableAmount <= 0 || pricingQuote) {
+      return;
+    }
+    let cancelled = false;
+    void fetchSessionPricingQuote({
+      productType: "instant_lesson",
+      sessionSubtotalCents: Math.round(payableAmount * 100),
+      trainerId: tid,
+      promoDiscountCents: Math.round(Math.max(0, expectedPrice - payableAmount) * 100),
+    })
+      .then((q) => {
+        if (!cancelled) {
+          setPricingQuote(q);
+          if (chargingPrice <= 0 || chargingPrice === payableAmount) {
+            setChargingPrice(q.chargeTotalCents / 100);
+          }
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    visible,
+    step,
+    tid,
+    payableAmount,
+    expectedPrice,
+    pricingQuote,
+    chargingPrice,
+    durationMinutes,
+  ]);
 
   const goNext = useCallback(() => {
     const i = wizardStepIndex(step);
@@ -344,6 +406,9 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     handlePaymentComplete,
     paymentIntentId,
     chargingPrice,
+    pricingQuote,
+    durationPreviewQuote,
+    payableAmount,
     promoValidating,
     promoResult,
     handleApplyPromo,

@@ -26,8 +26,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "../../../components/ui";
 import { useAuth } from "../../auth/context/AuthContext";
 import { colors, radii, space, typography } from "../../../theme";
+import { PricingBreakdownSummary } from "../../payments/PricingBreakdownSummary";
 import type { ExtensionQuote } from "../sessionExtensionApi";
 import type { UseSessionExtensionFlow } from "../useSessionExtensionFlow";
+import { chargeTotalDollars } from "../../payments/pricingTypes";
 
 /** Mobile UI surfaces only the most common picks; the backend still accepts
  *  60/120 for parity with legacy clients. */
@@ -117,6 +119,21 @@ export function SessionExtensionModal({
     };
   }, [visible, minutes, phase, fetchQuote]);
 
+  useEffect(() => {
+    if (!visible) return;
+    if (phase !== "awaiting_payment" && phase !== "paying") return;
+    const mins = request?.minutes ?? minutes;
+    let cancelled = false;
+    fetchQuote(mins)
+      .then((q) => {
+        if (!cancelled && q.allowed) setQuote(q);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, phase, request?.minutes, minutes, fetchQuote]);
+
   /** When the trainee dismisses while still pending/awaiting payment, surface
    *  a confirm step instead of silently abandoning a server-side row. */
   const handleClose = useCallback(() => {
@@ -148,15 +165,30 @@ export function SessionExtensionModal({
     }
   }, [minutes, requestExtension]);
 
+  const extensionChargeTotal = useMemo(() => {
+    const fromQuote = chargeTotalDollars(quote?.pricingQuote ?? null);
+    if (fromQuote != null) return fromQuote;
+    return Number(request?.amount ?? quote?.amount ?? 0);
+  }, [quote, request?.amount]);
+
+  const extensionChargeMinor = useMemo(
+    () =>
+      quote?.pricingQuote?.chargeTotalCents ??
+      Math.round(extensionChargeTotal * 100),
+    [quote?.pricingQuote?.chargeTotalCents, extensionChargeTotal]
+  );
+
   const handlePay = useCallback(async () => {
     const ok = await payAndConfirm({
       method: paymentMethod,
       customer: userStripeId || undefined,
+      quoteId: quote?.pricingQuote?.quoteId,
+      chargeTotalCents: extensionChargeMinor,
     });
     if (ok) {
       // SESSION_EXTENSION_APPLIED will flip phase to "applied" -> auto close.
     }
-  }, [payAndConfirm, paymentMethod, userStripeId]);
+  }, [payAndConfirm, paymentMethod, userStripeId, quote?.pricingQuote?.quoteId, extensionChargeMinor]);
 
   // Auto-dismiss on terminal success.
   useEffect(() => {
@@ -216,13 +248,12 @@ export function SessionExtensionModal({
           Coach approved. Complete payment in the next {formatCountdown(expiryCountdown)} to add{" "}
           {request?.minutes ?? minutes} minutes to your lesson.
         </Text>
-        <View style={styles.priceBlock}>
-          <Text style={styles.priceLabel}>Total</Text>
-          <Text style={styles.priceValue}>
-            ${Number(request?.amount ?? 0).toFixed(2)}
-          </Text>
-        </View>
-        {request && request.amount > 0 ? (
+        <PricingBreakdownSummary
+          sessionSubtotal={Number(request?.amount ?? quote?.amount ?? 0)}
+          pricingQuote={quote?.pricingQuote ?? null}
+          chargeTotal={extensionChargeTotal}
+        />
+        {request && extensionChargeTotal > 0 ? (
           <View style={styles.payRow}>
             <Pressable
               style={[styles.payChip, paymentMethod === "wallet" && styles.payChipActive]}
@@ -243,7 +274,7 @@ export function SessionExtensionModal({
           label={
             phase === "paying"
               ? "Processing…"
-              : `Pay $${Number(request?.amount ?? 0).toFixed(2)}`
+              : `Pay $${extensionChargeTotal.toFixed(2)}`
           }
           onPress={handlePay}
           disabled={phase === "paying"}
@@ -313,13 +344,13 @@ export function SessionExtensionModal({
           />
         ) : quoteError ? (
           <Text style={styles.error}>{quoteError}</Text>
-        ) : (
-          <Text style={styles.price}>
-            {quote?.amount != null && quote.amount > 0
-              ? `$${quote.amount.toFixed(2)}`
-              : "Free"}
-          </Text>
-        )}
+        ) : quote?.allowed ? (
+          <PricingBreakdownSummary
+            sessionSubtotal={quote.amount}
+            pricingQuote={quote.pricingQuote ?? null}
+            chargeTotal={chargeTotalDollars(quote.pricingQuote) ?? quote.amount}
+          />
+        ) : null}
 
         {message ? <Text style={styles.error}>{message}</Text> : null}
 

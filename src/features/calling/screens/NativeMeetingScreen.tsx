@@ -47,7 +47,11 @@ import { fetchMeetingSession, fetchScheduledMeetings } from "../../home/api/home
 import { parseIceServersFromSession } from "../meetingIceServers";
 import { getClipPlaybackUrl } from "../../../lib/clipMediaUrl";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
-import { clipIdOf, clipsFromSession, resolveClipPlayback } from "../clipSyncUtils";
+import {
+  clipIdOf,
+  clipsFromSession,
+  resolveClipPlayback,
+} from "../clipSyncUtils";
 import { useDrawingSync } from "../useDrawingSync";
 import { useMeetingScreenshot } from "../useMeetingScreenshot";
 import { fetchSessionReport } from "../meetingReportApi";
@@ -120,6 +124,7 @@ import { SessionRecapSheet } from "../components/SessionRecapSheet";
 import { MeetingAgendaBanner } from "../components/MeetingAgendaBanner";
 import { MeetingLiveNotesPanel } from "../components/MeetingLiveNotesPanel";
 import { SessionHandoffScreen } from "../components/SessionHandoffScreen";
+import { GamePlanStatusPill } from "../components/GamePlanStatusPill";
 import { useLessonLiveState } from "../hooks/useLessonLiveState";
 import {
   fetchSessionHandoffSummary,
@@ -149,7 +154,9 @@ const NAVY = meetingTheme.navy;
 function useSessionLookup(lessonId: string) {
   const queryClient = useQueryClient();
   const cached = useMemo<SessionRow | null>(() => {
-    const caches = queryClient.getQueriesData<SessionRow[]>({ queryKey: queryKeys.sessions.all });
+    const caches = queryClient.getQueriesData<SessionRow[]>({
+      queryKey: queryKeys.sessions.all,
+    });
     for (const [, list] of caches) {
       if (!Array.isArray(list)) continue;
       const hit = list.find((s) => String(s?._id) === String(lessonId));
@@ -158,9 +165,11 @@ function useSessionLookup(lessonId: string) {
     return null;
   }, [queryClient, lessonId]);
 
+  /** Always fetch the booking row with populated `trainee_clips` — list cache often
+   *  only has id arrays and previously blocked preload after a failed first pass. */
   const { data: fetched, isLoading } = useQuery<SessionRow | null>({
     queryKey: queryKeys.sessions.lookup(lessonId),
-    enabled: !cached && !!lessonId,
+    enabled: !!lessonId,
     queryFn: async () => {
       const direct = await fetchMeetingSession(lessonId);
       if (direct) return direct;
@@ -177,7 +186,17 @@ function useSessionLookup(lessonId: string) {
     staleTime: 30_000,
   });
 
-  return { session: cached ?? fetched ?? null, isLoading };
+  const session = useMemo<SessionRow | null>(() => {
+    if (!cached && !fetched) return null;
+    const merged: SessionRow = { ...(cached ?? {}), ...(fetched ?? {}) };
+    const populated = fetched?.trainee_clips ?? cached?.trainee_clips;
+    if (Array.isArray(populated) && populated.length > 0) {
+      merged.trainee_clips = populated;
+    }
+    return merged;
+  }, [cached, fetched]);
+
+  return { session, isLoading: isLoading && !session };
 }
 
 export function NativeMeetingScreen({ navigation, route }: Props) {
@@ -391,6 +410,13 @@ function MeetingSurface({
 }) {
   const { user: authUser } = useAuth();
   const audioRoute = useAudioRoute();
+  const sessionBookingClips = useMemo(
+    () =>
+      clipsFromSession(session).filter(
+        (c) => Boolean(resolveClipPlayback(c).url || getClipPlaybackUrl(c))
+      ),
+    [session]
+  );
   const [activeClipUri, setActiveClipUri] = useState<string | null>(null);
   const { width: winW, height: winH } = useWindowDimensions();
   const [localPipSize, setLocalPipSize] = useState({ w: PIP_WIDTH, h: PIP_HEIGHT });
@@ -680,14 +706,54 @@ function MeetingSurface({
   });
 
   const { applyRemoteTiles } = pipLayout;
+  const pipPositionPatch = useCallback(
+    (pos: { x: number; y: number }, size?: { w: number; h: number }) => {
+      if (!meetingBounds) {
+        return { x: pos.x, y: pos.y, ...(size ?? {}) };
+      }
+      const { width, height } = meetingBounds;
+      return {
+        x: pos.x,
+        y: pos.y,
+        nx: pos.x / width,
+        ny: pos.y / height,
+        ...(size?.w && size?.h
+          ? {
+              w: size.w,
+              h: size.h,
+              nw: size.w / width,
+              nh: size.h / height,
+            }
+          : {}),
+      };
+    },
+    [meetingBounds]
+  );
+
   useEffect(() => {
     if (isTrainer) return;
     applyRemoteTiles(meetingLayout.tiles);
-    const lt = meetingLayout.tiles.local;
-    const rt = meetingLayout.tiles.remote;
-    if (lt.w > 0 && lt.h > 0) setLocalPipSize({ w: lt.w, h: lt.h });
-    if (rt.w > 0 && rt.h > 0) setRemotePipSize({ w: rt.w, h: rt.h });
-  }, [isTrainer, meetingLayout.tiles, applyRemoteTiles]);
+    const trainerLocal = meetingLayout.tiles.local;
+    const trainerRemote = meetingLayout.tiles.remote;
+    const remoteW =
+      trainerLocal.nw != null && meetingBounds
+        ? trainerLocal.nw * meetingBounds.width
+        : trainerLocal.w;
+    const remoteH =
+      trainerLocal.nh != null && meetingBounds
+        ? trainerLocal.nh * meetingBounds.height
+        : trainerLocal.h;
+    const localW =
+      trainerRemote.nw != null && meetingBounds
+        ? trainerRemote.nw * meetingBounds.width
+        : trainerRemote.w;
+    const localH =
+      trainerRemote.nh != null && meetingBounds
+        ? trainerRemote.nh * meetingBounds.height
+        : trainerRemote.h;
+    if (remoteW > 0 && remoteH > 0) setRemotePipSize({ w: remoteW, h: remoteH });
+    if (localW > 0 && localH > 0) setLocalPipSize({ w: localW, h: localH });
+  }, [isTrainer, meetingLayout.tiles, applyRemoteTiles, meetingBounds]);
 
   const drawingSync = useDrawingSync({
     socket,
@@ -776,6 +842,10 @@ function MeetingSurface({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [ratingsOpen, setRatingsOpen] = useState(false);
   const [gamePlanOpen, setGamePlanOpen] = useState(false);
+  const [gamePlanBanner, setGamePlanBanner] = useState<{
+    title: string;
+    subtitle: string;
+  } | null>(null);
   const [screenshotSheetOpen, setScreenshotSheetOpen] = useState(false);
   const [screenshotDetailsOpen, setScreenshotDetailsOpen] = useState(false);
   const [pendingScreenshotKey, setPendingScreenshotKey] = useState<string | null>(null);
@@ -799,8 +869,7 @@ function MeetingSurface({
     if (bookingClips.length > 0) {
       clipSync.preloadBookingClips(bookingClips);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- preload once per session
-  }, [session]);
+  }, [session, session?.trainee_clips, clipSync]);
 
   useEffect(() => {
     if (!bothUsersForTimer) {
@@ -940,6 +1009,9 @@ function MeetingSurface({
           next[paneIndex] = seconds;
           return next;
         });
+        if (isTrainer && clipId) {
+          clipSync.syncPlaybackProgress(clipId, seconds);
+        }
       },
       onDurationSeconds: (seconds: number) => {
         setClipDurations((prev) => {
@@ -1267,6 +1339,30 @@ function MeetingSurface({
   }, [lessonTimer.status, pushLocalToast, lessonId, extensionFlow]);
 
   useEffect(() => {
+    if (!socket || !lessonId) return;
+    const onGamePlanShared = (payload: {
+      sessionId?: string;
+      title?: string;
+      kind?: string;
+    }) => {
+      if (String(payload?.sessionId ?? "") !== String(lessonId)) return;
+      if (isTrainer) return;
+      const title =
+        payload.kind === "game_plan_updated"
+          ? "Game plan updated"
+          : "New game plan";
+      const subtitle =
+        payload.title?.trim() ||
+        "Your coach shared a session plan. Open Game plans in your locker.";
+      setGamePlanBanner({ title, subtitle });
+    };
+    socket.on("GAME_PLAN_SHARED", onGamePlanShared);
+    return () => {
+      socket.off("GAME_PLAN_SHARED", onGamePlanShared);
+    };
+  }, [socket, lessonId, isTrainer]);
+
+  useEffect(() => {
     if (!socket) return;
     const onWarning = (data: { sessionId?: string; kind?: string }) => {
       if (String(data?.sessionId) !== String(lessonId)) return;
@@ -1342,6 +1438,14 @@ function MeetingSurface({
     >
       <StatusBar barStyle="light-content" />
 
+      {gamePlanBanner && !isTrainer ? (
+        <GamePlanStatusPill
+          title={gamePlanBanner.title}
+          subtitle={gamePlanBanner.subtitle}
+          onDismiss={() => setGamePlanBanner(null)}
+        />
+      ) : null}
+
       {screenshot.capturing ? (
         <View style={styles.captureOverlay} pointerEvents="none">
           <ActivityIndicator size="large" color="#fff" />
@@ -1355,6 +1459,7 @@ function MeetingSurface({
         frameUris={screenshot.compositeFrameUris}
         captureRef={screenshot.compositeHostRef}
         onLayout={() => {}}
+        onFramesReady={screenshot.onCompositeFramesReady}
       />
 
       {/* Remote video / clip pane */}
@@ -1571,7 +1676,7 @@ function MeetingSurface({
             onPress={
               isTrainer
                 ? () => meetingLayout.focusStream(focusedIsLocal ? peerId : myId)
-                : () => meetingLayout.clearFocus()
+                : undefined
             }
           />
           {inClipMode && activeClipUri ? (
@@ -1600,17 +1705,18 @@ function MeetingSurface({
             position={pipLayout.pipLayout.local.position}
             isHidden={pipLayout.pipLayout.local.isHidden}
             hiddenEdge={pipLayout.pipLayout.local.hiddenEdge}
+            width={localPipSize.w}
+            height={localPipSize.h}
             onPositionChange={(pos) => {
               pipLayout.updatePosition("local", pos);
-              meetingLayout.updateTile("local", { x: pos.x, y: pos.y });
+              meetingLayout.updateTile("local", pipPositionPatch(pos, localPipSize));
             }}
             onHide={(edge, last) => {
               pipLayout.hideTile("local", edge, last);
               meetingLayout.updateTile("local", {
                 hidden: true,
                 hiddenEdge: edge,
-                x: last.x,
-                y: last.y,
+                ...pipPositionPatch(last, localPipSize),
               });
             }}
             onRestore={() => {
@@ -1620,6 +1726,15 @@ function MeetingSurface({
             onExpand={
               isTrainer ? () => meetingLayout.focusStream(myId) : undefined
             }
+            onSizeChange={(w, h) => {
+              setLocalPipSize({ w, h });
+              if (isTrainer) {
+                meetingLayout.updateTile(
+                  "local",
+                  pipPositionPatch(pipLayout.pipLayout.local.position, { w, h })
+                );
+              }
+            }}
           />
           <DraggableVideoPip
             tileId="remote"
@@ -1634,24 +1749,36 @@ function MeetingSurface({
             position={pipLayout.pipLayout.remote.position}
             isHidden={pipLayout.pipLayout.remote.isHidden}
             hiddenEdge={pipLayout.pipLayout.remote.hiddenEdge}
+            width={remotePipSize.w}
+            height={remotePipSize.h}
             onPositionChange={(pos) => {
               pipLayout.updatePosition("remote", pos);
-              meetingLayout.updateTile("remote", { x: pos.x, y: pos.y });
+              meetingLayout.updateTile("remote", pipPositionPatch(pos, remotePipSize));
             }}
             onHide={(edge, last) => {
               pipLayout.hideTile("remote", edge, last);
               meetingLayout.updateTile("remote", {
                 hidden: true,
                 hiddenEdge: edge,
-                x: last.x,
-                y: last.y,
+                ...pipPositionPatch(last, remotePipSize),
               });
             }}
             onRestore={() => {
               pipLayout.restoreTile("remote");
               meetingLayout.updateTile("remote", { hidden: false });
             }}
-            onExpand={() => meetingLayout.focusStream(peerId)}
+            onExpand={
+              isTrainer ? () => meetingLayout.focusStream(peerId) : undefined
+            }
+            onSizeChange={(w, h) => {
+              setRemotePipSize({ w, h });
+              if (isTrainer) {
+                meetingLayout.updateTile(
+                  "remote",
+                  pipPositionPatch(pipLayout.pipLayout.remote.position, { w, h })
+                );
+              }
+            }}
           />
         </>
       ) : null}
@@ -1841,6 +1968,7 @@ function MeetingSurface({
         visible={pickerOpen}
         onClose={() => setPickerOpen(false)}
         onDone={handleClipsPicked}
+        bookingClips={sessionBookingClips as import("../../instant-lesson/instantLessonClipsApi").ClipRow[]}
         traineeId={
           isTrainer ? String(session?.trainee_info?._id ?? "") : undefined
         }
@@ -1941,6 +2069,7 @@ function MeetingSurface({
           void openHandoff();
         }}
         onSkip={() => {
+          if (!isTrainer) return;
           void markSessionRatingShown(lessonId);
           if (endedNotifiedRef.current || lessonTimer.status === "ended") {
             void stashPendingSessionRating(lessonId);
@@ -1948,6 +2077,10 @@ function MeetingSurface({
         }}
         onSubmitted={() => {
           void markSessionRatingShown(lessonId);
+          if (!isTrainer) {
+            setRatingsOpen(false);
+            void openHandoff();
+          }
         }}
         bookingId={lessonId}
         accountType={accountType}

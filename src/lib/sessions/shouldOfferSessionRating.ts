@@ -32,7 +32,10 @@ export function shouldOfferSessionRating(
   const id = String(session._id ?? session.id ?? "");
   if (!id) return false;
 
-  if (normalizeSessionStatus(session.status as string) !== "completed") return false;
+  const status = normalizeSessionStatus(session.status as string);
+  const ratingEligibleStatus =
+    status === "completed" || status === "confirm" || status === "confirmed";
+  if (!ratingEligibleStatus) return false;
   if (hasViewerRated(session, isTrainer)) return false;
 
   const now = opts?.now ?? new Date();

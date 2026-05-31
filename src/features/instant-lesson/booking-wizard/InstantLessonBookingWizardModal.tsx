@@ -49,6 +49,7 @@ export function InstantLessonBookingWizardModal({ visible, trainer, onDismiss }:
               onRemovePromo={w.handleRemovePromo}
               visiblePromos={w.visiblePromos}
               expectedPrice={w.expectedPrice}
+              durationPreviewQuote={w.durationPreviewQuote}
               eligibility={w.eligibility}
               eligibilityLoading={w.eligibilityLoading}
             />
@@ -91,6 +92,7 @@ export function InstantLessonBookingWizardModal({ visible, trainer, onDismiss }:
               expectedPrice={w.expectedPrice}
               promoResult={w.promoResult}
               chargingPrice={w.chargingPrice}
+              pricingQuote={w.pricingQuote}
               isSubmitting={w.submitIsPending}
               onSubmit={w.handleSendRequest}
             />

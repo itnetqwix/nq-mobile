@@ -87,3 +87,19 @@ export async function fetchImageKeysAsBase64DataUrls(
   );
   return results.filter((x): x is string => !!x);
 }
+
+/**
+ * Web parity: PDF HTML must use inline base64 only (expo-print won't load remote URLs).
+ * @throws if any image fails to convert
+ */
+export async function requireBase64DataUrlsForPdf(keys: string[]): Promise<string[]> {
+  const dataUrls = await fetchImageKeysAsBase64DataUrls(keys);
+  if (keys.length === 0) return [];
+  if (dataUrls.length !== keys.length) {
+    const missing = keys.length - dataUrls.length;
+    throw new Error(
+      `Could not load ${missing} screenshot${missing === 1 ? "" : "s"} for the PDF. Check your connection and try again.`
+    );
+  }
+  return dataUrls;
+}

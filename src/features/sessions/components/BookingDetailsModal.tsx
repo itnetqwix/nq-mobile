@@ -241,7 +241,34 @@ export function BookingDetailsModal({
             ) : null}
 
             <Section title="Payment">
-              <Row label="Amount" value={fmtMoney(merged.amount)} />
+              <Row label="Session amount" value={fmtMoney(merged.amount)} />
+              {escrow?.session_subtotal_minor != null && escrow.session_subtotal_minor > 0 ? (
+                <Row
+                  label="Session subtotal"
+                  value={fmtMoney(escrow.session_subtotal_minor / 100)}
+                />
+              ) : null}
+              {escrow?.trainee_platform_fee_minor ? (
+                <Row
+                  label="Platform fee"
+                  value={fmtMoney(escrow.trainee_platform_fee_minor / 100)}
+                />
+              ) : null}
+              {escrow?.processing_fee_minor ? (
+                <Row
+                  label="Processing fee"
+                  value={fmtMoney(escrow.processing_fee_minor / 100)}
+                />
+              ) : null}
+              {escrow?.tax_minor ? (
+                <Row label="Tax" value={fmtMoney(escrow.tax_minor / 100)} />
+              ) : null}
+              {escrow?.charge_total_minor != null ? (
+                <Row
+                  label="Total charged"
+                  value={fmtMoney(escrow.charge_total_minor / 100)}
+                />
+              ) : null}
               {merged.coupon_code ? <Row label="Coupon" value={merged.coupon_code} /> : null}
               {merged._refund?.status || merged.refund_status ? (
                 <Row

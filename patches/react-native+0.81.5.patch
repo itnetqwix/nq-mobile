@@ -1,0 +1,63 @@
+diff --git a/node_modules/react-native/ReactAndroid/src/main/java/com/facebook/react/modules/websocket/WebSocketModule.kt b/node_modules/react-native/ReactAndroid/src/main/java/com/facebook/react/modules/websocket/WebSocketModule.kt
+index 8dcd8c7..e7ed4e4 100644
+--- a/node_modules/react-native/ReactAndroid/src/main/java/com/facebook/react/modules/websocket/WebSocketModule.kt
++++ b/node_modules/react-native/ReactAndroid/src/main/java/com/facebook/react/modules/websocket/WebSocketModule.kt
+@@ -72,6 +72,20 @@ public class WebSocketModule(context: ReactApplicationContext) :
+     }
+   }
+ 
++  private fun safeHeaderValue(value: String): String {
++    val builder = StringBuilder(value.length)
++    var modified = false
++    for (i in 0 until value.length) {
++      val c = value[i]
++      if (c == '\t' || c in '\u0020'..'\u007e') {
++        builder.append(c)
++      } else {
++        modified = true
++      }
++    }
++    return if (modified) builder.toString() else value
++  }
++
+   override fun connect(
+       url: String,
+       protocols: ReadableArray?,
+@@ -93,7 +107,7 @@ public class WebSocketModule(context: ReactApplicationContext) :
+ 
+     val cookie = this.getCookie(url)
+     if (cookie != null) {
+-      builder.addHeader("Cookie", cookie)
++      builder.addHeader("Cookie", safeHeaderValue(cookie))
+     }
+ 
+     var hasOriginHeader = false
+@@ -110,7 +124,9 @@ public class WebSocketModule(context: ReactApplicationContext) :
+           }
+           builder.addHeader(
+               key,
+-              checkNotNull(headers.getString(key)) { "value for name $key == null" },
++              safeHeaderValue(
++                  checkNotNull(headers.getString(key)) { "value for name $key == null" },
++              ),
+           )
+         } else {
+           FLog.w(ReactConstants.TAG, "Ignoring: requested $key, value not a string")
+@@ -119,7 +135,7 @@ public class WebSocketModule(context: ReactApplicationContext) :
+     }
+ 
+     if (!hasOriginHeader) {
+-      builder.addHeader("origin", getDefaultOrigin(url))
++      builder.addHeader("origin", safeHeaderValue(getDefaultOrigin(url)))
+     }
+ 
+     if (protocols != null && protocols.size() > 0) {
+@@ -133,7 +149,7 @@ public class WebSocketModule(context: ReactApplicationContext) :
+       }
+       if (protocolsValue.isNotEmpty()) {
+         protocolsValue.replace(protocolsValue.length - 1, protocolsValue.length, "")
+-        builder.addHeader("Sec-WebSocket-Protocol", protocolsValue.toString())
++        builder.addHeader("Sec-WebSocket-Protocol", safeHeaderValue(protocolsValue.toString()))
+       }
+     }
+ 

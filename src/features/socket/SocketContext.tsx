@@ -8,6 +8,7 @@ import { selectSocketConnected, selectSocketReconnectFailed } from "../../store/
 import { reportOpsEvent } from "../ops/opsEventsApi";
 import { getBrowserLikeRequestHeaders } from "../../api/browserRequestHeaders";
 import { API_BASE_URL } from "../../config/env";
+import { sanitizeHttpHeaderValue } from "../../lib/http/sanitizeHttpHeaders";
 import { getClientSessionHeaders } from "../auth/session/clientSessionHeaders";
 import { getAccessToken, getSessionId } from "../auth/session/tokenStorage";
 
@@ -79,7 +80,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         extraHeaders: {
           ...getBrowserLikeRequestHeaders(),
           ...clientHeaders,
-          ...(authSessionId ? { "X-NQ-Auth-Session-Id": authSessionId } : {}),
+          ...(authSessionId
+            ? { "X-NQ-Auth-Session-Id": sanitizeHttpHeaderValue(authSessionId) }
+            : {}),
         },
         transports: ["polling", "websocket"],
         forceNew: true,

@@ -3,11 +3,15 @@ import React from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { radii, space, useStaticStyles, useThemeColors } from "../../../theme";
 import { useSharedStepStyles } from "../../instant-lesson/booking-wizard/sharedStepStyles";
+import { PricingBreakdownSummary } from "../../payments/PricingBreakdownSummary";
+import type { PricingQuote } from "../../payments/pricingTypes";
+import { chargeTotalDollars } from "../../payments/pricingTypes";
 
 type PromoResult = {
   valid: boolean;
   discount_amount?: number;
   final_amount?: number;
+  display_label?: string;
 } | null;
 
 type Props = {
@@ -18,7 +22,9 @@ type Props = {
   expectedPrice: number;
   promoResult: PromoResult;
   chargingPrice: number;
+  pricingQuote?: PricingQuote | null;
   couponCode: string;
+  selectedClipIds: string[];
   isSubmitting: boolean;
   onSubmit: () => void;
 };
@@ -31,7 +37,9 @@ export function ScheduleStepConfirm({
   expectedPrice,
   promoResult,
   chargingPrice,
+  pricingQuote,
   couponCode,
+  selectedClipIds,
   isSubmitting,
   onSubmit,
 }: Props) {
@@ -47,6 +55,10 @@ export function ScheduleStepConfirm({
         <Row label="When" value={sessionTimeSummary} />
         {trainerTimeLabel ? <Row label="Trainer time" value={trainerTimeLabel} /> : null}
         <Row label="Duration" value={`${durationMinutes} minutes`} />
+        <Row
+          label="Clips"
+          value={selectedClipIds.length === 0 ? "None" : `${selectedClipIds.length} selected`}
+        />
         {promoResult?.valid && (promoResult.discount_amount ?? 0) > 0 ? (
           <>
             <Row label="Subtotal" value={`$${expectedPrice.toFixed(2)}`} />
@@ -57,9 +69,19 @@ export function ScheduleStepConfirm({
             />
           </>
         ) : null}
-        <Row label="Total" value={chargingPrice > 0 ? `$${chargingPrice.toFixed(2)}` : "Free"} bold />
         {couponCode.trim() ? <Row label="Promo" value={couponCode.trim()} /> : null}
       </View>
+      <PricingBreakdownSummary
+        sessionSubtotal={expectedPrice}
+        pricingQuote={pricingQuote}
+        chargeTotal={
+          chargeTotalDollars(pricingQuote) ?? (chargingPrice > 0 ? chargingPrice : undefined)
+        }
+        promoDiscount={
+          promoResult?.valid ? promoResult.discount_amount : undefined
+        }
+        promoLabel={promoResult?.display_label}
+      />
       <Text style={shared.muted}>
         Your coach must confirm this request before the session is scheduled. You will see it as
         awaiting confirmation in Upcoming.

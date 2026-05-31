@@ -19,6 +19,7 @@ import {
   markCallUuidAnswered,
   setupInstantLessonCallKeep,
   wasCallUuidAnswered,
+  isCallKeepNativeModuleSupported,
 } from "./instantLessonCallKeep";
 import { dismissInstantLessonIncomingCall } from "./instantLessonIncomingNotifications";
 
@@ -29,7 +30,7 @@ export function InstantLessonCallKeepBridge() {
   const isTrainer = accountType === AccountType.TRAINER && status === "signedIn";
 
   useEffect(() => {
-    if (!isTrainer || Platform.OS === "web") return;
+    if (!isTrainer || Platform.OS === "web" || !isCallKeepNativeModuleSupported()) return;
 
     let cancelled = false;
     const subscriptions: { remove: () => void }[] = [];
@@ -141,7 +142,7 @@ export function InstantLessonCallKeepBridge() {
 export async function presentNativeInstantLessonIncoming(
   payload: InstantLessonIncomingPayload
 ): Promise<boolean> {
-  if (Platform.OS === "web") return false;
+  if (Platform.OS === "web" || !isCallKeepNativeModuleSupported()) return false;
   const ready = await setupInstantLessonCallKeep();
   if (!ready) return false;
   return displayInstantLessonIncomingCall(payload);

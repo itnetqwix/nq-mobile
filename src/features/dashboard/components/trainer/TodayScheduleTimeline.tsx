@@ -10,6 +10,7 @@ import {
   formatSessionWhen,
   getInstantAcceptDeadlineMs,
   getInstantJoinDeadlineMs,
+  getJoinDisabledReason,
   getSessionStart,
   isInstantLesson,
   isPendingBooking,
@@ -284,7 +285,7 @@ function ScheduleTimelineItem({
           />
         ) : null}
 
-        {joinEnabled ? (
+        {joinEnabled || (!pending && (instant || status === "confirmed" || status === "upcoming")) ? (
           <View
             style={styles.joinWrap}
             onStartShouldSetResponder={() => true}
@@ -298,12 +299,18 @@ function ScheduleTimelineItem({
               leftIcon="videocam"
               size="sm"
               fullWidth
+              disabled={!joinEnabled}
               onPress={() => {
                 if (lessonId && navigationRef.isReady()) {
                   navigationRef.navigate("Meeting", { lessonId });
                 }
               }}
             />
+            {!joinEnabled && !pending ? (
+              <Text style={styles.joinHint}>
+                {getJoinDisabledReason(session) || t("sessions.joinOpensLater", { defaultValue: "Join opens later" })}
+              </Text>
+            ) : null}
           </View>
         ) : null}
       </View>
@@ -448,6 +455,11 @@ function useStyles() {
       },
       joinWrap: {
         marginTop: space.xs,
+      },
+      joinHint: {
+        ...typography.caption,
+        color: palette.textMuted,
+        marginTop: 4,
       },
       emptyCard: {
         alignItems: "center",

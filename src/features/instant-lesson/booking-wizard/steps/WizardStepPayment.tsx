@@ -21,12 +21,16 @@ import { useSharedStepStyles } from "../sharedStepStyles";
 import { PlatformPayButtonRow } from "../../../../components/payments/PlatformPayButtonRow";
 import { useActiveCurrency, useCurrencyFormatter } from "../../../../lib/intl";
 
+import type { PricingQuote } from "../../../payments/pricingTypes";
+import { chargeTotalDollars } from "../../../payments/pricingTypes";
+
 export type PaymentCompletePayload = {
   paymentIntentId: string | null;
   chargingPrice: number;
   paymentMethod?: "wallet" | "card";
   pinSessionToken?: string;
   quoteId?: string;
+  pricingQuote?: PricingQuote | null;
 };
 
 export type PromoResultShape = {
@@ -81,12 +85,7 @@ export function WizardStepPayment({
     clientSecret?: string;
     quoteId?: string;
   } | null>(null);
-  const [pricingQuote, setPricingQuote] = useState<{
-    quoteId?: string;
-    breakdown?: Array<{ key: string; label: string; amountMinor: number }>;
-    chargeTotalCents?: number;
-    trainerNetCents?: number;
-  } | null>(null);
+  const [pricingQuote, setPricingQuote] = useState<PricingQuote | null>(null);
 
   const hourlyRate = Number(
     (trainer as any)?.extraInfo?.hourly_rate ??
@@ -109,7 +108,9 @@ export function WizardStepPayment({
     return expectedPrice;
   }, [promoResult, expectedPrice]);
 
-  const wallet = useWalletPaymentOption(payableAmount);
+  const totalToCharge =
+    chargeTotalDollars(pricingQuote) ?? (priceInfo?.amount ?? payableAmount);
+  const wallet = useWalletPaymentOption(totalToCharge);
   const lengthLabel =
     durationLabel ??
     INSTANT_LESSON_DURATIONS.find((d) => d.minutes === durationMinutes)?.label ??
@@ -235,10 +236,11 @@ export function WizardStepPayment({
       }
       completePayment({
         paymentIntentId: null,
-        chargingPrice: expectedPrice,
+        chargingPrice: totalToCharge,
         paymentMethod: "wallet",
         pinSessionToken: token,
         quoteId: pricingQuote?.quoteId ?? priceInfo?.quoteId,
+        pricingQuote,
       });
     } catch (e: any) {
       Alert.alert("Wallet payment", e?.response?.data?.error ?? e?.message ?? "Could not verify PIN.");
@@ -260,11 +262,12 @@ export function WizardStepPayment({
     const intentId = priceInfo?.clientSecret?.split("_secret_")[0] ?? null;
     completePayment({
       paymentIntentId: intentId,
-      chargingPrice: expectedPrice,
+      chargingPrice: totalToCharge,
       paymentMethod: "card",
-      quoteId: priceInfo?.quoteId,
+      quoteId: pricingQuote?.quoteId ?? priceInfo?.quoteId,
+      pricingQuote,
     });
-  }, [priceInfo, presentPaymentSheet, completePayment, payableAmount, expectedPrice]);
+  }, [priceInfo, presentPaymentSheet, completePayment, totalToCharge, pricingQuote]);
 
   const isFree = payableAmount <= 0 || priceInfo?.skip === true;
   const hasDiscount =

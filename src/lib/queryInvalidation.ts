@@ -6,6 +6,33 @@ export function invalidateSessions(queryClient: QueryClient): void {
   void queryClient.invalidateQueries({ queryKey: queryKeys.scheduledMeetings });
 }
 
+/** Optimistically merge session fields into every cached session list (instant accept / confirm). */
+export function patchSessionInQueryCaches(
+  queryClient: QueryClient,
+  lessonId: string,
+  patch: Record<string, unknown>
+): void {
+  if (!lessonId) return;
+  queryClient.setQueriesData(
+    {
+      predicate: (query) =>
+        query.queryKey[0] === queryKeys.sessions.all[0] ||
+        query.queryKey[0] === queryKeys.scheduledMeetings[0],
+    },
+    (old: unknown) => {
+      if (!Array.isArray(old)) return old;
+      let changed = false;
+      const next = old.map((row: Record<string, unknown>) => {
+        const id = String(row._id ?? row.id ?? "");
+        if (id !== lessonId) return row;
+        changed = true;
+        return { ...row, ...patch };
+      });
+      return changed ? next : old;
+    }
+  );
+}
+
 export function invalidateWallet(queryClient: QueryClient): void {
   void queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all });
 }

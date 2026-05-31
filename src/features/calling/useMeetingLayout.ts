@@ -24,6 +24,11 @@ export type TileLayout = {
   h: number;
   hidden: boolean;
   hiddenEdge: PipEdge;
+  /** 0–1 coordinates so trainee PIP aligns across screen sizes. */
+  nx?: number;
+  ny?: number;
+  nw?: number;
+  nh?: number;
 };
 
 export type MeetingLayoutPayload = {

@@ -5,6 +5,7 @@ export type ScheduledDurationMinutes = (typeof SCHEDULED_DURATIONS)[number];
 export const SCHEDULED_WIZARD_STEPS = [
   "datetime",
   "duration",
+  "clips",
   "promo",
   "payment",
   "confirm",

@@ -11,13 +11,13 @@ import {
   View,
 } from "react-native";
 import { space, useThemeColors } from "../../../../theme";
-import type { ClipGroup, ClipRow } from "../../instantLessonClipsApi";
+import type { ClipRow } from "../../instantLessonClipsApi";
 import { MAX_CLIPS } from "../constants";
 import { useSharedStepStyles } from "../sharedStepStyles";
 import { ClipPickerRow } from "../../components/ClipPickerRow";
 
 type Props = {
-  clipsQuery: UseQueryResult<ClipGroup[], Error>;
+  clipsQuery: UseQueryResult<ClipRow[], Error>;
   flatClips: ClipRow[];
   selectedClipIds: string[];
   onToggleClip: (id: string) => void;

@@ -559,7 +559,14 @@ function TypeChip({
 
 const styles = StyleSheet.create({
   scrollContent: { flexGrow: 1 },
-  brand: { alignItems: "center", marginTop: space.xs },
+  brand: {
+    alignItems: "center",
+    width: "100%",
+    backgroundColor: "#000000",
+    borderRadius: 12,
+    paddingVertical: space.sm,
+    marginTop: space.xs,
+  },
   stepRow: {
     flexDirection: "row",
     alignItems: "center",

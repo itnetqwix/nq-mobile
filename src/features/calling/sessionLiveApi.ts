@@ -1,5 +1,5 @@
-import { apiClient } from "../../../api/client";
-import { API_ROUTES } from "../../../config/apiRoutes";
+import { apiClient } from "../../api/client";
+import { API_ROUTES } from "../../config/apiRoutes";
 
 export type JoinReadinessClip = {
   _id: string;
@@ -65,6 +65,10 @@ export type SessionHandoffSummary = {
   shared_notes: Array<{ text: string; elapsed_seconds: number }>;
   can_rate: boolean;
   can_rebook: boolean;
+  game_plan_status?: "none" | "pending" | "available";
+  game_plan_title?: string | null;
+  game_plan_expected_by?: string | null;
+  game_plan_updated_at?: string | null;
   peer: {
     _id: string;
     fullname: string | null;

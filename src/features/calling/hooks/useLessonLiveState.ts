@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { useSocket } from "../socket/SocketContext";
-import { LESSON_SOCKET_EVENTS } from "../../lib/sessions/sessionContract";
+import { useSocket } from "../../socket/SocketContext";
+import { LESSON_SOCKET_EVENTS } from "../../../lib/sessions/sessionContract";
 
 export type LiveNote = {
   id: string;

@@ -12,6 +12,7 @@ import {
   markSessionRatingShown,
 } from "../../calling/postSessionRatingStore";
 import { shouldOfferSessionRating } from "../../../lib/sessions/shouldOfferSessionRating";
+import { hasViewerRated } from "../../../lib/sessions/sessionRatingUtils";
 import { queryKeys } from "../../../lib/queryKeys";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { colors, radii, space, typography } from "../../../theme";
@@ -28,12 +29,18 @@ type Props = {
  * Surfaces on the home dashboard when a recent lesson has no rating yet.
  * Catches users who skipped the in-call modal or left before submitting.
  */
-export function PostSessionRatingBanner({ session, accountType, otherPartyName }: Props) {
+export function PostSessionRatingBanner({
+  session,
+  accountType,
+  otherPartyName,
+  activeSessions,
+}: Props) {
   const { t } = useAppTranslation();
   const queryClient = useQueryClient();
   const sessionId = String(session._id ?? session.id ?? "");
   const isTrainer = accountType === AccountType.TRAINER;
   const alreadyRated = hasViewerRated(session, isTrainer);
+  const eligible = shouldOfferSessionRating(session, isTrainer, { activeSessions });
 
   const [hidden, setHidden] = useState(alreadyRated);
   const [modalOpen, setModalOpen] = useState(false);

@@ -40,6 +40,8 @@ type Props = {
   /** Called when trainer confirms selection (1–2 clips). */
   onDone: (clips: ClipRow[]) => void;
   traineeId?: string;
+  /** Clips the trainee attached during booking — shown first for live review. */
+  bookingClips?: ClipRow[];
   /** Currently broadcast clip ids (for highlight). */
   selectedClipIds?: string[];
 };
@@ -49,6 +51,7 @@ export function ClipPickerModal({
   onClose,
   onDone,
   traineeId,
+  bookingClips = [],
   selectedClipIds = [],
 }: Props) {
   const [loading, setLoading] = useState(false);
@@ -57,7 +60,7 @@ export function ClipPickerModal({
   const [libraryClips, setLibraryClips] = useState<ClipRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<"locker" | "shared" | "library">("locker");
+  const [activeTab, setActiveTab] = useState<"session" | "locker" | "shared" | "library">("locker");
 
   const dedupeClips = useCallback((rows: ClipRow[]): ClipRow[] => {
     const seen = new Set<string>();
@@ -70,6 +73,11 @@ export function ClipPickerModal({
     }
     return out;
   }, []);
+
+  const sessionClips = useMemo(
+    () => dedupeClips(bookingClips.filter((c) => Boolean(c?._id))),
+    [bookingClips, dedupeClips]
+  );
 
   const flattenNestedGroups = useCallback(
     (groups: NestedCategoryGroup[]): ClipRow[] => {
@@ -102,7 +110,7 @@ export function ClipPickerModal({
   useEffect(() => {
     if (!visible) return;
     setPicked(new Set(selectedClipIds.map(String)));
-    setActiveTab("locker");
+    setActiveTab(sessionClips.length > 0 ? "session" : "locker");
     let active = true;
     setLoading(true);
     setError(null);
@@ -144,11 +152,11 @@ export function ClipPickerModal({
     return () => {
       active = false;
     };
-  }, [visible, dedupeClips, flattenNestedGroups, flattenSharedGroups]);
+  }, [visible, dedupeClips, flattenNestedGroups, flattenSharedGroups, sessionClips.length]);
 
   const allClips = useMemo(
-    () => dedupeClips([...lockerClips, ...sharedClips, ...libraryClips]),
-    [lockerClips, sharedClips, libraryClips, dedupeClips]
+    () => dedupeClips([...sessionClips, ...lockerClips, ...sharedClips, ...libraryClips]),
+    [sessionClips, lockerClips, sharedClips, libraryClips, dedupeClips]
   );
 
   const toggleClip = useCallback((clip: ClipRow) => {
@@ -187,18 +195,20 @@ export function ClipPickerModal({
 
   const tabCounts = useMemo(
     () => ({
+      session: sessionClips.length,
       locker: lockerClips.length,
       shared: sharedClips.length,
       library: libraryClips.length,
     }),
-    [lockerClips.length, sharedClips.length, libraryClips.length]
+    [sessionClips.length, lockerClips.length, sharedClips.length, libraryClips.length]
   );
 
   const activeClips = useMemo(() => {
+    if (activeTab === "session") return sessionClips;
     if (activeTab === "shared") return sharedClips;
     if (activeTab === "library") return libraryClips;
     return lockerClips;
-  }, [activeTab, lockerClips, sharedClips, libraryClips]);
+  }, [activeTab, sessionClips, lockerClips, sharedClips, libraryClips]);
 
   const selectionLabel = `${picked.size}/${MAX_CLIPS} selected`;
 
@@ -235,6 +245,16 @@ export function ClipPickerModal({
         ) : (
           <View style={styles.body}>
             <View style={styles.tabsRow}>
+              {sessionClips.length > 0 ? (
+                <Pressable
+                  style={[styles.tabBtn, activeTab === "session" && styles.tabBtnActive]}
+                  onPress={() => setActiveTab("session")}
+                >
+                  <Text style={[styles.tabLabel, activeTab === "session" && styles.tabLabelActive]}>
+                    Session ({tabCounts.session})
+                  </Text>
+                </Pressable>
+              ) : null}
               <Pressable
                 style={[styles.tabBtn, activeTab === "locker" && styles.tabBtnActive]}
                 onPress={() => setActiveTab("locker")}

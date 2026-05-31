@@ -8,12 +8,13 @@ import React, {
 } from "react";
 import { Alert, AppState, Vibration } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "../../lib/queryKeys";
+import { invalidateSessions, patchSessionInQueryCaches } from "../../lib/queryInvalidation";
 import { useSocket } from "../socket/SocketContext";
 import { useAuth } from "../auth/context/AuthContext";
 import {
   INSTANT_ACCEPT_WINDOW_MS,
   INSTANT_JOIN_AFTER_ACCEPT_MS,
+  INSTANT_PHASE,
 } from "../../lib/sessions/instantLessonConstants";
 import { isInstantLesson, normalizeSessionStatus, resolveInstantLessonIds } from "../../lib/sessions/sessionUtils";
 import { INSTANT_LESSON_SOCKET as EVENTS } from "./instantLessonSocketEvents";
@@ -160,10 +161,21 @@ export function InstantLessonProvider({
   }, []);
 
   const invalidateSessionLists = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
-    void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.upcoming });
-    void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.confirmed });
+    invalidateSessions(queryClient);
   }, [queryClient]);
+
+  const applyInstantAcceptToSessionCache = useCallback(
+    (lessonId: string, joinMs: number) => {
+      const acceptedAt = new Date().toISOString();
+      patchSessionInQueryCaches(queryClient, lessonId, {
+        status: "confirmed",
+        accepted_at: acceptedAt,
+        instant_phase: INSTANT_PHASE.PENDING_JOIN,
+        join_deadline_at: new Date(joinMs).toISOString(),
+      });
+    },
+    [queryClient]
+  );
 
   const scheduleExpiry = useCallback(
     (deadlineMs: number, onFire: () => void) => {
@@ -280,6 +292,10 @@ export function InstantLessonProvider({
       const joinMs = joinDeadlineAt
         ? new Date(joinDeadlineAt).getTime()
         : Date.now() + INSTANT_JOIN_AFTER_ACCEPT_MS;
+      if (lessonId) {
+        applyInstantAcceptToSessionCache(String(lessonId), joinMs);
+        invalidateSessionLists();
+      }
       setTraineeBooking((prev) => {
         if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
         try {
@@ -321,6 +337,8 @@ export function InstantLessonProvider({
           ? new Date(String(joinDeadlineAt)).getTime()
           : Date.now() + INSTANT_JOIN_AFTER_ACCEPT_MS;
         if (Number.isFinite(joinMs)) {
+          applyInstantAcceptToSessionCache(String(lessonId), joinMs);
+          invalidateSessionLists();
           setTraineeBooking((prev) => {
             if (prev && String(prev.lessonId) !== String(lessonId)) return prev;
             return {
@@ -437,7 +455,7 @@ export function InstantLessonProvider({
       socket.off(EVENTS.PHASE, handlePhase);
       socket.off(EVENTS.TRAINEE_CANCELLED, handleTraineeCancelled);
     };
-  }, [socket, clearExpiryTimer, scheduleExpiry, startRinging, markLessonDismissed, invalidateSessionLists]);
+  }, [socket, clearExpiryTimer, scheduleExpiry, startRinging, markLessonDismissed, invalidateSessionLists, applyInstantAcceptToSessionCache, userId]);
 
   useEffect(() => {
     if (
@@ -494,6 +512,7 @@ export function InstantLessonProvider({
     emitAccept(lessonId, coachId, traineeId, (joinMs) => {
       void dismissInstantLessonIncomingCall(lessonId);
       void endInstantLessonCall(lessonId);
+      applyInstantAcceptToSessionCache(lessonId, joinMs);
       setTrainerIncoming((prev) => {
         if (!prev) return prev;
         return {
@@ -507,7 +526,7 @@ export function InstantLessonProvider({
       scheduleExpiry(joinMs, () => setTrainerIncoming(null));
       invalidateSessionLists();
     });
-  }, [trainerIncoming, socket, emitAccept, scheduleExpiry, invalidateSessionLists]);
+  }, [trainerIncoming, socket, emitAccept, scheduleExpiry, invalidateSessionLists, applyInstantAcceptToSessionCache]);
 
   const expireRequest = useCallback(() => {
     if (!trainerIncoming || !socket) return;
@@ -853,6 +872,7 @@ export function InstantLessonProvider({
           traineeId,
           (joinMs) => {
             clearTimeout(timer);
+            applyInstantAcceptToSessionCache(lessonId, joinMs);
             setTrainerIncoming((prev) => {
               if (!prev) return prev;
               return {
@@ -874,7 +894,7 @@ export function InstantLessonProvider({
         );
       });
     },
-    [socket, userId, focusTrainerRequestFromSession, emitAccept, scheduleExpiry, invalidateSessionLists]
+    [socket, userId, focusTrainerRequestFromSession, emitAccept, scheduleExpiry, invalidateSessionLists, applyInstantAcceptToSessionCache]
   );
 
   const declineInstantSession = useCallback(

@@ -15,6 +15,7 @@ import { Button, ImageWithSkeleton, Pill } from "../../components/ui";
 import { AccountType } from "../../constants/accountType";
 import { useAuth } from "../auth/context/AuthContext";
 import { fetchSessionDetail, updateBookedSessionStatus } from "../home/api/homeApi";
+import { invalidateSessions, patchSessionInQueryCaches } from "../../lib/queryInvalidation";
 import { queryKeys } from "../../lib/queryKeys";
 import { getS3ImageUrl } from "../../lib/imageUtils";
 import {
@@ -182,8 +183,8 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
     return () => clearInterval(id);
   }, [viewSession]);
 
-  const invalidateSessions = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
+  const invalidateSessionsCache = useCallback(async () => {
+    invalidateSessions(queryClient);
     await queryClient.invalidateQueries({ queryKey: queryKeys.presence.onlineUsers });
   }, [queryClient]);
 
@@ -194,6 +195,7 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
       await updateBookedSessionStatus(sessionId, "confirmed");
       const confirmed = { ...viewSession, status: "confirmed" };
       setLocalSession(confirmed);
+      patchSessionInQueryCaches(queryClient, sessionId, { status: "confirmed" });
       onSessionUpdated?.(confirmed);
       const traineeId = String(viewSession?.trainee_info?._id ?? "");
       if (traineeId) {
@@ -206,7 +208,7 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
           bookingInfo: viewSession,
         });
       }
-      await invalidateSessions();
+      await invalidateSessionsCache();
       Alert.alert(
         "Session confirmed",
         "The trainee has been notified. Join opens 15 minutes before the scheduled start time.",
@@ -218,7 +220,7 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
     } finally {
       setBusy(null);
     }
-  }, [sessionId, viewSession, user, emitNotification, invalidateSessions, onSessionUpdated]);
+  }, [sessionId, viewSession, user, emitNotification, invalidateSessionsCache, onSessionUpdated, queryClient]);
 
   const handleDecline = useCallback(() => {
     if (!sessionId) return;
@@ -245,7 +247,7 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
                   bookingInfo: viewSession,
                 });
               }
-              await invalidateSessions();
+              await invalidateSessionsCache();
               onClose();
             } catch (e: unknown) {
               const msg = e instanceof Error ? e.message : "Could not decline session.";
@@ -257,7 +259,7 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
         },
       ]
     );
-  }, [sessionId, viewSession, user, emitNotification, invalidateSessions, onClose]);
+  }, [sessionId, viewSession, user, emitNotification, invalidateSessionsCache, onClose]);
 
   const handleJoin = useCallback(() => {
     if (!sessionId || !joinEnabled) return;
@@ -440,7 +442,7 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
                   layout="column"
                   size="md"
                   onActionComplete={async () => {
-                    await invalidateSessions();
+                    await invalidateSessionsCache();
                     onClose();
                   }}
                 />

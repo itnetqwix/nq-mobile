@@ -32,8 +32,8 @@ type Args = {
 };
 
 const CAPTURE_FRAME_DELAY_MS = 200;
-const COMPOSITE_LAYOUT_DELAY_MS = 120;
-const MIN_CAPTURE_BYTES = 8000;
+const COMPOSITE_LAYOUT_DELAY_MS = 450;
+const MIN_CAPTURE_BYTES = 12_000;
 
 function extractImageKeyFromPresignResponse(
   presign: { data?: { url?: string; filename?: string } },
@@ -131,13 +131,32 @@ export function useMeetingScreenshot({
     }
   }, []);
 
+  const framesReadyPromiseRef = useRef<{
+    resolve: () => void;
+    promise: Promise<void>;
+  } | null>(null);
+
+  const onCompositeFramesReady = useCallback(() => {
+    framesReadyPromiseRef.current?.resolve();
+  }, []);
+
   const captureCompositeFromFrames = useCallback(
     async (frameUris: string[]): Promise<string | null> => {
       if (frameUris.length < 2) return frameUris[0] ?? null;
+      let resolveReady!: () => void;
+      const readyPromise = new Promise<void>((resolve) => {
+        resolveReady = resolve;
+      });
+      framesReadyPromiseRef.current = { resolve: resolveReady, promise: readyPromise };
       setCompositeFrameUris(frameUris.slice(0, 2));
-      await delay(COMPOSITE_LAYOUT_DELAY_MS);
+      await Promise.race([
+        readyPromise,
+        delay(COMPOSITE_LAYOUT_DELAY_MS).then(() => undefined),
+      ]);
+      await delay(80);
       const uri = await captureViewShot(compositeHostRef);
       setCompositeFrameUris([]);
+      framesReadyPromiseRef.current = null;
       return uri;
     },
     [captureViewShot]
@@ -219,6 +238,7 @@ export function useMeetingScreenshot({
     captureTargetRef,
     compositeHostRef,
     compositeFrameUris,
+    onCompositeFramesReady,
     takeScreenshot,
     capturing,
     captureStage,

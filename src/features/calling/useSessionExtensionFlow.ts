@@ -337,7 +337,13 @@ export function useSessionExtensionFlow({
 
   /** Trainee pays via card or wallet for the currently accepted request. */
   const payAndConfirm = useCallback(
-    async (options: { method: "card" | "wallet"; customer?: string; pinSessionToken?: string | null }) => {
+    async (options: {
+      method: "card" | "wallet";
+      customer?: string;
+      pinSessionToken?: string | null;
+      quoteId?: string;
+      chargeTotalCents?: number;
+    }) => {
       const req = state.request;
       if (!req) return false;
       if (req.status !== "accepted") {
@@ -351,11 +357,15 @@ export function useSessionExtensionFlow({
       setState((prev) => ({ ...prev, phase: "paying", message: null }));
 
       try {
+        const chargeMinor =
+          options.chargeTotalCents ??
+          (req.amount > 0 ? Math.round(req.amount * 100) : 0);
+
         if (options.method === "wallet") {
-          if (req.amount > 0) {
+          if (chargeMinor > 0) {
             const bal = await fetchWalletBalance();
             const availableMinor = bal?.balances?.available_minor ?? 0;
-            const needMinor = Math.round(req.amount * 100);
+            const needMinor = chargeMinor;
             if (availableMinor < needMinor) {
               setState((prev) => ({
                 ...prev,
@@ -371,6 +381,7 @@ export function useSessionExtensionFlow({
             requestId: req.requestId,
             payment_method: "wallet",
             pin_session_token: options.pinSessionToken ?? null,
+            quoteId: options.quoteId,
           });
           // SESSION_EXTENSION_APPLIED socket event will flip us to "applied".
           return true;
@@ -382,6 +393,7 @@ export function useSessionExtensionFlow({
           minutes: req.minutes,
           requestId: req.requestId,
           customer: options.customer,
+          quoteId: options.quoteId,
         });
 
         let paymentIntentId: string | null = null;
@@ -415,6 +427,7 @@ export function useSessionExtensionFlow({
           requestId: req.requestId,
           payment_intent_id: paymentIntentId,
           payment_method: paymentIntentId ? "card" : undefined,
+          quoteId: options.quoteId,
         });
         return true;
       } catch (e: any) {

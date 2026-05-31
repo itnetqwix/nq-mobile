@@ -35,16 +35,18 @@ export function NativeCallRequiredScreen({ navigation }: Props) {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Install the NetQwix dev app (required)</Text>
           <Text style={styles.cardBody}>
-            Scanning the Metro QR with iPhone Camera does not install the app — you will see
-            “No usable data found.” That is normal. Video runs only in the NetQwix native app, not
-            Expo Go or a web view.
+            Live video only works in the NetQwix native app (your app icon), not Expo Go and not
+            iPhone Camera / QR scan alone. If you already installed via{" "}
+            <Text style={styles.bold}>expo run:ios --device</Text> or{" "}
+            <Text style={styles.bold}>expo run:android</Text>, reload Metro (
+            <Text style={styles.bold}>r</Text>) and open the NetQwix icon again.
           </Text>
-          <Text style={styles.cmdLabel}>On your Mac, in the project folder:</Text>
+          <Text style={styles.cmdLabel}>First-time setup on your Mac:</Text>
           <Text style={styles.cmd}>{Platform.OS === "ios" ? iosCmd + " --device" : androidCmd}</Text>
           <Text style={styles.cmdHint}>
-            This installs NetQwix on your phone and connects to Metro (USB cable helps if Wi‑Fi
-            fails). After that, use <Text style={styles.bold}>npm start</Text> and open the NetQwix
-            icon — use the dev launcher’s in-app scanner, not iPhone Camera.
+            Then run <Text style={styles.bold}>npm start</Text>, connect from the in-app dev
+            launcher (USB + <Text style={styles.bold}>npm run android:reverse</Text> helps on
+            Android).
           </Text>
         </View>
 

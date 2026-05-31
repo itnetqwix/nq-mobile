@@ -4,12 +4,16 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { radii, space, useStaticStyles, useThemeColors } from "../../../theme";
 import { useSharedStepStyles } from "../../instant-lesson/booking-wizard/sharedStepStyles";
 import { SCHEDULED_DURATIONS } from "../constants";
+import { PricingBreakdownSummary } from "../../payments/PricingBreakdownSummary";
+import type { PricingQuote } from "../../payments/pricingTypes";
+import { chargeTotalDollars } from "../../payments/pricingTypes";
 
 type Props = {
   durationMinutes: number;
   onDurationChange: (minutes: number) => void;
   hourlyRate: number;
   expectedPrice: number;
+  durationPreviewQuote?: PricingQuote | null;
   sessionTimeSummary: string;
   trainerTimeLabel: string | null;
   onNext: () => void;
@@ -20,6 +24,7 @@ export function ScheduleStepDuration({
   onDurationChange,
   hourlyRate,
   expectedPrice,
+  durationPreviewQuote,
   sessionTimeSummary,
   trainerTimeLabel,
   onNext,
@@ -51,16 +56,25 @@ export function ScheduleStepDuration({
         })}
       </View>
 
-      <View style={styles.priceBox}>
-        <Text style={styles.priceLabel}>Estimated price</Text>
-        <Text style={styles.priceValue}>
-          {hourlyRate > 0 ? `$${expectedPrice.toFixed(2)}` : "Free"}
-          {hourlyRate > 0 ? ` (${hourlyRate}/hr)` : ""}
-        </Text>
-      </View>
+      {hourlyRate > 0 ? (
+        <PricingBreakdownSummary
+          sessionSubtotal={expectedPrice}
+          pricingQuote={durationPreviewQuote}
+          chargeTotal={chargeTotalDollars(durationPreviewQuote) ?? expectedPrice}
+          showSubtotalWhenNoFees
+        />
+      ) : (
+        <View style={styles.priceBox}>
+          <Text style={styles.priceLabel}>Estimated price</Text>
+          <Text style={styles.priceValue}>Free</Text>
+        </View>
+      )}
+      {hourlyRate > 0 ? (
+        <Text style={shared.mutedSmall}>Coach rate: ${hourlyRate}/hr</Text>
+      ) : null}
 
       <Pressable style={shared.primaryBtn} onPress={onNext}>
-        <Text style={shared.primaryBtnText}>Continue</Text>
+        <Text style={shared.primaryBtnText}>Next: clips</Text>
         <Ionicons name="arrow-forward" size={18} color={c.brandTextOn} />
       </Pressable>
     </View>

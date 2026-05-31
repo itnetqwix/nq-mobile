@@ -15,7 +15,14 @@ type Props = {
 export function AuthScreenLayout({ title, subtitle, children, footer, style }: Props) {
   const c = useThemeColors();
   const styles = StyleSheet.create({
-    brand: { alignItems: "center", width: "100%" },
+    brand: {
+      alignItems: "center",
+      width: "100%",
+      backgroundColor: "#000000",
+      borderRadius: 12,
+      paddingVertical: space.sm,
+      marginBottom: space.xs,
+    },
     title: { ...typography.titleLg, color: c.text, marginTop: space.md, textAlign: "center" },
     subtitle: {
       ...typography.bodyMd,

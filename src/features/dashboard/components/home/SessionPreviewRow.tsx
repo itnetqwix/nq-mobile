@@ -8,6 +8,7 @@ import {
   canJoinSession,
   getInstantAcceptDeadlineMs,
   getInstantJoinDeadlineMs,
+  getJoinDisabledReason,
   isInstantLesson,
   isPendingBooking,
   normalizeSessionStatus,
@@ -112,7 +113,7 @@ export function SessionPreviewRow({ session, accountType, onPress, isLast }: Pro
         {isTrainer && pending && instant ? (
           <InstantLessonSessionActions session={session} />
         ) : null}
-        {!pending && joinEnabled ? (
+        {!pending ? (
           <View onStartShouldSetResponder={() => true}>
             <Button
               label={isRejoin ? "Rejoin session" : "Join session"}
@@ -124,7 +125,13 @@ export function SessionPreviewRow({ session, accountType, onPress, isLast }: Pro
                   navigationRef.navigate("Meeting", { lessonId });
                 }
               }}
+              disabled={!joinEnabled}
             />
+            {!joinEnabled ? (
+              <Text style={{ ...typography.caption, color: c.textMuted, marginTop: 4 }}>
+                {getJoinDisabledReason(session) || "Join opens later"}
+              </Text>
+            ) : null}
           </View>
         ) : null}
       </View>

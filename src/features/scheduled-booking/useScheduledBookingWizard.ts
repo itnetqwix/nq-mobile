@@ -22,6 +22,12 @@ import { confirmProceedToPaymentIfWalletShort } from "../../lib/booking/bookingW
 import { navigateToWalletTopUp } from "../../navigation/navigationRef";
 import { bookScheduledSession, fetchDayAvailability, validateSlotRange } from "./scheduledBookingApi";
 import {
+  addTraineeClipsToBookedSession,
+  fetchMyClipsForBooking,
+} from "../instant-lesson/instantLessonClipsApi";
+import { parseInstantBookingMeta } from "../instant-lesson/booking-wizard/parseInstantBookingLessonId";
+import { MAX_CLIPS } from "../instant-lesson/booking-wizard/constants";
+import {
   buildStartCandidates,
   formatDisplayTime,
   parseSlotTimeOnDate,
@@ -35,6 +41,8 @@ import {
   trainerIdOf,
   trainerNameOf,
 } from "./trainerUtils";
+import { fetchSessionPricingQuote } from "../payments/fetchSessionPricingQuote";
+import type { PricingQuote } from "../payments/pricingTypes";
 
 export type ScheduledTrainer = Record<string, unknown> | null;
 
@@ -62,6 +70,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
   );
   const [selectedStartIso, setSelectedStartIso] = useState<string | null>(null);
   const [durationMinutes, setDurationMinutesState] = useState(30);
+  const [selectedClipIds, setSelectedClipIds] = useState<string[]>([]);
   const [couponCode, setCouponCode] = useState("");
   const [couponError, setCouponError] = useState("");
   const [promoValidating, setPromoValidating] = useState(false);
@@ -77,6 +86,8 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
   const [pinSessionToken, setPinSessionToken] = useState<string | undefined>();
   const [quoteId, setQuoteId] = useState<string | undefined>();
   const [chargingPrice, setChargingPrice] = useState(0);
+  const [pricingQuote, setPricingQuote] = useState<PricingQuote | null>(null);
+  const [durationPreviewQuote, setDurationPreviewQuote] = useState<PricingQuote | null>(null);
   const [trainerTimezone, setTrainerTimezone] = useState<string | null>(null);
 
   const tid = trainerIdOf(trainer);
@@ -104,6 +115,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     setSelectedDate(DateTime.now().setZone(traineeTz).toISODate()!);
     setSelectedStartIso(null);
     setDurationMinutesState(30);
+    setSelectedClipIds([]);
     setCouponCode("");
     setCouponError("");
     setPromoResult(null);
@@ -142,6 +154,26 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     enabled: visible && !!tid && !!bookedDateIso,
     staleTime: 30_000,
   });
+
+  const clipsQuery = useQuery({
+    queryKey: queryKeys.instant.wizardClips,
+    queryFn: fetchMyClipsForBooking,
+    enabled: visible && (step === "clips" || step === "confirm"),
+    staleTime: 30_000,
+  });
+
+  const flatClips = clipsQuery.data ?? [];
+
+  const toggleClip = useCallback((id: string) => {
+    setSelectedClipIds((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= MAX_CLIPS) {
+        Alert.alert("Limit reached", `You can attach at most ${MAX_CLIPS} clips.`);
+        return prev;
+      }
+      return [...prev, id];
+    });
+  }, []);
 
   const slotWindows: SlotWindow[] = useMemo(() => {
     const slots = dayAvailabilityQuery.data?.availableSlots ?? [];
@@ -230,15 +262,74 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
       paymentMethod?: "wallet" | "card";
       pinSessionToken?: string;
       quoteId?: string;
+      pricingQuote?: PricingQuote | null;
     }) => {
       setPaymentIntentId(payload.paymentIntentId);
       setChargingPrice(payload.chargingPrice);
       setPaymentMethod(payload.paymentMethod);
       setPinSessionToken(payload.pinSessionToken);
-      setQuoteId(payload.quoteId);
+      setQuoteId(payload.quoteId ?? payload.pricingQuote?.quoteId);
+      if (payload.pricingQuote) setPricingQuote(payload.pricingQuote);
     },
     []
   );
+
+  useEffect(() => {
+    if (!visible || step !== "duration" || !tid || payableAmount <= 0) {
+      setDurationPreviewQuote(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchSessionPricingQuote({
+      productType: "session_booking",
+      sessionSubtotalCents: Math.round(payableAmount * 100),
+      trainerId: tid,
+      promoDiscountCents: Math.round(Math.max(0, expectedPrice - payableAmount) * 100),
+    })
+      .then((q) => {
+        if (!cancelled) setDurationPreviewQuote(q);
+      })
+      .catch(() => {
+        if (!cancelled) setDurationPreviewQuote(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, step, tid, payableAmount, expectedPrice, durationMinutes]);
+
+  useEffect(() => {
+    if (!visible || step !== "confirm" || !tid || payableAmount <= 0 || pricingQuote) {
+      return;
+    }
+    let cancelled = false;
+    void fetchSessionPricingQuote({
+      productType: "session_booking",
+      sessionSubtotalCents: Math.round(payableAmount * 100),
+      trainerId: tid,
+      promoDiscountCents: Math.round(Math.max(0, expectedPrice - payableAmount) * 100),
+    })
+      .then((q) => {
+        if (!cancelled) {
+          setPricingQuote(q);
+          if (chargingPrice <= 0 || chargingPrice === payableAmount) {
+            setChargingPrice(q.chargeTotalCents / 100);
+          }
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    visible,
+    step,
+    tid,
+    payableAmount,
+    expectedPrice,
+    pricingQuote,
+    chargingPrice,
+    durationMinutes,
+  ]);
 
   const goNext = useCallback(() => {
     const i = scheduledStepIndex(step);
@@ -329,6 +420,17 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
       }
 
       const bookingInfo = await bookScheduledSession(bookPayload);
+
+      const { lessonId } = parseInstantBookingMeta({ data: bookingInfo });
+      if (lessonId && selectedClipIds.length > 0) {
+        try {
+          await addTraineeClipsToBookedSession(lessonId, selectedClipIds);
+        } catch (e: unknown) {
+          const err = e as { response?: { data?: { message?: string } }; message?: string };
+          const msg = err?.response?.data?.message ?? err?.message ?? "Clips could not be linked.";
+          Alert.alert("Clips", `${msg} You can still continue; add clips from the session later if needed.`);
+        }
+      }
 
       const traineeName = String(
         (user as Record<string, unknown>)?.fullname ??
@@ -446,6 +548,10 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     sessionTimeSummary,
     durationMinutes,
     setDurationMinutes,
+    selectedClipIds,
+    toggleClip,
+    clipsQuery,
+    flatClips,
     expectedPrice,
     payableAmount,
     hourlyRate,
@@ -468,6 +574,8 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     commission,
     paymentIntentId,
     chargingPrice,
+    pricingQuote,
+    durationPreviewQuote,
     parseSlotTimeOnDate: (label: string) => parseSlotTimeOnDate(bookedDateIso, label, traineeTz),
   };
 }

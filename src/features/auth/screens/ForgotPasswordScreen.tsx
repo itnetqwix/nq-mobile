@@ -59,5 +59,12 @@ export function ForgotPasswordScreen({ navigation }: AuthScreenProps<"ForgotPass
 }
 
 const styles = StyleSheet.create({
-  brand: { alignItems: "center", marginTop: space.lg },
+  brand: {
+    alignItems: "center",
+    width: "100%",
+    backgroundColor: "#000000",
+    borderRadius: 12,
+    paddingVertical: space.sm,
+    marginTop: space.lg,
+  },
 });

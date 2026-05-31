@@ -10,9 +10,9 @@
     "jsEngine": "hermes",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/netquix_logo_v1.png",
+      "image": "./assets/netqwix_logo-fulll.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000000"
     },
     "ios": {
       "supportsTablet": true,

@@ -117,11 +117,22 @@ export function useClipSync({
   const [clipFocusIndex, setClipFocusIndex] = useState<0 | 1 | null>(null);
   const [zoomPanByVideoId, setZoomPanByVideoId] = useState<Record<string, ZoomPan>>({});
   const lastSeekEmit = useRef(0);
+  const lastPeriodicProgressEmit = useRef(0);
+  const lastProgressByClipId = useRef<Record<string, number>>({});
   const bookingPreloadedRef = useRef(false);
   const lockModeRef = useRef(false);
   const pendingPlayAfterLockRef = useRef<boolean | null>(null);
 
   const userInfo: ClipUserInfo = { from_user: fromUserId, to_user: toUserId };
+
+  const matchesSession = useCallback(
+    (payload: { sessionId?: string }) => {
+      if (!sessionId) return true;
+      const sid = payload?.sessionId;
+      return !sid || String(sid) === String(sessionId);
+    },
+    [sessionId]
+  );
 
   // Hard reset clip state when call/session pair changes, so a previous call's
   // selected clips never leak into a fresh meeting with no booking clips.
@@ -149,6 +160,7 @@ export function useClipSync({
     if (!socket) return;
 
     const onSelect = (payload: any) => {
+      if (!matchesSession(payload)) return;
       const type = payload?.type;
 
       if (type === "clips") {
@@ -192,6 +204,7 @@ export function useClipSync({
     };
 
     const onPlayPause = (payload: any) => {
+      if (!matchesSession(payload)) return;
       const both = !!(payload?.both || lockModeRef.current);
       const nextPlaying = !!payload?.isPlaying;
       if (both) {
@@ -207,9 +220,11 @@ export function useClipSync({
     };
 
     const onTime = (payload: any) => {
+      if (!matchesSession(payload)) return;
       if (typeof payload?.progress !== "number") return;
       const both = !!(payload?.both || lockModeRef.current);
       if (both) {
+        lastProgressByClipId.current.__both = payload.progress;
         setSeekHint({
           videoId: "",
           progress: payload.progress,
@@ -219,6 +234,7 @@ export function useClipSync({
       }
       const vid = payload?.videoId != null ? String(payload.videoId) : null;
       if (!vid) return;
+      lastProgressByClipId.current[vid] = payload.progress;
       setSeekHint({
         videoId: vid,
         progress: payload.progress,
@@ -227,18 +243,21 @@ export function useClipSync({
     };
 
     const onHide = (payload: any) => {
+      if (!matchesSession(payload)) return;
       const videoType = payload?.videoType;
       if (!videoType) return;
       setHiddenVideos((prev) => applyVideoTypeHide(prev, String(videoType), true));
     };
 
     const onShow = (payload: any) => {
+      if (!matchesSession(payload)) return;
       const videoType = payload?.videoType;
       if (!videoType) return;
       setHiddenVideos((prev) => applyVideoTypeHide(prev, String(videoType), false));
     };
 
     const onLockMode = (payload: any) => {
+      if (!matchesSession(payload)) return;
       const nextLocked = !!(payload?.locked ?? payload?.isLockMode);
       lockModeRef.current = nextLocked;
       setLockMode(nextLocked);
@@ -338,7 +357,7 @@ export function useClipSync({
       socket.off(CLIP_EVENTS.TOGGLE_FULL_SCREEN, onFullscreen);
       socket.off(CLIP_EVENTS.ON_VIDEO_ZOOM_PAN, onZoomPan);
     };
-  }, [socket, sessionId, fromUserId, isTrainer]);
+  }, [socket, sessionId, fromUserId, isTrainer, matchesSession]);
 
   const isClipPlaying = useCallback(
     (clipId: string | null | undefined) => {
@@ -464,10 +483,10 @@ export function useClipSync({
 
   const preloadBookingClips = useCallback(
     (clips: ClipRecord[]) => {
-      if (bookingPreloadedRef.current || clips.length === 0) return;
-      bookingPreloadedRef.current = true;
+      if (bookingPreloadedRef.current) return;
       const playable = clips.filter((c) => resolveClipPlayback(c).url).slice(0, 2);
       if (playable.length === 0) return;
+      bookingPreloadedRef.current = true;
       emitSelectClips(playable, { emitSocket: true });
     },
     [emitSelectClips]
@@ -721,6 +740,26 @@ export function useClipSync({
         })
       );
     }
+    const bothProgress = lastProgressByClipId.current.__both;
+    if (typeof bothProgress === "number" && lockMode) {
+      socket.emit(CLIP_EVENTS.ON_VIDEO_TIME, {
+        progress: bothProgress,
+        both: true,
+        userInfo,
+        sessionId,
+      });
+    } else {
+      Object.entries(lastProgressByClipId.current).forEach(([videoId, progress]) => {
+        if (videoId.startsWith("__") || typeof progress !== "number") return;
+        socket.emit(CLIP_EVENTS.ON_VIDEO_TIME, {
+          videoId,
+          progress,
+          both: false,
+          userInfo,
+          sessionId,
+        });
+      });
+    }
   }, [
     clipFocusIndex,
     emitZoomPan,
@@ -740,6 +779,27 @@ export function useClipSync({
     hiddenVideos.teacher && hiddenVideos.student
       ? true
       : hiddenVideos.teacher || hiddenVideos.student;
+
+  /** Trainer: periodic playback position broadcast while clips play (drift correction). */
+  const syncPlaybackProgress = useCallback(
+    (videoId: string | null, progressSeconds: number) => {
+      if (!isTrainer || !socket || !sessionId || !videoId) return;
+      lastProgressByClipId.current[String(videoId)] = progressSeconds;
+      if (!isPlaying) return;
+      const now = Date.now();
+      if (now - lastPeriodicProgressEmit.current < 2500) return;
+      lastPeriodicProgressEmit.current = now;
+      const bothLocked = lockMode && selectedClips.length >= 2;
+      socket.emit(CLIP_EVENTS.ON_VIDEO_TIME, {
+        videoId: bothLocked ? undefined : String(videoId),
+        progress: progressSeconds,
+        both: bothLocked,
+        userInfo,
+        sessionId,
+      });
+    },
+    [isPlaying, isTrainer, lockMode, selectedClips.length, sessionId, socket, userInfo]
+  );
 
   return {
     selectedClips,
@@ -772,5 +832,6 @@ export function useClipSync({
     toggleClipFullscreen,
     setLayout,
     replayClipSocketState,
+    syncPlaybackProgress,
   };
 }
