@@ -103,7 +103,7 @@ import { ConnectionQualityPill } from "../components/ConnectionQualityPill";
 import { ClipPickerModal } from "../components/ClipPickerModal";
 import { LockedDualClipStage } from "../components/LockedDualClipStage";
 import { UnlockedDualClipStage } from "../components/UnlockedDualClipStage";
-import { ClipPlayer } from "../components/ClipPlayer";
+import { ClipPlayer, type ZoomPanEmitMode } from "../components/ClipPlayer";
 import { ClipZoomControls } from "../components/ClipZoomControls";
 import { ClipPlaybackControls } from "../components/ClipPlaybackControls";
 import { DrawingOverlay } from "../components/DrawingOverlay";
@@ -986,13 +986,16 @@ function MeetingSurface({
       seekTargetMs: seekForPane,
       zoom: zoomPan?.zoom,
       pan: zoomPan?.pan,
-      panEnabled: isTrainer && !!clipId && (zoomPan?.zoom ?? 1) > 1,
-      onPanChange: clipId
-        ? (nextPan: { x: number; y: number }, emitSocket?: boolean) => {
-            clipSync.setZoomPan(String(clipId), zoomPan?.zoom ?? 1, nextPan, {
-              emitSocket: emitSocket !== false,
+      zoomGesturesEnabled: isTrainer && !!clipId,
+      onZoomPanChange: clipId
+        ? (nextZoom: number, nextPan: { x: number; y: number }, emit?: ZoomPanEmitMode) => {
+            clipSync.setZoomPan(String(clipId), nextZoom, nextPan, {
+              emitSocket: emit === false ? false : emit ?? "throttle",
             });
           }
+        : undefined,
+      onZoomPanEnd: clipId
+        ? () => clipSync.flushZoomPanEmit(String(clipId))
         : undefined,
       onFrameLayout: clipId
         ? (w: number, h: number) => clipSync.registerClipFrameSize(String(clipId), w, h)

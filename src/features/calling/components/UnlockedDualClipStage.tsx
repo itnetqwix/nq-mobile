@@ -16,8 +16,13 @@ export type ClipPlayerPaneProps = {
   seekTargetMs: number | null;
   zoom?: number;
   pan?: { x: number; y: number };
-  panEnabled?: boolean;
-  onPanChange?: (pan: { x: number; y: number }, emitSocket?: boolean) => void;
+  zoomGesturesEnabled?: boolean;
+  onZoomPanChange?: (
+    zoom: number,
+    pan: { x: number; y: number },
+    emit?: false | "throttle" | "immediate"
+  ) => void;
+  onZoomPanEnd?: () => void;
   onProgressSeconds: (seconds: number) => void;
   onDurationSeconds: (seconds: number) => void;
   onEnded?: () => void;
