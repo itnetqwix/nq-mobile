@@ -2,6 +2,7 @@ import { apiClient } from "../../api/client";
 import { API_ROUTES } from "../../config/apiRoutes";
 import { unwrapApiData } from "../../lib/http/unwrapApiData";
 import type { PricingQuote } from "./pricingTypes";
+import { resolveTraineeBillingAddress } from "./resolveTraineeBillingAddress";
 
 export type SessionQuoteProduct =
   | "instant_lesson"
@@ -15,6 +16,8 @@ type Args = {
   promoDiscountCents?: number;
   billingCountry?: string;
   billingState?: string;
+  /** When set, overrides country/state from the trainee profile. */
+  user?: Record<string, unknown> | null;
 };
 
 /** Trainee-facing quote used in wizards, extension modal, and duration previews. */
@@ -23,17 +26,26 @@ export async function fetchSessionPricingQuote({
   sessionSubtotalCents,
   trainerId,
   promoDiscountCents = 0,
-  billingCountry = "US",
-  billingState = "TX",
+  billingCountry,
+  billingState,
+  user,
 }: Args): Promise<PricingQuote> {
+  const billing = user
+    ? resolveTraineeBillingAddress(user)
+    : {
+        country: billingCountry ?? "US",
+        state: billingState,
+      };
+  const country = billing.country;
+  const state = billing.state ?? (country === "US" ? "TX" : undefined);
   const res = await apiClient.post(API_ROUTES.payments.quote, {
-    region: billingCountry,
+    region: country,
     productType,
     sessionSubtotalCents,
     trainerId,
     paymentMethodHint: "card_domestic_us",
     promoDiscountCents,
-    billingAddress: { country: billingCountry, state: billingState },
+    billingAddress: { country, state },
   });
   return unwrapApiData<PricingQuote>(res);
 }

@@ -14,6 +14,9 @@ import { apiClient } from "../../../../api/client";
 import { API_ROUTES } from "../../../../config/apiRoutes";
 import { unwrapApiData } from "../../../../lib/http/unwrapApiData";
 import { radii, space, useStaticStyles, useThemeColors } from "../../../../theme";
+import { useAuth } from "../../../auth/context/AuthContext";
+import { fetchSessionPricingQuote } from "../../../payments/fetchSessionPricingQuote";
+import { resolveTraineeBillingAddress } from "../../../payments/resolveTraineeBillingAddress";
 import { useWalletPaymentOption } from "../../../wallet/hooks/useWalletPaymentOption";
 import { verifyWalletPin } from "../../../wallet/walletApi";
 import { INSTANT_LESSON_DURATIONS } from "../constants";
@@ -70,6 +73,11 @@ export function WizardStepPayment({
   const c = useThemeColors();
   const sharedStepStyles = useSharedStepStyles();
   const styles = usePaymentStyles();
+  const { user } = useAuth();
+  const billing = useMemo(
+    () => resolveTraineeBillingAddress(user as Record<string, unknown> | null),
+    [user]
+  );
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const fmt = useCurrencyFormatter();
   /** Server-side payment intent is denominated in this currency; trainee
@@ -130,21 +138,13 @@ export function WizardStepPayment({
     setLoading(true);
     try {
       const trainerId = String((trainer as any)?._id ?? (trainer as any)?.userInfo?._id ?? "");
-      const quoteRes = await apiClient.post(API_ROUTES.payments.quote, {
-        region: "US",
+      const quote = await fetchSessionPricingQuote({
         productType: bookingType === "instant" ? "instant_lesson" : "session_booking",
         sessionSubtotalCents: Math.round(expectedPrice * 100),
         trainerId,
-        paymentMethodHint: "card_domestic_us",
         promoDiscountCents: Math.round(Math.max(0, expectedPrice - payableAmount) * 100),
-        billingAddress: { country: "US", state: "TX" },
+        user: user as Record<string, unknown>,
       });
-      const quote = unwrapApiData<{
-        quoteId: string;
-        chargeTotalCents: number;
-        breakdown: Array<{ key: string; label: string; amountMinor: number }>;
-        trainerNetCents: number;
-      }>(quoteRes);
       setPricingQuote(quote);
 
       const res = await apiClient.post(API_ROUTES.transaction.createPaymentIntent, {
@@ -156,7 +156,7 @@ export function WizardStepPayment({
         _bookingType: bookingType,
         trainer_id: trainerId,
         quoteId: quote?.quoteId,
-        billingAddress: { country: "US", state: "TX" },
+        billingAddress: { country: billing.country, state: billing.state },
       });
       const data = unwrapApiData<{
         skip?: boolean;
@@ -201,6 +201,11 @@ export function WizardStepPayment({
     userStripeId,
     couponCode,
     initPaymentSheet,
+    bookingType,
+    billing.country,
+    billing.state,
+    user,
+    trainer,
   ]);
 
   useEffect(() => {

@@ -24,6 +24,7 @@ export type ClipPlayerPaneProps = {
   showZoomControls?: boolean;
   onZoomIn?: () => void;
   onZoomOut?: () => void;
+  onFrameLayout?: (width: number, height: number) => void;
 };
 
 type Props = {

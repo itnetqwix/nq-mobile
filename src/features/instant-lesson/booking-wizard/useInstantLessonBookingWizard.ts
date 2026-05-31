@@ -225,6 +225,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
       sessionSubtotalCents: Math.round(payableAmount * 100),
       trainerId: tid,
       promoDiscountCents: Math.round(Math.max(0, expectedPrice - payableAmount) * 100),
+      user: user as Record<string, unknown>,
     })
       .then((q) => {
         if (!cancelled) setDurationPreviewQuote(q);
@@ -247,6 +248,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
       sessionSubtotalCents: Math.round(payableAmount * 100),
       trainerId: tid,
       promoDiscountCents: Math.round(Math.max(0, expectedPrice - payableAmount) * 100),
+      user: user as Record<string, unknown>,
     })
       .then((q) => {
         if (!cancelled) {

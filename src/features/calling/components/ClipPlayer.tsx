@@ -31,6 +31,8 @@ type Props = {
   onEnded?: () => void;
   /** Fired once the native player has loaded the clip (ready for play/seek). */
   onReady?: () => void;
+  /** Pane size for normalized zoom/pan sync across devices. */
+  onFrameLayout?: (width: number, height: number) => void;
 };
 
 const CLIP_BG = "#ffffff";
@@ -70,6 +72,7 @@ export function ClipPlayer({
   onDurationSeconds,
   onEnded,
   onReady,
+  onFrameLayout,
 }: Props) {
   const videoRef = React.useRef<Video>(null);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -157,10 +160,16 @@ export function ClipPlayer({
     flushPending();
   }, [flushPending, uri]);
 
-  const onLayout = useCallback((e: LayoutChangeEvent) => {
-    const { width, height } = e.nativeEvent.layout;
-    frameSize.current = { w: width, h: height };
-  }, []);
+  const onLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      const { width, height } = e.nativeEvent.layout;
+      frameSize.current = { w: width, h: height };
+      if (width > 0 && height > 0) {
+        onFrameLayout?.(width, height);
+      }
+    },
+    [onFrameLayout]
+  );
 
   const emitPan = useCallback(
     (next: { x: number; y: number }, emitSocket: boolean) => {

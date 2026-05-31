@@ -343,6 +343,7 @@ export function useSessionExtensionFlow({
       pinSessionToken?: string | null;
       quoteId?: string;
       chargeTotalCents?: number;
+      billingAddress?: { country: string; state?: string };
     }) => {
       const req = state.request;
       if (!req) return false;
@@ -394,6 +395,7 @@ export function useSessionExtensionFlow({
           requestId: req.requestId,
           customer: options.customer,
           quoteId: options.quoteId,
+          billingAddress: options.billingAddress,
         });
 
         let paymentIntentId: string | null = null;

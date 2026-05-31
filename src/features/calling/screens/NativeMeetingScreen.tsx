@@ -92,7 +92,7 @@ import {
   stashPendingSessionRating,
 } from "../postSessionRatingStore";
 import { MeetingLiveStage } from "../components/MeetingLiveStage";
-import { MeetingMiniPip } from "../components/MeetingMiniPip";
+import { MeetingPaymentSummaryChip } from "../components/MeetingPaymentSummaryChip";
 import { ClipMiniPip } from "../components/ClipMiniPip";
 import { ActionButtons } from "../components/ActionButtons";
 import { TimeRemaining } from "../components/TimeRemaining";
@@ -994,6 +994,9 @@ function MeetingSurface({
             });
           }
         : undefined,
+      onFrameLayout: clipId
+        ? (w: number, h: number) => clipSync.registerClipFrameSize(String(clipId), w, h)
+        : undefined,
       showZoomControls: isTrainer && !!clipId,
       onZoomIn: clipId
         ? () => clipSync.bumpZoom(String(clipId), 0.25)
@@ -1190,8 +1193,55 @@ function MeetingSurface({
 
   const pipBounds = meetingBounds ?? { width: winW, height: winH };
 
+  const focusPipSize = useMemo(() => {
+    const fp = meetingLayout.focusPip;
+    if (fp.nw != null && meetingBounds) {
+      return {
+        w: fp.nw * meetingBounds.width,
+        h: (fp.nh ?? 0.7) * meetingBounds.height,
+      };
+    }
+    return {
+      w: fp.w > 0 ? fp.w : 100,
+      h: fp.h > 0 ? fp.h : 140,
+    };
+  }, [meetingLayout.focusPip, meetingBounds]);
+
+  const focusPipPosition = useMemo(() => {
+    const fp = meetingLayout.focusPip;
+    if (fp.nx != null && fp.ny != null && meetingBounds) {
+      return { x: fp.nx * meetingBounds.width, y: fp.ny * meetingBounds.height };
+    }
+    if (typeof fp.x === "number" && typeof fp.y === "number") {
+      return { x: fp.x, y: fp.y };
+    }
+    return {
+      x: Math.max(0, pipBounds.width - focusPipSize.w - 12),
+      y: chrome.insets.top + 88,
+    };
+  }, [meetingLayout.focusPip, meetingBounds, pipBounds.width, focusPipSize.w, chrome.insets.top]);
+
   const inClipMode = hasClipStage;
   const inLiveFocus = meetingLayout.focusedStreamId != null;
+
+  useEffect(() => {
+    if (!isTrainer || !inLiveFocus || !meetingBounds) return;
+    if (meetingLayout.focusPip.nx != null) return;
+    const pos = {
+      x: Math.max(0, meetingBounds.width - focusPipSize.w - 12),
+      y: chrome.insets.top + 88,
+    };
+    meetingLayout.updateFocusPip(pipPositionPatch(pos, focusPipSize));
+  }, [
+    isTrainer,
+    inLiveFocus,
+    meetingBounds,
+    meetingLayout.focusPip.nx,
+    meetingLayout.updateFocusPip,
+    pipPositionPatch,
+    focusPipSize,
+    chrome.insets.top,
+  ]);
 
   const handleAnnotationToggle = useCallback(() => {
     if (annotationToolbarOpen) {
@@ -1658,11 +1708,24 @@ function MeetingSurface({
         />
       ) : null}
 
+      {!isTrainer && partnerInSession ? (
+        <MeetingPaymentSummaryChip
+          sessionId={lessonId}
+          enabled={partnerInSession}
+          topOffset={
+            chrome.insets.top +
+            (meetingStatusBanner ? 108 : 56) +
+            (!isTrainer ? 44 : 0)
+          }
+        />
+      ) : null}
+
       <MeetingPeerJoinedToast topOffset={chrome.insets.top + (meetingStatusBanner ? 108 : 48)} />
 
       {inLiveFocus ? (
         <>
-          <MeetingMiniPip
+          <DraggableVideoPip
+            tileId={focusedIsLocal ? "remote" : "local"}
             user={focusedIsLocal ? peerUser : null}
             stream={focusedIsLocal ? remoteStream : localStream}
             isStreamOff={
@@ -1671,13 +1734,35 @@ function MeetingSurface({
                 : !cameraEnabled || !localStream
             }
             muted={!focusedIsLocal}
-            label={focusedIsLocal ? peerDisplayName.split(" ")[0] || "Partner" : "You"}
-            isLocal={!focusedIsLocal}
-            onPress={
+            fallbackLabel={focusedIsLocal ? peerDisplayName : "You"}
+            tabLabel={focusedIsLocal ? peerDisplayName.split(" ")[0] || "Partner" : "You"}
+            bounds={pipBounds}
+            safeTop={chrome.insets.top}
+            safeBottom={chrome.insets.bottom}
+            pipReservedBottom={chrome.pipSafeBottom}
+            position={focusPipPosition}
+            isHidden={false}
+            hiddenEdge={meetingLayout.focusPip.hiddenEdge ?? "right"}
+            width={focusPipSize.w}
+            height={focusPipSize.h}
+            disabled={!isTrainer}
+            onPositionChange={(pos) => {
+              meetingLayout.updateFocusPip(pipPositionPatch(pos, focusPipSize));
+            }}
+            onHide={(_edge, _last) => {}}
+            onRestore={() => {}}
+            onExpand={
               isTrainer
                 ? () => meetingLayout.focusStream(focusedIsLocal ? peerId : myId)
                 : undefined
             }
+            onSizeChange={(w, h) => {
+              if (isTrainer) {
+                meetingLayout.updateFocusPip(
+                  pipPositionPatch(focusPipPosition, { w, h })
+                );
+              }
+            }}
           />
           {inClipMode && activeClipUri ? (
             <ClipMiniPip
@@ -2022,6 +2107,7 @@ function MeetingSurface({
         <SessionExtensionModal
           visible={traineeExtendOpen}
           sessionId={lessonId}
+          trainerId={String(session?.trainer_id ?? session?.trainerId ?? "")}
           remainingSeconds={lessonTimer.remainingSeconds}
           flow={extensionFlow}
           onDismiss={() => setTraineeExtendOpen(false)}

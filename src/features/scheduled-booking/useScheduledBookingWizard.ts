@@ -285,6 +285,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
       sessionSubtotalCents: Math.round(payableAmount * 100),
       trainerId: tid,
       promoDiscountCents: Math.round(Math.max(0, expectedPrice - payableAmount) * 100),
+      user: user as Record<string, unknown>,
     })
       .then((q) => {
         if (!cancelled) setDurationPreviewQuote(q);
@@ -307,6 +308,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
       sessionSubtotalCents: Math.round(payableAmount * 100),
       trainerId: tid,
       promoDiscountCents: Math.round(Math.max(0, expectedPrice - payableAmount) * 100),
+      user: user as Record<string, unknown>,
     })
       .then((q) => {
         if (!cancelled) {

@@ -20,6 +20,12 @@ import {
   type ClipRecord,
 } from "./clipSyncUtils";
 import { getClipPlaybackUrl } from "../../lib/clipMediaUrl";
+import {
+  clampPanForFrame,
+  panFromNormalized,
+  panToNormalized,
+  type PanPoint,
+} from "./clipZoomPanUtils";
 
 type SeekHint = {
   videoId: string;
@@ -119,6 +125,7 @@ export function useClipSync({
   const lastSeekEmit = useRef(0);
   const lastPeriodicProgressEmit = useRef(0);
   const lastProgressByClipId = useRef<Record<string, number>>({});
+  const clipFrameSizesRef = useRef<Record<string, { w: number; h: number }>>({});
   const bookingPreloadedRef = useRef(false);
   const lockModeRef = useRef(false);
   const pendingPlayAfterLockRef = useRef<boolean | null>(null);
@@ -154,6 +161,7 @@ export function useClipSync({
     setClipFullscreen(false);
     setClipFocusIndex(null);
     setZoomPanByVideoId({});
+    clipFrameSizesRef.current = {};
   }, [sessionId, fromUserId, toUserId]);
 
   useEffect(() => {
@@ -321,18 +329,39 @@ export function useClipSync({
       }
       const videoId = String(payload?.videoId ?? payload?.clipId ?? "");
       if (!videoId) return;
-      const zoom = typeof payload?.zoom === "number" ? payload.zoom : NaN;
-      const pan = payload?.pan;
+      const zoomRaw = typeof payload?.zoom === "number" ? payload.zoom : NaN;
+      const nextZoom = Number.isFinite(zoomRaw)
+        ? Math.max(1, Math.min(5, zoomRaw))
+        : 1;
+      const frame = clipFrameSizesRef.current[videoId];
+      let nextPan: PanPoint = { x: 0, y: 0 };
+      if (
+        frame &&
+        typeof payload?.panNx === "number" &&
+        typeof payload?.panNy === "number"
+      ) {
+        nextPan = panFromNormalized(
+          payload.panNx,
+          payload.panNy,
+          frame.w,
+          frame.h,
+          nextZoom
+        );
+      } else {
+        const pan = payload?.pan;
+        if (pan && typeof pan.x === "number" && typeof pan.y === "number") {
+          nextPan = frame
+            ? clampPanForFrame({ x: pan.x, y: pan.y }, frame.w, frame.h, nextZoom)
+            : { x: pan.x, y: pan.y };
+        }
+      }
       setZoomPanByVideoId((prev) => {
         const cur = prev[videoId] ?? { zoom: 1, pan: { x: 0, y: 0 } };
         return {
           ...prev,
           [videoId]: {
-            zoom: Number.isFinite(zoom) ? Math.max(1, Math.min(5, zoom)) : cur.zoom,
-            pan:
-              pan && typeof pan.x === "number" && typeof pan.y === "number"
-                ? { x: pan.x, y: pan.y }
-                : cur.pan,
+            zoom: Number.isFinite(zoomRaw) ? nextZoom : cur.zoom,
+            pan: nextPan,
           },
         };
       });
@@ -368,13 +397,24 @@ export function useClipSync({
     [isPlaying, lockMode, playingByClipId, selectedClips.length]
   );
 
+  const registerClipFrameSize = useCallback((videoId: string, w: number, h: number) => {
+    if (!videoId || w <= 0 || h <= 0) return;
+    clipFrameSizesRef.current[String(videoId)] = { w, h };
+  }, []);
+
   const emitZoomPan = useCallback(
-    (videoId: string, zoom: number, pan: { x: number; y: number }) => {
+    (videoId: string, zoom: number, pan: PanPoint) => {
       if (!socket || !sessionId || !videoId) return;
+      const frame = clipFrameSizesRef.current[String(videoId)];
+      const { panNx, panNy } = frame
+        ? panToNormalized(pan, frame.w, frame.h, zoom)
+        : { panNx: 0, panNy: 0 };
       socket.emit(CLIP_EVENTS.ON_VIDEO_ZOOM_PAN, {
         videoId,
         zoom,
         pan,
+        panNx,
+        panNy,
         userInfo,
         sessionId,
       });
@@ -397,16 +437,26 @@ export function useClipSync({
   );
 
   const setZoomPan = useCallback(
-    (videoId: string, zoom: number, pan: { x: number; y: number }, options?: { emitSocket?: boolean }) => {
+    (
+      videoId: string,
+      zoom: number,
+      pan: PanPoint,
+      options?: { emitSocket?: boolean; frameW?: number; frameH?: number }
+    ) => {
       if (!videoId) return;
       const nextZoom = Math.max(1, Math.min(5, zoom));
+      const frame = clipFrameSizesRef.current[String(videoId)];
+      const fw = options?.frameW ?? frame?.w ?? 0;
+      const fh = options?.frameH ?? frame?.h ?? 0;
+      const clamped =
+        fw > 0 && fh > 0 ? clampPanForFrame(pan, fw, fh, nextZoom) : pan;
       setZoomPanByVideoId((prev) => {
         const next = {
           ...prev,
-          [String(videoId)]: { zoom: nextZoom, pan },
+          [String(videoId)]: { zoom: nextZoom, pan: clamped },
         };
         if (isTrainer && options?.emitSocket !== false) {
-          emitZoomPan(String(videoId), nextZoom, pan);
+          emitZoomPan(String(videoId), nextZoom, clamped);
         }
         return next;
       });
@@ -809,6 +859,7 @@ export function useClipSync({
     playingByClipId,
     isClipPlaying,
     zoomPanByVideoId,
+    registerClipFrameSize,
     bumpZoom,
     setZoomPan,
     hiddenVideos,

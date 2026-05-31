@@ -25,6 +25,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "../../../components/ui";
 import { useAuth } from "../../auth/context/AuthContext";
+import { fetchSessionPricingQuote } from "../../payments/fetchSessionPricingQuote";
+import { resolveTraineeBillingAddress } from "../../payments/resolveTraineeBillingAddress";
 import { colors, radii, space, typography } from "../../../theme";
 import { PricingBreakdownSummary } from "../../payments/PricingBreakdownSummary";
 import type { ExtensionQuote } from "../sessionExtensionApi";
@@ -38,6 +40,7 @@ const EXTENSION_DURATIONS = [5, 10, 15, 30] as const;
 type Props = {
   visible: boolean;
   sessionId: string;
+  trainerId?: string;
   remainingSeconds: number | null;
   /** Initial chip selection when the modal opens (defaults to 10 min). */
   defaultMinutes?: number;
@@ -67,6 +70,7 @@ function useCountdownToIso(iso: string | null): number {
 export function SessionExtensionModal({
   visible,
   sessionId,
+  trainerId,
   remainingSeconds,
   defaultMinutes = 10,
   flow,
@@ -84,6 +88,10 @@ export function SessionExtensionModal({
   const userStripeId = String(
     (user as Record<string, unknown>)?.stripe_account_id ?? ""
   );
+  const billingAddress = useMemo(
+    () => resolveTraineeBillingAddress(user as Record<string, unknown> | null),
+    [user]
+  );
 
   const { state, fetchQuote, requestExtension, cancelRequest, payAndConfirm } = flow;
   const { phase, request, message } = state;
@@ -100,10 +108,25 @@ export function SessionExtensionModal({
     setQuoteLoading(true);
     setQuoteError(null);
     fetchQuote(minutes)
-      .then((q) => {
+      .then(async (q) => {
         if (cancelled) return;
-        setQuote(q);
-        if (!q.allowed) setQuoteError(q.reason ?? "Not available right now.");
+        let enriched = q;
+        if (q.allowed && trainerId && q.amount > 0) {
+          try {
+            const pricingQuote = await fetchSessionPricingQuote({
+              productType: "session_extension",
+              sessionSubtotalCents: Math.round(q.amount * 100),
+              trainerId,
+              user: user as Record<string, unknown>,
+            });
+            enriched = { ...q, pricingQuote };
+          } catch {
+            enriched = q;
+          }
+        }
+        if (cancelled) return;
+        setQuote(enriched);
+        if (!enriched.allowed) setQuoteError(enriched.reason ?? "Not available right now.");
       })
       .catch((e: any) => {
         if (cancelled) return;
@@ -117,7 +140,7 @@ export function SessionExtensionModal({
     return () => {
       cancelled = true;
     };
-  }, [visible, minutes, phase, fetchQuote]);
+  }, [visible, minutes, phase, fetchQuote, trainerId, user]);
 
   useEffect(() => {
     if (!visible) return;
@@ -125,14 +148,29 @@ export function SessionExtensionModal({
     const mins = request?.minutes ?? minutes;
     let cancelled = false;
     fetchQuote(mins)
-      .then((q) => {
-        if (!cancelled && q.allowed) setQuote(q);
+      .then(async (q) => {
+        if (cancelled || !q.allowed) return;
+        let enriched = q;
+        if (trainerId && q.amount > 0) {
+          try {
+            const pricingQuote = await fetchSessionPricingQuote({
+              productType: "session_extension",
+              sessionSubtotalCents: Math.round(q.amount * 100),
+              trainerId,
+              user: user as Record<string, unknown>,
+            });
+            enriched = { ...q, pricingQuote };
+          } catch {
+            enriched = q;
+          }
+        }
+        if (!cancelled) setQuote(enriched);
       })
       .catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, [visible, phase, request?.minutes, minutes, fetchQuote]);
+  }, [visible, phase, request?.minutes, minutes, fetchQuote, trainerId, user]);
 
   /** When the trainee dismisses while still pending/awaiting payment, surface
    *  a confirm step instead of silently abandoning a server-side row. */
@@ -184,6 +222,10 @@ export function SessionExtensionModal({
       customer: userStripeId || undefined,
       quoteId: quote?.pricingQuote?.quoteId,
       chargeTotalCents: extensionChargeMinor,
+      billingAddress: {
+        country: billingAddress.country,
+        state: billingAddress.state,
+      },
     });
     if (ok) {
       // SESSION_EXTENSION_APPLIED will flip phase to "applied" -> auto close.

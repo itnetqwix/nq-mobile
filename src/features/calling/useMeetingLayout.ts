@@ -34,6 +34,8 @@ export type TileLayout = {
 export type MeetingLayoutPayload = {
   focusedStreamId: string | null;
   tiles: Record<PipTileId, TileLayout>;
+  /** Secondary live stream PIP while one participant is focused on stage. */
+  focusPip?: TileLayout;
   userInfo?: ClipUserInfo;
   sessionId?: string;
 };
@@ -67,6 +69,11 @@ export function useMeetingLayout({
     local: DEFAULT_TILE("right"),
     remote: DEFAULT_TILE("left"),
   });
+  const [focusPip, setFocusPip] = useState<TileLayout>({
+    ...DEFAULT_TILE("right"),
+    w: 100,
+    h: 140,
+  });
   const emitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const userInfo: ClipUserInfo = { from_user: myId, to_user: peerId };
@@ -80,6 +87,9 @@ export function useMeetingLayout({
     }
     if (payload.tiles?.remote) {
       setTiles((prev) => ({ ...prev, remote: { ...prev.remote, ...payload.tiles!.remote } }));
+    }
+    if (payload.focusPip) {
+      setFocusPip((prev) => ({ ...prev, ...payload.focusPip }));
     }
   }, []);
 
@@ -138,13 +148,27 @@ export function useMeetingLayout({
           focusedStreamId:
             patch.focusedStreamId !== undefined ? patch.focusedStreamId : focusedStreamId,
           tiles: patch.tiles ?? tiles,
+          focusPip: patch.focusPip ?? focusPip,
           userInfo,
           sessionId,
         };
         socket.emit(CLIP_EVENTS.MEETING_TILE_LAYOUT, payload);
       }, 180);
     },
-    [focusedStreamId, isTrainer, sessionId, socket, tiles, userInfo]
+    [focusPip, focusedStreamId, isTrainer, sessionId, socket, tiles, userInfo]
+  );
+
+  const updateFocusPip = useCallback(
+    (patch: Partial<TileLayout>) => {
+      setFocusPip((prev) => {
+        const next = { ...prev, ...patch };
+        if (isTrainer) {
+          emitLayout({ focusPip: next });
+        }
+        return next;
+      });
+    },
+    [emitLayout, isTrainer]
   );
 
   const focusStream = useCallback(
@@ -189,6 +213,7 @@ export function useMeetingLayout({
     const payload: MeetingLayoutPayload = {
       focusedStreamId,
       tiles,
+      focusPip,
       userInfo,
       sessionId,
     };
@@ -201,15 +226,17 @@ export function useMeetingLayout({
         sessionId,
       });
     }
-  }, [focusedStreamId, isTrainer, sessionId, socket, tiles, userInfo]);
+  }, [focusPip, focusedStreamId, isTrainer, sessionId, socket, tiles, userInfo]);
 
   return {
     focusedStreamId,
     stageMode,
     tiles,
+    focusPip,
     focusStream,
     clearFocus: () => focusStream(null),
     updateTile,
+    updateFocusPip,
     applyPayload,
     replayLayoutState,
   };
