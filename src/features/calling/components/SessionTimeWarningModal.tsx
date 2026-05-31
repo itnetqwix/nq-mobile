@@ -21,6 +21,8 @@ export type SessionWarningKind = "five" | "two";
 type Props = {
   visible: boolean;
   kind: SessionWarningKind;
+  /** Trainer vs trainee copy for the 2-minute warning. */
+  audience?: "trainer" | "trainee";
   /** Hide the modal after this many ms (defaults to 12s). 0 disables. */
   autoDismissMs?: number;
   /** Only the trainee sees the "Extend" CTA — pass true to render it. */
@@ -51,9 +53,19 @@ const COPY: Record<
   },
 };
 
+const TRAINER_COPY: Partial<typeof COPY> = {
+  two: {
+    title: "2 minutes left",
+    body: "Your trainee may request an extension. The timer will pause while payment is processed.",
+    icon: "alarm-outline",
+    color: "#ff9800",
+  },
+};
+
 export function SessionTimeWarningModal({
   visible,
   kind,
+  audience = "trainee",
   autoDismissMs = 12000,
   canExtend,
   onExtend,
@@ -63,7 +75,10 @@ export function SessionTimeWarningModal({
   onDismiss,
 }: Props) {
   const insets = useSafeAreaInsets();
-  const copy = COPY[kind];
+  const copy =
+    audience === "trainer" && TRAINER_COPY[kind]
+      ? TRAINER_COPY[kind]!
+      : COPY[kind];
 
   useEffect(() => {
     if (!visible || !autoDismissMs) return;

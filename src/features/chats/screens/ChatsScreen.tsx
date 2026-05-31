@@ -49,13 +49,9 @@ import { CoachMark } from "../../onboarding";
 import { useHapticRefresh } from "../../../lib/refresh/useHapticRefresh";
 
 async function fetchConversations(): Promise<any[]> {
-  try {
-    const res = await apiClient.get(API_ROUTES.chat.conversations);
-    const body = (res as any)?.data ?? res;
-    return body?.data ?? body?.result ?? [];
-  } catch {
-    return [];
-  }
+  const res = await apiClient.get(API_ROUTES.chat.conversations);
+  const body = (res as any)?.data ?? res;
+  return body?.data ?? body?.result ?? [];
 }
 
 function formatLastMessagePreview(raw: string, t: TFunction): string {
@@ -348,6 +344,22 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
     borderColor: palette.border,
   },
   inviteDeclineText: { color: palette.textMuted, fontSize: 13, fontWeight: "600" },
+  centeredError: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: space.lg,
+    gap: space.sm,
+  },
+  errorTitle: { fontSize: 17, fontWeight: "700", textAlign: "center" },
+  errorBody: { fontSize: 14, textAlign: "center", lineHeight: 20 },
+  retryChip: {
+    marginTop: space.sm,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: radii.md,
+    borderWidth: 1,
+  },
 }));
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -397,7 +409,12 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route?.params]);
 
-  const { data: conversations = [], isLoading, refetch } = useQuery({
+  const {
+    data: conversations = [],
+    isLoading,
+    isError: conversationsError,
+    refetch,
+  } = useQuery({
     queryKey: queryKeys.chats.conversations,
     queryFn: fetchConversations,
     staleTime: 15_000,
@@ -779,7 +796,23 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
         </View>
       ) : null}
 
-      {isLoading ? (
+      {conversationsError ? (
+        <View style={styles.centeredError}>
+          <Text style={[styles.errorTitle, { color: c.text }]}>
+            {t("chats.loadErrorTitle", { defaultValue: "Could not load chats" })}
+          </Text>
+          <Text style={[styles.errorBody, { color: c.textMuted }]}>
+            {t("chats.loadErrorBody", {
+              defaultValue: "Check your connection and try again.",
+            })}
+          </Text>
+          <Pressable style={[styles.retryChip, { borderColor: c.border }]} onPress={() => void refetch()}>
+            <Text style={{ color: c.brandNavy, fontWeight: "600" }}>
+              {t("common.retry", { defaultValue: "Retry" })}
+            </Text>
+          </Pressable>
+        </View>
+      ) : isLoading ? (
         /**
          * Content-shape skeletons mirror the actual chat row (avatar +
          * title + preview + timestamp + unread badge), so the visual

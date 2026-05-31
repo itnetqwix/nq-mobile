@@ -169,6 +169,8 @@ export const API_ROUTES = {
     createMoneyRequest: "/trainer/create-money-request",
     getMoneyRequest: "/trainer/get-money-request",
     sessionExtensionRespond: "/trainer/session-extension/respond",
+    instantLessonAccept: "/trainer/instant-lesson/accept",
+    instantLessonDecline: "/trainer/instant-lesson/decline",
     traineeNote: (traineeId: string) => `/trainer/trainee-notes/${traineeId}` as const,
     nudgeCandidates: "/trainer/nudge-candidates",
     traineeNudge: "/trainer/trainee-nudge",

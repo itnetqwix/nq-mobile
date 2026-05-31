@@ -854,14 +854,39 @@ export function InstantLessonProvider({
         );
         throw new Error("missing_session_ids");
       }
-      if (!socket?.connected) {
-        Alert.alert(
-          "Not connected",
-          "Reconnect to the server and try again. Check your internet connection."
-        );
-        throw new Error("not_connected");
-      }
       focusTrainerRequestFromSession(session);
+
+      const applyAcceptSuccess = (joinMs: number) => {
+        applyInstantAcceptToSessionCache(lessonId, joinMs);
+        setTrainerIncoming((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            step: "accepted",
+            joinDeadlineAt: joinMs,
+            expiresAt: joinMs,
+            minimized: false,
+          };
+        });
+        scheduleExpiry(joinMs, () => setTrainerIncoming(null));
+        invalidateSessionLists();
+      };
+
+      const { acceptInstantLessonRest } = await import("./instantLessonRestApi");
+      try {
+        const http = await acceptInstantLessonRest({ lessonId, traineeId });
+        const joinMs = new Date(http.joinDeadlineAt).getTime();
+        applyAcceptSuccess(joinMs);
+        return;
+      } catch (httpErr: unknown) {
+        if (!socket?.connected) {
+          const msg =
+            httpErr instanceof Error ? httpErr.message : "Could not accept lesson.";
+          Alert.alert("Could not accept", msg);
+          throw httpErr;
+        }
+      }
+
       await new Promise<void>((resolve, reject) => {
         const timer = setTimeout(() => {
           reject(new Error("accept_timeout"));
@@ -872,19 +897,7 @@ export function InstantLessonProvider({
           traineeId,
           (joinMs) => {
             clearTimeout(timer);
-            applyInstantAcceptToSessionCache(lessonId, joinMs);
-            setTrainerIncoming((prev) => {
-              if (!prev) return prev;
-              return {
-                ...prev,
-                step: "accepted",
-                joinDeadlineAt: joinMs,
-                expiresAt: joinMs,
-                minimized: false,
-              };
-            });
-            scheduleExpiry(joinMs, () => setTrainerIncoming(null));
-            invalidateSessionLists();
+            applyAcceptSuccess(joinMs);
             resolve();
           },
           (error) => {
@@ -907,16 +920,16 @@ export function InstantLessonProvider({
         );
         throw new Error("missing_session_ids");
       }
-      if (!socket?.connected) {
-        Alert.alert(
-          "Not connected",
-          "Reconnect to the server and try again. Check your internet connection."
-        );
-        throw new Error("not_connected");
-      }
       void stopRinging();
       markLessonDismissed(lessonId);
-      socket.emit(EVENTS.DECLINE, { lessonId, coachId, traineeId });
+      try {
+        const { declineInstantLessonRest } = await import("./instantLessonRestApi");
+        await declineInstantLessonRest({ lessonId, traineeId });
+      } catch {
+        if (socket?.connected) {
+          socket.emit(EVENTS.DECLINE, { lessonId, coachId, traineeId });
+        }
+      }
       clearExpiryTimer();
       void dismissInstantLessonIncomingCall(lessonId);
       void endInstantLessonCall(lessonId);

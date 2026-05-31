@@ -39,6 +39,8 @@ type Props = {
   onClose: () => void;
   /** Called when trainer confirms selection (1–2 clips). */
   onDone: (clips: ClipRow[]) => void;
+  /** Trainer sees shared + locker; trainee shares from locker (+ session). */
+  audience?: "trainer" | "trainee";
   traineeId?: string;
   /** Clips the trainee attached during booking — shown first for live review. */
   bookingClips?: ClipRow[];
@@ -50,10 +52,12 @@ export function ClipPickerModal({
   visible,
   onClose,
   onDone,
+  audience = "trainer",
   traineeId,
   bookingClips = [],
   selectedClipIds = [],
 }: Props) {
+  const isTraineeAudience = audience === "trainee";
   const [loading, setLoading] = useState(false);
   const [lockerClips, setLockerClips] = useState<ClipRow[]>([]);
   const [sharedClips, setSharedClips] = useState<ClipRow[]>([]);
@@ -118,8 +122,12 @@ export function ClipPickerModal({
     (async () => {
       const [mineResult, sharedResult, libraryResult] = await Promise.allSettled([
         fetchMyClipsGrouped(),
-        postSharedClipsBySharer(),
-        postLibraryClipsNested(),
+        isTraineeAudience
+          ? Promise.resolve([] as SharedClipsGroup[])
+          : postSharedClipsBySharer(),
+        isTraineeAudience
+          ? Promise.resolve([] as NestedCategoryGroup[])
+          : postLibraryClipsNested(),
       ]);
       if (!active) return;
 
@@ -152,7 +160,14 @@ export function ClipPickerModal({
     return () => {
       active = false;
     };
-  }, [visible, dedupeClips, flattenNestedGroups, flattenSharedGroups, sessionClips.length]);
+  }, [
+    visible,
+    dedupeClips,
+    flattenNestedGroups,
+    flattenSharedGroups,
+    sessionClips.length,
+    isTraineeAudience,
+  ]);
 
   const allClips = useMemo(
     () => dedupeClips([...sessionClips, ...lockerClips, ...sharedClips, ...libraryClips]),
@@ -220,7 +235,9 @@ export function ClipPickerModal({
             <Text style={styles.close}>Close</Text>
           </Pressable>
           <View style={styles.headerCenter}>
-            <Text style={styles.title}>Select clips</Text>
+            <Text style={styles.title}>
+              {isTraineeAudience ? "Share clips with coach" : "Select clips"}
+            </Text>
             <Text style={styles.subtitle}>{selectionLabel}</Text>
           </View>
           <Pressable onPress={confirm} hitSlop={12} disabled={picked.size === 0}>
@@ -263,22 +280,26 @@ export function ClipPickerModal({
                   Locker ({tabCounts.locker})
                 </Text>
               </Pressable>
-              <Pressable
-                style={[styles.tabBtn, activeTab === "shared" && styles.tabBtnActive]}
-                onPress={() => setActiveTab("shared")}
-              >
-                <Text style={[styles.tabLabel, activeTab === "shared" && styles.tabLabelActive]}>
-                  Shared ({tabCounts.shared})
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[styles.tabBtn, activeTab === "library" && styles.tabBtnActive]}
-                onPress={() => setActiveTab("library")}
-              >
-                <Text style={[styles.tabLabel, activeTab === "library" && styles.tabLabelActive]}>
-                  NetQwix ({tabCounts.library})
-                </Text>
-              </Pressable>
+              {!isTraineeAudience && tabCounts.shared > 0 ? (
+                <Pressable
+                  style={[styles.tabBtn, activeTab === "shared" && styles.tabBtnActive]}
+                  onPress={() => setActiveTab("shared")}
+                >
+                  <Text style={[styles.tabLabel, activeTab === "shared" && styles.tabLabelActive]}>
+                    Shared ({tabCounts.shared})
+                  </Text>
+                </Pressable>
+              ) : null}
+              {!isTraineeAudience ? (
+                <Pressable
+                  style={[styles.tabBtn, activeTab === "library" && styles.tabBtnActive]}
+                  onPress={() => setActiveTab("library")}
+                >
+                  <Text style={[styles.tabLabel, activeTab === "library" && styles.tabLabelActive]}>
+                    NetQwix ({tabCounts.library})
+                  </Text>
+                </Pressable>
+              ) : null}
             </View>
 
             {activeClips.length === 0 ? (

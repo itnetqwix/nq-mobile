@@ -35,7 +35,7 @@ import { chargeTotalDollars } from "../../payments/pricingTypes";
 
 /** Mobile UI surfaces only the most common picks; the backend still accepts
  *  60/120 for parity with legacy clients. */
-const EXTENSION_DURATIONS = [5, 10, 15, 30] as const;
+const EXTENSION_DURATIONS = [5, 10, 15, 30, 60, 120] as const;
 
 type Props = {
   visible: boolean;

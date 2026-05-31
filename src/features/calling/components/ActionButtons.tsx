@@ -108,8 +108,13 @@ export function ActionButtons({
           </RoundButton>
         ) : null}
 
-        {isTrainer && !inClipMode && onOpenClipPicker ? (
-          <RoundButton onPress={onOpenClipPicker} accessibilityLabel="Open clip library">
+        {!inClipMode && onOpenClipPicker ? (
+          <RoundButton
+            onPress={onOpenClipPicker}
+            accessibilityLabel={
+              isTrainer ? "Open clip library" : "Share clips with coach"
+            }
+          >
             <MaterialCommunityIcons
               name="play-box-multiple-outline"
               size={ICON}

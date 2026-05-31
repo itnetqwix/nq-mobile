@@ -66,6 +66,7 @@ apiClient.interceptors.request.use(async (config) => {
   const sessionId = await getSessionId();
   if (sessionId) {
     config.headers["X-NQ-Session-Id"] = sessionId;
+    config.headers["X-NQ-Auth-Session-Id"] = sessionId;
   }
   Object.assign(config.headers, getClientSessionHeaders());
   logHttpRequestDebug(config);

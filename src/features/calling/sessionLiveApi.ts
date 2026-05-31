@@ -42,6 +42,9 @@ export type SessionJoinReadiness = {
     remainingSeconds: number;
     status: string;
   } | null;
+  lesson_client_requirement?: "native_app";
+  mixed_client_warning?: string | null;
+  recommended_clients?: string[];
 };
 
 export async function fetchSessionJoinReadiness(

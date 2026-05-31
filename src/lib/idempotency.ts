@@ -9,5 +9,10 @@ export function newIdempotencyKey(prefix = "nq"): string {
 }
 
 export function idempotencyHeaders(key: string): Record<string, string> {
-  return { "Idempotency-Key": key };
+  return { "Idempotency-Key": key.slice(0, 128) };
+}
+
+/** Deterministic key for retries (no random suffix). */
+export function stableIdempotencyKey(...parts: (string | number)[]): string {
+  return parts.map(String).join("-").slice(0, 128);
 }

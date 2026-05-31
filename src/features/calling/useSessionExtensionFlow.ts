@@ -248,19 +248,24 @@ export function useSessionExtensionFlow({
         const res = await requestSessionExtension({ sessionId, minutes });
         if (res?.request) {
           lastRequestIdRef.current = res.request.requestId;
+          const phase = phaseFromRequest(res.request);
           setState({
-            phase: phaseFromRequest(res.request),
+            phase,
             request: res.request,
-            message: null,
+            message:
+              res.allowed === false && phase === "idle"
+                ? res.reason ?? "Extension already in progress."
+                : res.allowed === false
+                  ? res.reason ?? null
+                  : null,
           });
           return res.request;
         }
-        // Backend returned an "extension already in progress" reuse payload.
-        if (res && (res as any).allowed === false) {
+        if (res?.allowed === false) {
           setState((prev) => ({
             ...prev,
             phase: "error",
-            message: (res as any).reason ?? "Extension already in progress.",
+            message: res.reason ?? "Extension already in progress.",
           }));
         }
         return null;

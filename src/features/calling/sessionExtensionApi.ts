@@ -1,6 +1,10 @@
+import type { AxiosRequestConfig } from "axios";
 import { apiClient } from "../../api/client";
 import { API_ROUTES } from "../../config/apiRoutes";
-import { idempotencyHeaders, newIdempotencyKey } from "../../lib/idempotency";
+import {
+  idempotencyHeaders,
+  stableIdempotencyKey,
+} from "../../lib/idempotency";
 
 import type { PricingQuote } from "../payments/pricingTypes";
 
@@ -24,6 +28,49 @@ export type ExtensionRequestSnapshot = {
   expiresAt: string | null;
   requestedBy: string;
 };
+
+const IDEMPOTENCY_RETRY_MS = 500;
+const IDEMPOTENCY_MAX_ATTEMPTS = 3;
+
+function isIdempotencyConflict(err: unknown): boolean {
+  const status = (err as { response?: { status?: number } })?.response?.status;
+  const msg = String(
+    (err as { response?: { data?: { error?: string; message?: string } } })?.response
+      ?.data?.error ??
+      (err as { response?: { data?: { message?: string } } })?.response?.data
+        ?.message ??
+      ""
+  ).toLowerCase();
+  return (
+    status === 409 &&
+    (msg.includes("processing") ||
+      msg.includes("idempotency") ||
+      msg.includes("confirmation already"))
+  );
+}
+
+async function postWithIdempotencyRetry<T>(
+  url: string,
+  data: unknown,
+  config: AxiosRequestConfig
+): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < IDEMPOTENCY_MAX_ATTEMPTS; attempt++) {
+    try {
+      const res = await apiClient.post(url, data, config);
+      return ((res.data as { data?: T })?.data ?? res.data) as T;
+    } catch (e) {
+      lastErr = e;
+      if (!isIdempotencyConflict(e) || attempt === IDEMPOTENCY_MAX_ATTEMPTS - 1) {
+        throw e;
+      }
+      await new Promise((r) =>
+        setTimeout(r, IDEMPOTENCY_RETRY_MS * (attempt + 1))
+      );
+    }
+  }
+  throw lastErr;
+}
 
 export async function fetchSessionExtensionQuote(
   sessionId: string,
@@ -49,20 +96,19 @@ export async function requestSessionExtension(payload: {
   allowed?: boolean;
   reason?: string;
 }> {
-  const res = await apiClient.post(
+  return postWithIdempotencyRetry(
     API_ROUTES.trainee.sessionExtensionRequest,
     payload,
     {
       headers: idempotencyHeaders(
-        newIdempotencyKey(`ext-req-${payload.sessionId}-${payload.minutes}`)
+        stableIdempotencyKey(
+          "ext-req",
+          payload.sessionId,
+          payload.minutes
+        )
       ),
     }
   );
-  return (res.data as { data?: unknown })?.data as {
-    request?: ExtensionRequestSnapshot;
-    allowed?: boolean;
-    reason?: string;
-  };
 }
 
 /**
@@ -75,18 +121,20 @@ export async function respondToExtensionRequest(payload: {
   requestId: string;
   decision: "accept" | "reject";
 }): Promise<{ request: ExtensionRequestSnapshot }> {
-  const res = await apiClient.post(
+  return postWithIdempotencyRetry(
     API_ROUTES.trainer.sessionExtensionRespond,
     payload,
     {
       headers: idempotencyHeaders(
-        `ext-respond-${payload.sessionId}-${payload.requestId}-${payload.decision}`
+        stableIdempotencyKey(
+          "ext-respond",
+          payload.sessionId,
+          payload.requestId,
+          payload.decision
+        )
       ),
     }
   );
-  return (res.data as { data?: { request: ExtensionRequestSnapshot } })?.data as {
-    request: ExtensionRequestSnapshot;
-  };
 }
 
 /** Trainee aborts a pending/accepted request (e.g. payment sheet dismissed). */
@@ -95,18 +143,19 @@ export async function cancelExtensionRequest(payload: {
   requestId: string;
   reason?: string;
 }): Promise<{ request: ExtensionRequestSnapshot }> {
-  const res = await apiClient.post(
+  return postWithIdempotencyRetry(
     API_ROUTES.trainee.sessionExtensionCancel,
     payload,
     {
       headers: idempotencyHeaders(
-        `ext-cancel-${payload.sessionId}-${payload.requestId}`
+        stableIdempotencyKey(
+          "ext-cancel",
+          payload.sessionId,
+          payload.requestId
+        )
       ),
     }
   );
-  return (res.data as { data?: { request: ExtensionRequestSnapshot } })?.data as {
-    request: ExtensionRequestSnapshot;
-  };
 }
 
 export async function createSessionExtensionPaymentIntent(payload: {
@@ -124,19 +173,13 @@ export async function createSessionExtensionPaymentIntent(payload: {
   amount?: number;
 }> {
   const idemKey = payload.requestId
-    ? `ext-pi-${payload.sessionId}-${payload.requestId}`
-    : newIdempotencyKey(`ext-pi-${payload.sessionId}-${payload.minutes}`);
-  const res = await apiClient.post(
+    ? stableIdempotencyKey("ext-pi", payload.sessionId, payload.requestId)
+    : stableIdempotencyKey("ext-pi", payload.sessionId, payload.minutes);
+  return postWithIdempotencyRetry(
     API_ROUTES.trainee.sessionExtensionPaymentIntent,
     payload,
     { headers: idempotencyHeaders(idemKey) }
   );
-  return ((res.data as { data?: unknown })?.data ?? res.data) as {
-    skip?: boolean;
-    client_secret?: string;
-    id?: string;
-    amount?: number;
-  };
 }
 
 export async function confirmSessionExtension(payload: {
@@ -149,14 +192,25 @@ export async function confirmSessionExtension(payload: {
   quoteId?: string;
 }): Promise<unknown> {
   const idemKey = payload.payment_intent_id
-    ? `ext-confirm-${payload.sessionId}-${payload.payment_intent_id}`
+    ? stableIdempotencyKey(
+        "ext-confirm",
+        payload.sessionId,
+        payload.payment_intent_id
+      )
     : payload.requestId
-      ? `ext-confirm-${payload.sessionId}-${payload.requestId}`
-      : newIdempotencyKey(`ext-confirm-${payload.sessionId}-${payload.minutes}`);
-  const res = await apiClient.post(
+      ? stableIdempotencyKey(
+          "ext-confirm",
+          payload.sessionId,
+          payload.requestId
+        )
+      : stableIdempotencyKey(
+          "ext-confirm",
+          payload.sessionId,
+          payload.minutes
+        );
+  return postWithIdempotencyRetry(
     API_ROUTES.trainee.sessionExtensionConfirm,
     payload,
     { headers: idempotencyHeaders(idemKey) }
   );
-  return (res.data as { data?: unknown })?.data ?? res.data;
 }

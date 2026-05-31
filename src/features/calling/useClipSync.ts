@@ -63,6 +63,8 @@ type Args = {
   isTrainer?: boolean;
   /** Adaptive network tier — throttles progress emits on fair/slow links. */
   networkTier?: LessonNetworkTier;
+  /** Trainer: trainee broadcast new clips via ON_VIDEO_SELECT. */
+  onPeerClipsShared?: () => void;
 };
 
 const EMPTY_HIDDEN: HiddenVideosMap = { teacher: false, student: false };
@@ -120,6 +122,7 @@ export function useClipSync({
   sessionId,
   isTrainer = false,
   networkTier = "normal",
+  onPeerClipsShared,
 }: Args) {
   const networkTierRef = useRef(networkTier);
   networkTierRef.current = networkTier;
@@ -198,6 +201,15 @@ export function useClipSync({
 
       if (type === "clips") {
         const clips = normalizeClipsFromSocket(clipsFromSelectPayload(payload)).slice(0, 2);
+        const fromPeer = String(payload?.userInfo?.from_user ?? "");
+        if (
+          isTrainer &&
+          fromPeer &&
+          fromPeer !== String(fromUserId) &&
+          clips.length > 0
+        ) {
+          onPeerClipsShared?.();
+        }
         applyClipsToState(
           clips,
           setSelectedClips,
@@ -417,7 +429,7 @@ export function useClipSync({
       socket.off(CLIP_EVENTS.TOGGLE_FULL_SCREEN, onFullscreen);
       socket.off(CLIP_EVENTS.ON_VIDEO_ZOOM_PAN, onZoomPan);
     };
-  }, [socket, sessionId, fromUserId, isTrainer, matchesSession]);
+  }, [socket, sessionId, fromUserId, isTrainer, matchesSession, onPeerClipsShared]);
 
   const isClipPlaying = useCallback(
     (clipId: string | null | undefined) => {
@@ -639,12 +651,21 @@ export function useClipSync({
   );
 
   const preloadBookingClips = useCallback(
-    (clips: ClipRecord[]) => {
-      if (bookingPreloadedRef.current) return;
+    (clips: ClipRecord[], options?: { force?: boolean }) => {
+      if (bookingPreloadedRef.current && !options?.force) return;
       const playable = clips.filter((c) => resolveClipPlayback(c).url).slice(0, 2);
       if (playable.length === 0) return;
       bookingPreloadedRef.current = true;
       emitSelectClips(playable, { emitSocket: true });
+    },
+    [emitSelectClips]
+  );
+
+  /** Trainee mid-lesson share — persist is handled by the screen; this broadcasts. */
+  const broadcastClipsMidLesson = useCallback(
+    (clips: ClipRecord[]) => {
+      bookingPreloadedRef.current = true;
+      emitSelectClips(clips, { emitSocket: true });
     },
     [emitSelectClips]
   );
@@ -984,6 +1005,7 @@ export function useClipSync({
     selectClip,
     setActiveClip,
     emitSelectClips,
+    broadcastClipsMidLesson,
     preloadBookingClips,
     togglePlay,
     seek,

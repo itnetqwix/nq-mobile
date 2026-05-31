@@ -153,6 +153,8 @@ type ProviderProps = StartArgs & {
   onPeerDisconnected?: () => void;
   /** Fires the first time `ON_CALL_JOIN` is received from the other side. */
   onPeerJoined?: (info: PeerJoinedEvent) => void;
+  /** Another device took over this lesson slot. */
+  onSlotTakenOver?: (payload: { message?: string }) => void;
 };
 
 export function CallProvider({
@@ -161,6 +163,7 @@ export function CallProvider({
   onPeerLeft,
   onPeerDisconnected,
   onPeerJoined: onPeerJoinedCb,
+  onSlotTakenOver,
   ...startArgs
 }: ProviderProps) {
   const { socket } = useSocket();
@@ -201,10 +204,12 @@ export function CallProvider({
   const onPeerLeftRef = useRef(onPeerLeft);
   const onPeerDisconnectedRef = useRef(onPeerDisconnected);
   const onPeerJoinedRef = useRef(onPeerJoinedCb);
+  const onSlotTakenOverRef = useRef(onSlotTakenOver);
   onEndedRef.current = onEnded;
   onPeerLeftRef.current = onPeerLeft;
   onPeerDisconnectedRef.current = onPeerDisconnected;
   onPeerJoinedRef.current = onPeerJoinedCb;
+  onSlotTakenOverRef.current = onSlotTakenOver;
 
   const stableArgs = useMemo<NativeCallEngineConfig | null>(() => {
     const fromUser = fromUserRef.current;
@@ -305,6 +310,9 @@ export function CallProvider({
           payload?.message ??
             "This lesson was continued on another device."
         );
+        onSlotTakenOverRef.current?.({
+          message: payload?.message,
+        });
         setStatus("ended");
         onEndedRef.current?.();
       },

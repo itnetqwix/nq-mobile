@@ -21,6 +21,7 @@ type Props = {
   isTrainer: boolean;
   onRate: () => void;
   onRebook?: () => void;
+  onRetry?: () => void;
   onDone: () => void;
 };
 
@@ -31,6 +32,7 @@ export function SessionHandoffScreen({
   isTrainer,
   onRate,
   onRebook,
+  onRetry,
   onDone,
 }: Props) {
   const c = useThemeColors();
@@ -49,6 +51,13 @@ export function SessionHandoffScreen({
 
         {loading ? (
           <ActivityIndicator color={c.brandNavy} style={{ marginTop: 24 }} />
+        ) : !summary ? (
+          <View style={[styles.notesCard, { borderColor: c.border, backgroundColor: c.surfaceElevated }]}>
+            <Text style={[styles.notesTitle, { color: c.text }]}>Could not load summary</Text>
+            <Text style={[styles.noteLine, { color: c.textMuted }]}>
+              Check your connection and try again from your schedule, or contact support if this persists.
+            </Text>
+          </View>
         ) : (
           <ScrollView contentContainerStyle={styles.cards} showsVerticalScrollIndicator={false}>
             <StatCard
@@ -72,6 +81,26 @@ export function SessionHandoffScreen({
                 icon="film-outline"
                 label="Clips attached"
                 value={`${summary.clips_reviewed_count}`}
+              />
+            ) : null}
+            {isTrainer && summary?.game_plan_status ? (
+              <StatCard
+                icon="document-text-outline"
+                label="Game plan"
+                value={
+                  summary.game_plan_status === "available"
+                    ? summary.game_plan_title ?? "Shared with trainee"
+                    : summary.game_plan_status === "pending"
+                      ? "Pending upload"
+                      : "Not shared yet"
+                }
+              />
+            ) : null}
+            {isTrainer && summary?.live_notes_count ? (
+              <StatCard
+                icon="create-outline"
+                label="Live notes"
+                value={`${summary.live_notes_count} saved`}
               />
             ) : null}
             {!isTrainer && summary?.game_plan_status === "available" ? (
@@ -109,6 +138,9 @@ export function SessionHandoffScreen({
         )}
 
         <View style={styles.actions}>
+          {!loading && !summary && onRetry ? (
+            <Button label="Try again" variant="secondary" onPress={onRetry} />
+          ) : null}
           {summary?.can_rate ? (
             <Button label="Rate session" leftIcon="star-outline" onPress={onRate} />
           ) : null}

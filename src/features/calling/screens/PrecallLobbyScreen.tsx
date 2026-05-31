@@ -218,8 +218,11 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
         }
       } catch {
         if (!cancelled) {
-          setCallSlotBlocked(false);
-          setCallSlotMessage(null);
+          setCallSlotBlocked(true);
+          setCallSlotCanTakeOver(false);
+          setCallSlotMessage(
+            "Could not verify call access. Check your connection and try again."
+          );
         }
       } finally {
         if (!cancelled) setCallSlotChecking(false);
@@ -324,6 +327,38 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
+      {readiness?.mixed_client_warning ? (
+        <View
+          style={[
+            styles.slotBanner,
+            {
+              backgroundColor: c.warning + "22",
+              borderColor: c.warning,
+            },
+          ]}
+        >
+          <Ionicons name="warning-outline" size={18} color={c.warning} />
+          <Text style={[styles.slotBannerText, { color: c.text }]}>
+            {readiness.mixed_client_warning}
+          </Text>
+        </View>
+      ) : readiness?.lesson_client_requirement === "native_app" ? (
+        <View
+          style={[
+            styles.slotBanner,
+            {
+              backgroundColor: c.brandNavy + "18",
+              borderColor: c.brandNavy,
+            },
+          ]}
+        >
+          <Ionicons name="phone-portrait-outline" size={18} color={c.brandNavy} />
+          <Text style={[styles.slotBannerText, { color: c.text }]}>
+            Live lessons on the NetQwix app use in-app video. Both you and your partner should join from the mobile app for the best experience.
+          </Text>
+        </View>
+      ) : null}
+
       <View style={styles.headerRow}>
         <Pressable onPress={onCancel} hitSlop={8} accessibilityLabel="Cancel">
           <Ionicons name="close" size={26} color={c.text} />

@@ -125,11 +125,19 @@ import { ScreenshotCompositeHost } from "../components/ScreenshotCompositeHost";
 import type { ScreenshotCaptureSource } from "../useMeetingScreenshot";
 import { RecordingBar } from "../components/RecordingBar";
 import { useInstantLessonRecording } from "../useInstantLessonRecording";
+import { persistTraineeClipsOnBooking } from "../traineeMidLessonClips";
+import type { ClipRow } from "../../instant-lesson/instantLessonClipsApi";
 import { RatingsModal } from "../components/RatingsModal";
 import { MeetingJoinBanner } from "../components/MeetingJoinBanner";
 import { SessionRecapSheet } from "../components/SessionRecapSheet";
 import { MeetingAgendaBanner } from "../components/MeetingAgendaBanner";
 import { MeetingLiveNotesPanel } from "../components/MeetingLiveNotesPanel";
+import { MeetingTraineeNotesPanel } from "../components/MeetingTraineeNotesPanel";
+import { CallSlotTakenOverModal } from "../components/CallSlotTakenOverModal";
+import {
+  navigateToBookTrainer,
+  navigateToMyLocker,
+} from "../../../navigation/navigationRef";
 import { SessionHandoffScreen } from "../components/SessionHandoffScreen";
 import { GamePlanStatusPill } from "../components/GamePlanStatusPill";
 import { useLessonLiveState } from "../hooks/useLessonLiveState";
@@ -331,9 +339,13 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
   if (!peer) {
     return (
       <View style={styles.center}>
+        <Text style={styles.centerTitle}>Session unavailable</Text>
         <Text style={styles.centerText}>
-          We can't find this session. It may have ended.
+          We can't find this lesson. It may have ended or been removed from your schedule.
         </Text>
+        <Pressable style={styles.permBtn} onPress={goHome}>
+          <Text style={styles.permBtnText}>Go to home</Text>
+        </Pressable>
       </View>
     );
   }
@@ -341,7 +353,10 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
   const peerDisplayName =
     peer?.fullname ?? peer?.fullName ?? "Your partner";
 
+  const [slotTakenOverOpen, setSlotTakenOverOpen] = useState(false);
+
   return (
+    <>
     <CallProvider
       sessionId={lessonId}
       fromUser={me}
@@ -372,6 +387,9 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
           persistInInbox: true,
         });
       }}
+      onSlotTakenOver={() => {
+        setSlotTakenOverOpen(true);
+      }}
     >
       <MeetingSurface
         lessonId={lessonId}
@@ -391,6 +409,11 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
         peerDisplayName={peerDisplayName}
       />
     </CallProvider>
+    <CallSlotTakenOverModal
+      visible={slotTakenOverOpen}
+      onExit={goHome}
+    />
+    </>
   );
 }
 
@@ -622,6 +645,8 @@ function MeetingSurface({
 
   const timeWarningVisible = activeWarning != null && !extensionUiBlocking;
 
+  const networkOnline = useNetworkOnline();
+
   const timerStatusHint = useMemo(() => {
     if (
       lessonTimer.status === "paused" &&
@@ -642,15 +667,20 @@ function MeetingSurface({
     if (presence.partnerReconnecting) {
       return "Partner reconnecting…";
     }
+    if (lessonTimer.status === "paused" && lessonTimer.pauseReason === "network_outage") {
+      return "Paused — connection outage";
+    }
+    if (!networkOnline && lessonTimer.status === "running") {
+      return "Weak connection — lesson continues";
+    }
     return null;
   }, [
     presence.partnerLeftKind,
     presence.partnerReconnecting,
     lessonTimer.status,
     lessonTimer.pauseReason,
+    networkOnline,
   ]);
-
-  const networkOnline = useNetworkOnline();
 
   const networkAdaptive = useAdaptiveLessonNetwork({
     enabled: partnerInSession && bothJoined,
@@ -665,6 +695,8 @@ function MeetingSurface({
   const networkTierConfig =
     LESSON_NETWORK_TIER_CONFIG[networkAdaptive.mode];
 
+  const queryClient = useQueryClient();
+
   const clipSync = useClipSync({
     socket,
     fromUserId: myId,
@@ -672,6 +704,15 @@ function MeetingSurface({
     sessionId: lessonId,
     isTrainer,
     networkTier: networkAdaptive.mode,
+    onPeerClipsShared: isTrainer
+      ? () => {
+          pushLocalToast({
+            title: "Trainee shared clips",
+            description: "Review the clips your trainee sent during the lesson.",
+            type: NOTIFICATION_TYPES.TRANSCATIONAL,
+          });
+        }
+      : undefined,
   });
 
   const clipPaneUrisEarly = useMemo(
@@ -900,12 +941,14 @@ function MeetingSurface({
     sessionId: lessonId,
     myId,
     peerId,
+    traineeId: isTrainer ? peerId : myId,
     isTrainer,
     isInstantLesson: isInstant,
     lessonTimerStatus: lessonTimer.status,
   });
 
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [traineeDroveClips, setTraineeDroveClips] = useState(false);
   const [ratingsOpen, setRatingsOpen] = useState(false);
   const [gamePlanOpen, setGamePlanOpen] = useState(false);
   const [gamePlanBanner, setGamePlanBanner] = useState<{
@@ -971,9 +1014,56 @@ function MeetingSurface({
       const primary = playable[0];
       const uri = getClipPlaybackUrl(primary);
       if (uri) setActiveClipUri(uri);
+      setTraineeDroveClips(false);
       clipSync.emitSelectClips(playable);
     },
     [clipSync, meetingLayout]
+  );
+
+  const handleTraineeClipsPicked = useCallback(
+    async (clips: ClipRow[]) => {
+      if (isTrainer) return;
+      if (clips.length === 0) {
+        handleClipsPicked([]);
+        return;
+      }
+      const playable = clips.filter((c) => getClipPlaybackUrl(c));
+      if (playable.length === 0) {
+        Alert.alert(
+          "Clip unavailable",
+          "Could not resolve playback URLs for the selected clips."
+        );
+        return;
+      }
+      try {
+        await persistTraineeClipsOnBooking(lessonId, session, clips);
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.sessions.lookup(lessonId),
+        });
+        const primary = playable[0];
+        const uri = getClipPlaybackUrl(primary);
+        if (uri) setActiveClipUri(uri);
+        setTraineeDroveClips(true);
+        clipSync.broadcastClipsMidLesson(playable);
+        pushLocalToast({
+          title: "Clips shared",
+          description: "Your coach can now review these clips in the lesson.",
+          type: NOTIFICATION_TYPES.TRANSCATIONAL,
+        });
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : "Could not share clips.";
+        Alert.alert("Share clips", msg);
+      }
+    },
+    [
+      clipSync,
+      handleClipsPicked,
+      isTrainer,
+      lessonId,
+      pushLocalToast,
+      queryClient,
+      session,
+    ]
   );
 
   useEffect(() => {
@@ -1197,6 +1287,8 @@ function MeetingSurface({
   }, [clipDurations, clipProgresses, clipSync]);
 
   const [recapSheetOpen, setRecapSheetOpen] = useState(false);
+  const postCallFlowStartedRef = useRef(false);
+
   const continueAfterRecap = useCallback(async () => {
     let hasScreenshots = screenshot.hasCaptures;
     if (!hasScreenshots) {
@@ -1225,9 +1317,13 @@ function MeetingSurface({
   }, [lessonId, myId, peerId, screenshot.hasCaptures]);
 
   const openPostCallFlow = useCallback(async () => {
+    if (postCallFlowStartedRef.current) return;
+    postCallFlowStartedRef.current = true;
     onPostCallFlowStart();
     if (!isTrainer) {
-      setRatingsOpen(true);
+      const already = await hasShownSessionRating(lessonId);
+      if (!already) setRatingsOpen(true);
+      else void openHandoff();
       return;
     }
     /**
@@ -1236,7 +1332,7 @@ function MeetingSurface({
      * post-call flow via `continueAfterRecap`.
      */
     setRecapSheetOpen(true);
-  }, [isTrainer, onPostCallFlowStart]);
+  }, [isTrainer, lessonId, onPostCallFlowStart, openHandoff]);
 
   /** Show ratings after the call ends — `endCall()` will pop us back, so we
    *  open the post-call modal FIRST (which flips the parent guard) and only
@@ -1453,9 +1549,9 @@ function MeetingSurface({
         bookingInfo: { lessonId },
         persistInInbox: true,
       });
-      if (!already) setRatingsOpen(true);
+      void openPostCallFlow();
     })();
-  }, [lessonTimer.status, pushLocalToast, lessonId, extensionFlow]);
+  }, [lessonTimer.status, pushLocalToast, lessonId, extensionFlow, openPostCallFlow]);
 
   useEffect(() => {
     if (!socket || !lessonId) return;
@@ -1596,6 +1692,10 @@ function MeetingSurface({
         <GamePlanStatusPill
           title={gamePlanBanner.title}
           subtitle={gamePlanBanner.subtitle}
+          onPress={() => {
+            setGamePlanBanner(null);
+            navigateToMyLocker();
+          }}
           onDismiss={() => setGamePlanBanner(null)}
         />
       ) : null}
@@ -1631,7 +1731,11 @@ function MeetingSurface({
           <View style={styles.coachChipRow} pointerEvents="none">
             <MeetingCoachChip
               icon="play-circle-outline"
-              label="Coach is controlling clips"
+              label={
+                traineeDroveClips
+                  ? "Clips shared with coach"
+                  : "Coach is controlling clips"
+              }
             />
           </View>
         ) : null}
@@ -2003,7 +2107,41 @@ function MeetingSurface({
         />
       ) : null}
 
-      {isTrainer && isInstant && lessonTimer.status === "waiting" ? (
+      {!isTrainer && instantRecording.traineeNoticeOpen ? (
+        <View
+          style={[styles.recordNotice, { top: chrome.insets.top + 100 }]}
+          pointerEvents="box-none"
+        >
+          <View style={styles.recordNoticeCard}>
+            <Text style={styles.recordNoticeTitle}>Lesson is being recorded</Text>
+            <Text style={styles.recordNoticeBody}>
+              Your coach enabled session recording for this instant lesson.
+            </Text>
+            <Pressable
+              onPress={instantRecording.dismissTraineeNotice}
+              style={styles.recordNoticeBtn}
+            >
+              <Text style={styles.recordNoticeBtnText}>Got it</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+
+      {instantRecording.uploading ? (
+        <View style={[styles.recordNotice, { top: chrome.insets.top + 100 }]}>
+          <View style={styles.recordNoticeCard}>
+            <ActivityIndicator color="#fff" />
+            <Text style={[styles.recordNoticeBody, { marginTop: 8 }]}>
+              Uploading session recording…
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
+      {instantRecording.showTrainerRecordingOptIn &&
+      isTrainer &&
+      isInstant &&
+      lessonTimer.status === "waiting" ? (
         <Pressable
           style={[
             styles.recordOptIn,
@@ -2050,7 +2188,7 @@ function MeetingSurface({
         status={lessonTimer.status}
         bothUsersJoined={bothUsersForTimer}
         statusHint={timerStatusHint}
-        showCoachControls={isTrainer && !isInstant}
+        showCoachControls={isTrainer}
         variant={isInstant ? "instant" : "scheduled"}
         timerLabel="Timer"
         topInset={chrome.topChrome}
@@ -2096,6 +2234,13 @@ function MeetingSurface({
                 <Ionicons name="images-outline" size={18} color={meetingTheme.text} />
               </TopToolButton>
             </>
+          ) : !isTrainer && joinReadiness?.extension_preview?.allowed ? (
+            <TopToolButton
+              onPress={() => setTraineeExtendOpen(true)}
+              label="Extend session"
+            >
+              <Ionicons name="add-circle-outline" size={18} color={meetingTheme.text} />
+            </TopToolButton>
           ) : undefined
         }
       />
@@ -2125,7 +2270,12 @@ function MeetingSurface({
           }
           bottomOffset={chrome.bottomChrome + 88}
         />
-      ) : null}
+      ) : (
+        <MeetingTraineeNotesPanel
+          notes={lessonLive.visibleNotes}
+          topOffset={chrome.insets.top + 100 + stackedBannerExtra}
+        />
+      )}
 
       {/* Bottom chrome */}
       <View
@@ -2144,7 +2294,7 @@ function MeetingSurface({
         onExitClipMode={isTrainer ? exitClipMode : undefined}
         annotationArmed={annotationArmed}
         onToggleDrawing={isTrainer ? handleAnnotationToggle : undefined}
-        onOpenClipPicker={isTrainer ? () => setPickerOpen(true) : undefined}
+        onOpenClipPicker={() => setPickerOpen(true)}
       />
       </View>
 
@@ -2180,8 +2330,9 @@ function MeetingSurface({
       <ClipPickerModal
         visible={pickerOpen}
         onClose={() => setPickerOpen(false)}
-        onDone={handleClipsPicked}
-        bookingClips={sessionBookingClips as import("../../instant-lesson/instantLessonClipsApi").ClipRow[]}
+        audience={isTrainer ? "trainer" : "trainee"}
+        onDone={isTrainer ? handleClipsPicked : handleTraineeClipsPicked}
+        bookingClips={sessionBookingClips as ClipRow[]}
         traineeId={
           isTrainer ? String(session?.trainee_info?._id ?? "") : undefined
         }
@@ -2251,6 +2402,7 @@ function MeetingSurface({
       <SessionTimeWarningModal
         visible={timeWarningVisible}
         kind={activeWarning ?? "five"}
+        audience={isTrainer ? "trainer" : "trainee"}
         canExtend={!isTrainer && activeWarning === "two"}
         onExtend={() => {
           setActiveWarning(null);
@@ -2313,6 +2465,7 @@ function MeetingSurface({
           }}
           onSent={() => {
             setRecapSheetOpen(false);
+            void continueAfterRecap();
           }}
         />
       ) : null}
@@ -2326,6 +2479,16 @@ function MeetingSurface({
           setHandoffOpen(false);
           setRatingsOpen(true);
         }}
+        onRetry={() => void openHandoff()}
+        onRebook={
+          !isTrainer && handoffSummary?.can_rebook && handoffSummary?.peer?._id
+            ? () => {
+                setHandoffOpen(false);
+                onExit();
+                navigateToBookTrainer(handoffSummary.peer!._id);
+              }
+            : undefined
+        }
         onDone={() => {
           setHandoffOpen(false);
           onExit();
@@ -2542,6 +2705,46 @@ const styles = StyleSheet.create({
   recordOptInText: {
     color: "#fff",
     fontSize: 12,
+    fontWeight: "700",
+  },
+  recordNotice: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    zIndex: 26,
+    alignItems: "center",
+  },
+  recordNoticeCard: {
+    maxWidth: 340,
+    width: "100%",
+    backgroundColor: "rgba(15,23,42,0.92)",
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  recordNoticeTitle: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 6,
+  },
+  recordNoticeBody: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  recordNoticeBtn: {
+    marginTop: 12,
+    alignSelf: "flex-end",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: meetingTheme.accent,
+  },
+  recordNoticeBtnText: {
+    color: meetingTheme.onPrimary,
+    fontSize: 13,
     fontWeight: "700",
   },
 });
