@@ -4,6 +4,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Constants from "expo-constants";
 import React, { useCallback, useState } from "react";
 import { Alert, Linking, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import {
   Button,
   Card,
@@ -205,13 +206,15 @@ export function GuestSettingsScreen() {
       </View>
 
       <Modal visible={replayIntroOpen} animationType="slide" presentationStyle="fullScreen">
-        <IntroOnboardingScreen
-          persistOnSkip={false}
-          onGetStarted={() => {
-            setReplayIntroOpen(false);
-            openAuth("Login");
-          }}
-        />
+        <SafeAreaProvider>
+          <IntroOnboardingScreen
+            persistOnSkip={false}
+            onGetStarted={() => {
+              setReplayIntroOpen(false);
+              openAuth("Login");
+            }}
+          />
+        </SafeAreaProvider>
       </Modal>
     </ScreenContainer>
   );

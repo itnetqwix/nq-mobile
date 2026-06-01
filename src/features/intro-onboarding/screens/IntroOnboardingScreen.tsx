@@ -1,12 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useRef, useState } from "react";
 import {
+  FlatList,
   Pressable,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from "react-native";
-import PagerView from "react-native-pager-view";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NetqwixLogo } from "../../../components/brand/NetqwixLogo";
 import { Button } from "../../../components/ui";
@@ -28,7 +31,8 @@ export function IntroOnboardingScreen({
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const insets = useSafeAreaInsets();
-  const pagerRef = useRef<PagerView>(null);
+  const { width: pageWidth } = useWindowDimensions();
+  const listRef = useRef<FlatList<IntroSlide>>(null);
   const [page, setPage] = useState(0);
   const lastPage = INTRO_SLIDES.length - 1;
 
@@ -43,7 +47,7 @@ export function IntroOnboardingScreen({
       return;
     }
     haptics.tap();
-    pagerRef.current?.setPage(page + 1);
+    listRef.current?.scrollToIndex({ index: page + 1, animated: true });
   }, [finish, lastPage, page]);
 
   const onSkip = useCallback(() => {
@@ -53,6 +57,14 @@ export function IntroOnboardingScreen({
     }
     finish();
   }, [finish, persistOnSkip]);
+
+  const onScrollEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const next = Math.round(e.nativeEvent.contentOffset.x / pageWidth);
+      setPage(Math.min(lastPage, Math.max(0, next)));
+    },
+    [lastPage, pageWidth]
+  );
 
   return (
     <View style={[styles.root, { backgroundColor: c.background, paddingTop: insets.top }]}>
@@ -72,18 +84,27 @@ export function IntroOnboardingScreen({
         )}
       </View>
 
-      <PagerView
-        ref={pagerRef}
+      <FlatList
+        ref={listRef}
+        data={[...INTRO_SLIDES]}
+        keyExtractor={(item) => item.id}
+        horizontal
+        pagingEnabled
+        bounces={false}
+        showsHorizontalScrollIndicator={false}
         style={styles.pager}
-        initialPage={0}
-        onPageSelected={(e) => setPage(e.nativeEvent.position)}
-      >
-        {INTRO_SLIDES.map((slide) => (
-          <View key={slide.id} style={styles.page}>
-            <IntroSlideHero slide={slide} />
+        onMomentumScrollEnd={onScrollEnd}
+        getItemLayout={(_, index) => ({
+          length: pageWidth,
+          offset: pageWidth * index,
+          index,
+        })}
+        renderItem={({ item }) => (
+          <View style={[styles.page, { width: pageWidth }]}>
+            <IntroSlideHero slide={item} />
           </View>
-        ))}
-      </PagerView>
+        )}
+      />
 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, space.lg) }]}>
         <Text style={[styles.title, { color: c.text }]}>

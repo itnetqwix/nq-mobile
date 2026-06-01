@@ -112,8 +112,8 @@ export function AppRoot() {
   return (
     <GestureHandlerRootView style={styles.flex}>
       <StoreProvider>
-      <AppBootstrapGate appInitReady={localeReady}>
       <SafeAreaProvider>
+      <AppBootstrapGate appInitReady={localeReady}>
         <StripeProvider
           publishableKey={STRIPE_PUBLISHABLE_KEY}
           merchantIdentifier={
@@ -164,8 +164,8 @@ export function AppRoot() {
             </LoaderProvider>
           </ThemeProvider>
         </StripeProvider>
-      </SafeAreaProvider>
       </AppBootstrapGate>
+      </SafeAreaProvider>
       </StoreProvider>
     </GestureHandlerRootView>
   );
