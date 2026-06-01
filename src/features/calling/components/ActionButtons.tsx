@@ -20,6 +20,9 @@ type Props = {
   bigVideoActive?: boolean;
   annotationArmed?: boolean;
   onToggleDrawing?: () => void;
+  /** Trainer: capture lesson screenshot (clip stage or live video). */
+  onScreenshot?: () => void;
+  screenshotCapturing?: boolean;
   onEndCall?: () => void;
   bottomInset?: number;
   audioRouteLabel?: string;
@@ -39,6 +42,8 @@ export function ActionButtons({
   bigVideoActive,
   annotationArmed,
   onToggleDrawing,
+  onScreenshot,
+  screenshotCapturing = false,
   onEndCall,
   bottomInset = 12,
   audioRouteLabel,
@@ -133,6 +138,20 @@ export function ActionButtons({
               name="gesture"
               size={ICON}
               color={annotationArmed ? meetingTheme.onPrimary : meetingTheme.text}
+            />
+          </RoundButton>
+        ) : null}
+
+        {isTrainer && onScreenshot ? (
+          <RoundButton
+            onPress={onScreenshot}
+            accessibilityLabel="Screenshot"
+            disabled={screenshotCapturing}
+          >
+            <Ionicons
+              name="camera-outline"
+              size={ICON}
+              color={screenshotCapturing ? "rgba(255,255,255,0.4)" : meetingTheme.text}
             />
           </RoundButton>
         ) : null}

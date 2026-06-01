@@ -13,6 +13,7 @@ import { AuthScreenLayout } from "../components/AuthScreenLayout";
 import { SocialAuthButtons } from "../components/SocialAuthButtons";
 import { HomeBannerStrip } from "../../content/components/HomeBannerStrip";
 import type { AuthScreenProps } from "../../../navigation/types";
+import { exitAuthAsGuest } from "../lib/exitAuthAsGuest";
 import { promptEnableAppUnlock } from "../security/appUnlock";
 import { peekLastAuthMethod, setLastAuthMethod } from "../lib/lastAuthMethod";
 
@@ -147,7 +148,7 @@ export function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
             <Text style={styles.link}>{t("auth.forgotPassword")}</Text>
           </Pressable>
           <Pressable
-            onPress={() => navigation.getParent()?.goBack()}
+            onPress={() => exitAuthAsGuest(navigation)}
             style={styles.guestRow}
             accessibilityRole="link"
             accessibilityLabel={t("auth.continueAsGuest")}

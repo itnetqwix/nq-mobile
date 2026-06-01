@@ -1,4 +1,35 @@
 {
+  "splash": {
+    "tagline": "Live coaching, anywhere",
+    "preparing": "Getting things ready…"
+  },
+  "intro": {
+    "skip": "Skip",
+    "next": "Next",
+    "getStarted": "Get started",
+    "slides": {
+      "leap": {
+        "title": "Make the leap",
+        "body": "Level up your game with live 1:1 coaching — the same edge pros use, built for every athlete."
+      },
+      "coaches": {
+        "title": "Find your coach",
+        "body": "Browse verified experts by sport, skill, and schedule. Save favorites and book when you're ready."
+      },
+      "live": {
+        "title": "Train live, anywhere",
+        "body": "Video sessions, clips, and game plans in one locker — coach from the field or the couch."
+      }
+    }
+  },
+  "guestSettings": {
+    "bannerTitle": "You're browsing as a guest",
+    "bannerBody": "Sign in or create a free account to book sessions, message coaches, and sync your locker.",
+    "supportSection": "Help & about",
+    "replayIntro": "Replay welcome tour",
+    "languageSaved": "Language updated",
+    "version": "NetQwix v{{version}}"
+  },
   "common": {
     "cancel": "Cancel",
     "done": "Done",

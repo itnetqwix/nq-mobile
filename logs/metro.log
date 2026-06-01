@@ -1,0 +1,1674 @@
+=== NetQwix Metro (port 8081) ===
+=== NetQwix development build (native video lessons) ===
+     exp://192.168.7.33:8081
+=== Expo Go only (no native video lessons) ===
+  Open Expo Go app → Enter URL manually → exp://192.168.7.33:8081
+=== Same Wi‑Fi / VPN issues ===
+
+Android USB: run npm run android:reverse then use exp://127.0.0.1:8081
+
+env: load .env
+env: export EXPO_PUBLIC_API_BASE_URL EXPO_PUBLIC_WEB_ORIGIN EXPO_PUBLIC_ICE_CONFIG_URL EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY EXPO_PUBLIC_GOOGLE_CLIENT_ID EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID
+Starting project at /Users/kumarsatyam/Desktop/netqwix/nq-mobile
+Using src/app as the root directory for Expo Router.
+Metro is running in CI mode, reloads are disabled. Remove CI=true to enable watch mode.
+Starting Metro Bundler
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+=== NetQwix Metro (port 8081) ===
+=== NetQwix development build (native video lessons) ===
+     exp://192.168.7.33:8081
+=== Expo Go only (no native video lessons) ===
+  Open Expo Go app → Enter URL manually → exp://192.168.7.33:8081
+=== Same Wi‑Fi / VPN issues ===
+
+Android USB: run npm run android:reverse then use exp://127.0.0.1:8081
+
+env: load .env
+env: export EXPO_PUBLIC_API_BASE_URL EXPO_PUBLIC_WEB_ORIGIN EXPO_PUBLIC_ICE_CONFIG_URL EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY EXPO_PUBLIC_GOOGLE_CLIENT_ID EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID
+Starting project at /Users/kumarsatyam/Desktop/netqwix/nq-mobile
+Using src/app as the root directory for Expo Router.
+Starting Metro Bundler
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+Android ./index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+ WARN  Attempted to import the module "/Users/kumarsatyam/Desktop/netqwix/nq-mobile/node_modules/react-native-webrtc/node_modules/event-target-shim/index" which is not listed in the "exports" of "/Users/kumarsatyam/Desktop/netqwix/nq-mobile/node_modules/react-native-webrtc/node_modules/event-target-shim" under the requested subpath "./index". Falling back to file-based resolution. Consider updating the call site or asking the package maintainer(s) to expose this API.
+Android ./index.ts ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 90.3% (2312/2433)
+Android Bundled 3701ms index.ts (2433 modules)
+ ERROR  forwardRef render functions accept exactly two parameters: props and ref. %s Did you forget to use the ref parameter?
+ LOG  [nq-mobile] API_BASE_URL = https://api-netqwix.com  | WEB_APP_ORIGIN = https://netqwix.com
+ LOG  [nq-mobile] STRIPE_PUBLISHABLE_KEY prefix/len = pk_live_51Ng… 107
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ LOG  [nq-mobile] loader tips API: https://api-netqwix.com/master/master-data
+ WARN  setLayoutAnimationEnabledExperimental is currently a no-op in the New Architecture.
+iOS ./index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+ WARN  Attempted to import the module "/Users/kumarsatyam/Desktop/netqwix/nq-mobile/node_modules/react-native-webrtc/node_modules/event-target-shim/index" which is not listed in the "exports" of "/Users/kumarsatyam/Desktop/netqwix/nq-mobile/node_modules/react-native-webrtc/node_modules/event-target-shim" under the requested subpath "./index". Falling back to file-based resolution. Consider updating the call site or asking the package maintainer(s) to expose this API.
+iOS ./index.ts ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 83.8% (1845/2016)
+iOS Bundled 4111ms index.ts (2459 modules)
+ ERROR  forwardRef render functions accept exactly two parameters: props and ref. %s Did you forget to use the ref parameter?
+ LOG  [nq-mobile] API_BASE_URL = https://api-netqwix.com  | WEB_APP_ORIGIN = https://netqwix.com
+ LOG  [nq-mobile] STRIPE_PUBLISHABLE_KEY prefix/len = pk_live_51Ng… 107
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ LOG  [nq-mobile] loader tips API: https://api-netqwix.com/master/master-data
+ WARN  [auth] 401 ignored /user/me {"grace": false, "skipSignOut": true, "staleRequest": false}
+Android src/features/wallet/walletApi.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 2896ms src/features/wallet/walletApi.ts (664 modules)
+Android Bundled 245ms index.ts (1 module)
+ ERROR  forwardRef render functions accept exactly two parameters: props and ref. %s Did you forget to use the ref parameter?
+ LOG  [nq-mobile] API_BASE_URL = https://api-netqwix.com  | WEB_APP_ORIGIN = https://netqwix.com
+ LOG  [nq-mobile] STRIPE_PUBLISHABLE_KEY prefix/len = pk_live_51Ng… 107
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ LOG  [nq-mobile] loader tips API: https://api-netqwix.com/master/master-data
+ WARN  setLayoutAnimationEnabledExperimental is currently a no-op in the New Architecture.
+Android Bundled 22ms src/features/wallet/walletApi.ts (1 module)
+ LOG  [socket] connected via polling
+iOS src/features/wallet/walletApi.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+iOS Bundled 388ms src/features/wallet/walletApi.ts (649 modules)
+iOS Bundled 124ms index.ts (1 module)
+ ERROR  forwardRef render functions accept exactly two parameters: props and ref. %s Did you forget to use the ref parameter?
+ LOG  [nq-mobile] API_BASE_URL = https://api-netqwix.com  | WEB_APP_ORIGIN = https://netqwix.com
+ LOG  [nq-mobile] STRIPE_PUBLISHABLE_KEY prefix/len = pk_live_51Ng… 107
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ LOG  [nq-mobile] loader tips API: https://api-netqwix.com/master/master-data
+ WARN  [pushTokens] failed to get token [Error: no valid “aps-environment” entitlement string found for application]
+iOS Bundled 57ms src/features/wallet/walletApi.ts (1 module)
+ LOG  [socket] connected via polling
+ LOG  [socket] connected via polling
+iOS ./index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+iOS Bundled 118ms index.ts (1 module)
+ ERROR  forwardRef render functions accept exactly two parameters: props and ref. %s Did you forget to use the ref parameter?
+ LOG  [nq-mobile] API_BASE_URL = https://api-netqwix.com  | WEB_APP_ORIGIN = https://netqwix.com
+ LOG  [nq-mobile] STRIPE_PUBLISHABLE_KEY prefix/len = pk_live_51Ng… 107
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ LOG  [nq-mobile] loader tips API: https://api-netqwix.com/master/master-data
+ WARN  [pushTokens] failed to get token [Error: no valid “aps-environment” entitlement string found for application]
+iOS Bundled 37ms src/features/wallet/walletApi.ts (1 module)
+ LOG  [socket] connected via polling
+iOS ./index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+iOS Bundled 93ms index.ts (1 module)
+ ERROR  forwardRef render functions accept exactly two parameters: props and ref. %s Did you forget to use the ref parameter?
+ LOG  [nq-mobile] API_BASE_URL = https://api-netqwix.com  | WEB_APP_ORIGIN = https://netqwix.com
+ LOG  [nq-mobile] STRIPE_PUBLISHABLE_KEY prefix/len = pk_live_51Ng… 107
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ LOG  [nq-mobile] loader tips API: https://api-netqwix.com/master/master-data
+ WARN  [pushTokens] failed to get token [Error: no valid “aps-environment” entitlement string found for application]
+iOS Bundled 24ms src/features/wallet/walletApi.ts (1 module)
+ LOG  [socket] connected via polling
+Android ./index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 114ms index.ts (1 module)
+ ERROR  forwardRef render functions accept exactly two parameters: props and ref. %s Did you forget to use the ref parameter?
+ LOG  [nq-mobile] API_BASE_URL = https://api-netqwix.com  | WEB_APP_ORIGIN = https://netqwix.com
+ LOG  [nq-mobile] STRIPE_PUBLISHABLE_KEY prefix/len = pk_live_51Ng… 107
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ LOG  [nq-mobile] loader tips API: https://api-netqwix.com/master/master-data
+ WARN  setLayoutAnimationEnabledExperimental is currently a no-op in the New Architecture.
+Android Bundled 21ms src/features/wallet/walletApi.ts (1 module)
+ LOG  [socket] connected via polling
+iOS src/features/instant-lesson/instantLessonRestApi.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+iOS Bundled 544ms src/features/instant-lesson/instantLessonRestApi.ts (586 modules)
+iOS Bundled 120ms index.ts (1 module)
+ ERROR  forwardRef render functions accept exactly two parameters: props and ref. %s Did you forget to use the ref parameter?
+ LOG  [nq-mobile] API_BASE_URL = https://api-netqwix.com  | WEB_APP_ORIGIN = https://netqwix.com
+ LOG  [nq-mobile] STRIPE_PUBLISHABLE_KEY prefix/len = pk_live_51Ng… 107
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ LOG  [nq-mobile] loader tips API: https://api-netqwix.com/master/master-data
+ WARN  Sending `RNCallKeepDidChangeAudioRoute` with no listeners registered.
+ WARN  Sending `RNCallKeepDidChangeAudioRoute` with no listeners registered.
+ WARN  [pushTokens] failed to get token [Error: no valid “aps-environment” entitlement string found for application]
+iOS Bundled 21ms src/features/wallet/walletApi.ts (1 module)
+ LOG  [socket] connected via polling
+iOS src/features/instant-lesson/instantLessonRestApi.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+iOS Bundled 25ms src/features/instant-lesson/instantLessonRestApi.ts (1 module)
+Android src/features/calling/screens/NativeMeetingScreen.tsx ░░░░░░░░░░░░░░░░  0.0% (0/1)
+| (node:84066) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+ WARN  Attempted to import the module "/Users/kumarsatyam/Desktop/netqwix/nq-mobile/node_modules/react-native-webrtc/node_modules/event-target-shim/index" which is not listed in the "exports" of "/Users/kumarsatyam/Desktop/netqwix/nq-mobile/node_modules/react-native-webrtc/node_modules/event-target-shim" under the requested subpath "./index". Falling back to file-based resolution. Consider updating the call site or asking the package maintainer(s) to expose this API.
+| (node:84068) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:84071) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:84067) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:84070) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:84072) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:84069) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+Android src/features/calling/screens/NativeMeetingScreen.tsx ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 84.7% (1424/1547)
+iOS src/features/calling/screens/NativeMeetingScreen.tsx ░░░░░░░░░░░░░░░░  0.0% (0/1)
+ WARN  Attempted to import the module "/Users/kumarsatyam/Desktop/netqwix/nq-mobile/node_modules/react-native-webrtc/node_modules/event-target-shim/index" which is not listed in the "exports" of "/Users/kumarsatyam/Desktop/netqwix/nq-mobile/node_modules/react-native-webrtc/node_modules/event-target-shim" under the requested subpath "./index". Falling back to file-based resolution. Consider updating the call site or asking the package maintainer(s) to expose this API.
+Android Bundled 4967ms src/features/calling/screens/NativeMeetingScreen.tsx (2096 modules)
+iOS Bundled 4736ms src/features/calling/screens/NativeMeetingScreen.tsx (2098 modules)
+ LOG  rn-webrtc:pc:DEBUG 0 ctor +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 addTrack +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 addTrack +2ms
+ LOG  [NativeCallEngine] emitting ON_CALL_JOIN {"from_user": "68c0ca4810fa011b8c406589", "peerId": "68c0ca4810fa011b8c406589_6a1d39af0816bdb27799519b_1780300267752_5wbbw5m", "sessionId": "6a1d39af0816bdb27799519b", "signalingMode": "socket-webrtc", "to_user": "68c210c410fa011b8c407204"}
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ LOG  rn-webrtc:pc:DEBUG 0 ctor +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 addTrack +3ms
+ LOG  rn-webrtc:pc:DEBUG 0 addTrack +32ms
+ LOG  [NativeCallEngine] emitting ON_CALL_JOIN {"from_user": "68c210c410fa011b8c407204", "peerId": "68c210c410fa011b8c407204_6a1d39af0816bdb27799519b_1780300268827_82hqc1b", "sessionId": "6a1d39af0816bdb27799519b", "signalingMode": "socket-webrtc", "to_user": "68c0ca4810fa011b8c406589"}
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +30ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  [NativeCallEngine] ON_CALL_JOIN received from peer {"accountType": "Trainee", "from_user": "68c210c410fa011b8c407204", "joinedUserId": "68c210c410fa011b8c407204", "peerId": "68c210c410fa011b8c407204_6a1d39af0816bdb27799519b_1780300268827_82hqc1b", "sessionId": "6a1d39af0816bdb27799519b", "signalingMode": "socket-webrtc", "to_user": "68c0ca4810fa011b8c406589"}
+ LOG  rn-webrtc:pc:DEBUG 0 createOffer +334ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +36ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 createOffer OK +25ms
+ LOG  rn-webrtc:pc:DEBUG 0 setLocalDescription +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 setLocalDescription OK +6ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 0 setRemoteDescription +376ms
+ LOG  rn-webrtc:pc:DEBUG 0 ontrack +78ms
+ LOG  rn-webrtc:pc:DEBUG 0 ontrack +1ms
+ LOG  [NativeCallEngine] ontrack {"kind": "audio", "trackCount": 1}
+ LOG  [NativeCallEngine] ontrack {"kind": "video", "trackCount": 2}
+ LOG  rn-webrtc:pc:DEBUG 0 setRemoteDescription OK +7ms
+ LOG  rn-webrtc:pc:DEBUG 0 addIceCandidate +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 addIceCandidate +6ms
+ LOG  rn-webrtc:pc:DEBUG 0 addIceCandidate +81ms
+ LOG  rn-webrtc:pc:DEBUG 0 addIceCandidate +4ms
+ LOG  rn-webrtc:pc:DEBUG 0 addIceCandidate +3ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +3ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +3ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +3ms
+ LOG  rn-webrtc:pc:DEBUG 0 addIceCandidate +5ms
+ LOG  rn-webrtc:pc:DEBUG 0 addIceCandidate +6ms
+ LOG  rn-webrtc:pc:DEBUG 0 addIceCandidate +69ms
+ LOG  rn-webrtc:pc:DEBUG 0 addIceCandidate +6ms
+ LOG  rn-webrtc:pc:DEBUG 0 addIceCandidate +63ms
+ LOG  rn-webrtc:pc:DEBUG 0 createAnswer +3ms
+ LOG  rn-webrtc:pc:DEBUG 0 setLocalDescription +160ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 setLocalDescription OK +315ms
+ LOG  [NativeCallEngine] connectionState connecting
+ LOG  [NativeCallEngine] connectionState connecting
+ LOG  rn-webrtc:pc:DEBUG 0 setRemoteDescription +823ms
+ LOG  [NativeCallEngine] connectionState connected
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +984ms
+ LOG  rn-webrtc:pc:DEBUG 0 ontrack +505ms
+ LOG  rn-webrtc:pc:DEBUG 0 ontrack +2ms
+ LOG  [NativeCallEngine] ontrack {"kind": "audio", "trackCount": 1}
+ LOG  [NativeCallEngine] ontrack {"kind": "video", "trackCount": 2}
+ LOG  rn-webrtc:pc:DEBUG 0 setRemoteDescription OK +3ms
+ LOG  rn-webrtc:pc:DEBUG 0 addIceCandidate +0ms
+ LOG  [NativeCallEngine] connectionState connected
+ LOG  rn-webrtc:pc:DEBUG 0 addIceCandidate +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 addIceCandidate +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +680ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +335ms
+ LOG  [NativeCallEngine] emitting ON_CALL_JOIN {"from_user": "68c210c410fa011b8c407204", "peerId": "68c210c410fa011b8c407204_6a1d39af0816bdb27799519b_1780300268827_82hqc1b", "sessionId": "6a1d39af0816bdb27799519b", "signalingMode": "socket-webrtc", "to_user": "68c0ca4810fa011b8c406589"}
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +4s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +690ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +311ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +841ms
+ LOG  [NativeCallEngine] emitting ON_CALL_JOIN {"from_user": "68c210c410fa011b8c407204", "peerId": "68c210c410fa011b8c407204_6a1d39af0816bdb27799519b_1780300268827_82hqc1b", "sessionId": "6a1d39af0816bdb27799519b", "signalingMode": "socket-webrtc", "to_user": "68c0ca4810fa011b8c406589"}
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +459ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +640ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +979ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +251ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +327ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +751ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +324ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +301ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +957ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +281ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +734ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +82ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +275ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +681ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +285ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +668ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +85ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +334ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +581ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +264ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1s
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +613ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +99ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +491ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +573ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +246ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +543ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +99ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +346ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +468ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +85ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +255ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +355ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +466ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +84ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +373ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +402ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +235ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +398ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +392ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +393ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +75ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +176ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +65ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +346ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +230ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +324ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +181ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +60ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +232ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +96ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +147ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +87ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +168ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +133ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +104ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +152ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +100ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +184ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +133ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +137ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +183ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +100ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +133ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +119ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +135ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +72ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +81ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +57ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +120ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +31ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +3ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +78ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +171ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +69ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +55ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +184ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +18ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +130ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +68ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +168ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +153ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +146ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +40ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +225ms
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +0ms
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +371ms
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +219ms
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+iOS Bundled 129ms index.ts (1 module)
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ ERROR  forwardRef render functions accept exactly two parameters: props and ref. %s Did you forget to use the ref parameter?
+ LOG  [nq-mobile] API_BASE_URL = https://api-netqwix.com  | WEB_APP_ORIGIN = https://netqwix.com
+ LOG  [nq-mobile] STRIPE_PUBLISHABLE_KEY prefix/len = pk_live_51Ng… 107
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ LOG  [nq-mobile] loader tips API: https://api-netqwix.com/master/master-data
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ WARN  [pushTokens] failed to get token [Error: no valid “aps-environment” entitlement string found for application]
+iOS Bundled 35ms src/features/wallet/walletApi.ts (1 module)
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +282ms
+ LOG  [socket] connected via polling
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ LOG  [NativeCallEngine] connectionState disconnected
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +297ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +61ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +107ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +162ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +344ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +166ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ LOG  [NativeCallEngine] connectionState failed
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +354ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +219ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +226ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +278ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +275ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +439ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +329ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +1ms
+ LOG  [NativeCallEngine] ICE recovery — reconnecting peer after sustained disconnect
+ LOG  rn-webrtc:pc:DEBUG 0 close +174ms
+ LOG  rn-webrtc:pc:DEBUG 1 ctor +427ms
+ LOG  rn-webrtc:pc:DEBUG 1 addTrack +1ms
+ LOG  rn-webrtc:pc:DEBUG 1 addTrack +5ms
+ LOG  [NativeCallEngine] emitting ON_CALL_JOIN {"from_user": "68c210c410fa011b8c407204", "peerId": "68c210c410fa011b8c407204_6a1d39af0816bdb27799519b_1780300268827_82hqc1b", "sessionId": "6a1d39af0816bdb27799519b", "signalingMode": "socket-webrtc", "to_user": "68c0ca4810fa011b8c406589"}
+ LOG  rn-webrtc:pc:DEBUG 1 getStats +6ms
+ LOG  [NativeCallEngine] connectionState closed
+ LOG  rn-webrtc:pc:DEBUG 1 getStats +136ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 1 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 1 close +425ms
+ LOG  [NativeCallEngine] connectionState closed
+ LOG  [socket] connected via polling
+ WARN  ImmutableStateInvariantMiddleware took 34ms, which is more than the warning threshold of 32ms. 
+If your state or actions are very large, you may want to disable the middleware as it might cause too much of a slowdown in development mode. See https://redux-toolkit.js.org/api/getDefaultMiddleware for instructions.
+It is disabled in production builds, so you don't need to worry about that.
+ LOG  [socket] connected via polling
+ LOG  [socket] connected via polling
+iOS src/features/instant-lesson/instantLessonRestApi.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+iOS Bundled 41ms src/features/instant-lesson/instantLessonRestApi.ts (1 module)
+iOS src/features/calling/screens/NativeMeetingScreen.tsx ░░░░░░░░░░░░░░░░  0.0% (0/1)
+iOS Bundled 550ms src/features/calling/screens/NativeMeetingScreen.tsx (1 module)
+ LOG  rn-webrtc:pc:DEBUG 2 ctor +1m
+ LOG  rn-webrtc:pc:DEBUG 2 addTrack +1ms
+ LOG  rn-webrtc:pc:DEBUG 2 addTrack +5ms
+ LOG  [NativeCallEngine] emitting ON_CALL_JOIN {"from_user": "68c210c410fa011b8c407204", "peerId": "68c210c410fa011b8c407204_6a1d3af10816bdb277995c1e_1780300546342_yyk46ms", "sessionId": "6a1d3af10816bdb277995c1e", "signalingMode": "socket-webrtc", "to_user": "68c0ca4810fa011b8c406589"}
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 ctor +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 addTrack +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 addTrack +1ms
+ LOG  [NativeCallEngine] emitting ON_CALL_JOIN {"from_user": "68c0ca4810fa011b8c406589", "peerId": "68c0ca4810fa011b8c406589_6a1d3af10816bdb277995c1e_1780300548173_lnjk7ac", "sessionId": "6a1d3af10816bdb277995c1e", "signalingMode": "socket-webrtc", "to_user": "68c210c410fa011b8c407204"}
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +59ms
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ LOG  [NativeCallEngine] ON_CALL_JOIN received from peer {"accountType": "Trainer", "from_user": "68c0ca4810fa011b8c406589", "joinedUserId": "68c0ca4810fa011b8c406589", "peerId": "68c0ca4810fa011b8c406589_6a1d3af10816bdb277995c1e_1780300548173_lnjk7ac", "sessionId": "6a1d3af10816bdb277995c1e", "signalingMode": "socket-webrtc", "to_user": "68c210c410fa011b8c407204"}
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +696ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +3ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +824ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +357ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +634ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +0ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +810ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +358ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +592ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +830ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +359ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +508ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +0ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +868ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +376ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +501ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +376ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +860ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +383ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +396ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +858ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +370ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +398ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +774ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +368ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +280ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +0ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +808ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +370ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +223ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +632ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +880ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +367ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +142ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +927ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +347ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +84ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +951ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +347ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +912ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +351ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +917ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +895ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +350ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +62ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +576ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +227ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +329ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +145ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +149ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +334ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +172ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +205ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +235ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +0ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +289ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +207ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +226ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +211ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +205ms
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ WARN  [Worklets] Tried to modify key `current` of an object which has been already passed to a worklet. See
+        https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#tried-to-modify-key-of-an-object-which-has-been-converted-to-a-serializable
+        for more details.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +273ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +246ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +423ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +175ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +234ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +1ms
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +494ms
+ LOG  rn-webrtc:pc:DEBUG 0 getStats +2s
+ LOG  rn-webrtc:pc:DEBUG 2 getStats +2s
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+ ERROR  Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.

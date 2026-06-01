@@ -117,6 +117,7 @@ function parseIncomingStrokePayload(
         color: "#ff3b30",
         width: 4,
         kind: "stroke",
+        sourceCanvasSize: canvasSize,
       };
     }
   }
@@ -192,6 +193,7 @@ export function useDrawingSync({
     canvasSize: { width: number; height: number };
   } | null>(null);
   const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastCanvasSizeRef = useRef({ width: 1, height: 1 });
   const drawingEmitMinMsRef = useRef(drawingEmitMinMs);
   drawingEmitMinMsRef.current = drawingEmitMinMs;
 
@@ -201,9 +203,13 @@ export function useDrawingSync({
     setCommittedStrokeCount(strokeBufferRef.current.length);
   }, []);
 
-  const pushStrokeToBuffer = useCallback((stroke: RemoteStroke) => {
+  const pushStrokeToBuffer = useCallback((stroke: RemoteStroke, canvasSize?: { width: number; height: number }) => {
+    const withSize: RemoteStroke = {
+      ...stroke,
+      sourceCanvasSize: stroke.sourceCanvasSize ?? canvasSize,
+    };
     const buf = strokeBufferRef.current;
-    buf.push(stroke);
+    buf.push(withSize);
     if (buf.length > MAX_REPLAY_STROKES) {
       strokeBufferRef.current = buf.slice(-MAX_REPLAY_STROKES);
     }
@@ -218,10 +224,11 @@ export function useDrawingSync({
         sessionId,
         canvasIndex,
       });
+      const canvasSize = lastCanvasSizeRef.current;
       for (const stroke of strokeBufferRef.current) {
         socket.emit(DRAWING_EVENTS.DRAW, {
           strikes: serializeStrokeForSocket(stroke),
-          canvasSize: { width: 1, height: 1 },
+          canvasSize,
           userInfo,
           sessionId,
           canvasIndex,
@@ -294,7 +301,8 @@ export function useDrawingSync({
       pendingTimerRef.current = null;
     }
     if (!pending || !isTrainer || !socket) return;
-    pushStrokeToBuffer(pending.stroke);
+    lastCanvasSizeRef.current = pending.canvasSize;
+    pushStrokeToBuffer(pending.stroke, pending.canvasSize);
     lastEmitAtRef.current = Date.now();
     try {
       socket.emit(DRAWING_EVENTS.DRAW, {
@@ -315,7 +323,8 @@ export function useDrawingSync({
       const minMs = drawingEmitMinMsRef.current;
       const now = Date.now();
       if (minMs <= 0 || now - lastEmitAtRef.current >= minMs) {
-        pushStrokeToBuffer(stroke);
+        lastCanvasSizeRef.current = canvasSize;
+        pushStrokeToBuffer(stroke, canvasSize);
         lastEmitAtRef.current = now;
         try {
           socket.emit(DRAWING_EVENTS.DRAW, {
@@ -410,11 +419,12 @@ export function useDrawingSync({
       sessionId,
       canvasIndex,
     });
+    const canvasSize = lastCanvasSizeRef.current;
     for (const stroke of strokeBufferRef.current) {
       try {
         socket.emit(DRAWING_EVENTS.DRAW, {
           strikes: serializeStrokeForSocket(stroke),
-          canvasSize: { width: 1, height: 1 },
+          canvasSize,
           userInfo,
           sessionId,
           canvasIndex,

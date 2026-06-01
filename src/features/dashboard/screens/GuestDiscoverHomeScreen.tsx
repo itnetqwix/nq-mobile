@@ -17,6 +17,7 @@ import { GuestSavedCoachesStrip } from "../components/guest/GuestSavedCoachesStr
 import { TraineeDiscoverDashboard } from "../components/home/TraineeDiscoverDashboard";
 import { useGuestFavoriteTrainers } from "../hooks/useGuestFavoriteTrainers";
 import { GuestBrowsingNudge } from "../components/guest/GuestBrowsingNudge";
+import { GuestExploreBanner } from "../components/guest/GuestExploreBanner";
 import { useContentDeepLink } from "../../content/hooks/useContentDeepLink";
 
 type Nav = NativeStackNavigationProp<HomeStackParamList, "DashboardHome">;
@@ -85,6 +86,7 @@ export function GuestDiscoverHomeScreen() {
           scrollable
           leadingContent={
             <View style={styles.heroWrap}>
+              <GuestExploreBanner />
               <GuestBrowsingNudge onSignUp={() => openAuth("SignUp")} />
               <FreeIntroLessonHero
                 onPress={() =>
@@ -114,7 +116,9 @@ export function GuestDiscoverHomeScreen() {
           name={t("guest.explorerName")}
           accountType={AccountType.TRAINEE}
           user={null}
-          onSettings={() => openAuth("Login")}
+          onSettings={() =>
+            navigation.navigate("ShellSurface", { surfaceId: "settings" })
+          }
           onViewTrainer={(trainer) => {
             void recordTrainerView(trainer);
             setProfileTrainer(trainer);

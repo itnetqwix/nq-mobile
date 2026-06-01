@@ -188,10 +188,19 @@ function scaleStrokeForCanvas(
   const sx = target.width / source.width;
   const sy = target.height / source.height;
   const scale = (sx + sy) / 2;
+  const bounds = stroke.shapeBounds;
   return {
     ...stroke,
     points: stroke.points.map((p) => ({ x: p.x * sx, y: p.y * sy })),
     width: stroke.width * scale,
+    shapeBounds: bounds
+      ? {
+          x0: bounds.x0 * sx,
+          y0: bounds.y0 * sy,
+          x1: bounds.x1 * sx,
+          y1: bounds.y1 * sy,
+        }
+      : undefined,
   };
 }
 

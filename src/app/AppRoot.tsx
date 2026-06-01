@@ -5,7 +5,7 @@ import {
   PersistQueryClientProvider,
 } from "../lib/queryPersist";
 import { StripeProvider } from "@stripe/stripe-react-native";
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -52,6 +52,7 @@ import { loadPersistedAppLocale } from "../i18n/localeStorage";
 import { initMobileSentry } from "../lib/sentry";
 import { queryKeys } from "../lib/queryKeys";
 import { StoreProvider } from "../store/StoreProvider";
+import { AppBootstrapGate } from "../components/splash";
 import { setGlobalQueryClient } from "../store/queryClientRef";
 
 initMobileSentry();
@@ -65,6 +66,7 @@ function SystemStateHooks() {
 }
 
 export function AppRoot() {
+  const [localeReady, setLocaleReady] = useState(false);
   const queryClient = useMemo(() => createPersistedQueryClient(), []);
 
   useEffect(() => {
@@ -85,8 +87,12 @@ export function AppRoot() {
 
   useEffect(() => {
     void (async () => {
-      const stored = await loadPersistedAppLocale();
-      if (stored) await i18n.changeLanguage(normalizeAppLocale(stored));
+      try {
+        const stored = await loadPersistedAppLocale();
+        if (stored) await i18n.changeLanguage(normalizeAppLocale(stored));
+      } finally {
+        setLocaleReady(true);
+      }
     })();
   }, []);
 
@@ -106,6 +112,7 @@ export function AppRoot() {
   return (
     <GestureHandlerRootView style={styles.flex}>
       <StoreProvider>
+      <AppBootstrapGate appInitReady={localeReady}>
       <SafeAreaProvider>
         <StripeProvider
           publishableKey={STRIPE_PUBLISHABLE_KEY}
@@ -158,6 +165,7 @@ export function AppRoot() {
           </ThemeProvider>
         </StripeProvider>
       </SafeAreaProvider>
+      </AppBootstrapGate>
       </StoreProvider>
     </GestureHandlerRootView>
   );

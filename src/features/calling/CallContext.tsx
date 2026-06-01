@@ -281,7 +281,6 @@ export function CallProvider({
       onPeerDisconnected: () => {
         if (!active) return;
         setPartnerDisconnected(true);
-        setBothJoined(false);
         onPeerDisconnectedRef.current?.();
       },
       onPeerLeft: () => {

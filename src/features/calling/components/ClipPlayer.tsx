@@ -91,13 +91,16 @@ export function ClipPlayer({
     }
   }, [propZoom, propPanX, propPanY]);
 
+  const isPlayingRef = useRef(isPlaying);
+  isPlayingRef.current = isPlaying;
+
   useEffect(() => {
     setInitialLoading(true);
     loadedRef.current = false;
     readyNotifiedRef.current = false;
-    pendingPlayRef.current = false;
-    pendingSeekMsRef.current = null;
-  }, [uri]);
+    pendingPlayRef.current = isPlayingRef.current;
+    pendingSeekMsRef.current = seekTargetMs ?? null;
+  }, [uri, seekTargetMs]);
 
   const applyPlayState = useCallback(async (playing: boolean) => {
     const player = videoRef.current;
@@ -292,15 +295,17 @@ export function ClipPlayer({
                     readyNotifiedRef.current = true;
                     onReady?.();
                   }
+                  setInitialLoading(false);
                   flushPending();
-                }
-                if (
+                } else if (
                   initialLoading &&
                   (status.durationMillis != null ||
                     (status.positionMillis ?? 0) > 0 ||
-                    status.isPlaying)
+                    status.isPlaying ||
+                    pendingPlayRef.current)
                 ) {
                   setInitialLoading(false);
+                  flushPending();
                 }
                 if (status.didJustFinish) onEnded?.();
                 if (

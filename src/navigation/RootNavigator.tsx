@@ -1,6 +1,12 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { BrandedSessionLoader } from "../components/brand/BrandedSessionLoader";
+import {
+  IntroOnboardingScreen,
+  isIntroOnboardingComplete,
+  setIntroOnboardingComplete,
+} from "../features/intro-onboarding";
+import { navigationRef } from "./navigationRef";
 import { AppUnlockGate } from "../features/auth/components/AppUnlockGate";
 import { useAuth } from "../features/auth/context/AuthContext";
 import { OnboardingNavigator } from "./OnboardingNavigator";
@@ -40,6 +46,10 @@ export function RootNavigator() {
   const { status, refreshUser, user, accountType } = useAuth();
   const { refetchVerificationGate, ...verificationGate } = useTrainerVerificationGate();
   const [startVerificationEarly, setStartVerificationEarly] = useState(false);
+  const [introHydrated, setIntroHydrated] = useState(false);
+  const [introComplete, setIntroComplete] = useState(true);
+  const [openAuthAfterIntro, setOpenAuthAfterIntro] = useState(false);
+  const authPresentedAfterIntro = useRef(false);
 
   useEffect(() => {
     // Keep manual verification intent through transient auth "loading" states.
@@ -47,12 +57,61 @@ export function RootNavigator() {
     if (status === "signedOut") setStartVerificationEarly(false);
   }, [status]);
 
+  useEffect(() => {
+    let alive = true;
+    void isIntroOnboardingComplete().then((done) => {
+      if (alive) {
+        setIntroComplete(done);
+        setIntroHydrated(true);
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (status === "signedIn") {
+      setOpenAuthAfterIntro(false);
+      authPresentedAfterIntro.current = false;
+    }
+  }, [status]);
+
   const authLoading = status === "loading";
   const signedIn = status === "signedIn";
   const gateLoading = signedIn && verificationGate.loading;
 
-  if (authLoading || gateLoading) {
+  useEffect(() => {
+    if (!openAuthAfterIntro || signedIn || authLoading || gateLoading) return;
+    const presentAuth = () => {
+      if (authPresentedAfterIntro.current) return;
+      if (!navigationRef.isReady()) return;
+      authPresentedAfterIntro.current = true;
+      navigationRef.navigate("Auth", { screen: "Login" });
+      setOpenAuthAfterIntro(false);
+    };
+    const id = requestAnimationFrame(presentAuth);
+    const retry = setTimeout(presentAuth, 400);
+    return () => {
+      cancelAnimationFrame(id);
+      clearTimeout(retry);
+    };
+  }, [openAuthAfterIntro, signedIn, authLoading, gateLoading]);
+
+  if (authLoading || gateLoading || !introHydrated) {
     return <BrandedSessionLoader />;
+  }
+
+  if (!signedIn && !introComplete) {
+    return (
+      <IntroOnboardingScreen
+        onGetStarted={async () => {
+          await setIntroOnboardingComplete();
+          setIntroComplete(true);
+          setOpenAuthAfterIntro(true);
+        }}
+      />
+    );
   }
 
   const isAccountRejected = signedIn && String(user?.status ?? "").toLowerCase() === "rejected";

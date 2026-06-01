@@ -163,12 +163,56 @@ export function useClipSync({
   const lockModeRef = useRef(false);
   const selectedClipsRef = useRef<ClipRecord[]>([]);
   const pendingPlayAfterLockRef = useRef<boolean | null>(null);
+  /** Play event arrived before clip list was ready (trainee load race). */
+  const pendingRemotePlayRef = useRef<{
+    both: boolean;
+    videoId?: string;
+    playing: boolean;
+  } | null>(null);
 
   const userInfo: ClipUserInfo = { from_user: fromUserId, to_user: toUserId };
 
+  const applyPlayingMapForAllClips = useCallback((playing: boolean) => {
+    if (!playing) {
+      setPlayingByClipId({});
+      return;
+    }
+    const playingMap: Record<string, boolean> = {};
+    for (const clip of selectedClipsRef.current) {
+      const id = clipIdOf(clip);
+      if (id) playingMap[id] = true;
+    }
+    if (Object.keys(playingMap).length > 0) {
+      setPlayingByClipId(playingMap);
+    }
+  }, []);
+
+  const flushPendingRemotePlay = useCallback(() => {
+    const pending = pendingRemotePlayRef.current;
+    if (!pending || selectedClipsRef.current.length === 0) return;
+    pendingRemotePlayRef.current = null;
+    if (pending.both) {
+      setIsPlaying(pending.playing);
+      if (pending.playing) applyPlayingMapForAllClips(true);
+      else setPlayingByClipId({});
+      return;
+    }
+    if (pending.videoId) {
+      if (pending.playing) {
+        setPlayingByClipId({ [pending.videoId]: true });
+        setActiveClipId(pending.videoId);
+      } else {
+        setPlayingByClipId((prev) => ({ ...prev, [pending.videoId!]: false }));
+      }
+    }
+  }, [applyPlayingMapForAllClips]);
+
   useEffect(() => {
     selectedClipsRef.current = selectedClips;
-  }, [selectedClips]);
+    if (selectedClips.length > 0) {
+      flushPendingRemotePlay();
+    }
+  }, [selectedClips, flushPendingRemotePlay]);
 
   const matchesSession = useCallback(
     (payload: { sessionId?: string }) => {
@@ -185,6 +229,7 @@ export function useClipSync({
     bookingPreloadedRef.current = false;
     lockModeRef.current = false;
     pendingPlayAfterLockRef.current = null;
+    pendingRemotePlayRef.current = null;
     lastSeekEmit.current = 0;
     setSelectedClips([]);
     setActiveClipId(null);
@@ -234,6 +279,7 @@ export function useClipSync({
         if (clips.length < 2) {
           setLockMode(false);
         }
+        flushPendingRemotePlay();
         return;
       }
 
@@ -271,12 +317,18 @@ export function useClipSync({
       const both = isBothClipsPayload(payload ?? {}, lockModeRef.current);
       const nextPlaying = playStateFromPayload(payload ?? {});
       if (both) {
+        if (selectedClipsRef.current.length === 0) {
+          pendingRemotePlayRef.current = { both: true, playing: nextPlaying };
+          return;
+        }
         if (lockModeRef.current && pendingPlayAfterLockRef.current == null) {
           pendingPlayAfterLockRef.current = nextPlaying;
         }
         setIsPlaying(nextPlaying);
         if (!nextPlaying) {
           setPlayingByClipId({});
+        } else {
+          applyPlayingMapForAllClips(true);
         }
         return;
       }
@@ -289,6 +341,10 @@ export function useClipSync({
         }
       }
       if (!vid) return;
+      if (selectedClipsRef.current.length === 0) {
+        pendingRemotePlayRef.current = { both: false, videoId: vid, playing: nextPlaying };
+        return;
+      }
       if (nextPlaying) {
         setPlayingByClipId({ [vid]: true });
         setActiveClipId(vid);
@@ -474,7 +530,16 @@ export function useClipSync({
       socket.off(CLIP_EVENTS.TOGGLE_FULL_SCREEN, onFullscreen);
       socket.off(CLIP_EVENTS.ON_VIDEO_ZOOM_PAN, onZoomPan);
     };
-  }, [socket, sessionId, fromUserId, isTrainer, matchesSession, onPeerClipsShared]);
+  }, [
+    socket,
+    sessionId,
+    fromUserId,
+    isTrainer,
+    matchesSession,
+    onPeerClipsShared,
+    flushPendingRemotePlay,
+    applyPlayingMapForAllClips,
+  ]);
 
   const isClipPlaying = useCallback(
     (clipId: string | null | undefined) => {
@@ -739,6 +804,7 @@ export function useClipSync({
         }
         setIsPlaying(nextState);
         if (!nextState) setPlayingByClipId({});
+        else applyPlayingMapForAllClips(true);
         return;
       }
       if (!vid) return;
@@ -768,6 +834,7 @@ export function useClipSync({
       isPlaying,
       isTrainer,
       lockMode,
+      applyPlayingMapForAllClips,
       playingByClipId,
       selectedClips,
       sessionId,

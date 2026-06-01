@@ -63,6 +63,8 @@ export function UserBox({
   onPress,
 }: UserBoxProps) {
   const streamId = (stream as any)?.toURL?.() ?? null;
+  const videoTrackCount = stream?.getVideoTracks?.()?.length ?? 0;
+  const rtcViewKey = streamId ? `${streamId}-v${videoTrackCount}` : "no-stream";
   const displayName =
     user?.fullname || user?.fullName || fallbackLabel || "Waiting…";
   const avatarUri = useMemo(
@@ -74,7 +76,7 @@ export function UserBox({
 
   const media = !isStreamOff && streamId ? (
     <RTCView
-      key={streamId}
+      key={rtcViewKey}
       streamURL={streamId}
       objectFit="cover"
       mirror={muted /* local preview only */}

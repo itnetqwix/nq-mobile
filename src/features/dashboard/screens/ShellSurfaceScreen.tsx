@@ -11,6 +11,8 @@ import { ProfessionalProfileScreen } from "../../trainer-profile/screens/Profess
 import { GamePlansScreen } from "./GamePlansScreen";
 import { ReportIssueScreen } from "./ReportIssueScreen";
 import { SavedLessonsScreen } from "./SavedLessonsScreen";
+import { useGuestMode } from "../../auth/hooks/useGuestMode";
+import { GuestSettingsScreen } from "./GuestSettingsScreen";
 import { SettingsScreen } from "./SettingsScreen";
 import { TrainerScheduleScreen } from "./TrainerScheduleScreen";
 import { WalletNavigator } from "../../wallet/navigation/WalletNavigator";
@@ -24,6 +26,7 @@ export type ShellSurfaceScreenProps = NativeStackScreenProps<HomeStackParamList,
 
 export function ShellSurfaceScreen({ route }: ShellSurfaceScreenProps) {
   const { surfaceId } = route.params;
+  const isGuest = useGuestMode();
 
   const wrap = (node: React.ReactNode) => (
     <StackSwipeBackShell>{node}</StackSwipeBackShell>
@@ -52,7 +55,7 @@ export function ShellSurfaceScreen({ route }: ShellSurfaceScreenProps) {
     case "invite":
       return wrap(<InviteFriendsScreen />);
     case "settings":
-      return wrap(<SettingsScreen />);
+      return wrap(isGuest ? <GuestSettingsScreen /> : <SettingsScreen />);
     case "trainerSchedule":
       return wrap(<TrainerScheduleScreen />);
     case "editProfile":

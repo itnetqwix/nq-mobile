@@ -2310,7 +2310,7 @@ function MeetingSurface({
         onResume={lessonTimer.requestResume}
         onCrossThreshold={onTimerCrossThreshold}
         leadingTools={
-          isTrainer && partnerInSession && bothJoined ? (
+          isTrainer && partnerInSession ? (
             <MeetingTrainerOverflowMenu
               disabled={screenshot.capturing}
               onSelect={handleTrainerOverflow}
@@ -2429,6 +2429,12 @@ function MeetingSurface({
         onExitClipMode={isTrainer ? exitClipMode : undefined}
         annotationArmed={annotationArmed}
         onToggleDrawing={isTrainer ? handleAnnotationToggle : undefined}
+        onScreenshot={
+          isTrainer && partnerInSession
+            ? () => setScreenshotPickerOpen(true)
+            : undefined
+        }
+        screenshotCapturing={screenshot.capturing}
         onOpenClipPicker={() => setPickerOpen(true)}
       />
       </View>

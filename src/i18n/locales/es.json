@@ -1,4 +1,35 @@
 {
+  "splash": {
+    "tagline": "Coaching en vivo, donde sea",
+    "preparing": "Preparando todo…"
+  },
+  "intro": {
+    "skip": "Omitir",
+    "next": "Siguiente",
+    "getStarted": "Empezar",
+    "slides": {
+      "leap": {
+        "title": "Da el salto",
+        "body": "Mejora tu juego con coaching 1:1 en vivo — la misma ventaja que usan los pros, para cada atleta."
+      },
+      "coaches": {
+        "title": "Encuentra tu entrenador",
+        "body": "Explora expertos verificados por deporte, nivel y horario. Guarda favoritos y reserva cuando quieras."
+      },
+      "live": {
+        "title": "Entrena en vivo, donde sea",
+        "body": "Sesiones por video, clips y planes de juego en un solo locker — desde la cancha o desde casa."
+      }
+    }
+  },
+  "guestSettings": {
+    "bannerTitle": "Estás navegando como invitado",
+    "bannerBody": "Inicia sesión o crea una cuenta gratis para reservar, chatear con entrenadores y sincronizar tu locker.",
+    "supportSection": "Ayuda e información",
+    "replayIntro": "Ver de nuevo el tour de bienvenida",
+    "languageSaved": "Idioma actualizado",
+    "version": "NetQwix v{{version}}"
+  },
   "common": {
     "cancel": "Cancel",
     "done": "Done",

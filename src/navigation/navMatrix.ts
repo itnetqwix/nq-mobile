@@ -265,7 +265,13 @@ export function navMatrixFor(
   options?: { guest?: boolean }
 ): NavMatrixEntry[] {
   if (options?.guest) {
-    const guestIds = new Set(["my-locker", "book-lesson", "about-us", "contact-us"]);
+    const guestIds = new Set([
+      "my-locker",
+      "book-lesson",
+      "about-us",
+      "contact-us",
+      "settings",
+    ]);
     return NAV_MATRIX.filter(
       (entry) => entry.surfaces.includes(surface) && guestIds.has(entry.id)
     );

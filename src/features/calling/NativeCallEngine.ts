@@ -401,6 +401,21 @@ export class NativeCallEngine {
 
       if (!this.remoteTrackIds.has(track.id)) {
         try {
+          if (this.remoteStream) {
+            const sameKind = this.remoteStream
+              .getTracks()
+              .filter((t) => t.kind === track.kind && t.readyState === "ended");
+            for (const ended of sameKind) {
+              try {
+                this.remoteStream.removeTrack(ended);
+                this.remoteTrackIds.delete(ended.id);
+              } catch {
+                /* ignore */
+              }
+            }
+          } else {
+            this.remoteStream = new MediaStream();
+          }
           this.remoteStream.addTrack(track);
           this.remoteTrackIds.add(track.id);
         } catch (err) {
@@ -419,9 +434,14 @@ export class NativeCallEngine {
 
       this.events.onRemoteStream?.(this.remoteStream);
 
-      if (!this.bothJoinedFired && this.remoteStream.getVideoTracks().length > 0) {
-        this.bothJoinedFired = true;
-        this.events.onBothJoined?.();
+      if (this.remoteStream.getVideoTracks().length > 0) {
+        if (!this.bothJoinedFired) {
+          this.bothJoinedFired = true;
+          this.events.onBothJoined?.();
+        }
+        if (this.status === "reconnecting") {
+          this.setStatus("connected");
+        }
       }
     };
 
@@ -728,7 +748,6 @@ export class NativeCallEngine {
       /* noop */
     }
     this.pc = null;
-    this.remoteStream = null;
     this.remoteTrackIds.clear();
     this.pendingRemoteIce = [];
     this.offerInFlight = false;
@@ -741,7 +760,7 @@ export class NativeCallEngine {
       this.emitJoin();
       this.setStatus("reconnecting");
     }
-    this.events.onRemoteStream?.(null);
+    /** Keep last frame visible until ontrack delivers fresh media (avoid blank partner tile). */
   }
 
   private async drainPendingIce() {
