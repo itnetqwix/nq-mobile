@@ -137,6 +137,24 @@ export function RatingsModal({
         <View style={[styles.card, { backgroundColor: c.surfaceElevated }]}>
           {!submitted ? (
             <>
+              <Pressable
+                onPress={() => {
+                  if (mandatorySubmit) return;
+                  onSkip?.();
+                  onClose();
+                }}
+                style={styles.modalCloseBtn}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                disabled={mandatorySubmit}
+              >
+                <Ionicons
+                  name="close"
+                  size={22}
+                  color={mandatorySubmit ? "transparent" : c.textMuted}
+                />
+              </Pressable>
               <Text style={styles.title}>
                 {t("postSessionRating.modalTitle", { defaultValue: "How was your session?" })}
               </Text>
@@ -297,6 +315,13 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 22,
     gap: 14,
+  },
+  modalCloseBtn: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    zIndex: 2,
+    padding: 4,
   },
   title: {
     fontSize: 19,

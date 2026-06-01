@@ -20,12 +20,24 @@ const MAX_REPLAY_STROKES = 400;
 
 export type StrokePoint = { x: number; y: number };
 
+export type AnnotationShapeKind =
+  | "stroke"
+  | "text"
+  | "rect"
+  | "circle"
+  | "line"
+  | "arrow";
+
 export type RemoteStroke = {
   points: StrokePoint[];
   color: string;
   width: number;
-  kind?: "stroke" | "text";
+  kind?: AnnotationShapeKind;
   text?: string;
+  /** Normalized shape corners for rect/circle/line (sender space). */
+  shapeBounds?: { x0: number; y0: number; x1: number; y1: number };
+  /** Sender canvas size — used to scale strokes on the receiver. */
+  sourceCanvasSize?: { width: number; height: number };
 };
 
 type Args = {
@@ -59,7 +71,42 @@ function parseIncomingStrokePayload(
   }
 
   if (typeof parsed === "object" && parsed !== null && (parsed as { stroke?: RemoteStroke }).stroke) {
-    return (parsed as { stroke: RemoteStroke }).stroke;
+    const stroke = (parsed as { stroke: RemoteStroke }).stroke;
+    if (canvasSize?.width && canvasSize?.height) {
+      return { ...stroke, sourceCanvasSize: canvasSize };
+    }
+    return stroke;
+  }
+
+  if (typeof parsed === "object" && parsed !== null) {
+    const obj = parsed as Record<string, unknown>;
+    if (obj.kind === "shape" && obj.start && obj.end) {
+      const start = obj.start as StrokePoint;
+      const end = obj.end as StrokePoint;
+      const shapeName = String(obj.shape ?? "rect").toLowerCase();
+      const kind: AnnotationShapeKind =
+        shapeName === "circle" || shapeName === "oval"
+          ? "circle"
+          : shapeName === "line"
+            ? "line"
+            : shapeName === "arrow"
+              ? "arrow"
+              : "rect";
+      const theme = obj.theme as { strokeStyle?: string; lineWidth?: number } | undefined;
+      return {
+        points: [],
+        color: theme?.strokeStyle ?? "#ff3b30",
+        width: typeof theme?.lineWidth === "number" ? theme.lineWidth : 4,
+        kind,
+        shapeBounds: {
+          x0: Number(start.x ?? 0),
+          y0: Number(start.y ?? 0),
+          x1: Number(end.x ?? 0),
+          y1: Number(end.y ?? 0),
+        },
+        sourceCanvasSize: canvasSize,
+      };
+    }
   }
 
   if (Array.isArray(parsed) && parsed.length > 0) {
@@ -92,21 +139,40 @@ function parseIncomingStrokePayload(
         color: String(obj.color ?? "#ff3b30"),
         width: Number(obj.width ?? 4),
         kind: "stroke",
-      };
-    }
-    if (obj.kind === "shape" && obj.start && obj.end) {
-      const start = obj.start as StrokePoint;
-      const end = obj.end as StrokePoint;
-      return {
-        points: [start, end],
-        color: String(obj.color ?? "#ff3b30"),
-        width: Number(obj.width ?? 4),
-        kind: "stroke",
+        sourceCanvasSize: canvasSize,
       };
     }
   }
 
   return null;
+}
+
+function serializeStrokeForSocket(stroke: RemoteStroke): string {
+  if (
+    stroke.shapeBounds &&
+    stroke.kind &&
+    stroke.kind !== "stroke" &&
+    stroke.kind !== "text"
+  ) {
+    const b = stroke.shapeBounds;
+    const webShape =
+      stroke.kind === "circle"
+        ? "circle"
+        : stroke.kind === "line"
+          ? "line"
+          : stroke.kind === "arrow"
+            ? "arrow"
+            : "rect";
+    return JSON.stringify({
+      kind: "shape",
+      coordSpace: "canvasPx",
+      shape: webShape,
+      start: { x: b.x0, y: b.y0 },
+      end: { x: b.x1, y: b.y1 },
+      theme: { strokeStyle: stroke.color, lineWidth: stroke.width },
+    });
+  }
+  return JSON.stringify({ stroke });
 }
 
 export function useDrawingSync({
@@ -129,13 +195,42 @@ export function useDrawingSync({
   const drawingEmitMinMsRef = useRef(drawingEmitMinMs);
   drawingEmitMinMsRef.current = drawingEmitMinMs;
 
+  const [committedStrokeCount, setCommittedStrokeCount] = useState(0);
+
+  const syncStrokeCount = useCallback(() => {
+    setCommittedStrokeCount(strokeBufferRef.current.length);
+  }, []);
+
   const pushStrokeToBuffer = useCallback((stroke: RemoteStroke) => {
     const buf = strokeBufferRef.current;
     buf.push(stroke);
     if (buf.length > MAX_REPLAY_STROKES) {
       strokeBufferRef.current = buf.slice(-MAX_REPLAY_STROKES);
     }
+    setCommittedStrokeCount(strokeBufferRef.current.length);
   }, []);
+
+  const rebroadcastStrokeBuffer = useCallback(() => {
+    if (!isTrainer || !socket) return;
+    try {
+      socket.emit(DRAWING_EVENTS.EMIT_CLEAR_CANVAS, {
+        userInfo,
+        sessionId,
+        canvasIndex,
+      });
+      for (const stroke of strokeBufferRef.current) {
+        socket.emit(DRAWING_EVENTS.DRAW, {
+          strikes: serializeStrokeForSocket(stroke),
+          canvasSize: { width: 1, height: 1 },
+          userInfo,
+          sessionId,
+          canvasIndex,
+        });
+      }
+    } catch {
+      /* emit must not crash annotation UI */
+    }
+  }, [canvasIndex, isTrainer, sessionId, socket, userInfo]);
 
   const applyRemoteStroke = useCallback(
     (stroke: RemoteStroke) => {
@@ -203,7 +298,7 @@ export function useDrawingSync({
     lastEmitAtRef.current = Date.now();
     try {
       socket.emit(DRAWING_EVENTS.DRAW, {
-        strikes: JSON.stringify({ stroke: pending.stroke }),
+        strikes: serializeStrokeForSocket(pending.stroke),
         canvasSize: pending.canvasSize,
         userInfo,
         sessionId,
@@ -224,7 +319,7 @@ export function useDrawingSync({
         lastEmitAtRef.current = now;
         try {
           socket.emit(DRAWING_EVENTS.DRAW, {
-            strikes: JSON.stringify({ stroke }),
+            strikes: serializeStrokeForSocket(stroke),
             canvasSize,
             userInfo,
             sessionId,
@@ -265,13 +360,31 @@ export function useDrawingSync({
   const clearCanvas = useCallback(() => {
     setRemoteStrokes([]);
     strokeBufferRef.current = [];
+    syncStrokeCount();
     if (!isTrainer || !socket) return;
     socket.emit(DRAWING_EVENTS.EMIT_CLEAR_CANVAS, {
       userInfo,
       sessionId,
       canvasIndex,
     });
-  }, [canvasIndex, isTrainer, sessionId, socket, userInfo]);
+  }, [canvasIndex, isTrainer, sessionId, socket, syncStrokeCount, userInfo]);
+
+  /** Web parity: pop last stroke, clear peer canvas, replay remaining strokes. */
+  const undoLastStroke = useCallback(() => {
+    if (!isTrainer || strokeBufferRef.current.length === 0) return false;
+    if (pendingStrokeRef.current) {
+      pendingStrokeRef.current = null;
+      if (pendingTimerRef.current) {
+        clearTimeout(pendingTimerRef.current);
+        pendingTimerRef.current = null;
+      }
+    }
+    strokeBufferRef.current.pop();
+    syncStrokeCount();
+    setRemoteStrokes([]);
+    rebroadcastStrokeBuffer();
+    return true;
+  }, [isTrainer, rebroadcastStrokeBuffer, syncStrokeCount]);
 
   const setTrainerDrawingEnabled = useCallback(
     (enabled: boolean) => {
@@ -300,7 +413,7 @@ export function useDrawingSync({
     for (const stroke of strokeBufferRef.current) {
       try {
         socket.emit(DRAWING_EVENTS.DRAW, {
-          strikes: JSON.stringify({ stroke }),
+          strikes: serializeStrokeForSocket(stroke),
           canvasSize: { width: 1, height: 1 },
           userInfo,
           sessionId,
@@ -315,12 +428,15 @@ export function useDrawingSync({
   return {
     remoteStrokes,
     drawingEnabled,
+    canUndo: committedStrokeCount > 0,
     setTrainerDrawingEnabled,
     emitStroke,
     clearCanvas,
+    undoLastStroke,
     resetRemote: () => {
       setRemoteStrokes([]);
       strokeBufferRef.current = [];
+      syncStrokeCount();
     },
     replaySocketState,
   };

@@ -1,19 +1,20 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { meetingTheme } from "../meetingTheme";
 
 type Props = {
   focusedClipTitle: string | null;
+  onDismiss?: () => void;
   topOffset?: number;
 };
 
 /** Trainee-facing banner when the coach sets a focused clip for review. */
-export function MeetingAgendaBanner({ focusedClipTitle, topOffset = 96 }: Props) {
+export function MeetingAgendaBanner({ focusedClipTitle, onDismiss, topOffset = 96 }: Props) {
   if (!focusedClipTitle) return null;
 
   return (
-    <View style={[styles.wrap, { top: topOffset }]} pointerEvents="none">
+    <View style={[styles.wrap, { top: topOffset }]} pointerEvents="box-none">
       <View style={styles.card}>
         <Ionicons name="eye-outline" size={16} color={meetingTheme.navy} />
         <View style={styles.copy}>
@@ -22,6 +23,11 @@ export function MeetingAgendaBanner({ focusedClipTitle, topOffset = 96 }: Props)
             {focusedClipTitle}
           </Text>
         </View>
+        {onDismiss ? (
+          <Pressable onPress={onDismiss} hitSlop={8} accessibilityLabel="Dismiss">
+            <Ionicons name="close" size={18} color={meetingTheme.textMuted} />
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );

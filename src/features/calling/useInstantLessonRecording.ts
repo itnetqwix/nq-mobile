@@ -290,6 +290,7 @@ export function useInstantLessonRecording({
     showRecordingBar,
     showTrainerRecordingOptIn,
     trainerRecordingEnabled,
+    trainerRecordingLive,
     toggleTrainerRecording,
     stopTrainerRecording,
     peerRecordingLive,

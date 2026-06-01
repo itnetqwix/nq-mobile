@@ -12,6 +12,14 @@ import {
   type ClipUserInfo,
 } from "./clipEvents";
 import {
+  buildPlayPauseEmitPayload,
+  clipIdFromPayload,
+  clipIndexFromLegacyNumber,
+  isBothClipsPayload,
+  playStateFromPayload,
+  seekProgressFromPayload,
+} from "./clipSocketParity";
+import {
   clipIdOf,
   clipsFromSelectPayload,
   normalizeClipsFromSocket,
@@ -153,9 +161,14 @@ export function useClipSync({
   >({});
   const bookingPreloadedRef = useRef(false);
   const lockModeRef = useRef(false);
+  const selectedClipsRef = useRef<ClipRecord[]>([]);
   const pendingPlayAfterLockRef = useRef<boolean | null>(null);
 
   const userInfo: ClipUserInfo = { from_user: fromUserId, to_user: toUserId };
+
+  useEffect(() => {
+    selectedClipsRef.current = selectedClips;
+  }, [selectedClips]);
 
   const matchesSession = useCallback(
     (payload: { sessionId?: string }) => {
@@ -227,7 +240,7 @@ export function useClipSync({
       // Live-stream focus (`type: "swap"`) is handled by useMeetingLayout — do not clear clips.
       if (type === "swap") return;
 
-      const id = payload?.id != null ? String(payload.id) : null;
+      const id = clipIdFromPayload(payload ?? {}) ?? (payload?.id != null ? String(payload.id) : null);
       if (id && type === "clip") {
         const url =
           typeof payload?.playbackUrl === "string" && payload.playbackUrl
@@ -248,41 +261,69 @@ export function useClipSync({
       setPlayingByClipId({});
     };
 
+    const isFromPeer = (payload: { userInfo?: ClipUserInfo }) => {
+      const from = payload?.userInfo?.from_user;
+      return !from || String(from) !== String(fromUserId);
+    };
+
     const onPlayPause = (payload: any) => {
-      if (!matchesSession(payload)) return;
-      const both = !!(payload?.both || lockModeRef.current);
-      const nextPlaying = !!payload?.isPlaying;
+      if (!matchesSession(payload) || !isFromPeer(payload)) return;
+      const both = isBothClipsPayload(payload ?? {}, lockModeRef.current);
+      const nextPlaying = playStateFromPayload(payload ?? {});
       if (both) {
         if (lockModeRef.current && pendingPlayAfterLockRef.current == null) {
           pendingPlayAfterLockRef.current = nextPlaying;
         }
         setIsPlaying(nextPlaying);
+        if (!nextPlaying) {
+          setPlayingByClipId({});
+        }
         return;
       }
-      const vid = payload?.videoId != null ? String(payload.videoId) : null;
+      let vid = clipIdFromPayload(payload ?? {});
+      if (!vid) {
+        const idx = clipIndexFromLegacyNumber(payload ?? {});
+        if (idx != null) {
+          const clip = selectedClipsRef.current[idx];
+          if (clip) vid = clipIdOf(clip);
+        }
+      }
       if (!vid) return;
-      setPlayingByClipId((prev) => ({ ...prev, [vid]: nextPlaying }));
+      if (nextPlaying) {
+        setPlayingByClipId({ [vid]: true });
+        setActiveClipId(vid);
+      } else {
+        setPlayingByClipId((prev) => ({ ...prev, [vid]: false }));
+      }
     };
 
     const onTime = (payload: any) => {
-      if (!matchesSession(payload)) return;
-      if (typeof payload?.progress !== "number") return;
-      const both = !!(payload?.both || lockModeRef.current);
+      if (!matchesSession(payload) || !isFromPeer(payload)) return;
+      const progressRaw = seekProgressFromPayload(payload ?? {});
+      if (progressRaw == null) return;
+      const both = isBothClipsPayload(payload ?? {}, lockModeRef.current);
       if (both) {
-        lastProgressByClipId.current.__both = payload.progress;
+        lastProgressByClipId.current.__both = progressRaw;
         setSeekHint({
           videoId: "",
-          progress: payload.progress,
+          progress: progressRaw,
           receivedAt: Date.now(),
         });
         return;
       }
-      const vid = payload?.videoId != null ? String(payload.videoId) : null;
+      let vid = clipIdFromPayload(payload ?? {});
+      if (!vid) {
+        const idx = clipIndexFromLegacyNumber(payload ?? {});
+        if (idx != null) {
+          const clip = selectedClipsRef.current[idx];
+          if (clip) vid = clipIdOf(clip);
+        }
+      }
       if (!vid) return;
-      lastProgressByClipId.current[vid] = payload.progress;
+      lastProgressByClipId.current[vid] = progressRaw;
       setSeekHint({
         videoId: vid,
-        progress: payload.progress,
+        progress: progressRaw,
         receivedAt: Date.now(),
       });
     };
@@ -302,7 +343,7 @@ export function useClipSync({
     };
 
     const onLockMode = (payload: any) => {
-      if (!matchesSession(payload)) return;
+      if (!matchesSession(payload) || !isFromPeer(payload)) return;
       const nextLocked = !!(payload?.locked ?? payload?.isLockMode);
       lockModeRef.current = nextLocked;
       setLockMode(nextLocked);
@@ -311,14 +352,18 @@ export function useClipSync({
         pendingPlayAfterLockRef.current = null;
         return;
       }
-      if (typeof payload?.lockPoint === "number" && Number.isFinite(payload.lockPoint)) {
-        setLockPoint(payload.lockPoint);
-        setSeekHint({
-          videoId: "",
-          progress: payload.lockPoint,
-          receivedAt: Date.now(),
-        });
-      }
+      const lockFromPayload =
+        typeof payload?.lockPoint === "number" && Number.isFinite(payload.lockPoint)
+          ? payload.lockPoint
+          : typeof lastProgressByClipId.current.__both === "number"
+            ? lastProgressByClipId.current.__both
+            : 0;
+      setLockPoint(lockFromPayload);
+      setSeekHint({
+        videoId: "",
+        progress: lockFromPayload,
+        receivedAt: Date.now(),
+      });
       const pending = pendingPlayAfterLockRef.current;
       if (pending != null) {
         pendingPlayAfterLockRef.current = null;
@@ -680,30 +725,43 @@ export function useClipSync({
       if (!vid && !bothLocked) return;
       if (bothLocked) {
         const nextState = typeof next === "boolean" ? next : !isPlaying;
+        if (isTrainer && socket) {
+          socket.emit(
+            CLIP_EVENTS.ON_VIDEO_PLAY_PAUSE,
+            buildPlayPauseEmitPayload({
+              isPlaying: nextState,
+              both: true,
+              videoId: vid,
+              userInfo,
+              sessionId,
+            })
+          );
+        }
         setIsPlaying(nextState);
-        if (!isTrainer || !socket) return;
-        socket.emit(CLIP_EVENTS.ON_VIDEO_PLAY_PAUSE, {
-          videoId: vid ?? undefined,
-          isPlaying: nextState,
-          both: true,
-          userInfo,
-          sessionId,
-        });
+        if (!nextState) setPlayingByClipId({});
         return;
       }
       if (!vid) return;
       const current = playingByClipId[vid] ?? false;
       const nextState = typeof next === "boolean" ? next : !current;
-      setPlayingByClipId((prev) => ({ ...prev, [vid]: nextState }));
+      if (isTrainer && socket) {
+        socket.emit(
+          CLIP_EVENTS.ON_VIDEO_PLAY_PAUSE,
+          buildPlayPauseEmitPayload({
+            isPlaying: nextState,
+            both: false,
+            videoId: vid,
+            userInfo,
+            sessionId,
+          })
+        );
+      }
+      if (nextState) {
+        setPlayingByClipId({ [vid]: true });
+      } else {
+        setPlayingByClipId((prev) => ({ ...prev, [vid]: false }));
+      }
       setActiveClipId(vid);
-      if (!isTrainer || !socket) return;
-      socket.emit(CLIP_EVENTS.ON_VIDEO_PLAY_PAUSE, {
-        videoId: vid,
-        isPlaying: nextState,
-        both: false,
-        userInfo,
-        sessionId,
-      });
     },
     [
       activeClipId,
@@ -889,22 +947,28 @@ export function useClipSync({
       });
     }
     if (lockMode && selectedClips.length >= 2) {
-      socket.emit(CLIP_EVENTS.ON_VIDEO_PLAY_PAUSE, {
-        isPlaying,
-        both: true,
-        userInfo,
-        sessionId,
-      });
+      socket.emit(
+        CLIP_EVENTS.ON_VIDEO_PLAY_PAUSE,
+        buildPlayPauseEmitPayload({
+          isPlaying,
+          both: true,
+          userInfo,
+          sessionId,
+        })
+      );
     } else {
       Object.entries(playingByClipId).forEach(([videoId, playing]) => {
         if (!playing) return;
-        socket.emit(CLIP_EVENTS.ON_VIDEO_PLAY_PAUSE, {
-          videoId,
-          isPlaying: true,
-          both: false,
-          userInfo,
-          sessionId,
-        });
+        socket.emit(
+          CLIP_EVENTS.ON_VIDEO_PLAY_PAUSE,
+          buildPlayPauseEmitPayload({
+            isPlaying: true,
+            both: false,
+            videoId,
+            userInfo,
+            sessionId,
+          })
+        );
       });
     }
     if (clipFocusIndex === 0 || clipFocusIndex === 1) {

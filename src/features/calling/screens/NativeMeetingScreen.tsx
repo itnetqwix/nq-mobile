@@ -54,7 +54,6 @@ import {
 } from "../clipSyncUtils";
 import { useDrawingSync } from "../useDrawingSync";
 import { useMeetingScreenshot } from "../useMeetingScreenshot";
-import { fetchSessionReport } from "../meetingReportApi";
 
 import { CallProvider, useCall } from "../CallContext";
 import {
@@ -108,6 +107,14 @@ import { MeetingCoachChip } from "../components/MeetingCoachChip";
 import { resolveMeetingStatusBanner } from "../meetingUx";
 import { ConnectionQualityPill } from "../components/ConnectionQualityPill";
 import { NetworkLessonBanner } from "../components/NetworkLessonBanner";
+import {
+  MeetingTrainerOverflowMenu,
+  type TrainerOverflowAction,
+} from "../components/MeetingTrainerOverflowMenu";
+import {
+  ScreenshotCapturePickerModal,
+  type ScreenshotCaptureChoice,
+} from "../components/ScreenshotCapturePickerModal";
 import { ClipPickerModal } from "../components/ClipPickerModal";
 import { LockedDualClipStage } from "../components/LockedDualClipStage";
 import { UnlockedDualClipStage } from "../components/UnlockedDualClipStage";
@@ -224,6 +231,7 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
   const [permState, setPermState] = useState<
     "checking" | "granted" | "denied"
   >("checking");
+  const [slotTakenOverOpen, setSlotTakenOverOpen] = useState(false);
 
   const requestPermissions = useCallback(async () => {
     setPermState("checking");
@@ -354,8 +362,6 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
   const peerDisplayName =
     peer?.fullname ?? peer?.fullName ?? "Your partner";
 
-  const [slotTakenOverOpen, setSlotTakenOverOpen] = useState(false);
-
   return (
     <>
     <CallProvider
@@ -474,6 +480,7 @@ function MeetingSurface({
     recoverConnection,
     getNetworkStats,
     lastError,
+    clearLastError,
     joinDeniedCanTakeOver,
     requestCallTakeover,
   } = useCall();
@@ -560,6 +567,8 @@ function MeetingSurface({
   const [handoffOpen, setHandoffOpen] = useState(false);
   const [handoffSummary, setHandoffSummary] = useState<SessionHandoffSummary | null>(null);
   const [handoffLoading, setHandoffLoading] = useState(false);
+  const [recapSheetOpen, setRecapSheetOpen] = useState(false);
+  const postCallFlowStartedRef = useRef(false);
 
   const openHandoff = useCallback(async () => {
     setHandoffLoading(true);
@@ -959,6 +968,7 @@ function MeetingSurface({
   } | null>(null);
   const [screenshotSheetOpen, setScreenshotSheetOpen] = useState(false);
   const [screenshotDetailsOpen, setScreenshotDetailsOpen] = useState(false);
+  const [screenshotPickerOpen, setScreenshotPickerOpen] = useState(false);
   const [pendingScreenshotKey, setPendingScreenshotKey] = useState<string | null>(null);
   const [pendingScreenshotPreviewUri, setPendingScreenshotPreviewUri] = useState<
     string | null
@@ -970,9 +980,25 @@ function MeetingSurface({
   const [annotationColor, setAnnotationColor] = useState("#ff3b30");
   const [annotationArmed, setAnnotationArmed] = useState(false);
   const [annotationToolbarOpen, setAnnotationToolbarOpen] = useState(false);
+  const [networkBannerDismissed, setNetworkBannerDismissed] = useState(false);
+  const [agendaBannerDismissed, setAgendaBannerDismissed] = useState(false);
+  const [statusBannerDismissed, setStatusBannerDismissed] = useState(false);
+  const [errorBannerDismissed, setErrorBannerDismissed] = useState(false);
   const clipProgressRefs = useRef<[number, number]>([0, 0]);
   const clipEndedRef = useRef<[boolean, boolean]>([false, false]);
   const lessonStartedNotifiedRef = useRef(false);
+
+  useEffect(() => {
+    setNetworkBannerDismissed(false);
+  }, [networkAdaptive.mode, networkAdaptive.videoPausedForNetwork]);
+
+  useEffect(() => {
+    setAgendaBannerDismissed(false);
+  }, [lessonLive.liveState.focusedClipTitle]);
+
+  useEffect(() => {
+    setErrorBannerDismissed(false);
+  }, [lastError]);
 
   useEffect(() => {
     if (!session) return;
@@ -1089,6 +1115,36 @@ function MeetingSurface({
 
   const clipPaneUris = clipPaneUrisEarly;
 
+  useEffect(() => {
+    if (!clipSync.lockMode || clipSync.selectedClips.length < 2) return;
+    const point = clipSync.lockPoint;
+    if (!Number.isFinite(point)) return;
+    clipProgressRefs.current = [point, point];
+    setClipProgresses([point, point]);
+  }, [clipSync.lockMode, clipSync.lockPoint, clipSync.selectedClips.length]);
+
+  useEffect(() => {
+    if (!clipSync.seekHint || isTrainer) return;
+    const { progress, videoId } = clipSync.seekHint;
+    if (!Number.isFinite(progress)) return;
+    if (clipSync.lockMode && clipSync.selectedClips.length >= 2) {
+      clipProgressRefs.current = [progress, progress];
+      setClipProgresses([progress, progress]);
+      return;
+    }
+    if (!videoId) return;
+    const paneIndex = clipSync.selectedClips.findIndex(
+      (c) => clipIdOf(c) === String(videoId)
+    );
+    if (paneIndex !== 0 && paneIndex !== 1) return;
+    clipProgressRefs.current[paneIndex] = progress;
+    setClipProgresses((prev) => {
+      const next: [number, number] = [...prev];
+      next[paneIndex] = progress;
+      return next;
+    });
+  }, [clipSync.seekHint, clipSync.lockMode, clipSync.selectedClips, isTrainer]);
+
   const dualClip = clipPaneUris.length >= 2;
 
   const buildScreenshotSources = useCallback((): ScreenshotCaptureSource[] => {
@@ -1101,6 +1157,33 @@ function MeetingSurface({
       return [{ uri: url, progressSeconds: clipProgresses[i as 0 | 1] ?? 0 }];
     });
   }, [activeClipUri, clipPaneUris.length, clipProgresses, clipSync.selectedClips]);
+
+  const resolveScreenshotSources = useCallback(
+    (choice: ScreenshotCaptureChoice): ScreenshotCaptureSource[] | undefined => {
+      if (choice === "stage") return undefined;
+      const all = buildScreenshotSources();
+      if (choice === "bothClips") return all.length >= 2 ? all : all.slice(0, 1);
+      if (choice === "clip1") return all.slice(1, 2);
+      if (choice === "clip0") return all.slice(0, 1);
+      return all.slice(0, 1);
+    },
+    [buildScreenshotSources]
+  );
+
+  const handleScreenshotChoice = useCallback(
+    (choice: ScreenshotCaptureChoice) => {
+      void screenshot.takeScreenshot(resolveScreenshotSources(choice));
+    },
+    [resolveScreenshotSources, screenshot]
+  );
+
+  const clipScreenshotLabels = useMemo((): [string, string] => {
+    const labels = clipSync.selectedClips.slice(0, 2).map((c, i) => {
+      const t = String(c?.title ?? c?.name ?? "").trim();
+      return t || `Clip ${i + 1}`;
+    });
+    return [labels[0] ?? "Clip 1", labels[1] ?? "Clip 2"];
+  }, [clipSync.selectedClips]);
 
   const lockedDualClip = dualClip && clipSync.lockMode;
   const clipFocusIndex = lockedDualClip ? null : clipSync.clipFocusIndex;
@@ -1139,9 +1222,11 @@ function MeetingSurface({
         clipSync.lockMode)
         ? Math.floor(clipSync.seekHint.progress * 1000)
         : null;
+    const seekNonce = clipSync.seekHint?.receivedAt ?? null;
     return {
       isPlaying: clipSync.isClipPlaying(clipId),
       seekTargetMs: seekForPane,
+      seekNonce,
       zoom: zoomPan?.zoom,
       pan: zoomPan?.pan,
       zoomGesturesEnabled: isTrainer && !!clipId,
@@ -1282,41 +1367,51 @@ function MeetingSurface({
     if (clipSync.clipFocusIndex != null) {
       clipSync.setClipFocus(null);
     }
+    const lockPoint =
+      clipDurations[0] > clipDurations[1]
+        ? clipProgresses[0]
+        : clipProgresses[1];
     clipSync.toggleLockMode({
+      lockPoint,
       progresses: clipProgresses,
       durations: clipDurations,
     });
-  }, [clipDurations, clipProgresses, clipSync]);
+    handleClipSeek(0, lockPoint);
+  }, [clipDurations, clipProgresses, clipSync, handleClipSeek]);
 
-  const [recapSheetOpen, setRecapSheetOpen] = useState(false);
-  const postCallFlowStartedRef = useRef(false);
+  const handleTrainerOverflow = useCallback(
+    (action: TrainerOverflowAction) => {
+      switch (action) {
+        case "screenshot":
+          setScreenshotPickerOpen(true);
+          break;
+        case "gallery":
+          void screenshot.refreshScreenshots();
+          setScreenshotSheetOpen(true);
+          break;
+        case "lock":
+          handleToggleLock();
+          break;
+        case "audio":
+          openAudioOutputPicker();
+          break;
+        case "record":
+          if (instantRecording.trainerRecordingLive) {
+            instantRecording.stopTrainerRecording();
+          } else {
+            instantRecording.toggleTrainerRecording();
+          }
+          break;
+        default:
+          break;
+      }
+    },
+    [handleToggleLock, instantRecording, openAudioOutputPicker, screenshot]
+  );
 
   const continueAfterRecap = useCallback(async () => {
-    let hasScreenshots = screenshot.hasCaptures;
-    if (!hasScreenshots) {
-      try {
-        const res = await fetchSessionReport({
-          sessions: lessonId,
-          trainer: myId,
-          trainee: peerId,
-        });
-        const data = res?.data ?? res;
-        const raw = data?.reportData;
-        hasScreenshots =
-          Array.isArray(raw) &&
-          raw.some((x: unknown) =>
-            typeof x === "string"
-              ? x.length > 0
-              : !!(x as { name?: string; imageUrl?: string })?.name ||
-                !!(x as { imageUrl?: string })?.imageUrl
-          );
-      } catch {
-        hasScreenshots = false;
-      }
-    }
-    if (hasScreenshots) setGamePlanOpen(true);
-    else setRatingsOpen(true);
-  }, [lessonId, myId, peerId, screenshot.hasCaptures]);
+    setGamePlanOpen(true);
+  }, []);
 
   const openPostCallFlow = useCallback(async () => {
     if (postCallFlowStartedRef.current) return;
@@ -1647,6 +1742,10 @@ function MeetingSurface({
     ]
   );
 
+  useEffect(() => {
+    setStatusBannerDismissed(false);
+  }, [meetingStatusBanner?.message]);
+
   const networkHideLocalPip =
     networkTierConfig.hideLocalPipInClipMode && inClipMode && !inLiveFocus;
 
@@ -1901,6 +2000,7 @@ function MeetingSurface({
         <DrawingOverlay
           key={`stage-${drawingOverlayKey}`}
           enabled={canDraw}
+          showRemoteLayer={!isTrainer}
           tool={annotationTool}
           color={annotationColor}
           remoteStrokes={drawingSync.remoteStrokes}
@@ -1908,21 +2008,23 @@ function MeetingSurface({
         />
       </View>
 
-      {meetingStatusBanner ? (
+      {meetingStatusBanner && !statusBannerDismissed ? (
         <MeetingJoinBanner
           message={meetingStatusBanner.message}
           variant={meetingStatusBanner.variant}
           topOffset={chrome.insets.top + 48}
+          onDismiss={() => setStatusBannerDismissed(true)}
         />
       ) : null}
 
-      {partnerInSession && bothJoined ? (
+      {partnerInSession && bothJoined && !networkBannerDismissed ? (
         <NetworkLessonBanner
           mode={networkAdaptive.mode}
           videoPausedForNetwork={networkAdaptive.videoPausedForNetwork}
           partnerQualityLabel={partnerQualityLabel}
           usingRelay={networkAdaptive.usingRelay}
           topOffset={networkBannerTop}
+          onDismiss={() => setNetworkBannerDismissed(true)}
           onTurnVideoBackOn={() => {
             networkAdaptive.markManualVideoRestore();
             if (!cameraEnabled) toggleCamera();
@@ -1930,14 +2032,15 @@ function MeetingSurface({
         />
       ) : null}
 
-      {!isTrainer ? (
+      {!isTrainer && !agendaBannerDismissed ? (
         <MeetingAgendaBanner
           focusedClipTitle={lessonLive.liveState.focusedClipTitle}
           topOffset={
             chrome.insets.top +
-            (meetingStatusBanner ? 108 : 56) +
+            (meetingStatusBanner && !statusBannerDismissed ? 108 : 56) +
             stackedBannerExtra
           }
+          onDismiss={() => setAgendaBannerDismissed(true)}
         />
       ) : null}
 
@@ -2178,14 +2281,16 @@ function MeetingSurface({
         <ConnectionQualityPill
           videoPausedForNetwork={networkAdaptive.videoPausedForNetwork}
         />
-        <View style={{ marginTop: 8 }}>
-          <TopToolButton
-            onPress={openAudioOutputPicker}
-            label={`Audio: ${audioRoute.routeLabel}`}
-          >
-            <Ionicons name="volume-high-outline" size={16} color={meetingTheme.text} />
-          </TopToolButton>
-        </View>
+        {!isTrainer ? (
+          <View style={{ marginTop: 8 }}>
+            <TopToolButton
+              onPress={openAudioOutputPicker}
+              label={`Audio: ${audioRoute.routeLabel}`}
+            >
+              <Ionicons name="volume-high-outline" size={16} color={meetingTheme.text} />
+            </TopToolButton>
+          </View>
+        ) : null}
       </View>
 
       {/* Top chrome */}
@@ -2205,42 +2310,59 @@ function MeetingSurface({
         onResume={lessonTimer.requestResume}
         onCrossThreshold={onTimerCrossThreshold}
         leadingTools={
-          isTrainer && inClipMode ? (
-            <>
-              {clipSync.selectedClips.length === 2 ? (
-                <TopToolButton
-                  onPress={handleToggleLock}
-                  label={clipSync.lockMode ? "Unlock clips" : "Lock clips"}
-                  active={clipSync.lockMode}
-                >
-                  <Ionicons
-                    name={clipSync.lockMode ? "lock-closed" : "lock-open-outline"}
-                    size={18}
-                    color={meetingTheme.text}
-                  />
-                </TopToolButton>
-              ) : null}
-              <TopToolButton
-                onPress={() => void screenshot.takeScreenshot(buildScreenshotSources())}
-                label="Screenshot"
-                disabled={screenshot.capturing}
-              >
-                {screenshot.capturing ? (
-                  <ActivityIndicator size="small" color={meetingTheme.text} />
-                ) : (
-                  <Ionicons name="camera-outline" size={18} color={meetingTheme.text} />
-                )}
-              </TopToolButton>
-              <TopToolButton
-                onPress={() => {
-                  void screenshot.refreshScreenshots();
-                  setScreenshotSheetOpen(true);
-                }}
-                label="Screenshot gallery"
-              >
-                <Ionicons name="images-outline" size={18} color={meetingTheme.text} />
-              </TopToolButton>
-            </>
+          isTrainer && partnerInSession && bothJoined ? (
+            <MeetingTrainerOverflowMenu
+              disabled={screenshot.capturing}
+              onSelect={handleTrainerOverflow}
+              items={[
+                {
+                  id: "screenshot",
+                  label: "Screenshot",
+                  icon: "camera-outline",
+                  disabled: screenshot.capturing,
+                },
+                {
+                  id: "gallery",
+                  label: "Screenshot gallery",
+                  icon: "images-outline",
+                },
+                ...(clipSync.selectedClips.length === 2
+                  ? [
+                      {
+                        id: "lock" as const,
+                        label: clipSync.lockMode ? "Unlock clips" : "Lock clips",
+                        icon: (clipSync.lockMode
+                          ? "lock-closed"
+                          : "lock-open-outline") as keyof typeof Ionicons.glyphMap,
+                        active: clipSync.lockMode,
+                      },
+                    ]
+                  : []),
+                {
+                  id: "audio",
+                  label: `Audio · ${audioRoute.routeLabel}`,
+                  icon: "volume-high-outline",
+                },
+                ...(instantRecording.showTrainerRecordingOptIn &&
+                isInstant &&
+                lessonTimer.status !== "waiting"
+                  ? [
+                      {
+                        id: "record" as const,
+                        label: instantRecording.trainerRecordingLive
+                          ? "Stop recording"
+                          : instantRecording.trainerRecordingEnabled
+                            ? "Start recording"
+                            : "Record session",
+                        icon: "radio-button-on" as keyof typeof Ionicons.glyphMap,
+                        active:
+                          instantRecording.trainerRecordingLive ||
+                          instantRecording.trainerRecordingEnabled,
+                      },
+                    ]
+                  : []),
+              ]}
+            />
           ) : !isTrainer && joinReadiness?.extension_preview?.allowed ? (
             <TopToolButton
               onPress={() => setTraineeExtendOpen(true)}
@@ -2264,6 +2386,12 @@ function MeetingSurface({
             drawingSync.clearCanvas();
             setDrawingOverlayKey((k) => k + 1);
           }}
+          onUndo={() => {
+            if (drawingSync.undoLastStroke()) {
+              setDrawingOverlayKey((k) => k + 1);
+            }
+          }}
+          canUndo={drawingSync.canUndo}
           bottomOffset={chrome.bottomChrome + 96}
         />
       ) : null}
@@ -2312,24 +2440,38 @@ function MeetingSurface({
         />
       ) : null}
 
-      {lastError ? (
+      {lastError && !errorBannerDismissed ? (
         <View
           style={[
             styles.errorBanner,
             { top: chrome.insets.top + (reconnectFailed ? 56 : 8) },
           ]}
         >
-          <Text style={styles.errorText}>{lastError}</Text>
-          {joinDeniedCanTakeOver ? (
-            <Pressable
-              onPress={requestCallTakeover}
-              style={styles.takeoverBtn}
-              accessibilityRole="button"
-              accessibilityLabel="Take over lesson on this device"
-            >
-              <Text style={styles.takeoverBtnText}>Take over on this device</Text>
-            </Pressable>
-          ) : null}
+          <View style={styles.errorBannerBody}>
+            <Text style={styles.errorText}>{lastError}</Text>
+            {joinDeniedCanTakeOver ? (
+              <Pressable
+                onPress={requestCallTakeover}
+                style={styles.takeoverBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Take over lesson on this device"
+              >
+                <Text style={styles.takeoverBtnText}>Take over on this device</Text>
+              </Pressable>
+            ) : null}
+          </View>
+          <Pressable
+            onPress={() => {
+              setErrorBannerDismissed(true);
+              clearLastError();
+            }}
+            style={styles.errorDismissBtn}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss error"
+          >
+            <Ionicons name="close" size={18} color="#fff" />
+          </Pressable>
         </View>
       ) : null}
 
@@ -2343,7 +2485,9 @@ function MeetingSurface({
         traineeId={
           isTrainer ? String(session?.trainee_info?._id ?? "") : undefined
         }
-        selectedClipIds={clipSync.selectedClips.map((c) => String(c._id))}
+        selectedClipIds={clipSync.selectedClips
+          .map((c) => clipIdOf(c))
+          .filter((id): id is string => !!id)}
       />
 
       {isTrainer ? (
@@ -2374,11 +2518,23 @@ function MeetingSurface({
               setScreenshotSheetOpen(true);
             }}
           />
+          <ScreenshotCapturePickerModal
+            visible={screenshotPickerOpen}
+            hasDualClips={dualClip}
+            inLiveFocus={inLiveFocus}
+            clipLabels={clipScreenshotLabels}
+            onClose={() => setScreenshotPickerOpen(false)}
+            onSelect={handleScreenshotChoice}
+          />
           <SessionGamePlanModal
             visible={gamePlanOpen}
             sessionId={lessonId}
             trainerId={myId}
             traineeId={peerId}
+            trainerName={
+              (authUser as { fullname?: string })?.fullname ??
+              (authUser as { fullName?: string })?.fullName
+            }
             onClose={() => {
               setGamePlanOpen(false);
               setRatingsOpen(true);
@@ -2662,8 +2818,16 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     gap: 8,
+    zIndex: 30,
+    flexDirection: "row",
+    alignItems: "flex-start",
   },
   errorText: { color: "#fff", fontSize: 13 },
+  errorBannerBody: { flex: 1, gap: 8 },
+  errorDismissBtn: {
+    padding: 2,
+    marginLeft: 4,
+  },
   takeoverBtn: {
     alignSelf: "flex-start",
     backgroundColor: "rgba(255,255,255,0.2)",

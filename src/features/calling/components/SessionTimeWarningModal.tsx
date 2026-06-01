@@ -90,6 +90,15 @@ export function SessionTimeWarningModal({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
       <View style={[styles.backdrop, { paddingBottom: insets.bottom + space.md }]}>
         <View style={styles.card}>
+          <Pressable
+            onPress={onDismiss}
+            style={styles.closeBtn}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          >
+            <Ionicons name="close" size={22} color={colors.textMuted} />
+          </Pressable>
           <View style={[styles.iconBubble, { backgroundColor: copy.color + "22" }]}>
             <Ionicons name={copy.icon} size={28} color={copy.color} />
           </View>
@@ -142,6 +151,13 @@ const styles = StyleSheet.create({
     padding: space.lg,
     alignItems: "center",
     gap: space.sm,
+  },
+  closeBtn: {
+    position: "absolute",
+    top: space.sm,
+    right: space.sm,
+    zIndex: 2,
+    padding: 4,
   },
   iconBubble: {
     width: 56,

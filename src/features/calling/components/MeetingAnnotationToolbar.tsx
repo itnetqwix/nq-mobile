@@ -32,6 +32,8 @@ type Props = {
   drawingEnabled: boolean;
   onToggleDrawing: () => void;
   onClear: () => void;
+  onUndo?: () => void;
+  canUndo?: boolean;
   bottomOffset?: number;
 };
 
@@ -56,6 +58,8 @@ export function MeetingAnnotationToolbar({
   drawingEnabled,
   onToggleDrawing,
   onClear,
+  onUndo,
+  canUndo = false,
   bottomOffset = 160,
 }: Props) {
   return (
@@ -105,6 +109,17 @@ export function MeetingAnnotationToolbar({
                 />
               ))}
             </View>
+
+            {onUndo ? (
+              <Pressable
+                onPress={onUndo}
+                disabled={!canUndo}
+                style={[styles.toolBtn, !canUndo && styles.toolBtnDisabled]}
+                accessibilityLabel="Undo last stroke"
+              >
+                <Ionicons name="arrow-undo-outline" size={20} color={canUndo ? "#fff" : "#666"} />
+              </Pressable>
+            ) : null}
 
             <Pressable onPress={onClear} style={styles.toolBtn} accessibilityLabel="Clear">
               <Ionicons name="trash-outline" size={20} color="#fff" />
@@ -159,6 +174,9 @@ const styles = StyleSheet.create({
   },
   toolBtnActive: {
     backgroundColor: "rgba(33,150,243,0.55)",
+  },
+  toolBtnDisabled: {
+    opacity: 0.45,
   },
   colorRow: {
     flexDirection: "row",

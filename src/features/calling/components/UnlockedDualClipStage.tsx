@@ -14,6 +14,7 @@ const CLIP_BG = "#ffffff";
 export type ClipPlayerPaneProps = {
   isPlaying: boolean;
   seekTargetMs: number | null;
+  seekNonce?: number | null;
   zoom?: number;
   pan?: { x: number; y: number };
   zoomGesturesEnabled?: boolean;

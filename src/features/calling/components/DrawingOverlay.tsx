@@ -23,13 +23,15 @@ import {
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 
-import type { RemoteStroke, StrokePoint } from "../useDrawingSync";
+import type { AnnotationShapeKind, RemoteStroke, StrokePoint } from "../useDrawingSync";
 import type { AnnotationTool } from "./MeetingAnnotationToolbar";
 
 type Stroke = { path: SkPath; color: string; width: number };
 
 type Props = {
   enabled: boolean;
+  /** Keep the layer mounted so remote strokes can render (trainee view). */
+  showRemoteLayer?: boolean;
   tool?: AnnotationTool;
   color?: string;
   strokeWidth?: number;
@@ -105,6 +107,60 @@ function pointsToPath(points: StrokePoint[]): SkPath {
   return path;
 }
 
+function remoteStrokePath(stroke: RemoteStroke): SkPath {
+  const kind = stroke.kind ?? "stroke";
+  const bounds = stroke.shapeBounds;
+  if (bounds) {
+    const x0 = bounds.x0;
+    const y0 = bounds.y0;
+    const x1 = bounds.x1;
+    const y1 = bounds.y1;
+    const path = Skia.Path.Make();
+    if (kind === "rect") {
+      path.addRect({
+        x: Math.min(x0, x1),
+        y: Math.min(y0, y1),
+        width: Math.abs(x1 - x0),
+        height: Math.abs(y1 - y0),
+      });
+      return path;
+    }
+    if (kind === "circle") {
+      path.addOval({
+        x: Math.min(x0, x1),
+        y: Math.min(y0, y1),
+        width: Math.abs(x1 - x0),
+        height: Math.abs(y1 - y0),
+      });
+      return path;
+    }
+    if (kind === "line" || kind === "arrow") {
+      path.moveTo(x0, y0);
+      path.lineTo(x1, y1);
+      if (kind === "arrow") {
+        const angle = Math.atan2(y1 - y0, x1 - x0);
+        const head = 12;
+        path.moveTo(x1, y1);
+        path.lineTo(
+          x1 - head * Math.cos(angle - Math.PI / 6),
+          y1 - head * Math.sin(angle - Math.PI / 6)
+        );
+        path.moveTo(x1, y1);
+        path.lineTo(
+          x1 - head * Math.cos(angle + Math.PI / 6),
+          y1 - head * Math.sin(angle + Math.PI / 6)
+        );
+      }
+      return path;
+    }
+  }
+  const path = pointsToPath(stroke.points);
+  if (kind === "rect" || kind === "circle") {
+    path.close();
+  }
+  return path;
+}
+
 function freehandPathFromPoints(points: StrokePoint[]): SkPath {
   const path = Skia.Path.Make();
   if (points.length === 0) return path;
@@ -115,8 +171,33 @@ function freehandPathFromPoints(points: StrokePoint[]): SkPath {
   return path;
 }
 
+function scaleStrokeForCanvas(
+  stroke: RemoteStroke,
+  target: { width: number; height: number }
+): RemoteStroke {
+  const source = stroke.sourceCanvasSize;
+  if (
+    !source ||
+    source.width <= 0 ||
+    source.height <= 0 ||
+    target.width <= 0 ||
+    target.height <= 0
+  ) {
+    return stroke;
+  }
+  const sx = target.width / source.width;
+  const sy = target.height / source.height;
+  const scale = (sx + sy) / 2;
+  return {
+    ...stroke,
+    points: stroke.points.map((p) => ({ x: p.x * sx, y: p.y * sy })),
+    width: stroke.width * scale,
+  };
+}
+
 export function DrawingOverlay({
   enabled,
+  showRemoteLayer = false,
   tool = "freehand",
   color = "#ff3b30",
   strokeWidth = 4,
@@ -167,6 +248,8 @@ export function DrawingOverlay({
         points: shapePoints(t, x0, y0, x1, y1),
         color: colorRef.current,
         width: strokeWidthRef.current,
+        kind: t as AnnotationShapeKind,
+        shapeBounds: { x0, y0, x1, y1 },
       });
     },
     [commitStroke, emitStroke]
@@ -287,15 +370,25 @@ export function DrawingOverlay({
   );
 
   const allText = useMemo(
-    () => [
-      ...remoteStrokes.filter((r) => r.kind === "text" && r.text),
-      ...textLabels,
-    ],
-    [remoteStrokes, textLabels]
+    () =>
+      [
+        ...remoteStrokes.filter((r) => r.kind === "text" && r.text),
+        ...textLabels,
+      ].map((t) => scaleStrokeForCanvas(t, canvasSize)),
+    [remoteStrokes, textLabels, canvasSize]
+  );
+
+  const scaledRemoteStrokes = useMemo(
+    () =>
+      remoteStrokes
+        .filter((r) => r.kind !== "text")
+        .map((r) => scaleStrokeForCanvas(r, canvasSize)),
+    [remoteStrokes, canvasSize]
   );
 
   if (
     !enabled &&
+    !showRemoteLayer &&
     strokes.length === 0 &&
     !current &&
     remoteStrokes.length === 0 &&
@@ -320,17 +413,15 @@ export function DrawingOverlay({
           }}
         >
           <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
-            {remoteStrokes
-              .filter((r) => r.kind !== "text")
-              .map((rs, i) => (
-                <Path
-                  key={`remote-${i}`}
-                  path={pointsToPath(rs.points)}
-                  style="stroke"
-                  strokeWidth={rs.width}
-                  color={rs.color}
-                />
-              ))}
+            {scaledRemoteStrokes.map((rs, i) => (
+              <Path
+                key={`remote-${i}`}
+                path={remoteStrokePath(rs)}
+                style="stroke"
+                strokeWidth={rs.width}
+                color={rs.color}
+              />
+            ))}
             {strokes.map((s, i) => (
               <Path
                 key={`local-${i}`}

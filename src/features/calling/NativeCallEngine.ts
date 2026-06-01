@@ -502,10 +502,8 @@ export class NativeCallEngine {
         peerId: ui.peerId,
       });
 
-      /** Callee (the `to_user` of the join) sends the SDP offer — works for
-       *  trainer↔trainee on native and when the web peer uses socket signaling. */
-      const weAreCallee = String(ui.to_user) === String(this.fromUser._id);
-      if (weAreCallee) {
+      /** Deterministic offerer avoids mobile↔mobile glare (both sides used to send offers). */
+      if (this.shouldInitiateOffer() && this.pc && !this.pc.localDescription) {
         void this.createAndSendOffer();
       }
     };
@@ -521,8 +519,13 @@ export class NativeCallEngine {
       const offer: RTCSessionDescriptionInit | undefined =
         payload?.offer ?? (payload?.type ? payload : undefined);
       if (!offer || !this.pc) return;
+      const pc = this.pc;
+      if (pc.signalingState === "have-local-offer") {
+        return;
+      }
+      if (pc.remoteDescription) return;
       try {
-        await this.pc.setRemoteDescription(
+        await pc.setRemoteDescription(
           new RTCSessionDescription(offer as any)
         );
         await this.drainPendingIce();
@@ -541,6 +544,7 @@ export class NativeCallEngine {
       const answer: RTCSessionDescriptionInit | undefined =
         payload?.answer ?? (payload?.type ? payload : undefined);
       if (!answer || !this.pc) return;
+      if (this.pc.signalingState !== "have-local-offer") return;
       try {
         await this.pc.setRemoteDescription(
           new RTCSessionDescription(answer as any)
@@ -811,6 +815,11 @@ export class NativeCallEngine {
       /** Web skips PeerJS `peer.call` and uses ON_OFFER/ON_ANSWER when set. */
       signalingMode: "socket-webrtc" as const,
     };
+  }
+
+  /** Lower Mongo id offers first — stable across trainer/trainee and iOS/Android. */
+  private shouldInitiateOffer(): boolean {
+    return String(this.fromUser._id).localeCompare(String(this.toUser._id)) < 0;
   }
 
   private setStatus(status: CallEngineStatus) {

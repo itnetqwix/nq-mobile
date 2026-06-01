@@ -3,8 +3,9 @@ import { getClipPlaybackUrl, isLikelyPdf } from "../../lib/clipMediaUrl";
 export type ClipRecord = Record<string, any>;
 
 export function clipIdOf(clip: ClipRecord | null | undefined): string | null {
-  if (!clip?._id) return null;
-  return String(clip._id);
+  const id = clip?._id ?? clip?.id;
+  if (id == null || id === "") return null;
+  return String(id);
 }
 
 export function clipsFromSession(session: Record<string, any> | null | undefined): ClipRecord[] {

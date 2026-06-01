@@ -1,6 +1,5 @@
 /**
- * Post-call game plan — lists session screenshots and saves title/metadata
- * (web `reportModal.jsx` simplified; images already uploaded via screenshot API).
+ * Post-call game plan — web `reportModal.jsx` parity with improved mobile UX.
  */
 
 import React, { useCallback, useEffect, useState } from "react";
@@ -20,6 +19,8 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import * as FileSystem from "expo-file-system/legacy";
 import { apiClient } from "../../../api/client";
@@ -34,88 +35,33 @@ import {
   type ReportScreenshotItem,
   toReportDataPayload,
 } from "../reportDataUtils";
+import { buildGamePlanPdfHtml } from "../gamePlanPdfHtml";
+import { isPdfPrintAvailable, printHtmlToPdfFile } from "../pdfPrint";
 import { sendChatTextMessage } from "../../chats/lib/sendChatText";
 import {
   NOTIFICATION_TITLES,
   useNotifications,
 } from "../../notifications/NotificationContext";
+import { meetingTheme } from "../meetingTheme";
 
 type Props = {
   visible: boolean;
   sessionId: string;
   trainerId: string;
   traineeId: string;
+  trainerName?: string;
   onClose: () => void;
 };
-
-/** Loaded on demand so meeting screen does not require ExpoPrint in the dev build. */
-async function printHtmlToPdfFile(html: string): Promise<string | null> {
-  try {
-    const Print = await import("expo-print");
-    const pdf = await Print.printToFileAsync({ html, base64: false });
-    return pdf?.uri ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function buildPdfHtmlFromDataUrls(
-  imgDataUrls: string[],
-  heading: string,
-  notes: string,
-  items: ReportScreenshotItem[]
-): string {
-  const esc = (s: string) =>
-    String(s)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-
-  const imgs = imgDataUrls
-    .map((src, i) => {
-      const desc = items[i]?.description?.trim();
-      return `
-        <div class="imgWrap">
-          <img src="${src}" />
-          ${desc ? `<p class="caption">${esc(desc)}</p>` : ""}
-        </div>
-      `;
-    })
-    .join("\n");
-
-  return `
-<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <style>
-      body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; padding: 16px; }
-      h1 { font-size: 20px; margin: 0 0 8px 0; color: #0b1f3a; }
-      .notes { font-size: 12px; color: #444; white-space: pre-wrap; margin: 0 0 12px 0; }
-      .imgWrap { margin: 10px 0; page-break-inside: avoid; }
-      .caption { font-size: 11px; color: #333; margin: 6px 0 0 0; }
-      img { width: 100%; height: auto; border-radius: 10px; }
-    </style>
-  </head>
-  <body>
-    <h1>${esc(heading)}</h1>
-    ${notes ? `<div class="notes">${esc(notes)}</div>` : ""}
-    ${imgs}
-  </body>
-</html>
-`;
-}
 
 export function SessionGamePlanModal({
   visible,
   sessionId,
   trainerId,
   traineeId,
+  trainerName,
   onClose,
 }: Props) {
+  const insets = useSafeAreaInsets();
   const { emitNotification } = useNotifications();
   const [title, setTitle] = useState("");
   const [topic, setTopic] = useState("");
@@ -123,15 +69,6 @@ export function SessionGamePlanModal({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveStep, setSaveStep] = useState<"idle" | "pdf" | "upload" | "report">("idle");
-
-  const buildPdfHtml = useCallback(
-    async (items: ReportScreenshotItem[], heading: string, notes: string) => {
-      const keys = items.map((i) => i.imageUrl);
-      const dataUrls = await requireBase64DataUrlsForPdf(keys);
-      return buildPdfHtmlFromDataUrls(dataUrls, heading, notes, items);
-    },
-    []
-  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -156,12 +93,23 @@ export function SessionGamePlanModal({
     if (visible) void load();
   }, [visible, load]);
 
+  const updateItemDescription = (index: number, description: string) => {
+    setReportItems((prev) => {
+      const next = [...prev];
+      if (!next[index]) return prev;
+      next[index] = { ...next[index], description };
+      return next;
+    });
+  };
+
   const sendSummaryToChat = useCallback(
     async (heading: string, notes: string) => {
       const lines = [
         `📋 Game plan: ${heading}`,
         notes.trim() ? notes.trim() : null,
-        reportItems.length > 0 ? `${reportItems.length} screenshot(s) saved to your locker.` : null,
+        reportItems.length > 0
+          ? `${reportItems.length} screenshot(s) saved to your locker.`
+          : null,
       ].filter(Boolean);
       await sendChatTextMessage({
         receiverId: traineeId,
@@ -173,59 +121,65 @@ export function SessionGamePlanModal({
 
   const save = async (alsoSendToChat: boolean) => {
     if (!title.trim()) {
-      Alert.alert("Title required", "Add a title for this game plan.");
+      Alert.alert("Title required", "Add a topic title for this game plan.");
       return;
     }
     setSaving(true);
     setSaveStep("pdf");
     try {
       let pdfAttached = false;
-      // Generate + upload PDF (web parity) when screenshots exist.
       const payloadItems = toReportDataPayload(reportItems);
 
       if (payloadItems.length > 0) {
-        const html = await buildPdfHtml(payloadItems, title.trim(), topic.trim());
-        const pdfUri = await printHtmlToPdfFile(html);
-        if (pdfUri) {
-          let pdfBytes = 0;
-          try {
-            /**
-             * `expo-file-system@latest` always returns `size` on the info
-             * payload — the legacy `{ size: true }` option was removed
-             * (the field used to be lazy on older SDK versions). We rely
-             * on the runtime check below to stay robust either way.
-             */
-            const info = await FileSystem.getInfoAsync(pdfUri);
-            if (info.exists && "size" in info && typeof info.size === "number") {
-              pdfBytes = info.size;
-            }
-          } catch {
-            /* ignore */
-          }
-          if (pdfBytes > 0) {
-            const storage = await fetchStorageInfo();
-            if (storage.usedBytes + pdfBytes > storage.quotaBytes) {
-              Alert.alert(
-                "Storage full",
-                "You have reached your storage limit (clips and game plans). Upgrade in Settings → Storage plan."
-              );
-              return;
-            }
-          }
-          setSaveStep("upload");
-          const sign = await apiClient.post(API_ROUTES.common.pdfUploadUrl, {
-            session_id: sessionId,
-            sizeBytes: pdfBytes,
-          });
-          const uploadUrl = sign?.data?.url;
-          if (!uploadUrl) throw new Error("Could not prepare PDF upload.");
-          await putFileToPresignedUrl(uploadUrl, pdfUri, "application/pdf");
-          pdfAttached = true;
-        } else {
+        if (!isPdfPrintAvailable()) {
           Alert.alert(
-            "PDF not available",
-            "Screenshots will still be saved. Update the app to attach a PDF to this game plan."
+            "Rebuild required for PDF",
+            "This app build does not include PDF export. Run npm run ios:device or android:install-dev after pulling latest code, then try again. Screenshots will still be saved."
           );
+        } else {
+          try {
+            const keys = payloadItems.map((i) => i.imageUrl);
+            const dataUrls = await requireBase64DataUrlsForPdf(keys);
+            const html = buildGamePlanPdfHtml(
+              dataUrls,
+              title.trim(),
+              topic.trim(),
+              payloadItems,
+              { trainerName }
+            );
+            const { uri: pdfUri } = await printHtmlToPdfFile(html);
+            let pdfBytes = 0;
+            try {
+              const info = await FileSystem.getInfoAsync(pdfUri);
+              if (info.exists && "size" in info && typeof info.size === "number") {
+                pdfBytes = info.size;
+              }
+            } catch {
+              /* ignore */
+            }
+            if (pdfBytes > 0) {
+              const storage = await fetchStorageInfo();
+              if (storage.usedBytes + pdfBytes > storage.quotaBytes) {
+                Alert.alert(
+                  "Storage full",
+                  "You have reached your storage limit. Upgrade in Settings → Storage plan."
+                );
+                return;
+              }
+            }
+            setSaveStep("upload");
+            const sign = await apiClient.post(API_ROUTES.common.pdfUploadUrl, {
+              session_id: sessionId,
+              sizeBytes: pdfBytes,
+            });
+            const uploadUrl = sign?.data?.url;
+            if (!uploadUrl) throw new Error("Could not prepare PDF upload.");
+            await putFileToPresignedUrl(uploadUrl, pdfUri, "application/pdf");
+            pdfAttached = true;
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : "PDF export failed.";
+            Alert.alert("PDF export failed", `${msg} Screenshots will still be saved.`);
+          }
         }
       }
 
@@ -253,7 +207,7 @@ export function SessionGamePlanModal({
         } catch {
           Alert.alert(
             "Saved to locker",
-            "Game plan was saved but could not be sent in chat. You can paste a link from Game plans in Chats."
+            "Game plan was saved but could not be sent in chat."
           );
           onClose();
           return;
@@ -266,7 +220,9 @@ export function SessionGamePlanModal({
           ? "Your trainee received a chat message and can open Game plans in their locker."
           : pdfAttached
             ? "PDF and screenshots are in your locker under Game plans."
-            : "Screenshots are in your locker under Game plans."
+            : payloadItems.length > 0
+              ? "Screenshots are in your locker under Game plans."
+              : "Plan saved. Add screenshots during your next lesson for a richer PDF."
       );
       onClose();
     } catch (e: unknown) {
@@ -278,6 +234,16 @@ export function SessionGamePlanModal({
     }
   };
 
+  const saveLabel = saving
+    ? saveStep === "pdf"
+      ? "Building PDF…"
+      : saveStep === "upload"
+        ? "Uploading PDF…"
+        : saveStep === "report"
+          ? "Saving…"
+          : "Saving…"
+    : null;
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <KeyboardAvoidingView
@@ -285,83 +251,104 @@ export function SessionGamePlanModal({
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-          <View style={styles.root}>
-        <Text style={styles.heading}>Session game plan</Text>
-        <Text style={styles.sub}>
-          Review screenshots from this lesson, then save to your locker.
-        </Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Game plan title"
-          placeholderTextColor="#888"
-          value={title}
-          onChangeText={setTitle}
-        />
-        <TextInput
-          style={[styles.input, styles.inputMulti]}
-          placeholder="Notes (optional)"
-          placeholderTextColor="#888"
-          value={topic}
-          onChangeText={setTopic}
-          multiline
-        />
-
-        {loading ? (
-          <ActivityIndicator style={{ marginTop: 24 }} />
-        ) : reportItems.length === 0 ? (
-          <Text style={styles.empty}>
-            No screenshots yet. Use the camera button during the call to capture frames.
-          </Text>
-        ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.strip}>
-            {reportItems.map((item) => (
-              <View key={item.imageUrl} style={styles.thumbWrap}>
-                <Image
-                  source={{ uri: getS3ImageUrl(item.imageUrl) }}
-                  style={styles.thumb}
-                />
-                {item.description ? (
-                  <Text style={styles.thumbCaption} numberOfLines={2}>
-                    {item.description}
-                  </Text>
-                ) : null}
+          <View style={[styles.root, { paddingTop: insets.top + 8 }]}>
+            <View style={styles.header}>
+              <View style={styles.headerText}>
+                <Text style={styles.heading}>Game plan</Text>
+                <Text style={styles.sub}>
+                  Add a title and notes for each screenshot. We build one PDF for your trainee.
+                </Text>
               </View>
-            ))}
-          </ScrollView>
-        )}
+              <Pressable
+                onPress={onClose}
+                style={styles.closeBtn}
+                hitSlop={8}
+                disabled={saving}
+                accessibilityLabel="Close"
+              >
+                <Ionicons name="close" size={26} color={meetingTheme.textMuted} />
+              </Pressable>
+            </View>
 
-        <View style={styles.actionsCol}>
-          <Pressable
-            style={[styles.btnPrimary, saving && { opacity: 0.6 }]}
-            onPress={() => void save(true)}
-            disabled={saving}
-          >
-            <Text style={styles.btnPrimaryText}>
-              {saving ? "Saving…" : "Save & send to chat"}
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.btnSecondary, saving && { opacity: 0.6 }]}
-            onPress={() => void save(false)}
-            disabled={saving}
-          >
-            <Text style={styles.btnSecondaryText}>
-              {saving
-                ? saveStep === "pdf"
-                  ? "Building PDF…"
-                  : saveStep === "upload"
-                    ? "Uploading PDF…"
-                    : saveStep === "report"
-                      ? "Saving plan…"
-                      : "Saving…"
-                : "Save to locker only"}
-            </Text>
-          </Pressable>
-          <Pressable style={styles.btnGhost} onPress={onClose} disabled={saving}>
-            <Text style={styles.btnGhostText}>Skip</Text>
-          </Pressable>
-        </View>
+            <ScrollView
+              style={styles.scroll}
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+            >
+              <Text style={styles.sectionLabel}>Plan details</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Topic (e.g. Forehand contact point)"
+                placeholderTextColor={meetingTheme.textMuted}
+                value={title}
+                onChangeText={setTitle}
+              />
+              <TextInput
+                style={[styles.input, styles.inputMulti]}
+                placeholder="Session notes (optional)"
+                placeholderTextColor={meetingTheme.textMuted}
+                value={topic}
+                onChangeText={setTopic}
+                multiline
+              />
+
+              <Text style={[styles.sectionLabel, { marginTop: 20 }]}>
+                Screenshots ({reportItems.length})
+              </Text>
+
+              {loading ? (
+                <ActivityIndicator style={{ marginVertical: 24 }} color={meetingTheme.navy} />
+              ) : reportItems.length === 0 ? (
+                <View style={styles.emptyCard}>
+                  <Ionicons name="camera-outline" size={32} color={meetingTheme.textMuted} />
+                  <Text style={styles.emptyTitle}>No screenshots yet</Text>
+                  <Text style={styles.emptyBody}>
+                    During the lesson, open ⋮ More → Screenshot and choose which clip(s) to
+                    capture.
+                  </Text>
+                </View>
+              ) : (
+                reportItems.map((item, index) => (
+                  <View key={`${item.imageUrl}-${index}`} style={styles.shotCard}>
+                    <Image
+                      source={{ uri: getS3ImageUrl(item.imageUrl) }}
+                      style={styles.shotImage}
+                      resizeMode="contain"
+                    />
+                    <Text style={styles.shotIndex}>Frame {index + 1}</Text>
+                    <TextInput
+                      style={[styles.input, styles.shotNotes]}
+                      placeholder="Notes for this frame (shown in PDF)"
+                      placeholderTextColor={meetingTheme.textMuted}
+                      value={item.description ?? ""}
+                      onChangeText={(t) => updateItemDescription(index, t)}
+                      multiline
+                    />
+                  </View>
+                ))
+              )}
+            </ScrollView>
+
+            <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
+              <Pressable
+                style={[styles.btnPrimary, saving && styles.btnDisabled]}
+                onPress={() => void save(true)}
+                disabled={saving}
+              >
+                <Text style={styles.btnPrimaryText}>
+                  {saveLabel ?? "Save & notify trainee"}
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.btnSecondary, saving && styles.btnDisabled]}
+                onPress={() => void save(false)}
+                disabled={saving}
+              >
+                <Text style={styles.btnSecondaryText}>
+                  {saveLabel ?? "Save to locker only"}
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
@@ -371,43 +358,105 @@ export function SessionGamePlanModal({
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  root: { flex: 1, padding: 20, paddingTop: 48, backgroundColor: "#fff" },
-  heading: { fontSize: 22, fontWeight: "700", color: "#0b1f3a" },
-  sub: { marginTop: 8, fontSize: 14, color: "#555", lineHeight: 20 },
+  root: { flex: 1, backgroundColor: "#f4f6f9" },
+  header: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    gap: 8,
+  },
+  headerText: { flex: 1 },
+  closeBtn: { padding: 4 },
+  heading: { fontSize: 24, fontWeight: "800", color: meetingTheme.navy },
+  sub: { marginTop: 6, fontSize: 14, color: meetingTheme.textMuted, lineHeight: 20 },
+  scroll: { flex: 1 },
+  scrollContent: { paddingHorizontal: 16, paddingBottom: 24 },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: meetingTheme.textMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginBottom: 8,
+  },
   input: {
-    marginTop: 16,
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderColor: meetingTheme.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     fontSize: 15,
-    color: "#111",
+    color: meetingTheme.text,
+    backgroundColor: "#fff",
+    marginBottom: 10,
   },
-  inputMulti: { minHeight: 72, textAlignVertical: "top" },
-  empty: { marginTop: 20, color: "#666", fontSize: 14 },
-  strip: { marginTop: 16, maxHeight: 140 },
-  thumbWrap: { marginRight: 10, maxWidth: 100 },
-  thumb: { width: 100, height: 100, borderRadius: 8, backgroundColor: "#eee" },
-  thumbCaption: { fontSize: 10, color: "#555", marginTop: 4 },
-  actionsCol: { gap: 10, marginTop: "auto", paddingBottom: 24 },
-  btnGhost: { paddingVertical: 12, alignItems: "center" },
-  btnGhostText: { color: "#666", fontWeight: "600" },
-  btnSecondary: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 10,
+  inputMulti: { minHeight: 88, textAlignVertical: "top" },
+  emptyCard: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 24,
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: "#ccc",
-    alignItems: "center",
+    borderColor: meetingTheme.border,
   },
-  btnSecondaryText: { color: "#333", fontWeight: "600" },
-  btnPrimary: {
-    flex: 1,
-    paddingVertical: 14,
+  emptyTitle: {
+    marginTop: 12,
+    fontSize: 16,
+    fontWeight: "700",
+    color: meetingTheme.text,
+  },
+  emptyBody: {
+    marginTop: 8,
+    fontSize: 13,
+    color: meetingTheme.textMuted,
+    textAlign: "center",
+    lineHeight: 19,
+  },
+  shotCard: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: meetingTheme.border,
+  },
+  shotImage: {
+    width: "100%",
+    height: 180,
     borderRadius: 10,
-    backgroundColor: "#0b1f3a",
+    backgroundColor: "#eee",
+  },
+  shotIndex: {
+    marginTop: 10,
+    fontSize: 12,
+    fontWeight: "700",
+    color: meetingTheme.navy,
+  },
+  shotNotes: { marginTop: 6, minHeight: 64 },
+  footer: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    gap: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: meetingTheme.border,
+    backgroundColor: "#fff",
+  },
+  btnPrimary: {
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: meetingTheme.navy,
     alignItems: "center",
   },
-  btnPrimaryText: { color: "#fff", fontWeight: "600" },
+  btnPrimaryText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  btnSecondary: {
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: meetingTheme.border,
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+  btnSecondaryText: { color: meetingTheme.text, fontWeight: "600", fontSize: 15 },
+  btnDisabled: { opacity: 0.55 },
 });

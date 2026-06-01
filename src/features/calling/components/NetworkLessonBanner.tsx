@@ -11,6 +11,7 @@ type Props = {
   partnerQualityLabel?: string | null;
   usingRelay?: boolean;
   onTurnVideoBackOn?: () => void;
+  onDismiss?: () => void;
   topOffset?: number;
 };
 
@@ -24,6 +25,7 @@ export function NetworkLessonBanner({
   partnerQualityLabel,
   usingRelay,
   onTurnVideoBackOn,
+  onDismiss,
   topOffset = 108,
 }: Props) {
   if (mode === "normal" && !videoPausedForNetwork && !partnerQualityLabel) {
@@ -75,6 +77,11 @@ export function NetworkLessonBanner({
             </Pressable>
           ) : null}
         </View>
+        {onDismiss ? (
+          <Pressable onPress={onDismiss} hitSlop={8} accessibilityLabel="Dismiss">
+            <Ionicons name="close" size={18} color="rgba(255,255,255,0.85)" />
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );

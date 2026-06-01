@@ -30,6 +30,7 @@ import {
 } from "./NativeCallEngine";
 import type { LessonNetworkTier } from "./lessonNetworkTier";
 import type { CallEngineStatus, CallParticipant, IceServer, SessionRole } from "./types";
+import { isBenignWebRtcSignalingError } from "./webrtcSignalingErrors";
 
 export type CameraOffReason = "user" | "network" | null;
 
@@ -95,6 +96,8 @@ type CallContextValue = {
   acknowledgePeerJoined: () => void;
   /** Last engine error, surfaced for toasts/banners. */
   lastError: string | null;
+  /** Dismiss a surfaced engine error (e.g. benign WebRTC races). */
+  clearLastError: () => void;
   /** Another device holds the slot; user can emit CALL_JOIN_TAKEOVER. */
   joinDeniedCanTakeOver: boolean;
   /** Displace the other device and re-join on this socket. */
@@ -135,6 +138,7 @@ const CallContext = createContext<CallContextValue>({
   }),
   acknowledgePeerJoined: noop,
   lastError: null,
+  clearLastError: noop,
   joinDeniedCanTakeOver: false,
   requestCallTakeover: noop,
 });
@@ -289,7 +293,12 @@ export function CallProvider({
         setStatus("ended");
         onEndedRef.current?.();
       },
-      onError: (err) => active && setLastError(err.message),
+      onError: (err) => {
+        if (!active) return;
+        const msg = err?.message ?? String(err);
+        if (isBenignWebRtcSignalingError(msg)) return;
+        setLastError(msg);
+      },
       onJoinDenied: (payload) => {
         if (!active) return;
         setLastError(
@@ -445,6 +454,10 @@ export function CallProvider({
 
   const acknowledgePeerJoined = useCallback(() => setPeerJoined(null), []);
 
+  const clearLastError = useCallback(() => {
+    setLastError(null);
+  }, []);
+
   const requestCallTakeover = useCallback(() => {
     setJoinDeniedCanTakeOver(false);
     setLastError(null);
@@ -479,6 +492,7 @@ export function CallProvider({
       markPartnerCameraNetworkPaused,
       acknowledgePeerJoined,
       lastError,
+      clearLastError,
       joinDeniedCanTakeOver,
       requestCallTakeover,
     }),
@@ -509,6 +523,7 @@ export function CallProvider({
       markPartnerCameraNetworkPaused,
       acknowledgePeerJoined,
       lastError,
+      clearLastError,
       joinDeniedCanTakeOver,
       requestCallTakeover,
     ]

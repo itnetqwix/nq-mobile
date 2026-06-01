@@ -22,6 +22,8 @@ type Props = {
   uri: string;
   isPlaying: boolean;
   seekTargetMs?: number | null;
+  /** Changes whenever a remote/local seek is requested — forces re-seek even at same ms. */
+  seekNonce?: number | null;
   zoom?: number;
   pan?: PanPoint;
   /** Trainer can pinch-zoom and drag within the clip frame. */
@@ -48,6 +50,7 @@ export function ClipPlayer({
   uri,
   isPlaying,
   seekTargetMs,
+  seekNonce,
   zoom = 1,
   pan,
   zoomGesturesEnabled = false,
@@ -141,7 +144,7 @@ export function ClipPlayer({
     }
     pendingSeekMsRef.current = null;
     void applySeek(seekTargetMs);
-  }, [applySeek, seekTargetMs]);
+  }, [applySeek, seekTargetMs, seekNonce]);
 
   useEffect(() => {
     if (!loadedRef.current) return;
