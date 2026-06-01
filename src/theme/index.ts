@@ -60,6 +60,9 @@ export const layout = {
   drawerWidth: 300,
   sidebarRailCompact: 65,
   sidebarRailExpanded: 105,
-  tabBarHeight: 64,
+  /** Floating pill tab bar (see `FloatingTabBar`). */
+  tabBarHeight: 58,
+  tabBarFloatingBottomGap: 10,
+  tabBarFloatingHorizontalInset: 16,
   minTapTarget: 44,
 } as const;

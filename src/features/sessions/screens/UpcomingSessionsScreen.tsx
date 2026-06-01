@@ -21,6 +21,7 @@ import { Button, Card, EmptyState, Pill, SessionRowSkeleton, Skeleton, SkeletonG
 import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { queryKeys } from "../../../lib/queryKeys";
+import { floatingTabBarBottomInset } from "../../../navigation/FloatingTabBar";
 import { fetchScheduledMeetings } from "../../home/api/homeApi";
 import { useHapticRefresh } from "../../../lib/refresh/useHapticRefresh";
 import {
@@ -447,7 +448,7 @@ export function UpcomingSessionsScreen() {
           ref={listScrollRef}
           contentContainerStyle={[
             styles.list,
-            { flexGrow: 1, paddingBottom: insets.bottom + space.md },
+            { flexGrow: 1, paddingBottom: floatingTabBarBottomInset(insets.bottom) + space.md },
           ]}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={onRefreshSessions} tintColor={colors.brand} />

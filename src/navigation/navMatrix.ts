@@ -221,6 +221,15 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
     group: "tools",
   },
 
+  {
+    id: "blogs",
+    label: "Blog",
+    icon: "newspaper-outline",
+    target: { kind: "feature", featureId: "blogs" },
+    surfaces: ["drawer", "more"],
+    group: "tools",
+  },
+
   /** Items below are only reachable via the More menu or deep links. */
   {
     id: "practice-session",
@@ -271,6 +280,7 @@ export function navMatrixFor(
       "about-us",
       "contact-us",
       "settings",
+      "blogs",
     ]);
     return NAV_MATRIX.filter(
       (entry) => entry.surfaces.includes(surface) && guestIds.has(entry.id)

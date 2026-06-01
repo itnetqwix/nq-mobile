@@ -3,6 +3,13 @@
  * - `netqwix_logo.png` — pin / Q mark (drawer toggle, compact header)
  * - `netqwix_logo-fulll.png` — full horizontal logo (drawer, auth, loaders, splash)
  */
+/** First-launch intro carousel heroes. */
+export const introImages = {
+  leap: require("../../assets/intro/intro-leap.png"),
+  coaches: require("../../assets/intro/intro-coaches.png"),
+  live: require("../../assets/intro/intro-live.png"),
+} as const;
+
 export const brandImages = {
   /** Pin badge — sidebar toggle, home nav title */
   netqwixMark: require("../../assets/netqwix_logo.png"),

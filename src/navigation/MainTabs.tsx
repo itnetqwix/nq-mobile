@@ -2,7 +2,6 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import React, { useEffect } from "react";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChatsScreen } from "../features/chats/screens/ChatsScreen";
 import { GuestTabGateScreen } from "../features/auth/screens/GuestTabGateScreen";
 import { useGuestMode } from "../features/auth/hooks/useGuestMode";
@@ -11,6 +10,7 @@ import { useThemeColors } from "../theme";
 import { AppScreenHeader } from "./AppScreenHeader";
 import { HomeNavigator } from "./HomeNavigator";
 import { TabSwipeShell } from "./TabSwipeShell";
+import { FloatingTabBar } from "./FloatingTabBar";
 import { haptics } from "../lib/haptics";
 import i18n from "../i18n";
 import type { MainTabParamList } from "./types";
@@ -55,20 +55,21 @@ export function MainTabs() {
       screenListeners={{
         tabPress: () => haptics.tap(),
       }}
+      tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{
         headerShown: false,
         lazy: true,
         tabBarActiveTintColor: c.tabBarActive,
         tabBarInactiveTintColor: c.tabBarInactive,
         tabBarStyle: {
-          borderTopColor: c.tabBarBorder,
-          backgroundColor: c.tabBar,
-          paddingTop: tabPadTop,
-          paddingBottom: tabPadBottom,
-          paddingLeft: Math.max(insets.left, 4),
-          paddingRight: Math.max(insets.right, 4),
-          minHeight: tabMinHeight,
-          height: undefined,
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "transparent",
+          borderTopWidth: 0,
+          elevation: 0,
+          shadowOpacity: 0,
         },
         tabBarLabelStyle: {
           fontWeight: "600",

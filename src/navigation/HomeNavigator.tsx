@@ -15,6 +15,9 @@ import { NotificationPreferencesScreen } from "../features/notifications/screens
 import { BlockedUsersScreen } from "../features/settings/screens/BlockedUsersScreen";
 import { DataExportScreen } from "../features/settings/screens/DataExportScreen";
 import { TwoFactorScreen } from "../features/settings/screens/TwoFactorScreen";
+import { BlogsScreen } from "../features/content/screens/BlogsScreen";
+import { BlogPostScreen } from "../features/content/screens/BlogPostScreen";
+import { LegalDocumentScreen } from "../features/content/screens/LegalDocumentScreen";
 import i18n from "../i18n";
 import { localizedDashboardTitle } from "../i18n/dashboardRouteI18n";
 import { localizedShellTitle } from "../i18n/shellSurfaceI18n";
@@ -105,6 +108,21 @@ export function HomeNavigator() {
         name="TwoFactor"
         component={TwoFactorScreen}
         options={{ title: i18n.t("twoFactor.title", { defaultValue: "Two-factor authentication" }) }}
+      />
+      <Stack.Screen
+        name="Blogs"
+        component={BlogsScreen}
+        options={{ title: i18n.t("cms.blogsTitle") }}
+      />
+      <Stack.Screen
+        name="BlogPost"
+        component={BlogPostScreen}
+        options={{ title: i18n.t("cms.blogPostTitle") }}
+      />
+      <Stack.Screen
+        name="LegalDocument"
+        component={LegalDocumentScreen}
+        options={{ title: "" }}
       />
     </Stack.Navigator>
   );

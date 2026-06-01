@@ -137,6 +137,13 @@ export const API_ROUTES = {
   banners: {
     list: "/banners",
   },
+  cms: {
+    manifest: "/cms/manifest",
+    faq: "/cms/faq",
+    legal: (slug: string) => `/cms/legal/${slug}` as const,
+    pages: "/cms/pages",
+    page: (slug: string) => `/cms/pages/${slug}` as const,
+  },
   verification: {
     status: "/verification/status",
     otpSend: "/verification/otp/send",

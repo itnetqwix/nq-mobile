@@ -22,6 +22,12 @@
       }
     }
   },
+  "cms": {
+    "blogsTitle": "Blog",
+    "blogPostTitle": "Article",
+    "blogsSubtitle": "Coaching tips, product news, and stories from the NetQwix team.",
+    "blogsEmpty": "New articles will appear here when your team publishes them from admin."
+  },
   "guestSettings": {
     "bannerTitle": "You're browsing as a guest",
     "bannerBody": "Sign in or create a free account to book sessions, message coaches, and sync your locker.",

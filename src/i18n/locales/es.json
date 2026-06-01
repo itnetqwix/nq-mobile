@@ -22,6 +22,12 @@
       }
     }
   },
+  "cms": {
+    "blogsTitle": "Blog",
+    "blogPostTitle": "Artículo",
+    "blogsSubtitle": "Consejos de coaching, novedades y historias del equipo NetQwix.",
+    "blogsEmpty": "Los artículos nuevos aparecerán aquí cuando los publiques desde admin."
+  },
   "guestSettings": {
     "bannerTitle": "Estás navegando como invitado",
     "bannerBody": "Inicia sesión o crea una cuenta gratis para reservar, chatear con entrenadores y sincronizar tu locker.",

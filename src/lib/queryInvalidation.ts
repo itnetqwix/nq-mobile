@@ -94,8 +94,18 @@ export function invalidateOnPresenceSocketEvent(queryClient: QueryClient): void 
   invalidateChats(queryClient);
 }
 
+/** Banners, tips, legal, blogs, FAQ — after `CMS_UPDATED` socket broadcast. */
+export function invalidateContent(queryClient: QueryClient): void {
+  void queryClient.invalidateQueries({ queryKey: ["content"] });
+}
+
 export function invalidateForSocketEvent(queryClient: QueryClient, event: string): void {
   if (typeof event !== "string" || !event) return;
+
+  if (event === "CMS_UPDATED") {
+    invalidateContent(queryClient);
+    return;
+  }
 
   const sessionEvents = [
     "LESSON_TIMER_EXTENDED",

@@ -170,13 +170,21 @@ export function GuestSettingsScreen() {
         <ListRow
           icon="shield-checkmark-outline"
           title={t("settings.privacyPolicy")}
-          onPress={() => void runSystemStateAction("open_privacy")}
+          onPress={() =>
+            navigation.navigate("LegalDocument", { slug: "privacy" })
+          }
         />
         <Divider />
         <ListRow
           icon="reader-outline"
           title={t("settings.termsConditions")}
-          onPress={() => void runSystemStateAction("open_terms")}
+          onPress={() => navigation.navigate("LegalDocument", { slug: "terms" })}
+        />
+        <Divider />
+        <ListRow
+          icon="newspaper-outline"
+          title={t("cms.blogsTitle")}
+          onPress={() => navigation.navigate("Blogs")}
         />
         <Divider />
         <ListRow

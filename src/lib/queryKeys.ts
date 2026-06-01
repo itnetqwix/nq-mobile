@@ -123,6 +123,11 @@ export const queryKeys = {
   content: {
     tips: ["content", "tips"] as const,
     banners: ["content", "banners"] as const,
+    cmsManifest: ["content", "cms", "manifest"] as const,
+    faq: ["content", "cms", "faq"] as const,
+    legal: (slug: string) => ["content", "cms", "legal", slug] as const,
+    blogs: (guest?: boolean) => ["content", "cms", "blogs", guest ? "guest" : "auth"] as const,
+    blogPost: (slug: string) => ["content", "cms", "blog", slug] as const,
   },
   ai: {
     reviewAnalysis: ["ai", "reviewAnalysis"] as const,

@@ -1,9 +1,8 @@
-import type { Ionicons } from "@expo/vector-icons";
+import { introImages } from "../../constants/images";
 
 export type IntroSlide = {
   id: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  accent: string;
+  image: (typeof introImages)[keyof typeof introImages];
   titleKey: string;
   bodyKey: string;
 };
@@ -11,22 +10,19 @@ export type IntroSlide = {
 export const INTRO_SLIDES: readonly IntroSlide[] = [
   {
     id: "leap",
-    icon: "trophy-outline",
-    accent: "#6366f1",
+    image: introImages.leap,
     titleKey: "intro.slides.leap.title",
     bodyKey: "intro.slides.leap.body",
   },
   {
     id: "coaches",
-    icon: "people-outline",
-    accent: "#0ea5e9",
+    image: introImages.coaches,
     titleKey: "intro.slides.coaches.title",
     bodyKey: "intro.slides.coaches.body",
   },
   {
     id: "live",
-    icon: "videocam-outline",
-    accent: "#16a34a",
+    image: introImages.live,
     titleKey: "intro.slides.live.title",
     bodyKey: "intro.slides.live.body",
   },

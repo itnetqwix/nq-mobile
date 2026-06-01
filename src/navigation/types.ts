@@ -30,6 +30,9 @@ export type ShellSurfaceRouteId = ShellSurfaceMeta["id"];
 export type HomeStackParamList = {
   DashboardHome: undefined;
   DashboardFeature: { featureId: DashboardRouteId; bookLessonTrainerId?: string };
+  Blogs: undefined;
+  BlogPost: { slug: string };
+  LegalDocument: { slug: "terms" | "privacy" };
   ShellSurface: {
     surfaceId: ShellSurfaceRouteId;
     /** Deep-link into the wallet stack (e.g. Add funds from booking). */

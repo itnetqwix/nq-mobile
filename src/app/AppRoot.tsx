@@ -53,6 +53,7 @@ import { initMobileSentry } from "../lib/sentry";
 import { queryKeys } from "../lib/queryKeys";
 import { StoreProvider } from "../store/StoreProvider";
 import { AppBootstrapGate } from "../components/splash";
+import { CmsLiveRefreshBridge } from "../features/content/CmsLiveRefreshBridge";
 import { setGlobalQueryClient } from "../store/queryClientRef";
 
 initMobileSentry();
@@ -150,6 +151,7 @@ export function AppRoot() {
                               <TrainerOnlinePresenceBridge />
                               <SessionLifecycleBridge />
                               <NetworkStatusBanner />
+                              <CmsLiveRefreshBridge />
                               <ThemedNavigationContainer />
                               <CoachMarkOverlay />
                             </CoachMarkProvider>

@@ -21,6 +21,8 @@ import { queryKeys } from "../../../lib/queryKeys";
 import { fetchTrainerSlots } from "../../home/api/homeApi";
 import { UpcomingSessionsScreen } from "../../sessions/screens/UpcomingSessionsScreen";
 import type { MainTabScreenProps } from "../../../navigation/types";
+import { floatingTabBarBottomInset } from "../../../navigation/FloatingTabBar";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CoachMark } from "../../onboarding";
 
 const WEEK_ORDER = [
@@ -136,7 +138,9 @@ function TrainerSchedule() {
           <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brandNavy} />
         }
         contentContainerStyle={
-          sections.length === 0 ? styles.listEmptyGrow : styles.listContent
+          sections.length === 0
+            ? styles.listEmptyGrow
+            : [styles.listContent, { paddingBottom: listPadBottom }]
         }
         renderSectionHeader={({ section: { title } }) => (
           <Text style={styles.sectionTitle}>{title}</Text>

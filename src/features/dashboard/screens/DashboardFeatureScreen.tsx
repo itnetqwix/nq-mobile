@@ -16,6 +16,7 @@ import { CommunityScreen } from "./CommunityScreen";
 import { ContactUsScreen } from "./ContactUsScreen";
 import { AboutUsScreen } from "./AboutUsScreen";
 import { FaqScreen } from "./FaqScreen";
+import { BlogsScreen } from "../../content/screens/BlogsScreen";
 import { MeetingRoomScreen } from "./MeetingRoomScreen";
 import { PracticeSessionScreen } from "./PracticeSessionScreen";
 import { InstantBookingScreen } from "./InstantBookingScreen";
@@ -77,6 +78,8 @@ export function DashboardFeatureScreen({ route, navigation }: DashboardFeatureSc
       return wrap(<AboutUsScreen />);
     case "faq":
       return wrap(<FaqScreen />);
+    case "blogs":
+      return wrap(<BlogsScreen />);
     case "meeting-room":
       return wrap(<MeetingRoomScreen />);
     case "practice-session":

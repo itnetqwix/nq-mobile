@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -7,7 +8,9 @@ import { NetqwixLogo } from "../../../components/brand/NetqwixLogo";
 import { AccountType } from "../../../constants/accountType";
 import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
-import type { HomeStackParamList } from "../../../navigation/types";
+import type { DashboardRouteId } from "../config/dashboardRoutes";
+import type { HomeStackParamList, ShellSurfaceRouteId } from "../../../navigation/types";
+import { floatingTabBarBottomInset } from "../../../navigation/FloatingTabBar";
 import { space, useThemeColors } from "../../../theme";
 import { useRequireAuth } from "../../auth/hooks/useRequireAuth";
 import { recordTrainerView } from "../../auth/lib/guestActivity";
@@ -17,7 +20,6 @@ import { GuestSavedCoachesStrip } from "../components/guest/GuestSavedCoachesStr
 import { TraineeDiscoverDashboard } from "../components/home/TraineeDiscoverDashboard";
 import { useGuestFavoriteTrainers } from "../hooks/useGuestFavoriteTrainers";
 import { GuestBrowsingNudge } from "../components/guest/GuestBrowsingNudge";
-import { GuestExploreBanner } from "../components/guest/GuestExploreBanner";
 import { useContentDeepLink } from "../../content/hooks/useContentDeepLink";
 
 type Nav = NativeStackNavigationProp<HomeStackParamList, "DashboardHome">;
@@ -30,7 +32,11 @@ export function GuestDiscoverHomeScreen() {
   const navigation = useNavigation<Nav>();
   const { requireAuth, openAuth } = useRequireAuth();
   const handleContentDeepLink = useContentDeepLink({
-    openShell: () => openAuth("Login"),
+    isGuest: true,
+    openShell: (id: ShellSurfaceRouteId) =>
+      navigation.navigate("ShellSurface", { surfaceId: id }),
+    openFeature: (featureId: DashboardRouteId) =>
+      navigation.navigate("DashboardFeature", { featureId }),
     onRequireAuth: () => openAuth("Login"),
   });
   const [profileTrainer, setProfileTrainer] = useState<Record<string, unknown> | null>(null);
@@ -86,7 +92,6 @@ export function GuestDiscoverHomeScreen() {
           scrollable
           leadingContent={
             <View style={styles.heroWrap}>
-              <GuestExploreBanner />
               <GuestBrowsingNudge onSignUp={() => openAuth("SignUp")} />
               <FreeIntroLessonHero
                 onPress={() =>
@@ -110,7 +115,7 @@ export function GuestDiscoverHomeScreen() {
             gutter,
             {
               paddingTop: space.sm,
-              paddingBottom: space.xl * 2 + insets.bottom,
+              paddingBottom: floatingTabBarBottomInset(insets.bottom) + space.lg,
             },
           ]}
           name={t("guest.explorerName")}
@@ -147,6 +152,12 @@ export function GuestDiscoverHomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.sm,
+    marginRight: 4,
+  },
   headerBtn: { paddingHorizontal: space.sm, paddingVertical: space.xs },
   headerBtnText: { fontWeight: "700", fontSize: 16 },
   heroWrap: { gap: 0 },

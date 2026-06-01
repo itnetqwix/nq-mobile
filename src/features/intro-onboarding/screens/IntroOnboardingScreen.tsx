@@ -1,15 +1,25 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import React, { useCallback, useRef, useState } from "react";
 import {
   FlatList,
+  LayoutAnimation,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
+  UIManager,
   View,
   useWindowDimensions,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from "react-native";
+
+if (
+  Platform.OS === "android" &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NetqwixLogo } from "../../../components/brand/NetqwixLogo";
 import { Button } from "../../../components/ui";
@@ -61,6 +71,7 @@ export function IntroOnboardingScreen({
   const onScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const next = Math.round(e.nativeEvent.contentOffset.x / pageWidth);
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setPage(Math.min(lastPage, Math.max(0, next)));
     },
     [lastPage, pageWidth]
@@ -143,18 +154,15 @@ function IntroSlideHero({ slide }: { slide: IntroSlide }) {
   const c = useThemeColors();
   return (
     <View style={styles.hero}>
-      <View
-        style={[
-          styles.iconRing,
-          {
-            borderColor: slide.accent,
-            backgroundColor: `${slide.accent}18`,
-          },
-        ]}
-      >
-        <Ionicons name={slide.icon} size={72} color={slide.accent} />
+      <View style={[styles.imageFrame, { backgroundColor: c.surfaceElevated }]}>
+        <Image
+          source={slide.image}
+          style={styles.heroImage}
+          contentFit="cover"
+          accessibilityRole="image"
+          transition={200}
+        />
       </View>
-      <View style={[styles.heroBand, { backgroundColor: c.brandNavy }]} />
     </View>
   );
 }
@@ -176,26 +184,19 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: space.xl,
+    paddingHorizontal: space.lg,
+    paddingTop: space.sm,
   },
-  iconRing: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    borderWidth: 3,
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 1,
+  imageFrame: {
+    width: "100%",
+    maxWidth: 340,
+    aspectRatio: 4 / 5,
+    borderRadius: radii.xl,
+    overflow: "hidden",
   },
-  heroBand: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: "18%",
-    height: 120,
-    borderTopLeftRadius: radii.xl,
-    borderTopRightRadius: radii.xl,
-    opacity: 0.12,
+  heroImage: {
+    width: "100%",
+    height: "100%",
   },
   footer: {
     paddingHorizontal: space.lg,

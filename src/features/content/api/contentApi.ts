@@ -27,6 +27,12 @@ export type Tip = {
   end_date?: string | null;
 };
 
+export type HomeBannerCta = {
+  label: string;
+  url: string;
+  variant?: "primary" | "secondary" | "ghost";
+};
+
 export type HomeBanner = {
   _id: string;
   title: string;
@@ -36,6 +42,7 @@ export type HomeBanner = {
   severity: "info" | "promo" | "maintenance" | "critical" | "success";
   cta_label?: string | null;
   cta_url?: string | null;
+  ctas?: HomeBannerCta[];
   dismissible: boolean;
   is_active: boolean;
   sort_order: number;

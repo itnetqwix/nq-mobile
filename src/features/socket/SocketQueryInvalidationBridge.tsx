@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { socketCacheEvent } from "../../store/actions/cacheInvalidation";
 import { useAppDispatch } from "../../store/hooks";
 import {
+  SOCKET_CMS_EVENTS,
   SOCKET_PRESENCE_EVENTS,
   SOCKET_SESSION_EVENTS,
   SOCKET_WALLET_EVENTS,
@@ -20,6 +21,7 @@ const ALL_INVALIDATION_EVENTS = [
   ...BOOKING_EVENTS,
   ...SOCKET_WALLET_EVENTS,
   ...SOCKET_PRESENCE_EVENTS,
+  ...SOCKET_CMS_EVENTS,
   "INSTANT_LESSON_PHASE",
   "receive",
 ] as const;

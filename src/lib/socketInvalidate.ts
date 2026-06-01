@@ -31,3 +31,5 @@ export const SOCKET_WALLET_EVENTS = [
 ] as const;
 
 export const SOCKET_PRESENCE_EVENTS = ["userStatus", "onlineUser"] as const;
+
+export const SOCKET_CMS_EVENTS = ["CMS_UPDATED"] as const;

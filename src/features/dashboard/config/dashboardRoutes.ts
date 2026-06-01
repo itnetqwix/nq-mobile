@@ -16,6 +16,7 @@ export const DASHBOARD_ROUTE_IDS = [
   "contact-us",
   "about-us",
   "faq",
+  "blogs",
   "friends",
   "students",
   "meeting-room",
@@ -92,6 +93,13 @@ export const DASHBOARD_ROUTES: readonly DashboardRouteMeta[] = [
     allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
   },
   {
+    id: "blogs",
+    title: "Blog",
+    subtitle: "Tips, product updates, and coaching stories from NetQwix.",
+    webPath: "/blog",
+    allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
+  },
+  {
     id: "faq",
     title: "FAQ",
     subtitle: "Help, common questions, and contact support.",
@@ -143,6 +151,8 @@ export const GUEST_BROWSE_ROUTE_IDS: readonly DashboardRouteId[] = [
   "book-lesson",
   "about-us",
   "contact-us",
+  "blogs",
+  "faq",
 ];
 
 export function isDashboardRouteAllowed(

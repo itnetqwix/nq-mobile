@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Alert,
   LayoutAnimation,
@@ -18,6 +19,8 @@ import { useAuth } from "../../auth/context/AuthContext";
 import { postWriteUs } from "../../home/api/homeApi";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import { fetchCmsFaq } from "../../content/api/cmsApi";
+import { queryKeys } from "../../../lib/queryKeys";
 import { FAQ_SECTIONS, type FaqItem, type FaqSection } from "../content/faqContent";
 import { fuzzySearch } from "../../../lib/search/fuzzyMatch";
 
@@ -38,6 +41,22 @@ export function FaqScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [query, setQuery] = useState("");
 
+  const { data: cmsFaq } = useQuery({
+    queryKey: queryKeys.content.faq,
+    queryFn: fetchCmsFaq,
+    staleTime: 60_000,
+  });
+
+  const faqSections: FaqSection[] = useMemo(() => {
+    if (cmsFaq?.sections?.length) {
+      return cmsFaq.sections.map((sec) => ({
+        title: sec.title,
+        items: sec.items.map((it) => ({ id: it.id, q: it.q, a: it.a })),
+      }));
+    }
+    return FAQ_SECTIONS;
+  }, [cmsFaq]);
+
   /**
    * Fuzzy search across every FAQ item. We pre-pack each item with its
    * `q` + `a` + section title as searchable fields so a query like
@@ -48,9 +67,9 @@ export function FaqScreen() {
    */
   const filteredSections: FaqSection[] = useMemo(() => {
     const q = query.trim();
-    if (!q) return FAQ_SECTIONS;
+    if (!q) return faqSections;
     const haystack: { item: FaqItem & { __section: string }; fields: string[] }[] = [];
-    for (const section of FAQ_SECTIONS) {
+    for (const section of faqSections) {
       for (const item of section.items) {
         haystack.push({
           item: { ...item, __section: section.title },
@@ -65,7 +84,7 @@ export function FaqScreen() {
       (bySection[__section] ??= []).push(rest);
     }
     return Object.entries(bySection).map(([title, items]) => ({ title, items }));
-  }, [query]);
+  }, [query, faqSections]);
 
   const presetName = (user?.fullname as string) ?? (user?.fullName as string) ?? "";
   const presetEmail = (user?.email as string) ?? "";

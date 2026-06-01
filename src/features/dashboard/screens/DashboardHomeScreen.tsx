@@ -28,6 +28,7 @@ import { haptics } from "../../../lib/haptics";
 import { ProfileAvatar } from "../../../components/ui/ProfileAvatar";
 import { resolveShowAsOnline } from "../../../lib/user/resolveShowAsOnline";
 import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
+import { floatingTabBarBottomInset } from "../../../navigation/FloatingTabBar";
 import {
   fetchScheduledMeetings,
   fetchFriendRequests,
@@ -563,7 +564,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
       contentContainerStyle={[
         gutter,
         styles.content,
-        { paddingBottom: space.xl * 2 + insets.bottom },
+        { paddingBottom: floatingTabBarBottomInset(insets.bottom) + space.xl },
       ]}
       nestedScrollEnabled
       keyboardShouldPersistTaps="handled"

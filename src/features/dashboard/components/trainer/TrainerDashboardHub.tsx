@@ -19,7 +19,7 @@ import { TrainerGreetingRating } from "./TrainerGreetingRating";
 import { TrainerRecentTraineesSection } from "./TrainerRecentTraineesSection";
 import { TrainerFriendRequestsSection } from "./TrainerFriendRequestsSection";
 import { TrainerLockerSection } from "./TrainerLockerSection";
-import { HomeBannerStrip } from "../../../content/components/HomeBannerStrip";
+import { HomeBannerCarousel } from "../../../content/components/HomeBannerCarousel";
 import { TipsForYouSection } from "../shared/TipsForYouSection";
 import { createTrainerDashboardStyles } from "./trainerDashboardTheme";
 import { useThemeColors, useThemedStyles } from "../../../../theme";
@@ -87,7 +87,7 @@ export function TrainerDashboardHub({
         onOpenStudents={onOpenSessions}
       />
 
-      <HomeBannerStrip onDeepLink={onContentDeepLink} />
+      <HomeBannerCarousel onDeepLink={onContentDeepLink} />
 
       <TrainerRecentTraineesSection trainees={recentTrainees} />
 

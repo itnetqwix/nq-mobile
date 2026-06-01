@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { Linking } from "react-native";
+import type { DashboardRouteId } from "../../dashboard/config/dashboardRoutes";
 import type { ShellSurfaceRouteId } from "../../../navigation/types";
 import { isReactNavigationDeepLink } from "../lib/deepLinks";
 
@@ -22,6 +23,18 @@ const SURFACE_BY_PATH: Record<string, ShellSurfaceRouteId> = {
   reviews: "trainerReviews",
 };
 
+const FEATURE_BY_PATH: Record<string, DashboardRouteId> = {
+  "book-lesson": "book-lesson",
+  "about-us": "about-us",
+  "contact-us": "contact-us",
+  faq: "faq",
+  blogs: "blogs",
+  blog: "blogs",
+};
+
+/** Surfaces guests may open without signing in. */
+const GUEST_SHELL_SURFACES = new Set<ShellSurfaceRouteId>(["settings"]);
+
 function pathFromDeepLink(url: string): string {
   const raw = url
     .replace(/^netqwix:\/\//i, "")
@@ -33,14 +46,22 @@ function pathFromDeepLink(url: string): string {
 
 type Options = {
   openShell: (id: ShellSurfaceRouteId) => void;
-  /** When set, in-app surfaces that need auth redirect here (guest mode). */
+  openFeature?: (id: DashboardRouteId) => void;
+  /** When set, protected surfaces redirect here (guest mode). */
   onRequireAuth?: () => void;
+  /** Guest browse — allow public shells/features without auth. */
+  isGuest?: boolean;
 };
 
 /**
- * Routes admin tip/banner CTAs (`netqwix://wallet`, etc.) into shell surfaces.
+ * Routes admin tip/banner CTAs (`netqwix://wallet`, `netqwix://blogs`, etc.).
  */
-export function useContentDeepLink({ openShell, onRequireAuth }: Options) {
+export function useContentDeepLink({
+  openShell,
+  openFeature,
+  onRequireAuth,
+  isGuest = false,
+}: Options) {
   return useCallback(
     (url: string) => {
       if (!url?.trim()) return;
@@ -51,11 +72,24 @@ export function useContentDeepLink({ openShell, onRequireAuth }: Options) {
       const path = pathFromDeepLink(url);
       const surface = SURFACE_BY_PATH[path];
       if (surface) {
-        if (onRequireAuth) {
-          onRequireAuth();
+        if (isGuest && !GUEST_SHELL_SURFACES.has(surface)) {
+          onRequireAuth?.();
           return;
         }
         openShell(surface);
+        return;
+      }
+      const feature = FEATURE_BY_PATH[path];
+      if (feature && openFeature) {
+        if (isGuest && !["book-lesson", "about-us", "contact-us", "faq", "blogs"].includes(feature)) {
+          onRequireAuth?.();
+          return;
+        }
+        openFeature(feature);
+        return;
+      }
+      if (path === "legal/terms" || path === "terms") {
+        openFeature?.("faq");
         return;
       }
       if (path.includes("wake-up")) {
@@ -64,6 +98,6 @@ export function useContentDeepLink({ openShell, onRequireAuth }: Options) {
       }
       Linking.openURL(url).catch(() => {});
     },
-    [openShell, onRequireAuth]
+    [openShell, openFeature, onRequireAuth, isGuest]
   );
 }
