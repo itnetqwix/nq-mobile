@@ -48,7 +48,7 @@ export function listItemKey(
 
 /** FlatList `keyExtractor` — always includes index so duplicate ids cannot collide. */
 export function flatListKeyExtractor(
-  row: { _id?: unknown; id?: unknown },
+  row: any,
   index: number
 ): string {
   return listItemKey(row, index);

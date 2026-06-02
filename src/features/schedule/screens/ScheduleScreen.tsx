@@ -57,6 +57,8 @@ type DaySection = {
 function TrainerSchedule() {
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const insets = useSafeAreaInsets();
+  const listPadBottom = useMemo(() => floatingTabBarBottomInset(insets.bottom), [insets.bottom]);
   const { data: inventory = [], isLoading, isRefetching, refetch } = useQuery({
     queryKey: queryKeys.trainer.slots,
     queryFn: fetchTrainerSlots,

@@ -33,6 +33,7 @@ import {
   fetchGroupInvites,
   respondGroupInvite,
 } from "../api/chatActionsApi";
+import { useFocusEffect } from "@react-navigation/native";
 import type { MainTabScreenProps } from "../../../navigation/types";
 import { useChatRoomChrome } from "../hooks/useChatRoomChrome";
 import { ChatRoomScreen } from "./ChatRoomScreen";
@@ -342,6 +343,14 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
     groupDescription?: string;
   } | null>(null);
   useChatRoomChrome(!!activeChat);
+
+  // Clear drawer/root headers left on by older builds that toggled parent navigators.
+  useFocusEffect(
+    useCallback(() => {
+      navigation.getParent()?.getParent?.()?.setOptions?.({ headerShown: false });
+    }, [navigation])
+  );
+
   const [showNewChat, setShowNewChat] = useState(false);
   const [friendSearch, setFriendSearch] = useState("");
   const [creatingChat, setCreatingChat] = useState(false);
@@ -668,9 +677,9 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
           ))}
         </View>
       ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={flatListKeyExtractor}
+        <FlatList<any>
+          data={filtered as any[]}
+          keyExtractor={(item, index) => flatListKeyExtractor(item, index)}
           renderItem={({ item }) => {
             const partner = getPartner(item);
             const lastMsg = item.lastMessage ?? item.last_message ?? "";
@@ -690,7 +699,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
                 style={({ pressed }) => [styles.row, pressed && { opacity: 0.8 }]}
                 onPress={() =>
                   setActiveChat({
-                    conversationId: item._id,
+                    conversationId: String(item._id ?? item.id ?? ""),
                     isGroup,
                     memberCount: participants.length,
                     groupAdminId: item.groupAdmin ? String(item.groupAdmin) : undefined,

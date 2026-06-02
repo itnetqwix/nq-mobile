@@ -1,13 +1,13 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChatsScreen } from "../features/chats/screens/ChatsScreen";
 import { GuestTabGateScreen } from "../features/auth/screens/GuestTabGateScreen";
 import { useGuestMode } from "../features/auth/hooks/useGuestMode";
 import { ScheduleScreen } from "../features/schedule/screens/ScheduleScreen";
 import { useThemeColors } from "../theme";
 import { AppScreenHeader } from "./AppScreenHeader";
+import { FloatingTabBar } from "./FloatingTabBar";
 import { HomeNavigator } from "./HomeNavigator";
 import { TabSwipeShell } from "./TabSwipeShell";
 import i18n from "../i18n";
@@ -28,30 +28,19 @@ function tabHeaderOptions(title: string) {
 }
 
 export function MainTabs() {
-  const insets = useSafeAreaInsets();
   const c = useThemeColors();
   const isGuest = useGuestMode();
-  const tabPadBottom = Math.max(insets.bottom, 6);
-  const tabPadTop = 6;
-  const tabMinHeight = 52 + tabPadTop + tabPadBottom;
 
   return (
     <Tab.Navigator
+      tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{
         headerShown: false,
         lazy: true,
         tabBarActiveTintColor: c.tabBarActive,
         tabBarInactiveTintColor: c.tabBarInactive,
-        tabBarStyle: {
-          borderTopColor: c.tabBarBorder,
-          backgroundColor: c.tabBar,
-          paddingTop: tabPadTop,
-          paddingBottom: tabPadBottom,
-          paddingLeft: Math.max(insets.left, 4),
-          paddingRight: Math.max(insets.right, 4),
-          minHeight: tabMinHeight,
-          height: undefined,
-        },
+        // Visual styling is handled by `FloatingTabBar` pill.
+        tabBarStyle: { backgroundColor: "transparent", borderTopWidth: 0 },
         tabBarLabelStyle: {
           fontWeight: "600",
           fontSize: 11,
@@ -108,6 +97,7 @@ export function MainTabs() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubbles-outline" color={color} size={size} />
           ),
+          tabBarLabel: i18n.t("tabs.chats"),
         }}
       >
         {(props) => (

@@ -85,6 +85,75 @@ export function trainerHasOpenSlots(trainer: Record<string, unknown> | null | un
   });
 }
 
+export type TrainerNextSlot = {
+  /** Short day label for UI (e.g. Today, Wed). */
+  label: string;
+  /** Human time label (e.g. 4:30 PM). */
+  time: string;
+  /** Optional ISO-ish string for stable keys. */
+  iso?: string;
+};
+
+function dayLabelFromOffset(offsetDays: number): string {
+  if (offsetDays === 0) return "Today";
+  if (offsetDays === 1) return "Tomorrow";
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return d.toLocaleDateString(undefined, { weekday: "short" });
+}
+
+function normalizeTimeLabel(raw: unknown): string {
+  const s = String(raw ?? "").trim();
+  if (!s) return "";
+  // If backend already sends a friendly label, keep it.
+  if (/[AP]M$/i.test(s) || s.includes(":")) return s;
+  return s;
+}
+
+/** Extract next open slot chips for trainer browse cards. */
+export function getTrainerNextSlots(
+  trainer: Record<string, unknown> | null | undefined,
+  max = 3
+): TrainerNextSlot[] {
+  if (!trainer || max <= 0) return [];
+
+  // Preferred shape: `available_slots: [{ day, slots: [{ start_time, end_time }] }]`
+  const avail = (trainer as any)?.available_slots;
+  if (Array.isArray(avail)) {
+    const out: TrainerNextSlot[] = [];
+    for (let di = 0; di < avail.length && out.length < max; di++) {
+      const dayRow = avail[di] as any;
+      const slots = Array.isArray(dayRow?.slots) ? dayRow.slots : [];
+      for (let si = 0; si < slots.length && out.length < max; si++) {
+        const slot = slots[si] as any;
+        const time = normalizeTimeLabel(slot?.start_time ?? slot?.start ?? slot?.time);
+        if (!time) continue;
+        out.push({
+          label: dayLabelFromOffset(di),
+          time,
+          iso: `${di}-${String(slot?.start_time ?? slot?.start ?? slot?.time ?? si)}`,
+        });
+      }
+    }
+    return out;
+  }
+
+  // Fallback shape: `slots: [...]` (instant list / unknown).
+  const rawSlots = (trainer as any)?.slots;
+  if (Array.isArray(rawSlots)) {
+    const out: TrainerNextSlot[] = [];
+    for (let i = 0; i < rawSlots.length && out.length < max; i++) {
+      const s = rawSlots[i] as any;
+      const time = normalizeTimeLabel(s?.start_time ?? s?.start ?? s?.time ?? s);
+      if (!time) continue;
+      out.push({ label: "Next", time, iso: `slot-${i}-${time}` });
+    }
+    return out;
+  }
+
+  return [];
+}
+
 export function getTrainerBio(trainer: Record<string, unknown> | null | undefined): string {
   const extra = trainer?.extraInfo as Record<string, unknown> | undefined;
   const bio =

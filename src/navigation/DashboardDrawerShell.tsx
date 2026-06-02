@@ -25,7 +25,7 @@ export function DashboardDrawerShell() {
       <Drawer.Screen
         name="Tabs"
         component={MainTabs}
-        options={{ title: "NetQwix" }}
+        options={{ title: "", headerShown: false, header: () => null }}
       />
     </Drawer.Navigator>
   );

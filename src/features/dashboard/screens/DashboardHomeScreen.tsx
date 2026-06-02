@@ -62,6 +62,7 @@ import { TrainerProfileModal } from "../../bookexpert/components/TrainerProfileM
 import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
 import { ScheduledBookingWizardModal } from "../../scheduled-booking/ScheduledBookingWizardModal";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import { floatingTabBarBottomInset } from "../../../navigation/FloatingTabBar";
 
 function useDashboardHomeStyles() {
   return useThemedStyles((palette) => StyleSheet.create({
@@ -426,6 +427,14 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
 
   const openFeature = (id: DashboardRouteId, extra?: Partial<{ bookLessonTrainerId: string }>) => {
     // Some dashboard “features” map directly to bottom tabs for correct tab highlighting.
+    if (id === "schedule") {
+      try {
+        navigation.getParent()?.navigate("Schedule" as never);
+        return;
+      } catch {
+        /* fall through */
+      }
+    }
     if (id === "upcoming-sessions") {
       try {
         navigation.getParent()?.navigate("Schedule" as never);
@@ -558,7 +567,10 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
       contentContainerStyle={[
         gutter,
         styles.content,
-        { paddingBottom: space.xl * 2 + insets.bottom },
+        {
+          paddingBottom:
+            floatingTabBarBottomInset(insets.bottom) + space.xl + 64,
+        },
       ]}
       nestedScrollEnabled
       keyboardShouldPersistTaps="handled"

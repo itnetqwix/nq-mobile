@@ -99,11 +99,26 @@ export const queryKeys = {
   dashboard: {
     aiRecommendations: ["aiRecommendations"] as const,
   },
-  trainee: {
-    favorites: ["trainee", "favoriteTrainers"] as const,
+  ai: {
+    reviewAnalysis: ["ai", "reviewAnalysis"] as const,
+    smartSchedule: (trainerId: string) => ["ai", "smartSchedule", trainerId] as const,
   },
   trainerRole: {
     dashboardSummary: ["trainer", "dashboardSummary"] as const,
+    recentTraineeClips: ["trainer", "recentTraineeClips"] as const,
+  },
+  trainee: {
+    favorites: ["trainee", "favoriteTrainers"] as const,
+  },
+  content: {
+    all: ["content"] as const,
+    cmsManifest: ["content", "cmsManifest"] as const,
+    banners: ["content", "banners"] as const,
+    tips: ["content", "tips"] as const,
+    faq: ["content", "faq"] as const,
+    legal: (slug: string) => ["content", "legal", slug] as const,
+    blogs: (guest: boolean) => ["content", "blogs", guest ? "guest" : "auth"] as const,
+    blogPost: (slug: string) => ["content", "blogPost", slug] as const,
   },
 } as const;
 

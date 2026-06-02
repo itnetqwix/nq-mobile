@@ -1,11 +1,13 @@
 import React, { useRef } from "react";
 import { Animated, Pressable, StyleSheet, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useReduceMotion } from "../../lib/a11y";
+import { floatingTabBarBottomInset } from "../../navigation/FloatingTabBar";
 import { useThemeColors, typography } from "../../theme";
 
-/** Screen content already ends at the tab bar; only a small inset is needed. */
-const GAP_ABOVE_TAB_BAR = 20;
+/** Extra gap so the FAB clears the floating tab pill. */
+const FAB_CLEARANCE_ABOVE_TAB = 12;
 
 type Props = {
   onPress: () => void;
@@ -14,7 +16,8 @@ type Props = {
 
 export default function AIFloatingButton({ onPress, label }: Props) {
   const colors = useThemeColors();
-  const bottom = GAP_ABOVE_TAB_BAR;
+  const insets = useSafeAreaInsets();
+  const bottom = floatingTabBarBottomInset(insets.bottom) + FAB_CLEARANCE_ABOVE_TAB;
 
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(0.4)).current;

@@ -114,7 +114,11 @@ export function RootNavigator() {
       >
         {signedIn ? (
           <>
-            <Stack.Screen name="Main" component={MainWithAppUnlock} />
+            <Stack.Screen
+              name="Main"
+              component={MainWithAppUnlock}
+              options={{ headerShown: false, title: "" }}
+            />
             <Stack.Screen
               name="Meeting"
               component={MeetingRouter}
@@ -147,7 +151,11 @@ export function RootNavigator() {
           </>
         ) : (
           <>
-            <Stack.Screen name="Main" component={GuestBrowseShell} />
+            <Stack.Screen
+              name="Main"
+              component={GuestBrowseShell}
+              options={{ headerShown: false, title: "" }}
+            />
             <Stack.Screen
               name="Auth"
               component={AuthNavigator}
