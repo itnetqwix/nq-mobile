@@ -92,8 +92,8 @@ export const colorsLight: Palette & {
   input: "#ffffff",
   inputBorder: "#e5e7eb",
 
-  tabBarBorder: "#e5e7eb",
-  tabBar: "#ffffff",
+  tabBarBorder: "#c5ddf0",
+  tabBar: "#eef6fc",
   tabBarActive: BRAND.brand,
   tabBarInactive: "#6b7280",
 
@@ -151,8 +151,8 @@ export const colorsDark: typeof colorsLight = {
   input: "#1f1f23",
   inputBorder: NEUTRALS.neutral700,
 
-  tabBarBorder: NEUTRALS.neutral700,
-  tabBar: "#0f0f12",
+  tabBarBorder: "#2a3d52",
+  tabBar: "#141c28",
   tabBarActive: "#64b5f6",
   tabBarInactive: "#b1b8c2",
 

@@ -11,13 +11,7 @@ function extractArray(body: unknown): Record<string, unknown>[] {
   return Array.isArray(nested) ? (nested as Record<string, unknown>[]) : [];
 }
 
-/**
- * Favorites endpoints are trainee-only — backend returns 401 for trainers
- * even when the session is valid. The interceptor needs to skip the
- * global sign-out path so a trainer browsing the trainee dashboard
- * doesn't get bounced to the login screen.
- */
-const favoritesRequestConfig = { _skipAuthSignOut: true };
+const favoritesRequestConfig = { _skipAuthSignOut: true } as { _skipAuthSignOut: boolean };
 
 export async function fetchFavoriteTrainers(): Promise<Record<string, unknown>[]> {
   try {

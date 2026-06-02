@@ -22,7 +22,7 @@ import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { Ionicons } from "@expo/vector-icons";
 import { Button, EmptyState, Skeleton } from "../../../components/ui";
 import { colors, radii, space, typography } from "../../../theme";
-import { ProfileAvatar } from "../../../components/ui/ProfileAvatar";
+import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { useOnlinePresence } from "../../socket/useOnlinePresence";
@@ -35,8 +35,8 @@ import {
 } from "../../home/api/homeApi";
 
 import { ShareClipsPanel } from "../components/ShareClipsPanel";
-import { openChatInTab } from "../../chats/lib/openChatTab";
-import { useNavigation } from "@react-navigation/native";
+import { useChatRoomChrome } from "../../chats/hooks/useChatRoomChrome";
+import { ChatRoomScreen } from "../../chats/screens/ChatRoomScreen";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 const TABS = [
@@ -54,6 +54,27 @@ const REPORT_REASON_KEYS = [
   "friends.reportReasons.fake",
   "friends.reportReasons.other",
 ] as const;
+
+function Avatar({ uri, name, size = 48 }: { uri?: string; name?: string; size?: number }) {
+  const [failed, setFailed] = React.useState(false);
+  const url = getS3ImageUrl(uri);
+  if (!url || failed) {
+    return (
+      <View style={[styles.avatarFallback, { width: size, height: size, borderRadius: size / 2 }]}>
+        <Text style={[styles.avatarInitial, { fontSize: size * 0.38 }]}>
+          {(name ?? "?")[0]?.toUpperCase()}
+        </Text>
+      </View>
+    );
+  }
+  return (
+    <Image
+      source={{ uri: url }}
+      style={{ width: size, height: size, borderRadius: size / 2 }}
+      onError={() => setFailed(true)}
+    />
+  );
+}
 
 function FriendCard({
   friend,
@@ -107,7 +128,7 @@ function FriendCard({
 
   return (
     <View style={styles.row}>
-      <ProfileAvatar user={user} name={name} />
+      <Avatar uri={user?.profile_picture} name={name} />
       <View style={styles.rowInfo}>
         <Text style={styles.rowName}>{name}</Text>
         {!!user?.email && <Text style={styles.rowSub}>{user.email}</Text>}
@@ -150,7 +171,7 @@ function RequestCard({
   const name = sender?.fullname || sender?.fullName || t("friends.userDefault");
   return (
     <View style={styles.row}>
-      <ProfileAvatar user={sender} name={name} />
+      <Avatar uri={sender?.profile_picture} name={name} />
       <View style={styles.rowInfo}>
         <Text style={styles.rowName}>{name}</Text>
         <Text style={styles.rowSub}>{t("friends.sentYouRequest")}</Text>
@@ -191,7 +212,7 @@ function SentRequestCard({
 
   return (
     <View style={styles.row}>
-      <ProfileAvatar user={receiver} name={name} />
+      <Avatar uri={receiver?.profile_picture} name={name} />
       <View style={styles.rowInfo}>
         <Text style={styles.rowName}>{name}</Text>
         <View style={styles.statusRow}>
@@ -223,7 +244,11 @@ export function FriendsScreen() {
   const [tab, setTab] = useState<Tab>("friends");
   const [messageBusy, setMessageBusy] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
-  const navigation = useNavigation();
+  const [activeChat, setActiveChat] = useState<{
+    conversationId: string;
+    partner: { _id: string; fullname?: string; profile_picture?: string };
+  } | null>(null);
+  useChatRoomChrome(!!activeChat);
   const queryClient = useQueryClient();
 
   const { data: friends = [], isLoading: loadingFriends, isRefetching: refreshingFriends, refetch: refetchFriends } = useQuery({
@@ -357,8 +382,8 @@ export function FriendsScreen() {
         const convId = conversation?._id ?? conversation?.conversationId;
         if (convId) {
           queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
-          openChatInTab(navigation, {
-            conversationId: String(convId),
+          setActiveChat({
+            conversationId: convId,
             partner: { _id: userId, fullname: name, profile_picture: picture },
           });
         } else {
@@ -465,33 +490,24 @@ export function FriendsScreen() {
                 ? t("friends.emptySentDescription")
                 : t("friends.emptyRequestsDescription")
             }
-            /**
-             * Smart CTAs — every empty state should point to the next
-             * action. "No friends yet → Explore community" mirrors the
-             * pattern across the app so users always have a forward path.
-             */
-            actionLabel={
-              tabKey === "friends"
-                ? t("friends.emptyFriendsCta", { defaultValue: "Explore community" })
-                : tabKey === "sent"
-                ? t("friends.emptySentCta", { defaultValue: "Find someone to add" })
-                : t("friends.emptyRequestsCta", { defaultValue: "Discover people you may know" })
-            }
-            onAction={() => {
-              try {
-                (navigation as { navigate: (name: string, params?: unknown) => void }).navigate(
-                  "DashboardFeature",
-                  { featureId: "my-community" }
-                );
-              } catch {
-                /* Older navigators — best-effort. */
-              }
-            }}
           />
         }
       />
     );
   };
+
+  if (activeChat) {
+    return (
+      <ChatRoomScreen
+        conversationId={activeChat.conversationId}
+        partner={activeChat.partner}
+        onGoBack={() => {
+          setActiveChat(null);
+          queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
+        }}
+      />
+    );
+  }
 
   return (
     <View style={styles.root}>

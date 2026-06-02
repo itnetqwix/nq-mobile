@@ -1,5 +1,4 @@
 import React, { useLayoutEffect, useState } from "react";
-import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -8,19 +7,11 @@ import { NetqwixLogo } from "../../../components/brand/NetqwixLogo";
 import { AccountType } from "../../../constants/accountType";
 import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
-import type { DashboardRouteId } from "../config/dashboardRoutes";
-import type { HomeStackParamList, ShellSurfaceRouteId } from "../../../navigation/types";
-import { floatingTabBarBottomInset } from "../../../navigation/FloatingTabBar";
-import { space, useThemeColors } from "../../../theme";
+import type { HomeStackParamList } from "../../../navigation/types";
+import { space, typography, useThemeColors } from "../../../theme";
 import { useRequireAuth } from "../../auth/hooks/useRequireAuth";
-import { recordTrainerView } from "../../auth/lib/guestActivity";
 import { TrainerProfileModal } from "../../bookexpert/components/TrainerProfileModal";
-import { FreeIntroLessonHero } from "../components/guest/FreeIntroLessonHero";
-import { GuestSavedCoachesStrip } from "../components/guest/GuestSavedCoachesStrip";
 import { TraineeDiscoverDashboard } from "../components/home/TraineeDiscoverDashboard";
-import { useGuestFavoriteTrainers } from "../hooks/useGuestFavoriteTrainers";
-import { GuestBrowsingNudge } from "../components/guest/GuestBrowsingNudge";
-import { useContentDeepLink } from "../../content/hooks/useContentDeepLink";
 
 type Nav = NativeStackNavigationProp<HomeStackParamList, "DashboardHome">;
 
@@ -31,22 +22,13 @@ export function GuestDiscoverHomeScreen() {
   const gutter = useHorizontalGutter("md");
   const navigation = useNavigation<Nav>();
   const { requireAuth, openAuth } = useRequireAuth();
-  const handleContentDeepLink = useContentDeepLink({
-    isGuest: true,
-    openShell: (id: ShellSurfaceRouteId) =>
-      navigation.navigate("ShellSurface", { surfaceId: id }),
-    openFeature: (featureId: DashboardRouteId) =>
-      navigation.navigate("DashboardFeature", { featureId }),
-    onRequireAuth: () => openAuth("Login"),
-  });
   const [profileTrainer, setProfileTrainer] = useState<Record<string, unknown> | null>(null);
-  const { favorites: savedTrainers } = useGuestFavoriteTrainers(true);
 
   useLayoutEffect(() => {
     if (typeof navigation?.setOptions !== "function") return;
     navigation.setOptions({
       headerTitle: () => (
-        <NetqwixLogo variant="pin" maxWidth={40} height={36} compact align="center" />
+        <NetqwixLogo variant="wordmark" maxWidth={132} height={34} compact align="center" />
       ),
       headerRight: () => (
         <Pressable
@@ -91,43 +73,40 @@ export function GuestDiscoverHomeScreen() {
           isGuest
           scrollable
           leadingContent={
-            <View style={styles.heroWrap}>
-              <GuestBrowsingNudge onSignUp={() => openAuth("SignUp")} />
-              <FreeIntroLessonHero
-                onPress={() =>
-                  requireAuth(undefined, {
-                    intent: "book",
-                    messageKey: "guest.signInToBook",
-                    screen: "SignUp",
-                  })
-                }
-              />
-              <GuestSavedCoachesStrip
-                favorites={savedTrainers}
-                onPress={(trainer) => {
-                  void recordTrainerView(trainer);
-                  setProfileTrainer(trainer);
-                }}
-              />
+            <View style={[styles.banner, { backgroundColor: c.brandAccentSubtle, borderColor: c.brandAccent }]}>
+              <Text style={[typography.titleSm, { color: c.brandNavy }]}>
+                {t("guest.exploreBannerTitle")}
+              </Text>
+              <Text style={[styles.bannerBody, { color: c.textSecondary }]}>
+                {t("guest.exploreBannerBody")}
+              </Text>
+              <View style={styles.bannerActions}>
+                <Pressable
+                  onPress={() => openAuth("SignUp")}
+                  style={[styles.bannerPrimary, { backgroundColor: c.brandAccent }]}
+                >
+                  <Text style={styles.bannerPrimaryText}>{t("auth.createAccount")}</Text>
+                </Pressable>
+                <Pressable onPress={() => openAuth("Login")} style={styles.bannerLink}>
+                  <Text style={[styles.bannerLinkText, { color: c.brandAccent }]}>
+                    {t("auth.signIn")}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           }
           contentContainerStyle={[
             gutter,
             {
               paddingTop: space.sm,
-              paddingBottom: floatingTabBarBottomInset(insets.bottom) + space.lg,
+              paddingBottom: space.xl * 2 + insets.bottom,
             },
           ]}
           name={t("guest.explorerName")}
           accountType={AccountType.TRAINEE}
           user={null}
-          onSettings={() =>
-            navigation.navigate("ShellSurface", { surfaceId: "settings" })
-          }
-          onViewTrainer={(trainer) => {
-            void recordTrainerView(trainer);
-            setProfileTrainer(trainer);
-          }}
+          onSettings={() => openAuth("Login")}
+          onViewTrainer={setProfileTrainer}
           onInstantBook={(trainer) =>
             requireAuth(undefined, {
               intent: "book",
@@ -144,21 +123,45 @@ export function GuestDiscoverHomeScreen() {
               bookMode: "schedule",
             })
           }
-          onToggleFavoriteGuest={undefined}
-          onContentDeepLink={handleContentDeepLink}
+          onToggleFavoriteGuest={() =>
+            requireAuth(undefined, {
+              intent: "favorite",
+              messageKey: "guest.signInToContinue",
+              screen: "SignUp",
+            })
+          }
         />
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.sm,
-    marginRight: 4,
-  },
   headerBtn: { paddingHorizontal: space.sm, paddingVertical: space.xs },
   headerBtnText: { fontWeight: "700", fontSize: 16 },
-  heroWrap: { gap: 0 },
+  banner: {
+    marginBottom: space.md,
+    padding: space.md,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  bannerBody: {
+    ...typography.bodySm,
+    marginTop: space.xs,
+    lineHeight: 20,
+  },
+  bannerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: space.md,
+    marginTop: space.md,
+  },
+  bannerPrimary: {
+    paddingHorizontal: space.md,
+    paddingVertical: 10,
+    borderRadius: 999,
+  },
+  bannerPrimaryText: { color: "#fff", fontWeight: "700" },
+  bannerLink: { paddingVertical: 8 },
+  bannerLinkText: { fontWeight: "600" },
 });

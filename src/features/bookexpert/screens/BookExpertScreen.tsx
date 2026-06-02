@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  Alert,
   FlatList,
-  Image,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -21,8 +19,6 @@ import { useOnlinePresence } from "../../socket/useOnlinePresence";
 import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
 import { ScheduledBookingWizardModal } from "../../scheduled-booking/ScheduledBookingWizardModal";
 import type { MenuStackParamList } from "../../../navigation/types";
-import { CompareTrainersModal } from "../components/CompareTrainersModal";
-import { CompareTrainersTray } from "../components/CompareTrainersTray";
 import { TrainerBrowseFiltersSheet } from "../components/TrainerBrowseFiltersSheet";
 import { TrainerProfileModal } from "../components/TrainerProfileModal";
 import {
@@ -32,11 +28,6 @@ import {
   type TrainerBrowseFilters,
 } from "../lib/trainerBrowseConstants";
 import { TrainerBrowseCard } from "../components/TrainerBrowseCard";
-import {
-  compareTrainersStore,
-  MAX_COMPARE_TRAINERS,
-  useCompareTrainers,
-} from "../lib/compareTrainersStore";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
 import { dedupeTrainersById, flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
@@ -67,9 +58,6 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
   const [profileTrainer, setProfileTrainer] = useState<Record<string, unknown> | null>(null);
   const [wizardTrainer, setWizardTrainer] = useState<Record<string, unknown> | null>(null);
   const [scheduleTrainer, setScheduleTrainer] = useState<Record<string, unknown> | null>(null);
-  const [compareOpen, setCompareOpen] = useState(false);
-  const comparePinned = useCompareTrainers();
-  const pinnedIds = useMemo(() => new Set(comparePinned.map((row) => row._id)), [comparePinned]);
   const navigation = useNavigation<NativeStackNavigationProp<MenuStackParamList>>();
 
   useEffect(() => {
@@ -130,34 +118,6 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
     const filtered = browseFilters.onlineOnly ? rows.filter((t) => t.is_online) : rows;
     return dedupeTrainersById(filtered);
   }, [directoryRows, onlineRaw, isOnline, browseFilters.onlineOnly]);
-
-  /**
-   * Prefetch the avatars + hero shots for the first ~12 trainer cards
-   * the user is about to see. Network-bound; runs once per result set,
-   * cancellable on unmount via the inFlight ref.
-   */
-  useEffect(() => {
-    if (mergedRows.length === 0) return;
-    const aboveTheFold = mergedRows.slice(0, 12);
-    const urls = new Set<string>();
-    for (const tr of aboveTheFold) {
-      const candidates = [
-        tr.profile_picture,
-        tr.profile_pic,
-        tr.avatar,
-        tr.cover_picture,
-        tr.thumbnail,
-      ];
-      for (const u of candidates) {
-        if (typeof u === "string" && u.startsWith("http")) urls.add(u);
-      }
-    }
-    void Promise.all(
-      [...urls].map((u) =>
-        Image.prefetch(u).catch(() => false)
-      )
-    );
-  }, [mergedRows]);
 
   useEffect(() => {
     if (!bookLessonTrainerId || mergedRows.length === 0) return;
@@ -251,36 +211,6 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
         </Pressable>
       </View>
 
-      <View style={styles.quickChipsRow}>
-        <Pressable
-          onPress={() =>
-            setBrowseFilters((prev) => ({ ...prev, onlineOnly: !prev.onlineOnly }))
-          }
-          accessibilityRole="button"
-          accessibilityState={{ selected: browseFilters.onlineOnly }}
-          style={({ pressed }) => [
-            styles.quickChip,
-            browseFilters.onlineOnly && styles.quickChipActive,
-            pressed && { opacity: 0.8 },
-          ]}
-        >
-          <View
-            style={[
-              styles.quickChipDot,
-              browseFilters.onlineOnly && styles.quickChipDotActive,
-            ]}
-          />
-          <Text
-            style={[
-              styles.quickChipText,
-              browseFilters.onlineOnly && styles.quickChipTextActive,
-            ]}
-          >
-            {t("bookExpert.onlineNowChip")}
-          </Text>
-        </Pressable>
-      </View>
-
       {activeFilterCount > 0 && (
         <Pressable style={styles.activeFiltersHint} onPress={() => setFiltersOpen(true)}>
           <Text style={styles.activeFiltersText}>
@@ -327,16 +257,6 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
                   bookMode: "schedule",
                 })
               }
-              isComparePinned={pinnedIds.has(String((item as { _id?: unknown })?._id ?? ""))}
-              onToggleCompare={(tr) => {
-                const result = compareTrainersStore.toggle(tr);
-                if (result.full) {
-                  Alert.alert(
-                    t("bookExpert.compareLimitTitle"),
-                    t("bookExpert.compareLimitBody", { max: MAX_COMPARE_TRAINERS })
-                  );
-                }
-              }}
             />
           )}
           contentContainerStyle={styles.list}
@@ -366,28 +286,6 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
           }
         />
       )}
-
-      <CompareTrainersTray onOpenCompare={() => setCompareOpen(true)} />
-      <CompareTrainersModal
-        visible={compareOpen}
-        onDismiss={() => setCompareOpen(false)}
-        onSchedule={(tr) =>
-          requireAuth(() => setScheduleTrainer(tr), {
-            intent: "book",
-            messageKey: "guest.signInToBook",
-            trainer: tr,
-            bookMode: "schedule",
-          })
-        }
-        onInstant={(tr) =>
-          requireAuth(() => setWizardTrainer(tr), {
-            intent: "book",
-            messageKey: "guest.signInToBook",
-            trainer: tr,
-            bookMode: "instant",
-          })
-        }
-      />
     </View>
   );
 }
@@ -461,46 +359,6 @@ function makeStyles(colors: AppColors) {
       backgroundColor: `${colors.brandNavy}08`,
     },
     activeFiltersText: { ...typography.bodySm, color: colors.brandNavy, fontWeight: "600" },
-    quickChipsRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-      paddingHorizontal: space.md,
-      paddingTop: 8,
-      paddingBottom: 4,
-      backgroundColor: colors.surfaceElevated,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.border,
-    },
-    quickChip: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      paddingHorizontal: 12,
-      paddingVertical: 7,
-      borderRadius: radii.pill,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surface,
-    },
-    quickChipActive: {
-      backgroundColor: `${colors.success}18`,
-      borderColor: colors.success,
-    },
-    quickChipText: {
-      ...typography.caption,
-      fontWeight: "700",
-      color: colors.textSecondary,
-      fontSize: 12,
-    },
-    quickChipTextActive: { color: colors.success },
-    quickChipDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: colors.textMuted,
-    },
-    quickChipDotActive: { backgroundColor: colors.success },
     list: { padding: space.md, gap: space.sm, paddingBottom: space.xl },
     listBanner: {
       flexDirection: "row",

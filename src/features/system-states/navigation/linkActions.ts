@@ -141,30 +141,10 @@ export async function runSystemStateAction(
       }
       break;
     case "open_privacy":
-      if (navigationRef.isReady()) {
-        (navigationRef as any).navigate("Main", {
-          screen: "Tabs",
-          params: {
-            screen: "Home",
-            params: { screen: "LegalDocument", params: { slug: "privacy" } },
-          },
-        });
-      } else {
-        void Linking.openURL("https://www.netqwix.com/privacy-policy");
-      }
+      void Linking.openURL("https://www.netqwix.com/privacy-policy");
       break;
     case "open_terms":
-      if (navigationRef.isReady()) {
-        (navigationRef as any).navigate("Main", {
-          screen: "Tabs",
-          params: {
-            screen: "Home",
-            params: { screen: "LegalDocument", params: { slug: "terms" } },
-          },
-        });
-      } else {
-        void Linking.openURL("https://www.netqwix.com/terms-and-conditions");
-      }
+      void Linking.openURL("https://www.netqwix.com/terms-and-conditions");
       break;
     case "open_store": {
       const iosId = Constants.expoConfig?.ios?.bundleIdentifier;

@@ -13,8 +13,6 @@ import {
   View,
 } from "react-native";
 import { colors, radii, space, typography } from "../../../theme";
-import { useAuth } from "../../auth/context/AuthContext";
-import { setAutoDeclineOutsideHours } from "../../home/api/homeApi";
 
 const ONLINE = {
   bg: "#E8F5E9",
@@ -44,45 +42,10 @@ type Props = {
 };
 
 export function TrainerOnlineToggle({ value, onToggle, embedded }: Props) {
-  const { user, patchUser } = useAuth();
-  const initialDecline =
-    (user as { auto_decline_outside_business_hours?: boolean } | null | undefined)
-      ?.auto_decline_outside_business_hours !== false;
-  const [autoDecline, setAutoDecline] = useState<boolean>(initialDecline);
-  const [autoDeclineSyncing, setAutoDeclineSyncing] = useState(false);
   const [displayOnline, setDisplayOnline] = useState(value);
   const [syncing, setSyncing] = useState(false);
   const pulse = useRef(new Animated.Value(1)).current;
   const blend = useRef(new Animated.Value(value ? 1 : 0)).current;
-
-  useEffect(() => {
-    if (autoDeclineSyncing) return;
-    setAutoDecline(initialDecline);
-  }, [initialDecline, autoDeclineSyncing]);
-
-  const handleAutoDeclineToggle = useCallback(
-    async (next: boolean) => {
-      if (autoDeclineSyncing || next === autoDecline) return;
-      const prev = autoDecline;
-      setAutoDecline(next);
-      setAutoDeclineSyncing(true);
-      try {
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        const confirmed = await setAutoDeclineOutsideHours(next);
-        setAutoDecline(confirmed);
-        patchUser({ auto_decline_outside_business_hours: confirmed });
-      } catch (e) {
-        setAutoDecline(prev);
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        const message =
-          e instanceof Error ? e.message : "Could not update business-hours rule.";
-        Alert.alert("Business hours", message);
-      } finally {
-        setAutoDeclineSyncing(false);
-      }
-    },
-    [autoDecline, autoDeclineSyncing, patchUser]
-  );
 
   useEffect(() => {
     if (syncing) return;
@@ -257,36 +220,6 @@ export function TrainerOnlineToggle({ value, onToggle, embedded }: Props) {
           />
         </View>
       </View>
-
-      {displayOnline ? (
-        <View style={styles.subrow}>
-          <Ionicons
-            name={autoDecline ? "shield-checkmark" : "shield-outline"}
-            size={16}
-            color={autoDecline ? ONLINE.dot : OFFLINE.dot}
-          />
-          <View style={styles.subrowText}>
-            <Text style={styles.subrowTitle}>Decline outside business hours</Text>
-            <Text style={styles.subrowHint}>
-              {autoDecline
-                ? "Instant requests outside your scheduled hours get auto-declined."
-                : "You'll receive instant requests anytime you're online."}
-            </Text>
-          </View>
-          {autoDeclineSyncing ? (
-            <ActivityIndicator size="small" color={ONLINE.dot} />
-          ) : (
-            <Switch
-              value={autoDecline}
-              onValueChange={handleAutoDeclineToggle}
-              trackColor={{ false: "#cfd8dc", true: ONLINE.switchTrack }}
-              thumbColor="#fff"
-              ios_backgroundColor="#cfd8dc"
-              style={styles.switch}
-            />
-          )}
-        </View>
-      ) : null}
     </Animated.View>
   );
 }
@@ -362,15 +295,4 @@ const styles = StyleSheet.create({
     transform: Platform.OS === "ios" ? [{ scaleX: 0.92 }, { scaleY: 0.92 }] : [],
     margin: Platform.OS === "ios" ? -2 : 0,
   },
-  subrow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.sm,
-    paddingHorizontal: space.md,
-    paddingTop: 4,
-    paddingBottom: space.md,
-  },
-  subrowText: { flex: 1 },
-  subrowTitle: { ...typography.bodySm, fontWeight: "700", color: "#1f2937" },
-  subrowHint: { ...typography.caption, color: "#475569", marginTop: 2, lineHeight: 16 },
 });

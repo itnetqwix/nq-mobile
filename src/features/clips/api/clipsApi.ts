@@ -93,55 +93,6 @@ export async function createLibrarySubmission(
   return extractData(res);
 }
 
-export type LibrarySubmissionStatus =
-  | "submitted"
-  | "under_review"
-  | "accepted"
-  | "rejected";
-
-export type LibrarySubmissionRow = {
-  _id: string;
-  status: LibrarySubmissionStatus;
-  rejection_reason?: string | null;
-  proposed_category_id?: string | null;
-  proposed_subcategory_id?: string | null;
-  published_library_clip_id?: string | null;
-  createdAt?: string;
-  reviewed_at?: string | null;
-  source_clip_id?:
-    | string
-    | {
-        _id?: string;
-        title?: string;
-        thumbnail?: string;
-        file_name?: string;
-      }
-    | null;
-};
-
-/**
- * Fetch the signed-in user's full library-submission history. Backend returns
- * `{ data: row[] }` with the source clip already populated, sorted newest
- * first. We dedupe defensively in case the API ever re-delivers the same row
- * (e.g. on a retry through a queue).
- */
-export async function fetchMyLibrarySubmissions(): Promise<LibrarySubmissionRow[]> {
-  const res = await apiClient.get(API_ROUTES.clips.librarySubmissionsMine);
-  const rows = extractData<LibrarySubmissionRow[]>(res);
-  if (!Array.isArray(rows)) return [];
-  const seen = new Set<string>();
-  const out: LibrarySubmissionRow[] = [];
-  for (const r of rows) {
-    const id = r?._id ? String(r._id) : "";
-    if (id) {
-      if (seen.has(id)) continue;
-      seen.add(id);
-    }
-    out.push(r);
-  }
-  return out;
-}
-
 export async function reapplyAccount(): Promise<void> {
   await apiClient.post(API_ROUTES.clips.accountReapply, {});
 }

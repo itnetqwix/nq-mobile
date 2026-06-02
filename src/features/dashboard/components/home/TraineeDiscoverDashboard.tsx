@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,7 +13,6 @@ import {
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Skeleton } from "../../../../components/ui";
-import { NetQwixLoader } from "../../../../components/brand/NetQwixLoader";
 import { AccountType } from "../../../../constants/accountType";
 import { fetchSportCategories } from "../../../auth/api/masterApi";
 import { TrainerBrowseCard } from "../../../bookexpert/components/TrainerBrowseCard";
@@ -29,24 +29,12 @@ import {
   TRAINEE_COACH_PREVIEW_COUNT,
 } from "../../lib/traineeDiscoverConstants";
 import { sortTrainersForDiscover } from "../../lib/sortTrainersForDiscover";
-import { ForYouTrainersSection } from "./ForYouTrainersSection";
-import { GuestSeededCoachesSection } from "./GuestSeededCoachesSection";
 import { PastBookedTrainersSection } from "./PastBookedTrainersSection";
-import { RecentlyViewedTrainersRow } from "./RecentlyViewedTrainersRow";
-import { HomeBannerCarousel } from "../../../content/components/HomeBannerCarousel";
-import { TipsForYouSection } from "../shared/TipsForYouSection";
 import { ContinueWhereYouLeftOffCard } from "../trainee/ContinueWhereYouLeftOffCard";
 import { CategoryEmptySuggestions } from "../trainee/CategoryEmptySuggestions";
 import { FavoriteCoachesSection } from "../trainee/FavoriteCoachesSection";
 import { useDashboardSessions } from "../../hooks/useDashboardSessions";
 import { useFavoriteTrainers } from "../../hooks/useFavoriteTrainers";
-import { useGuestFavoriteTrainers } from "../../hooks/useGuestFavoriteTrainers";
-import { useRecentlyViewedTrainers } from "../../hooks/useRecentlyViewedTrainers";
-import {
-  recordGuestFavoriteEvent,
-  recordGuestSearch,
-  recordTrainerView,
-} from "../../../auth/lib/guestActivity";
 import { useWalletBalance } from "../../../wallet/hooks/useWalletBalance";
 import { TrainerBrowseFiltersSheet } from "../../../bookexpert/components/TrainerBrowseFiltersSheet";
 import {
@@ -81,8 +69,6 @@ type Props = {
   onToggleFavoriteGuest?: (t: Record<string, unknown>) => void;
   onOpenWallet?: () => void;
   onOpenSession?: (session: Record<string, unknown>) => void;
-  /** Tip/banner CTA deep links (`netqwix://…`). */
-  onContentDeepLink?: (url: string) => void;
   /** Guest home: own vertical scroll (no parent ScrollView). */
   scrollable?: boolean;
   leadingContent?: React.ReactNode;
@@ -102,7 +88,6 @@ export function TraineeDiscoverDashboard({
   onToggleFavoriteGuest,
   onOpenWallet,
   onOpenSession,
-  onContentDeepLink,
   scrollable = false,
   leadingContent,
   contentContainerStyle,
@@ -121,13 +106,6 @@ export function TraineeDiscoverDashboard({
   const { data: walletBalance } = useWalletBalance(!isGuest);
   const isTraineeAccount = accountType === AccountType.TRAINEE;
   const { isFavorite, toggleFavorite } = useFavoriteTrainers(!isGuest && isTraineeAccount);
-  const guestFavorites = useGuestFavoriteTrainers(isGuest);
-  const recentTrainerOwnerId = isGuest
-    ? null
-    : String((user as { _id?: string })?._id ?? "") || null;
-  const { recentTrainers, track: trackRecentTrainer } = useRecentlyViewedTrainers(
-    recentTrainerOwnerId
-  );
   const apiFilterParams = useMemo(() => filtersToApiParams(browseFilters), [browseFilters]);
   const activeFilterCount = countActiveFilters(browseFilters);
 
@@ -135,13 +113,6 @@ export function TraineeDiscoverDashboard({
     const id = setTimeout(() => setDebouncedSearch(search.trim()), 350);
     return () => clearTimeout(id);
   }, [search]);
-
-  useEffect(() => {
-    if (!isGuest) return;
-    const q = debouncedSearch;
-    if (q.length < 2) return;
-    void recordGuestSearch(q);
-  }, [isGuest, debouncedSearch]);
 
   const trimmed = debouncedSearch;
   const searchActive = trimmed.length >= 2 && !/^\d+$/.test(trimmed);
@@ -313,13 +284,9 @@ export function TraineeDiscoverDashboard({
           accessibilityRole="button"
           accessibilityLabel={t("traineeDiscover.profileA11y")}
         >
-          <HomeUserAvatar uri={profilePicture} user={user ?? undefined} name={name} size={72} />
+          <HomeUserAvatar uri={profilePicture} name={name} size={72} />
         </Pressable>
       </View>
-
-      <HomeBannerCarousel guest={isGuest} onDeepLink={onContentDeepLink} />
-
-      <TipsForYouSection guest={isGuest} onDeepLink={onContentDeepLink} />
 
       {onOpenWallet && !isGuest ? (
         <Pressable
@@ -342,27 +309,7 @@ export function TraineeDiscoverDashboard({
         />
       ) : null}
 
-      {!isGuest ? (
-        <GuestSeededCoachesSection onSelectTrainer={onViewTrainer} />
-      ) : null}
-
-      {!isGuest ? (
-        <ForYouTrainersSection
-          recentTrainerIds={recentTrainers.map((row) => row._id).filter(Boolean)}
-          onSelectTrainer={onViewTrainer}
-          enabled={!isGuest}
-        />
-      ) : null}
-
       {!isGuest ? <PastBookedTrainersSection onSelectTrainer={onViewTrainer} /> : null}
-
-      <RecentlyViewedTrainersRow
-        rows={recentTrainers}
-        onSelectTrainer={(tr) => {
-          void trackRecentTrainer(tr);
-          onViewTrainer(tr);
-        }}
-      />
 
       <View style={styles.searchBar}>
         <Ionicons name="search-outline" size={20} color={themeColors.textMuted} />
@@ -523,25 +470,16 @@ export function TraineeDiscoverDashboard({
                 key={trainerListItemKey(trainer, index, "discover-")}
                 trainer={trainer}
                 themeColors={themeColors}
-                onPress={(tr) => {
-                  if (isGuest) void recordTrainerView(tr);
-                  void trackRecentTrainer(tr);
-                  onViewTrainer(tr);
-                }}
+                onPress={onViewTrainer}
                 onBook={onInstantBook}
                 onSchedule={onScheduleBook}
                 highlightCategory={highlight}
-                isFavorite={
-                  isGuest ? guestFavorites.isFavorite(trainer) : isFavorite(trainer)
-                }
+                isFavorite={isGuest ? false : isFavorite(trainer)}
                 onToggleFavorite={
                   isGuest
-                    ? () => {
-                        guestFavorites.toggleFavorite(trainer);
-                        const tid = String((trainer as { _id?: string })._id ?? "");
-                        if (tid) void recordGuestFavoriteEvent(tid);
-                        onToggleFavoriteGuest?.(trainer);
-                      }
+                    ? onToggleFavoriteGuest
+                      ? () => onToggleFavoriteGuest(trainer)
+                      : undefined
                     : () => toggleFavorite(trainer)
                 }
               />
@@ -556,7 +494,7 @@ export function TraineeDiscoverDashboard({
               accessibilityLabel={t("traineeDiscover.showMoreA11y")}
             >
               {isFetchingNextPage ? (
-                <NetQwixLoader variant="inline" size="sm" motion="quick" message="" />
+                <ActivityIndicator color={themeColors.brandNavy} />
               ) : (
                 <>
                   <Text style={styles.showMoreText}>{t("traineeDiscover.showMore")}</Text>
@@ -566,13 +504,7 @@ export function TraineeDiscoverDashboard({
             </Pressable>
           )}
           {(isRefetching || isFetchingNextPage) && visibleRows.length > 0 && !canShowMore && (
-            <NetQwixLoader
-              variant="inline"
-              size="sm"
-              motion="quick"
-              message=""
-              style={{ marginVertical: space.md }}
-            />
+            <ActivityIndicator style={{ marginVertical: space.md }} color={themeColors.brandNavy} />
           )}
         </View>
       )}

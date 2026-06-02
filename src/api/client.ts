@@ -16,7 +16,6 @@ import {
   isSoft401Path,
 } from "./axiosAuthMeta";
 import { isInAuthGracePeriod } from "../lib/auth/authSessionGuard";
-import { reportNetworkError, reportNetworkOk } from "../lib/networkStatusStore";
 
 /** Opt in with `EXPO_PUBLIC_USE_EXPO_FETCH=1` — Expo native fetch can drop POST bodies on some iOS/Hermes paths; default uses RN’s stack (reliable JSON login). */
 const useExpoNativeFetch = process.env.EXPO_PUBLIC_USE_EXPO_FETCH === "1";
@@ -66,7 +65,6 @@ apiClient.interceptors.request.use(async (config) => {
   const sessionId = await getSessionId();
   if (sessionId) {
     config.headers["X-NQ-Session-Id"] = sessionId;
-    config.headers["X-NQ-Auth-Session-Id"] = sessionId;
   }
   Object.assign(config.headers, getClientSessionHeaders());
   logHttpRequestDebug(config);
@@ -76,27 +74,10 @@ apiClient.interceptors.request.use(async (config) => {
 apiClient.interceptors.response.use(
   (res) => {
     logHttpResponseDebug(res);
-    reportNetworkOk();
     return res;
   },
   async (error) => {
     logHttpErrorDebug(error);
-    /**
-     * Anything without an HTTP status is treated as offline. We
-     * deliberately also include axios timeouts here so users see the
-     * banner if the radio went away mid-request.
-     */
-    const isNetworkLevel =
-      !error?.response &&
-      (error?.code === "ERR_NETWORK" ||
-        error?.code === "ECONNABORTED" ||
-        error?.message === "Network Error" ||
-        error?.message?.includes("Network request failed"));
-    if (isNetworkLevel) {
-      reportNetworkError();
-    } else if (error?.response) {
-      reportNetworkOk();
-    }
     const config = error?.config as InternalAxiosRequestConfig | undefined;
     const meta = config ? getAuthAxiosMeta(config) : {};
     const status = error?.response?.status;

@@ -17,14 +17,12 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { apiClient } from "../../../api/client";
-import { ChatRowSkeleton, EmptyState, PresenceDot, Skeleton, SkeletonGroup } from "../../../components/ui";
+import { EmptyState, Skeleton } from "../../../components/ui";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { queryKeys } from "../../../lib/queryKeys";
 import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
-import { ProfileAvatar } from "../../../components/ui/ProfileAvatar";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
-import { haptics } from "../../../lib/haptics";
 import { useAuth } from "../../auth/context/AuthContext";
 import { useOnlinePresence } from "../../socket/useOnlinePresence";
 import { fetchFriends } from "../../home/api/homeApi";
@@ -38,20 +36,21 @@ import {
 import type { MainTabScreenProps } from "../../../navigation/types";
 import { useChatRoomChrome } from "../hooks/useChatRoomChrome";
 import { ChatRoomScreen } from "./ChatRoomScreen";
-import { GlobalMessageSearchResults } from "../components/GlobalMessageSearchResults";
 import {
   getPresignedChatUploadUrl,
   uploadChatFileToS3,
 } from "../lib/chatMediaUpload";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import type { TFunction } from "i18next";
-import { CoachMark } from "../../onboarding";
-import { useHapticRefresh } from "../../../lib/refresh/useHapticRefresh";
 
 async function fetchConversations(): Promise<any[]> {
-  const res = await apiClient.get(API_ROUTES.chat.conversations);
-  const body = (res as any)?.data ?? res;
-  return body?.data ?? body?.result ?? [];
+  try {
+    const res = await apiClient.get(API_ROUTES.chat.conversations);
+    const body = (res as any)?.data ?? res;
+    return body?.data ?? body?.result ?? [];
+  } catch {
+    return [];
+  }
 }
 
 function formatLastMessagePreview(raw: string, t: TFunction): string {
@@ -62,28 +61,51 @@ function formatLastMessagePreview(raw: string, t: TFunction): string {
   return s;
 }
 
-function formatRowTimestamp(dateStr?: string): string {
+function timeAgo(dateStr?: string): string {
   if (!dateStr) return "";
   try {
-    const d = new Date(dateStr);
-    if (Number.isNaN(d.getTime())) return "";
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    const diffDays = Math.round(
-      (startOfToday.getTime() - startOfDay.getTime()) / (24 * 60 * 60 * 1000)
-    );
-    if (diffDays === 0) {
-      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    }
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return d.toLocaleDateString([], { weekday: "short" });
-    return d.toLocaleDateString([], { day: "2-digit", month: "short" });
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 1) return "now";
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h`;
+    return `${Math.floor(hours / 24)}d`;
   } catch {
     return "";
   }
 }
 
+function Avatar({ uri, name, size = 48 }: { uri?: string; name?: string; size?: number }) {
+  const c = useThemeColors();
+  const [failed, setFailed] = React.useState(false);
+  const url = getS3ImageUrl(uri);
+  if (!url || failed) {
+    return (
+      <View
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: c.brandAccent,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Text style={{ fontSize: size * 0.4, color: c.brandTextOn, fontWeight: "700" }}>
+          {(name ?? "?")[0]?.toUpperCase()}
+        </Text>
+      </View>
+    );
+  }
+  return (
+    <Image
+      source={{ uri: url }}
+      style={{ width: size, height: size, borderRadius: size / 2 }}
+      onError={() => setFailed(true)}
+    />
+  );
+}
 
 type ChatPartner = {
   _id: string;
@@ -91,7 +113,7 @@ type ChatPartner = {
   profile_picture?: string;
 };
 
-export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) {
+export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const styles = useThemedStyles((palette) => StyleSheet.create({
@@ -141,60 +163,31 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
     position: "absolute",
     bottom: 0,
     right: 0,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#4CAF50",
+    borderWidth: 2,
+    borderColor: palette.surface,
   },
   rowContent: { flex: 1 },
   rowTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   rowName: { ...typography.subtitle, color: palette.text, flex: 1, marginRight: 8 },
   rowTime: { ...typography.caption, color: palette.textMuted },
   rowBottom: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 3 },
-  rowPreviewWrap: { flex: 1, marginRight: 8, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 4 },
-  rowOnline: { fontSize: 11, fontWeight: "600", color: "#43A047" },
-  rowPreview: { ...typography.bodySm, color: palette.textMuted, flex: 1 },
-  rowPreviewUnread: { color: palette.text, fontWeight: "600" },
+  rowPreviewWrap: { flex: 1, marginRight: 8, minWidth: 0 },
+  rowOnline: { fontSize: 12, fontWeight: "600", color: "#43A047", marginBottom: 1 },
+  rowPreview: { ...typography.bodySm, color: palette.textMuted },
   unreadBadge: {
     backgroundColor: palette.brandNavy,
-    borderRadius: 11,
-    minWidth: 22,
-    height: 22,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 6,
+    paddingHorizontal: 5,
   },
   unreadText: { fontSize: 11, color: palette.brandTextOn, fontWeight: "700" },
-  filterRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: space.md,
-    paddingBottom: 6,
-  },
-  filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: palette.border,
-    backgroundColor: palette.surfaceElevated,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  filterChipActive: {
-    backgroundColor: palette.brandNavy,
-    borderColor: palette.brandNavy,
-  },
-  filterChipText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: palette.textMuted,
-  },
-  filterChipTextActive: { color: palette.brandTextOn },
-  filterChipCount: {
-    fontSize: 10,
-    color: palette.textMuted,
-    fontWeight: "700",
-  },
-  filterChipCountActive: { color: palette.brandTextOn },
   avatarFallback: {
     backgroundColor: palette.brandNavy,
     alignItems: "center",
@@ -202,19 +195,10 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
   },
   avatarInitial: { color: palette.brandTextOn, fontWeight: "700" },
 
-  /**
-   * The CoachMark wrapper measures its child for anchor coordinates, so the
-   * absolutely-positioned FAB needs a same-sized absolute wrapper. We mirror
-   * its size+position here and let the inner button fill it.
-   */
-  fabAnchor: {
+  fab: {
     position: "absolute",
     right: space.md,
     bottom: space.lg,
-    width: 56,
-    height: 56,
-  },
-  fab: {
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -344,22 +328,6 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
     borderColor: palette.border,
   },
   inviteDeclineText: { color: palette.textMuted, fontSize: 13, fontWeight: "600" },
-  centeredError: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: space.lg,
-    gap: space.sm,
-  },
-  errorTitle: { fontSize: 17, fontWeight: "700", textAlign: "center" },
-  errorBody: { fontSize: 14, textAlign: "center", lineHeight: 20 },
-  retryChip: {
-    marginTop: space.sm,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: radii.md,
-    borderWidth: 1,
-  },
 }));
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -372,10 +340,7 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
     memberCount?: number;
     groupAdminId?: string;
     groupDescription?: string;
-    targetMessageId?: string;
-    searchSeed?: string;
   } | null>(null);
-  const [listFilter, setListFilter] = useState<"all" | "unread" | "groups">("all");
   useChatRoomChrome(!!activeChat);
   const [showNewChat, setShowNewChat] = useState(false);
   const [friendSearch, setFriendSearch] = useState("");
@@ -389,32 +354,7 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
   const [showAllSelectedMembers, setShowAllSelectedMembers] = useState(false);
   const { isOnline } = useOnlinePresence();
 
-  // Open a conversation requested from another screen (Community / Friends /
-  // dashboard quick action). We clear the param once handled so the same
-  // payload doesn't reopen on every navigation event.
-  React.useEffect(() => {
-    const payload = (route?.params as { open?: any } | undefined)?.open;
-    if (!payload?.conversationId) return;
-    setActiveChat({
-      conversationId: String(payload.conversationId),
-      partner: payload.partner,
-      isGroup: !!payload.isGroup,
-      memberCount: payload.memberCount,
-      groupAdminId: payload.groupAdminId,
-      groupDescription: payload.groupDescription,
-      targetMessageId: payload.targetMessageId,
-      searchSeed: payload.searchSeed,
-    });
-    navigation.setParams({ open: undefined } as never);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [route?.params]);
-
-  const {
-    data: conversations = [],
-    isLoading,
-    isError: conversationsError,
-    refetch,
-  } = useQuery({
+  const { data: conversations = [], isLoading, isRefetching, refetch } = useQuery({
     queryKey: queryKeys.chats.conversations,
     queryFn: fetchConversations,
     staleTime: 15_000,
@@ -427,12 +367,6 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
     staleTime: 20_000,
     refetchInterval: 30_000,
   });
-
-  /** Pull-to-refresh now refetches both conversations + group invites in
-   *  parallel and emits the trigger/completion haptic via the shared hook. */
-  const { refreshing: isRefetching, onRefresh: onRefreshChats } = useHapticRefresh(
-    () => Promise.all([refetch(), refetchGroupInvites()])
-  );
 
   const { data: friends = [], isLoading: loadingFriends } = useQuery({
     queryKey: queryKeys.friends.list,
@@ -484,32 +418,13 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
   }, []);
 
   const filtered = useMemo(() => {
-    let list = conversations as any[];
-    if (listFilter === "unread") {
-      list = list.filter((c: any) => (c?.unreadCount ?? 0) > 0);
-    } else if (listFilter === "groups") {
-      list = list.filter((c: any) => !!c?.isGroup);
-    }
-    if (!search.trim()) return list;
+    if (!search.trim()) return conversations;
     const q = search.toLowerCase();
-    return list.filter((c: any) => {
+    return conversations.filter((c: any) => {
       const p = getPartner(c);
-      const lastMsg = String(c?.lastMessage ?? c?.last_message ?? "").toLowerCase();
-      return (
-        (p.fullname ?? "").toLowerCase().includes(q) ||
-        lastMsg.includes(q)
-      );
+      return (p.fullname ?? "").toLowerCase().includes(q);
     });
-  }, [conversations, search, getPartner, listFilter]);
-
-  const totalUnread = useMemo(
-    () => conversations.reduce((acc: number, c: any) => acc + (c?.unreadCount ?? 0), 0),
-    [conversations]
-  );
-  const groupCount = useMemo(
-    () => conversations.filter((c: any) => !!c?.isGroup).length,
-    [conversations]
-  );
+  }, [conversations, search, getPartner]);
 
   const friendsList = useMemo(() => {
     const items: ChatPartner[] = [];
@@ -667,8 +582,6 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
         memberCount={activeChat.memberCount}
         groupAdminId={activeChat.groupAdminId}
         groupDescription={activeChat.groupDescription}
-        targetMessageId={activeChat.targetMessageId}
-        searchSeed={activeChat.searchSeed}
         onGoBack={() => {
           setActiveChat(null);
           refetch();
@@ -700,60 +613,6 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
         >
           <Ionicons name="archive-outline" size={22} color={c.brandNavy} />
         </Pressable>
-      </View>
-
-      {search.trim().length >= 2 ? (
-        <GlobalMessageSearchResults
-          query={search}
-          currentUserId={currentUserId}
-          onOpenResult={(conversationId, partner, targetMessageId, isGroup) => {
-            setActiveChat({
-              conversationId,
-              partner: {
-                _id: String(partner?._id ?? conversationId),
-                fullname: partner?.fullname ?? "Chat",
-                profile_picture: partner?.profile_picture,
-                isGroup,
-              },
-              isGroup,
-              targetMessageId,
-              searchSeed: search.trim(),
-            });
-            setSearch("");
-          }}
-        />
-      ) : null}
-
-      <View style={styles.filterRow}>
-        {(
-          [
-            { id: "all", label: t("chats.filterAll", { defaultValue: "All" }), count: conversations.length },
-            { id: "unread", label: t("chats.filterUnread", { defaultValue: "Unread" }), count: totalUnread },
-            { id: "groups", label: t("chats.filterGroups", { defaultValue: "Groups" }), count: groupCount },
-          ] as const
-        ).map((chip) => {
-          const active = listFilter === chip.id;
-          return (
-            <Pressable
-              key={chip.id}
-              onPress={() => {
-                haptics.select();
-                setListFilter(chip.id as typeof listFilter);
-              }}
-              style={[styles.filterChip, active && styles.filterChipActive]}
-              hitSlop={4}
-            >
-              <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
-                {chip.label}
-              </Text>
-              {chip.count > 0 ? (
-                <Text style={[styles.filterChipCount, active && styles.filterChipCountActive]}>
-                  {chip.count > 99 ? "99+" : chip.count}
-                </Text>
-              ) : null}
-            </Pressable>
-          );
-        })}
       </View>
 
       {groupInvites.length > 0 ? (
@@ -796,35 +655,18 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
         </View>
       ) : null}
 
-      {conversationsError ? (
-        <View style={styles.centeredError}>
-          <Text style={[styles.errorTitle, { color: c.text }]}>
-            {t("chats.loadErrorTitle", { defaultValue: "Could not load chats" })}
-          </Text>
-          <Text style={[styles.errorBody, { color: c.textMuted }]}>
-            {t("chats.loadErrorBody", {
-              defaultValue: "Check your connection and try again.",
-            })}
-          </Text>
-          <Pressable style={[styles.retryChip, { borderColor: c.border }]} onPress={() => void refetch()}>
-            <Text style={{ color: c.brandNavy, fontWeight: "600" }}>
-              {t("common.retry", { defaultValue: "Retry" })}
-            </Text>
-          </Pressable>
+      {isLoading ? (
+        <View style={{ padding: space.md }}>
+          {[0, 1, 2, 3].map((i) => (
+            <View key={i} style={{ marginBottom: space.sm, flexDirection: "row", gap: space.sm, alignItems: "center" }}>
+              <Skeleton width={44} height={44} radius={22} />
+              <View style={{ flex: 1, gap: 6 }}>
+                <Skeleton width="60%" height={12} />
+                <Skeleton width="80%" height={10} />
+              </View>
+            </View>
+          ))}
         </View>
-      ) : isLoading ? (
-        /**
-         * Content-shape skeletons mirror the actual chat row (avatar +
-         * title + preview + timestamp + unread badge), so the visual
-         * doesn't reflow when data arrives. This is the cheapest UX win
-         * — same Skeleton primitive, just composed correctly.
-         */
-        <SkeletonGroup
-          count={6}
-          gap={0}
-          renderRow={() => <ChatRowSkeleton />}
-          style={{ paddingTop: space.xs }}
-        />
       ) : (
         <FlatList
           data={filtered}
@@ -833,15 +675,8 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
             const partner = getPartner(item);
             const lastMsg = item.lastMessage ?? item.last_message ?? "";
             const unread = item.unreadCount ?? 0;
-            const time = formatRowTimestamp(item.lastMessageAt ?? item.updatedAt);
+            const time = timeAgo(item.lastMessageAt ?? item.updatedAt);
             const isGroup = !!(item.isGroup || (partner as any).isGroup);
-            const lastMsgKind = (() => {
-              const s = String(lastMsg).trim();
-              if (s === "[image]") return "image" as const;
-              if (s === "[video]" || s === "[clip]") return "video" as const;
-              if (s === "[voice]") return "voice" as const;
-              return "text" as const;
-            })();
             const participants: any[] = item?.participants ?? [];
             const otherParticipant = participants.find(
               (p: any) => String(p?._id) !== currentUserId
@@ -853,8 +688,7 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
             return (
               <Pressable
                 style={({ pressed }) => [styles.row, pressed && { opacity: 0.8 }]}
-                onPress={() => {
-                  haptics.tap();
+                onPress={() =>
                   setActiveChat({
                     conversationId: item._id,
                     isGroup,
@@ -867,10 +701,9 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
                       profile_picture: partner.profile_picture,
                       isGroup,
                     },
-                  });
-                }}
+                  })
+                }
                 onLongPress={() => {
-                  haptics.impact();
                   Alert.alert(partner.fullname ?? t("chats.chat"), undefined, [
                     {
                       text: t("chats.archive"),
@@ -896,9 +729,8 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
                 <View style={styles.avatarWrap}>
                   {isGroup ? (
                     getS3ImageUrl(item.groupAvatar ?? partner.profile_picture) ? (
-                      <ProfileAvatar
+                      <Avatar
                         uri={item.groupAvatar ?? partner.profile_picture}
-                        user={partner}
                         name={partner.fullname}
                         size={48}
                       />
@@ -909,16 +741,8 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
                     )
                   ) : (
                     <>
-                      <ProfileAvatar user={partner} name={partner.fullname} />
-                      {partnerOnline && (
-                        <PresenceDot
-                          online
-                          size={12}
-                          ring
-                          style={styles.onlineDot}
-                          accessibilityLabel={t("chats.online", { defaultValue: "Online" })}
-                        />
-                      )}
+                      <Avatar uri={partner.profile_picture} name={partner.fullname} />
+                      {partnerOnline && <View style={styles.onlineDot} />}
                     </>
                   )}
                 </View>
@@ -931,85 +755,45 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
                   </View>
                   <View style={styles.rowBottom}>
                     <View style={styles.rowPreviewWrap}>
-                      {lastMsgKind === "image" ? (
-                        <Ionicons name="image-outline" size={14} color={c.textMuted} />
-                      ) : lastMsgKind === "video" ? (
-                        <Ionicons name="videocam-outline" size={14} color={c.textMuted} />
-                      ) : lastMsgKind === "voice" ? (
-                        <Ionicons name="mic-outline" size={14} color={c.textMuted} />
-                      ) : null}
-                      <Text
-                        style={[styles.rowPreview, unread > 0 && styles.rowPreviewUnread]}
-                        numberOfLines={1}
-                      >
+                      {partnerOnline && (
+                        <Text style={styles.rowOnline}>{t("chats.online")}</Text>
+                      )}
+                      <Text style={styles.rowPreview} numberOfLines={1}>
                         {formatLastMessagePreview(lastMsg, t) || t("chats.tapToChat")}
                       </Text>
                     </View>
-                    {unread > 0 ? (
+                    {unread > 0 && (
                       <View style={styles.unreadBadge}>
                         <Text style={styles.unreadText}>
                           {unread > 99 ? "99+" : unread}
                         </Text>
                       </View>
-                    ) : partnerOnline ? (
-                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#4CAF50" }} />
-                    ) : null}
+                    )}
                   </View>
                 </View>
               </Pressable>
             );
           }}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={onRefreshChats} tintColor={c.iconPrimary} />
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.iconPrimary} />
           }
           ListEmptyComponent={
             <EmptyState
               icon="chatbubbles-outline"
               title={search ? t("chats.noMatchingConversations") : t("chats.noConversations")}
               description={search ? t("chats.noMatchingDescription") : t("chats.emptyDescription")}
-              actionLabel={
-                search
-                  ? undefined
-                  : t("chats.emptyCta", { defaultValue: "Start your first chat" })
-              }
-              onAction={
-                search
-                  ? undefined
-                  : () => {
-                      haptics.press();
-                      setShowNewChat(true);
-                    }
-              }
             />
           }
         />
       )}
 
-      {/* New Chat FAB — wrapped in a CoachMark so first-time users see what it does. */}
-      <CoachMark
-        id="chats.newChatFab.v1"
-        title={t("coachMarks.chatsFab.title", { defaultValue: "Start your first chat" })}
-        description={t("coachMarks.chatsFab.description", {
-          defaultValue:
-            "Tap here to pick a friend or trainer and start a 1-on-1 or group chat.",
-        })}
-        icon="create"
-        placement="top"
-        style={styles.fabAnchor}
+      {/* New Chat FAB */}
+      <Pressable
+        style={({ pressed }) => [styles.fab, pressed && { transform: [{ scale: 0.92 }] }]}
+        onPress={() => setShowNewChat(true)}
       >
-        <Pressable
-          style={({ pressed }) => [styles.fab, pressed && { transform: [{ scale: 0.92 }] }]}
-          onPress={() => {
-            haptics.press();
-            setShowNewChat(true);
-          }}
-          accessibilityRole="button"
-          accessibilityLabel={t("chats.newChat", { defaultValue: "Start a new chat" })}
-          accessibilityHint={t("chats.newChatHint", { defaultValue: "Opens the friend picker" })}
-        >
-          <Ionicons name="create-outline" size={24} color={c.brandTextOn} />
-        </Pressable>
-      </CoachMark>
+        <Ionicons name="create-outline" size={24} color={c.brandTextOn} />
+      </Pressable>
 
       {/* New Chat Modal — Friend Picker + Group */}
       <Modal
@@ -1037,11 +821,7 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
                 setShowNewChat(false);
                 setFriendSearch("");
               }
-            }}
-            hitSlop={12}
-            accessibilityRole="button"
-            accessibilityLabel={showGroupCreate ? "Back to new chat picker" : "Close new chat picker"}
-            >
+            }} hitSlop={12}>
               <Ionicons name={showGroupCreate ? "arrow-back" : "close"} size={24} color={c.text} />
             </Pressable>
             <Text style={styles.modalTitle}>
@@ -1058,12 +838,7 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
                 )}
               </Pressable>
             ) : (
-              <Pressable
-                onPress={() => setShowGroupCreate(true)}
-                hitSlop={12}
-                accessibilityRole="button"
-                accessibilityLabel="Create a new group chat"
-              >
+              <Pressable onPress={() => setShowGroupCreate(true)} hitSlop={12}>
                 <Ionicons name="people" size={24} color={c.iconPrimary} />
               </Pressable>
             )}
@@ -1118,7 +893,7 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
                     {selectedMemberList.slice(0, 10).map((m, mi) => (
                       <View key={`${m._id}-${mi}`} style={{ alignItems: "center", marginRight: 10, width: 56 }}>
-                        <ProfileAvatar user={m} name={m.fullname} size={44} />
+                        <Avatar uri={m.profile_picture} name={m.fullname} size={44} />
                         <Text style={{ fontSize: 10, color: c.textMuted, marginTop: 4 }} numberOfLines={1}>
                           {(m.fullname ?? "").split(" ")[0]}
                         </Text>
@@ -1169,7 +944,7 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
                     onPress={() => showGroupCreate ? toggleGroupMember(item._id) : openChatWithFriend(item)}
                     disabled={creatingChat}
                   >
-                    <ProfileAvatar user={item} name={item.fullname} size={44} />
+                    <Avatar uri={item.profile_picture} name={item.fullname} size={44} />
                     <Text style={styles.friendName} numberOfLines={1}>
                       {item.fullname}
                     </Text>
@@ -1190,29 +965,6 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
                   title={t("chats.noFriendsFound")}
                   description={
                     friendSearch ? t("chats.noFriendsMatch") : t("chats.addFriendsFromCommunity")
-                  }
-                  actionLabel={
-                    friendSearch
-                      ? undefined
-                      : t("chats.emptyFriendsCta", { defaultValue: "Find people" })
-                  }
-                  onAction={
-                    friendSearch
-                      ? undefined
-                      : () => {
-                          setShowNewChat(false);
-                          try {
-                            (navigation as { navigate: (n: string, p?: unknown) => void }).navigate(
-                              "Home",
-                              {
-                                screen: "DashboardFeature",
-                                params: { featureId: "my-community" },
-                              }
-                            );
-                          } catch {
-                            /* fallback */
-                          }
-                        }
                   }
                 />
               }
@@ -1240,7 +992,7 @@ export function ChatsScreen({ navigation, route }: MainTabScreenProps<"Chats">) 
             keyExtractor={flatListKeyExtractor}
             renderItem={({ item }) => (
               <View style={styles.friendRow}>
-                <ProfileAvatar user={item} name={item.fullname} size={44} />
+                <Avatar uri={item.profile_picture} name={item.fullname} size={44} />
                 <Text style={styles.friendName}>{item.fullname}</Text>
               </View>
             )}

@@ -178,12 +178,7 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
     let fileBytes = videoAsset.fileSize ?? 0;
     if (fileBytes <= 0) {
       try {
-        /**
-         * Newer expo-file-system returns `size` unconditionally; the
-         * legacy `{ size: true }` opt-in is gone. Runtime check keeps
-         * us safe if the asset is unreadable.
-         */
-        const info = await FileSystem.getInfoAsync(videoAsset.uri);
+        const info = await FileSystem.getInfoAsync(videoAsset.uri, { size: true });
         if (info.exists && "size" in info && typeof info.size === "number") {
           fileBytes = info.size;
         }

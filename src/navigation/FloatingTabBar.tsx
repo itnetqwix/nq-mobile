@@ -35,7 +35,10 @@ export function FloatingTabBar(props: Props) {
   const { scheme } = useTheme();
   const c = useThemeColors();
   const bottomPad = Math.max(insets.bottom, FLOATING_TAB_BAR_BOTTOM_GAP);
-  const hidden = StyleSheet.flatten(props.style)?.display === "none";
+  const focusedRouteKey = props.state.routes[props.state.index]?.key;
+  const focusedOptions = focusedRouteKey ? props.descriptors[focusedRouteKey]?.options : undefined;
+  const tabBarStyle = focusedOptions?.tabBarStyle;
+  const hidden = StyleSheet.flatten(tabBarStyle as any)?.display === "none";
   if (hidden) return null;
 
   return (
@@ -51,9 +54,9 @@ export function FloatingTabBar(props: Props) {
             borderColor: c.tabBarBorder,
             ...Platform.select({
               ios: {
-                shadowColor: "#000",
+                shadowColor: scheme === "dark" ? "#000" : "#1e3a5f",
                 shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: scheme === "dark" ? 0.45 : 0.14,
+                shadowOpacity: scheme === "dark" ? 0.45 : 0.12,
                 shadowRadius: 16,
               },
               android: { elevation: 12 },

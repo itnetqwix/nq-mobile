@@ -1,12 +1,6 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { BrandedSessionLoader } from "../components/brand/BrandedSessionLoader";
-import {
-  IntroOnboardingScreen,
-  isIntroOnboardingComplete,
-  setIntroOnboardingComplete,
-} from "../features/intro-onboarding";
-import { navigationRef } from "./navigationRef";
 import { AppUnlockGate } from "../features/auth/components/AppUnlockGate";
 import { useAuth } from "../features/auth/context/AuthContext";
 import { OnboardingNavigator } from "./OnboardingNavigator";
@@ -18,6 +12,7 @@ import { AccountRejectedScreen } from "../features/verification/screens/AccountR
 import { GracePeriodBanner } from "../features/verification/components/GracePeriodBanner";
 import { InstantLessonStatusBanner } from "../features/instant-lesson/InstantLessonStatusBanner";
 import { InstantLessonTraineeModal } from "../features/instant-lesson/InstantLessonTraineeModal";
+import { InstantLessonIncomingCallOverlay } from "../features/instant-lesson/components/InstantLessonIncomingCallOverlay";
 import { InstantLessonTrainerModal } from "../features/instant-lesson/InstantLessonTrainerModal";
 import { MeetingRouter } from "../features/calling/screens/MeetingRouter";
 import { NotificationToast } from "../features/notifications/NotificationToast";
@@ -46,72 +41,17 @@ export function RootNavigator() {
   const { status, refreshUser, user, accountType } = useAuth();
   const { refetchVerificationGate, ...verificationGate } = useTrainerVerificationGate();
   const [startVerificationEarly, setStartVerificationEarly] = useState(false);
-  const [introHydrated, setIntroHydrated] = useState(false);
-  const [introComplete, setIntroComplete] = useState(true);
-  const [openAuthAfterIntro, setOpenAuthAfterIntro] = useState(false);
-  const authPresentedAfterIntro = useRef(false);
 
   useEffect(() => {
-    // Keep manual verification intent through transient auth "loading" states.
-    // Only clear it when the user is truly signed out.
-    if (status === "signedOut") setStartVerificationEarly(false);
-  }, [status]);
-
-  useEffect(() => {
-    let alive = true;
-    void isIntroOnboardingComplete().then((done) => {
-      if (alive) {
-        setIntroComplete(done);
-        setIntroHydrated(true);
-      }
-    });
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (status === "signedIn") {
-      setOpenAuthAfterIntro(false);
-      authPresentedAfterIntro.current = false;
-    }
+    if (status !== "signedIn") setStartVerificationEarly(false);
   }, [status]);
 
   const authLoading = status === "loading";
   const signedIn = status === "signedIn";
   const gateLoading = signedIn && verificationGate.loading;
 
-  useEffect(() => {
-    if (!openAuthAfterIntro || signedIn || authLoading || gateLoading) return;
-    const presentAuth = () => {
-      if (authPresentedAfterIntro.current) return;
-      if (!navigationRef.isReady()) return;
-      authPresentedAfterIntro.current = true;
-      navigationRef.navigate("Auth", { screen: "Login" });
-      setOpenAuthAfterIntro(false);
-    };
-    const id = requestAnimationFrame(presentAuth);
-    const retry = setTimeout(presentAuth, 400);
-    return () => {
-      cancelAnimationFrame(id);
-      clearTimeout(retry);
-    };
-  }, [openAuthAfterIntro, signedIn, authLoading, gateLoading]);
-
-  if (authLoading || gateLoading || !introHydrated) {
+  if (authLoading || gateLoading) {
     return <BrandedSessionLoader />;
-  }
-
-  if (!signedIn && !introComplete) {
-    return (
-      <IntroOnboardingScreen
-        onGetStarted={async () => {
-          await setIntroOnboardingComplete();
-          setIntroComplete(true);
-          setOpenAuthAfterIntro(true);
-        }}
-      />
-    );
   }
 
   const isAccountRejected = signedIn && String(user?.status ?? "").toLowerCase() === "rejected";
@@ -170,13 +110,6 @@ export function RootNavigator() {
           gestureEnabled: true,
           gestureDirection: "horizontal",
           animation: "slide_from_right",
-          /**
-           * Uniform 240 ms — same family as `mainStackHeaderOptions`
-           * (220 ms) so the timing reads consistent even when a tap
-           * crosses both navigators. iOS-default is closer to 350 ms
-           * which feels heavy on modern devices.
-           */
-          animationDuration: 240,
         }}
       >
         {signedIn ? (
@@ -246,6 +179,7 @@ export function RootNavigator() {
               onCompleteVerification={() => setStartVerificationEarly(true)}
             />
           ) : null}
+          <InstantLessonIncomingCallOverlay />
           <InstantLessonTrainerModal />
           <InstantLessonTraineeModal />
           <InstantLessonStatusBanner />

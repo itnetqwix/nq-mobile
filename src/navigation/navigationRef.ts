@@ -62,41 +62,6 @@ export function navigateToNotifications(): boolean {
   return true;
 }
 
-/** Rebook the same trainer from post-lesson handoff. */
-export function navigateToBookTrainer(trainerId: string): boolean {
-  if (!navigationRef.isReady() || !trainerId) return false;
-  (navigationRef as any).navigate("Main", {
-    screen: "Tabs",
-    params: {
-      screen: "Home",
-      params: {
-        screen: "DashboardFeature",
-        params: {
-          featureId: "book-lesson",
-          bookLessonTrainerId: trainerId,
-        },
-      },
-    },
-  });
-  return true;
-}
-
-/** Open trainee locker (game plans, clips, etc.). */
-export function navigateToMyLocker(): boolean {
-  if (!navigationRef.isReady()) return false;
-  (navigationRef as any).navigate("Main", {
-    screen: "Tabs",
-    params: {
-      screen: "Home",
-      params: {
-        screen: "ShellSurface",
-        params: { surfaceId: "my-locker" as ShellSurfaceRouteId },
-      },
-    },
-  });
-  return true;
-}
-
 /** Open wallet Add funds (optionally pre-filled for booking shortfall). */
 export function navigateToWalletTopUp(suggestedAmount?: number): boolean {
   if (!navigationRef.isReady()) return false;

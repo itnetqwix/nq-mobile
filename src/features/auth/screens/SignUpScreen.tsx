@@ -41,7 +41,6 @@ import {
   signupPasswordError,
 } from "../utils/passwordValidation";
 import type { AuthScreenProps } from "../../../navigation/types";
-import { exitAuthAsGuest } from "../lib/exitAuthAsGuest";
 
 const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 
@@ -271,7 +270,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
         contentStyle={styles.scrollContent}
       >
         <View style={styles.brand}>
-          <NetqwixLogo variant="wordmark" fullWidth maxWidth={400} height={120} />
+          <NetqwixLogo maxWidth={220} />
         </View>
         <Text style={[typography.titleLg, { color: colors.text, marginTop: space.sm }]}>
           {t("auth.createAccount")}
@@ -305,16 +304,6 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
 
         {step === "accountType" ? (
           <Stack gap="md">
-            <Pressable
-              onPress={() => exitAuthAsGuest(navigation)}
-              style={styles.guestRow}
-              accessibilityRole="link"
-              accessibilityLabel={t("auth.continueAsGuest")}
-            >
-              <Ionicons name="compass-outline" size={16} color={colors.brandAccent} />
-              <Text style={styles.guestText}>{t("auth.continueAsGuestPrefix")}</Text>
-              <Text style={styles.guestLink}>{t("auth.continueAsGuest")}</Text>
-            </Pressable>
             <Text style={styles.sectionLabel}>{t("auth.accountTypeLabel")}</Text>
             <Text style={styles.categoryHint}>{t("auth.accountTypeStepHint")}</Text>
             <View style={styles.row}>
@@ -570,14 +559,7 @@ function TypeChip({
 
 const styles = StyleSheet.create({
   scrollContent: { flexGrow: 1 },
-  brand: {
-    alignItems: "center",
-    width: "100%",
-    backgroundColor: "#000000",
-    borderRadius: 12,
-    paddingVertical: space.sm,
-    marginTop: space.xs,
-  },
+  brand: { alignItems: "center", marginTop: space.xs },
   stepRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -659,16 +641,6 @@ const styles = StyleSheet.create({
   },
   back: { marginTop: space.lg, alignItems: "center" },
   link: { color: colors.brandAccent, fontWeight: "600" },
-  guestRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    marginBottom: space.sm,
-    paddingVertical: 8,
-  },
-  guestText: { color: colors.textMuted, fontSize: 14 },
-  guestLink: { color: colors.brandAccent, fontSize: 14, fontWeight: "700" },
   ssoVerified: {
     flexDirection: "row",
     alignItems: "center",

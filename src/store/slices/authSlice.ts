@@ -114,28 +114,17 @@ export const signInThunk = createAsyncThunk(
       const res = await postLogin({ email, password });
       const tokens = extractLoginTokens(res);
       if (!tokens) {
-        return rejectWithValue({
-          message: `Unexpected login response (no tokens). ${summarizeLoginPayloadKeys(res)}`,
-        });
+        return rejectWithValue(
+          `Unexpected login response (no tokens). ${summarizeLoginPayloadKeys(res)}`
+        );
       }
       const result = await dispatch(completeSessionFromTokens(tokens));
       if (completeSessionFromTokens.rejected.match(result)) {
-        return rejectWithValue({ message: String(result.payload) });
+        return rejectWithValue(String(result.payload));
       }
       return result.payload;
-    } catch (e: any) {
-      // Surface server-side lifecycle markers (hibernated / pending_deletion)
-      // so the LoginScreen can route into the wake-up OTP flow without
-      // showing a generic alert.
-      const responseData =
-        e?.response?.data?.data ?? e?.response?.data?.result ?? e?.response?.data;
-
-      return rejectWithValue({
-        message: getApiErrorMessage(e, "Sign in failed."),
-        accountState: responseData?.account_state ?? null,
-        wakeUpRequired: !!responseData?.wake_up_required,
-        pendingDeletion: !!responseData?.pending_deletion,
-      });
+    } catch (e) {
+      return rejectWithValue(getApiErrorMessage(e, "Sign in failed."));
     }
   }
 );

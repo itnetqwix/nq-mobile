@@ -12,8 +12,8 @@ export const meetingTheme = {
   warning: "#F59E0B",
   danger: "#EF4444",
   pipShadow: "rgba(0, 0, 0, 0.45)",
-  barBg: "rgba(20, 20, 20, 0.94)",
-  barBorder: "rgba(255, 255, 255, 0.12)",
+  barBg: "rgba(18, 28, 42, 0.92)",
+  barBorder: "rgba(197, 221, 240, 0.35)",
   videoPlaceholder: "#1A1A1A",
   onPrimary: "#0A0A0A",
 } as const;

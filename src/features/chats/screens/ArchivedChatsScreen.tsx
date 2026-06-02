@@ -138,11 +138,6 @@ export function ArchivedChatsScreen() {
                     isGroup: !!item?.isGroup,
                   })
                 }
-                accessibilityRole="button"
-                accessibilityLabel={t("chats.openArchivedA11y", {
-                  defaultValue: "Open archived chat with {{name}}",
-                  name,
-                })}
               >
                 <View style={styles.avatar}>
                   {pic ? (
@@ -162,12 +157,7 @@ export function ArchivedChatsScreen() {
                 <Pressable
                   style={styles.unarchiveBtn}
                   onPress={() => void onUnarchive(String(item._id))}
-                  accessibilityRole="button"
-                  accessibilityLabel={t("chats.unarchiveA11y", {
-                    defaultValue: "Unarchive chat with {{name}}",
-                    name,
-                  })}
-                  hitSlop={10}
+                  accessibilityLabel={t("chats.unarchive")}
                 >
                   <Ionicons name="arrow-undo-outline" size={22} color={c.brandNavy} />
                 </Pressable>

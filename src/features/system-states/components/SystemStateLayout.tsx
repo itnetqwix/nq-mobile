@@ -58,7 +58,7 @@ export function SystemStateLayout({
             variant={stateId === "session_expired" ? "wordmark" : "pin"}
             fullWidth={stateId === "session_expired"}
             maxWidth={stateId === "session_expired" ? 340 : 56}
-            height={stateId === "session_expired" ? 96 : 56}
+            height={stateId === "session_expired" ? 88 : 56}
             compact={stateId !== "session_expired"}
           />
         ) : null}

@@ -1,41 +1,4 @@
 {
-  "splash": {
-    "tagline": "Live coaching, anywhere",
-    "preparing": "Getting things ready…"
-  },
-  "intro": {
-    "skip": "Skip",
-    "next": "Next",
-    "getStarted": "Get started",
-    "slides": {
-      "leap": {
-        "title": "Make the leap",
-        "body": "Level up your game with live 1:1 coaching — the same edge pros use, built for every athlete."
-      },
-      "coaches": {
-        "title": "Find your coach",
-        "body": "Browse verified experts by sport, skill, and schedule. Save favorites and book when you're ready."
-      },
-      "live": {
-        "title": "Train live, anywhere",
-        "body": "Video sessions, clips, and game plans in one locker — coach from the field or the couch."
-      }
-    }
-  },
-  "cms": {
-    "blogsTitle": "Blog",
-    "blogPostTitle": "Article",
-    "blogsSubtitle": "Coaching tips, product news, and stories from the NetQwix team.",
-    "blogsEmpty": "New articles will appear here when your team publishes them from admin."
-  },
-  "guestSettings": {
-    "bannerTitle": "You're browsing as a guest",
-    "bannerBody": "Sign in or create a free account to book sessions, message coaches, and sync your locker.",
-    "supportSection": "Help & about",
-    "replayIntro": "Replay welcome tour",
-    "languageSaved": "Language updated",
-    "version": "NetQwix v{{version}}"
-  },
   "common": {
     "cancel": "Cancel",
     "done": "Done",
@@ -45,11 +8,7 @@
     "save": "Save",
     "timezonePickerTitle": "Timezone",
     "error": "Error",
-    "ok": "OK",
-    "clear": "Clear",
-    "dismiss": "Dismiss",
-    "tryAgain": "Try again",
-    "somethingWentWrong": "Something went wrong"
+    "ok": "OK"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -76,15 +35,9 @@
     "faq": "FAQ"
   },
   "tabs": {
-    "home": "Home",
+    "home": "Dashboard",
     "sessions": "Sessions",
     "chats": "Chats"
-  },
-  "terminology": {
-    "trainer": "Trainer",
-    "trainerPlural": "Trainers",
-    "trainee": "Trainee",
-    "traineePlural": "Trainees"
   },
   "auth": {
     "signIn": "Sign in",
@@ -104,41 +57,7 @@
     "signOut": "Sign Out",
     "signOutLower": "Sign out",
     "signOutConfirm": "Are you sure you want to sign out?",
-    "signOutAll": "Sign out from all devices",
-    "signOutAllConfirm": "This will end your session on every phone, tablet, and browser you're signed into. Continue?",
-    "signOutAllDone": "Signed out from all devices.",
     "activeSessions": "Active sessions",
-    "continueAsGuest": "Continue as guest",
-    "continueAsGuestPrefix": "Just browsing?",
-    "lastUsed": "Last used",
-    "lastUsedHint": {
-      "google": "You signed in with Google last time. Use the Google button below.",
-      "apple": "You signed in with Apple last time. Use the Apple button below.",
-      "password": "You signed in with email last time. Enter your password to continue.",
-      "magic-link": "Last time you used a magic link. Tap below to send one again."
-    },
-    "magicLink": {
-      "entryCta": "Email me a sign-in link",
-      "title": "Sign in with email",
-      "subtitle": "We'll email you a one-time link and a 6-digit code. No password needed.",
-      "featurePoint1": "One-tap link that opens NetQwix straight away",
-      "featurePoint2": "Code expires in 15 minutes — single use only",
-      "featurePoint3": "Skip the password entirely",
-      "requestCta": "Send me the link",
-      "verifyTitle": "Check your email",
-      "verifySubtitle": "Enter the 6-digit code we just sent to {{email}}.",
-      "verifyCta": "Verify and sign in",
-      "verifyFailedTitle": "Couldn't verify",
-      "verifyFailedBody": "That code didn't work. Double-check or request a fresh one.",
-      "failedTitle": "Couldn't send link",
-      "failedBody": "We hit a snag. Try again in a moment.",
-      "resendCta": "Resend code",
-      "resendIn": "Resend in {{seconds}}s",
-      "useDifferentEmail": "Use a different email",
-      "checkSpamHint": "Don't see it? Check spam or promotions. The code lasts 15 minutes.",
-      "backToOptions": "Back to other sign-in options",
-      "cellA11y": "Code digit {{index}}"
-    },
     "ok": "OK",
     "continue": "Continue",
     "fullName": "Full name",
@@ -248,34 +167,6 @@
     "notSignedIn": "Not signed in.",
     "storagePlan": "Storage plan",
     "storagePlanSubtitle": "Manage clip storage and upgrades",
-    "bookingReminders": "Session reminders",
-    "reminderCadence": {
-      "standard": {
-        "title": "Standard",
-        "subtitle": "Push 24 hours, 1 hour, and 10 minutes before a session"
-      },
-      "minimal": {
-        "title": "Minimal",
-        "subtitle": "One push, 1 hour before a session"
-      },
-      "aggressive": {
-        "title": "Don't let me forget",
-        "subtitle": "24 hours, 1 hour, 10 minutes, and right at start"
-      },
-      "off": {
-        "title": "Off",
-        "subtitle": "Skip session reminder pushes (you'll still see in-app alerts)"
-      }
-    },
-    "signOutAllSubtitle": "End every session, on every device, right now.",
-    "dangerZone": "Danger zone",
-    "deleteAccount": "Delete account",
-    "deleteAccountSubtitle": "Permanently remove your data from NetQwix.",
-    "deleteAccountWarn": "This cannot be undone. We'll close every active session, hide your profile, and scrub your personal info from NetQwix. Bookings and payment records are kept for legal compliance.",
-    "deleteAccountContinue": "I understand, continue",
-    "deleteAccountFinalTitle": "Last chance",
-    "deleteAccountFinalBody": "Are you absolutely sure? You'll be signed out everywhere and won't be able to recover this account.",
-    "deleteAccountFinalConfirm": "Delete my account",
     "account": "Account",
     "appearance": "Appearance",
     "storage": "Storage",
@@ -314,265 +205,13 @@
     "trainerProfileBilling": "Trainer profile & billing",
     "inviteFriends": "Invite friends",
     "signOut": "Sign Out",
-    "replayTour": "Replay onboarding tour",
     "footerVersion": "NetQwix Mobile · v1.0.0",
     "linkOpenErrorTitle": "Unable to open link",
     "privacyAlertTitle": "Privacy",
     "privacyUpdateError": "Could not update private account setting.",
     "notificationsAlertTitle": "Notifications",
     "notificationsUpdateError": "Could not save notification preferences.",
-    "biometricsDefault": "Biometrics",
-    "readReceipts": "Read receipts",
-    "readReceiptsHint": "Show others a blue tick when you've read their messages.",
-    "showLastActive": "Show last active",
-    "showLastActiveHint": "Let people see when you were last online.",
-    "showOnlineStatus": "Show online status",
-    "showOnlineStatusHint": "Display the green presence dot to non-friends.",
-    "showInCommunitySearch": "Show in community search",
-    "showInCommunitySearchHint": "Let other members find your profile via search.",
-    "allowMessageRequests": "Allow message requests from non-friends",
-    "allowMessageRequestsHint": "Off means only friends can DM you. Booked trainers can always reach you.",
-    "blockedAccounts": "Blocked accounts",
-    "blockedAccountsSubtitle": "Review or unblock people you've blocked.",
-    "exportMyData": "Export my data",
-    "exportMyDataSubtitle": "Download an archive of everything we hold (GDPR / DPDP).",
-    "twoFactor": "Two-factor authentication",
-    "twoFactorSubtitle": "Extra OTP step for trainer accounts on new devices."
-  },
-  "blockList": {
-    "title": "Blocked accounts",
-    "explainer": "Blocked accounts can't message you, see your online status, or find your profile. Unblocking lifts those restrictions but does not restore deleted conversations.",
-    "blockedOn": "Blocked on {{date}}",
-    "unblock": "Unblock",
-    "unblockA11y": "Unblock {{name}}",
-    "unblockConfirmTitle": "Unblock {{name}}?",
-    "unblockConfirmBody": "They'll be able to message you and see your profile again. You can block them later if needed.",
-    "unblockConfirm": "Unblock",
-    "unblockErrorTitle": "Couldn't unblock",
-    "emptyTitle": "No one is blocked",
-    "emptyBody": "If you ever need to block someone, open their profile or a chat and pick \"Block\".",
-    "errorTitle": "Couldn't load your block list",
-    "defaultName": "Account"
-  },
-  "dataExport": {
-    "title": "Export my data",
-    "lead": "Get a copy of the data NetQwix holds about you. Required under GDPR (EU/UK) and India's DPDP Act, useful when moving accounts or auditing your information.",
-    "includedTitle": "What's included",
-    "includedProfile": "Profile details, settings, login history.",
-    "includedBookings": "Bookings, lesson notes, and ratings.",
-    "includedChats": "Chat messages you sent or received (decrypted where possible).",
-    "includedClips": "Clip metadata (titles, sports, timestamps). Raw videos are linked, not bundled, to keep the archive small.",
-    "includedWallet": "Wallet activity and receipts.",
-    "statusHeader": "Current request",
-    "statusIdle": "No active request",
-    "statusQueued": "Queued",
-    "statusProcessing": "Processing",
-    "statusReady": "Ready",
-    "statusFailed": "Failed",
-    "requestedOn": "Requested {{when}}",
-    "readyOn": "Ready {{when}}",
-    "expiresOn": "Link expires {{when}}",
-    "download": "Download archive",
-    "request": "Request a new export",
-    "pending": "Export in progress",
-    "confirmTitle": "Request a data export?",
-    "confirmBody": "We'll bundle your profile, bookings, chat messages, clips metadata, and wallet activity into a ZIP archive and email you a download link.",
-    "confirmCta": "Request",
-    "requestedTitle": "Export queued",
-    "requestedBody": "We'll email you a download link as soon as your archive is ready. Most exports finish within 48 hours.",
-    "errorTitle": "Couldn't request export",
-    "linkErrorTitle": "Couldn't open link",
-    "helpFooter": "Questions about what's exported or want a partial copy? Contact support from Settings → Contact us."
-  },
-  "twoFactor": {
-    "title": "Two-factor authentication",
-    "intro": "Add an extra OTP step for trainer accounts so a leaked password alone can't unlock your business profile and payouts.",
-    "chooseMethod": "Choose how to receive codes",
-    "email": "Email",
-    "sms": "SMS",
-    "methodEmailA11y": "Receive codes by email",
-    "methodSmsA11y": "Receive codes by SMS",
-    "sendCode": "Send me a code",
-    "codeSent": "We sent a 6-digit code to {{target}}",
-    "codeInputA11y": "6-digit verification code",
-    "verify": "Verify code",
-    "resend": "Resend code",
-    "trustDevice": "Trust this device for 30 days. New devices will still need a fresh code.",
-    "trustDeviceA11y": "Remember this device for 30 days",
-    "codeShortTitle": "Enter all 6 digits",
-    "codeShortBody": "The verification code is six digits long.",
-    "enabledTitle": "Two-factor enabled",
-    "enabledBody": "We'll ask for a code the next time you sign in on a new device.",
-    "challengeErrorTitle": "Couldn't send code",
-    "verifyErrorTitle": "Code didn't match",
-    "verifyErrorBody": "Double-check the code and try again.",
-    "activeTitle": "Two-factor authentication is active",
-    "activeMethod": "Method: {{method}}",
-    "lastVerified": "Last verified {{when}}",
-    "disable": "Turn off two-factor",
-    "disableConfirmTitle": "Turn off two-factor?",
-    "disableConfirmBody": "Your account will rely on password / biometric login alone. You can turn it back on at any time.",
-    "disableConfirm": "Turn off",
-    "trustedDevices": "Trusted devices",
-    "noDevicesTitle": "No trusted devices yet",
-    "noDevicesBody": "Devices you tick \"remember\" on during sign-in show up here so you can revoke them anytime.",
-    "thisDevice": "(this device)",
-    "revoke": "Revoke",
-    "revokeA11y": "Revoke trust for {{label}}",
-    "revokeConfirmTitle": "Revoke {{label}}?",
-    "revokeConfirmBody": "Sign-ins from this device will need to enter a code again."
-  },
-  "verified": {
-    "title": "Verified trainer",
-    "summary": "NetQwix manually reviewed this trainer's identity, credentials, and contact details before granting the badge.",
-    "bulletIdentity": "Government-issued ID confirmed against the trainer's profile.",
-    "bulletCredentials": "Certifications, work history, and education claims were reviewed for authenticity.",
-    "bulletContact": "Email and phone number confirmed via one-time codes.",
-    "disclaimer": "Verification confirms identity and stated credentials. It does not guarantee outcomes or substitute for your own due diligence.",
-    "reviewedOn": "Reviewed on {{date}}",
-    "accessibility": "Verified trainer — tap to learn what verification means"
-  },
-  "coachMark": {
-    "gotIt": "Got it",
-    "dismiss": "Dismiss hint"
-  },
-  "onboarding": {
-    "skip": "Skip",
-    "next": "Next",
-    "done": "Get started",
-    "counter": "{{current}} of {{total}}",
-    "goToStep": "Go to step {{n}}",
-    "steps": {
-      "welcome": {
-        "title": "Welcome to NetQwix",
-        "body": "Your all-in-one platform for live, personalised coaching. Swipe to take the quick tour."
-      },
-      "locker": {
-        "title": "Your Locker",
-        "body": "Home base for clips, uploads, saved sessions and progress — everything you've worked on, one tap away.",
-        "tip": "Home tab"
-      },
-      "book": {
-        "title": "Book a Lesson",
-        "body": "Browse trainers, view ratings, and book a scheduled lesson at a time that fits your week.",
-        "tip": "Book Expert"
-      },
-      "instant": {
-        "title": "Instant Lessons",
-        "body": "See who's online right now, choose your duration, pay, and connect in seconds.",
-        "tip": "When trainers are online"
-      },
-      "chat": {
-        "title": "Chat & Community",
-        "body": "Message friends, share clips, and build your network — react, reply, schedule, and forward without leaving the chat.",
-        "tip": "Chats tab"
-      },
-      "notify": {
-        "title": "Stay Notified",
-        "body": "Real-time pings for bookings, messages, friend requests, and 5-minute session reminders.",
-        "tip": "Settings → Notifications"
-      },
-      "ready": {
-        "title": "You're All Set",
-        "body": "Explore the app, book your first session, and start your journey. We're glad to have you on NetQwix."
-      }
-    }
-  },
-  "coachMarks": {
-    "dashboardSessions": {
-      "title": "Track your lessons here",
-      "description": "Tap to see upcoming, active, and past lessons all in one place."
-    },
-    "dashboardChats": {
-      "title": "Message trainers and friends",
-      "description": "Chats live in the bottom tab — and this shortcut takes you straight there."
-    },
-    "chatsFab": {
-      "title": "Start your first chat",
-      "description": "Tap here to pick a friend or trainer and start a 1-on-1 or group chat."
-    },
-    "scheduleEdit": {
-      "title": "Publish your availability",
-      "description": "Add weekly slots so trainees can book you. Empty calendars don't show up in browse."
-    }
-  },
-  "profileCompletion": {
-    "title": "Profile {{pct}}% complete",
-    "next": "Next: {{label}}",
-    "pillA11y": "Profile is {{pct}} percent complete. Tap to see what's missing.",
-    "sheetTitle": "Finish your profile",
-    "sheetDescription": "Each step boosts how trainees and trainers see you on NetQwix.",
-    "complete": "Complete",
-    "completeA11y": "Complete {{label}}",
-    "snooze": "Remind me later",
-    "snoozeA11y": "Hide this pill for two weeks",
-    "steps": {
-      "profile_picture": {
-        "label": "Add a profile picture",
-        "hint": "Profiles with photos get 3× more bookings."
-      },
-      "full_name": {
-        "label": "Confirm your name",
-        "hint": "Make sure your full name is set so others recognise you."
-      },
-      "bio": {
-        "label": "Write a bio",
-        "hint": "A short bio helps trainees understand your style before booking."
-      },
-      "phone": {
-        "label": "Verify your phone",
-        "hint": "Helps us reach you for booking confirmations and OTP."
-      },
-      "timezone": {
-        "label": "Set your timezone",
-        "hint": "We use this to show every session in your local time."
-      },
-      "language": {
-        "label": "Pick your app language",
-        "hint": "Switch between English, Hindi, Spanish and more."
-      },
-      "sport": {
-        "label": "Pick your primary sport",
-        "hint": "Trainees filter by sport when browsing — this unlocks discovery."
-      },
-      "hourly_rate": {
-        "label": "Set your hourly rate",
-        "hint": "Required before you can accept paid bookings."
-      },
-      "certifications": {
-        "label": "Add a certification or credential",
-        "hint": "Verified credentials build trust and unlock the badge sooner."
-      },
-      "availability": {
-        "label": "Publish your weekly availability",
-        "hint": "Empty calendars mean zero bookings. Add at least one slot."
-      },
-      "favorite_sport": {
-        "label": "Tell us your sport",
-        "hint": "We use this to recommend trainers and clips."
-      },
-      "interests": {
-        "label": "Favourite a few trainers",
-        "hint": "Save coaches you like — they appear instantly on your home."
-      }
-    }
-  },
-  "preClass": {
-    "title": "Your lesson starts soon",
-    "description": "Starts in about {{minutes}} min. Quick checklist to make this a smooth one.",
-    "camera": "Test your camera",
-    "cameraHint": "Open the device camera to confirm it's working and well-lit.",
-    "mic": "Test your microphone",
-    "micHint": "Say a few words — make sure permissions are granted.",
-    "quiet": "Find a quiet space",
-    "quietHint": "Close the door, mute notifications, use headphones if you can.",
-    "water": "Grab a water bottle",
-    "waterHint": "Hydration helps focus, especially for movement sessions.",
-    "network": "Check your Wi-Fi",
-    "networkHint": "Move closer to the router or switch off other downloads.",
-    "runMediaCheck": "Camera & mic check",
-    "joinNow": "Join now",
-    "gotIt": "I'm ready"
+    "biometricsDefault": "Biometrics"
   },
   "storage": {
     "title": "Storage",
@@ -671,8 +310,6 @@
     "noConversations": "No chats yet",
     "noMatchingConversations": "No matching conversations",
     "noMatchingDescription": "Try a different search term.",
-    "emptyCta": "Start your first chat",
-    "emptyFriendsCta": "Find people",
     "emptyDescription": "Tap the + button to start chatting with your friends.",
     "archivedChatsA11y": "Archived chats",
     "accept": "Accept",
@@ -682,9 +319,6 @@
     "chat": "Chat",
     "group": "Group",
     "online": "Online",
-    "newChatHint": "Opens the friend picker",
-    "openArchivedA11y": "Open archived chat with {{name}}",
-    "unarchiveA11y": "Unarchive chat with {{name}}",
     "tapToChat": "Tap to start chatting",
     "video": "Video",
     "photo": "Photo",
@@ -782,141 +416,7 @@
     "verifyWalletPinPrompt": "Verify wallet PIN",
     "enableBiometricPrompt": "Enable {{label}}",
     "biometricsDefault": "Biometrics",
-    "errorTitle": "Error",
-    "cards": {
-      "title": "Payment methods",
-      "sub": "Manage saved cards and Apple/Google Pay",
-      "default": "Default",
-      "makeDefault": "Make default",
-      "remove": "Remove",
-      "removeTitle": "Remove this card?",
-      "removeBody": "You can re-add it any time. Active subscriptions on this card will be paused.",
-      "expires": "Expires {{value}}",
-      "emptyTitle": "No saved cards yet",
-      "emptyDescription": "When you pay with a card on NetQwix, you can save it here for faster checkout."
-    },
-    "autoTopUp": {
-      "menuLabel": "Auto top-up",
-      "menuSub": "Reload automatically when low",
-      "title": "Auto top-up",
-      "intro": "Avoid running out mid-lesson. We'll top up your wallet automatically when it dips below your threshold.",
-      "enableLabel": "Enable auto top-up",
-      "enabledHint": "If below {{threshold}}, add {{reload}}",
-      "disabledHint": "Currently disabled",
-      "threshold": "When balance falls below",
-      "thresholdPlaceholder": "Threshold amount",
-      "reloadAmount": "Add this amount",
-      "reloadPlaceholder": "Reload amount",
-      "payWith": "Charge to",
-      "methodHint": "Manage cards from the wallet settings",
-      "noMethod": "No saved card",
-      "noMethodHint": "Add one from the wallet settings to enable auto top-up.",
-      "lastFired": "Last reload",
-      "save": "Save changes",
-      "disable": "Turn off auto top-up",
-      "invalidThreshold": "Invalid threshold",
-      "invalidThresholdBody": "Enter a threshold amount greater than zero.",
-      "invalidReload": "Invalid reload",
-      "invalidReloadBody": "Enter a reload amount greater than zero.",
-      "reloadBelowThresholdTitle": "Reload should be larger",
-      "reloadBelowThresholdBody": "Set the reload higher than the threshold — otherwise the wallet would re-trigger immediately.",
-      "savedTitle": "Auto top-up updated",
-      "savedBody": "Your wallet will reload automatically when it drops below the threshold.",
-      "status": {
-        "succeeded": "Succeeded",
-        "failed": "Failed",
-        "pending": "Pending"
-      }
-    }
-  },
-  "precall": {
-    "title": "Ready when you are",
-    "subtitle": "Check your camera, mic and connection before joining.",
-    "starting": "Starting camera…",
-    "cameraOff": "Camera off",
-    "permissionDenied": "Camera or microphone permission denied. Update in Settings.",
-    "micLabel": "Mic test",
-    "micHintOn": "System mic is active and ready.",
-    "micHintOff": "Mic is muted",
-    "netLabel": "Network",
-    "netFast": "Strong",
-    "netGood": "Okay",
-    "netWeak": "Weak",
-    "netChecking": "Checking…",
-    "netDetail": "{{rtt}} ms · {{mbps}} Mbps",
-    "netDetailUnknown": "Tap retry to test your connection.",
-    "blurTitle": "Background blur",
-    "blurSub": "Soft-blur whatever is behind you (best effort).",
-    "joinCta": "Join lesson",
-    "lessonId": "Lesson ID {{id}}"
-  },
-  "callQuality": {
-    "good": "Strong",
-    "fair": "Okay",
-    "poor": "Weak",
-    "unknown": "—",
-    "detail": "RTT {{rtt}} ms · loss {{loss}}%",
-    "a11y": "Connection quality {{label}}"
-  },
-  "callRejoin": {
-    "bannerTitle": "Your last call dropped",
-    "bannerBody": "Tap to rejoin {{name}} now.",
-    "rejoinBtn": "Rejoin",
-    "dismiss": "Dismiss"
-  },
-  "earningsTrends": {
-    "title": "Earnings trends",
-    "segWeekly": "Last 8 weeks",
-    "segMonthly": "Last 6 months",
-    "total": "Total",
-    "export": "Export CSV",
-    "exporting": "Preparing…",
-    "exportA11y": "Export earnings as CSV",
-    "exportTitle": "Earnings export",
-    "exportSavedTo": "Saved to {{uri}}",
-    "exportErrorTitle": "Export failed"
-  },
-  "traineeNote": {
-    "pinnedLabel": "Pinned note",
-    "addCta": "Pin a private note about {{name}}",
-    "openA11y": "Open trainee note",
-    "editA11y": "Edit trainee note",
-    "editorTitle": "Private note",
-    "editorSubtitle": "Only you can see this. Use it for goals, injuries, or context about {{name}}.",
-    "placeholder": "e.g. Knee injury — avoid jumps. Targeting May 5k race.",
-    "tagsLabel": "Tags",
-    "tagPlaceholder": "Add a tag (e.g. injury)",
-    "deleteConfirmTitle": "Remove note?",
-    "deleteConfirmBody": "This will permanently delete your private note about this trainee.",
-    "cancel": "Cancel",
-    "delete": "Delete",
-    "save": "Save note",
-    "saving": "Saving…",
-    "errorTitle": "Note error"
-  },
-  "trainerNudge": {
-    "title": "Send a nudge",
-    "subtitle": "Re-engage {{name}} with a templated message.",
-    "tplComebackTitle": "Bring back",
-    "tplComebackSub": "\"Haven't seen you in a while — let's pick a session.\"",
-    "tplCheckinTitle": "Casual check-in",
-    "tplCheckinSub": "\"Just checking in. How's training going?\"",
-    "tplPromoTitle": "Open slots this week",
-    "tplPromoSub": "\"I'm holding slots this week — want me to lock one in?\"",
-    "customLabel": "Add your own twist (optional)",
-    "customPlaceholder": "Skip to send the template, or type your own message.",
-    "sendBtn": "Send nudge",
-    "sending": "Sending…",
-    "successTitle": "Nudge sent",
-    "successBody": "Your message landed in the chat and as a push notification.",
-    "errorTitle": "Could not send"
-  },
-  "trainerSchedule": {
-    "painterAvailable": "Available",
-    "painterClosed": "Closed",
-    "painterSummary": "{{hours}} h · {{blocks}} blocks",
-    "painterClearAll": "Clear all",
-    "painterTip": "Drag across cells to paint multiple blocks at once. Tap one cell to flip just that 30-minute slot."
+    "errorTitle": "Error"
   },
   "trainerAvailability": {
     "timezoneTitle": "Availability timezone",
@@ -1217,13 +717,10 @@
     },
     "emptyFriends": "No friends yet",
     "emptyFriendsDescription": "Connect with trainers and trainees to build your network.",
-    "emptyFriendsCta": "Explore community",
     "emptyRequests": "No pending requests",
     "emptyRequestsDescription": "Friend requests you receive will appear here.",
-    "emptyRequestsCta": "Discover people you may know",
     "emptySent": "No sent requests",
     "emptySentDescription": "Friend requests you send will appear here with their status.",
-    "emptySentCta": "Find someone to add",
     "message": "Message",
     "accept": "Accept",
     "reject": "Reject",
@@ -1342,31 +839,7 @@
     "sessionsTitle": "Your sessions",
     "sessionsBody": "Sign in to view upcoming lessons, join calls, and manage bookings.",
     "chatsTitle": "Messages",
-    "chatsBody": "Sign in to chat with coaches and trainees.",
-    "lock": {
-      "chatWithCoach": "Sign in to chat with {{name}}",
-      "bookWithCoach": "Sign in to book {{name}}",
-      "chatBody": "Create a free NetQwix account to message {{name}} — they usually reply within an hour.",
-      "bookBody": "Create a free NetQwix account to book a session with {{name}} — instant or scheduled, your choice.",
-      "coachWaiting": "Ready to message",
-      "coachAvailable": "Ready to coach you",
-      "alreadyHave": "I already have an account"
-    },
-    "saved": {
-      "title": "Saved coaches",
-      "empty": "Tap the heart on any coach to save them here. We'll keep your list after you sign in."
-    },
-    "hero": {
-      "freeIntroEyebrow": "FREE INTRO LESSON",
-      "freeIntroTitle": "Try a 1:1 lesson on us",
-      "freeIntroBody": "Pick any verified coach and your first 20 minutes are on the house. No card required.",
-      "freeIntroCta": "Claim my free lesson"
-    },
-    "nudge": {
-      "continueBrowsing": "Loving NetQwix? Save your spot — sign up free.",
-      "dismiss": "Not now",
-      "signUp": "Sign up"
-    }
+    "chatsBody": "Sign in to chat with coaches and trainees."
   },
   "traineeDiscover": {
     "welcome": "Hi, {{name}}",
@@ -1376,7 +849,6 @@
     "yourSports": "Your sports",
     "browseSports": "Browse by sport",
     "addInterestsHint": "Add your sports in account settings to personalize this list.",
-    "recentlyViewed": "Recently viewed",
     "all": "All",
     "liveOnly": "Live now",
     "liveNow": "Live now",
@@ -1395,23 +867,6 @@
     "showingCount": "Showing {{shown}} of {{total}}",
     "pastBookedTitle": "Book again",
     "pastBookedSub": "Coaches you've trained with before",
-    "guestSeededTitle": "Coaches you were checking out",
-    "guestSeededSub": "From your browsing before you signed up",
-    "guestSeededCta": "View profile",
-    "guestSeededA11y": "View profile for {{name}}",
-    "forYouTitle": "Picked for you",
-    "forYouSub": "Tailored from your activity",
-    "forYouTileA11y": "Open {{name}}",
-    "forYouReason": {
-      "repeat1": "You've booked them before",
-      "repeatN": "You've booked them {{n}} times",
-      "sameCategory": "Same category as your last coach",
-      "guestFavorite": "You favorited them earlier",
-      "guestView": "You checked them out earlier",
-      "recentlyViewed": "You viewed them recently",
-      "onlineNow": "Live and ready now",
-      "matchYourTaste": "Matches your taste"
-    },
     "bookAgain": "Book again",
     "bookAgainA11y": "Book again with {{name}}",
     "verified": "Verified",
@@ -1431,39 +886,18 @@
     "favoriteA11y": "Toggle favorite for {{name}}",
     "noFavorites": "Star coaches to save them here"
   },
-  "tips": {
-    "heading": "Tips for you",
-    "loadError": "Could not load tips. Tap to try again."
-  },
   "trainerDashboard": {
     "welcome": "Hi, {{name}}",
     "roleTrainer": "Trainer",
     "earningsThisWeek": "This week",
     "earningsAvailable": "Available",
     "earningsPending": "Pending",
-    "pulseEarningsLabel": "This week",
-    "pulseStudentsLabel": "Active students",
-    "pulseSessions": "sessions",
-    "pulseVsLastWeek": "{{sign}}{{pct}}% vs last week",
-    "pulseFirstWeek": "First week of earnings",
-    "pulseNewStudents": "{{count}} new this week",
-    "pulseNewStudents_other": "{{count}} new this week",
-    "pulseStudentsHint": "Last 30 days",
-    "pulseEarningsA11y": "Earnings this week {{amount}}",
-    "pulseStudentsA11y": "{{count}} active students in the last thirty days",
     "earningsA11y": "Open earnings",
     "pendingRequests": "{{count}} session requests",
     "pendingRequestsSub": "Tap to review and respond",
     "pendingA11y": "Review {{count}} pending session requests",
     "todaySchedule": "Today's schedule",
-    "seeAllSessions": "See all",
-    "scheduleEmptyTitle": "No lessons today",
-    "scheduleEmptyBody": "When trainees book you, their sessions will show up here with quick join actions.",
-    "scheduleLive": "Live now",
-    "scheduleConfirmed": "Confirmed",
-    "scheduleNeedsConfirm": "Needs confirmation",
-    "scheduleJoin": "Join lesson",
-    "scheduleRejoin": "Rejoin lesson",
+    "seeAllSessions": "See all sessions",
     "nextSlot": "Next open: {{when}}",
     "noSlots": "Add availability",
     "openSchedule": "Manage schedule",
@@ -1473,11 +907,6 @@
     "ratingPulse": "Your rating",
     "latestReview": "Latest review",
     "noReviewsYet": "Complete sessions to get reviews",
-    "openReviewsA11y": "Your rating {{rating}}, {{count}} reviews. Tap to see all.",
-    "reviewsSheetTitle": "Your reviews",
-    "reviewsSheetSubtitle": "{{rating}} average · {{count}} reviews from trainees",
-    "reviewsEmpty": "When trainees rate a session, their stars and written feedback show up here.",
-    "reviewStarsOnly": "Rated the session — no written comment.",
     "performanceTips": "Tips for you",
     "tipPendingRequests": "You have {{count}} booking requests waiting — respond soon.",
     "tipAddSlots": "Add more open slots this week to get more bookings.",
@@ -1510,7 +939,6 @@
   "savedLessons": {
     "emptyTitle": "No saved lessons",
     "emptyDescription": "When you save a session recording on the web, it will show up here.",
-    "emptyCta": "Browse clips",
     "lessonDefault": "Saved lesson",
     "sessionDefault": "Saved session",
     "previewUnavailable": "Preview not available for this file."
@@ -1639,31 +1067,7 @@
     "sessionWith": "Session with {{name}}",
     "sessionDefault": "Session",
     "emptyTitle": "No booking history",
-    "emptyDescription": "Sessions you book or teach will appear here with payment details.",
-    "emptyCtaTrainee": "Book a lesson",
-    "emptyCtaTrainer": "Publish availability",
-    "filtersTitle": "Filter transactions",
-    "openFilters": "Open filters",
-    "filterAll": "All transactions",
-    "clearFilters": "Clear filters",
-    "filteredEmptyTitle": "No transactions match",
-    "filteredEmptyDescription": "Try widening the date range or clearing the type filter.",
-    "filterTypeLabel": "Type",
-    "dateRangeLabel": "Date range",
-    "filterType": {
-      "all": "All",
-      "lesson": "Lessons",
-      "refund": "Refunds",
-      "topup": "Top-ups",
-      "withdrawal": "Withdrawals"
-    },
-    "dateRange": {
-      "all": "Any time",
-      "thisWeek": "This week",
-      "thisMonth": "This month",
-      "last30": "Last 30 days",
-      "last90": "Last 90 days"
-    }
+    "emptyDescription": "Sessions you book or teach will appear here with payment details."
   },
   "sessions": {
     "tabUpcoming": "Upcoming",
@@ -1688,8 +1092,6 @@
     "emptyDateHint": "Tap a different date or 'All' to see all sessions.",
     "emptyTabDescription": "No {{tab}} sessions found.",
     "emptyCancelledDescription": "Expired, declined, and missed sessions appear here with refund details when you open them.",
-    "emptyCtaTrainee": "Find a trainer",
-    "emptyCtaTrainer": "Edit availability",
     "outcome": {
       "acceptExpired": "Request expired",
       "joinExpired": "Join window missed",
@@ -1742,48 +1144,7 @@
     "notAvailableTitle": "Not available",
     "notAvailableDescription": "This section is only available for trainer accounts.",
     "emptyTitle": "No trainees yet",
-    "emptyDescription": "Trainees you have booked sessions with will appear here — not the full NetQwix directory.",
-    "message": "Message",
-    "messageA11y": "Message {{name}}",
-    "nudgeBook": "Nudge",
-    "nudgeA11y": "Nudge {{name}} to book",
-    "noteA11y": "Private note for {{name}}",
-    "noteTitle": "Note — {{name}}",
-    "nudgeSentTitle": "Nudge sent",
-    "nudgeSentBody": "{{name}} received a booking reminder.",
-    "nudgeFailed": "Could not send nudge."
-  },
-  "postSessionRating": {
-    "title": "Rate your lesson",
-    "body": "How was your session with {{name}}? It only takes a moment.",
-    "rate": "Rate",
-    "rateA11y": "Rate session",
-    "dismissA11y": "Dismiss rating reminder",
-    "coachFallback": "your coach",
-    "modalTitle": "How was your session?",
-    "modalSub": "Your feedback helps us improve every lesson.",
-    "overall": "Overall",
-    "av": "Audio / Video",
-    "recommend": "Would you recommend?",
-    "skip": "Not now",
-    "submit": "Submit",
-    "thanksTitle": "Thank you for your feedback!",
-    "alertStarsTitle": "Please rate",
-    "alertStarsBody": "Choose stars for session and audio/video.",
-    "alertRecommend": "Tell us whether you'd recommend your coach.",
-    "alertDetailsTitle": "Add details",
-    "alertDetailsBody": "Please include a title and short remark.",
-    "submitFailedTitle": "Could not submit",
-    "submitFailedBody": "Please try again."
-  },
-  "continueBooking": {
-    "title": "Finish your booking",
-    "bodyInstant": "You were booking an instant lesson with {{name}}.",
-    "bodySchedule": "You were scheduling with {{name}} before signing in.",
-    "continue": "Continue",
-    "continueA11y": "Continue booking",
-    "dismissA11y": "Dismiss",
-    "coachFallback": "your coach"
+    "emptyDescription": "Trainees you have booked sessions with will appear here — not the full NetQwix directory."
   },
   "bookExpert": {
     "heroTitle": "Book a coach",
@@ -1804,33 +1165,6 @@
     "slotsAvailable_other": "{{count}} slots available",
     "instant": "Instant",
     "schedule": "Schedule",
-    "onlineNowChip": "Online now",
-    "nextOpenLabel": "Next open:",
-    "bookSlotA11y": "Book {{day}} at {{time}}",
-    "compare": "Compare",
-    "compareAdded": "Pinned",
-    "compareAddA11y": "Add {{name}} to compare",
-    "compareRemoveA11y": "Remove {{name}} from compare",
-    "compareTrayTitle": "Comparing {{count}} coach",
-    "compareTrayTitle_other": "Comparing {{count}} coaches",
-    "compareNeedMore": "Pin one more to compare",
-    "compareOpen": "Compare side-by-side",
-    "compareClear": "Clear",
-    "compareClearAll": "Clear all pinned coaches",
-    "compareLimitTitle": "Compare list full",
-    "compareLimitBody": "You can compare up to {{max}} coaches at a time. Remove one to pin a new pick.",
-    "compareModalTitle": "Compare coaches",
-    "compareModalSubtitle": "{{count}} coach pinned for comparison",
-    "compareModalSubtitle_other": "{{count}} coaches pinned for comparison",
-    "compareRate": "Hourly rate",
-    "compareRating": "Rating",
-    "compareSessions": "Sessions completed",
-    "compareLanguages": "Languages",
-    "compareCategories": "Categories",
-    "compareNotListed": "Not listed",
-    "compareNoReviews": "No reviews yet",
-    "compareNewCoach": "New coach",
-    "compareRemove": "Remove",
     "online": "Online",
     "trainerDefault": "Trainer"
   },
@@ -1849,86 +1183,7 @@
     "transactions": "Transactions",
     "trainerSchedule": "My schedule",
     "editProfile": "Edit profile",
-    "reportIssue": "Report an issue",
-    "supportChat": "Chat with support"
-  },
-  "inlineSaved": {
-    "label": "Saved",
-    "error": "Couldn't save"
-  },
-  "help": {
-    "bubbleA11y": "Help · {{topic}}",
-    "commission": {
-      "topic": "How commission works",
-      "body": "NetQwix charges a small platform commission (usually 15%) on each booking. The amounts you see in this card are your earnings after commission and refunds. Payouts move to your bank or Stripe account on the platform schedule."
-    },
-    "hourlyRate": {
-      "topic": "Hourly rate",
-      "body": "Charge per booked hour. NetQwix takes a platform commission (typically 15%) and the rest is your earnings. Set this where your bookings are competitive — you can update it any time and existing bookings keep their original price."
-    },
-    "slotLength": {
-      "topic": "Slot length & timezone",
-      "body": "Trainees see your weekly slots in their own timezone. Each block is the duration of one bookable session — keep it consistent so bookings don't overlap. Update the timezone if you travel so the slots line up with your local hours."
-    }
-  },
-  "support": {
-    "reportProblem": "Report a problem",
-    "teamLabel": "NetQwix support",
-    "autoReply": "Thanks — we've got your message. A team-member will follow up soon. Need anything else?",
-    "sendFailed": "Couldn't reach support · {{detail}}. Try again or open Report a problem.",
-    "placeholder": "Message support…",
-    "send": "Send to support",
-    "openReportA11y": "Open Report a problem to send diagnostics"
-  },
-  "faq": {
-    "searchPlaceholder": "Search FAQ…",
-    "searchA11y": "Search frequently asked questions",
-    "noResults": "No matches yet — try simpler keywords or ask the team below."
-  },
-  "ai": {
-    "title": "AI Assistant",
-    "subtitle": "Powered by NetQwix AI",
-    "label": "AI Assistant",
-    "placeholder": "Ask me anything…",
-    "send": "Send message",
-    "thinking": "Thinking…",
-    "tryAsking": "Try asking",
-    "connectError": "I'm having trouble connecting right now. Please try again in a moment.",
-    "clearTitle": "Clear conversation?",
-    "clearBody": "Removes the saved history on this device.",
-    "clearAction": "Clear",
-    "clearA11y": "Clear conversation",
-    "suggest": {
-      "findYoga": "Find a yoga trainer near me",
-      "rescheduleWednesday": "Reschedule my Wednesday class",
-      "pricing": "How does pricing work?",
-      "refund": "Can I get a refund?",
-      "improveGame": "How can I improve my game?",
-      "instant": "Tell me about instant lessons"
-    },
-    "voice": {
-      "start": "Start voice input",
-      "stop": "Stop recording and transcribe",
-      "processing": "Transcribing…",
-      "permissionTitle": "Microphone access needed",
-      "permissionBody": "Allow microphone access in Settings to use voice input.",
-      "transcribeTitle": "Couldn't transcribe",
-      "transcribeBody": "Voice transcription isn't available right now. Please type your message instead."
-    },
-    "action": {
-      "bookLesson": "Book a lesson",
-      "viewTrainer": "View trainer",
-      "editSchedule": "Edit my schedule",
-      "upcomingSessions": "Upcoming sessions",
-      "topUp": "Add funds",
-      "supportChat": "Chat with support",
-      "reportIssue": "Report an issue",
-      "faq": "Open FAQ",
-      "students": "My students",
-      "chats": "Open chats",
-      "instantRequests": "Instant lesson requests",
-      "open": "Open"
-    }
+    "reportIssue": "Report an issue"
   },
   "schedule": {
     "title": "Sessions",

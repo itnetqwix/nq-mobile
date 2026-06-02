@@ -2,8 +2,7 @@ import React, { useMemo } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "../../../../components/ui";
-import { getClipThumbnailUrl } from "../../../../lib/clipMediaUrl";
-import { listItemKey, rowId } from "../../../../lib/lists/trainerListUtils";
+import { getS3ImageUrl } from "../../../../lib/imageUtils";
 import { postTraineeClipsGrouped } from "../../../home/api/homeApi";
 import { DashboardSection } from "../shared/DashboardSection";
 import { radii, space, typography, useThemedStyles } from "../../../../theme";
@@ -11,8 +10,7 @@ import { useAppTranslation } from "../../../../i18n/useAppTranslation";
 
 type ClipTile = {
   id: string;
-  /** Already-resolved absolute URL (S3 bucket prefix applied for stored keys). */
-  thumbUrl: string;
+  thumb?: string;
   label: string;
   createdAt: number;
 };
@@ -32,39 +30,20 @@ export function RecentTraineeClipsSection({ onOpenClips }: Props) {
 
   const tiles = useMemo(() => {
     const groups = Array.isArray(data) ? data : [];
-    const byClipId = new Map<string, ClipTile>();
-
+    const flat: ClipTile[] = [];
     for (const g of groups) {
-      const rows = Array.isArray(g.clips) ? g.clips : [];
-      for (const row of rows) {
-        // API rows are bookings with a nested `clips` document (web parity).
-        const clip = (row?.clips ?? row) as Record<string, unknown>;
-        const clipId = rowId(clip);
-        if (!clipId) continue;
-
-        const created = new Date(
-          String(
-            clip.createdAt ??
-              clip.created_at ??
-              row?.createdAt ??
-              row?.created_at ??
-              0
-          )
-        ).getTime();
-        const createdAt = Number.isFinite(created) ? created : 0;
-        const thumbUrl = getClipThumbnailUrl(clip);
-        const label = String(clip.title ?? clip.name ?? "Clip");
-
-        const existing = byClipId.get(clipId);
-        if (existing && existing.createdAt >= createdAt) continue;
-
-        byClipId.set(clipId, { id: clipId, thumbUrl, label, createdAt });
+      const clips = Array.isArray(g.clips) ? g.clips : [];
+      for (const c of clips) {
+        const created = new Date(String(c.createdAt ?? c.created_at ?? 0)).getTime();
+        flat.push({
+          id: String(c._id ?? c.id ?? `${g._id}-${flat.length}`),
+          thumb: (c.thumbnail ?? c.thumb ?? c.url) as string | undefined,
+          label: String(c.title ?? c.name ?? "Clip"),
+          createdAt: Number.isFinite(created) ? created : 0,
+        });
       }
     }
-
-    return Array.from(byClipId.values())
-      .sort((a, b) => b.createdAt - a.createdAt)
-      .slice(0, 5);
+    return flat.sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
   }, [data]);
 
   if (isLoading) {
@@ -93,11 +72,11 @@ export function RecentTraineeClipsSection({ onOpenClips }: Props) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ gap: space.sm }}
       >
-        {tiles.map((item, index) => {
-          const uri = item.thumbUrl;
+        {tiles.map((item) => {
+          const uri = getS3ImageUrl(item.thumb);
           return (
             <Pressable
-              key={listItemKey({ _id: item.id }, index, "recent-clip-")}
+              key={item.id}
               style={({ pressed }) => [styles.tile, pressed && { opacity: 0.9 }]}
               onPress={onOpenClips}
             >

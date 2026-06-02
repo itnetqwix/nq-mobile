@@ -133,18 +133,7 @@ export async function fetchSessionDetail(bookingId: string): Promise<SessionDeta
 
 export async function fetchFriendRequests(): Promise<any[]> {
   const res = await apiClient.get(API_ROUTES.user.friendRequests);
-  const rows: any[] = res.data?.friendRequests ?? res.data ?? [];
-  const seen = new Set<string>();
-  const out: any[] = [];
-  for (const r of rows) {
-    const id = r?._id ? String(r._id) : "";
-    if (id) {
-      if (seen.has(id)) continue;
-      seen.add(id);
-    }
-    out.push(r);
-  }
-  return out;
+  return res.data?.friendRequests ?? res.data ?? [];
 }
 
 export async function fetchSentFriendRequests(): Promise<any[]> {
@@ -157,94 +146,10 @@ export async function fetchRecentTrainees(): Promise<any[]> {
   return res.data?.result ?? res.data ?? [];
 }
 
-export type MyTrainerStats = {
-  avgRating: number | null;
-  reviewCount: number;
-  reviews: Array<{
-    _id?: string;
-    updatedAt?: string;
-    status?: string;
-    trainee_fullname?: string;
-    trainee_picture?: string;
-    ratings?: {
-      trainee?: {
-        sessionRating?: number;
-        audioVideoRating?: number;
-        recommendRating?: number;
-        title?: string;
-        remarksInfo?: string;
-        comment?: string;
-      };
-    };
-  }>;
-};
-
-export async function fetchMyTrainerStats(): Promise<MyTrainerStats> {
-  const res = await apiClient.get(API_ROUTES.trainer.myStats);
-  const raw = (res.data?.data ?? res.data?.result ?? res.data ?? {}) as Partial<MyTrainerStats>;
-  return {
-    avgRating: typeof raw.avgRating === "number" ? raw.avgRating : null,
-    reviewCount:
-      typeof raw.reviewCount === "number" && Number.isFinite(raw.reviewCount)
-        ? raw.reviewCount
-        : 0,
-    reviews: Array.isArray(raw.reviews) ? raw.reviews : [],
-  };
-}
-
 export async function fetchRecentTrainers(): Promise<any[]> {
   const res = await apiClient.get(API_ROUTES.trainee.recentTrainers);
   const raw = res.data?.result ?? res.data ?? [];
   return Array.isArray(raw) ? dedupeRowsById(raw) : [];
-}
-
-/** Coaches ranked from pre-signup guest browsing (`guest-activity` ingest). */
-export async function fetchGuestSeededTrainers(limit = 12): Promise<any[]> {
-  const res = await apiClient.get(API_ROUTES.trainee.guestSeededTrainers, {
-    params: { limit },
-  });
-  const raw =
-    (res.data as { data?: unknown })?.data ??
-    (res.data as { result?: unknown })?.result ??
-    res.data;
-  return Array.isArray(raw) ? dedupeRowsById(raw) : [];
-}
-
-export type PersonalizedReason =
-  | "past_session_repeat"
-  | "past_session_same_category"
-  | "guest_view"
-  | "guest_favorite"
-  | "recently_viewed"
-  | "online_now";
-
-export type PersonalizedFeedRow = {
-  trainer_id: string;
-  reasons: PersonalizedReason[];
-  primary_reason: PersonalizedReason;
-  repeat_count: number;
-};
-
-export type PersonalizedFeedResponse = {
-  for_you: any[];
-  reasoning: PersonalizedFeedRow[];
-};
-
-export async function fetchPersonalizedFeed(opts: {
-  limit?: number;
-  recentTrainerIds?: string[];
-} = {}): Promise<PersonalizedFeedResponse> {
-  const params: Record<string, string> = {};
-  if (opts.limit) params.limit = String(opts.limit);
-  if (opts.recentTrainerIds?.length) {
-    params.recentTrainerIds = opts.recentTrainerIds.slice(0, 12).join(",");
-  }
-  const res = await apiClient.get(API_ROUTES.trainee.personalizedFeed, { params });
-  const data = (res.data?.data ?? res.data?.result ?? res.data ?? {}) as Partial<PersonalizedFeedResponse>;
-  return {
-    for_you: Array.isArray(data.for_you) ? data.for_you : [],
-    reasoning: Array.isArray(data.reasoning) ? data.reasoning : [],
-  };
 }
 
 export async function postAcceptFriendRequest(requestId: string): Promise<any> {
@@ -308,12 +213,9 @@ export async function postInviteFriendEmail(userEmail: string): Promise<void> {
   });
 }
 
-export type BookingReminderCadence = "standard" | "minimal" | "aggressive" | "off";
-
 export type UserNotificationPrefs = {
   promotional: { email: boolean; sms: boolean };
   transactional: { email: boolean; sms: boolean };
-  bookingReminderCadence?: BookingReminderCadence;
 };
 
 export async function patchUserNotificationSettings(
@@ -537,7 +439,7 @@ export async function fetchStorageInfo(): Promise<StoragePlanInfo> {
 
 export async function createStorageCheckout(
   planId: string,
-  interval: "monthly" | "yearly"
+  interval: "monthly" | "yearly" | "one_time"
 ): Promise<{ client_secret: string; paymentIntentId?: string; subscriptionId?: string }> {
   const res = await apiClient.post(API_ROUTES.user.storageCheckout, { planId, interval });
   return (res.data?.data ?? res.data?.result ?? res.data) as {
@@ -753,28 +655,6 @@ export async function setOnlineAvailability(showAsOnline: boolean): Promise<bool
     return showAsOnline;
   } catch (e) {
     throw new Error(getApiErrorMessage(e, "Could not update online status."));
-  }
-}
-
-export async function setAutoDeclineOutsideHours(
-  enabled: boolean
-): Promise<boolean> {
-  try {
-    const { data } = await apiClient.put(
-      API_ROUTES.user.autoDeclineOutsideHours,
-      { auto_decline_outside_business_hours: enabled }
-    );
-    const inner =
-      (data as { data?: Record<string, unknown> }).data ??
-      (data as { result?: Record<string, unknown> }).result ??
-      data;
-    const next = (inner as { auto_decline_outside_business_hours?: boolean })
-      ?.auto_decline_outside_business_hours;
-    return typeof next === "boolean" ? next : enabled;
-  } catch (e) {
-    throw new Error(
-      getApiErrorMessage(e, "Could not update business-hours rule.")
-    );
   }
 }
 

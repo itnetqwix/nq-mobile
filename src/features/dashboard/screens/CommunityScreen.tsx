@@ -17,7 +17,7 @@ import { EmptyState, ImageWithSkeleton, Pill, Skeleton } from "../../../componen
 import { colors, radii, space, typography } from "../../../theme";
 import { queryKeys } from "../../../lib/queryKeys";
 import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
-import { ProfileAvatar } from "../../../components/ui/ProfileAvatar";
+import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
@@ -35,17 +35,40 @@ import {
   NOTIFICATION_TYPES,
   useNotifications,
 } from "../../notifications/NotificationContext";
-import { openChatInTab } from "../../chats/lib/openChatTab";
-import { useNavigation } from "@react-navigation/native";
-import { haptics } from "../../../lib/haptics";
+import { useChatRoomChrome } from "../../chats/hooks/useChatRoomChrome";
+import { ChatRoomScreen } from "../../chats/screens/ChatRoomScreen";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
-import { useDebouncedValue } from "../../../lib/search/useDebouncedValue";
 
 async function fetchCommunityUsers(search?: string): Promise<any[]> {
   const res = await apiClient.get(API_ROUTES.user.getAllUsers, {
     params: search ? { search } : undefined,
   });
   return res.data?.result ?? res.data ?? [];
+}
+
+function Avatar({ uri, name, size = 48 }: { uri?: string; name?: string; size?: number }) {
+  const [failed, setFailed] = React.useState(false);
+  const url = getS3ImageUrl(uri);
+  React.useEffect(() => { setFailed(false); }, [uri]);
+  if (!url || failed) {
+    return (
+      <View style={[styles.avatarFallback, { width: size, height: size, borderRadius: size / 2 }]}>
+        <Text style={[styles.avatarInitial, { fontSize: size * 0.38 }]}>
+          {(name ?? "?")[0]?.toUpperCase()}
+        </Text>
+      </View>
+    );
+  }
+  return (
+    <ImageWithSkeleton
+      uri={url}
+      width={size}
+      height={size}
+      borderRadius={size / 2}
+      resizeMode="cover"
+      onLoadError={() => setFailed(true)}
+    />
+  );
 }
 
 type FriendStatus = "none" | "friends" | "request_sent" | "request_received";
@@ -74,11 +97,9 @@ function MemberCard({
 
   return (
     <View style={styles.card}>
-      <ProfileAvatar user={user} name={name} size={52} />
+      <Avatar uri={user?.profile_picture} name={name} size={52} />
       <View style={styles.cardInfo}>
-        <Text style={styles.memberName} numberOfLines={1} ellipsizeMode="tail">
-          {name}
-        </Text>
+        <Text style={styles.memberName}>{name}</Text>
         {!!role && (
           <Pill
             label={role}
@@ -92,10 +113,7 @@ function MemberCard({
         {status === "none" && (
           <Pressable
             style={styles.addBtn}
-            onPress={() => {
-              haptics.press();
-              onAction(String(user._id), "add");
-            }}
+            onPress={() => onAction(String(user._id), "add")}
             disabled={actionBusy}
           >
             <Ionicons name="person-add" size={14} color={colors.brandTextOn} />
@@ -124,10 +142,7 @@ function MemberCard({
             </Pressable>
             <Pressable
               style={styles.chatBtn}
-              onPress={() => {
-                haptics.tap();
-                onMessage(String(user._id), name, user?.profile_picture);
-              }}
+              onPress={() => onMessage(String(user._id), name, user?.profile_picture)}
               disabled={messageBusy}
             >
               {messageBusy ? (
@@ -154,7 +169,11 @@ export function CommunityScreen() {
   const [search, setSearch] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
   const [messageBusy, setMessageBusy] = useState(false);
-  const navigation = useNavigation();
+  const [activeChat, setActiveChat] = useState<{
+    conversationId: string;
+    partner: { _id: string; fullname?: string; profile_picture?: string };
+  } | null>(null);
+  useChatRoomChrome(!!activeChat);
   const currentUserId = String((user as any)?._id ?? (user as any)?.id ?? "");
 
   const listPad = useMemo(
@@ -167,12 +186,10 @@ export function CommunityScreen() {
     [gutter, insets.bottom]
   );
 
-  const debouncedSearch = useDebouncedValue(search, 350);
-  const trimmedSearch = debouncedSearch.trim();
-  const shouldSearch = trimmedSearch.length >= 2;
+  const trimmedSearch = search.trim();
   const { data: members = [], isLoading, isRefetching, refetch } = useQuery({
-    queryKey: queryKeys.presence.community(shouldSearch ? trimmedSearch : ""),
-    queryFn: () => fetchCommunityUsers(shouldSearch ? trimmedSearch : undefined),
+    queryKey: queryKeys.presence.community(trimmedSearch),
+    queryFn: () => fetchCommunityUsers(trimmedSearch || undefined),
     staleTime: 120_000,
   });
 
@@ -246,13 +263,7 @@ export function CommunityScreen() {
         if (action === "add") {
           await postSendFriendRequest(userId);
           emitNotification({
-            /**
-             * Use the canonical "received friend request" title from
-             * the shared notification dictionary so notification
-             * preferences + read/unread grouping stay aligned with the
-             * rest of the app.
-             */
-            title: NOTIFICATION_TITLES.friendRequestReceived,
+            title: NOTIFICATION_TITLES.friendRequest ?? "Friend Request",
             description: "You have a new friend request.",
             receiverId: userId,
             type: NOTIFICATION_TYPES.TRANSCATIONAL,
@@ -302,8 +313,8 @@ export function CommunityScreen() {
         const convId = conversation?._id ?? conversation?.conversationId;
         if (convId) {
           queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
-          openChatInTab(navigation, {
-            conversationId: String(convId),
+          setActiveChat({
+            conversationId: convId,
             partner: { _id: userId, fullname: name, profile_picture: picture },
           });
         }
@@ -320,6 +331,19 @@ export function CommunityScreen() {
     },
     [queryClient, t]
   );
+
+  if (activeChat) {
+    return (
+      <ChatRoomScreen
+        conversationId={activeChat.conversationId}
+        partner={activeChat.partner}
+        onGoBack={() => {
+          setActiveChat(null);
+          queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
+        }}
+      />
+    );
+  }
 
   if (isLoading) {
     return (
@@ -359,15 +383,6 @@ export function CommunityScreen() {
           </Pressable>
         )}
       </View>
-      {search.trim().length === 1 ? (
-        <View style={styles.searchHintWrap}>
-          <Text style={styles.searchHint}>
-            {t("community.searchHintMinChars", {
-              defaultValue: "Type at least 2 characters to search.",
-            })}
-          </Text>
-        </View>
-      ) : null}
       <FlatList
         data={filteredMembers}
         keyExtractor={flatListKeyExtractor}
@@ -430,15 +445,6 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     textAlignVertical: "center",
   },
-  searchHintWrap: {
-    paddingHorizontal: space.md,
-    paddingTop: 6,
-    paddingBottom: 2,
-  },
-  searchHint: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
   headerCard: {
     backgroundColor: colors.brandSubtle,
     borderRadius: radii.md,
@@ -461,8 +467,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  cardInfo: { flex: 1, minWidth: 0 },
-  memberName: { ...typography.subtitle, color: colors.text, flexShrink: 1 },
+  cardInfo: { flex: 1 },
+  memberName: { ...typography.subtitle, color: colors.text },
   actionCol: { alignItems: "flex-end", gap: 6 },
   onlineDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.success },
   addBtn: {

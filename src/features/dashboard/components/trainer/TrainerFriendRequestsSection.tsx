@@ -3,7 +3,6 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { HomeUserAvatar } from "../home/HomeUserAvatar";
 import { DashboardSection } from "../shared/DashboardSection";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
-import { listItemKey } from "../../../../lib/lists/trainerListUtils";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
 
 type Props = {
@@ -28,7 +27,7 @@ export function TrainerFriendRequestsSection({ requests, onAccept, onReject }: P
             sender?.fullname ?? sender?.fullName ?? t("dashboardHome.userDefault")
           );
           return (
-            <View key={listItemKey(req, index, "fr-req-")} style={[styles.row, index > 0 && styles.rowBorder]}>
+            <View key={id} style={[styles.row, index > 0 && styles.rowBorder]}>
               <HomeUserAvatar uri={sender?.profile_picture as string | undefined} name={name} size={48} />
               <Text style={styles.name} numberOfLines={2}>
                 {name}

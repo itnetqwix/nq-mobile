@@ -7,24 +7,6 @@ export type AuthAxiosMeta = {
   _skipAuthSignOut?: boolean;
 };
 
-/**
- * Module augmentation: expose our auth-meta flags on `AxiosRequestConfig`
- * so call-sites can pass `{ _skipAuthSignOut: true }` directly without
- * needing an awkward `as` cast on every request. The interceptor at the
- * client layer reads these via {@link getAuthAxiosMeta}; nothing else
- * changes about the shape on the wire.
- *
- * Keeping the declaration co-located with the meta type means the
- * surface stays discoverable — any future flag we add here will land in
- * the public config shape with one extra line below.
- */
-declare module "axios" {
-  // eslint-disable-next-line @typescript-eslint/no-empty-interface
-  interface AxiosRequestConfig extends Partial<AuthAxiosMeta> {}
-  // eslint-disable-next-line @typescript-eslint/no-empty-interface
-  interface InternalAxiosRequestConfig extends Partial<AuthAxiosMeta> {}
-}
-
 export function getAuthAxiosMeta(
   config: InternalAxiosRequestConfig
 ): AuthAxiosMeta {
@@ -57,9 +39,6 @@ const AUTH_NO_SIGNOUT_PATHS = [
  */
 const TRAINEE_ONLY_SOFT_401_PATHS = ["/trainee/favorite-trainers"];
 
-/** Optional dashboard content — must not sign the user out on 401/404. */
-const OPTIONAL_CONTENT_SOFT_401_PATHS = ["/tips", "/banners"];
-
 export function isAuthNoSignOutPath(url: string | undefined): boolean {
   if (!url) return false;
   const path = url.split("?")[0] ?? url;
@@ -71,10 +50,7 @@ export function isAuthNoSignOutPath(url: string | undefined): boolean {
 export function isSoft401Path(url: string | undefined): boolean {
   if (!url) return false;
   const path = url.split("?")[0] ?? url;
-  return (
-    TRAINEE_ONLY_SOFT_401_PATHS.some((p) => path === p || path.endsWith(p)) ||
-    OPTIONAL_CONTENT_SOFT_401_PATHS.some(
-      (p) => path === p || path.endsWith(p)
-    )
+  return TRAINEE_ONLY_SOFT_401_PATHS.some(
+    (p) => path === p || path.endsWith(p)
   );
 }

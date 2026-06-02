@@ -10,13 +10,11 @@ export const queryKeys = {
     upcoming: ["sessions", "upcoming"] as const,
     completed: ["sessions", "completed"] as const,
     lookup: (lessonId: string) => ["sessionLookup", lessonId] as const,
-    detail: (sessionId: string) => ["sessionDetail", sessionId] as const,
   },
   scheduledMeetings: ["scheduledMeetings"] as const,
   notifications: {
     all: ["notifications"] as const,
     inbox: ["notifications"] as const,
-    preferences: ["notificationPreferences"] as const,
   },
   wallet: {
     all: ["wallet"] as const,
@@ -24,12 +22,6 @@ export const queryKeys = {
     ledger: ["wallet", "ledger"] as const,
     config: ["wallet", "config"] as const,
     earnings: ["wallet", "earnings"] as const,
-    trainerPulse: ["wallet", "trainerPulse"] as const,
-    trainerEarningsSeries: (range: "weekly" | "monthly") =>
-      ["wallet", "earningsSeries", range] as const,
-    paymentMethods: ["wallet", "paymentMethods"] as const,
-    autoTopUp: ["wallet", "autoTopUp"] as const,
-    refundTimeline: (id: string) => ["wallet", "refundTimeline", id] as const,
   },
   friends: {
     all: ["friends"] as const,
@@ -48,9 +40,6 @@ export const queryKeys = {
         ? (["groupMembers", groupId, search] as const)
         : (["groupMembers", groupId] as const),
     groupInvites: ["groupInvites"] as const,
-    pinned: (conversationId: string) => ["chatPinned", conversationId] as const,
-    globalSearch: (q: string) => ["chatGlobalSearch", q] as const,
-    scheduled: ["chatScheduled"] as const,
   },
   presence: {
     onlineUsers: ["onlineUsers"] as const,
@@ -59,7 +48,6 @@ export const queryKeys = {
     community: (search: string) => ["communityUsers", search] as const,
     recentTrainees: ["recentTrainees"] as const,
     recentTrainers: ["recentTrainers"] as const,
-    personalizedFeed: (recentIds: string[]) => ["personalizedFeed", recentIds.join("|")] as const,
   },
   trainer: {
     slots: ["trainerSlots"] as const,
@@ -70,7 +58,6 @@ export const queryKeys = {
     directory: (hash: string) => ["trainersDirectory", hash] as const,
     directorySearch: (search: string, filterHash: string) =>
       ["trainersDirectory", search, filterHash] as const,
-    myStats: ["trainerMyStats"] as const,
   },
   instant: {
     eligibility: (trainerId: string, durationMinutes: number) =>
@@ -98,7 +85,6 @@ export const queryKeys = {
   },
   clips: {
     taxonomy: ["clips", "taxonomy"] as const,
-    mySubmissions: ["clips", "librarySubmissions", "mine"] as const,
   },
   storage: {
     all: ["storage"] as const,
@@ -115,26 +101,9 @@ export const queryKeys = {
   },
   trainee: {
     favorites: ["trainee", "favoriteTrainers"] as const,
-    guestSeededTrainers: ["guestSeededTrainers"] as const,
   },
   trainerRole: {
     dashboardSummary: ["trainer", "dashboardSummary"] as const,
-  },
-  content: {
-    tips: ["content", "tips"] as const,
-    banners: ["content", "banners"] as const,
-    cmsManifest: ["content", "cms", "manifest"] as const,
-    faq: ["content", "cms", "faq"] as const,
-    legal: (slug: string) => ["content", "cms", "legal", slug] as const,
-    blogs: (guest?: boolean) => ["content", "cms", "blogs", guest ? "guest" : "auth"] as const,
-    blogPost: (slug: string) => ["content", "cms", "blog", slug] as const,
-  },
-  ai: {
-    reviewAnalysis: ["ai", "reviewAnalysis"] as const,
-    smartSchedule: (trainerId: string) => ["ai", "smartSchedule", trainerId] as const,
-  },
-  lifecycle: {
-    state: ["lifecycle", "state"] as const,
   },
 } as const;
 

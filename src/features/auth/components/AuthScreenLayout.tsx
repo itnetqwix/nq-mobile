@@ -15,14 +15,7 @@ type Props = {
 export function AuthScreenLayout({ title, subtitle, children, footer, style }: Props) {
   const c = useThemeColors();
   const styles = StyleSheet.create({
-    brand: {
-      alignItems: "center",
-      width: "100%",
-      backgroundColor: "#000000",
-      borderRadius: 12,
-      paddingVertical: space.sm,
-      marginBottom: space.xs,
-    },
+    brand: { alignItems: "center", width: "100%" },
     title: { ...typography.titleLg, color: c.text, marginTop: space.md, textAlign: "center" },
     subtitle: {
       ...typography.bodyMd,
@@ -54,7 +47,7 @@ export function AuthScreenLayout({ title, subtitle, children, footer, style }: P
       contentStyle={styles.scrollContent}
     >
       <View style={styles.brand}>
-        <NetqwixLogo variant="wordmark" fullWidth maxWidth={400} height={120} />
+        <NetqwixLogo variant="wordmark" fullWidth maxWidth={340} height={88} />
       </View>
       <Text style={styles.title}>{title}</Text>
       {!!subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}

@@ -13,14 +13,12 @@ import { formatNextOpenSlot } from "../../lib/trainerSlotUtils";
 import { PendingRequestsBanner } from "./PendingRequestsBanner";
 import { TodayScheduleTimeline } from "./TodayScheduleTimeline";
 import { TrainerEarningsSnapshot } from "./TrainerEarningsSnapshot";
-import { TrainerPulseHero } from "./TrainerPulseHero";
 import { RecentTraineeClipsSection } from "./RecentTraineeClipsSection";
-import { TrainerGreetingRating } from "./TrainerGreetingRating";
+import { RatingFeedbackPulse } from "./RatingFeedbackPulse";
+import { PerformanceTipsCard } from "./PerformanceTipsCard";
 import { TrainerRecentTraineesSection } from "./TrainerRecentTraineesSection";
 import { TrainerFriendRequestsSection } from "./TrainerFriendRequestsSection";
 import { TrainerLockerSection } from "./TrainerLockerSection";
-import { HomeBannerCarousel } from "../../../content/components/HomeBannerCarousel";
-import { TipsForYouSection } from "../shared/TipsForYouSection";
 import { createTrainerDashboardStyles } from "./trainerDashboardTheme";
 import { useThemeColors, useThemedStyles } from "../../../../theme";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
@@ -42,17 +40,15 @@ type Props = {
   onOpenSessions: () => void;
   onOpenClips: () => void;
   onOpenSurface: (id: UtilitySurfaceId) => void;
-  onOpenReviews?: () => void;
   onSessionPress: (session: Record<string, unknown>) => void;
-  onContentDeepLink?: (url: string) => void;
 };
 
 export function TrainerDashboardHub({
   name,
   accountType,
   profilePicture,
-  user,
   showAsOnline,
+  user,
   recentTrainees = [],
   friendRequests = [],
   onAcceptFriend,
@@ -64,14 +60,13 @@ export function TrainerDashboardHub({
   onOpenSessions,
   onOpenClips,
   onOpenSurface,
-  onOpenReviews,
   onSessionPress,
-  onContentDeepLink,
 }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const theme = useThemedStyles((palette) => createTrainerDashboardStyles(palette));
   const { pendingSessions, todayTimeline } = useDashboardSessions(accountType);
+
   const { data: scheduleSlots = [] } = useQuery({
     queryKey: queryKeys.trainer.slots,
     queryFn: fetchTrainerSlots,
@@ -82,20 +77,10 @@ export function TrainerDashboardHub({
 
   return (
     <View style={theme.stack}>
-      <TrainerPulseHero
-        onOpenEarnings={onOpenWallet}
-        onOpenStudents={onOpenSessions}
-      />
-
-      <HomeBannerCarousel onDeepLink={onContentDeepLink} />
-
-      <TrainerRecentTraineesSection trainees={recentTrainees} />
-
       <View style={[theme.card, theme.cardPadding, theme.cardGap]}>
         <Pressable style={theme.rowStart} onPress={onSettings}>
           <HomeUserAvatar
             uri={profilePicture}
-            user={user ?? undefined}
             name={name}
             size={64}
             onlineStatus={showAsOnline ? "online" : "offline"}
@@ -103,7 +88,6 @@ export function TrainerDashboardHub({
           <View style={theme.flex1}>
             <Text style={theme.welcome}>{t("trainerDashboard.welcome", { name })}</Text>
             <Text style={theme.role}>{t("trainerDashboard.roleTrainer")}</Text>
-            <TrainerGreetingRating onPress={() => onOpenReviews?.()} />
           </View>
           <Ionicons name="chevron-forward" size={20} color={c.textMuted} />
         </Pressable>
@@ -134,7 +118,6 @@ export function TrainerDashboardHub({
         sessions={todayTimeline}
         onSessionPress={onSessionPress}
         onSeeAll={onOpenSessions}
-        onOpenSchedule={onOpenSchedule}
       />
 
       {friendRequests.length > 0 && onAcceptFriend && onRejectFriend ? (
@@ -145,16 +128,17 @@ export function TrainerDashboardHub({
         />
       ) : null}
 
-      <TipsForYouSection
-        onDeepLink={onContentDeepLink}
-        trainerContext={{
-          pendingCount: pendingSessions.length,
-          showAsOnline,
-          scheduleSlots,
-        }}
+      <RatingFeedbackPulse user={user} />
+
+      <PerformanceTipsCard
+        pendingCount={pendingSessions.length}
+        showAsOnline={showAsOnline}
+        scheduleSlots={scheduleSlots}
       />
 
       <RecentTraineeClipsSection onOpenClips={onOpenClips} />
+
+      <TrainerRecentTraineesSection trainees={recentTrainees} />
 
       <ReviewAnalysisCard embedded />
 

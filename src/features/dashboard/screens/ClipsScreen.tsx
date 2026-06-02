@@ -2,7 +2,6 @@ import React, { useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { EmptyState, ImageWithSkeleton } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { getClipPlaybackUrl, getClipThumbnailUrl } from "../../../lib/clipMediaUrl";
@@ -180,7 +179,6 @@ function libraryStatusChip(status: string, t: (k: string) => string): string | n
 export function ClipsScreen() {
   const { t } = useAppTranslation();
   const queryClient = useQueryClient();
-  const navigation = useNavigation<any>();
   const c = useThemeColors();
   const [tab, setTab] = useState<ClipTab>("mine");
   const [uploadVisible, setUploadVisible] = useState(false);
@@ -194,16 +192,7 @@ export function ClipsScreen() {
 
   const styles = useThemedStyles((palette) =>
     StyleSheet.create({
-      // Two-row toolbar so the segmented control gets full width on small
-      // devices instead of fighting the action icons for space.
-      toolbar: { gap: space.sm },
-      toolbarRowTop: { flexDirection: "row", alignItems: "center" },
-      toolbarRowBottom: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "flex-end",
-        gap: space.sm,
-      },
+      toolbarRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
       segment: {
         flex: 1,
         flexDirection: "row",
@@ -224,16 +213,6 @@ export function ClipsScreen() {
         alignItems: "center",
         justifyContent: "center",
       },
-      submissionsBtn: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: palette.surfaceElevated,
-        borderWidth: 1,
-        borderColor: palette.borderSubtle,
-        alignItems: "center",
-        justifyContent: "center",
-      },
       clipCard: {
         flexDirection: "row",
         alignItems: "center",
@@ -244,17 +223,11 @@ export function ClipsScreen() {
         borderTopColor: palette.border,
       },
       thumbWrap: {
-        width: 80,
-        height: 80,
-        borderRadius: radii.md,
+        width: 64,
+        height: 64,
+        borderRadius: radii.sm,
         overflow: "hidden",
         backgroundColor: palette.surfaceMuted,
-      },
-      playBadge: {
-        ...StyleSheet.absoluteFillObject,
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "rgba(0,0,0,0.22)",
       },
       thumbPh: {
         flex: 1,
@@ -283,8 +256,6 @@ export function ClipsScreen() {
     queryFn: () => postMyClipsGrouped({}),
     enabled: tab === "mine",
     staleTime: 30_000,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
   });
 
   const sharedQ = useQuery({
@@ -292,8 +263,6 @@ export function ClipsScreen() {
     queryFn: () => postSharedClipsGrouped(),
     enabled: tab === "shared",
     staleTime: 30_000,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
   });
 
   const libraryQ = useQuery({
@@ -301,26 +270,9 @@ export function ClipsScreen() {
     queryFn: () => postLibraryClipsGrouped(),
     enabled: tab === "library",
     staleTime: 30_000,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
   });
 
   const active = tab === "mine" ? myQ : tab === "shared" ? sharedQ : libraryQ;
-
-  /**
-   * Invalidate all clip-related queries when the user returns to this screen
-   * (e.g. after submitting a clip from a different surface, or after an
-   * upload modal closed). The query client takes care of skipping the
-   * refetch when data is still fresh within `staleTime`, so this is cheap.
-   */
-  useFocusEffect(
-    useCallback(() => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.locker.myClips });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.locker.sharedClips });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.locker.libraryClips });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.clips.mySubmissions });
-    }, [queryClient])
-  );
 
   const onRefresh = useCallback(() => {
     void myQ.refetch();
@@ -344,71 +296,46 @@ export function ClipsScreen() {
 
   const toolbar = useMemo(
     () => (
-      <View style={styles.toolbar}>
-        {/* Top row: segmented tab control, full-width on every device. */}
-        <View style={styles.toolbarRowTop}>
-          <View style={styles.segment}>
-            <Pressable
-              style={[styles.segBtn, tab === "mine" && styles.segBtnOn]}
-              onPress={() => setTab("mine")}
-            >
-              <Text style={[styles.segLabel, tab === "mine" && styles.segLabelOn]}>
-                {t("locker.myClips")}
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[styles.segBtn, tab === "shared" && styles.segBtnOn]}
-              onPress={() => setTab("shared")}
-            >
-              <Text style={[styles.segLabel, tab === "shared" && styles.segLabelOn]}>
-                {t("locker.sharedClips")}
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[styles.segBtn, tab === "library" && styles.segBtnOn]}
-              onPress={() => setTab("library")}
-            >
-              <Text style={[styles.segLabel, tab === "library" && styles.segLabelOn]}>
-                {t("locker.netqwixLibrary")}
-              </Text>
-            </Pressable>
-          </View>
+      <View style={styles.toolbarRow}>
+        <View style={styles.segment}>
+          <Pressable
+            style={[styles.segBtn, tab === "mine" && styles.segBtnOn]}
+            onPress={() => setTab("mine")}
+          >
+            <Text style={[styles.segLabel, tab === "mine" && styles.segLabelOn]}>
+              {t("locker.myClips")}
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.segBtn, tab === "shared" && styles.segBtnOn]}
+            onPress={() => setTab("shared")}
+          >
+            <Text style={[styles.segLabel, tab === "shared" && styles.segLabelOn]}>
+              {t("locker.sharedClips")}
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.segBtn, tab === "library" && styles.segBtnOn]}
+            onPress={() => setTab("library")}
+          >
+            <Text style={[styles.segLabel, tab === "library" && styles.segLabelOn]}>
+              {t("locker.netqwixLibrary")}
+            </Text>
+          </Pressable>
         </View>
-        {/* Bottom row: actions, right-aligned. Only visible on the Mine tab
-            since Shared and Library don't have user actions here. */}
         {tab === "mine" ? (
-          <View style={styles.toolbarRowBottom}>
-            <Pressable
-              style={({ pressed }) => [styles.submissionsBtn, pressed && { opacity: 0.88 }]}
-              onPress={() => {
-                try {
-                  navigation.navigate("ShellSurface", {
-                    surfaceId: "clipSubmissions",
-                  });
-                } catch {
-                  /* older navigators - best-effort */
-                }
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={t("locker.openSubmissions", {
-                defaultValue: "View my library submissions",
-              })}
-            >
-              <Ionicons name="library-outline" size={20} color={c.brandNavy} />
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [styles.uploadFab, pressed && { opacity: 0.88 }]}
-              onPress={() => setUploadVisible(true)}
-              accessibilityRole="button"
-              accessibilityLabel={t("locker.uploadClip")}
-            >
-              <Ionicons name="cloud-upload-outline" size={20} color={c.brandTextOn} />
-            </Pressable>
-          </View>
+          <Pressable
+            style={({ pressed }) => [styles.uploadFab, pressed && { opacity: 0.88 }]}
+            onPress={() => setUploadVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t("locker.uploadClip")}
+          >
+            <Ionicons name="cloud-upload-outline" size={20} color={c.brandTextOn} />
+          </Pressable>
         ) : null}
       </View>
     ),
-    [tab, styles, c, t, navigation]
+    [tab, styles, c, t]
   );
 
   const renderClipRow = (
@@ -425,34 +352,20 @@ export function ClipsScreen() {
       sub?.status !== "accepted";
 
     return (
-      <Pressable
-        key={key}
-        style={({ pressed }) => [styles.clipCard, pressed && { opacity: 0.92 }]}
-        onPress={() => openClip(clip)}
-        accessibilityRole="button"
-        accessibilityLabel={t("locker.playClipA11y", {
-          defaultValue: "Play {{title}}",
-          title: String(clip.title ?? clip.file_name ?? t("locker.clipDefault")),
-        })}
-      >
+      <Pressable key={key} style={styles.clipCard} onPress={() => openClip(clip)}>
         <View style={styles.thumbWrap}>
           {thumb ? (
-            <>
-              <ImageWithSkeleton
-                uri={thumb}
-                width={80}
-                height={80}
-                borderRadius={radii.md}
-                resizeMode="cover"
-                accessibilityLabel={String(clip.title ?? clip.file_name ?? t("locker.clipDefault"))}
-              />
-              <View style={styles.playBadge} pointerEvents="none">
-                <Ionicons name="play-circle" size={36} color="#fff" />
-              </View>
-            </>
+            <ImageWithSkeleton
+              uri={thumb}
+              width={64}
+              height={64}
+              borderRadius={radii.sm}
+              resizeMode="cover"
+              accessibilityLabel={String(clip.title ?? clip.file_name ?? t("locker.clipDefault"))}
+            />
           ) : (
             <View style={styles.thumbPh}>
-              <Ionicons name="play-circle" size={32} color={c.brandAccent} />
+              <Ionicons name="play-circle" size={28} color={c.brandAccent} />
             </View>
           )}
         </View>
@@ -610,9 +523,6 @@ export function ClipsScreen() {
         onClose={() => setLibrarySheetClip(null)}
         onSubmitted={() => {
           void queryClient.invalidateQueries({ queryKey: queryKeys.locker.myClips });
-          void queryClient.invalidateQueries({
-            queryKey: queryKeys.clips.mySubmissions,
-          });
         }}
       />
     </>

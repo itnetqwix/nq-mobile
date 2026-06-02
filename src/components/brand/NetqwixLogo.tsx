@@ -12,13 +12,13 @@ import { space } from "../../theme";
 import { useThemeColors } from "../../theme";
 
 type Props = {
-  /** `pin` = compact mark. `wordmark` = full logo (`netqwix_logo-fulll.png`). */
+  /** `pin` = assets/netqwix_logo.png (home header). `wordmark` = login banner. */
   variant?: "pin" | "wordmark";
   maxWidth?: number;
   height?: number;
   style?: StyleProp<ImageStyle>;
   compact?: boolean;
-  /** Scale the full logo to the container width (keeps aspect ratio). */
+  /** Use full horizontal wordmark (`netquix_logo_v1.png`) across the container width. */
   fullWidth?: boolean;
   /** Horizontal alignment inside the wrapper */
   align?: "center" | "start";
@@ -38,10 +38,9 @@ export function NetqwixLogo({
 
   const isPin = variant === "pin";
   const wordmarkFull = !isPin && fullWidth;
-  const imgHeight = height ?? (isPin ? 52 : wordmarkFull ? 96 : 80);
-  const frameMaxWidth = isPin
-    ? (maxWidth ?? 52)
-    : (maxWidth ?? (wordmarkFull ? 340 : 220));
+  const width = wordmarkFull ? "100%" : (maxWidth ?? (isPin ? 52 : 220));
+  const imgHeight = height ?? (isPin ? 52 : wordmarkFull ? 88 : 72);
+  const maxW = wordmarkFull ? (maxWidth ?? 340) : undefined;
   const source = isPin ? brandImages.netqwixPin : brandImages.netqwixWordmark;
 
   if (failed) {
@@ -52,18 +51,12 @@ export function NetqwixLogo({
     );
   }
 
-  const imageStyle = isPin
-    ? [{ width: frameMaxWidth, height: imgHeight }, style]
-    : [{ width: "100%", height: imgHeight }, style];
-
   return (
     <View
       style={[
         styles.wrap,
         compact && styles.wrapCompact,
         align === "start" && styles.wrapStart,
-        align === "center" && styles.wrapCenter,
-        !isPin && { width: "100%", maxWidth: frameMaxWidth },
       ]}
     >
       <Image
@@ -71,7 +64,12 @@ export function NetqwixLogo({
         accessibilityLabel="NetQwix"
         source={source}
         contentFit="contain"
-        style={imageStyle}
+        style={[
+          wordmarkFull
+            ? { width: "100%", maxWidth: maxW, height: imgHeight }
+            : { width, height: imgHeight },
+          style,
+        ]}
         onError={() => setFailed(true)}
       />
     </View>
@@ -92,10 +90,6 @@ const styles = StyleSheet.create({
   wrapStart: {
     alignItems: "flex-start",
     alignSelf: "stretch",
-  },
-  wrapCenter: {
-    alignItems: "center",
-    alignSelf: "center",
   },
   fallbackWordmark: {
     fontSize: 22,
