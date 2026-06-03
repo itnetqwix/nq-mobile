@@ -44,6 +44,10 @@ export function WizardStepClips({
 
       {clipsQuery.isLoading ? (
         <ActivityIndicator color={c.iconPrimary} style={{ marginVertical: space.lg }} />
+      ) : clipsQuery.isError ? (
+        <Text style={sharedStepStyles.muted}>
+          Could not load your clips. Pull down to retry or skip and add them later.
+        </Text>
       ) : flatClips.length === 0 ? (
         <Text style={sharedStepStyles.muted}>No clips yet. You can skip and add them later.</Text>
       ) : (
