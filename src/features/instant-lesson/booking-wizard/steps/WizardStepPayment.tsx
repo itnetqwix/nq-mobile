@@ -24,6 +24,7 @@ import { useSharedStepStyles } from "../sharedStepStyles";
 import { PlatformPayButtonRow } from "../../../../components/payments/PlatformPayButtonRow";
 import { useActiveCurrency, useCurrencyFormatter } from "../../../../lib/intl";
 
+import { PricingBreakdownSummary } from "../../../payments/PricingBreakdownSummary";
 import type { PricingQuote } from "../../../payments/pricingTypes";
 import { chargeTotalDollars } from "../../../payments/pricingTypes";
 
@@ -312,29 +313,6 @@ export function WizardStepPayment({
             </View>
           </>
         ) : null}
-        <View style={styles.summaryLine}>
-          <Text style={styles.summaryKey}>Total</Text>
-          <Text style={[styles.summaryValue, styles.bold]}>
-            {isFree
-              ? "Free"
-              : fmt(
-                  pricingQuote?.chargeTotalCents != null
-                    ? pricingQuote.chargeTotalCents / 100
-                    : payableAmount,
-                  { currency: activeCurrency }
-                )}
-          </Text>
-        </View>
-        {pricingQuote?.breakdown
-          ?.filter((row) => row.key !== "session_subtotal" && row.key !== "total")
-          .map((row) => (
-            <View key={row.key} style={styles.summaryLine}>
-              <Text style={styles.summaryKey}>{row.label}</Text>
-              <Text style={styles.summaryValue}>
-                {fmt(row.amountMinor / 100, { currency: activeCurrency })}
-              </Text>
-            </View>
-          ))}
         {couponCode.trim() ? (
           <View style={styles.summaryLine}>
             <Text style={styles.summaryKey}>Promo</Text>
@@ -342,6 +320,17 @@ export function WizardStepPayment({
           </View>
         ) : null}
       </View>
+
+      {!isFree && payableAmount > 0 ? (
+        <PricingBreakdownSummary
+          sessionSubtotal={expectedPrice}
+          pricingQuote={pricingQuote}
+          chargeTotal={totalToCharge}
+          currency={activeCurrency}
+          promoDiscount={hasDiscount ? promoResult!.discount_amount : undefined}
+          promoLabel={promoResult?.display_label}
+        />
+      ) : null}
 
       {loading && (
         <View style={styles.loadingBox}>
