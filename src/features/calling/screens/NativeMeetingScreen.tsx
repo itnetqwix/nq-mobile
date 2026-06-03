@@ -49,7 +49,8 @@ import { getClipPlaybackUrl } from "../../../lib/clipMediaUrl";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import {
   clipIdOf,
-  clipsFromSession,
+  mergeSessionClips,
+  playableBookingClips,
   resolveClipPlayback,
 } from "../clipSyncUtils";
 import { useDrawingSync } from "../useDrawingSync";
@@ -209,6 +210,13 @@ function useSessionLookup(lessonId: string) {
     staleTime: 30_000,
   });
 
+  const { data: joinReadiness } = useQuery({
+    queryKey: queryKeys.sessions.joinReadiness(lessonId),
+    enabled: !!lessonId,
+    queryFn: () => fetchSessionJoinReadiness(lessonId),
+    staleTime: 60_000,
+  });
+
   const session = useMemo<SessionRow | null>(() => {
     if (!cached && !fetched) return null;
     const merged: SessionRow = { ...(cached ?? {}), ...(fetched ?? {}) };
@@ -216,8 +224,12 @@ function useSessionLookup(lessonId: string) {
     if (Array.isArray(populated) && populated.length > 0) {
       merged.trainee_clips = populated;
     }
+    const clips = mergeSessionClips(merged, joinReadiness?.clips);
+    if (clips.length > 0) {
+      merged.trainee_clips = clips;
+    }
     return merged;
-  }, [cached, fetched]);
+  }, [cached, fetched, joinReadiness?.clips]);
 
   return { session, isLoading: isLoading && !session };
 }
@@ -449,12 +461,16 @@ function MeetingSurface({
 }) {
   const { user: authUser } = useAuth();
   const audioRoute = useAudioRoute();
+
+  const { data: joinReadiness } = useQuery({
+    queryKey: queryKeys.sessions.joinReadiness(lessonId),
+    queryFn: () => fetchSessionJoinReadiness(lessonId),
+    staleTime: 60_000,
+  });
+
   const sessionBookingClips = useMemo(
-    () =>
-      clipsFromSession(session).filter(
-        (c) => Boolean(resolveClipPlayback(c).url || getClipPlaybackUrl(c))
-      ),
-    [session]
+    () => playableBookingClips(session, joinReadiness?.clips),
+    [session, joinReadiness?.clips]
   );
   const [activeClipUri, setActiveClipUri] = useState<string | null>(null);
   const { width: winW, height: winH } = useWindowDimensions();
@@ -557,12 +573,6 @@ function MeetingSurface({
   });
 
   const lessonLive = useLessonLiveState(lessonId, isTrainer);
-
-  const { data: joinReadiness } = useQuery({
-    queryKey: ["session", "join-readiness", lessonId],
-    queryFn: () => fetchSessionJoinReadiness(lessonId),
-    staleTime: 60_000,
-  });
 
   const [handoffOpen, setHandoffOpen] = useState(false);
   const [handoffSummary, setHandoffSummary] = useState<SessionHandoffSummary | null>(null);
@@ -1002,11 +1012,11 @@ function MeetingSurface({
 
   useEffect(() => {
     if (!session) return;
-    const bookingClips = clipsFromSession(session);
+    const bookingClips = playableBookingClips(session, joinReadiness?.clips);
     if (bookingClips.length > 0) {
       clipSync.preloadBookingClips(bookingClips);
     }
-  }, [session, session?.trainee_clips, clipSync]);
+  }, [session, session?.trainee_clips, joinReadiness?.clips, clipSync]);
 
   useEffect(() => {
     if (!bothUsersForTimer) {

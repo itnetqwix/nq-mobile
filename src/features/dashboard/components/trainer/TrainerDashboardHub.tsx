@@ -15,6 +15,7 @@ import { TodayScheduleTimeline } from "./TodayScheduleTimeline";
 import { TrainerEarningsSnapshot } from "./TrainerEarningsSnapshot";
 import { RecentTraineeClipsSection } from "./RecentTraineeClipsSection";
 import { RatingFeedbackPulse } from "./RatingFeedbackPulse";
+import { TrainerGreetingRating } from "./TrainerGreetingRating";
 import { PerformanceTipsCard } from "./PerformanceTipsCard";
 import { TrainerRecentTraineesSection } from "./TrainerRecentTraineesSection";
 import { TrainerFriendRequestsSection } from "./TrainerFriendRequestsSection";
@@ -40,6 +41,7 @@ type Props = {
   onOpenSessions: () => void;
   onOpenClips: () => void;
   onOpenSurface: (id: UtilitySurfaceId) => void;
+  onOpenReviews?: () => void;
   onSessionPress: (session: Record<string, unknown>) => void;
 };
 
@@ -60,6 +62,7 @@ export function TrainerDashboardHub({
   onOpenSessions,
   onOpenClips,
   onOpenSurface,
+  onOpenReviews,
   onSessionPress,
 }: Props) {
   const { t } = useAppTranslation();
@@ -88,6 +91,7 @@ export function TrainerDashboardHub({
           <View style={theme.flex1}>
             <Text style={theme.welcome}>{t("trainerDashboard.welcome", { name })}</Text>
             <Text style={theme.role}>{t("trainerDashboard.roleTrainer")}</Text>
+            <TrainerGreetingRating onPress={() => onOpenReviews?.()} />
           </View>
           <Ionicons name="chevron-forward" size={20} color={c.textMuted} />
         </Pressable>
@@ -128,7 +132,7 @@ export function TrainerDashboardHub({
         />
       ) : null}
 
-      <RatingFeedbackPulse user={user} />
+      <RatingFeedbackPulse onOpenReviews={onOpenReviews} />
 
       <PerformanceTipsCard
         pendingCount={pendingSessions.length}

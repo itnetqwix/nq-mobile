@@ -10,6 +10,7 @@ export const queryKeys = {
     upcoming: ["sessions", "upcoming"] as const,
     completed: ["sessions", "completed"] as const,
     lookup: (lessonId: string) => ["sessionLookup", lessonId] as const,
+    joinReadiness: (lessonId: string) => ["session", "join-readiness", lessonId] as const,
   },
   scheduledMeetings: ["scheduledMeetings"] as const,
   notifications: {
@@ -50,6 +51,7 @@ export const queryKeys = {
     recentTrainers: ["recentTrainers"] as const,
   },
   trainer: {
+    myStats: ["trainer", "myStats"] as const,
     slots: ["trainerSlots"] as const,
     schedule: ["trainerSchedule"] as const,
     availabilityAll: ["trainerAvailability"] as const,

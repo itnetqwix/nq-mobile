@@ -32,6 +32,8 @@ void i18n.use(initReactI18next).init({
   },
   lng: initialLng,
   fallbackLng: "en",
+  /** Show the key only when missing in every language bundle (en is complete). */
+  returnNull: false,
   interpolation: { escapeValue: false },
 });
 

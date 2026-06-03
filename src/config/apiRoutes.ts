@@ -27,6 +27,7 @@ export const API_ROUTES = {
     sessions: "/auth/sessions",
     sessionsRevoke: "/auth/sessions/revoke",
     sessionsRevokeOthers: "/auth/sessions/revoke-others",
+    sessionsRevokeAll: "/auth/sessions/revoke-all",
     signup: "/auth/signup",
     signupCheckContact: "/auth/signup/check-contact",
     signupOtpSend: "/auth/signup/otp/send",
@@ -35,9 +36,14 @@ export const API_ROUTES = {
     confirmResetPassword: "/auth/confirm-reset-password",
     verifyGoogleLogin: "/auth/verify-google-login",
     verifyAppleLogin: "/auth/verify-apple-login",
+    magicLinkRequest: "/auth/magic-link/request",
+    magicLinkVerify: "/auth/magic-link/verify",
+    wakeUpStart: "/auth/wake-up/start",
+    wakeUpConfirm: "/auth/wake-up/confirm",
   },
   user: {
     me: "/user/me",
+    deleteMe: "/user/me",
     chatPublicKeyMe: "/user/me/chat-public-key",
     chatPublicKey: (userId: string) => `/user/${userId}/chat-public-key` as const,
     signUp: "/user/sign-up",
@@ -56,8 +62,27 @@ export const API_ROUTES = {
     friends: "/user/friends",
     removeFriend: "/user/remove-friend",
     blockUser: "/user/block-user",
+    unblockUser: "/user/unblock-user",
+    blockedUsers: "/user/blocked-users",
     reportUser: "/user/report-user",
     updateAccountPrivacy: "/user/update-account-privacy",
+    /** Profile-visibility settings (last active, search visibility, message
+     *  requests from non-friends). Persisted on the user document under
+     *  `privacy_visibility`. */
+    updateProfileVisibility: "/user/update-profile-visibility",
+    /** GDPR / India DPDP data-export request. Backend enqueues a job and
+     *  emails the user when the archive is ready. */
+    requestDataExport: "/user/data-export/request",
+    dataExportStatus: "/user/data-export/status",
+    /** Trainer 2FA — enrol a trusted device, send/verify OTP, list/revoke. */
+    twoFactorStatus: "/user/2fa/status",
+    twoFactorEnable: "/user/2fa/enable",
+    twoFactorDisable: "/user/2fa/disable",
+    twoFactorChallenge: "/user/2fa/challenge",
+    twoFactorVerify: "/user/2fa/verify",
+    twoFactorTrustedDevices: "/user/2fa/trusted-devices",
+    twoFactorRevokeTrustedDevice: (id: string) =>
+      `/user/2fa/trusted-devices/${encodeURIComponent(id)}` as const,
     getAllTrainee: "/user/get-all-trainee",
     getAllUsers: "/user/get-all-users",
     getAllTrainer: "/user/get-all-trainer",
@@ -69,6 +94,9 @@ export const API_ROUTES = {
     bookingListById: "/user/booking-list-by-id",
     bookingById: (id: string) => `/user/booking/${id}` as const,
     sessionDetail: (id: string) => `/user/session-detail/${id}` as const,
+    sessionJoinReadiness: (id: string) => `/user/session-join-readiness/${id}` as const,
+    sessionHandoff: (id: string) => `/user/session-handoff/${id}` as const,
+    sessionTimeline: (id: string) => `/user/session-timeline/${id}` as const,
     stripeAccountVerification: "/user/stripe-account-verification",
     checkStripeVerification: "/user/check-stripe-verification",
     updateRefundStatus: "/user/update-refund-status",
@@ -85,10 +113,36 @@ export const API_ROUTES = {
     updateNotificationsSettings: "/user/update-notifications-settings",
     updateTrainerStatus: "/user/update-trainer-status",
     onlineAvailability: "/user/online-availability",
+    autoDeclineOutsideHours: "/user/auto-decline-outside-hours",
     deleteUser: (id: string) => `/user/delete-user/${id}` as const,
     approveExpert: (id: string) => `/user/approve-expert/${id}` as const,
     storage: "/user/storage",
     storageCheckout: "/user/storage/checkout",
+    /** Phase 2 — current lifecycle state (deleted / hibernated / pending). */
+    lifecycle: "/user/me/lifecycle",
+    /** Phase 2 — OTP-gated deletion (step 1: password + reason → OTP sent). */
+    deletionRequest: "/user/me/deletion/request",
+    /** Phase 2 — OTP-gated deletion (step 2: OTP → freeze + 15d window). */
+    deletionConfirm: "/user/me/deletion/confirm",
+    /** Phase 2 — clear pending deletion. */
+    deletionCancel: "/user/me/deletion/cancel",
+    /** Phase 2 — start hibernation (sends OTP). */
+    hibernateRequest: "/user/me/hibernate/request",
+    /** Phase 2 — confirm hibernation (OTP → hibernated_at). */
+    hibernateConfirm: "/user/me/hibernate/confirm",
+  },
+  tips: {
+    list: "/tips",
+  },
+  banners: {
+    list: "/banners",
+  },
+  cms: {
+    manifest: "/cms/manifest",
+    faq: "/cms/faq",
+    legal: (slug: string) => `/cms/legal/${slug}` as const,
+    pages: "/cms/pages",
+    page: (slug: string) => `/cms/pages/${slug}` as const,
   },
   verification: {
     status: "/verification/status",
@@ -118,10 +172,17 @@ export const API_ROUTES = {
     getTrainers: "/trainer/get-trainers",
     getRecentTrainees: "/trainer/get-recent-trainees",
     getTraineeClips: "/trainer/get-trainee-clips",
+    myStats: "/trainer/my-stats",
     profile: "/trainer/profile",
     createMoneyRequest: "/trainer/create-money-request",
     getMoneyRequest: "/trainer/get-money-request",
     sessionExtensionRespond: "/trainer/session-extension/respond",
+    instantLessonAccept: "/trainer/instant-lesson/accept",
+    instantLessonDecline: "/trainer/instant-lesson/decline",
+    traineeNote: (traineeId: string) => `/trainer/trainee-notes/${traineeId}` as const,
+    nudgeCandidates: "/trainer/nudge-candidates",
+    traineeNudge: "/trainer/trainee-nudge",
+    sessionRecap: "/trainer/session-recap",
   },
   trainee: {
     getTrainersWithSlots: "/trainee/get-trainers-with-slots",
@@ -133,6 +194,9 @@ export const API_ROUTES = {
     recentTrainers: "/trainee/recent-trainers",
     favoriteTrainers: "/trainee/favorite-trainers",
     favoriteTrainer: (trainerId: string) => `/trainee/favorite-trainers/${trainerId}` as const,
+    guestActivity: "/trainee/guest-activity",
+    guestSeededTrainers: "/trainee/guest-activity/seeded-trainers",
+    personalizedFeed: "/trainee/personalized-feed",
     sessionExtensionQuote: "/trainee/session-extension/quote",
     sessionExtensionRequest: "/trainee/session-extension/request",
     sessionExtensionCancel: "/trainee/session-extension/cancel-request",
@@ -144,10 +208,16 @@ export const API_ROUTES = {
     getPaymentIntent: "/transaction/get-payment-intent",
     createRefund: "/transaction/create-refund",
   },
+  payments: {
+    quote: "/payments/quote",
+  },
   wallet: {
     balance: "/wallet/balance",
     ledger: "/wallet/ledger",
     earnings: "/wallet/earnings",
+    trainerPulse: "/wallet/trainer-pulse",
+    trainerEarningsSeries: "/wallet/trainer-earnings-series",
+    trainerEarningsCsv: "/wallet/trainer-earnings.csv",
     topUpCreateIntent: "/wallet/topup/create-intent",
     topUpStatus: (topupId: string) => `/wallet/topup/${topupId}/status` as const,
     topUpConfirm: (topupId: string) => `/wallet/topup/${topupId}/confirm` as const,
@@ -159,6 +229,14 @@ export const API_ROUTES = {
     withdraw: "/wallet/withdraw",
     config: "/wallet/config",
     transactionDetail: (id: string) => `/wallet/transactions/${id}` as const,
+    /** Saved Stripe payment methods (last-4, brand, expiry). */
+    paymentMethods: "/wallet/payment-methods",
+    paymentMethod: (id: string) => `/wallet/payment-methods/${id}` as const,
+    paymentMethodDefault: (id: string) => `/wallet/payment-methods/${id}/default` as const,
+    /** Auto top-up rule (server-stored: threshold + reload amount + source). */
+    autoTopUp: "/wallet/auto-topup",
+    /** Refund + payment timeline events for a transaction. */
+    refundTimeline: (id: string) => `/wallet/transactions/${id}/timeline` as const,
   },
   storage: {
     clipsPresign: "/storage/clips/presign",
@@ -218,6 +296,9 @@ export const API_ROUTES = {
     registerPushToken: "/notifications/register-push-token",
     unregisterPushToken: (deviceId: string) =>
       `/notifications/unregister-push-token/${encodeURIComponent(deviceId)}` as const,
+    preferences: "/notifications/preferences",
+    mute: "/notifications/mute",
+    quietHours: "/notifications/quiet-hours",
   },
   promo: {
     validate: "/common/validate-promo",
@@ -229,6 +310,11 @@ export const API_ROUTES = {
     send: "/common/chat-send",
     conversation: "/common/chat-conversation",
     mediaUploadUrl: "/common/chat-media-upload-url",
+    mediaUploadAbort: "/common/chat-media-upload-abort",
+    lessonCallSlot: (sessionId: string) =>
+      `/common/lesson-call-slot/${encodeURIComponent(sessionId)}` as const,
+    lessonCallSlotTakeover: (sessionId: string) =>
+      `/common/lesson-call-slot/${encodeURIComponent(sessionId)}/takeover` as const,
     createGroup: "/common/chat-create-group",
     createGroupInvite: "/common/chat-create-group-invite",
     editMessage: "/common/chat-edit-message",
@@ -254,10 +340,23 @@ export const API_ROUTES = {
       `/common/chat-group/${conversationId}/update` as const,
     policy: (otherUserId: string) =>
       `/common/chat-policy?otherUserId=${encodeURIComponent(otherUserId)}` as const,
+    react: "/common/chat-react",
+    forward: "/common/chat-forward",
+    pin: "/common/chat-pin",
+    unpin: "/common/chat-unpin",
+    pinned: (conversationId: string) =>
+      `/common/chat-pinned/${conversationId}` as const,
+    searchAll: "/common/chat-search",
+    transcribe: "/common/chat-transcribe",
+    disappearing: "/common/chat-disappearing",
+    readReceipts: "/common/chat-read-receipts",
+    scheduled: "/common/chat-scheduled",
+    cancelScheduled: (id: string) => `/common/chat-scheduled/${id}` as const,
   },
   ai: {
     recommendTrainers: "/ai/recommend-trainers",
     chatAssistant: "/ai/chat-assistant",
+    transcribeInput: "/ai/transcribe-input",
     lessonSummary: (sessionId: string) => `/ai/lesson-summary/${sessionId}` as const,
     tagClip: (clipId: string) => `/ai/tag-clip/${clipId}` as const,
     enhanceProfile: "/ai/enhance-profile",

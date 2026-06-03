@@ -6,6 +6,7 @@ export type JoinReadinessClip = {
   title: string;
   thumbnail: string | null;
   category?: string | null;
+  file_name?: string | null;
 };
 
 export type SessionJoinReadiness = {

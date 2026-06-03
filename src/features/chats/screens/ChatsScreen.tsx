@@ -34,6 +34,8 @@ import {
   respondGroupInvite,
 } from "../api/chatActionsApi";
 import { useFocusEffect } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { floatingTabBarBottomInset } from "../../../navigation/FloatingTabBar";
 import type { MainTabScreenProps } from "../../../navigation/types";
 import { useChatRoomChrome } from "../hooks/useChatRoomChrome";
 import { ChatRoomScreen } from "./ChatRoomScreen";
@@ -199,14 +201,14 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
   fab: {
     position: "absolute",
     right: space.md,
-    bottom: space.lg,
     width: 56,
     height: 56,
     borderRadius: 28,
     backgroundColor: palette.brandNavy,
     alignItems: "center",
     justifyContent: "center",
-    elevation: 6,
+    zIndex: 20,
+    elevation: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
@@ -330,6 +332,13 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
   },
   inviteDeclineText: { color: palette.textMuted, fontSize: 13, fontWeight: "600" },
 }));
+  const insets = useSafeAreaInsets();
+  const fabBottom = useMemo(
+    () => floatingTabBarBottomInset(insets.bottom) + space.sm,
+    [insets.bottom]
+  );
+  const listPadBottom = useMemo(() => fabBottom + 56 + space.md, [fabBottom]);
+
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const currentUserId = String((user as any)?._id ?? (user as any)?.id ?? "");
@@ -786,6 +795,9 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.iconPrimary} />
           }
+          contentContainerStyle={
+            filtered.length > 0 ? { paddingBottom: listPadBottom } : undefined
+          }
           ListEmptyComponent={
             <EmptyState
               icon="chatbubbles-outline"
@@ -798,7 +810,11 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
 
       {/* New Chat FAB */}
       <Pressable
-        style={({ pressed }) => [styles.fab, pressed && { transform: [{ scale: 0.92 }] }]}
+        style={({ pressed }) => [
+          styles.fab,
+          { bottom: fabBottom },
+          pressed && { transform: [{ scale: 0.92 }] },
+        ]}
         onPress={() => setShowNewChat(true)}
       >
         <Ionicons name="create-outline" size={24} color={c.brandTextOn} />

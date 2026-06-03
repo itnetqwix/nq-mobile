@@ -24,6 +24,68 @@ export function clipsFromSession(session: Record<string, any> | null | undefined
   return [];
 }
 
+export type JoinReadinessClipLike = {
+  _id: string;
+  title?: string;
+  thumbnail?: string | null;
+  category?: string | null;
+  file_name?: string | null;
+};
+
+export function clipRowFromJoinReadiness(c: JoinReadinessClipLike): ClipRecord {
+  return {
+    _id: c._id,
+    title: c.title,
+    thumbnail: c.thumbnail,
+    category: c.category,
+    file_name: c.file_name ?? undefined,
+  };
+}
+
+/** Merge booking `trainee_clips` with join-readiness rows (fills ids / file_name). */
+export function mergeSessionClips(
+  session: Record<string, any> | null | undefined,
+  readinessClips?: JoinReadinessClipLike[] | null
+): ClipRecord[] {
+  const fromSession = clipsFromSession(session);
+  const fromReadiness = (readinessClips ?? []).map(clipRowFromJoinReadiness);
+  const byId = new Map<string, ClipRecord>();
+
+  for (const clip of fromSession) {
+    const id = clipIdOf(clip);
+    if (id) byId.set(id, clip);
+  }
+  for (const clip of fromReadiness) {
+    const id = clipIdOf(clip);
+    if (!id) continue;
+    const existing = byId.get(id);
+    if (!existing) {
+      byId.set(id, clip);
+      continue;
+    }
+    byId.set(id, {
+      ...existing,
+      ...clip,
+      title: existing.title ?? clip.title,
+      thumbnail: existing.thumbnail ?? clip.thumbnail,
+      category: existing.category ?? clip.category,
+      file_name: existing.file_name ?? clip.file_name,
+    });
+  }
+  return Array.from(byId.values());
+}
+
+export function hasPlayableClipUrl(clip: ClipRecord): boolean {
+  return Boolean(resolveClipPlayback(clip).url || getClipPlaybackUrl(clip));
+}
+
+export function playableBookingClips(
+  session: Record<string, any> | null | undefined,
+  readinessClips?: JoinReadinessClipLike[] | null
+): ClipRecord[] {
+  return mergeSessionClips(session, readinessClips).filter(hasPlayableClipUrl);
+}
+
 /** True when booking rows only carry clip ids — need a fresh scheduled-meetings fetch. */
 export function sessionNeedsClipHydration(session: Record<string, any> | null | undefined): boolean {
   if (!session) return false;

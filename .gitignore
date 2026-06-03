@@ -40,3 +40,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Expo local modules — Gradle outputs (never commit)
+modules/*/android/build/
+modules/*/android/.gradle/

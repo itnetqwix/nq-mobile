@@ -146,6 +146,41 @@ export async function fetchRecentTrainees(): Promise<any[]> {
   return res.data?.result ?? res.data ?? [];
 }
 
+export type MyTrainerStats = {
+  avgRating: number | null;
+  reviewCount: number;
+  reviews: Array<{
+    _id?: string;
+    updatedAt?: string;
+    status?: string;
+    trainee_fullname?: string;
+    trainee_picture?: string;
+    ratings?: {
+      trainee?: {
+        sessionRating?: number;
+        audioVideoRating?: number;
+        recommendRating?: number;
+        title?: string;
+        remarksInfo?: string;
+        comment?: string;
+      };
+    };
+  }>;
+};
+
+export async function fetchMyTrainerStats(): Promise<MyTrainerStats> {
+  const res = await apiClient.get(API_ROUTES.trainer.myStats);
+  const raw = (res.data?.data ?? res.data?.result ?? res.data ?? {}) as Partial<MyTrainerStats>;
+  return {
+    avgRating: typeof raw.avgRating === "number" ? raw.avgRating : null,
+    reviewCount:
+      typeof raw.reviewCount === "number" && Number.isFinite(raw.reviewCount)
+        ? raw.reviewCount
+        : 0,
+    reviews: Array.isArray(raw.reviews) ? raw.reviews : [],
+  };
+}
+
 export async function fetchRecentTrainers(): Promise<any[]> {
   const res = await apiClient.get(API_ROUTES.trainee.recentTrainers);
   const raw = res.data?.result ?? res.data ?? [];

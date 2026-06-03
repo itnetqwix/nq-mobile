@@ -416,7 +416,10 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
         tasks.push(
           queryClient.refetchQueries({ queryKey: queryKeys.presence.onlineUsers }),
           queryClient.refetchQueries({ queryKey: queryKeys.wallet.earnings }),
-          queryClient.refetchQueries({ queryKey: queryKeys.trainer.slots })
+          queryClient.refetchQueries({ queryKey: queryKeys.trainer.slots }),
+          queryClient.refetchQueries({ queryKey: queryKeys.trainer.myStats }),
+          queryClient.refetchQueries({ queryKey: queryKeys.ai.reviewAnalysis }),
+          queryClient.refetchQueries({ queryKey: queryKeys.trainerRole.recentTraineeClips })
         );
       }
       await Promise.all(tasks);
@@ -617,6 +620,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
             onOpenSessions={() => openFeature("upcoming-sessions")}
             onOpenClips={() => openShell("clips")}
             onOpenSurface={openShell}
+            onOpenReviews={() => openShell("trainerReviews")}
             onSessionPress={openSession}
           />
         )}

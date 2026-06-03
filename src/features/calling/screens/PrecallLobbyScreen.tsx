@@ -21,6 +21,7 @@ import {
   type MediaStreamTrack,
 } from "react-native-webrtc";
 import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "../../../lib/queryKeys";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { getClipThumbnailUrl } from "../../../lib/clipMediaUrl";
 import { haptics } from "../../../lib/haptics";
@@ -93,7 +94,7 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
   const [takeoverBusy, setTakeoverBusy] = useState(false);
 
   const { data: readiness } = useQuery({
-    queryKey: ["session", "join-readiness", lessonId],
+    queryKey: queryKeys.sessions.joinReadiness(lessonId),
     queryFn: () => fetchSessionJoinReadiness(lessonId),
     staleTime: 30_000,
   });
