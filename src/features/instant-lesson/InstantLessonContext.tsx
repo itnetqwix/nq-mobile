@@ -664,17 +664,25 @@ export function InstantLessonProvider({
 
   const cancelBooking = useCallback(() => {
     if (!traineeBooking) return;
+    const lessonId = String(traineeBooking.lessonId);
     const pending = pendingInstantRequestRef.current;
-    if (pending && String((pending as any).lessonId) === String(traineeBooking.lessonId)) {
+    if (pending && String((pending as any).lessonId) === lessonId) {
       pendingInstantRequestRef.current = null;
     }
-    if (socket) {
-      socket.emit(EVENTS.TRAINEE_CANCELLED, {
-        lessonId: traineeBooking.lessonId,
-        coachId: traineeBooking.coachId,
-        traineeId: traineeBooking.traineeId,
-      });
-    }
+    void (async () => {
+      try {
+        const { cancelInstantLesson } = await import("./cancelInstantLessonApi");
+        await cancelInstantLesson(lessonId);
+      } catch {
+        if (socket) {
+          socket.emit(EVENTS.TRAINEE_CANCELLED, {
+            lessonId: traineeBooking.lessonId,
+            coachId: traineeBooking.coachId,
+            traineeId: traineeBooking.traineeId,
+          });
+        }
+      }
+    })();
     clearExpiryTimer();
     setTraineeBooking(null);
   }, [traineeBooking, socket, clearExpiryTimer]);

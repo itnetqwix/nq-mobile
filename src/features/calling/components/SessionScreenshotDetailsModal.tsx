@@ -24,12 +24,18 @@ import {
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
-import { fetchSessionReport } from "../meetingReportApi";
+import { fetchSessionReport, requestCropImageUpload } from "../meetingReportApi";
+import { putFileToPresignedUrl } from "../../../lib/presignedPut";
+import {
+  extractPresignedFilename,
+  extractPresignedPutUrl,
+} from "../../../lib/http/extractPresignedUrl";
 import {
   parseReportScreenshotItems,
   toReportDataPayload,
   type ReportScreenshotItem,
 } from "../reportDataUtils";
+import { ReportImageCropModal } from "./ReportImageCropModal";
 
 type Props = {
   visible: boolean;
@@ -45,6 +51,12 @@ type Props = {
   reportTopic?: string;
   onClose: () => void;
   onSaved?: () => void;
+  /**
+   * After crop (pre-upload): update preview and restart in-flight S3 upload.
+   */
+  onPreviewUriChange?: (uri: string) => void;
+  /** After crop API replaces the S3 key on an already-uploaded frame. */
+  onImageKeyUpdated?: (imageKey: string) => void;
 };
 
 export function SessionScreenshotDetailsModal({
@@ -59,15 +71,22 @@ export function SessionScreenshotDetailsModal({
   reportTopic = "",
   onClose,
   onSaved,
+  onPreviewUriChange,
+  onImageKeyUpdated,
 }: Props) {
+  const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [existingItems, setExistingItems] = useState<ReportScreenshotItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [localPreview, setLocalPreview] = useState<string | null>(null);
+  const [cropOpen, setCropOpen] = useState(false);
 
   useEffect(() => {
     if (!visible) {
       setDescription("");
+      setTitle("");
+      setLocalPreview(null);
       return;
     }
     let cancelled = false;
@@ -95,7 +114,9 @@ export function SessionScreenshotDetailsModal({
   }, [visible, sessionId, trainerId, traineeId]);
 
   const previewUri =
-    previewUriProp || (imageKey ? getS3ImageUrl(imageKey) : null);
+    localPreview ||
+    previewUriProp ||
+    (imageKey ? getS3ImageUrl(imageKey) : null);
 
   const handleClose = () => {
     Keyboard.dismiss();
@@ -112,11 +133,12 @@ export function SessionScreenshotDetailsModal({
       if (lastIdx >= 0 && reportData[lastIdx]?.imageUrl === imageKey) {
         reportData[lastIdx] = {
           ...reportData[lastIdx],
+          title: title.trim(),
           description: description.trim(),
         };
       } else {
         reportData.push({
-          title: "",
+          title: title.trim(),
           description: description.trim(),
           imageUrl: imageKey,
         });
@@ -130,6 +152,7 @@ export function SessionScreenshotDetailsModal({
         reportData: toReportDataPayload(reportData),
       });
       setDescription("");
+      setTitle("");
       onSaved?.();
       handleClose();
     } catch (e: unknown) {
@@ -160,17 +183,36 @@ export function SessionScreenshotDetailsModal({
             >
               <View style={styles.body}>
                 {previewUri ? (
-                  <Image
-                    source={{ uri: previewUri }}
-                    style={styles.preview}
-                    resizeMode="contain"
-                  />
+                  <>
+                    <Image
+                      source={{ uri: previewUri }}
+                      style={styles.preview}
+                      resizeMode="contain"
+                    />
+                    <View style={styles.toolRow}>
+                      <Pressable
+                        style={styles.toolBtn}
+                        onPress={() => setCropOpen(true)}
+                        disabled={!previewUri}
+                      >
+                        <Ionicons name="crop-outline" size={18} color="#000080" />
+                        <Text style={styles.toolBtnText}>Crop</Text>
+                      </Pressable>
+                    </View>
+                  </>
                 ) : loading ? (
                   <ActivityIndicator size="large" color="#000080" />
                 ) : (
                   <Text style={styles.loadingText}>Loading preview…</Text>
                 )}
 
+                <TextInput
+                  style={styles.input}
+                  placeholder="Frame title (optional)"
+                  placeholderTextColor="#888"
+                  value={title}
+                  onChangeText={setTitle}
+                />
                 <TextInput
                   style={styles.input}
                   placeholder="Description"
@@ -208,6 +250,49 @@ export function SessionScreenshotDetailsModal({
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
+
+      <ReportImageCropModal
+        visible={cropOpen && !!previewUri}
+        imageUri={previewUri ?? ""}
+        onClose={() => setCropOpen(false)}
+        onCropped={(uri) => {
+          setLocalPreview(uri);
+          void (async () => {
+            if (imageKey) {
+              try {
+                const presignBody = await requestCropImageUpload({
+                  sessions: sessionId,
+                  trainer: trainerId,
+                  trainee: traineeId,
+                  oldFile: imageKey,
+                });
+                const uploadUrl = extractPresignedPutUrl(presignBody);
+                if (!uploadUrl) throw new Error("Could not prepare crop upload.");
+                await putFileToPresignedUrl(uploadUrl, uri, "image/jpeg");
+                const newKey =
+                  extractPresignedFilename(presignBody) ??
+                  extractPresignedFilename(
+                    (presignBody as { data?: unknown })?.data
+                  ) ??
+                  imageKey;
+                onImageKeyUpdated?.(newKey);
+                if (newKey !== imageKey) {
+                  Alert.alert(
+                    "Crop saved",
+                    "The cropped frame was uploaded to your game plan."
+                  );
+                }
+              } catch (e: unknown) {
+                const msg = e instanceof Error ? e.message : "Crop upload failed.";
+                Alert.alert("Crop failed", msg);
+              }
+            } else {
+              onPreviewUriChange?.(uri);
+            }
+          })();
+          setCropOpen(false);
+        }}
+      />
     </Modal>
   );
 }
@@ -251,6 +336,23 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 8,
   },
+  toolRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  toolBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#000080",
+  },
+  toolBtnText: { fontSize: 13, fontWeight: "600", color: "#000080" },
   loadingText: {
     textAlign: "center",
     padding: 40,
@@ -263,7 +365,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
     fontSize: 14,
-    minHeight: 72,
+    minHeight: 44,
     textAlignVertical: "top",
   },
   addBtn: {

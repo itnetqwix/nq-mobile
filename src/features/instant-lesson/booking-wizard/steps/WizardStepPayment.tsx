@@ -13,6 +13,7 @@ import {
 import { apiClient } from "../../../../api/client";
 import { API_ROUTES } from "../../../../config/apiRoutes";
 import { unwrapApiData } from "../../../../lib/http/unwrapApiData";
+import { getApiErrorMessage } from "../../../../lib/http/getApiErrorMessage";
 import { radii, space, useStaticStyles, useThemeColors } from "../../../../theme";
 import { useAuth } from "../../../auth/context/AuthContext";
 import { fetchSessionPricingQuote } from "../../../payments/fetchSessionPricingQuote";
@@ -187,10 +188,8 @@ export function WizardStepPayment({
         return;
       }
       setPaymentReady(true);
-    } catch (e: any) {
-      const msg =
-        e?.response?.data?.message ?? e?.response?.data?.error ?? e?.message ?? "Could not set up payment.";
-      Alert.alert("Payment error", msg);
+    } catch (e: unknown) {
+      Alert.alert("Payment error", getApiErrorMessage(e, "Could not set up payment."));
     } finally {
       setLoading(false);
     }
@@ -248,10 +247,19 @@ export function WizardStepPayment({
         quoteId: pricingQuote?.quoteId ?? priceInfo?.quoteId,
         pricingQuote,
       });
-    } catch (e: any) {
-      Alert.alert("Wallet payment", e?.response?.data?.error ?? e?.message ?? "Could not verify PIN.");
+    } catch (e: unknown) {
+      Alert.alert("Wallet payment", getApiErrorMessage(e, "Could not verify PIN."));
     }
-  }, [wallet.needsPin, pin, pinSessionToken, wallet.storedPinToken, completePayment, payableAmount]);
+  }, [
+    wallet.needsPin,
+    pin,
+    pinSessionToken,
+    wallet.storedPinToken,
+    completePayment,
+    totalToCharge,
+    pricingQuote,
+    priceInfo,
+  ]);
 
   const handlePay = useCallback(async () => {
     if (priceInfo?.skip || payableAmount <= 0) {
@@ -355,7 +363,7 @@ export function WizardStepPayment({
           <Pressable style={sharedStepStyles.primaryBtn} onPress={handleWalletPay}>
             <Ionicons name="wallet-outline" size={18} color={c.brandTextOn} />
             <Text style={sharedStepStyles.primaryBtnText}>
-              Pay {fmt(payableAmount, { currency: activeCurrency })} with wallet (
+              Pay {fmt(totalToCharge, { currency: activeCurrency })} with wallet (
               {fmt(wallet.available, { currency: activeCurrency })} available)
             </Text>
           </Pressable>
@@ -425,14 +433,16 @@ export function WizardStepPayment({
       {!loading && !isFree && priceInfo?.clientSecret ? (
         <PlatformPayButtonRow
           clientSecret={priceInfo.clientSecret}
-          amount={payableAmount}
+          amount={totalToCharge}
           currency={activeCurrency}
           merchantName="NetQwix"
           onSuccess={(intentId) => {
             completePayment({
               paymentIntentId: intentId,
-              chargingPrice: payableAmount,
+              chargingPrice: totalToCharge,
               paymentMethod: "card",
+              quoteId: pricingQuote?.quoteId ?? priceInfo?.quoteId,
+              pricingQuote,
             });
           }}
           onError={(msg) => Alert.alert("Payment failed", msg)}

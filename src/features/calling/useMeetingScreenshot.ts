@@ -37,6 +37,13 @@ type Args = {
   /** Called when background upload completes so UI can enable Save. */
   onUploadReady?: (imageKey: string) => void;
   onUploadFailed?: (message: string) => void;
+  /** Burn Skia annotations onto clip thumbnails / unreliable view-shot frames. */
+  applyAnnotationBurnIn?: (localUri: string) => Promise<string | null>;
+  /** Dedicated off-screen RTCView capture (live lesson, no clips). */
+  captureLiveFrame?: () => Promise<string | null>;
+  isLiveVideoReady?: () => boolean;
+  /** Fired when a new upload starts (e.g. after crop replaces the file). */
+  onUploadRestart?: () => void;
 };
 
 const CAPTURE_SETTLE_MS = 32;
@@ -67,6 +74,10 @@ export function useMeetingScreenshot({
   onCaptured,
   onUploadReady,
   onUploadFailed,
+  applyAnnotationBurnIn,
+  captureLiveFrame,
+  isLiveVideoReady,
+  onUploadRestart,
 }: Args) {
   const captureTargetRef = useRef<View>(null);
   const compositeHostRef = useRef<View>(null);
@@ -119,26 +130,43 @@ export function useMeetingScreenshot({
     []
   );
 
-  const captureViewShot = useCallback(async (ref: RefObject<View | null>) => {
-    if (!ref.current) return null;
-    try {
-      const uri = await captureRef(ref, {
-        format: "jpg",
-        quality: 0.88,
-        result: "tmpfile",
-        ...(Platform.OS === "ios" ? { snapshotContent: "texture" as const } : {}),
-      });
-      const normalized = uri.split("?")[0];
-      const info = await FileSystem.getInfoAsync(normalized);
-      if (info.exists && "size" in info && typeof info.size === "number") {
-        if (info.size >= MIN_CAPTURE_BYTES) return uri;
+  const tryViewShot = useCallback(
+    async (ref: RefObject<View | null>, extra?: Record<string, unknown>) => {
+      if (!ref.current) return null;
+      try {
+        const uri = await captureRef(ref, {
+          format: "jpg",
+          quality: 0.88,
+          result: "tmpfile",
+          ...extra,
+        });
+        const normalized = uri.split("?")[0];
+        const info = await FileSystem.getInfoAsync(normalized);
+        if (info.exists && "size" in info && typeof info.size === "number") {
+          if (info.size >= MIN_CAPTURE_BYTES) return uri;
+        }
+      } catch (e) {
+        if (__DEV__) console.warn("[meeting] view-shot capture failed", e);
       }
       return null;
-    } catch (e) {
-      if (__DEV__) console.warn("[meeting] view-shot capture failed", e);
+    },
+    []
+  );
+
+  const captureViewShot = useCallback(
+    async (ref: RefObject<View | null>) => {
+      const strategies =
+        Platform.OS === "ios"
+          ? [{ snapshotContent: "texture" as const }, { snapshotContent: "renderInContext" as const }, {}]
+          : [{}, { snapshotContent: "texture" as const }];
+      for (const strategy of strategies) {
+        const uri = await tryViewShot(ref, strategy);
+        if (uri) return uri;
+      }
       return null;
-    }
-  }, []);
+    },
+    [tryViewShot]
+  );
 
   const framesReadyPromiseRef = useRef<{
     resolve: () => void;
@@ -240,17 +268,37 @@ export function useMeetingScreenshot({
         if (clipSources?.length) {
           localUri = await captureFromClipSources(clipSources);
         }
+
+        const liveReady = isLiveVideoReady?.() ?? false;
+        if (!localUri && liveReady && captureLiveFrame) {
+          await delay(96);
+          localUri = await captureLiveFrame();
+        }
         if (!localUri) {
+          await delay(liveReady ? 48 : CAPTURE_SETTLE_MS);
           localUri = await captureViewShot(captureTargetRef);
         }
         if (!localUri && clipSources?.length) {
           localUri = await captureFromClipSources(clipSources);
         }
+        if (!localUri && captureLiveFrame && !clipSources?.length) {
+          localUri = await captureLiveFrame();
+        }
 
         if (!localUri) {
-          throw new Error(
-            "Could not capture this frame. Use a loaded clip, or wait for video to render, then try again."
-          );
+          const hint = liveReady
+            ? "Video is still loading. Wait a moment and try again, or capture from a clip."
+            : "Could not capture this frame. Load a clip, focus live video, or wait until the camera feed is visible.";
+          throw new Error(hint);
+        }
+
+        if (applyAnnotationBurnIn) {
+          try {
+            const burned = await applyAnnotationBurnIn(localUri);
+            if (burned) localUri = burned;
+          } catch (e) {
+            if (__DEV__) console.warn("[meeting] annotation burn-in failed", e);
+          }
         }
 
         pendingPreviewUriRef.current = localUri;
@@ -278,6 +326,9 @@ export function useMeetingScreenshot({
       disposePendingPreview,
       isTrainer,
       onCaptured,
+      applyAnnotationBurnIn,
+      captureLiveFrame,
+      isLiveVideoReady,
       runBackgroundUpload,
       sessionId,
       traineeId,
@@ -285,9 +336,33 @@ export function useMeetingScreenshot({
     ]
   );
 
-  const captureStageFrame = useCallback(
-    () => captureViewShot(captureTargetRef),
-    [captureViewShot]
+  const captureStageFrame = useCallback(async () => {
+    if (isLiveVideoReady?.() && captureLiveFrame) {
+      const live = await captureLiveFrame();
+      if (live) return live;
+    }
+    return captureViewShot(captureTargetRef);
+  }, [captureLiveFrame, captureViewShot, isLiveVideoReady]);
+
+  const replacePendingUpload = useCallback(
+    async (newLocalUri: string) => {
+      const generation = ++uploadGenerationRef.current;
+      pendingPreviewUriRef.current = newLocalUri;
+      onUploadRestart?.();
+      const presignPromise = requestScreenshotUpload({
+        sessions: sessionId,
+        trainer: trainerId,
+        trainee: traineeId,
+      });
+      runBackgroundUpload(newLocalUri, presignPromise, generation);
+    },
+    [
+      onUploadRestart,
+      runBackgroundUpload,
+      sessionId,
+      traineeId,
+      trainerId,
+    ]
   );
 
   return {
@@ -304,5 +379,6 @@ export function useMeetingScreenshot({
     disposePendingPreview,
     hasCaptures: captureCount > 0 || screenshotKeys.length > 0,
     captureStageFrame,
+    replacePendingUpload,
   };
 };

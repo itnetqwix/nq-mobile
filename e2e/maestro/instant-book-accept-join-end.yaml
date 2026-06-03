@@ -1,0 +1,40 @@
+# Instant lesson: trainee books → trainer accepts → both join → end (smoke)
+appId: ${APP_ID}
+env:
+  TRAINEE_EMAIL: ${TRAINEE_EMAIL}
+  TRAINEE_PASSWORD: ${TRAINEE_PASSWORD}
+---
+- launchApp
+- runFlow:
+    when:
+      visible: "Sign in"
+    commands:
+      - tapOn: "Email"
+      - inputText: ${TRAINEE_EMAIL}
+      - tapOn: "Password"
+      - inputText: ${TRAINEE_PASSWORD}
+      - tapOn: "Sign in"
+- extendedWaitUntil:
+    visible: "Book Expert"
+    timeout: 60000
+- tapOn: "Book Expert"
+- tapOn:
+    text: "Instant"
+    optional: true
+- tapOn:
+    text: "15"
+    optional: true
+- tapOn:
+    text: "Continue"
+    optional: true
+- tapOn:
+    text: "Pay"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      - "Waiting"
+      - "coach"
+      - "accepted"
+    timeout: 120000
+    optional: true
+# Trainer accept + join on second device — see README.

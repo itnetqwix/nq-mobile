@@ -19,6 +19,8 @@ import {
 } from "./constants";
 import { queryKeys } from "../../lib/queryKeys";
 import { confirmProceedToPaymentIfWalletShort } from "../../lib/booking/bookingWalletGuard";
+import { getApiErrorMessage } from "../../lib/http/getApiErrorMessage";
+import { chargeTotalDollars } from "../payments/pricingTypes";
 import { navigateToWalletTopUp } from "../../navigation/navigationRef";
 import { bookScheduledSession, fetchDayAvailability, validateSlotRange } from "./scheduledBookingApi";
 import {
@@ -360,7 +362,8 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
       const nextStep = SCHEDULED_WIZARD_STEPS[scheduledStepIndex(step) + 1];
       if (nextStep === "payment") {
         void (async () => {
-          const ok = await confirmProceedToPaymentIfWalletShort(payableAmount, (shortfall) => {
+          const quoteTotal = chargeTotalDollars(pricingQuote) ?? payableAmount;
+          const ok = await confirmProceedToPaymentIfWalletShort(quoteTotal, (shortfall) => {
             navigateToWalletTopUp(shortfall);
           });
           if (ok) setStep("payment");
@@ -376,6 +379,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     hourlyRate,
     expectedPrice,
     payableAmount,
+    pricingQuote,
   ]);
 
   const goBack = useCallback(() => {
@@ -489,11 +493,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
       );
     },
     onError: (err: unknown) => {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      Alert.alert(
-        "Booking failed",
-        e?.response?.data?.message ?? e?.message ?? "Could not book the session."
-      );
+      Alert.alert("Booking failed", getApiErrorMessage(err, "Could not book the session."));
     },
   });
 

@@ -9,13 +9,20 @@ function esc(s: string): string {
     .replace(/'/g, "&#039;");
 }
 
+export type GamePlanPdfMeta = {
+  trainerName?: string;
+  trainerAbout?: string;
+  traineeName?: string;
+  logoDataUrl?: string | null;
+};
+
 /** Web `reportModal.jsx` #report-pdf layout — cover page + screenshot sections. */
 export function buildGamePlanPdfHtml(
   imgDataUrls: string[],
   planTitle: string,
   planNotes: string,
   items: ReportScreenshotItem[],
-  meta?: { trainerName?: string; trainerAbout?: string }
+  meta?: GamePlanPdfMeta
 ): string {
   const dateLabel = new Date().toLocaleDateString(undefined, {
     year: "numeric",
@@ -23,13 +30,21 @@ export function buildGamePlanPdfHtml(
     day: "numeric",
   });
 
+  const logoBlock = meta?.logoDataUrl
+    ? `<img class="coverLogo" src="${meta.logoDataUrl}" alt="NetQwix" />`
+    : `<p class="brandFallback">NetQwix</p>`;
+
   const sections = imgDataUrls
     .map((src, i) => {
       const item = items[i];
-      const caption = item?.description?.trim() || item?.title?.trim() || "";
+      const shotTitle = item?.title?.trim() ?? "";
+      const caption = item?.description?.trim() || "";
+      const indexLabel = shotTitle
+        ? `Frame ${i + 1}: ${esc(shotTitle)}`
+        : `Frame ${i + 1}`;
       return `
         <section class="shot">
-          <p class="shotIndex">Frame ${i + 1}</p>
+          <p class="shotIndex">${indexLabel}</p>
           <div class="shotImg">
             <img src="${src}" alt="Screenshot ${i + 1}" />
           </div>
@@ -81,13 +96,25 @@ export function buildGamePlanPdfHtml(
         min-height: 90vh;
         padding-bottom: 24px;
       }
-      .brand {
+      .coverHeader {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      .coverLogo {
+        max-width: 200px;
+        max-height: 56px;
+        object-fit: contain;
+      }
+      .brandFallback {
         font-size: 11px;
         font-weight: 700;
         letter-spacing: 0.14em;
         text-transform: uppercase;
         color: #14328d;
-        margin: 0 0 8px;
+        margin: 0;
       }
       h1.coverTitle {
         margin: 0;
@@ -149,11 +176,14 @@ export function buildGamePlanPdfHtml(
   </head>
   <body>
     <div class="cover">
-      <p class="brand">NetQwix</p>
-      <h1 class="coverTitle">Game Plan</h1>
+      <div class="coverHeader">
+        <h1 class="coverTitle">Game Plan</h1>
+        ${logoBlock}
+      </div>
       <div class="meta">
         <p><strong>Date:</strong> ${esc(dateLabel)}</p>
-        <p class="topic">${esc(planTitle)}</p>
+        ${meta?.traineeName ? `<p><strong>Trainee:</strong> ${esc(meta.traineeName)}</p>` : ""}
+        <p class="topic"><strong>Topic:</strong> ${esc(planTitle)}</p>
         ${notesBlock}
       </div>
       ${trainerBlock}

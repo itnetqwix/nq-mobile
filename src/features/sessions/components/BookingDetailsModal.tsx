@@ -24,6 +24,10 @@ import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { formatDualTimezoneLine } from "../../../lib/sessions/formatDualTimezone";
 import { formatRefundTransferLabel } from "../../../lib/sessions/refundTransferLabel";
 import {
+  formatEscrowStatusLabel,
+  formatRefundStatusLabel,
+} from "../../../lib/payments/paymentStatusLabels";
+import {
   getViewerRatingSummary,
   hasViewerRated,
 } from "../../../lib/sessions/sessionRatingUtils";
@@ -273,7 +277,12 @@ export function BookingDetailsModal({
               {merged._refund?.status || merged.refund_status ? (
                 <Row
                   label="Refund status"
-                  value={String(merged._refund?.status ?? merged.refund_status)}
+                  value={
+                    formatRefundStatusLabel(
+                      String(merged._refund?.status ?? merged.refund_status),
+                      refundTransferLabel
+                    ) ?? String(merged._refund?.status ?? merged.refund_status)
+                  }
                 />
               ) : null}
               {refundReasonLabel ? (
@@ -282,7 +291,12 @@ export function BookingDetailsModal({
               {refundTransferLabel ? (
                 <Row label="Refund transfer" value={refundTransferLabel} />
               ) : null}
-              {escrow ? <Row label="Escrow" value={String(escrow.status ?? "—")} /> : null}
+              {escrow ? (
+                <Row
+                  label="Escrow"
+                  value={formatEscrowStatusLabel(String(escrow.status)) ?? String(escrow.status ?? "—")}
+                />
+              ) : null}
             </Section>
 
             {ratings ? (

@@ -222,7 +222,7 @@ Plus `booking-wizard/` (multi-step wizard) and `components/` (`InstantLessonInco
 - `sessions/screens/UpcomingSessionsScreen.tsx` + `sessions/components/{BookingDetailsModal, PostLessonConcernBanner, SessionsCalendar, SessionCountdownText, postLessonConcernDismissStore}`.
 - `sessions/SessionActionModal.tsx`, `sessions/SessionBookingContext.tsx`, `sessions/SessionLifecycleBridge.tsx` — booking lifecycle + cancel/reschedule.
 - `schedule/screens/ScheduleScreen.tsx` — trainer/trainee combined calendar.
-- `bookings/screens/ScheduledBookingModal.tsx` — booking modal.
+- `sessions/SessionBookingContext.tsx` + `SessionActionModal.tsx` — trainer scheduled booking popup (instant excluded).
 - `scheduled-booking/` — Wizard for scheduling lessons:
   - `ScheduledBookingWizardModal.tsx` + `useScheduledBookingWizard.ts` + `steps/` + `constants.ts` + `scheduledBookingApi.ts` + `timeSlotUtils.ts` + `trainerUtils.ts`.
 

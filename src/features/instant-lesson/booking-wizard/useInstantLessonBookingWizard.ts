@@ -20,6 +20,8 @@ import { fetchWalletBalance } from "../../wallet/walletApi";
 import { fetchInstantLessonEligibility } from "../../home/api/homeApi";
 import { fetchSessionPricingQuote } from "../../payments/fetchSessionPricingQuote";
 import type { PricingQuote } from "../../payments/pricingTypes";
+import { chargeTotalDollars } from "../../payments/pricingTypes";
+import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 
 function trainerIdOf(t: WizardTrainer): string {
   if (!t) return "";
@@ -279,7 +281,9 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     const nextStep = WIZARD_STEPS[i + 1];
     if (step === "clips" && nextStep === "payment" && requiresPayment && payableAmount > 0) {
       void (async () => {
-        const ok = await confirmProceedToPaymentIfWalletShort(payableAmount, (shortfall) => {
+        const quoteTotal =
+          chargeTotalDollars(pricingQuote ?? durationPreviewQuote) ?? payableAmount;
+        const ok = await confirmProceedToPaymentIfWalletShort(quoteTotal, (shortfall) => {
           navigateToWalletTopUp(shortfall);
         });
         if (ok) setStep("payment");
@@ -287,7 +291,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
       return;
     }
     if (i < WIZARD_STEPS.length - 1) setStep(WIZARD_STEPS[i + 1]!);
-  }, [step, validateCoupon, requiresPayment, payableAmount]);
+  }, [step, validateCoupon, requiresPayment, payableAmount, pricingQuote, durationPreviewQuote]);
 
   const goBack = useCallback(() => {
     const i = wizardStepIndex(step);
@@ -345,11 +349,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
       resetWizard();
     },
     onError: (err: unknown) => {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      Alert.alert(
-        "Booking failed",
-        e?.response?.data?.message ?? e?.message ?? "Could not book the instant lesson."
-      );
+      Alert.alert("Booking failed", getApiErrorMessage(err, "Could not book the instant lesson."));
     },
   });
 

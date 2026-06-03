@@ -287,7 +287,21 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
     setStream(null);
   };
 
+  const serverJoinBlocked = readiness?.can_join === false;
+  const serverJoinMessage =
+    readiness?.join_block_reason ?? readiness?.join_policy?.block_reason ?? null;
+
+  const joinGateBlocked =
+    serverJoinBlocked || (callSlotBlocked && !callSlotCanTakeOver);
+
   const handleJoin = (audioOnly = false) => {
+    if (serverJoinBlocked) {
+      Alert.alert(
+        "Cannot join yet",
+        serverJoinMessage ?? "This lesson is not ready to join."
+      );
+      return;
+    }
     if (callSlotBlocked && !callSlotCanTakeOver) {
       Alert.alert(
         "Session active elsewhere",
@@ -646,6 +660,23 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
         />
       </View>
 
+      {serverJoinBlocked && serverJoinMessage ? (
+        <View
+          style={[
+            styles.slotBanner,
+            {
+              backgroundColor: c.warning + "22",
+              borderColor: c.warning,
+            },
+          ]}
+        >
+          <Ionicons name="time-outline" size={18} color={c.warning} />
+          <Text style={[styles.slotBannerText, { color: c.warning }]}>
+            {serverJoinMessage}
+          </Text>
+        </View>
+      ) : null}
+
       {callSlotBlocked && callSlotMessage ? (
         <View
           style={[
@@ -705,17 +736,13 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
               {
                 backgroundColor: c.brandAccent,
                 opacity:
-                  permissionDenied ||
-                  callSlotChecking ||
-                  (callSlotBlocked && !callSlotCanTakeOver)
+                  permissionDenied || callSlotChecking || joinGateBlocked
                     ? 0.45
                     : 1,
               },
             ]}
             disabled={
-              permissionDenied ||
-              callSlotChecking ||
-              (callSlotBlocked && !callSlotCanTakeOver)
+              permissionDenied || callSlotChecking || joinGateBlocked
             }
             accessibilityRole="button"
           >
@@ -732,17 +759,13 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
             {
               backgroundColor: c.brandNavy,
               opacity:
-                permissionDenied ||
-                callSlotChecking ||
-                (callSlotBlocked && !callSlotCanTakeOver)
+                permissionDenied || callSlotChecking || joinGateBlocked
                   ? 0.45
                   : 1,
             },
           ]}
           disabled={
-            permissionDenied ||
-            callSlotChecking ||
-            (callSlotBlocked && !callSlotCanTakeOver)
+            permissionDenied || callSlotChecking || joinGateBlocked
           }
           accessibilityRole="button"
         >

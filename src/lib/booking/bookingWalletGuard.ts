@@ -5,24 +5,28 @@ import { fetchWalletBalance, fetchWalletConfig } from "../../features/wallet/wal
  * Soft guard before the payment step: if wallet pay is enabled and balance
  * is below the lesson price, offer top-up without blocking card payment.
  */
+/**
+ * @param priceDollars Lesson total including fees/taxes when known (quote charge total).
+ */
 export async function confirmProceedToPaymentIfWalletShort(
   priceDollars: number,
   onAddFunds?: (shortfall: number) => void
 ): Promise<boolean> {
-  if (priceDollars <= 0) return true;
+  const required = Math.max(0, Number(priceDollars) || 0);
+  if (required <= 0) return true;
   try {
     const [balance, config] = await Promise.all([fetchWalletBalance(), fetchWalletConfig()]);
     const walletEnabled = config?.walletPayEnabled !== false && config?.enabled !== false;
     if (!walletEnabled) return true;
 
     const available = balance?.balances?.available ?? 0;
-    if (available >= priceDollars) return true;
+    if (available >= required) return true;
 
-    const shortfall = Math.max(0, priceDollars - available);
+    const shortfall = Math.max(0, required - available);
     return await new Promise<boolean>((resolve) => {
       Alert.alert(
         "Wallet balance",
-        `You have $${available.toFixed(2)} available but this lesson is $${priceDollars.toFixed(2)}. Add funds or pay with card on the next step.`,
+        `You have $${available.toFixed(2)} available but this lesson is $${required.toFixed(2)}. Add funds or pay with card on the next step.`,
         [
           { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
           {

@@ -435,6 +435,16 @@ export function useDrawingSync({
     }
   }, [canvasIndex, drawingEnabled, isTrainer, sessionId, socket, userInfo]);
 
+  const getCaptureStrokes = useCallback((): RemoteStroke[] => {
+    if (isTrainer) return [...strokeBufferRef.current];
+    return [...remoteStrokes];
+  }, [isTrainer, remoteStrokes]);
+
+  const getLastCanvasSize = useCallback(
+    () => ({ ...lastCanvasSizeRef.current }),
+    []
+  );
+
   return {
     remoteStrokes,
     drawingEnabled,
@@ -443,6 +453,8 @@ export function useDrawingSync({
     emitStroke,
     clearCanvas,
     undoLastStroke,
+    getCaptureStrokes,
+    getLastCanvasSize,
     resetRemote: () => {
       setRemoteStrokes([]);
       strokeBufferRef.current = [];

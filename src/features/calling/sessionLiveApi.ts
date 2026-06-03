@@ -33,6 +33,15 @@ export type SessionJoinReadiness = {
     canTakeOver?: boolean;
     reason?: string;
   };
+  /** Server join gate (booking window + call slot). Prefer over client-only rules. */
+  can_join?: boolean;
+  join_block_reason?: string | null;
+  join_code?: string | null;
+  join_policy?: {
+    can_join: boolean;
+    block_reason: string | null;
+    join_code: string | null;
+  };
   extension_preview: {
     minutes: number;
     amount: number;
@@ -45,6 +54,8 @@ export type SessionJoinReadiness = {
   } | null;
   lesson_client_requirement?: "native_app";
   mixed_client_warning?: string | null;
+  peer_client_kind?: "native_app" | "web" | "unknown" | null;
+  viewer_client_kind?: "native_app" | "web" | "unknown" | null;
   recommended_clients?: string[];
 };
 

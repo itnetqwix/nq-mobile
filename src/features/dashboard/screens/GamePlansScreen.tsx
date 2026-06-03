@@ -16,6 +16,7 @@ import { isLikelyAudio, isLikelyPdf } from "../../../lib/clipMediaUrl";
 import { postReportsGetAll } from "../../home/api/homeApi";
 import { LockerListShell } from "../components/locker/LockerListShell";
 import { LockerViewerModal, type LockerViewerMode } from "../components/locker/LockerViewerModal";
+import { SessionGamePlanModal } from "../../calling/components/SessionGamePlanModal";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
@@ -87,6 +88,20 @@ export function GamePlansScreen() {
         backgroundColor: palette.surfaceMuted,
       },
       badgeText: { ...typography.caption, color: palette.textMuted, fontSize: 11 },
+      editBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        marginTop: 8,
+        alignSelf: "flex-start",
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        borderRadius: radii.pill,
+        borderWidth: 1,
+        borderColor: palette.border,
+        backgroundColor: palette.surfaceMuted,
+      },
+      editBtnText: { ...typography.caption, color: palette.brandNavy, fontWeight: "700" },
     })
   );
 
@@ -100,6 +115,13 @@ export function GamePlansScreen() {
     uri: string;
     title: string;
     mode: LockerViewerMode;
+  } | null>(null);
+
+  const [editPlan, setEditPlan] = useState<{
+    sessionId: string;
+    trainerId: string;
+    traineeId: string;
+    traineeName?: string;
   } | null>(null);
 
   const reportSections = useMemo(() => {
@@ -202,6 +224,28 @@ export function GamePlansScreen() {
                 const title = reportData?.title ?? String(item.title ?? t("gamePlans.planDefault"));
                 const uri = reportData?.imageUrl ? getS3ImageUrl(reportData.imageUrl) : "";
                 const kind = planKind(item);
+                const sessionId = String(
+                  item.sessions ??
+                    (item.session as { _id?: string } | undefined)?._id ??
+                    ""
+                );
+                const trainerId = String(
+                  (item.trainer as { _id?: string })?._id ?? item.trainer ?? ""
+                );
+                const traineeId = String(
+                  (item.trainee as { _id?: string })?._id ?? item.trainee ?? ""
+                );
+                const traineeLabel = String(
+                  (item.trainee as { fullname?: string; fullName?: string })?.fullname ??
+                    (item.trainee as { fullName?: string })?.fullName ??
+                    ""
+                );
+                const canEdit =
+                  accountType !== AccountType.TRAINEE &&
+                  !!sessionId &&
+                  !!trainerId &&
+                  !!traineeId;
+
                 return (
                   <Pressable
                     key={`plan-${String(item._id ?? "row")}-${index}`}
@@ -235,6 +279,24 @@ export function GamePlansScreen() {
                     <Text style={styles.planTitle} numberOfLines={2}>
                       {title}
                     </Text>
+                    {canEdit ? (
+                      <Pressable
+                        style={styles.editBtn}
+                        onPress={(e) => {
+                          e.stopPropagation?.();
+                          setEditPlan({
+                            sessionId,
+                            trainerId,
+                            traineeId,
+                            traineeName: traineeLabel || undefined,
+                          });
+                        }}
+                        hitSlop={8}
+                      >
+                        <Ionicons name="create-outline" size={18} color={c.brandNavy} />
+                        <Text style={styles.editBtnText}>{t("gamePlans.edit", "Edit plan")}</Text>
+                      </Pressable>
+                    ) : null}
                     <View style={styles.badgeRow}>
                       {kind !== "none" ? (
                         <View style={styles.badge}>
@@ -267,6 +329,22 @@ export function GamePlansScreen() {
           ))
         )}
       </LockerListShell>
+
+      {editPlan ? (
+        <SessionGamePlanModal
+          visible
+          sessionId={editPlan.sessionId}
+          trainerId={editPlan.trainerId}
+          traineeId={editPlan.traineeId}
+          traineeName={editPlan.traineeName}
+          lockerEdit
+          onClose={() => setEditPlan(null)}
+          onSaved={() => {
+            setEditPlan(null);
+            void reportsQ.refetch();
+          }}
+        />
+      ) : null}
 
       <LockerViewerModal
         visible={!!viewer}

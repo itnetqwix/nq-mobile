@@ -20,11 +20,10 @@ import {
   selectPendingBookingSessions,
 } from "../../store/selectors";
 import { fetchScheduledMeetings } from "../home/api/homeApi";
+import { shouldOpenTrainerScheduledBookingPopup } from "../../lib/booking/bookingWizardValidation";
 import {
   extractBookingIdFromNotification,
-  isInstantLesson,
   isNewBookingNotificationTitle,
-  isPendingBooking,
   shouldShowInDashboardRequests,
 } from "../../lib/sessions/sessionUtils";
 import { invalidateOnBookingSocketEvent } from "../../lib/socketInvalidate";
@@ -118,8 +117,12 @@ export function SessionBookingProvider({ children }: { children: React.ReactNode
             )
           : pending[0];
 
-        if (match && shouldShowInDashboardRequests(match)) {
-          if (isInstantLesson(match)) return;
+        if (
+          shouldOpenTrainerScheduledBookingPopup(
+            match,
+            !!match && shouldShowInDashboardRequests(match)
+          )
+        ) {
           knownPendingIdsRef.current.add(String(match._id));
           showSessionModal(match);
           return;
@@ -138,7 +141,9 @@ export function SessionBookingProvider({ children }: { children: React.ReactNode
     if (!pendingSeededRef.current) {
       ids.forEach((id) => knownPendingIdsRef.current.add(id));
       pendingSeededRef.current = true;
-      const firstScheduled = pending.find((s) => !isInstantLesson(s));
+      const firstScheduled = pending.find((s) =>
+        shouldOpenTrainerScheduledBookingPopup(s, shouldShowInDashboardRequests(s))
+      );
       if (firstScheduled) {
         showSessionModal(firstScheduled);
       }
@@ -146,7 +151,14 @@ export function SessionBookingProvider({ children }: { children: React.ReactNode
     }
 
     for (const session of pending) {
-      if (isInstantLesson(session)) continue;
+      if (
+        !shouldOpenTrainerScheduledBookingPopup(
+          session,
+          shouldShowInDashboardRequests(session)
+        )
+      ) {
+        continue;
+      }
       const id = String(session._id);
       if (!knownPendingIdsRef.current.has(id)) {
         knownPendingIdsRef.current.add(id);

@@ -188,6 +188,7 @@ export const API_ROUTES = {
     getTrainersWithSlots: "/trainee/get-trainers-with-slots",
     bookSession: "/trainee/book-session",
     bookInstantMeeting: "/trainee/book-instant-meeting",
+    cancelInstantLesson: "/trainee/cancel-instant-lesson",
     instantLessonEligibility: "/trainee/instant-lesson/eligibility",
     profile: "/trainee/profile",
     checkSlot: "/trainee/check-slot",

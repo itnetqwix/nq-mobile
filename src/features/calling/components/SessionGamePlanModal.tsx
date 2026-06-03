@@ -28,8 +28,18 @@ import { fetchStorageInfo } from "../../home/api/homeApi";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { putFileToPresignedUrl } from "../../../lib/presignedPut";
-import { extractPresignedPutUrl } from "../../../lib/http/extractPresignedUrl";
-import { fetchSessionReport } from "../meetingReportApi";
+import {
+  extractPresignedFilename,
+  extractPresignedPutUrl,
+} from "../../../lib/http/extractPresignedUrl";
+import {
+  fetchSessionReport,
+  removeReportImage,
+  requestCropImageUpload,
+} from "../meetingReportApi";
+import { getNetQwixLogoDataUrl } from "../gamePlanBrandLogo";
+import { LockerViewerModal } from "../../dashboard/components/locker/LockerViewerModal";
+import { ReportImageCropModal } from "./ReportImageCropModal";
 import {
   parseReportScreenshotItems,
   requireBase64DataUrlsForPdf,
@@ -51,6 +61,10 @@ type Props = {
   trainerId: string;
   traineeId: string;
   trainerName?: string;
+  traineeName?: string;
+  /** Edit an existing locker plan (no post-call chat flow). */
+  lockerEdit?: boolean;
+  onSaved?: () => void;
   onClose: () => void;
 };
 
@@ -60,6 +74,9 @@ export function SessionGamePlanModal({
   trainerId,
   traineeId,
   trainerName,
+  traineeName,
+  lockerEdit = false,
+  onSaved,
   onClose,
 }: Props) {
   const insets = useSafeAreaInsets();
@@ -70,6 +87,10 @@ export function SessionGamePlanModal({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveStep, setSaveStep] = useState<"idle" | "pdf" | "upload" | "report">("idle");
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const [cropIndex, setCropIndex] = useState<number | null>(null);
+  const [cropUri, setCropUri] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -94,13 +115,112 @@ export function SessionGamePlanModal({
     if (visible) void load();
   }, [visible, load]);
 
-  const updateItemDescription = (index: number, description: string) => {
+  const updateItemField = (
+    index: number,
+    field: "description" | "title",
+    value: string
+  ) => {
     setReportItems((prev) => {
       const next = [...prev];
       if (!next[index]) return prev;
-      next[index] = { ...next[index], description };
+      next[index] = { ...next[index], [field]: value };
       return next;
     });
+  };
+
+  const moveShot = (index: number, dir: -1 | 1) => {
+    setReportItems((prev) => {
+      const next = [...prev];
+      const target = index + dir;
+      if (target < 0 || target >= next.length) return prev;
+      const tmp = next[index];
+      next[index] = next[target];
+      next[target] = tmp;
+      return next;
+    });
+  };
+
+  const removeShot = (index: number) => {
+    const item = reportItems[index];
+    if (!item?.imageUrl) return;
+    Alert.alert("Remove frame?", "This screenshot will be removed from the game plan.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: () => {
+          void (async () => {
+            try {
+              await removeReportImage({
+                sessions: sessionId,
+                trainer: trainerId,
+                trainee: traineeId,
+                filename: item.imageUrl,
+              });
+              setReportItems((prev) => prev.filter((_, i) => i !== index));
+            } catch (e: unknown) {
+              const msg = e instanceof Error ? e.message : "Could not remove screenshot.";
+              Alert.alert("Remove failed", msg);
+            }
+          })();
+        },
+      },
+    ]);
+  };
+
+  const uploadCroppedFrame = async (index: number, oldFile: string, localUri: string) => {
+    const presignBody = await requestCropImageUpload({
+      sessions: sessionId,
+      trainer: trainerId,
+      trainee: traineeId,
+      oldFile,
+    });
+    const uploadUrl = extractPresignedPutUrl(presignBody);
+    if (!uploadUrl) throw new Error("Could not prepare crop upload.");
+    await putFileToPresignedUrl(uploadUrl, localUri, "image/jpeg");
+    const newKey =
+      extractPresignedFilename(presignBody) ??
+      extractPresignedFilename(presignBody?.data) ??
+      oldFile;
+    setReportItems((prev) => {
+      const next = [...prev];
+      if (!next[index]) return prev;
+      next[index] = { ...next[index], imageUrl: newKey };
+      return next;
+    });
+  };
+
+  const buildPlanPdf = useCallback(async () => {
+    const payloadItems = toReportDataPayload(reportItems);
+    if (!payloadItems.length) throw new Error("Add at least one screenshot to preview the PDF.");
+    const keys = payloadItems.map((i) => i.imageUrl);
+    const dataUrls = await requireBase64DataUrlsForPdf(keys);
+    const logoDataUrl = await getNetQwixLogoDataUrl();
+    const html = buildGamePlanPdfHtml(
+      dataUrls,
+      title.trim() || "Session",
+      topic.trim(),
+      payloadItems,
+      { trainerName, traineeName, logoDataUrl }
+    );
+    return printHtmlToPdfFile(html);
+  }, [reportItems, title, topic, trainerName, traineeName]);
+
+  const previewPdf = async () => {
+    if (!title.trim()) {
+      Alert.alert("Title required", "Add a topic title before previewing the PDF.");
+      return;
+    }
+    setPreviewBusy(true);
+    try {
+      const { uri } = await buildPlanPdf();
+      setPreviewUri(uri);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Could not build preview.";
+      Alert.alert("Preview failed", msg);
+    } finally {
+      setPreviewBusy(false);
+    }
   };
 
   const sendSummaryToChat = useCallback(
@@ -139,16 +259,7 @@ export function SessionGamePlanModal({
           );
         } else {
           try {
-            const keys = payloadItems.map((i) => i.imageUrl);
-            const dataUrls = await requireBase64DataUrlsForPdf(keys);
-            const html = buildGamePlanPdfHtml(
-              dataUrls,
-              title.trim(),
-              topic.trim(),
-              payloadItems,
-              { trainerName }
-            );
-            const { uri: pdfUri } = await printHtmlToPdfFile(html);
+            const { uri: pdfUri } = await buildPlanPdf();
             let pdfBytes = 0;
             try {
               const info = await FileSystem.getInfoAsync(pdfUri);
@@ -194,13 +305,15 @@ export function SessionGamePlanModal({
         reportData: payloadItems,
       });
 
-      emitNotification({
-        title: NOTIFICATION_TITLES.gamePlanReport,
-        description: "Your coach shared a game plan. Open Game plans in your locker.",
-        receiverId: traineeId,
-        senderId: trainerId,
-        bookingInfo: { sessionId },
-      });
+      if (!lockerEdit) {
+        emitNotification({
+          title: NOTIFICATION_TITLES.gamePlanReport,
+          description: "Your coach shared a game plan. Open Game plans in your locker.",
+          receiverId: traineeId,
+          senderId: trainerId,
+          bookingInfo: { sessionId },
+        });
+      }
 
       if (alsoSendToChat) {
         try {
@@ -225,6 +338,7 @@ export function SessionGamePlanModal({
               ? "Screenshots are in your locker under Game plans."
               : "Plan saved. Add screenshots during your next lesson for a richer PDF."
       );
+      onSaved?.();
       onClose();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Try again.";
@@ -311,6 +425,47 @@ export function SessionGamePlanModal({
               ) : (
                 reportItems.map((item, index) => (
                   <View key={`${item.imageUrl}-${index}`} style={styles.shotCard}>
+                    <View style={styles.shotToolbar}>
+                      <Pressable
+                        onPress={() => moveShot(index, -1)}
+                        disabled={index === 0}
+                        hitSlop={8}
+                      >
+                        <Ionicons
+                          name="chevron-up"
+                          size={22}
+                          color={index === 0 ? meetingTheme.textMuted : meetingTheme.navy}
+                        />
+                      </Pressable>
+                      <Pressable
+                        onPress={() => moveShot(index, 1)}
+                        disabled={index === reportItems.length - 1}
+                        hitSlop={8}
+                      >
+                        <Ionicons
+                          name="chevron-down"
+                          size={22}
+                          color={
+                            index === reportItems.length - 1
+                              ? meetingTheme.textMuted
+                              : meetingTheme.navy
+                          }
+                        />
+                      </Pressable>
+                      <View style={styles.shotToolbarSpacer} />
+                      <Pressable
+                        onPress={() => {
+                          setCropIndex(index);
+                          setCropUri(getS3ImageUrl(item.imageUrl));
+                        }}
+                        hitSlop={8}
+                      >
+                        <Ionicons name="crop-outline" size={22} color={meetingTheme.navy} />
+                      </Pressable>
+                      <Pressable onPress={() => removeShot(index)} hitSlop={8}>
+                        <Ionicons name="trash-outline" size={22} color="#c0392b" />
+                      </Pressable>
+                    </View>
                     <Image
                       source={{ uri: getS3ImageUrl(item.imageUrl) }}
                       style={styles.shotImage}
@@ -318,11 +473,18 @@ export function SessionGamePlanModal({
                     />
                     <Text style={styles.shotIndex}>Frame {index + 1}</Text>
                     <TextInput
+                      style={styles.input}
+                      placeholder="Frame title (optional, shown in PDF)"
+                      placeholderTextColor={meetingTheme.textMuted}
+                      value={item.title ?? ""}
+                      onChangeText={(t) => updateItemField(index, "title", t)}
+                    />
+                    <TextInput
                       style={[styles.input, styles.shotNotes]}
                       placeholder="Notes for this frame (shown in PDF)"
                       placeholderTextColor={meetingTheme.textMuted}
                       value={item.description ?? ""}
-                      onChangeText={(t) => updateItemDescription(index, t)}
+                      onChangeText={(t) => updateItemField(index, "description", t)}
                       multiline
                     />
                   </View>
@@ -332,27 +494,83 @@ export function SessionGamePlanModal({
 
             <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
               <Pressable
-                style={[styles.btnPrimary, saving && styles.btnDisabled]}
-                onPress={() => void save(true)}
-                disabled={saving}
+                style={[styles.btnPreview, (saving || previewBusy) && styles.btnDisabled]}
+                onPress={() => void previewPdf()}
+                disabled={saving || previewBusy || reportItems.length === 0}
               >
-                <Text style={styles.btnPrimaryText}>
-                  {saveLabel ?? "Save & notify trainee"}
+                <Text style={styles.btnPreviewText}>
+                  {previewBusy ? "Building preview…" : "Preview PDF"}
                 </Text>
               </Pressable>
-              <Pressable
-                style={[styles.btnSecondary, saving && styles.btnDisabled]}
-                onPress={() => void save(false)}
-                disabled={saving}
-              >
-                <Text style={styles.btnSecondaryText}>
-                  {saveLabel ?? "Save to locker only"}
-                </Text>
-              </Pressable>
+              {lockerEdit ? (
+                <Pressable
+                  style={[styles.btnPrimary, saving && styles.btnDisabled]}
+                  onPress={() => void save(false)}
+                  disabled={saving}
+                >
+                  <Text style={styles.btnPrimaryText}>
+                    {saveLabel ?? "Save changes"}
+                  </Text>
+                </Pressable>
+              ) : (
+                <>
+                  <Pressable
+                    style={[styles.btnPrimary, saving && styles.btnDisabled]}
+                    onPress={() => void save(true)}
+                    disabled={saving}
+                  >
+                    <Text style={styles.btnPrimaryText}>
+                      {saveLabel ?? "Save & notify trainee"}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.btnSecondary, saving && styles.btnDisabled]}
+                    onPress={() => void save(false)}
+                    disabled={saving}
+                  >
+                    <Text style={styles.btnSecondaryText}>
+                      {saveLabel ?? "Save to locker only"}
+                    </Text>
+                  </Pressable>
+                </>
+              )}
             </View>
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
+
+      <ReportImageCropModal
+        visible={cropIndex !== null && !!cropUri}
+        imageUri={cropUri ?? ""}
+        onClose={() => {
+          setCropIndex(null);
+          setCropUri(null);
+        }}
+        onCropped={(uri) => {
+          const idx = cropIndex;
+          const oldFile = idx !== null ? reportItems[idx]?.imageUrl : null;
+          if (idx === null || !oldFile) return;
+          void (async () => {
+            try {
+              await uploadCroppedFrame(idx, oldFile, uri);
+            } catch (e: unknown) {
+              const msg = e instanceof Error ? e.message : "Crop upload failed.";
+              Alert.alert("Crop failed", msg);
+            } finally {
+              setCropIndex(null);
+              setCropUri(null);
+            }
+          })();
+        }}
+      />
+
+      <LockerViewerModal
+        visible={!!previewUri}
+        uri={previewUri ?? ""}
+        title="Game plan preview"
+        mode="pdf"
+        onClose={() => setPreviewUri(null)}
+      />
     </Modal>
   );
 }
@@ -435,6 +653,22 @@ const styles = StyleSheet.create({
     color: meetingTheme.navy,
   },
   shotNotes: { marginTop: 6, minHeight: 64 },
+  shotToolbar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 8,
+  },
+  shotToolbarSpacer: { flex: 1 },
+  btnPreview: {
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: meetingTheme.navy,
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+  btnPreviewText: { color: meetingTheme.navy, fontWeight: "700", fontSize: 15 },
   footer: {
     paddingHorizontal: 16,
     paddingTop: 10,

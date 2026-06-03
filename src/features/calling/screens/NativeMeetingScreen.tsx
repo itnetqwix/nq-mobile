@@ -131,7 +131,22 @@ import { SessionGamePlanModal } from "../components/SessionGamePlanModal";
 import { SessionScreenshotSheet } from "../components/SessionScreenshotSheet";
 import { SessionScreenshotDetailsModal } from "../components/SessionScreenshotDetailsModal";
 import { ScreenshotCompositeHost } from "../components/ScreenshotCompositeHost";
+import {
+  AnnotationBurnInHost,
+  type AnnotationBurnInHostHandle,
+} from "../components/AnnotationBurnInHost";
+import { LiveVideoCaptureHost } from "../components/LiveVideoCaptureHost";
+import {
+  captureLiveVideoFrame,
+  isMediaStreamVideoReady,
+} from "../captureLiveVideoFrame";
+import { useScreenshotUploadRetry } from "../useScreenshotUploadRetry";
 import type { ScreenshotCaptureSource } from "../useMeetingScreenshot";
+import {
+  enqueueScreenshotUpload,
+  replaceQueuedUploadUri,
+} from "../screenshotUploadQueue";
+import type { MediaStream } from "react-native-webrtc";
 import { RecordingBar } from "../components/RecordingBar";
 import { useInstantLessonRecording } from "../useInstantLessonRecording";
 import { persistTraineeClipsOnBooking } from "../traineeMidLessonClips";
@@ -896,6 +911,9 @@ function MeetingSurface({
     }
   }, [isTrainer, meetingLayout.tiles, applyRemoteTiles, meetingBounds]);
 
+  const burnInHostRef = useRef<AnnotationBurnInHostHandle>(null);
+  const liveCaptureRef = useRef<View>(null);
+
   const drawingSync = useDrawingSync({
     socket,
     userInfo: { from_user: myId, to_user: peerId },
@@ -946,12 +964,43 @@ function MeetingSurface({
     drawingSync.replaySocketState,
   ]);
 
+  const applyAnnotationBurnIn = useCallback(
+    async (localUri: string) => {
+      const strokes = drawingSync.getCaptureStrokes();
+      if (!strokes.length) return null;
+      const canvasSize = drawingSync.getLastCanvasSize();
+      return burnInHostRef.current?.composite(localUri, strokes, canvasSize) ?? null;
+    },
+    [drawingSync]
+  );
+
+  const pendingScreenshotPreviewRef = useRef<string | null>(null);
+  const screenshotLiveStreamRef = useRef<MediaStream | null>(remoteStream);
+  const [screenshotLiveStream, setScreenshotLiveStream] = useState<MediaStream | null>(
+    remoteStream
+  );
+
+  const captureLiveFrameForScreenshot = useCallback(
+    () => captureLiveVideoFrame(liveCaptureRef),
+    []
+  );
+
+  const isLiveVideoReadyForScreenshot = useCallback(
+    () => isMediaStreamVideoReady(screenshotLiveStreamRef.current),
+    []
+  );
+
   const screenshot = useMeetingScreenshot({
     sessionId: lessonId,
     trainerId: isTrainer ? myId : peerId,
     traineeId: isTrainer ? peerId : myId,
     isTrainer,
+    applyAnnotationBurnIn,
+    captureLiveFrame: captureLiveFrameForScreenshot,
+    isLiveVideoReady: isLiveVideoReadyForScreenshot,
+    onUploadRestart: () => setPendingScreenshotKey(null),
     onCaptured: ({ localUri }) => {
+      pendingScreenshotPreviewRef.current = localUri;
       setPendingScreenshotPreviewUri(localUri);
       setPendingScreenshotKey(null);
       setScreenshotDetailsOpen(true);
@@ -965,11 +1014,30 @@ function MeetingSurface({
       setPendingScreenshotKey(imageKey);
     },
     onUploadFailed: (message) => {
+      const queuedUri = pendingScreenshotPreviewRef.current;
+      if (queuedUri) {
+        void enqueueScreenshotUpload({
+          localUri: queuedUri,
+          sessionId: lessonId,
+          trainerId: myId,
+          traineeId: peerId,
+        });
+      }
       pushLocalToast({
-        title: "Upload failed",
-        description: message,
+        title: "Upload queued",
+        description: __DEV__
+          ? `${message} — saved locally; we'll retry when you're back online.`
+          : "Saved locally — we'll retry when you're back online.",
         type: NOTIFICATION_TYPES.DEFAULT,
       });
+    },
+  });
+
+  useScreenshotUploadRetry(isTrainer, {
+    sessionId: lessonId,
+    onUploaded: (imageKey) => {
+      setPendingScreenshotKey(imageKey);
+      void screenshot.refreshScreenshots();
     },
   });
 
@@ -1609,6 +1677,18 @@ function MeetingSurface({
   );
   const focusedIsRemote = inLiveFocus && String(meetingLayout.focusedStreamId) === String(peerId);
 
+  useEffect(() => {
+    const stream = inLiveFocus
+      ? focusedIsLocal
+        ? localStream
+        : remoteStream
+      : isTrainer
+        ? remoteStream
+        : localStream;
+    screenshotLiveStreamRef.current = stream;
+    setScreenshotLiveStream(stream);
+  }, [inLiveFocus, focusedIsLocal, isTrainer, localStream, remoteStream]);
+
   const exitClipMode = useCallback(() => {
     setActiveClipUri(null);
     clipSync.selectClip(null);
@@ -1863,6 +1943,10 @@ function MeetingSurface({
         onLayout={() => {}}
         onFramesReady={screenshot.onCompositeFramesReady}
       />
+      {isTrainer ? <AnnotationBurnInHost ref={burnInHostRef} /> : null}
+      {isTrainer ? (
+        <LiveVideoCaptureHost stream={screenshotLiveStream} captureRef={liveCaptureRef} />
+      ) : null}
 
       {/* Remote video / clip pane */}
       <View
@@ -2558,6 +2642,16 @@ function MeetingSurface({
               setPendingScreenshotPreviewUri(null);
               screenshot.disposePendingPreview?.();
             }}
+            onPreviewUriChange={(uri) => {
+              const prev = pendingScreenshotPreviewRef.current;
+              pendingScreenshotPreviewRef.current = uri;
+              setPendingScreenshotPreviewUri(uri);
+              if (!pendingScreenshotKey) {
+                void screenshot.replacePendingUpload(uri);
+                if (prev) void replaceQueuedUploadUri(prev, uri);
+              }
+            }}
+            onImageKeyUpdated={(key) => setPendingScreenshotKey(key)}
             onSaved={() => {
               void screenshot.refreshScreenshots();
               setScreenshotSheetOpen(true);
@@ -2576,6 +2670,7 @@ function MeetingSurface({
             sessionId={lessonId}
             trainerId={myId}
             traineeId={peerId}
+            traineeName={peerDisplayName}
             trainerName={
               (authUser as { fullname?: string })?.fullname ??
               (authUser as { fullName?: string })?.fullName

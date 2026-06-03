@@ -18,6 +18,7 @@ type Args = {
   billingState?: string;
   /** When set, overrides country/state from the trainee profile. */
   user?: Record<string, unknown> | null;
+  paymentMethodHint?: "card_domestic_us" | "wallet_us";
 };
 
 /** Trainee-facing quote used in wizards, extension modal, and duration previews. */
@@ -29,6 +30,7 @@ export async function fetchSessionPricingQuote({
   billingCountry,
   billingState,
   user,
+  paymentMethodHint = "card_domestic_us",
 }: Args): Promise<PricingQuote> {
   const billing = user
     ? resolveTraineeBillingAddress(user)
@@ -43,7 +45,7 @@ export async function fetchSessionPricingQuote({
     productType,
     sessionSubtotalCents,
     trainerId,
-    paymentMethodHint: "card_domestic_us",
+    paymentMethodHint,
     promoDiscountCents,
     billingAddress: { country, state },
   });

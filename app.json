@@ -117,11 +117,14 @@
           "icon": "./assets/icon.png",
           "color": "#000080",
           "defaultChannel": "default",
-          "sounds": ["./assets/sounds/instant-lesson-ring.wav"]
+          "sounds": [
+            "./assets/sounds/instant-lesson-ring.wav"
+          ]
         }
       ],
       "@config-plugins/react-native-callkeep",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-asset"
     ],
     "extra": {
       "eas": {
