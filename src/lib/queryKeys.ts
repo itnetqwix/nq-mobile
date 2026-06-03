@@ -101,6 +101,8 @@ export const queryKeys = {
   referral: {
     program: ["referralProgram"] as const,
     invites: ["referralInvites"] as const,
+    checkoutPreview: (bookingType: string, amount: number, coupon: string) =>
+      ["referralCheckoutPreview", bookingType, amount, coupon] as const,
   },
   transactions: {
     bookingListById: ["transactions", "booking-list-by-id"] as const,

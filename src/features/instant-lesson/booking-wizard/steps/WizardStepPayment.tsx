@@ -54,6 +54,7 @@ type Props = {
   userStripeId: string;
   bookingType?: "instant" | "scheduled";
   durationLabel?: string;
+  referralCheckoutDiscount?: number;
   onPaymentComplete: (payload: PaymentCompletePayload) => void;
   onNext: () => void;
   onAddFunds?: (shortfallDollars: number) => void;
@@ -68,6 +69,7 @@ export function WizardStepPayment({
   userStripeId,
   bookingType = "instant",
   durationLabel,
+  referralCheckoutDiscount = 0,
   onPaymentComplete,
   onNext,
   onAddFunds,
@@ -325,6 +327,14 @@ export function WizardStepPayment({
           <View style={styles.summaryLine}>
             <Text style={styles.summaryKey}>Promo</Text>
             <Text style={[styles.summaryValue, styles.promoApplied]}>{couponCode.trim()}</Text>
+          </View>
+        ) : null}
+        {referralCheckoutDiscount > 0 ? (
+          <View style={styles.summaryLine}>
+            <Text style={styles.summaryKey}>Referral</Text>
+            <Text style={[styles.summaryValue, styles.promoApplied]}>
+              -{fmt(referralCheckoutDiscount, { currency: activeCurrency })}
+            </Text>
           </View>
         ) : null}
       </View>

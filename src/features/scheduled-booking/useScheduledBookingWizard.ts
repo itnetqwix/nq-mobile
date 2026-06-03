@@ -47,6 +47,7 @@ import { fetchSessionPricingQuote } from "../payments/fetchSessionPricingQuote";
 import type { PricingQuote } from "../payments/pricingTypes";
 import { fetchSmartSchedule } from "../ai/smartScheduleApi";
 import { resolveTraineeTimeZone } from "../../lib/user/resolveTraineeTimeZone";
+import { postReferralPreviewCheckout } from "../referral/api/referralApi";
 
 export type ScheduledTrainer = Record<string, unknown> | null;
 
@@ -208,12 +209,32 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     [hourlyRate, durationMinutes]
   );
 
+  const checkoutPreviewQuery = useQuery({
+    queryKey: queryKeys.referral.checkoutPreview(
+      "scheduled",
+      expectedPrice,
+      couponCode.trim()
+    ),
+    queryFn: () =>
+      postReferralPreviewCheckout({
+        amount: expectedPrice,
+        booking_type: "scheduled",
+        coupon_code: couponCode.trim() || undefined,
+      }),
+    enabled: visible && expectedPrice > 0,
+    staleTime: 20_000,
+  });
+
   const payableAmount = useMemo(() => {
+    const preview = checkoutPreviewQuery.data;
+    if (preview?.finalPrice != null) return Number(preview.finalPrice);
     if (promoResult?.valid && promoResult.final_amount != null) {
       return Number(promoResult.final_amount);
     }
     return expectedPrice;
-  }, [promoResult, expectedPrice]);
+  }, [checkoutPreviewQuery.data, promoResult, expectedPrice]);
+
+  const referralCheckoutDiscount = checkoutPreviewQuery.data?.referralDiscount ?? 0;
 
   const validateCoupon = useCallback(() => {
     if (couponCode.length > 50) {
@@ -242,6 +263,9 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
       if (data?.valid) {
         setPromoResult(data);
         setCouponError("");
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.referral.checkoutPreview("scheduled", expectedPrice, couponCode.trim()),
+        });
       } else {
         setPromoResult(null);
         setCouponError(data?.reason || "Invalid promo code.");
@@ -559,6 +583,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     flatClips,
     expectedPrice,
     payableAmount,
+    referralCheckoutDiscount,
     hourlyRate,
     couponCode,
     setCouponCode,

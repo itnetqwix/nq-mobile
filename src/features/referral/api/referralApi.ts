@@ -97,6 +97,41 @@ export async function fetchReferralInvites(): Promise<ReferralInviteRow[]> {
   }
 }
 
+export type CheckoutPreview = {
+  originalPrice: number;
+  promoDiscount: number;
+  referralDiscount: number;
+  totalDiscount: number;
+  finalPrice: number;
+  referralEligible: boolean;
+  label?: string | null;
+  stacksWithPromo?: boolean;
+};
+
+export async function fetchReferralBenefits(): Promise<{
+  firstLessonCheckout?: { eligible: boolean; estimatedDiscountDollars?: number };
+} | null> {
+  try {
+    const res = await apiClient.get(API_ROUTES.referral.benefits);
+    return unwrapData(res);
+  } catch {
+    return null;
+  }
+}
+
+export async function postReferralPreviewCheckout(body: {
+  amount: number;
+  booking_type: "instant" | "scheduled";
+  coupon_code?: string;
+}): Promise<CheckoutPreview | null> {
+  try {
+    const res = await apiClient.post(API_ROUTES.referral.previewCheckout, body);
+    return unwrapData<CheckoutPreview>(res);
+  } catch {
+    return null;
+  }
+}
+
 export function formatUsdFromMinor(minor: number, currency = "USD"): string {
   if (!minor || minor <= 0) return "—";
   const amount = minor / 100;

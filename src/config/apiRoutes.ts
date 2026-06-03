@@ -137,6 +137,8 @@ export const API_ROUTES = {
     invite: "/referral/invite",
     invites: "/referral/invites",
     rewards: "/referral/rewards",
+    benefits: "/referral/benefits",
+    previewCheckout: "/referral/preview-checkout",
   },
   tips: {
     list: "/tips",
