@@ -44,6 +44,7 @@ import {
 import { fetchSessionPricingQuote } from "../payments/fetchSessionPricingQuote";
 import type { PricingQuote } from "../payments/pricingTypes";
 import { fetchSmartSchedule } from "../ai/smartScheduleApi";
+import { resolveTraineeTimeZone } from "../../lib/user/resolveTraineeTimeZone";
 
 export type ScheduledTrainer = Record<string, unknown> | null;
 
@@ -53,8 +54,6 @@ type Args = {
   onDismiss: () => void;
   onBooked?: () => void;
 };
-
-export { resolveTraineeTimeZone } from "../../lib/user/resolveTraineeTimeZone";
 
 export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooked }: Args) {
   const { user } = useAuth();

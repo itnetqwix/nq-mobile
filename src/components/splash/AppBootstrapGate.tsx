@@ -29,28 +29,14 @@ type Props = {
 export function AppBootstrapGate({ children, appInitReady = true }: Props) {
   const authStatus = useAppSelector(selectAuthStatus);
   const [phase, setPhase] = useState<BootstrapPhase>("splash");
-  const [progress, setProgress] = useState(0.12);
   const bootStartedAt = useRef(Date.now());
   const finishTriggered = useRef(false);
 
   const authReady = authStatus !== "loading";
 
-  useEffect(() => {
-    if (authReady) {
-      setProgress((p) => Math.max(p, 0.72));
-    }
-  }, [authReady]);
-
-  useEffect(() => {
-    if (appInitReady) {
-      setProgress((p) => Math.max(p, 0.45));
-    }
-  }, [appInitReady]);
-
   const beginExit = useCallback(() => {
     if (finishTriggered.current) return;
     finishTriggered.current = true;
-    setProgress(1);
     setPhase("exiting");
   }, []);
 
@@ -83,7 +69,7 @@ export function AppBootstrapGate({ children, appInitReady = true }: Props) {
 
   return (
     <View style={styles.shell}>
-      <AppSplashScreen progress={progress} exiting={phase === "exiting"} />
+      <AppSplashScreen exiting={phase === "exiting"} />
     </View>
   );
 }

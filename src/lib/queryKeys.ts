@@ -9,6 +9,7 @@ export const queryKeys = {
     list: (tab: string) => ["sessions", tab] as const,
     upcoming: ["sessions", "upcoming"] as const,
     completed: ["sessions", "completed"] as const,
+    detail: (sessionId: string) => ["sessions", "detail", sessionId] as const,
     lookup: (lessonId: string) => ["sessionLookup", lessonId] as const,
     joinReadiness: (lessonId: string) => ["session", "join-readiness", lessonId] as const,
   },
