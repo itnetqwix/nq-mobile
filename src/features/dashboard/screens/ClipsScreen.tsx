@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { EmptyState, ImageWithSkeleton } from "../../../components/ui";
@@ -10,15 +10,20 @@ import {
   postMyClipsGrouped,
   postSharedClipsGrouped,
 } from "../../home/api/homeApi";
-import type {
-  LockerClip,
-  NestedCategoryGroup,
-  SharedClipsGroup,
+import {
+  deleteLockerClip,
+  type LockerClip,
+  type NestedCategoryGroup,
+  type SharedClipsGroup,
 } from "../../clips/api/clipsApi";
+import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
+import { lockerMutated } from "../../../store/actions/cacheInvalidation";
+import { useAppDispatch } from "../../../store/hooks";
 import { LockerListShell } from "../components/locker/LockerListShell";
 import { LockerViewerModal, type LockerViewerMode } from "../components/locker/LockerViewerModal";
 import { ClipUploadModal } from "../components/locker/ClipUploadModal";
 import { LibrarySubmissionSheet } from "../../clips/components/LibrarySubmissionSheet";
+import { ClipShareFriendsModal } from "../../clips/components/ClipShareFriendsModal";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
 import { dedupeClipsById } from "../../../lib/lists/clipListUtils";
@@ -179,15 +184,22 @@ function libraryStatusChip(status: string, t: (k: string) => string): string | n
 export function ClipsScreen() {
   const { t } = useAppTranslation();
   const queryClient = useQueryClient();
+  const dispatch = useAppDispatch();
   const c = useThemeColors();
+  const [removingClipId, setRemovingClipId] = useState<string | null>(null);
   const [tab, setTab] = useState<ClipTab>("mine");
   const [uploadVisible, setUploadVisible] = useState(false);
+  const [shareMode, setShareMode] = useState(false);
+  const [selectedClipIds, setSelectedClipIds] = useState<Record<string, boolean>>({});
+  const [shareModalVisible, setShareModalVisible] = useState(false);
   const [librarySheetClip, setLibrarySheetClip] = useState<LockerClip | null>(null);
   const [viewer, setViewer] = useState<{
     uri: string;
     title: string;
     mode: LockerViewerMode;
     sharedBy?: string;
+    clipId?: string;
+    canRemove?: boolean;
   } | null>(null);
 
   const styles = useThemedStyles((palette) =>
@@ -248,8 +260,57 @@ export function ClipsScreen() {
       },
       libChipText: { fontSize: 10, fontWeight: "700", color: palette.brandNavy },
       libAction: { padding: 4 },
+      selectMark: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        borderWidth: 2,
+        borderColor: palette.border,
+        alignItems: "center",
+        justifyContent: "center",
+        marginRight: 4,
+      },
+      selectMarkOn: { borderColor: palette.brandNavy, backgroundColor: palette.brandSubtle },
+      shareBar: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: space.sm,
+        marginBottom: space.sm,
+      },
+      shareBarText: { flex: 1, ...typography.caption, color: palette.textMuted },
+      shareBtn: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: radii.md,
+        backgroundColor: palette.brandNavy,
+      },
+      shareBtnText: { color: palette.brandTextOn, fontWeight: "700", fontSize: 13 },
+      shareModeBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: palette.surfaceElevated,
+        borderWidth: 1,
+        borderColor: palette.border,
+        alignItems: "center",
+        justifyContent: "center",
+      },
     })
   );
+
+  const selectedIds = useMemo(
+    () => Object.keys(selectedClipIds).filter((id) => selectedClipIds[id]),
+    [selectedClipIds]
+  );
+
+  const toggleClipSelect = useCallback((id: string) => {
+    setSelectedClipIds((s) => ({ ...s, [id]: !s[id] }));
+  }, []);
+
+  const exitShareMode = useCallback(() => {
+    setShareMode(false);
+    setSelectedClipIds({});
+  }, []);
 
   const myQ = useQuery({
     queryKey: queryKeys.locker.myClips,
@@ -280,17 +341,57 @@ export function ClipsScreen() {
     void libraryQ.refetch();
   }, [myQ, sharedQ, libraryQ]);
 
+  const confirmRemoveSharedClip = useCallback(
+    (clip: LockerClip) => {
+      const clipId = String(clip._id ?? "");
+      if (!clipId || removingClipId) return;
+      Alert.alert(t("locker.removeSharedClipTitle"), t("locker.removeSharedClipBody"), [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("locker.removeSharedClip"),
+          style: "destructive",
+          onPress: () => {
+            setRemovingClipId(clipId);
+            void (async () => {
+              try {
+                await deleteLockerClip(clipId);
+                dispatch(lockerMutated());
+                void queryClient.invalidateQueries({ queryKey: queryKeys.locker.sharedClips });
+                if (viewer) setViewer(null);
+                Alert.alert(t("common.ok"), t("locker.removeSharedClipDone"));
+              } catch (e) {
+                Alert.alert(
+                  t("common.error"),
+                  getApiErrorMessage(e, t("locker.removeSharedClipFailed"))
+                );
+              } finally {
+                setRemovingClipId(null);
+              }
+            })();
+          },
+        },
+      ]);
+    },
+    [t, removingClipId, dispatch, queryClient, viewer]
+  );
+
   const openClip = (clip: Record<string, unknown>) => {
     const uri = getClipPlaybackUrl(clip);
     if (!uri) return;
     const sharer = clip.sharer as Record<string, unknown> | undefined;
     const sharerName =
       sharer?.fullname ?? sharer?.fullName ?? clip.shared_by_name ?? null;
+    const clipId = String(clip._id ?? "");
+    const isSharedCopy =
+      tab === "shared" ||
+      !!(clip.shared_from_user_id ?? (clip as any).sharedFromUserId);
     setViewer({
       uri,
       title: String(clip?.title ?? clip?.file_name ?? t("locker.clipDefault")),
       mode: "video",
       sharedBy: sharerName ? String(sharerName) : undefined,
+      clipId: clipId || undefined,
+      canRemove: isSharedCopy && !!clipId,
     });
   };
 
@@ -324,24 +425,41 @@ export function ClipsScreen() {
           </Pressable>
         </View>
         {tab === "mine" ? (
-          <Pressable
-            style={({ pressed }) => [styles.uploadFab, pressed && { opacity: 0.88 }]}
-            onPress={() => setUploadVisible(true)}
-            accessibilityRole="button"
-            accessibilityLabel={t("locker.uploadClip")}
-          >
-            <Ionicons name="cloud-upload-outline" size={20} color={c.brandTextOn} />
-          </Pressable>
+          <>
+            <Pressable
+              style={({ pressed }) => [styles.shareModeBtn, pressed && { opacity: 0.88 }]}
+              onPress={() => {
+                if (shareMode) exitShareMode();
+                else setShareMode(true);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={shareMode ? t("locker.shareModeDone") : t("locker.shareMode")}
+            >
+              <Ionicons
+                name={shareMode ? "close" : "share-social-outline"}
+                size={20}
+                color={c.brandNavy}
+              />
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.uploadFab, pressed && { opacity: 0.88 }]}
+              onPress={() => setUploadVisible(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t("locker.uploadClip")}
+            >
+              <Ionicons name="cloud-upload-outline" size={20} color={c.brandTextOn} />
+            </Pressable>
+          </>
         ) : null}
       </View>
     ),
-    [tab, styles, c, t]
+    [tab, styles, c, t, shareMode, exitShareMode]
   );
 
   const renderClipRow = (
     clip: LockerClip,
     key: string,
-    opts?: { showSharer?: boolean; showLibraryActions?: boolean }
+    opts?: { showSharer?: boolean; showLibraryActions?: boolean; showRemoveAction?: boolean }
   ) => {
     const thumb = getClipThumbnailUrl(clip);
     const sub = clip.librarySubmission;
@@ -351,8 +469,36 @@ export function ClipsScreen() {
       (!sub || sub.status === "rejected") &&
       sub?.status !== "accepted";
 
+    const clipId = String(clip._id ?? "");
+    const isSelected = shareMode && tab === "mine" && !!selectedClipIds[clipId];
+
     return (
-      <Pressable key={key} style={styles.clipCard} onPress={() => openClip(clip)}>
+      <Pressable
+        key={key}
+        style={styles.clipCard}
+        onPress={() => {
+          if (shareMode && tab === "mine" && clipId) {
+            toggleClipSelect(clipId);
+            return;
+          }
+          openClip(clip);
+        }}
+        onLongPress={
+          tab === "mine" && clipId
+            ? () => {
+                if (!shareMode) setShareMode(true);
+                toggleClipSelect(clipId);
+              }
+            : undefined
+        }
+      >
+        {shareMode && tab === "mine" && clipId ? (
+          <View style={[styles.selectMark, isSelected && styles.selectMarkOn]}>
+            {isSelected ? (
+              <Ionicons name="checkmark" size={14} color={c.brandNavy} />
+            ) : null}
+          </View>
+        ) : null}
         <View style={styles.thumbWrap}>
           {thumb ? (
             <ImageWithSkeleton
@@ -395,7 +541,25 @@ export function ClipsScreen() {
             </Text>
           ) : null}
         </View>
-        {canRequestLibrary ? (
+        {opts?.showRemoveAction && clipId ? (
+          <Pressable
+            style={styles.libAction}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              confirmRemoveSharedClip(clip);
+            }}
+            hitSlop={8}
+            disabled={removingClipId === clipId}
+            accessibilityRole="button"
+            accessibilityLabel={t("locker.removeSharedClip")}
+          >
+            {removingClipId === clipId ? (
+              <ActivityIndicator size="small" color={c.brandNavy} />
+            ) : (
+              <Ionicons name="trash-outline" size={20} color={c.danger} />
+            )}
+          </Pressable>
+        ) : canRequestLibrary ? (
           <Pressable
             style={styles.libAction}
             onPress={(e) => {
@@ -428,6 +592,21 @@ export function ClipsScreen() {
         onRefresh={onRefresh}
         toolbar={toolbar}
       >
+        {tab === "mine" && shareMode ? (
+          <View style={styles.shareBar}>
+            <Text style={styles.shareBarText}>{t("locker.shareModeHint")}</Text>
+            <Pressable
+              style={[styles.shareBtn, selectedIds.length === 0 && { opacity: 0.45 }]}
+              disabled={selectedIds.length === 0}
+              onPress={() => setShareModalVisible(true)}
+            >
+              <Text style={styles.shareBtnText}>
+                {t("locker.shareMode")} ({selectedIds.length})
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         {tab === "mine" && (
           <>
             {myGroups.length === 0 ? (
@@ -470,7 +649,8 @@ export function ClipsScreen() {
                   >
                     {clips.map((clip, ci) =>
                       renderClipRow(clip, `shared-${i}-${String(clip._id ?? ci)}`, {
-                        showSharer: false,
+                        showSharer: true,
+                        showRemoveAction: true,
                       })
                     )}
                   </CategorySection>
@@ -506,6 +686,13 @@ export function ClipsScreen() {
         title={viewer?.title}
         mode={viewer?.mode ?? "video"}
         sharedBy={viewer?.sharedBy}
+        onRemoveFromLocker={
+          viewer?.canRemove && viewer.clipId
+            ? () => confirmRemoveSharedClip({ _id: viewer.clipId } as LockerClip)
+            : undefined
+        }
+        removeBusy={!!viewer?.clipId && removingClipId === viewer.clipId}
+        removeAccessibilityLabel={t("locker.removeSharedClip")}
       />
 
       <ClipUploadModal
@@ -514,6 +701,16 @@ export function ClipsScreen() {
         onUploaded={() => {
           void queryClient.invalidateQueries({ queryKey: queryKeys.locker.myClips });
           void queryClient.invalidateQueries({ queryKey: queryKeys.instant.lessonClipsAll });
+        }}
+      />
+
+      <ClipShareFriendsModal
+        visible={shareModalVisible}
+        clipIds={selectedIds}
+        onClose={() => setShareModalVisible(false)}
+        onSent={() => {
+          exitShareMode();
+          void queryClient.invalidateQueries({ queryKey: queryKeys.locker.sharedClips });
         }}
       />
 

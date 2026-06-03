@@ -32,6 +32,7 @@ import { apiClient } from "../../../../api/client";
 import { API_ROUTES } from "../../../../config/apiRoutes";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
+import { ClipUploadPrepareModal } from "./ClipUploadPrepareModal";
 
 const SHARE_MY_CLIPS = "My Clips";
 const SHARE_FRIENDS = "Friends";
@@ -69,7 +70,8 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
   const [thumbProgress, setThumbProgress] = useState(0);
   const [uploadPhase, setUploadPhase] = useState<"idle" | "video" | "thumb" | "finalize">("idle");
   const [shareTarget, setShareTarget] = useState<ShareTarget>(SHARE_MY_CLIPS);
-  const [selectedFriendEmails, setSelectedFriendEmails] = useState<string[]>([]);
+  const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
+  const [prepareVisible, setPrepareVisible] = useState(false);
 
   const { data: taxonomy, isLoading: catLoading } = useQuery({
     queryKey: queryKeys.clips.taxonomy,
@@ -102,7 +104,8 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
       setThumbProgress(0);
       setUploadPhase("idle");
       setShareTarget(SHARE_MY_CLIPS);
-      setSelectedFriendEmails([]);
+      setSelectedFriendIds([]);
+      setPrepareVisible(false);
     }
   }, [visible]);
 
@@ -125,6 +128,8 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["videos"],
       allowsMultipleSelection: false,
+      allowsEditing: Platform.OS === "ios",
+      videoMaxDuration: 300,
       quality: 1,
     });
     if (result.canceled || !result.assets?.[0]) return;
@@ -145,6 +150,7 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
         quality: 0.85,
       });
       setThumbUri(uri);
+      setPrepareVisible(true);
     } catch (e) {
       Alert.alert(
         t("locker.previewErrorTitle"),
@@ -157,9 +163,9 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
     }
   };
 
-  const toggleFriend = (email: string) => {
-    setSelectedFriendEmails((prev) =>
-      prev.includes(email) ? prev.filter((e) => e !== email) : [...prev, email]
+  const toggleFriend = (friendId: string) => {
+    setSelectedFriendIds((prev) =>
+      prev.includes(friendId) ? prev.filter((id) => id !== friendId) : [...prev, friendId]
     );
   };
 
@@ -171,7 +177,7 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
     subcategoryId.length > 0 &&
     !thumbBusy &&
     !uploadBusy &&
-    (shareTarget === SHARE_MY_CLIPS || selectedFriendEmails.length > 0);
+    (shareTarget === SHARE_MY_CLIPS || selectedFriendIds.length > 0);
 
   const submit = async () => {
     if (!videoAsset || !thumbUri || !canSubmit) return;
@@ -228,7 +234,7 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
         subcategory_id: subcategoryId,
         shareOptions:
           shareTarget === SHARE_FRIENDS
-            ? { type: SHARE_FRIENDS, emails: selectedFriendEmails }
+            ? { type: SHARE_FRIENDS, friends: selectedFriendIds }
             : { type: SHARE_MY_CLIPS },
         onVideoProgress: (percent) => {
           setUploadPhase("video");
@@ -245,7 +251,10 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
         apiClient.post(API_ROUTES.ai.tagClip(String(clipId))).catch(() => {});
       }
 
-      Alert.alert(t("locker.uploadedTitle"), t("locker.uploadedBody"));
+      Alert.alert(
+        t("locker.uploadedTitle"),
+        shareTarget === SHARE_FRIENDS ? t("locker.uploadSharedBody") : t("locker.uploadedBody")
+      );
       dispatch(lockerMutated());
       onUploaded();
       onClose();
@@ -412,15 +421,16 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
               ) : (
                 <View style={styles.friendChips}>
                   {friendsList.map((f: any) => {
-                    const email = f?.email ?? f?.receiverId?.email ?? "";
-                    const name = f?.fullname ?? f?.receiverId?.fullname ?? f?.fullName ?? email;
-                    if (!email) return null;
-                    const on = selectedFriendEmails.includes(email);
+                    const id = String(f?._id ?? f?.id ?? f?.user_id ?? "");
+                    const name =
+                      f?.fullname ?? f?.receiverId?.fullname ?? f?.fullName ?? f?.email ?? "";
+                    if (!id) return null;
+                    const on = selectedFriendIds.includes(id);
                     return (
                       <Pressable
-                        key={email}
+                        key={id}
                         style={[styles.chip, on && styles.chipOn]}
-                        onPress={() => toggleFriend(email)}
+                        onPress={() => toggleFriend(id)}
                         disabled={uploadBusy}
                       >
                         <Text style={[styles.chipText, on && styles.chipTextOn]} numberOfLines={1}>{name}</Text>
@@ -429,10 +439,13 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
                   })}
                 </View>
               )}
-              {selectedFriendEmails.length > 0 && (
-                <Text style={styles.muted}>
-                  {t("locker.friendsSelected", { count: selectedFriendEmails.length })}
-                </Text>
+              {selectedFriendIds.length > 0 && (
+                <>
+                  <Text style={styles.muted}>
+                    {t("locker.friendsSelected", { count: selectedFriendIds.length })}
+                  </Text>
+                  <Text style={styles.muted}>{t("locker.uploadSharedHint")}</Text>
+                </>
               )}
             </View>
           )}
@@ -497,6 +510,20 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      <ClipUploadPrepareModal
+        visible={prepareVisible && visible}
+        video={videoAsset}
+        thumbUri={thumbUri}
+        thumbBusy={thumbBusy}
+        onClose={() => setPrepareVisible(false)}
+        onReplaceVideo={() => {
+          setPrepareVisible(false);
+          void pickVideo();
+        }}
+        onThumbChange={setThumbUri}
+        onConfirm={() => setPrepareVisible(false)}
+      />
     </Modal>
   );
 }

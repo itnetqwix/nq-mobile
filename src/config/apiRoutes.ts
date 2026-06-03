@@ -166,6 +166,11 @@ export const API_ROUTES = {
     librarySubmissions: "/clips/library-submissions",
     librarySubmissionsMine: "/clips/library-submissions/mine",
     accountReapply: "/clips/account/reapply",
+    shareRequests: "/clips/share-requests",
+    shareInbox: "/clips/share-requests/inbox",
+    shareOutbox: "/clips/share-requests/outbox",
+    shareRespond: (requestId: string) => `/clips/share-requests/${requestId}/respond`,
+    shareCancel: (requestId: string) => `/clips/share-requests/${requestId}/cancel`,
   },
   master: {
     masterData: "/master/master-data",

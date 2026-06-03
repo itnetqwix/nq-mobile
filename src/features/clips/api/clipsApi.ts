@@ -96,3 +96,11 @@ export async function createLibrarySubmission(
 export async function reapplyAccount(): Promise<void> {
   await apiClient.post(API_ROUTES.clips.accountReapply, {});
 }
+
+export async function deleteLockerClip(clipId: string): Promise<void> {
+  const res = await apiClient.delete(API_ROUTES.common.deleteClip(clipId));
+  const body = res.data as { success?: number; message?: string };
+  if (body?.success !== 1) {
+    throw new Error(body?.message ?? "Could not remove clip.");
+  }
+}

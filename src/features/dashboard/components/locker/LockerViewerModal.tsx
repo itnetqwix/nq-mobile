@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Linking,
   Modal,
@@ -31,6 +32,10 @@ type Props = {
   title?: string;
   mode: LockerViewerMode;
   sharedBy?: string;
+  /** When set, shows remove-from-locker control (shared clips). */
+  onRemoveFromLocker?: () => void;
+  removeBusy?: boolean;
+  removeAccessibilityLabel?: string;
 };
 
 function buildPdfEmbedUrl(url: string): string {
@@ -40,7 +45,17 @@ function buildPdfEmbedUrl(url: string): string {
 const HEADER_BLOCK = 72;
 const FOOTER_BLOCK = 36;
 
-export function LockerViewerModal({ visible, onClose, uri, title, mode, sharedBy }: Props) {
+export function LockerViewerModal({
+  visible,
+  onClose,
+  uri,
+  title,
+  mode,
+  sharedBy,
+  onRemoveFromLocker,
+  removeBusy,
+  removeAccessibilityLabel = "Remove from locker",
+}: Props) {
   const insets = useSafeAreaInsets();
   const { width, height: mediaHeight } = useMediaViewport({
     headerHeight: HEADER_BLOCK + insets.top,
@@ -99,6 +114,24 @@ export function LockerViewerModal({ visible, onClose, uri, title, mode, sharedBy
           subtitle={subtitle}
           onClose={onClose}
           onOpenExternal={openExternally}
+          rightSlot={
+            onRemoveFromLocker ? (
+              <Pressable
+                onPress={onRemoveFromLocker}
+                style={styles.iconBtn}
+                hitSlop={10}
+                disabled={removeBusy}
+                accessibilityRole="button"
+                accessibilityLabel={removeAccessibilityLabel}
+              >
+                {removeBusy ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Ionicons name="trash-outline" size={22} color={colors.dangerTextOn} />
+                )}
+              </Pressable>
+            ) : undefined
+          }
         />
 
         {error ? (
@@ -170,6 +203,22 @@ export function LockerViewerModal({ visible, onClose, uri, title, mode, sharedBy
         ) : null}
 
         <View style={[styles.footer, { paddingBottom: insets.bottom + 8 }]}>
+          {onRemoveFromLocker ? (
+            <Pressable
+              style={[styles.removeFooterBtn, removeBusy && { opacity: 0.6 }]}
+              onPress={onRemoveFromLocker}
+              disabled={removeBusy}
+              accessibilityRole="button"
+              accessibilityLabel={removeAccessibilityLabel}
+            >
+              {removeBusy ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons name="trash-outline" size={18} color="#fff" />
+              )}
+              <Text style={styles.removeFooterText}>{removeAccessibilityLabel}</Text>
+            </Pressable>
+          ) : null}
           <Text style={styles.footerText}>
             {resolvedMode === "audio"
               ? "Session audio recording"
@@ -207,6 +256,20 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  iconBtn: { padding: 4 },
+  removeFooterBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    alignSelf: "center",
+    marginBottom: space.sm,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: colors.danger,
+  },
+  removeFooterText: { color: "#fff", fontWeight: "700", fontSize: 14 },
   footer: {
     paddingHorizontal: space.md,
     paddingTop: space.xs,

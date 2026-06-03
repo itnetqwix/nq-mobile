@@ -84,6 +84,7 @@ export const queryKeys = {
     all: ["locker"] as const,
     myClips: ["locker", "myClips"] as const,
     sharedClips: ["locker", "sharedClips"] as const,
+    shareInbox: ["locker", "shareInbox"] as const,
     libraryClips: ["locker", "libraryClips"] as const,
     savedSessions: ["locker", "savedSessions"] as const,
     reports: ["locker", "reports"] as const,
