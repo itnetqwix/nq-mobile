@@ -50,6 +50,8 @@ export const queryKeys = {
     community: (search: string) => ["communityUsers", search] as const,
     recentTrainees: ["recentTrainees"] as const,
     recentTrainers: ["recentTrainers"] as const,
+    personalizedFeed: (recentIds: readonly string[]) =>
+      ["personalizedFeed", recentIds.join(",")] as const,
   },
   trainer: {
     myStats: ["trainer", "myStats"] as const,
@@ -112,6 +114,7 @@ export const queryKeys = {
   },
   trainee: {
     favorites: ["trainee", "favoriteTrainers"] as const,
+    guestSeededTrainers: ["trainee", "guestSeededTrainers"] as const,
   },
   content: {
     all: ["content"] as const,

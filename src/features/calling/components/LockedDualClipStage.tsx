@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
     flex: 1,
     overflow: "hidden",
     borderRadius: 8,
-    minHeight: 100,
+    minHeight: 140,
     backgroundColor: CLIP_BG,
     position: "relative",
   },

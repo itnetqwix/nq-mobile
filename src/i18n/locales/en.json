@@ -614,7 +614,10 @@
       "title": "You're offline",
       "description": "Check your Wi‑Fi or cellular connection, then try again.",
       "primary": "Try again",
-      "secondary": "Contact support"
+      "secondary": "Contact support",
+      "tipWifi": "Turn on Wi‑Fi or mobile data",
+      "tipAirplane": "Turn off airplane mode",
+      "tipRetry": "Tap Try again when your connection is back"
     },
     "maintenance": {
       "title": "We're improving the platform",

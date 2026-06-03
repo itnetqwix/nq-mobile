@@ -12,7 +12,7 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { EmptyState, Skeleton } from "../../../components/ui";
+import { EmptyState, SkeletonGroup, TrainerBrowseCardSkeleton } from "../../../components/ui";
 import { type AppColors, radii, space, typography, useThemeColors } from "../../../theme";
 import { fetchOnlineUsers, fetchTrainersWithSlots } from "../../home/api/homeApi";
 import { useOnlinePresence } from "../../socket/useOnlinePresence";
@@ -228,13 +228,12 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
       )}
 
       {directoryLoading ? (
-        <View style={styles.list}>
-          {[0, 1, 2, 3].map((i) => (
-            <View key={i} style={{ marginBottom: space.md }}>
-              <Skeleton width="100%" height={140} radius={radii.md} />
-            </View>
-          ))}
-        </View>
+        <SkeletonGroup
+          count={4}
+          gap={space.md}
+          style={styles.list}
+          renderRow={() => <TrainerBrowseCardSkeleton />}
+        />
       ) : (
         <FlatList
           data={mergedRows}

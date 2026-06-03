@@ -1,6 +1,6 @@
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
-import { Skeleton } from "../../../../components/ui";
+import { CoachCarouselSkeleton } from "../../../../components/ui";
 import { getTrainerName } from "../../../bookexpert/lib/trainerUtils";
 import { trainerListItemKey } from "../../../../lib/lists/trainerListUtils";
 import { useFavoriteTrainers } from "../../hooks/useFavoriteTrainers";
@@ -21,7 +21,7 @@ export function FavoriteCoachesSection({ onSelectTrainer }: Props) {
   if (isLoading) {
     return (
       <DashboardSection title={t("traineeDiscover.favoriteCoaches")}>
-        <Skeleton width={100} height={100} radius={radii.md} />
+        <CoachCarouselSkeleton count={3} variant="favorite" showHeader={false} />
       </DashboardSection>
     );
   }

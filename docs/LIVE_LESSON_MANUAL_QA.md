@@ -36,6 +36,15 @@ npx expo run:ios --device
 5. Screenshot + crop corner handles → add to game plan
 6. End → locker
 
+## Mobile ↔ mobile lesson UX
+
+Use **two physical devices** (both native builds — not Expo Go for full recording).
+
+1. **Annotations:** Trainer enables draw → marks on clip → trainee sees same spot (try different screen sizes, e.g. iPhone + Android).
+2. **Clips UI:** Single clip — no black gap above bottom bar; play/pause/scrub inline under video.
+3. **Camera:** Local preview not mirrored; partner view unchanged.
+4. **Recording (instant):** Trainer starts recording → trainee notice → end lesson → game plan has audio or MP4.
+
 ## Network edge cases
 
 - Airplane mode during screenshot upload → queue toast → restore → auto flush

@@ -23,6 +23,8 @@ import {
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 
+import type { AnnotationFitMode, ContentAspect } from "../annotationCoords";
+import { projectStrokeToCanvas, strokeForSyncEmit } from "../annotationRenderUtils";
 import type { AnnotationShapeKind, RemoteStroke, StrokePoint } from "../useDrawingSync";
 import type { AnnotationTool } from "./MeetingAnnotationToolbar";
 
@@ -36,6 +38,10 @@ type Props = {
   color?: string;
   strokeWidth?: number;
   remoteStrokes?: RemoteStroke[];
+  /** Clip or live video intrinsic size — enables cross-device content UV sync. */
+  contentAspect?: ContentAspect | null;
+  contentFit?: AnnotationFitMode;
+  annotationTargetUserId?: string | null;
   onStrokeComplete?: (
     stroke: RemoteStroke,
     canvasSize: { width: number; height: number }
@@ -171,39 +177,6 @@ function freehandPathFromPoints(points: StrokePoint[]): SkPath {
   return path;
 }
 
-function scaleStrokeForCanvas(
-  stroke: RemoteStroke,
-  target: { width: number; height: number }
-): RemoteStroke {
-  const source = stroke.sourceCanvasSize;
-  if (
-    !source ||
-    source.width <= 0 ||
-    source.height <= 0 ||
-    target.width <= 0 ||
-    target.height <= 0
-  ) {
-    return stroke;
-  }
-  const sx = target.width / source.width;
-  const sy = target.height / source.height;
-  const scale = (sx + sy) / 2;
-  const bounds = stroke.shapeBounds;
-  return {
-    ...stroke,
-    points: stroke.points.map((p) => ({ x: p.x * sx, y: p.y * sy })),
-    width: stroke.width * scale,
-    shapeBounds: bounds
-      ? {
-          x0: bounds.x0 * sx,
-          y0: bounds.y0 * sy,
-          x1: bounds.x1 * sx,
-          y1: bounds.y1 * sy,
-        }
-      : undefined,
-  };
-}
-
 export function DrawingOverlay({
   enabled,
   showRemoteLayer = false,
@@ -211,6 +184,9 @@ export function DrawingOverlay({
   color = "#ff3b30",
   strokeWidth = 4,
   remoteStrokes = [],
+  contentAspect = null,
+  contentFit = "contain",
+  annotationTargetUserId = null,
   onStrokeComplete,
 }: Props) {
   const [strokes, setStrokes] = useState<Stroke[]>([]);
@@ -232,15 +208,30 @@ export function DrawingOverlay({
   colorRef.current = color;
   strokeWidthRef.current = strokeWidth;
 
+  const contentAspectRef = useRef(contentAspect);
+  contentAspectRef.current = contentAspect;
+
   const emitStroke = useCallback(
     (stroke: RemoteStroke) => {
       try {
-        onStrokeComplete?.(stroke, canvasSizeRef.current);
+        const canvasSize = canvasSizeRef.current;
+        const synced = strokeForSyncEmit(stroke, canvasSize, {
+          contentAspect: contentAspectRef.current,
+          contentFit,
+          targetUserId: annotationTargetUserId,
+        });
+        onStrokeComplete?.(synced, canvasSize);
       } catch {
         /* ignore */
       }
     },
-    [onStrokeComplete]
+    [annotationTargetUserId, contentFit, onStrokeComplete]
+  );
+
+  const projectForDisplay = useCallback(
+    (stroke: RemoteStroke) =>
+      projectStrokeToCanvas(stroke, canvasSize, contentAspect, contentFit),
+    [canvasSize, contentAspect, contentFit]
   );
 
   const commitStroke = useCallback((stroke: Stroke) => {
@@ -383,16 +374,16 @@ export function DrawingOverlay({
       [
         ...remoteStrokes.filter((r) => r.kind === "text" && r.text),
         ...textLabels,
-      ].map((t) => scaleStrokeForCanvas(t, canvasSize)),
-    [remoteStrokes, textLabels, canvasSize]
+      ].map((t) => projectForDisplay(t)),
+    [remoteStrokes, textLabels, projectForDisplay]
   );
 
   const scaledRemoteStrokes = useMemo(
     () =>
       remoteStrokes
         .filter((r) => r.kind !== "text")
-        .map((r) => scaleStrokeForCanvas(r, canvasSize)),
-    [remoteStrokes, canvasSize]
+        .map((r) => projectForDisplay(r)),
+    [remoteStrokes, projectForDisplay]
   );
 
   if (

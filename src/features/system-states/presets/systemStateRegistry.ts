@@ -9,6 +9,7 @@ export const systemStateRegistry: Record<SystemStateId, SystemStatePreset> = {
     primary: { label: "Try again", action: "retry" },
     secondary: { label: "Contact support", action: "contact_support" },
     supportLink: true,
+    variant: "warning",
   },
   maintenance: {
     title: "We're improving the platform",

@@ -43,6 +43,8 @@ export type UserBoxProps = {
   isStreamOff?: boolean;
   /** Mute the AUDIO element (we always mute the local preview to avoid feedback). */
   muted?: boolean;
+  /** Local preview mirror (default false in live lessons for WYSIWYG coaching). */
+  mirrorPreview?: boolean;
   selected?: boolean;
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
@@ -57,6 +59,7 @@ export function UserBox({
   stream,
   isStreamOff,
   muted = false,
+  mirrorPreview = false,
   style,
   fallbackLabel,
   streamOffHint,
@@ -79,7 +82,7 @@ export function UserBox({
       key={rtcViewKey}
       streamURL={streamId}
       objectFit="cover"
-      mirror={muted /* local preview only */}
+      mirror={mirrorPreview && muted}
       style={StyleSheet.absoluteFill}
     />
   ) : (

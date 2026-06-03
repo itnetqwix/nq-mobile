@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   },
   player: {
     flex: 1,
-    minHeight: 80,
+    minHeight: 120,
     position: "relative",
   },
   controlsDock: {

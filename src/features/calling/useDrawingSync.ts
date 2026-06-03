@@ -28,6 +28,8 @@ export type AnnotationShapeKind =
   | "line"
   | "arrow";
 
+export type AnnotationCoordSpace = "contentUv" | "canvasPx" | "normalizedCanvas";
+
 export type RemoteStroke = {
   points: StrokePoint[];
   color: string;
@@ -36,8 +38,13 @@ export type RemoteStroke = {
   text?: string;
   /** Normalized shape corners for rect/circle/line (sender space). */
   shapeBounds?: { x0: number; y0: number; x1: number; y1: number };
-  /** Sender canvas size — used to scale strokes on the receiver. */
+  /** Sender canvas size — legacy canvasPx scaling. */
   sourceCanvasSize?: { width: number; height: number };
+  coordSpace?: AnnotationCoordSpace;
+  /** Video / clip intrinsic size for contentUv strokes. */
+  contentAspect?: { width: number; height: number };
+  contentFit?: "contain" | "cover";
+  targetUserId?: string | null;
 };
 
 type Args = {
@@ -78,11 +85,100 @@ function parseIncomingStrokePayload(
     return stroke;
   }
 
+  if (Array.isArray(parsed) && parsed.length > 0) {
+    const first = parsed[0] as Record<string, unknown>;
+    if (typeof first.x === "number" && typeof first.y === "number") {
+      return {
+        points: parsed as StrokePoint[],
+        color: "#ff3b30",
+        width: 4,
+        kind: "stroke",
+        sourceCanvasSize: canvasSize,
+      };
+    }
+  }
+
   if (typeof parsed === "object" && parsed !== null) {
     const obj = parsed as Record<string, unknown>;
+    if (obj.kind === "freehand" && Array.isArray(obj.points)) {
+      const coordSpace = String(obj.coordSpace ?? "");
+      const isVideoUv =
+        coordSpace === "videoUv" || coordSpace === "contentUv";
+      const pts = obj.points as Array<{ u?: number; v?: number; x?: number; y?: number }>;
+      if (isVideoUv && pts[0] && typeof pts[0].u === "number") {
+        return {
+          points: pts.map((p) => ({ x: Number(p.u ?? 0), y: Number(p.v ?? 0) })),
+          color: String(obj.color ?? "#ff3b30"),
+          width: Number(obj.width ?? 4),
+          kind: "stroke",
+          coordSpace: "contentUv",
+          targetUserId: obj.targetUserId != null ? String(obj.targetUserId) : null,
+          sourceCanvasSize: canvasSize,
+        };
+      }
+      const cw = canvasSize?.width ?? 1;
+      const ch = canvasSize?.height ?? 1;
+      if (coordSpace === "normalizedCanvas") {
+        return {
+          points: pts.map((p) => ({
+            x: Number(p.u ?? p.x ?? 0),
+            y: Number(p.v ?? p.y ?? 0),
+          })),
+          color: String(obj.color ?? "#ff3b30"),
+          width: Number(obj.width ?? 4),
+          kind: "stroke",
+          sourceCanvasSize: canvasSize,
+          coordSpace: "normalizedCanvas",
+        };
+      }
+      const mapped = pts.map((p) => {
+        if (typeof p.u === "number" && typeof p.v === "number") {
+          return { x: p.u * cw, y: p.v * ch };
+        }
+        return { x: Number(p.x ?? 0), y: Number(p.y ?? 0) };
+      });
+      return {
+        points: mapped,
+        color: String(obj.color ?? "#ff3b30"),
+        width: Number(obj.width ?? 4),
+        kind: "stroke",
+        sourceCanvasSize: canvasSize,
+        coordSpace: "canvasPx",
+      };
+    }
     if (obj.kind === "shape" && obj.start && obj.end) {
-      const start = obj.start as StrokePoint;
-      const end = obj.end as StrokePoint;
+      const coordSpace = String(obj.coordSpace ?? "");
+      const isVideoUv =
+        coordSpace === "videoUv" || coordSpace === "contentUv";
+      const start = obj.start as { u?: number; v?: number; x?: number; y?: number };
+      const end = obj.end as { u?: number; v?: number; x?: number; y?: number };
+      if (isVideoUv && typeof start.u === "number") {
+        const shapeName = String(obj.shape ?? "rect").toLowerCase();
+        const kind: AnnotationShapeKind =
+          shapeName === "circle" || shapeName === "oval"
+            ? "circle"
+            : shapeName === "line"
+              ? "line"
+              : shapeName === "arrow"
+                ? "arrow"
+                : "rect";
+        const theme = obj.theme as { strokeStyle?: string; lineWidth?: number } | undefined;
+        return {
+          points: [],
+          color: theme?.strokeStyle ?? "#ff3b30",
+          width: typeof theme?.lineWidth === "number" ? theme.lineWidth : 4,
+          kind,
+          shapeBounds: {
+            x0: Number(start.u ?? 0),
+            y0: Number(start.v ?? 0),
+            x1: Number(end.u ?? 0),
+            y1: Number(end.v ?? 0),
+          },
+          coordSpace: "contentUv",
+          targetUserId: obj.targetUserId != null ? String(obj.targetUserId) : null,
+          sourceCanvasSize: canvasSize,
+        };
+      }
       const shapeName = String(obj.shape ?? "rect").toLowerCase();
       const kind: AnnotationShapeKind =
         shapeName === "circle" || shapeName === "oval"
@@ -105,42 +201,7 @@ function parseIncomingStrokePayload(
           y1: Number(end.y ?? 0),
         },
         sourceCanvasSize: canvasSize,
-      };
-    }
-  }
-
-  if (Array.isArray(parsed) && parsed.length > 0) {
-    const first = parsed[0] as Record<string, unknown>;
-    if (typeof first.x === "number" && typeof first.y === "number") {
-      return {
-        points: parsed as StrokePoint[],
-        color: "#ff3b30",
-        width: 4,
-        kind: "stroke",
-        sourceCanvasSize: canvasSize,
-      };
-    }
-  }
-
-  if (typeof parsed === "object" && parsed !== null) {
-    const obj = parsed as Record<string, unknown>;
-    if (obj.kind === "freehand" && Array.isArray(obj.points)) {
-      const cw = canvasSize?.width ?? 1;
-      const ch = canvasSize?.height ?? 1;
-      const pts = (obj.points as Array<{ u?: number; v?: number; x?: number; y?: number }>).map(
-        (p) => {
-          if (typeof p.u === "number" && typeof p.v === "number") {
-            return { x: p.u * cw, y: p.v * ch };
-          }
-          return { x: Number(p.x ?? 0), y: Number(p.y ?? 0) };
-        }
-      );
-      return {
-        points: pts,
-        color: String(obj.color ?? "#ff3b30"),
-        width: Number(obj.width ?? 4),
-        kind: "stroke",
-        sourceCanvasSize: canvasSize,
+        coordSpace: "canvasPx",
       };
     }
   }
@@ -149,6 +210,7 @@ function parseIncomingStrokePayload(
 }
 
 function serializeStrokeForSocket(stroke: RemoteStroke): string {
+  const useContentUv = stroke.coordSpace === "contentUv";
   if (
     stroke.shapeBounds &&
     stroke.kind &&
@@ -164,6 +226,17 @@ function serializeStrokeForSocket(stroke: RemoteStroke): string {
           : stroke.kind === "arrow"
             ? "arrow"
             : "rect";
+    if (useContentUv) {
+      return JSON.stringify({
+        kind: "shape",
+        coordSpace: "videoUv",
+        targetUserId: stroke.targetUserId ?? undefined,
+        shape: webShape,
+        start: { u: b.x0, v: b.y0 },
+        end: { u: b.x1, v: b.y1 },
+        theme: { strokeStyle: stroke.color, lineWidth: stroke.width },
+      });
+    }
     return JSON.stringify({
       kind: "shape",
       coordSpace: "canvasPx",
@@ -171,6 +244,30 @@ function serializeStrokeForSocket(stroke: RemoteStroke): string {
       start: { x: b.x0, y: b.y0 },
       end: { x: b.x1, y: b.y1 },
       theme: { strokeStyle: stroke.color, lineWidth: stroke.width },
+    });
+  }
+  if (useContentUv && stroke.points.length > 0) {
+    return JSON.stringify({
+      kind: "freehand",
+      coordSpace: "videoUv",
+      targetUserId: stroke.targetUserId ?? undefined,
+      points: stroke.points.map((p) => ({ u: p.x, v: p.y })),
+      color: stroke.color,
+      width: stroke.width,
+    });
+  }
+  if (stroke.coordSpace === "normalizedCanvas" && stroke.points.length > 0) {
+    const cw = stroke.sourceCanvasSize?.width ?? 1;
+    const ch = stroke.sourceCanvasSize?.height ?? 1;
+    return JSON.stringify({
+      kind: "freehand",
+      coordSpace: "normalizedCanvas",
+      points: stroke.points.map((p) => ({
+        u: cw > 0 ? p.x / cw : 0,
+        v: ch > 0 ? p.y / ch : 0,
+      })),
+      color: stroke.color,
+      width: stroke.width,
     });
   }
   return JSON.stringify({ stroke });

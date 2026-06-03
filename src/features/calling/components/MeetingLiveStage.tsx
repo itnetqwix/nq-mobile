@@ -36,6 +36,7 @@ export function MeetingLiveStage({
         stream={stream}
         isStreamOff={isStreamOff}
         muted={muted}
+        mirrorPreview={false}
         fallbackLabel={label}
         style={styles.video}
       />

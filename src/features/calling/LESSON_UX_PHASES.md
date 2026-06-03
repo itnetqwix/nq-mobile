@@ -55,7 +55,17 @@ Use this checklist when verifying releases. Network adaptation is tracked separa
 2. Trainee mid-lesson clips
 3. Instant recording upload (audio MVP on mobile; web has full video)
 
+## Mobile ↔ mobile (supported)
+
+See `docs/CROSS_CLIENT_ANNOTATION_AND_RECORDING.md`.
+
+- **Annotations:** `videoUv` with contain (clips) / cover (live); backend relays full stroke payload on `session:{id}` rooms.
+- **Recording:** Audio + stage-frame mux → M4A/MP4 upload; backend `add-session-recording` + session-room recording socket relay.
+
+Precall may show `mixed_client_warning` only when the **peer is on web** — not for mobile↔mobile.
+
 ## Deferred
 
-- **Mobile ↔ web in same lesson** — precall warns only
+- **Web in the same lesson** — not a supported matrix row; native-only lessons recommended.
+- **OS-level screen recording** — ReplayKit / MediaProjection (separate native epic).
 - **PiP multi-tile** (coach + trainee composite in PiP window)

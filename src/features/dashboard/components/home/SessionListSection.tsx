@@ -1,7 +1,7 @@
 import React from "react";
 import { View } from "react-native";
-import { Pill, Skeleton } from "../../../../components/ui";
-import { radii, space } from "../../../../theme";
+import { Pill, SkeletonGroup, SessionRowSkeleton } from "../../../../components/ui";
+import { space } from "../../../../theme";
 import { HomeSection } from "./HomeSection";
 import { SeeAllButton } from "./SeeAllButton";
 import { SessionPreviewRow } from "./SessionPreviewRow";
@@ -45,8 +45,8 @@ export function SessionListSection({
   if (loading && sessions.length === 0) {
     return (
       <HomeSection title={title} subtitle={subtitle} testID={testID} headerRight={headerRight}>
-        <View style={{ padding: space.md, gap: space.sm }}>
-          <Skeleton width="100%" height={80} radius={radii.md} />
+        <View style={{ padding: space.md }}>
+          <SkeletonGroup count={2} renderRow={() => <SessionRowSkeleton />} />
         </View>
       </HomeSection>
     );

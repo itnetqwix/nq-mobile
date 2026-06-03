@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { Skeleton } from "../../../../components/ui";
+import { SkeletonGroup, TrainerBrowseCardSkeleton } from "../../../../components/ui";
 import { AccountType } from "../../../../constants/accountType";
 import { fetchSportCategories } from "../../../auth/api/masterApi";
 import { TrainerBrowseCard } from "../../../bookexpert/components/TrainerBrowseCard";
@@ -30,6 +30,10 @@ import {
 } from "../../lib/traineeDiscoverConstants";
 import { sortTrainersForDiscover } from "../../lib/sortTrainersForDiscover";
 import { PastBookedTrainersSection } from "./PastBookedTrainersSection";
+import { ForYouTrainersSection } from "./ForYouTrainersSection";
+import { GuestSeededCoachesSection } from "./GuestSeededCoachesSection";
+import { RecentlyViewedTrainersRow } from "./RecentlyViewedTrainersRow";
+import { useRecentlyViewedTrainers } from "../../hooks/useRecentlyViewedTrainers";
 import { ContinueWhereYouLeftOffCard } from "../trainee/ContinueWhereYouLeftOffCard";
 import { CategoryEmptySuggestions } from "../trainee/CategoryEmptySuggestions";
 import { FavoriteCoachesSection } from "../trainee/FavoriteCoachesSection";
@@ -107,6 +111,21 @@ export function TraineeDiscoverDashboard({
   const { data: walletBalance } = useWalletBalance(!isGuest);
   const isTraineeAccount = accountType === AccountType.TRAINEE;
   const { isFavorite, toggleFavorite } = useFavoriteTrainers(!isGuest && isTraineeAccount);
+  const userId = user?._id != null ? String(user._id) : null;
+  const { recentTrainers, track: trackRecentTrainer } = useRecentlyViewedTrainers(
+    isGuest ? null : userId
+  );
+  const recentTrainerIds = useMemo(
+    () => recentTrainers.map((r) => String(r._id ?? "")).filter(Boolean),
+    [recentTrainers]
+  );
+  const handleViewTrainer = useCallback(
+    (trainer: Record<string, unknown>) => {
+      void trackRecentTrainer(trainer);
+      onViewTrainer(trainer);
+    },
+    [onViewTrainer, trackRecentTrainer]
+  );
   const apiFilterParams = useMemo(() => filtersToApiParams(browseFilters), [browseFilters]);
   const activeFilterCount = countActiveFilters(browseFilters);
 
@@ -209,7 +228,9 @@ export function TraineeDiscoverDashboard({
     if (browseFilters.hasOpenSlots) {
       rows = rows.filter((r) => trainerHasOpenSlots(r));
     }
-    return sortTrainersForDiscover(dedupeRowsById(rows));
+    return sortTrainersForDiscover(
+      dedupeRowsById(rows as Array<{ _id?: unknown; id?: unknown }>)
+    );
   }, [directoryRows, onlineRaw, isOnline, browseFilters.onlineOnly, browseFilters.hasOpenSlots]);
 
   const visibleRows = useMemo(
@@ -314,7 +335,22 @@ export function TraineeDiscoverDashboard({
         />
       ) : null}
 
-      {!isGuest ? <PastBookedTrainersSection onSelectTrainer={onViewTrainer} /> : null}
+      {!isGuest && !searchActive ? (
+        <ForYouTrainersSection
+          recentTrainerIds={recentTrainerIds}
+          onSelectTrainer={handleViewTrainer}
+        />
+      ) : null}
+
+      {!isGuest && !searchActive ? (
+        <GuestSeededCoachesSection onSelectTrainer={handleViewTrainer} />
+      ) : null}
+
+      {!isGuest && !searchActive && recentTrainers.length > 0 ? (
+        <RecentlyViewedTrainersRow rows={recentTrainers} onSelectTrainer={handleViewTrainer} />
+      ) : null}
+
+      {!isGuest ? <PastBookedTrainersSection onSelectTrainer={handleViewTrainer} /> : null}
 
       <View style={styles.searchBar}>
         <Ionicons name="search-outline" size={20} color={themeColors.textMuted} />
@@ -354,7 +390,7 @@ export function TraineeDiscoverDashboard({
         <Text style={styles.searchHint}>{t("bookExpert.searchMinHint")}</Text>
       )}
 
-      {!isGuest ? <FavoriteCoachesSection onSelectTrainer={onViewTrainer} /> : null}
+      {!isGuest ? <FavoriteCoachesSection onSelectTrainer={handleViewTrainer} /> : null}
 
       {!searchActive && (
         <>
@@ -444,11 +480,11 @@ export function TraineeDiscoverDashboard({
       </View>
 
       {isLoading ? (
-        <View style={styles.loading}>
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} width="100%" height={150} radius={radii.lg} style={{ marginBottom: space.sm }} />
-          ))}
-        </View>
+        <SkeletonGroup
+          count={4}
+          style={styles.loading}
+          renderRow={() => <TrainerBrowseCardSkeleton />}
+        />
       ) : mergedRows.length === 0 ? (
         selectedCategory && altCategories.length > 0 ? (
           <CategoryEmptySuggestions
@@ -475,7 +511,7 @@ export function TraineeDiscoverDashboard({
                 key={trainerListItemKey(trainer, index, "discover-")}
                 trainer={trainer}
                 themeColors={themeColors}
-                onPress={onViewTrainer}
+                onPress={handleViewTrainer}
                 onBook={onInstantBook}
                 onSchedule={onScheduleBook}
                 highlightCategory={highlight}

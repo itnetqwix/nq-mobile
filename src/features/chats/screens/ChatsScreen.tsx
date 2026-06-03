@@ -17,7 +17,7 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { apiClient } from "../../../api/client";
-import { EmptyState, Skeleton } from "../../../components/ui";
+import { ChatRowSkeleton, EmptyState, Skeleton, SkeletonGroup } from "../../../components/ui";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { queryKeys } from "../../../lib/queryKeys";
 import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
@@ -675,15 +675,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
 
       {isLoading ? (
         <View style={{ padding: space.md }}>
-          {[0, 1, 2, 3].map((i) => (
-            <View key={i} style={{ marginBottom: space.sm, flexDirection: "row", gap: space.sm, alignItems: "center" }}>
-              <Skeleton width={44} height={44} radius={22} />
-              <View style={{ flex: 1, gap: 6 }}>
-                <Skeleton width="60%" height={12} />
-                <Skeleton width="80%" height={10} />
-              </View>
-            </View>
-          ))}
+          <SkeletonGroup count={5} renderRow={() => <ChatRowSkeleton />} />
         </View>
       ) : (
         <FlatList<any>

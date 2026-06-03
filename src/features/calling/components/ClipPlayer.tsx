@@ -35,6 +35,8 @@ type Props = {
   onEnded?: () => void;
   onReady?: () => void;
   onFrameLayout?: (width: number, height: number) => void;
+  /** Intrinsic video dimensions (for annotation UV mapping). */
+  onNaturalSize?: (width: number, height: number) => void;
 };
 
 const CLIP_BG = "#ffffff";
@@ -60,6 +62,7 @@ export function ClipPlayer({
   onEnded,
   onReady,
   onFrameLayout,
+  onNaturalSize,
 }: Props) {
   const videoRef = React.useRef<Video>(null);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -312,6 +315,11 @@ export function ClipPlayer({
                   status.durationMillis > 0
                 ) {
                   onDurationSeconds?.(status.durationMillis / 1000);
+                }
+                const ns = (status as { naturalSize?: { width: number; height: number } })
+                  .naturalSize;
+                if (ns && ns.width > 0 && ns.height > 0) {
+                  onNaturalSize?.(ns.width, ns.height);
                 }
                 if (onProgressSeconds && typeof status.positionMillis === "number") {
                   onProgressSeconds(status.positionMillis / 1000);

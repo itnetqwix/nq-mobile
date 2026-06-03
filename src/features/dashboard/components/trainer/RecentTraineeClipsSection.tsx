@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
-import { Skeleton } from "../../../../components/ui";
+import { ClipTileSkeleton } from "../../../../components/ui";
 import { getS3ImageUrl } from "../../../../lib/imageUtils";
 import { postTraineeClipsGrouped } from "../../../home/api/homeApi";
 import { queryKeys } from "../../../../lib/queryKeys";
@@ -78,7 +78,11 @@ export function RecentTraineeClipsSection({ onOpenClips }: Props) {
   if (isLoading) {
     return (
       <DashboardSection embedded title={t("trainerDashboard.recentClips")}>
-        <Skeleton width={120} height={80} radius={radii.md} />
+        <View style={{ flexDirection: "row", gap: space.sm }}>
+          {[0, 1, 2].map((i) => (
+            <ClipTileSkeleton key={i} />
+          ))}
+        </View>
       </DashboardSection>
     );
   }

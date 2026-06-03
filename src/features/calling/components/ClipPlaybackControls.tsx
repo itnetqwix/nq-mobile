@@ -10,6 +10,8 @@ import {
   type GestureResponderEvent,
 } from "react-native";
 
+import { meetingTheme } from "../meetingTheme";
+
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
   const m = Math.floor(seconds / 60);
@@ -77,29 +79,41 @@ export function ClipPlaybackControls({
     [disabled, max, onSeek]
   );
 
+  const isInline = variant === "inline";
+
   return (
     <View
       style={[
         styles.bar,
-        variant === "floating" ? { bottom: bottomOffset } : styles.barInline,
+        !isInline && { bottom: bottomOffset },
+        isInline && styles.barInline,
       ]}
       pointerEvents="box-none"
     >
-      <View style={[styles.timelineCard, compact && styles.timelineCardCompact]}>
+      <View
+        style={[
+          styles.timelineCard,
+          compact && styles.timelineCardCompact,
+          isInline && styles.timelineCardInline,
+        ]}
+      >
         <Pressable
-          style={[
+          style={({ pressed }) => [
             styles.playBtn,
             compact && styles.playBtnCompact,
             disabled && styles.btnDisabled,
+            pressed && !disabled && styles.playBtnPressed,
           ]}
           onPress={onTogglePlay}
           disabled={disabled}
           accessibilityLabel={isPlaying ? "Pause clip" : "Play clip"}
+          accessibilityRole="button"
         >
           <Ionicons
             name={isPlaying ? "pause" : "play"}
-            size={compact ? 16 : 22}
-            color="#fff"
+            size={compact ? 18 : 24}
+            color={meetingTheme.onPrimary}
+            style={!isPlaying ? styles.playIconOffset : undefined}
           />
         </Pressable>
 
@@ -112,6 +126,11 @@ export function ClipPlaybackControls({
             style={[styles.trackHit, compact && styles.trackHitCompact]}
             accessibilityRole="adjustable"
             accessibilityLabel="Clip timeline"
+            accessibilityValue={{
+              min: 0,
+              max: Math.round(max),
+              now: Math.round(value),
+            }}
           >
             <Pressable
               onPress={seekFromEvent}
@@ -120,34 +139,39 @@ export function ClipPlaybackControls({
             />
             <View style={[styles.track, compact && styles.trackCompact]}>
               <View style={[styles.fill, { width: `${ratio * 100}%` }]} />
-              <View
-                style={[
-                  styles.thumb,
-                  compact && styles.thumbCompact,
-                  { left: `${ratio * 100}%` },
-                ]}
-              />
             </View>
+            <View
+              style={[
+                styles.thumb,
+                compact && styles.thumbCompact,
+                { left: `${ratio * 100}%` },
+              ]}
+            />
           </View>
           <View style={styles.timeRow}>
             <Text style={[styles.timeText, compact && styles.timeTextCompact]}>
               {formatTime(value)}
             </Text>
-            <Text style={[styles.timeText, compact && styles.timeTextCompact]}>
+            <Text style={[styles.timeMuted, compact && styles.timeTextCompact]}>
               {formatTime(max)}
             </Text>
           </View>
         </View>
+
         {showExpand && onToggleExpand ? (
           <Pressable
-            style={[styles.expandBtn, compact && styles.expandBtnCompact]}
+            style={({ pressed }) => [
+              styles.expandBtn,
+              compact && styles.expandBtnCompact,
+              pressed && { opacity: 0.85 },
+            ]}
             onPress={onToggleExpand}
             accessibilityLabel={isExpanded ? "Exit expanded clip" : "Expand clip"}
           >
             <Ionicons
               name={isExpanded ? "contract-outline" : "expand-outline"}
               size={compact ? 18 : 22}
-              color="#fff"
+              color={meetingTheme.text}
             />
           </Pressable>
         ) : null}
@@ -168,99 +192,135 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    marginTop: 4,
-    paddingHorizontal: 4,
+    marginTop: 0,
+    paddingHorizontal: 0,
   },
   timelineCard: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 12,
+    backgroundColor: meetingTheme.surfaceElevated,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: meetingTheme.border,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  timelineCardInline: {
+    backgroundColor: "#f4f6f8",
+    borderColor: "rgba(0,0,0,0.08)",
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  timelineCardCompact: {
     gap: 8,
-    backgroundColor: "rgba(0,0,0,0.78)",
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 6,
   },
-  timelineCardCompact: {
-    gap: 6,
-    borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    maxWidth: "92%",
-    alignSelf: "center",
-  },
   playBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.18)",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: meetingTheme.navy,
     alignItems: "center",
     justifyContent: "center",
   },
   playBtnCompact: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  playBtnPressed: {
+    opacity: 0.88,
+    transform: [{ scale: 0.96 }],
+  },
+  playIconOffset: {
+    marginLeft: 2,
   },
   btnDisabled: { opacity: 0.4 },
-  timelineCol: { flex: 1 },
-  trackHit: { paddingVertical: 4 },
-  trackHitCompact: { paddingVertical: 2 },
+  timelineCol: { flex: 1, minWidth: 0 },
+  trackHit: {
+    paddingVertical: 10,
+    justifyContent: "center",
+  },
+  trackHitCompact: { paddingVertical: 6 },
   track: {
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: "rgba(255,255,255,0.25)",
-    overflow: "visible",
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(0,0,0,0.12)",
+    overflow: "hidden",
   },
-  trackCompact: {
-    height: 2,
-  },
+  trackCompact: { height: 4 },
   fill: {
     position: "absolute",
     left: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: "#4fc3f7",
-    borderRadius: 2,
+    backgroundColor: meetingTheme.navy,
+    borderRadius: 3,
   },
   thumb: {
     position: "absolute",
-    top: -5,
-    marginLeft: -6,
-    width: 12,
-    height: 12,
-    borderRadius: 8,
+    top: "50%",
+    marginTop: -9,
+    marginLeft: -9,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: "#fff",
+    borderWidth: 2,
+    borderColor: meetingTheme.navy,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
   },
   thumbCompact: {
-    top: -4,
-    marginLeft: -5,
-    width: 10,
-    height: 10,
+    marginTop: -7,
+    marginLeft: -7,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
   },
   timeRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 2,
+    marginTop: 4,
+    paddingHorizontal: 2,
   },
   timeText: {
-    color: "rgba(255,255,255,0.85)",
-    fontSize: 11,
+    color: meetingTheme.text,
+    fontSize: 12,
+    fontWeight: "700",
+    fontVariant: ["tabular-nums"],
+  },
+  timeMuted: {
+    color: meetingTheme.textMuted,
+    fontSize: 12,
     fontWeight: "600",
+    fontVariant: ["tabular-nums"],
   },
   timeTextCompact: {
-    fontSize: 9,
+    fontSize: 10,
   },
   expandBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.15)",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(0,0,0,0.06)",
     alignItems: "center",
     justifyContent: "center",
   },
   expandBtnCompact: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
   },
 });

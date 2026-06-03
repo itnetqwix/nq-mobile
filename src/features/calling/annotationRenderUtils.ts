@@ -4,6 +4,13 @@
 
 import { Skia, type SkPath } from "@shopify/react-native-skia";
 
+import {
+  canvasPointToContentUV,
+  canvasPointToNormalizedCanvas,
+  contentUVToCanvasPoint,
+  type AnnotationFitMode,
+  type ContentAspect,
+} from "./annotationCoords";
 import type { RemoteStroke, StrokePoint } from "./useDrawingSync";
 
 export function pointsToPath(points: StrokePoint[]): SkPath {
@@ -113,4 +120,118 @@ export function normalizeStrokesForTarget(
     sourceCanvasSize: s.sourceCanvasSize ?? sourceCanvas,
   }));
   return withSource.map((s) => scaleStrokeForCanvas(s, target));
+}
+
+/** Map a stroke into overlay pixel space for rendering or burn-in. */
+export function projectStrokeToCanvas(
+  stroke: RemoteStroke,
+  target: { width: number; height: number },
+  aspect?: ContentAspect | null,
+  fit: AnnotationFitMode = "contain"
+): RemoteStroke {
+  if (
+    stroke.coordSpace === "contentUv" &&
+    aspect &&
+    aspect.width > 0 &&
+    aspect.height > 0 &&
+    target.width > 0 &&
+    target.height > 0
+  ) {
+    const mapPt = (u: number, v: number) => {
+      const pt = contentUVToCanvasPoint(u, v, target.width, target.height, aspect, fit);
+      return pt ?? { x: u * target.width, y: v * target.height };
+    };
+    const bounds = stroke.shapeBounds;
+    return {
+      ...stroke,
+      points: stroke.points.map((p) => mapPt(p.x, p.y)),
+      shapeBounds: bounds
+        ? {
+            x0: mapPt(bounds.x0, bounds.y0).x,
+            y0: mapPt(bounds.x0, bounds.y0).y,
+            x1: mapPt(bounds.x1, bounds.y1).x,
+            y1: mapPt(bounds.x1, bounds.y1).y,
+          }
+        : undefined,
+    };
+  }
+  if (stroke.coordSpace === "normalizedCanvas" && target.width > 0 && target.height > 0) {
+    return {
+      ...stroke,
+      points: stroke.points.map((p) => ({
+        x: p.x * target.width,
+        y: p.y * target.height,
+      })),
+      shapeBounds: stroke.shapeBounds
+        ? {
+            x0: stroke.shapeBounds.x0 * target.width,
+            y0: stroke.shapeBounds.y0 * target.height,
+            x1: stroke.shapeBounds.x1 * target.width,
+            y1: stroke.shapeBounds.y1 * target.height,
+          }
+        : undefined,
+    };
+  }
+  return scaleStrokeForCanvas(stroke, target);
+}
+
+/** Build socket payload stroke with cross-device-safe coordinates. */
+export function strokeForSyncEmit(
+  stroke: RemoteStroke,
+  canvasSize: { width: number; height: number },
+  options?: {
+    contentAspect?: ContentAspect | null;
+    contentFit?: AnnotationFitMode;
+    targetUserId?: string | null;
+  }
+): RemoteStroke {
+  const aspect = options?.contentAspect;
+  const fit = options?.contentFit ?? "contain";
+  const targetUserId = options?.targetUserId ?? null;
+  if (aspect && aspect.width > 0 && aspect.height > 0) {
+    const toUv = (x: number, y: number) => {
+      const uv =
+        canvasPointToContentUV(x, y, canvasSize.width, canvasSize.height, aspect, fit) ??
+        canvasPointToNormalizedCanvas(x, y, canvasSize.width, canvasSize.height);
+      return { x: uv.u, y: uv.v };
+    };
+    const bounds = stroke.shapeBounds;
+    return {
+      ...stroke,
+      coordSpace: "contentUv",
+      contentAspect: aspect,
+      contentFit: fit,
+      targetUserId,
+      sourceCanvasSize: canvasSize,
+      points: stroke.points.map((p) => toUv(p.x, p.y)),
+      shapeBounds: bounds
+        ? {
+            x0: toUv(bounds.x0, bounds.y0).x,
+            y0: toUv(bounds.x0, bounds.y0).y,
+            x1: toUv(bounds.x1, bounds.y1).x,
+            y1: toUv(bounds.x1, bounds.y1).y,
+          }
+        : undefined,
+    };
+  }
+  const toUv = (x: number, y: number) =>
+    canvasPointToNormalizedCanvas(x, y, canvasSize.width, canvasSize.height);
+  const bounds = stroke.shapeBounds;
+  return {
+    ...stroke,
+    coordSpace: "normalizedCanvas",
+    sourceCanvasSize: canvasSize,
+    points: stroke.points.map((p) => {
+      const uv = toUv(p.x, p.y);
+      return { x: uv.u, y: uv.v };
+    }),
+    shapeBounds: bounds
+      ? {
+          x0: toUv(bounds.x0, bounds.y0).u,
+          y0: toUv(bounds.x0, bounds.y0).v,
+          x1: toUv(bounds.x1, bounds.y1).u,
+          y1: toUv(bounds.x1, bounds.y1).v,
+        }
+      : undefined,
+  };
 }

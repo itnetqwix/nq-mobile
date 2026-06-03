@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import React, { useMemo } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Skeleton } from "../../../../components/ui";
+import { CoachCarouselSkeleton } from "../../../../components/ui";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../../lib/queryKeys";
 import { trainerListItemKey } from "../../../../lib/lists/trainerListUtils";
@@ -69,14 +69,7 @@ export function ForYouTrainersSection({
 
   if (isLoading) {
     return (
-      <View style={styles.wrap}>
-        <SectionHeader />
-        <View style={{ flexDirection: "row", gap: space.sm }}>
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} width={148} height={188} radius={radii.lg} />
-          ))}
-        </View>
-      </View>
+      <CoachCarouselSkeleton count={3} variant="forYou" showHeader />
     );
   }
 

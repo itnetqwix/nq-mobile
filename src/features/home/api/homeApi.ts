@@ -189,6 +189,62 @@ export async function fetchRecentTrainers(): Promise<any[]> {
   return Array.isArray(raw) ? dedupeRowsById(raw) : [];
 }
 
+export type PersonalizedReason =
+  | "past_session_repeat"
+  | "past_session_same_category"
+  | "guest_view"
+  | "guest_favorite"
+  | "recently_viewed"
+  | "online_now";
+
+export type PersonalizedFeedRow = {
+  trainer_id: string;
+  reasons: PersonalizedReason[];
+  primary_reason?: PersonalizedReason;
+  repeat_count: number;
+};
+
+export type PersonalizedFeedResult = {
+  for_you: Record<string, unknown>[];
+  reasoning: PersonalizedFeedRow[];
+};
+
+export async function fetchPersonalizedFeed(params: {
+  limit?: number;
+  recentTrainerIds?: string[];
+}): Promise<PersonalizedFeedResult> {
+  const res = await apiClient.get(API_ROUTES.trainee.personalizedFeed, {
+    params: {
+      limit: params.limit ?? 12,
+      recentTrainerIds: params.recentTrainerIds?.length
+        ? params.recentTrainerIds.join(",")
+        : undefined,
+    },
+  });
+  const raw = (res.data?.data ?? res.data?.result ?? res.data ?? {}) as {
+    for_you?: unknown;
+    reasoning?: unknown;
+  };
+  return {
+    for_you: Array.isArray(raw.for_you)
+      ? dedupeTrainersById(raw.for_you as Record<string, unknown>[])
+      : [],
+    reasoning: Array.isArray(raw.reasoning)
+      ? (raw.reasoning as PersonalizedFeedRow[])
+      : [],
+  };
+}
+
+export async function fetchGuestSeededTrainers(limit = 12): Promise<Record<string, unknown>[]> {
+  const res = await apiClient.get(API_ROUTES.trainee.guestSeededTrainers, {
+    params: { limit },
+  });
+  const raw = res.data?.data ?? res.data?.result ?? res.data ?? [];
+  return Array.isArray(raw)
+    ? dedupeTrainersById(raw as Record<string, unknown>[])
+    : [];
+}
+
 export async function postAcceptFriendRequest(requestId: string): Promise<any> {
   const res = await apiClient.post(API_ROUTES.user.acceptFriendRequest, { requestId });
   return res.data;

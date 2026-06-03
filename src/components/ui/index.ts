@@ -35,8 +35,14 @@ export {
   SessionRowSkeleton,
   ChatRowSkeleton,
   ClipCardSkeleton,
+  ClipTileSkeleton,
   ProfileHeaderSkeleton,
   TransactionRowSkeleton,
+  TrainerBrowseCardSkeleton,
+  CoachBoxSkeleton,
+  CoachCarouselSkeleton,
+  type CoachBoxSkeletonVariant,
+  type CoachCarouselSkeletonProps,
   type SkeletonGroupProps,
 } from "./ContentSkeletons";
 export { HelpBubble, type HelpBubbleProps } from "./HelpBubble";

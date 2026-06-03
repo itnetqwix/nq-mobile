@@ -46,6 +46,7 @@ export function DualLiveStage({
           stream={localStream}
           isStreamOff={localStreamOff}
           muted
+          mirrorPreview={false}
           fallbackLabel={localLabel}
           onPress={onSelectLocal}
           style={styles.videoFill}

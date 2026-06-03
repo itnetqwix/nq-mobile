@@ -10,6 +10,7 @@ import type { ActionContext } from "../navigation/linkActions";
 import { RememberDeviceCheckbox } from "./RememberDeviceCheckbox";
 import { SystemStateActions } from "./SystemStateActions";
 import { SystemStateHero } from "./SystemStateHero";
+import { SystemOfflineTips } from "./SystemOfflineTips";
 
 export type SystemStateLayoutProps = {
   stateId: SystemStateId;
@@ -73,6 +74,7 @@ export function SystemStateLayout({
             {description}
           </Text>
         ) : null}
+        {stateId === "offline" ? <SystemOfflineTips /> : null}
         {rememberDeviceAction && preset.secondary ? (
           <RememberDeviceCheckbox
             label={preset.secondary.label || t("systemActions.rememberDevice")}

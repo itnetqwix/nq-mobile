@@ -2,7 +2,7 @@ import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { Skeleton } from "../../../../components/ui";
+import { CoachCarouselSkeleton, Skeleton } from "../../../../components/ui";
 import { fetchRecentTrainers } from "../../../home/api/homeApi";
 import { getTrainerName } from "../../../bookexpert/lib/trainerUtils";
 import { trainerListItemKey } from "../../../../lib/lists/trainerListUtils";
@@ -29,12 +29,8 @@ export function PastBookedTrainersSection({ onSelectTrainer }: Props) {
   if (isLoading) {
     return (
       <View style={styles.wrap}>
-        <Text style={styles.title}>{t("traineeDiscover.pastBookedTitle")}</Text>
-        <View style={{ flexDirection: "row", gap: space.sm }}>
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} width={100} height={120} radius={radii.md} />
-          ))}
-        </View>
+        <Skeleton width={140} height={16} style={{ marginBottom: space.sm }} />
+        <CoachCarouselSkeleton count={3} variant="pastBooked" showHeader={false} />
       </View>
     );
   }

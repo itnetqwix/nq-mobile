@@ -763,7 +763,11 @@ function MeetingSurface({
   const hasClipStage =
     clipPaneUrisEarly.length > 0 &&
     (clipSync.selectedClips.length > 0 || Boolean(clipSync.activeClipId));
-  const chrome = useMeetingChromeInsets({ inClipMode: hasClipStage });
+  const dualClipEarly = clipPaneUrisEarly.length >= 2;
+  const chrome = useMeetingChromeInsets({
+    inClipMode: hasClipStage,
+    inlineClipControls: hasClipStage && !dualClipEarly,
+  });
 
   const meetingLayout = useMeetingLayout({
     socket,
@@ -1079,6 +1083,10 @@ function MeetingSurface({
   const [clipDurations, setClipDurations] = useState<[number, number]>([0, 0]);
   const [clipProgresses, setClipProgresses] = useState<[number, number]>([0, 0]);
   const [drawingOverlayKey, setDrawingOverlayKey] = useState(0);
+  const [clipNaturalSize, setClipNaturalSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
   const [annotationTool, setAnnotationTool] = useState<AnnotationTool>("freehand");
   const [annotationColor, setAnnotationColor] = useState("#ff3b30");
   const [annotationArmed, setAnnotationArmed] = useState(false);
@@ -1350,6 +1358,12 @@ function MeetingSurface({
       onFrameLayout: clipId
         ? (w: number, h: number) => clipSync.registerClipFrameSize(String(clipId), w, h)
         : undefined,
+      onNaturalSize:
+        paneIndex === 0
+          ? (w: number, h: number) => {
+              if (w > 0 && h > 0) setClipNaturalSize({ width: w, height: h });
+            }
+          : undefined,
       showZoomControls: isTrainer && !!clipId,
       onZoomIn: clipId
         ? () => clipSync.bumpZoom(String(clipId), 0.25)
@@ -1592,6 +1606,9 @@ function MeetingSurface({
 
   const inClipMode = hasClipStage;
   const inLiveFocus = meetingLayout.focusedStreamId != null;
+  useEffect(() => {
+    setClipNaturalSize(null);
+  }, [activeClipUri, clipSync.activeClipId]);
 
   useEffect(() => {
     if (!isTrainer || !inLiveFocus || !meetingBounds) return;
@@ -1676,6 +1693,22 @@ function MeetingSurface({
     [annotationColor, drawingSync]
   );
   const focusedIsRemote = inLiveFocus && String(meetingLayout.focusedStreamId) === String(peerId);
+
+  const annotationContentAspect = useMemo(() => {
+    if (hasClipStage && clipNaturalSize && clipNaturalSize.width > 0) {
+      return clipNaturalSize;
+    }
+    return { width: 16, height: 9 };
+  }, [clipNaturalSize, hasClipStage]);
+
+  const annotationContentFit = hasClipStage ? ("contain" as const) : ("cover" as const);
+
+  const annotationTargetUserId = useMemo(() => {
+    if (inLiveFocus) {
+      return focusedIsLocal ? myId : peerId;
+    }
+    return peerId;
+  }, [focusedIsLocal, inLiveFocus, myId, peerId]);
 
   useEffect(() => {
     const stream = inLiveFocus
@@ -2056,36 +2089,40 @@ function MeetingSurface({
                 {(() => {
                   const singlePane = makeClipPlayerProps(0);
                   return (
-                    <View style={styles.singleClipPlayer}>
-                      <ClipPlayer uri={activeClipUri!} {...singlePane} />
-                      {!screenshot.capturing &&
-                      singlePane.showZoomControls &&
-                      singlePane.onZoomIn &&
-                      singlePane.onZoomOut ? (
-                        <ClipZoomControls
-                          onZoomIn={singlePane.onZoomIn}
-                          onZoomOut={singlePane.onZoomOut}
-                        />
+                    <>
+                      <View style={styles.singleClipPlayer}>
+                        <ClipPlayer uri={activeClipUri!} {...singlePane} />
+                        {!screenshot.capturing &&
+                        singlePane.showZoomControls &&
+                        singlePane.onZoomIn &&
+                        singlePane.onZoomOut ? (
+                          <ClipZoomControls
+                            onZoomIn={singlePane.onZoomIn}
+                            onZoomOut={singlePane.onZoomOut}
+                          />
+                        ) : null}
+                      </View>
+                      {isTrainer && !screenshot.capturing ? (
+                        <View style={styles.singleClipControlsDock}>
+                          <ClipPlaybackControls
+                            variant="inline"
+                            size="default"
+                            isPlaying={clipSync.isClipPlaying(
+                              clipSync.selectedClips[0]
+                                ? clipIdOf(clipSync.selectedClips[0])
+                                : null
+                            )}
+                            onTogglePlay={handleSingleClipTogglePlay}
+                            progressSeconds={clipProgresses[0]}
+                            durationSeconds={clipDurations[0]}
+                            onSeek={(sec) => handleClipSeek(0, sec)}
+                            disabled={!activeClipUri}
+                          />
+                        </View>
                       ) : null}
-                    </View>
+                    </>
                   );
                 })()}
-                {isTrainer && !screenshot.capturing ? (
-                  <ClipPlaybackControls
-                    size="compact"
-                    isPlaying={clipSync.isClipPlaying(
-                      clipSync.selectedClips[0]
-                        ? clipIdOf(clipSync.selectedClips[0])
-                        : null
-                    )}
-                    onTogglePlay={handleSingleClipTogglePlay}
-                    progressSeconds={clipProgresses[0]}
-                    durationSeconds={clipDurations[0]}
-                    onSeek={(sec) => handleClipSeek(0, sec)}
-                    disabled={!activeClipUri}
-                    bottomOffset={chrome.clipControlsBottom}
-                  />
-                ) : null}
               </View>
             )}
           </View>
@@ -2125,6 +2162,9 @@ function MeetingSurface({
           tool={annotationTool}
           color={annotationColor}
           remoteStrokes={drawingSync.remoteStrokes}
+          contentAspect={annotationContentAspect}
+          contentFit={annotationContentFit}
+          annotationTargetUserId={annotationTargetUserId}
           onStrokeComplete={emitAnnotationStroke}
         />
         </View>
@@ -2905,10 +2945,21 @@ const styles = StyleSheet.create({
   singleClip: {
     flex: 1,
     overflow: "hidden",
+    flexDirection: "column",
   },
   singleClipPlayer: {
     flex: 1,
     position: "relative",
+    minHeight: 200,
+  },
+  singleClipControlsDock: {
+    flexShrink: 0,
+    paddingHorizontal: 6,
+    paddingTop: 6,
+    paddingBottom: 4,
+    backgroundColor: "#ffffff",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(0,0,0,0.1)",
   },
   dualColumn: {
     flex: 1,

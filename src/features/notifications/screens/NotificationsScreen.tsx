@@ -12,7 +12,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { EmptyState, Skeleton } from "../../../components/ui";
+import { ChatRowSkeleton, EmptyState, SkeletonGroup } from "../../../components/ui";
 import type { RootStackParamList } from "../../../navigation/types";
 import {
   buildNotificationRoute,
@@ -166,18 +166,7 @@ export function NotificationsScreen() {
   if (isLoading) {
     return (
       <View style={{ padding: space.md }}>
-        {[0, 1, 2, 3, 4].map((i) => (
-          <View
-            key={i}
-            style={{ marginBottom: space.sm, flexDirection: "row", gap: space.sm, alignItems: "center" }}
-          >
-            <Skeleton width={36} height={36} radius={18} />
-            <View style={{ flex: 1, gap: 6 }}>
-              <Skeleton width="55%" height={12} />
-              <Skeleton width="85%" height={10} />
-            </View>
-          </View>
-        ))}
+        <SkeletonGroup count={5} renderRow={() => <ChatRowSkeleton />} />
       </View>
     );
   }
