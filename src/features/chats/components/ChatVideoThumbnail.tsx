@@ -55,7 +55,11 @@ export function ChatVideoThumbnail({ uri, style, onPress, isMine }: Props) {
           {loading ? (
             <MediaLoadingOverlay message="" size="compact" style={styles.thumbLoader} />
           ) : (
-            <Ionicons name="videocam" size={28} color={isMine ? "#fff" : c.brandNavy} />
+            <Ionicons
+              name="videocam"
+              size={28}
+              color={isMine ? c.chatBubbleOutgoingText : c.primary}
+            />
           )}
         </View>
       )}

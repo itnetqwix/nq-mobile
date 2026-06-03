@@ -168,28 +168,28 @@ function MessageStatus({
   if (pending || status === "sending") {
     return (
       <View style={statusStyles.row}>
-        <ActivityIndicator size={10} color="rgba(255,255,255,0.75)" />
+        <ActivityIndicator size={10} color="#94a3b8" />
       </View>
     );
   }
   if (!status || status === "sent") {
     return (
       <View style={statusStyles.row}>
-        <Ionicons name="checkmark" size={15} color="#9CA3AF" />
+        <Ionicons name="checkmark" size={15} color="#94a3b8" />
       </View>
     );
   }
   if (status === "delivered") {
     return (
       <View style={statusStyles.row}>
-        <Ionicons name="checkmark-done" size={15} color="#54656F" />
+        <Ionicons name="checkmark-done" size={15} color="#64748b" />
       </View>
     );
   }
   if (status === "read") {
     return (
       <View style={statusStyles.row}>
-        <Ionicons name="checkmark-done" size={15} color="#FFFFFF" />
+        <Ionicons name="checkmark-done" size={15} color="#1976d2" />
       </View>
     );
   }
@@ -238,7 +238,7 @@ function useChatRoomStyles() {
   messageList: {
     paddingHorizontal: space.md,
     paddingTop: space.sm,
-    paddingBottom: space.md,
+    paddingBottom: space.lg,
     flexGrow: 1,
   },
   messageListEmpty: {
@@ -247,23 +247,33 @@ function useChatRoomStyles() {
   },
   messageRow: {
     width: "100%",
-    flexDirection: "row",
-    paddingVertical: 3,
+    paddingVertical: 5,
   },
-  messageRowMine: { justifyContent: "flex-end" },
-  messageRowTheirs: { justifyContent: "flex-start" },
+  messageRowMine: { alignItems: "flex-end" },
+  messageRowTheirs: { alignItems: "flex-start" },
+  messageColumn: {
+    maxWidth: "82%",
+    gap: 3,
+  },
+  messageColumnMine: { alignItems: "flex-end" },
+  messageColumnTheirs: { alignItems: "flex-start" },
+  bubblePressable: {
+    alignSelf: "stretch",
+  },
   bubble: {
-    maxWidth: "80%",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 18,
   },
-  bubbleMine: { backgroundColor: themeColors.brandNavy, borderBottomRightRadius: 4 },
+  bubbleMine: {
+    backgroundColor: themeColors.chatBubbleOutgoing,
+    borderBottomRightRadius: 6,
+  },
   bubbleTheirs: {
-    backgroundColor: themeColors.surfaceElevated,
-    borderBottomLeftRadius: 4,
-    borderWidth: 1,
-    borderColor: themeColors.border,
+    backgroundColor: themeColors.chatBubbleIncoming,
+    borderBottomLeftRadius: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: themeColors.borderSubtle,
   },
   composer: {
     backgroundColor: themeColors.surfaceElevated,
@@ -280,34 +290,43 @@ function useChatRoomStyles() {
     borderBottomColor: themeColors.border,
     backgroundColor: themeColors.surfaceMuted,
   },
-  replyBarLabel: { fontSize: 11, fontWeight: "700", color: themeColors.brandNavy },
+  replyBarLabel: { fontSize: 11, fontWeight: "700", color: themeColors.primary },
   replyBarText: { fontSize: 13, color: themeColors.textMuted, marginTop: 2 },
   replyQuote: {
     borderLeftWidth: 3,
-    borderLeftColor: themeColors.brandNavy,
-    paddingLeft: 8,
-    marginBottom: 6,
-    opacity: 0.85,
+    borderLeftColor: themeColors.primary,
+    paddingLeft: 10,
+    paddingVertical: 4,
+    marginBottom: 8,
+    opacity: 0.9,
   },
   replyQuoteText: { fontSize: 12, color: themeColors.textMuted },
   senderName: {
     fontSize: 12,
     fontWeight: "700",
-    color: themeColors.brandNavy,
-    marginBottom: 4,
-    marginLeft: 4,
+    color: themeColors.primary,
+    paddingHorizontal: 2,
   },
   senderNameMine: {
-    alignSelf: "flex-end",
-    marginRight: 4,
     color: themeColors.textMuted,
+    fontWeight: "600",
   },
-  bubbleText: { ...typography.bodyMd, color: themeColors.text, lineHeight: 20 },
-  bubbleTextMine: { color: "#fff" },
-  bubbleFooter: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", marginTop: 2 },
-  bubbleTime: { ...typography.caption, color: themeColors.textMuted, fontSize: 10 },
-  bubbleTimeMine: { color: "rgba(255,255,255,0.6)" },
-  mediaThumbnail: { width: 200, height: 200, borderRadius: radii.md, marginBottom: 4 },
+  bubbleText: {
+    ...typography.bodyMd,
+    color: themeColors.chatBubbleIncomingText ?? themeColors.text,
+    lineHeight: 22,
+  },
+  bubbleTextMine: { color: themeColors.chatBubbleOutgoingText },
+  bubbleFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    marginTop: 6,
+    gap: 4,
+  },
+  bubbleTime: { ...typography.caption, color: themeColors.textMuted, fontSize: 11 },
+  bubbleTimeMine: { color: themeColors.textMuted },
+  mediaThumbnail: { width: 200, height: 200, borderRadius: radii.md, marginBottom: 6 },
   videoContainer: { position: "relative", width: 200, height: 120, borderRadius: radii.md, overflow: "hidden" },
   videoPlaceholder: { flex: 1, backgroundColor: "rgba(0,0,0,0.1)", alignItems: "center", justifyContent: "center" },
   playOverlay: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
@@ -527,10 +546,10 @@ function VoicePlayer({ uri, isMine }: { uri: string; isMine: boolean }) {
   }, [uri, sound, playing]);
 
   const progress = dur > 0 ? pos / dur : 0;
-  const fg = isMine ? "rgba(255,255,255,0.9)" : themeColors.brandNavy;
-  const barBg = isMine ? "rgba(255,255,255,0.3)" : themeColors.border;
-  const barFill = isMine ? "#fff" : themeColors.brandNavy;
-  const timeFg = isMine ? "rgba(255,255,255,0.7)" : themeColors.textMuted;
+  const fg = isMine ? themeColors.chatBubbleOutgoingText : themeColors.primary;
+  const barBg = isMine ? "rgba(30, 58, 90, 0.12)" : themeColors.borderSubtle;
+  const barFill = isMine ? themeColors.primary : themeColors.primary;
+  const timeFg = themeColors.textMuted;
 
   return (
     <Pressable onPress={toggle} style={voiceStyles.row}>
@@ -1297,11 +1316,17 @@ export function ChatRoomScreen({
 
       return (
         <View style={[styles.messageRow, isMine ? styles.messageRowMine : styles.messageRowTheirs]}>
+          <View
+            style={[
+              styles.messageColumn,
+              isMine ? styles.messageColumnMine : styles.messageColumnTheirs,
+            ]}
+          >
           {senderLabel ? (
             <Text style={[styles.senderName, isMine && styles.senderNameMine]}>{senderLabel}</Text>
           ) : null}
           <Pressable
-            style={{ maxWidth: "82%" }}
+            style={styles.bubblePressable}
             onLongPress={onLongPressMsg}
           >
           <View
@@ -1350,6 +1375,7 @@ export function ChatRoomScreen({
           </View>
           </View>
           </Pressable>
+          </View>
         </View>
       );
     },

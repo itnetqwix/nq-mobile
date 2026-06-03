@@ -28,17 +28,14 @@ export function ChatMessageStatus({ status, pending, failed, isMine = true }: Pr
   if (pending || status === "sending") {
     return (
       <View style={styles.row}>
-        <ActivityIndicator
-          size={10}
-          color={isMine ? "rgba(255,255,255,0.75)" : "#9CA3AF"}
-        />
+        <ActivityIndicator size={10} color="#94a3b8" />
       </View>
     );
   }
 
-  const sentColor = isMine ? "rgba(255,255,255,0.55)" : "#9CA3AF";
-  const deliveredColor = isMine ? "rgba(255,255,255,0.85)" : "#6B7280";
-  const readColor = isMine ? "#B8E4FF" : "#2563EB";
+  const sentColor = "#94a3b8";
+  const deliveredColor = "#64748b";
+  const readColor = "#1976d2";
 
   if (!status || status === "sent") {
     return (
