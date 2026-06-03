@@ -1,7 +1,12 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { AccountType } from "../constants/accountType";
 import { store } from "../store/store";
-import { queryKeys, queryKeyRoots } from "./queryKeys";
+import { queryKeys } from "./queryKeys";
+
+/** Coalesce bursty `userStatus` / `onlineUser` socket broadcasts into one refetch wave. */
+const PRESENCE_INVALIDATION_DEBOUNCE_MS = 8_000;
+let presenceInvalidateTimer: ReturnType<typeof setTimeout> | null = null;
+let presenceInvalidateClient: QueryClient | null = null;
 
 export function invalidateSessions(queryClient: QueryClient): void {
   void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
@@ -89,11 +94,20 @@ export function invalidateOnWalletSocketEvent(queryClient: QueryClient): void {
   invalidateWallet(queryClient);
 }
 
-/** Presence, friends, chats refresh. */
+/**
+ * Presence-only refresh (online lists, recent trainees/trainers).
+ * Debounced — socket broadcasts fire on every connect/heartbeat cluster;
+ * invalidating friend-requests here caused thousands of REST calls in dev.
+ */
 export function invalidateOnPresenceSocketEvent(queryClient: QueryClient): void {
-  invalidatePresence(queryClient);
-  invalidateFriends(queryClient);
-  invalidateChats(queryClient);
+  presenceInvalidateClient = queryClient;
+  if (presenceInvalidateTimer) clearTimeout(presenceInvalidateTimer);
+  presenceInvalidateTimer = setTimeout(() => {
+    presenceInvalidateTimer = null;
+    const client = presenceInvalidateClient;
+    presenceInvalidateClient = null;
+    if (client) invalidatePresence(client);
+  }, PRESENCE_INVALIDATION_DEBOUNCE_MS);
 }
 
 /** Banners, tips, legal, blogs, FAQ — after `CMS_UPDATED` socket broadcast. */
@@ -143,8 +157,13 @@ export function invalidateForSocketEvent(queryClient: QueryClient, event: string
   }
 }
 
-/** Full refresh after socket reconnect. */
+/** Full refresh after socket reconnect (not debounced — reconnects are rare). */
 export function invalidateOnSocketReconnect(queryClient: QueryClient): void {
+  if (presenceInvalidateTimer) {
+    clearTimeout(presenceInvalidateTimer);
+    presenceInvalidateTimer = null;
+    presenceInvalidateClient = null;
+  }
   invalidateSessions(queryClient);
   invalidatePresence(queryClient);
   invalidateChats(queryClient);

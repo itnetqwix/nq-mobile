@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { io, type Socket } from "socket.io-client";
 import { useAuth } from "../auth/context/AuthContext";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
@@ -36,7 +35,6 @@ let lastSocketErrorLogAt = 0;
 
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const { status } = useAuth();
-  const queryClient = useQueryClient();
   const dispatch = useAppDispatch();
   const isConnected = useAppSelector(selectSocketConnected);
   const reconnectFailed = useAppSelector(selectSocketReconnectFailed);
@@ -152,18 +150,11 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         if (createdSocket?.connected) createdSocket.emit("HEARTBEAT");
       }, 10_000);
 
-      const bumpPresenceQueries = () => {
-        const { invalidateOnPresenceSocketEvent } = require("../../lib/socketInvalidate");
-        invalidateOnPresenceSocketEvent(queryClient);
-      };
-      createdSocket.on("userStatus", bumpPresenceQueries);
-      createdSocket.on("onlineUser", bumpPresenceQueries);
+      /** Presence → React Query invalidation is handled only by `SocketQueryInvalidationBridge`. */
 
       const onDisconnect = () => {
         if (!cancelled) dispatch(setSocketConnected(false));
         clearInterval(heartbeatId);
-        createdSocket?.off("userStatus", bumpPresenceQueries);
-        createdSocket?.off("onlineUser", bumpPresenceQueries);
       };
       createdSocket.on("disconnect", onDisconnect);
     })();
@@ -175,7 +166,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       dispatch(setSocketConnected(false));
       dispatch(setSocketReconnectFailed(false));
     };
-  }, [status, queryClient, dispatch]);
+  }, [status, dispatch]);
 
   const value = useMemo(
     () => ({ socket, isConnected, reconnectFailed }),
