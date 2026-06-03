@@ -1,15 +1,19 @@
 import { useCallback, useRef, useState, type RefObject } from "react";
-import { Alert, View } from "react-native";
+import { Alert, Platform, View } from "react-native";
 import { captureRef } from "react-native-view-shot";
 import * as FileSystem from "expo-file-system/legacy";
 import { putFileToPresignedUrl } from "../../lib/presignedPut";
+import {
+  extractPresignedFilename,
+  extractPresignedPutUrl,
+} from "../../lib/http/extractPresignedUrl";
 
 import {
   captureClipFrameUri,
   captureClipFrames,
 } from "./captureClipScreenshot";
 import { normalizeReportImageKeys } from "./reportDataUtils";
-import { fetchSessionReport, requestScreenshotUpload } from "./meetingReportApi";
+import { requestScreenshotUpload, fetchSessionReport } from "./meetingReportApi";
 
 export type ScreenshotCaptureSource = {
   uri: string;
@@ -18,10 +22,11 @@ export type ScreenshotCaptureSource = {
 
 export type ScreenshotCapturedPayload = {
   localUri: string;
-  imageKey: string;
+  /** Set when S3 upload finishes (may arrive after modal opens). */
+  imageKey: string | null;
 };
 
-export type CaptureStage = "idle" | "preparing" | "uploading";
+export type CaptureStage = "idle" | "capturing";
 
 type Args = {
   sessionId: string;
@@ -29,20 +34,25 @@ type Args = {
   traineeId: string;
   isTrainer: boolean;
   onCaptured?: (payload: ScreenshotCapturedPayload) => void;
+  /** Called when background upload completes so UI can enable Save. */
+  onUploadReady?: (imageKey: string) => void;
+  onUploadFailed?: (message: string) => void;
 };
 
-const CAPTURE_FRAME_DELAY_MS = 200;
-const COMPOSITE_LAYOUT_DELAY_MS = 450;
-const MIN_CAPTURE_BYTES = 12_000;
+const CAPTURE_SETTLE_MS = 32;
+const COMPOSITE_LAYOUT_DELAY_MS = 100;
+const MIN_CAPTURE_BYTES = 6_000;
+const UPLOAD_MIME = "image/jpeg";
 
 function extractImageKeyFromPresignResponse(
-  presign: { data?: { url?: string; filename?: string } },
+  presignBody: unknown,
   uploadUrl: string
 ): string {
-  if (presign?.data?.filename) return String(presign.data.filename);
+  const fromBody = extractPresignedFilename(presignBody);
+  if (fromBody) return fromBody;
   const path = uploadUrl.split("?")[0];
   const parts = path.split("/");
-  return parts[parts.length - 1] || `file-${Date.now()}.png`;
+  return parts[parts.length - 1] || `file-${Date.now()}.jpg`;
 }
 
 function delay(ms: number) {
@@ -55,10 +65,13 @@ export function useMeetingScreenshot({
   traineeId,
   isTrainer,
   onCaptured,
+  onUploadReady,
+  onUploadFailed,
 }: Args) {
   const captureTargetRef = useRef<View>(null);
   const compositeHostRef = useRef<View>(null);
   const pendingPreviewUriRef = useRef<string | null>(null);
+  const uploadGenerationRef = useRef(0);
   const [capturing, setCapturing] = useState(false);
   const [captureStage, setCaptureStage] = useState<CaptureStage>("idle");
   const [captureCount, setCaptureCount] = useState(0);
@@ -95,29 +108,25 @@ export function useMeetingScreenshot({
   }, [sessionId, traineeId, trainerId]);
 
   const uploadPng = useCallback(
-    async (localUri: string) => {
-      const presign = await requestScreenshotUpload({
-        sessions: sessionId,
-        trainer: trainerId,
-        trainee: traineeId,
-      });
-      const uploadUrl = presign?.data?.url;
+    async (localUri: string, presignBody: unknown) => {
+      const uploadUrl = extractPresignedPutUrl(presignBody);
       if (!uploadUrl) {
         throw new Error("No upload URL returned");
       }
-      await putFileToPresignedUrl(uploadUrl, localUri, "image/png");
-      return extractImageKeyFromPresignResponse(presign, uploadUrl);
+      await putFileToPresignedUrl(uploadUrl, localUri, UPLOAD_MIME);
+      return extractImageKeyFromPresignResponse(presignBody, uploadUrl);
     },
-    [sessionId, traineeId, trainerId]
+    []
   );
 
   const captureViewShot = useCallback(async (ref: RefObject<View | null>) => {
     if (!ref.current) return null;
     try {
       const uri = await captureRef(ref, {
-        format: "png",
-        quality: 1,
+        format: "jpg",
+        quality: 0.88,
         result: "tmpfile",
+        ...(Platform.OS === "ios" ? { snapshotContent: "texture" as const } : {}),
       });
       const normalized = uri.split("?")[0];
       const info = await FileSystem.getInfoAsync(normalized);
@@ -153,7 +162,7 @@ export function useMeetingScreenshot({
         readyPromise,
         delay(COMPOSITE_LAYOUT_DELAY_MS).then(() => undefined),
       ]);
-      await delay(80);
+      await delay(24);
       const uri = await captureViewShot(compositeHostRef);
       setCompositeFrameUris([]);
       framesReadyPromiseRef.current = null;
@@ -162,10 +171,10 @@ export function useMeetingScreenshot({
     [captureViewShot]
   );
 
-  const captureFromFallbackSources = useCallback(
-    async (fallbackSources?: ScreenshotCaptureSource[]) => {
-      if (!fallbackSources?.length) return null;
-      const valid = fallbackSources.filter((s) => !!s.uri);
+  const captureFromClipSources = useCallback(
+    async (sources: ScreenshotCaptureSource[]) => {
+      const valid = sources.filter((s) => !!s.uri);
+      if (!valid.length) return null;
 
       const frames = await captureClipFrames(valid);
       if (frames.length >= 2) {
@@ -182,55 +191,97 @@ export function useMeetingScreenshot({
     [captureCompositeFromFrames]
   );
 
+  const runBackgroundUpload = useCallback(
+    (localUri: string, presignPromise: Promise<unknown>, generation: number) => {
+      void (async () => {
+        try {
+          const presignBody = await presignPromise;
+          if (uploadGenerationRef.current !== generation) return;
+          const imageKey = await uploadPng(localUri, presignBody);
+          if (uploadGenerationRef.current !== generation) return;
+          setCaptureCount((n) => n + 1);
+          setScreenshotKeys((prev) => [...new Set([...prev, imageKey])]);
+          onUploadReady?.(imageKey);
+        } catch (e: unknown) {
+          if (uploadGenerationRef.current !== generation) return;
+          const msg =
+            e instanceof Error ? e.message : "Could not upload screenshot.";
+          onUploadFailed?.(msg);
+          if (__DEV__) console.warn("[meeting] screenshot upload failed", e);
+        }
+      })();
+    },
+    [onUploadFailed, onUploadReady, uploadPng]
+  );
+
   const takeScreenshot = useCallback(
     async (fallbackSources?: ScreenshotCaptureSource[]) => {
       if (!isTrainer) return;
       setCapturing(true);
-      setCaptureStage("preparing");
+      setCaptureStage("capturing");
+      const generation = ++uploadGenerationRef.current;
+
+      const presignPromise = requestScreenshotUpload({
+        sessions: sessionId,
+        trainer: trainerId,
+        trainee: traineeId,
+      });
+
       try {
-        await delay(CAPTURE_FRAME_DELAY_MS);
+        await delay(CAPTURE_SETTLE_MS);
+
+        const clipSources =
+          fallbackSources && fallbackSources.length > 0
+            ? fallbackSources
+            : undefined;
 
         let localUri: string | null = null;
 
-        if (fallbackSources && fallbackSources.length > 0) {
-          localUri = await captureFromFallbackSources(fallbackSources);
+        if (clipSources?.length) {
+          localUri = await captureFromClipSources(clipSources);
         }
-
         if (!localUri) {
           localUri = await captureViewShot(captureTargetRef);
+        }
+        if (!localUri && clipSources?.length) {
+          localUri = await captureFromClipSources(clipSources);
         }
 
         if (!localUri) {
           throw new Error(
-            "Could not capture this frame. Wait until the clip or video finishes loading, then try again."
+            "Could not capture this frame. Use a loaded clip, or wait for video to render, then try again."
           );
         }
 
         pendingPreviewUriRef.current = localUri;
-        setCaptureStage("uploading");
 
-        const imageKey = await uploadPng(localUri);
-        setCaptureCount((n) => n + 1);
-        setScreenshotKeys((prev) => [...new Set([...prev, imageKey])]);
-        onCaptured?.({ localUri, imageKey });
+        /** Frame is ready — hide blocker and open details while S3 upload runs. */
+        setCapturing(false);
+        setCaptureStage("idle");
+        onCaptured?.({ localUri, imageKey: null });
+
+        runBackgroundUpload(localUri, presignPromise, generation);
       } catch (e: unknown) {
+        uploadGenerationRef.current += 1;
         await disposePendingPreview();
         setCompositeFrameUris([]);
         const msg = e instanceof Error ? e.message : "Could not save screenshot.";
         if (__DEV__) console.warn("[meeting] screenshot failed", e);
         Alert.alert("Screenshot failed", msg);
-      } finally {
         setCapturing(false);
         setCaptureStage("idle");
       }
     },
     [
-      captureFromFallbackSources,
+      captureFromClipSources,
       captureViewShot,
       disposePendingPreview,
       isTrainer,
       onCaptured,
-      uploadPng,
+      runBackgroundUpload,
+      sessionId,
+      traineeId,
+      trainerId,
     ]
   );
 

@@ -17,6 +17,8 @@ import { postReportsGetAll } from "../../home/api/homeApi";
 import { LockerListShell } from "../components/locker/LockerListShell";
 import { LockerViewerModal, type LockerViewerMode } from "../components/locker/LockerViewerModal";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import { useAuth } from "../../auth/context/AuthContext";
+import { AccountType } from "../../../constants/accountType";
 import { queryKeys } from "../../../lib/queryKeys";
 
 function formatReportDate(
@@ -40,6 +42,8 @@ function formatReportDate(
 
 export function GamePlansScreen() {
   const { t } = useAppTranslation();
+  const { user, accountType } = useAuth();
+  const myId = String(user?._id ?? "");
   const c = useThemeColors();
   const { width: windowWidth } = useWindowDimensions();
   const planThumbWidth = Math.max(140, windowWidth - space.md * 4);
@@ -101,11 +105,28 @@ export function GamePlansScreen() {
   const reportSections = useMemo(() => {
     const rows = reportsQ.data ?? [];
     const reportsFallback = t("gamePlans.reportsFallback");
-    return rows.map((grp: { _id?: { month?: number; day?: number; year?: number }; report?: unknown[] }) => ({
-      title: formatReportDate(grp._id, reportsFallback),
-      data: (grp.report ?? []) as Record<string, unknown>[],
-    }));
-  }, [reportsQ.data, t]);
+    const isTrainee = accountType === AccountType.TRAINEE;
+
+    return rows
+      .map((grp: { _id?: { month?: number; day?: number; year?: number }; report?: unknown[] }) => {
+        const data = ((grp.report ?? []) as Record<string, unknown>[]).filter((item) => {
+          if (!myId) return true;
+          const trainerId = String(
+            (item.trainer as { _id?: string })?._id ?? item.trainer ?? ""
+          );
+          const traineeId = String(
+            (item.trainee as { _id?: string })?._id ?? item.trainee ?? ""
+          );
+          if (isTrainee) return traineeId === myId;
+          return trainerId === myId;
+        });
+        return {
+          title: formatReportDate(grp._id, reportsFallback),
+          data,
+        };
+      })
+      .filter((section) => section.data.length > 0);
+  }, [reportsQ.data, t, accountType, myId]);
 
   const openPlan = (item: Record<string, unknown>) => {
     const reportData = (item.reportData as { imageUrl?: string; title?: string }[] | undefined)?.[0];
@@ -121,7 +142,7 @@ export function GamePlansScreen() {
     const fromRec =
       typeof recording === "string" && recording.length > 0 ? getS3ImageUrl(recording) : "";
 
-    const uri = fromImg || fromPdf || fromRec;
+    const uri = fromPdf || fromImg || fromRec;
     if (!uri) {
       Alert.alert(
         t("gamePlans.nothingToPreviewTitle"),

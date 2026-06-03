@@ -28,6 +28,7 @@ import { fetchStorageInfo } from "../../home/api/homeApi";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { putFileToPresignedUrl } from "../../../lib/presignedPut";
+import { extractPresignedPutUrl } from "../../../lib/http/extractPresignedUrl";
 import { fetchSessionReport } from "../meetingReportApi";
 import {
   parseReportScreenshotItems,
@@ -172,7 +173,7 @@ export function SessionGamePlanModal({
               session_id: sessionId,
               sizeBytes: pdfBytes,
             });
-            const uploadUrl = sign?.data?.url;
+            const uploadUrl = extractPresignedPutUrl(sign.data);
             if (!uploadUrl) throw new Error("Could not prepare PDF upload.");
             await putFileToPresignedUrl(uploadUrl, pdfUri, "application/pdf");
             pdfAttached = true;

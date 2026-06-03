@@ -1,6 +1,7 @@
 import * as VideoThumbnails from "expo-video-thumbnails";
 
-const THUMBNAIL_TIMEOUT_MS = 5000;
+/** Per-clip frame grab; parallel for dual-clip keeps total near one round-trip. */
+const THUMBNAIL_TIMEOUT_MS = 1_400;
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
   return Promise.race([
@@ -19,7 +20,7 @@ export async function captureClipFrameUri(
     const result = await withTimeout(
       VideoThumbnails.getThumbnailAsync(videoUri, {
         time: ms,
-        quality: 0.92,
+        quality: 0.82,
       }),
       THUMBNAIL_TIMEOUT_MS
     );

@@ -62,6 +62,41 @@ export function navigateToNotifications(): boolean {
   return true;
 }
 
+/** Locker → Game plans (session PDFs and screenshot reports). */
+export function navigateToMyLocker(): boolean {
+  if (!navigationRef.isReady()) return false;
+  (navigationRef as any).navigate("Main", {
+    screen: "Tabs",
+    params: {
+      screen: "Home",
+      params: {
+        screen: "ShellSurface",
+        params: { surfaceId: "gamePlans" as ShellSurfaceRouteId },
+      },
+    },
+  });
+  return true;
+}
+
+/** Trainee: Book expert with a specific trainer pre-selected. */
+export function navigateToBookTrainer(trainerId: string): boolean {
+  if (!navigationRef.isReady() || !trainerId) return false;
+  (navigationRef as any).navigate("Main", {
+    screen: "Tabs",
+    params: {
+      screen: "Home",
+      params: {
+        screen: "DashboardFeature",
+        params: {
+          featureId: "book-lesson",
+          bookLessonTrainerId: trainerId,
+        },
+      },
+    },
+  });
+  return true;
+}
+
 /** Open wallet Add funds (optionally pre-filled for booking shortfall). */
 export function navigateToWalletTopUp(suggestedAmount?: number): boolean {
   if (!navigationRef.isReady()) return false;

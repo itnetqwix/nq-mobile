@@ -1,3 +1,4 @@
+import * as FileSystem from "expo-file-system/legacy";
 import { getS3ImageUrl } from "../../lib/imageUtils";
 
 /** Backend report item shape from `/report/add-image` and `/report/create`. */
@@ -59,6 +60,21 @@ export function toReportDataPayload(
     }));
 }
 
+async function remoteImageToDataUrl(url: string): Promise<string | null> {
+  try {
+    const dest = `${FileSystem.cacheDirectory}gp-${Date.now()}-${Math.random().toString(36).slice(2)}.img`;
+    const dl = await FileSystem.downloadAsync(url, dest);
+    if (dl.status < 200 || dl.status >= 300) return null;
+    const b64 = await FileSystem.readAsStringAsync(dl.uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    await FileSystem.deleteAsync(dl.uri, { idempotent: true }).catch(() => {});
+    return `data:image/jpeg;base64,${b64}`;
+  } catch {
+    return null;
+  }
+}
+
 /** Fetch S3 images and return base64 data URLs for PDF HTML embedding. */
 export async function fetchImageKeysAsBase64DataUrls(
   keys: string[]
@@ -67,22 +83,7 @@ export async function fetchImageKeysAsBase64DataUrls(
     keys.map(async (key) => {
       const url = getS3ImageUrl(key);
       if (!url) return null;
-      try {
-        const res = await fetch(url);
-        if (!res.ok) return null;
-        const blob = await res.blob();
-        return await new Promise<string | null>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const result = reader.result;
-            resolve(typeof result === "string" ? result : null);
-          };
-          reader.onerror = () => resolve(null);
-          reader.readAsDataURL(blob);
-        });
-      } catch {
-        return null;
-      }
+      return remoteImageToDataUrl(url);
     })
   );
   return results.filter((x): x is string => !!x);

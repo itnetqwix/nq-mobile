@@ -37,6 +37,8 @@ type Props = {
   trainerId: string;
   traineeId: string;
   imageKey: string | null;
+  /** True while the frame is uploading to S3 in the background. */
+  uploadPending?: boolean;
   /** Local file URI shown immediately after capture (before S3 CDN is ready). */
   previewUri?: string | null;
   reportTitle?: string;
@@ -51,6 +53,7 @@ export function SessionScreenshotDetailsModal({
   trainerId,
   traineeId,
   imageKey,
+  uploadPending = false,
   previewUri: previewUriProp = null,
   reportTitle = "",
   reportTopic = "",
@@ -100,7 +103,7 @@ export function SessionScreenshotDetailsModal({
   };
 
   const handleAdd = async () => {
-    if (!imageKey) return;
+    if (!imageKey || uploadPending) return;
     Keyboard.dismiss();
     setSaving(true);
     try {
@@ -181,15 +184,23 @@ export function SessionScreenshotDetailsModal({
                   onSubmitEditing={Keyboard.dismiss}
                 />
 
+                {uploadPending && !imageKey ? (
+                  <View style={styles.uploadRow}>
+                    <ActivityIndicator color="#000080" size="small" />
+                    <Text style={styles.uploadHint}>Uploading photo…</Text>
+                  </View>
+                ) : null}
                 <Pressable
-                  style={[styles.addBtn, saving && styles.addBtnDisabled]}
+                  style={[styles.addBtn, (saving || !imageKey || uploadPending) && styles.addBtnDisabled]}
                   onPress={() => void handleAdd()}
-                  disabled={saving || !imageKey}
+                  disabled={saving || !imageKey || uploadPending}
                 >
                   {saving ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.addBtnText}>Add</Text>
+                    <Text style={styles.addBtnText}>
+                      {imageKey ? "Add" : "Waiting for upload…"}
+                    </Text>
                   )}
                 </Pressable>
               </View>
@@ -264,4 +275,11 @@ const styles = StyleSheet.create({
   },
   addBtnDisabled: { opacity: 0.6 },
   addBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  uploadRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  uploadHint: { fontSize: 13, color: "#666" },
 });

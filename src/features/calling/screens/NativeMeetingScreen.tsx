@@ -614,6 +614,8 @@ function MeetingSurface({
     myUserId: String(myId),
     pendingFromSync: lessonTimer.pendingExtensionRequest,
   });
+  const extensionResetRef = useRef(extensionFlow.reset);
+  extensionResetRef.current = extensionFlow.reset;
 
   /** Trainee-side modal visibility. Auto-opened by warning modal "Extend" CTA
    *  or whenever the server flips us into an active extension phase. */
@@ -856,8 +858,13 @@ function MeetingSurface({
     [meetingBounds]
   );
 
+  const remoteTilesSnapshotRef = useRef("");
   useEffect(() => {
     if (isTrainer) return;
+    const snap = JSON.stringify(meetingLayout.tiles);
+    if (snap === remoteTilesSnapshotRef.current) return;
+    remoteTilesSnapshotRef.current = snap;
+
     applyRemoteTiles(meetingLayout.tiles);
     const trainerLocal = meetingLayout.tiles.local;
     const trainerRemote = meetingLayout.tiles.remote;
@@ -877,8 +884,16 @@ function MeetingSurface({
       trainerRemote.nh != null && meetingBounds
         ? trainerRemote.nh * meetingBounds.height
         : trainerRemote.h;
-    if (remoteW > 0 && remoteH > 0) setRemotePipSize({ w: remoteW, h: remoteH });
-    if (localW > 0 && localH > 0) setLocalPipSize({ w: localW, h: localH });
+    if (remoteW > 0 && remoteH > 0) {
+      setRemotePipSize((prev) =>
+        prev.w === remoteW && prev.h === remoteH ? prev : { w: remoteW, h: remoteH }
+      );
+    }
+    if (localW > 0 && localH > 0) {
+      setLocalPipSize((prev) =>
+        prev.w === localW && prev.h === localH ? prev : { w: localW, h: localH }
+      );
+    }
   }, [isTrainer, meetingLayout.tiles, applyRemoteTiles, meetingBounds]);
 
   const drawingSync = useDrawingSync({
@@ -936,13 +951,23 @@ function MeetingSurface({
     trainerId: isTrainer ? myId : peerId,
     traineeId: isTrainer ? peerId : myId,
     isTrainer,
-    onCaptured: ({ localUri, imageKey }) => {
+    onCaptured: ({ localUri }) => {
       setPendingScreenshotPreviewUri(localUri);
-      setPendingScreenshotKey(imageKey);
+      setPendingScreenshotKey(null);
       setScreenshotDetailsOpen(true);
       pushLocalToast({
         title: "Screenshot captured",
         description: "Add a description to save it to the game plan.",
+        type: NOTIFICATION_TYPES.DEFAULT,
+      });
+    },
+    onUploadReady: (imageKey) => {
+      setPendingScreenshotKey(imageKey);
+    },
+    onUploadFailed: (message) => {
+      pushLocalToast({
+        title: "Upload failed",
+        description: message,
         type: NOTIFICATION_TYPES.DEFAULT,
       });
     },
@@ -1010,13 +1035,14 @@ function MeetingSurface({
     setErrorBannerDismissed(false);
   }, [lastError]);
 
+  const preloadBookingClips = clipSync.preloadBookingClips;
   useEffect(() => {
     if (!session) return;
     const bookingClips = playableBookingClips(session, joinReadiness?.clips);
     if (bookingClips.length > 0) {
-      clipSync.preloadBookingClips(bookingClips);
+      preloadBookingClips(bookingClips);
     }
-  }, [session, session?.trainee_clips, joinReadiness?.clips, clipSync]);
+  }, [session, session?.trainee_clips, joinReadiness?.clips, preloadBookingClips]);
 
   useEffect(() => {
     if (!bothUsersForTimer) {
@@ -1170,8 +1196,11 @@ function MeetingSurface({
 
   const resolveScreenshotSources = useCallback(
     (choice: ScreenshotCaptureChoice): ScreenshotCaptureSource[] | undefined => {
-      if (choice === "stage") return undefined;
       const all = buildScreenshotSources();
+      if (choice === "stage") {
+        if (all.length > 0) return all.slice(0, 1);
+        return undefined;
+      }
       if (choice === "bothClips") return all.length >= 2 ? all : all.slice(0, 1);
       if (choice === "clip1") return all.slice(1, 2);
       if (choice === "clip0") return all.slice(0, 1);
@@ -1635,14 +1664,19 @@ function MeetingSurface({
 
   /** Close extension UI and surface ratings once when the lesson ends. */
   const endedNotifiedRef = useRef(false);
+  const endedCleanupDoneRef = useRef(false);
   useEffect(() => {
     if (lessonTimer.status !== "ended") {
       endedNotifiedRef.current = false;
+      endedCleanupDoneRef.current = false;
       return;
     }
-    setTraineeExtendOpen(false);
-    setActiveWarning(null);
-    extensionFlow.reset();
+    if (!endedCleanupDoneRef.current) {
+      endedCleanupDoneRef.current = true;
+      setTraineeExtendOpen(false);
+      setActiveWarning(null);
+      extensionResetRef.current();
+    }
     if (endedNotifiedRef.current) return;
     endedNotifiedRef.current = true;
     void (async () => {
@@ -1658,7 +1692,7 @@ function MeetingSurface({
       });
       void openPostCallFlow();
     })();
-  }, [lessonTimer.status, pushLocalToast, lessonId, extensionFlow, openPostCallFlow]);
+  }, [lessonTimer.status, pushLocalToast, lessonId, openPostCallFlow]);
 
   useEffect(() => {
     if (!socket || !lessonId) return;
@@ -1819,9 +1853,7 @@ function MeetingSurface({
       {screenshot.capturing ? (
         <View style={styles.captureOverlay} pointerEvents="none">
           <ActivityIndicator size="large" color="#fff" />
-          <Text style={styles.captureOverlayText}>
-            {screenshot.captureStage === "uploading" ? "Uploading…" : "Preparing frame…"}
-          </Text>
+          <Text style={styles.captureOverlayText}>Capturing…</Text>
         </View>
       ) : null}
 
@@ -1860,12 +1892,13 @@ function MeetingSurface({
             <MeetingCoachChip icon="brush-outline" label="Drawing on" tone="danger" />
           </View>
         ) : null}
+        <View
+          ref={screenshot.captureTargetRef}
+          collapsable={false}
+          style={styles.captureSurface}
+        >
         {inLiveFocus ? (
-          <View
-            ref={screenshot.captureTargetRef}
-            collapsable={false}
-            style={styles.liveStage}
-          >
+          <View style={styles.liveStage}>
             <MeetingLiveStage
             user={focusedIsRemote ? peerUser : null}
             stream={focusedIsLocal ? localStream : remoteStream}
@@ -1882,8 +1915,6 @@ function MeetingSurface({
           </View>
         ) : hasClipStage ? (
           <View
-            ref={screenshot.captureTargetRef}
-            collapsable={false}
             style={[
               styles.clipFrame,
               dualClip && styles.clipFrameDual,
@@ -1975,11 +2006,7 @@ function MeetingSurface({
             )}
           </View>
         ) : (
-          <View
-            ref={screenshot.captureTargetRef}
-            collapsable={false}
-            style={styles.liveStage}
-          >
+          <View style={styles.liveStage}>
             <DualLiveStage
               localUser={
                 authUser
@@ -2016,6 +2043,7 @@ function MeetingSurface({
           remoteStrokes={drawingSync.remoteStrokes}
           onStrokeComplete={emitAnnotationStroke}
         />
+        </View>
       </View>
 
       {meetingStatusBanner && !statusBannerDismissed ? (
@@ -2522,6 +2550,7 @@ function MeetingSurface({
             trainerId={myId}
             traineeId={peerId}
             imageKey={pendingScreenshotKey}
+            uploadPending={screenshotDetailsOpen && !pendingScreenshotKey}
             previewUri={pendingScreenshotPreviewUri}
             onClose={() => {
               setScreenshotDetailsOpen(false);
@@ -2743,6 +2772,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     borderWidth: 1,
     borderColor: meetingTheme.border,
+  },
+  captureSurface: {
+    flex: 1,
+    position: "relative",
+    overflow: "hidden",
   },
   liveStage: {
     flex: 1,
