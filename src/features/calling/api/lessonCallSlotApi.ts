@@ -10,13 +10,27 @@ export type LessonCallSlotStatus = {
   canTakeOver?: boolean;
 };
 
+function parseLessonCallSlotPayload(raw: unknown): LessonCallSlotStatus {
+  const body = raw as Record<string, unknown>;
+  const payload =
+    body?.data && typeof body.data === "object" && !Array.isArray(body.data)
+      ? (body.data as Record<string, unknown>)
+      : body;
+  return {
+    canJoin: payload.canJoin !== false,
+    canTakeOver: Boolean(payload.canTakeOver),
+    reason: typeof payload.reason === "string" ? payload.reason : undefined,
+    stale: Boolean(payload.stale),
+    activeElsewhere: Boolean(payload.activeElsewhere),
+  };
+}
+
 /** Pre-join check — avoids entering the meeting when another device holds the slot. */
 export async function fetchLessonCallSlotStatus(
   sessionId: string
 ): Promise<LessonCallSlotStatus> {
   const res = await apiClient.get(API_ROUTES.chat.lessonCallSlot(sessionId));
-  const body = (res as { data?: LessonCallSlotStatus })?.data ?? res;
-  return body as LessonCallSlotStatus;
+  return parseLessonCallSlotPayload(res.data);
 }
 
 /** Clear the active-device lock so this client can enter the meeting. */

@@ -93,11 +93,34 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
   const [callSlotChecking, setCallSlotChecking] = useState(true);
   const [takeoverBusy, setTakeoverBusy] = useState(false);
 
-  const { data: readiness } = useQuery({
+  const {
+    data: readiness,
+    isLoading: readinessLoading,
+    isError: readinessError,
+  } = useQuery({
     queryKey: queryKeys.sessions.joinReadiness(lessonId),
     queryFn: () => fetchSessionJoinReadiness(lessonId),
     staleTime: 30_000,
   });
+
+  const applyCallSlotStatus = useCallback(
+    (status: { canJoin?: boolean; canTakeOver?: boolean; reason?: string }) => {
+      if (status.canJoin === false) {
+        setCallSlotBlocked(true);
+        setCallSlotCanTakeOver(!!status.canTakeOver);
+        setCallSlotMessage(
+          status.canTakeOver
+            ? "This lesson is open on another device. You can take over here to continue on this phone."
+            : "This lesson is already active on another device. Leave that session first, then try again."
+        );
+      } else {
+        setCallSlotBlocked(false);
+        setCallSlotCanTakeOver(false);
+        setCallSlotMessage(null);
+      }
+    },
+    []
+  );
 
   const streamRef = useRef<MediaStream | null>(null);
   const audioRoute = useAudioRoute();
@@ -203,27 +226,18 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
       setCallSlotChecking(true);
       try {
         const status = await fetchLessonCallSlotStatus(lessonId);
-        if (cancelled) return;
-        if (!status.canJoin) {
-          setCallSlotBlocked(true);
-          setCallSlotCanTakeOver(!!status.canTakeOver);
-          setCallSlotMessage(
-            status.canTakeOver
-              ? "This lesson is open on another device. You can take over here to continue on this phone."
-              : "This lesson is already active on another device. Leave that session first, then try again."
-          );
-        } else {
+        if (!cancelled) applyCallSlotStatus(status);
+      } catch {
+        if (!cancelled && readiness?.call_slot) {
+          applyCallSlotStatus(readiness.call_slot);
+        } else if (!cancelled && !readinessLoading && readinessError) {
           setCallSlotBlocked(false);
           setCallSlotCanTakeOver(false);
           setCallSlotMessage(null);
-        }
-      } catch {
-        if (!cancelled) {
-          setCallSlotBlocked(true);
+        } else if (!cancelled && !readinessLoading) {
+          setCallSlotBlocked(false);
           setCallSlotCanTakeOver(false);
-          setCallSlotMessage(
-            "Could not verify call access. Check your connection and try again."
-          );
+          setCallSlotMessage(null);
         }
       } finally {
         if (!cancelled) setCallSlotChecking(false);
@@ -232,7 +246,13 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [lessonId]);
+  }, [lessonId, applyCallSlotStatus, readiness?.call_slot, readinessLoading, readinessError]);
+
+  useEffect(() => {
+    if (readinessLoading || !readiness?.call_slot) return;
+    applyCallSlotStatus(readiness.call_slot);
+    setCallSlotChecking(false);
+  }, [readiness?.call_slot, readinessLoading, applyCallSlotStatus]);
 
   useEffect(() => {
     setLocalBlurEnabled(blurEnabled);
@@ -341,21 +361,6 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
           <Ionicons name="warning-outline" size={18} color={c.warning} />
           <Text style={[styles.slotBannerText, { color: c.text }]}>
             {readiness.mixed_client_warning}
-          </Text>
-        </View>
-      ) : readiness?.lesson_client_requirement === "native_app" ? (
-        <View
-          style={[
-            styles.slotBanner,
-            {
-              backgroundColor: c.brandNavy + "18",
-              borderColor: c.brandNavy,
-            },
-          ]}
-        >
-          <Ionicons name="phone-portrait-outline" size={18} color={c.brandNavy} />
-          <Text style={[styles.slotBannerText, { color: c.text }]}>
-            Live lessons on the NetQwix app use in-app video. Both you and your partner should join from the mobile app for the best experience.
           </Text>
         </View>
       ) : null}
