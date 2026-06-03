@@ -150,6 +150,7 @@ export function LockerViewerModal({ visible, onClose, uri, title, mode, sharedBy
             height={mediaHeight}
             isActive={visible}
             loadingMode="parent"
+            loadingOverlayVariant="minimal"
             onLoadingChange={setLoading}
             useNativeVideoControls={false}
             showCustomControls={nativeMode === "video"}
@@ -164,6 +165,7 @@ export function LockerViewerModal({ visible, onClose, uri, title, mode, sharedBy
         {loading && !error && resolvedMode !== "audio" ? (
           <MediaLoadingOverlay
             message={resolvedMode === "video" ? "Loading video" : "Loading preview"}
+            variant={resolvedMode === "video" ? "minimal" : "branded"}
           />
         ) : null}
 

@@ -3,11 +3,10 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { LayoutChangeEvent, StyleSheet, View } from "react-native";
+import { ActivityIndicator, LayoutChangeEvent, StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 import { ResizeMode, Video, type AVPlaybackStatus } from "expo-av";
-import { MediaLoadingOverlay } from "../../../components/media/MediaLoadingOverlay";
 import { clampPanForFrame, type PanPoint } from "../clipZoomPanUtils";
 
 export type ClipPlayerHandle = {
@@ -327,7 +326,9 @@ export function ClipPlayer({
           </View>
         </View>
         {initialLoading ? (
-          <MediaLoadingOverlay message="Loading clip" size="compact" />
+          <View style={styles.loadingOverlay} pointerEvents="none">
+            <ActivityIndicator size="small" color="#94a3b8" />
+          </View>
         ) : null}
       </View>
     </GestureDetector>
@@ -350,5 +351,11 @@ const styles = StyleSheet.create({
   player: {
     flex: 1,
     backgroundColor: CLIP_BG,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.92)",
   },
 });

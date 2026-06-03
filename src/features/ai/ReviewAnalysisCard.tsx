@@ -4,20 +4,35 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { useThemeColors, space, radii, typography } from "../../theme";
 import { queryKeys } from "../../lib/queryKeys";
+import { useAuth } from "../auth/context/AuthContext";
+import { AccountType } from "../../constants/accountType";
 import { fetchReviewAnalysis } from "./reviewAnalysisApi";
+import { REVIEW_INSIGHT_STALE_MS } from "./parseAiEnvelope";
 
 type Props = {
   /** Fits trainer dashboard stack (no extra outer margins). */
   embedded?: boolean;
 };
 
+function formatInsightDate(iso?: string): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
 export default function ReviewAnalysisCard({ embedded }: Props) {
   const colors = useThemeColors();
+  const { user, accountType } = useAuth();
+  const trainerId = String(user?._id ?? user?.id ?? "");
+  const isTrainer = accountType === AccountType.TRAINER;
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: queryKeys.ai.reviewAnalysis,
+    queryKey: queryKeys.ai.reviewAnalysis(trainerId),
     queryFn: fetchReviewAnalysis,
-    staleTime: 5 * 60_000,
+    enabled: isTrainer && trainerId.length > 0,
+    staleTime: REVIEW_INSIGHT_STALE_MS,
+    gcTime: REVIEW_INSIGHT_STALE_MS,
     retry: 1,
   });
 
@@ -85,9 +100,18 @@ export default function ReviewAnalysisCard({ embedded }: Props) {
         <View style={[styles.iconWrap, { backgroundColor: colors.brandAccentSubtle }]}>
           <Ionicons name="sparkles" size={16} color={colors.brandAccent} />
         </View>
-        <Text style={[typography.subtitle, { color: colors.text, flex: 1 }]}>
-          AI Review Insights
-        </Text>
+        <View style={{ flex: 1 }}>
+          <Text style={[typography.subtitle, { color: colors.text }]}>AI Review Insights</Text>
+          {data?.generatedAt && !isLoading ? (
+            <Text style={[typography.caption, { color: colors.textMuted, marginTop: 2 }]}>
+              {data.cached ? "Cached" : "Updated"} {formatInsightDate(data.generatedAt)}
+              {data.insightVariant === 1 ? " · alternate insight" : ""}
+              {data.nextRefreshAt
+                ? ` · refreshes ${formatInsightDate(data.nextRefreshAt) ?? "in ~3 days"}`
+                : ""}
+            </Text>
+          ) : null}
+        </View>
       </View>
 
       {isLoading ? (

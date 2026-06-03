@@ -28,4 +28,11 @@ export type ReviewAnalysisPayload = {
   summary?: string;
   reviewCount?: number;
   degraded?: boolean;
+  cached?: boolean;
+  insightVariant?: number;
+  generatedAt?: string;
+  nextRefreshAt?: string;
 };
+
+/** Match backend refresh window (3 days). */
+export const REVIEW_INSIGHT_STALE_MS = 3 * 24 * 60 * 60 * 1000;

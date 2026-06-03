@@ -102,7 +102,7 @@ export const queryKeys = {
     aiRecommendations: ["aiRecommendations"] as const,
   },
   ai: {
-    reviewAnalysis: ["ai", "reviewAnalysis"] as const,
+    reviewAnalysis: (trainerId: string) => ["ai", "reviewAnalysis", trainerId] as const,
     smartSchedule: (trainerId: string) => ["ai", "smartSchedule", trainerId] as const,
   },
   trainerRole: {

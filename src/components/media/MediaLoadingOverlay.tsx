@@ -1,5 +1,13 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, Easing, StyleSheet, Text, View, type ViewStyle } from "react-native";
+import {
+  ActivityIndicator,
+  Animated,
+  Easing,
+  StyleSheet,
+  Text,
+  View,
+  type ViewStyle,
+} from "react-native";
 import { brandImages } from "../../constants/images";
 import { Image } from "expo-image";
 
@@ -7,17 +15,28 @@ type Props = {
   /** Shown under the spinner (omit for compact inline use). */
   message?: string;
   size?: "compact" | "full";
+  /** Light spinner only — no logo or ring (clips / in-call video). */
+  variant?: "branded" | "minimal";
   style?: ViewStyle;
 };
 
 /**
- * Single branded loading surface for images/videos — avoids the default OS spinner look.
+ * Branded loading surface for locker/chat media; use `variant="minimal"` for clips.
  */
 export function MediaLoadingOverlay({
   message = "Loading",
   size = "full",
+  variant = "branded",
   style,
 }: Props) {
+  if (variant === "minimal") {
+    return (
+      <View style={[styles.overlayMinimal, style]} pointerEvents="none">
+        <ActivityIndicator size="small" color="#94a3b8" />
+      </View>
+    );
+  }
+
   const spin = useRef(new Animated.Value(0)).current;
   const compact = size === "compact";
 
@@ -64,6 +83,12 @@ export function MediaLoadingOverlay({
 }
 
 const styles = StyleSheet.create({
+  overlayMinimal: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.92)",
+  },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",

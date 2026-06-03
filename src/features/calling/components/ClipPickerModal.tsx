@@ -5,6 +5,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Modal,
   Pressable,
@@ -12,8 +13,6 @@ import {
   Text,
   View,
 } from "react-native";
-
-import { MediaLoadingOverlay } from "../../../components/media/MediaLoadingOverlay";
 import { ImageWithSkeleton } from "../../../components/ui";
 import {
   getClipPlaybackUrl,
@@ -253,7 +252,7 @@ export function ClipPickerModal({
 
         {loading ? (
           <View style={styles.center}>
-            <MediaLoadingOverlay message="Loading clips" />
+            <ActivityIndicator size="small" color="#94a3b8" />
           </View>
         ) : allClips.length === 0 ? (
           <View style={styles.center}>

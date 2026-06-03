@@ -26,6 +26,7 @@ export type NativeMediaSurfaceProps = {
   showCustomControls?: boolean;
   onReady?: () => void;
   onError?: () => void;
+  loadingOverlayVariant?: "branded" | "minimal";
 };
 
 /**
@@ -44,6 +45,7 @@ export function NativeMediaSurface({
   showCustomControls = true,
   onReady,
   onError,
+  loadingOverlayVariant = "branded",
 }: NativeMediaSurfaceProps) {
   const videoRef = useRef<Video>(null);
   const readyOnce = useRef(false);
@@ -175,7 +177,10 @@ export function NativeMediaSurface({
           />
         ) : null}
         {showInternalOverlay ? (
-          <MediaLoadingOverlay message="Loading video" />
+          <MediaLoadingOverlay
+            message="Loading video"
+            variant={loadingOverlayVariant}
+          />
         ) : null}
       </View>
     );

@@ -418,7 +418,9 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
           queryClient.refetchQueries({ queryKey: queryKeys.wallet.earnings }),
           queryClient.refetchQueries({ queryKey: queryKeys.trainer.slots }),
           queryClient.refetchQueries({ queryKey: queryKeys.trainer.myStats }),
-          queryClient.refetchQueries({ queryKey: queryKeys.ai.reviewAnalysis }),
+          queryClient.refetchQueries({
+            queryKey: queryKeys.ai.reviewAnalysis(String(user?._id ?? "")),
+          }),
           queryClient.refetchQueries({ queryKey: queryKeys.trainerRole.recentTraineeClips })
         );
       }
@@ -426,7 +428,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
     } finally {
       setPullRefreshing(false);
     }
-  }, [queryClient, isTrainee]);
+  }, [queryClient, isTrainee, user?._id]);
 
   const openFeature = (id: DashboardRouteId, extra?: Partial<{ bookLessonTrainerId: string }>) => {
     // Some dashboard “features” map directly to bottom tabs for correct tab highlighting.
