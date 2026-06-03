@@ -49,6 +49,8 @@ export async function postSignUp(payload: SignUpPayload): Promise<unknown> {
     email: payload.email.toLowerCase(),
     isGoogleRegister: payload.isGoogleRegister ?? false,
   };
+  if (payload.referral_code) body.referral_code = payload.referral_code;
+  if (payload.referrer_id) body.referrer_id = payload.referrer_id;
   const { data } = await apiClient.post(API_ROUTES.auth.signup, body);
   return data;
 }

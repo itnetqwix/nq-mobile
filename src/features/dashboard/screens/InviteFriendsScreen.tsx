@@ -21,13 +21,20 @@ import {
   useThemeColors,
   useThemedStyles,
 } from "../../../theme";
-import { postInviteFriendEmail, fetchMyReferrals } from "../../home/api/homeApi";
+import { fetchMyReferrals } from "../../home/api/homeApi";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
 import { useAuth } from "../../auth/context/AuthContext";
 import { WEB_APP_ORIGIN } from "../../../config/env";
 import { haptics } from "../../../lib/haptics";
+import { AccountType } from "../../../constants/accountType";
+import {
+  fetchReferralProgram,
+  formatUsdFromMinor,
+  postReferralInvites,
+  type ReferralRewardPreview,
+} from "../../referral/api/referralApi";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -40,6 +47,8 @@ type ReferralRow = {
   joined?: boolean;
   joinedAt?: string | null;
   joinedUserId?: string | null;
+  targetAccountType?: string;
+  joinedAccountType?: string | null;
 };
 
 /**
@@ -51,9 +60,22 @@ type ReferralRow = {
  * origin if we don't have a user id (e.g. mid-onboarding before /auth/me
  * has populated).
  */
-function buildReferralLink(userId: string | null | undefined): string {
+function buildReferralLink(userId: string | null | undefined, code?: string | null): string {
+  if (code) return `${WEB_APP_ORIGIN}/signup?code=${encodeURIComponent(code)}`;
   if (!userId) return WEB_APP_ORIGIN;
   return `${WEB_APP_ORIGIN}/signup?ref=${encodeURIComponent(userId)}`;
+}
+
+function rewardSummary(preview: ReferralRewardPreview | undefined, currency: string): string {
+  if (!preview) return "";
+  const parts: string[] = [];
+  if (preview.referrerSignupMinor > 0) {
+    parts.push(formatUsdFromMinor(preview.referrerSignupMinor, currency));
+  }
+  if (preview.referrerFirstBookingMinor > 0) {
+    parts.push(`+${formatUsdFromMinor(preview.referrerFirstBookingMinor, currency)}`);
+  }
+  return parts.join(" ");
 }
 
 export function InviteFriendsScreen() {
@@ -68,11 +90,31 @@ export function InviteFriendsScreen() {
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<TrackerTab>("all");
   const [composerOpen, setComposerOpen] = useState(false);
-
-  const referralLink = useMemo(
-    () => buildReferralLink((user as { _id?: string } | null | undefined)?._id),
-    [user]
+  const [inviteTarget, setInviteTarget] = useState<typeof AccountType.TRAINEE | typeof AccountType.TRAINER>(
+    AccountType.TRAINEE
   );
+
+  const programQuery = useQuery({
+    queryKey: queryKeys.referral.program,
+    queryFn: fetchReferralProgram,
+    staleTime: 120_000,
+  });
+  const program = programQuery.data;
+
+  const referralLink = useMemo(() => {
+    if (program?.webLink) return program.webLink;
+    return buildReferralLink(
+      (user as { _id?: string } | null | undefined)?._id,
+      program?.referralCode
+    );
+  }, [user, program]);
+
+  const activeRewardPreview = useMemo(() => {
+    if (!program) return undefined;
+    return inviteTarget === AccountType.TRAINER
+      ? program.rewardMatrix.inviteTrainer
+      : program.rewardMatrix.inviteTrainee;
+  }, [program, inviteTarget]);
 
   const referralMessage = useMemo(
     () =>
@@ -93,10 +135,11 @@ export function InviteFriendsScreen() {
   });
 
   const stats = useMemo(() => {
-    const total = referrals.length;
-    const joined = referrals.filter((r: ReferralRow) => r.joined).length;
-    return { total, joined, pending: total - joined };
-  }, [referrals]);
+    const total = program?.stats.invitesSent ?? referrals.length;
+    const joined = program?.stats.registered ?? referrals.filter((r: ReferralRow) => r.joined).length;
+    const earnedMinor = program?.stats.totalEarnedMinor ?? 0;
+    return { total, joined, pending: total - joined, earnedMinor };
+  }, [referrals, program]);
 
   const filteredReferrals = useMemo(() => {
     const rows = referrals as ReferralRow[];
@@ -157,15 +200,19 @@ export function InviteFriendsScreen() {
       return;
     }
     setLoading(true);
-    const ok: string[] = [];
-    const failed: { email: string; reason: string }[] = [];
-    for (const email of allEmails) {
-      try {
-        await postInviteFriendEmail(email);
-        ok.push(email);
-      } catch (e) {
-        failed.push({ email, reason: getApiErrorMessage(e, "Send failed") });
+    let ok: string[] = [];
+    let failed: { email: string; reason: string }[] = [];
+    try {
+      const { results } = await postReferralInvites(allEmails, inviteTarget);
+      for (const row of results) {
+        if (row.ok) ok.push(row.email);
+        else failed.push({ email: row.email, reason: row.error ?? "Send failed" });
       }
+    } catch (e) {
+      failed = allEmails.map((email) => ({
+        email,
+        reason: getApiErrorMessage(e, "Send failed"),
+      }));
     }
     setLoading(false);
     if (failed.length && ok.length) {
@@ -189,7 +236,9 @@ export function InviteFriendsScreen() {
       );
     }
     queryClient.invalidateQueries({ queryKey: queryKeys.user.referrals });
-  }, [allEmails, queryClient, t]);
+    queryClient.invalidateQueries({ queryKey: queryKeys.referral.program });
+    queryClient.invalidateQueries({ queryKey: queryKeys.referral.invites });
+  }, [allEmails, inviteTarget, queryClient, t]);
 
   const handleShareWhatsApp = async () => {
     haptics.tap();
@@ -266,15 +315,20 @@ export function InviteFriendsScreen() {
         </View>
         <Text style={[styles.heroTitle, { color: c.text }]}>
           {t("invites.heroTitle", {
-            defaultValue: "Invite a friend, both get a free intro lesson",
+            defaultValue: "Refer coaches and athletes, earn wallet credits",
           })}
         </Text>
         <Text style={[styles.heroSub, { color: c.textMuted }]}>
           {t("invites.heroSubtitle", {
             defaultValue:
-              "Share NetQwix with your training partner. When they sign up using your link you both earn one complimentary intro session.",
+              "Invite anyone to join as a trainee or trainer. When they sign up and complete their first lesson, you earn cash credits in your NetQwix wallet.",
           })}
         </Text>
+        {program?.referralCode ? (
+          <Text style={[styles.codePill, { color: c.brandNavy, backgroundColor: c.brandSubtle }]}>
+            {t("invites.yourCode", { defaultValue: "Your code" })}: {program.referralCode}
+          </Text>
+        ) : null}
       </View>
 
       {/* Stats card */}
@@ -291,6 +345,48 @@ export function InviteFriendsScreen() {
           value={stats.joined}
           highlight
         />
+        <View style={styles.statDivider} />
+        <StatBlock
+          icon="wallet-outline"
+          label={t("invites.statEarned", { defaultValue: "Earned" })}
+          value={formatUsdFromMinor(stats.earnedMinor, program?.currency)}
+          compact
+        />
+      </View>
+
+      <View style={styles.card}>
+        <Text style={[styles.cardTitle, { color: c.text }]}>
+          {t("invites.inviteAsTitle", { defaultValue: "Invite them to join as" })}
+        </Text>
+        <View style={styles.targetRow}>
+          <TargetChip
+            label={t("invites.targetTrainee", { defaultValue: "Trainee" })}
+            selected={inviteTarget === AccountType.TRAINEE}
+            onPress={() => setInviteTarget(AccountType.TRAINEE)}
+          />
+          <TargetChip
+            label={t("invites.targetTrainer", { defaultValue: "Trainer / coach" })}
+            selected={inviteTarget === AccountType.TRAINER}
+            onPress={() => setInviteTarget(AccountType.TRAINER)}
+          />
+        </View>
+        <Text style={[styles.rewardLine, { color: c.textMuted }]}>
+          {t("invites.rewardYouEarn", {
+            defaultValue: "You earn {{amount}} when they join",
+            amount: rewardSummary(activeRewardPreview, program?.currency ?? "USD") || "—",
+          })}
+        </Text>
+        {activeRewardPreview && activeRewardPreview.refereeSignupMinor > 0 ? (
+          <Text style={[styles.rewardLine, { color: c.textMuted }]}>
+            {t("invites.rewardTheyGet", {
+              defaultValue: "They get {{amount}} wallet credit on signup",
+              amount: formatUsdFromMinor(
+                activeRewardPreview.refereeSignupMinor,
+                program?.currency
+              ),
+            })}
+          </Text>
+        ) : null}
       </View>
 
       {/* Quick share row */}
@@ -536,6 +632,14 @@ function ReferralRowView({
           {row.email ?? ""}
         </Text>
         <Text style={styles.historyDate}>{subtitle}</Text>
+        {row.targetAccountType ? (
+          <Text style={styles.historyMeta}>
+            {t("invites.invitedAs", {
+              defaultValue: "Invited as {{role}}",
+              role: row.targetAccountType,
+            })}
+          </Text>
+        ) : null}
       </View>
       <View
         style={[
@@ -560,16 +664,52 @@ function ReferralRowView({
   );
 }
 
+function TargetChip({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const c = useThemeColors();
+  return (
+    <Pressable
+      onPress={() => {
+        haptics.tap();
+        onPress();
+      }}
+      style={[
+        {
+          flex: 1,
+          paddingVertical: 10,
+          borderRadius: radii.md,
+          borderWidth: 1,
+          alignItems: "center",
+        },
+        selected
+          ? { backgroundColor: c.brandSubtle, borderColor: c.brandNavy }
+          : { backgroundColor: c.surfaceMuted, borderColor: c.borderSubtle },
+      ]}
+    >
+      <Text style={{ ...typography.bodySm, fontWeight: "700", color: c.text }}>{label}</Text>
+    </Pressable>
+  );
+}
+
 function StatBlock({
   icon,
   label,
   value,
   highlight,
+  compact,
 }: {
   icon: React.ComponentProps<typeof Ionicons>["name"];
   label: string;
-  value: number;
+  value: number | string;
   highlight?: boolean;
+  compact?: boolean;
 }) {
   const c = useThemeColors();
   return (
@@ -586,7 +726,17 @@ function StatBlock({
       >
         <Ionicons name={icon} size={20} color={highlight ? c.brandTextOn : c.brandNavy} />
       </View>
-      <Text style={{ ...typography.titleLg, color: c.text, marginTop: 6 }}>{value}</Text>
+      <Text
+        style={{
+          ...(compact ? typography.bodyMd : typography.titleLg),
+          color: c.text,
+          marginTop: 6,
+          fontWeight: "800",
+        }}
+        numberOfLines={1}
+      >
+        {value}
+      </Text>
       <Text style={{ ...typography.caption, color: c.textMuted }}>{label}</Text>
     </View>
   );
@@ -663,6 +813,16 @@ function useInviteStyles() {
       },
       heroTitle: { ...typography.titleMd, textAlign: "center", fontWeight: "800" },
       heroSub: { ...typography.bodySm, textAlign: "center", lineHeight: 20 },
+      codePill: {
+        ...typography.caption,
+        fontWeight: "700",
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: radii.pill,
+        overflow: "hidden",
+      },
+      targetRow: { flexDirection: "row", gap: space.sm, marginTop: space.sm },
+      rewardLine: { ...typography.caption, marginTop: 6 },
       statsCard: {
         flexDirection: "row",
         backgroundColor: palette.surfaceElevated,
@@ -777,6 +937,7 @@ function useInviteStyles() {
       },
       historyEmail: { ...typography.bodySm, color: palette.text, fontWeight: "600" },
       historyDate: { ...typography.caption, color: palette.textMuted, marginTop: 1 },
+      historyMeta: { ...typography.caption, color: palette.textMuted, marginTop: 2 },
       statusPill: {
         paddingHorizontal: 8,
         paddingVertical: 4,

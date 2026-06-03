@@ -41,6 +41,8 @@ import {
   signupPasswordError,
 } from "../utils/passwordValidation";
 import type { AuthScreenProps } from "../../../navigation/types";
+import { useReferralSignupParams } from "../../referral/hooks/useReferralSignupParams";
+import { fetchReferralResolve } from "../../referral/api/referralApi";
 
 const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 
@@ -74,6 +76,23 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
   const [category, setCategory] = useState<string | null>(null);
   const [tcpa, setTcpa] = useState(false);
   const [acceptedTermsAndPrivacy, setAcceptedTermsAndPrivacy] = useState(false);
+  const deepReferral = useReferralSignupParams();
+  const referralCodeParam = (
+    route.params?.referralCode ?? deepReferral.referralCode
+  )
+    ?.trim()
+    .toUpperCase();
+  const referrerIdParam = (route.params?.referrerId ?? deepReferral.referrerId)?.trim();
+
+  const referralResolveQuery = useQuery({
+    queryKey: ["referralResolve", referralCodeParam, referrerIdParam],
+    queryFn: async () => {
+      if (referralCodeParam) return fetchReferralResolve(referralCodeParam);
+      return null;
+    },
+    enabled: Boolean(referralCodeParam),
+    staleTime: 300_000,
+  });
 
   useEffect(() => {
     if (route.params?.prefillEmail && isSsoSignup) {
@@ -203,6 +222,8 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
     tcpa,
     accepted_terms_and_privacy: acceptedTermsAndPrivacy,
     isGoogleRegister: googleRegister,
+    ...(referralCodeParam ? { referral_code: referralCodeParam } : {}),
+    ...(referrerIdParam ? { referrer_id: referrerIdParam } : {}),
   });
 
   const onContinueFromAccountType = () => {
@@ -275,6 +296,16 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
         <Text style={[typography.titleLg, { color: colors.text, marginTop: space.sm }]}>
           {t("auth.createAccount")}
         </Text>
+        {referralResolveQuery.data?.referrerName ? (
+          <View style={styles.referralBanner}>
+            <Text style={styles.referralBannerText}>
+              {t("auth.referredBy", {
+                defaultValue: "Referred by {{name}}",
+                name: referralResolveQuery.data.referrerName,
+              })}
+            </Text>
+          </View>
+        ) : null}
         <View style={styles.stepRow}>
           {visibleSteps.map((s, i) => (
             <React.Fragment key={s}>
@@ -559,6 +590,19 @@ function TypeChip({
 
 const styles = StyleSheet.create({
   scrollContent: { flexGrow: 1 },
+  referralBanner: {
+    marginTop: space.sm,
+    padding: space.sm,
+    borderRadius: radii.md,
+    backgroundColor: colors.brandAccentSubtle,
+    borderWidth: 1,
+    borderColor: colors.brandAccent,
+  },
+  referralBannerText: {
+    ...typography.bodySm,
+    color: colors.brandNavy,
+    fontWeight: "600",
+  },
   brand: { alignItems: "center", marginTop: space.xs },
   stepRow: {
     flexDirection: "row",

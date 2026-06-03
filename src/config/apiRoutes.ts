@@ -131,6 +131,13 @@ export const API_ROUTES = {
     /** Phase 2 — confirm hibernation (OTP → hibernated_at). */
     hibernateConfirm: "/user/me/hibernate/confirm",
   },
+  referral: {
+    program: "/referral/program",
+    resolve: (code: string) => `/referral/resolve/${encodeURIComponent(code)}` as const,
+    invite: "/referral/invite",
+    invites: "/referral/invites",
+    rewards: "/referral/rewards",
+  },
   tips: {
     list: "/tips",
   },

@@ -19,6 +19,10 @@ export type SignUpPayload = {
   /** Required: user accepted Terms & Conditions and Privacy Policy. */
   accepted_terms_and_privacy: boolean;
   isGoogleRegister?: boolean;
+  /** Shareable code from invite link (e.g. NQABC123). */
+  referral_code?: string;
+  /** Legacy inviter user id from ?ref= */
+  referrer_id?: string;
 };
 
 export type MasterRow = {

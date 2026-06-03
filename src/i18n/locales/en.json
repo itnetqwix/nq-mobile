@@ -54,6 +54,7 @@
     "password": "Password",
     "forgotPassword": "Forgot password?",
     "createAccount": "Create account",
+    "referredBy": "Referred by {{name}}",
     "welcomeBack": "Welcome back",
     "signInSubtitle": "Sign in to continue training on NetQwix.",
     "createAccountLink": "Create an account",
@@ -1278,7 +1279,15 @@
     "sentBody": "Sent {{count}} invitation.",
     "sentBody_other": "Sent {{count}} invitations.",
     "pastInvitations": "Past invitations",
-    "noInvitationsYet": "No invitations sent yet"
+    "noInvitationsYet": "No invitations sent yet",
+    "yourCode": "Your code",
+    "statEarned": "Earned",
+    "inviteAsTitle": "Invite them to join as",
+    "targetTrainee": "Trainee",
+    "targetTrainer": "Trainer / coach",
+    "rewardYouEarn": "You earn {{amount}} when they join",
+    "rewardTheyGet": "They get {{amount}} wallet credit on signup",
+    "invitedAs": "Invited as {{role}}"
   },
   "transactions": {
     "bookingHistory": "Booking history",

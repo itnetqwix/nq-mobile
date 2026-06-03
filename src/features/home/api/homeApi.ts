@@ -300,9 +300,13 @@ export async function fetchBookingTransactions(params?: {
   return [];
 }
 
-export async function postInviteFriendEmail(userEmail: string): Promise<void> {
+export async function postInviteFriendEmail(
+  userEmail: string,
+  targetAccountType?: "Trainer" | "Trainee"
+): Promise<void> {
   await apiClient.post(API_ROUTES.user.inviteFriend, {
     user_email: userEmail.toLowerCase().trim(),
+    ...(targetAccountType ? { targetAccountType } : {}),
   });
 }
 

@@ -98,6 +98,10 @@ export const queryKeys = {
   user: {
     referrals: ["myReferrals"] as const,
   },
+  referral: {
+    program: ["referralProgram"] as const,
+    invites: ["referralInvites"] as const,
+  },
   transactions: {
     bookingListById: ["transactions", "booking-list-by-id"] as const,
   },

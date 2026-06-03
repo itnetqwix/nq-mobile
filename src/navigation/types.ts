@@ -16,6 +16,8 @@ export type AuthStackParamList = {
         /** Present when completing Google signup — used to sign in after register. */
         googleIdToken?: string;
         appleIdentityToken?: string;
+        referralCode?: string;
+        referrerId?: string;
       } & AuthScreenParams)
     | undefined;
   ForgotPassword: undefined;
