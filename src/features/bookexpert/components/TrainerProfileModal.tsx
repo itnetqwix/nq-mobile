@@ -29,7 +29,13 @@ import {
   getTrainerId,
   getTrainerName,
 } from "../lib/trainerUtils";
+import { useAuth } from "../../auth/context/AuthContext";
 import { useGuestMode } from "../../auth/hooks/useGuestMode";
+import { resolveTraineeTimeZone } from "../../../lib/user/resolveTraineeTimeZone";
+import {
+  getTrainerNextSlots,
+  getTrainerTodaySlotsCount,
+} from "../lib/trainerUtils";
 import { useRequireAuth } from "../../auth/hooks/useRequireAuth";
 import { useFavoriteTrainers } from "../../dashboard/hooks/useFavoriteTrainers";
 import { FavoriteHeartButton } from "../../dashboard/components/trainee/FavoriteHeartButton";
@@ -86,16 +92,21 @@ export function TrainerProfileModal({
   const styles = useMemo(() => makeStyles(themeColors), [themeColors]);
   const insets = useSafeAreaInsets();
   const { isOnline } = useOnlinePresence();
+  const { user } = useAuth();
   const isGuest = useGuestMode();
   const { requireAuth } = useRequireAuth();
+  const traineeTimeZone = resolveTraineeTimeZone(user ?? undefined);
   const { isFavorite, toggleFavorite } = useFavoriteTrainers(!isGuest);
   const trainerId = getTrainerId(trainer);
 
   const { data: enriched, isLoading } = useQuery({
-    queryKey: ["trainerProfile", trainerId],
+    queryKey: ["trainerProfile", trainerId, traineeTimeZone],
     queryFn: async () => {
       if (!trainerId) return trainer;
-      const rows = await fetchTrainersWithSlots({ limit: 100 });
+      const rows = await fetchTrainersWithSlots({
+        limit: 100,
+        traineeTimeZone,
+      });
       return rows.find((r) => String(r._id) === trainerId) ?? trainer;
     },
     enabled: visible && !!trainerId,
@@ -126,6 +137,8 @@ export function TrainerProfileModal({
 
   const visibleReviews = showAllReviews ? reviews : reviews.slice(0, 5);
   const hiddenReviewCount = Math.max(0, reviews.length - 5);
+  const todaySlotsCount = getTrainerTodaySlotsCount(data);
+  const todaySlotPreviews = getTrainerNextSlots(data, 4);
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onDismiss}>
@@ -189,6 +202,45 @@ export function TrainerProfileModal({
                 <Text style={styles.rate}>${hourly.toFixed(0)} <Text style={styles.rateUnit}>/ hour</Text></Text>
               )}
               <FriendSocialStrip trainer={data} />
+            </View>
+
+            <View style={styles.block}>
+              <Text style={styles.blockTitle}>Availability today</Text>
+              {todaySlotsCount != null && todaySlotsCount > 0 ? (
+                <>
+                  <Text style={styles.bodyText}>
+                    {todaySlotsCount} bookable time{todaySlotsCount !== 1 ? "s" : ""} left today.
+                  </Text>
+                  <View style={styles.todaySlotsRow}>
+                    {todaySlotPreviews.map((slot) => (
+                      <Pressable
+                        key={slot.iso ?? `${slot.time}`}
+                        style={styles.todaySlotChip}
+                        onPress={() => {
+                          requireAuth(() => {
+                            onSchedule(data);
+                            onDismiss();
+                          }, {
+                            intent: "book",
+                            messageKey: "guest.signInToBook",
+                            trainer: data,
+                            bookMode: "schedule",
+                          });
+                        }}
+                      >
+                        <Text style={styles.todaySlotTime}>{slot.time}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  <Text style={styles.availHint}>
+                    Open Schedule for the full calendar and more dates.
+                  </Text>
+                </>
+              ) : (
+                <Text style={styles.bodyText}>
+                  No times left today. Use Schedule to pick another day.
+                </Text>
+              )}
             </View>
 
             {categories.length > 0 && (
@@ -423,6 +475,26 @@ function makeStyles(colors: AppColors) {
     },
     blockTitle: { ...typography.subtitle, color: colors.text, marginBottom: space.sm, fontWeight: "700" },
     bodyText: { ...typography.bodyMd, color: colors.textSecondary, lineHeight: 22 },
+    todaySlotsRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      marginTop: space.sm,
+    },
+    todaySlotChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: radii.pill,
+      backgroundColor: colors.brandAccentSubtle,
+      borderWidth: 1,
+      borderColor: colors.brandAccent,
+    },
+    todaySlotTime: { fontSize: 13, fontWeight: "600", color: colors.brandNavy },
+    availHint: {
+      ...typography.caption,
+      color: colors.textMuted,
+      marginTop: space.sm,
+    },
     catWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
     catChip: {
       paddingHorizontal: 12,

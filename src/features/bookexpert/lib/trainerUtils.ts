@@ -75,14 +75,53 @@ export function isTrainerVerified(trainer: Record<string, unknown> | null | unde
 }
 
 export function trainerHasOpenSlots(trainer: Record<string, unknown> | null | undefined): boolean {
-  const slots = trainer?.slots;
-  if (Array.isArray(slots) && slots.length > 0) return true;
+  if (trainer?.has_open_slots === true) return true;
+  const todayCount = getTrainerTodaySlotsCount(trainer);
+  if (todayCount != null) return todayCount > 0;
   const avail = trainer?.available_slots;
   if (!Array.isArray(avail)) return false;
   return avail.some((day) => {
     const d = day as { slots?: unknown[] };
     return Array.isArray(d.slots) && d.slots.length > 0;
   });
+}
+
+/** Bookable start times remaining today (trainee-local day when API includes previews). */
+export function getTrainerTodaySlotsCount(
+  trainer: Record<string, unknown> | null | undefined
+): number | null {
+  if (!trainer) return null;
+  const n = Number(trainer.today_slots_count);
+  if (Number.isFinite(n) && n >= 0) return n;
+  const previews = trainer.today_slot_previews;
+  if (Array.isArray(previews)) return previews.length;
+  return null;
+}
+
+export function getTrainerTodaySlotPreviews(
+  trainer: Record<string, unknown> | null | undefined,
+  max = 3
+): string[] {
+  if (!trainer || max <= 0) return [];
+  const raw = trainer.today_slot_previews;
+  if (Array.isArray(raw)) {
+    return raw
+      .map((t) => String(t ?? "").trim())
+      .filter(Boolean)
+      .slice(0, max);
+  }
+  const slots = trainer.slots;
+  if (Array.isArray(slots)) {
+    const out: string[] = [];
+    for (const s of slots) {
+      if (out.length >= max) break;
+      const row = s as Record<string, unknown>;
+      const time = normalizeTimeLabel(row?.start_time ?? row?.start ?? row?.time);
+      if (time) out.push(time);
+    }
+    return out;
+  }
+  return [];
 }
 
 export type TrainerNextSlot = {
@@ -94,14 +133,6 @@ export type TrainerNextSlot = {
   iso?: string;
 };
 
-function dayLabelFromOffset(offsetDays: number): string {
-  if (offsetDays === 0) return "Today";
-  if (offsetDays === 1) return "Tomorrow";
-  const d = new Date();
-  d.setDate(d.getDate() + offsetDays);
-  return d.toLocaleDateString(undefined, { weekday: "short" });
-}
-
 function normalizeTimeLabel(raw: unknown): string {
   const s = String(raw ?? "").trim();
   if (!s) return "";
@@ -110,45 +141,20 @@ function normalizeTimeLabel(raw: unknown): string {
   return s;
 }
 
-/** Extract next open slot chips for trainer browse cards. */
+/** Today's open slot chips for trainer browse cards (schedule wizard has full calendar). */
 export function getTrainerNextSlots(
   trainer: Record<string, unknown> | null | undefined,
   max = 3
 ): TrainerNextSlot[] {
   if (!trainer || max <= 0) return [];
 
-  // Preferred shape: `available_slots: [{ day, slots: [{ start_time, end_time }] }]`
-  const avail = (trainer as any)?.available_slots;
-  if (Array.isArray(avail)) {
-    const out: TrainerNextSlot[] = [];
-    for (let di = 0; di < avail.length && out.length < max; di++) {
-      const dayRow = avail[di] as any;
-      const slots = Array.isArray(dayRow?.slots) ? dayRow.slots : [];
-      for (let si = 0; si < slots.length && out.length < max; si++) {
-        const slot = slots[si] as any;
-        const time = normalizeTimeLabel(slot?.start_time ?? slot?.start ?? slot?.time);
-        if (!time) continue;
-        out.push({
-          label: dayLabelFromOffset(di),
-          time,
-          iso: `${di}-${String(slot?.start_time ?? slot?.start ?? slot?.time ?? si)}`,
-        });
-      }
-    }
-    return out;
-  }
-
-  // Fallback shape: `slots: [...]` (instant list / unknown).
-  const rawSlots = (trainer as any)?.slots;
-  if (Array.isArray(rawSlots)) {
-    const out: TrainerNextSlot[] = [];
-    for (let i = 0; i < rawSlots.length && out.length < max; i++) {
-      const s = rawSlots[i] as any;
-      const time = normalizeTimeLabel(s?.start_time ?? s?.start ?? s?.time ?? s);
-      if (!time) continue;
-      out.push({ label: "Next", time, iso: `slot-${i}-${time}` });
-    }
-    return out;
+  const todayPreviews = getTrainerTodaySlotPreviews(trainer, max);
+  if (todayPreviews.length > 0) {
+    return todayPreviews.map((time, i) => ({
+      label: "Today",
+      time,
+      iso: `today-${i}-${time}`,
+    }));
   }
 
   return [];

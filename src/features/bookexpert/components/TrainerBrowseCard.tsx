@@ -12,6 +12,7 @@ import {
   getTrainerName,
   getTrainerNextSlots,
   getTrainerReviewCount,
+  getTrainerTodaySlotsCount,
   isTrainerVerified,
 } from "../lib/trainerUtils";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
@@ -60,7 +61,7 @@ export function TrainerBrowseCard({
   const completedCount = getTrainerCompletedSessionCount(trainer);
   const verified = isTrainerVerified(trainer);
   const hourly = getTrainerHourlyRate(trainer);
-  const slotsCount = Array.isArray(trainer?.slots) ? (trainer.slots as unknown[]).length : null;
+  const todaySlotsCount = getTrainerTodaySlotsCount(trainer);
   const nextSlots = React.useMemo(() => getTrainerNextSlots(trainer, 3), [trainer]);
 
   return (
@@ -160,11 +161,17 @@ export function TrainerBrowseCard({
                 {t("traineeDiscover.fromRate", { rate: hourly.toFixed(0) })}
               </Text>
             )}
-            {!compact && slotsCount !== null && slotsCount > 0 && (
+            {!compact && todaySlotsCount !== null && todaySlotsCount > 0 ? (
               <Text style={styles.slotsText}>
-                {t("bookExpert.slotsAvailable", { count: slotsCount })}
+                {t("bookExpert.slotsAvailableToday", { count: todaySlotsCount })}
               </Text>
-            )}
+            ) : !compact && todaySlotsCount === 0 ? (
+              <Pressable onPress={() => onSchedule(trainer)} accessibilityRole="button">
+                <Text style={styles.slotsHintMuted}>
+                  {t("bookExpert.noSlotsTodaySeeCalendar")}
+                </Text>
+              </Pressable>
+            ) : null}
             <FriendSocialStrip trainer={trainer} />
           </View>
         </View>
@@ -172,7 +179,7 @@ export function TrainerBrowseCard({
       {!compact && nextSlots.length > 0 ? (
         <View style={styles.slotsStrip}>
           <Ionicons name="time-outline" size={13} color={themeColors.textMuted} />
-          <Text style={styles.slotsStripHint}>{t("bookExpert.nextOpenLabel")}</Text>
+          <Text style={styles.slotsStripHint}>{t("bookExpert.todayOpenLabel")}</Text>
           {nextSlots.map((slot) => (
             <Pressable
               key={slot.iso || `${slot.label}-${slot.time}`}
@@ -264,6 +271,12 @@ function makeCardStyles(colors: AppColors) {
     reviewsHint: { ...typography.caption, color: colors.textMuted },
     rateText: { ...typography.caption, color: colors.brandNavy, marginTop: 2, fontWeight: "600" },
     slotsText: { ...typography.caption, color: colors.success, marginTop: 3, fontWeight: "500" },
+    slotsHintMuted: {
+      ...typography.caption,
+      color: colors.textMuted,
+      marginTop: 3,
+      textDecorationLine: "underline",
+    },
     slotsStrip: {
       flexDirection: "row",
       alignItems: "center",

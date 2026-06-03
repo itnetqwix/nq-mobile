@@ -361,6 +361,8 @@ export type BrowseTrainersParams = {
   hasSlotsOnly?: boolean;
   page?: number;
   limit?: number;
+  /** Trainee IANA timezone — directory returns today-only slot counts in this zone. */
+  traineeTimeZone?: string;
 };
 
 export async function fetchTrainersWithSlots(params?: BrowseTrainersParams): Promise<any[]> {
@@ -382,6 +384,9 @@ export async function fetchTrainersWithSlots(params?: BrowseTrainersParams): Pro
   if (params?.hasSlotsOnly) query.hasSlotsOnly = "1";
   if (params?.page) query.page = String(params.page);
   if (params?.limit) query.limit = String(params.limit);
+  if (params?.traineeTimeZone?.trim()) {
+    query.traineeTimeZone = params.traineeTimeZone.trim();
+  }
 
   const res = await apiClient.get(API_ROUTES.trainee.getTrainersWithSlots, { params: query });
   const body = res.data as Record<string, unknown>;

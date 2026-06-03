@@ -68,7 +68,9 @@ export function ScheduleStepDateTime({
       </ScrollView>
 
       <Text style={[shared.sectionTitle, { marginTop: space.md }]}>Available start times</Text>
-      <Text style={shared.mutedSmall}>Times shown in your timezone ({traineeTz})</Text>
+      <Text style={shared.mutedSmall}>
+        Pick another date above for more times. Shown in your timezone ({traineeTz}).
+      </Text>
       {trainerTimezone ? (
         <Text style={shared.mutedSmall}>Trainer timezone: {trainerTimezone}</Text>
       ) : null}

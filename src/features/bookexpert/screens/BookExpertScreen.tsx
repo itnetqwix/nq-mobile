@@ -32,6 +32,7 @@ import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
 import { dedupeTrainersById, flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { useAuth } from "../../auth/context/AuthContext";
+import { resolveTraineeTimeZone } from "../../../lib/user/resolveTraineeTimeZone";
 import { useGuestMode } from "../../auth/hooks/useGuestMode";
 import { useRequireAuth } from "../../auth/hooks/useRequireAuth";
 import { getTraineeInterests } from "../../dashboard/lib/traineeInterests";
@@ -77,6 +78,7 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
     return undefined;
   }, [browseFilters.selectedCategories, searchActive, traineeInterests]);
   const activeFilterCount = countActiveFilters(browseFilters);
+  const traineeTimeZone = resolveTraineeTimeZone(user ?? undefined);
 
   const {
     data: directoryRows = [],
@@ -86,7 +88,7 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
   } = useQuery({
     queryKey: queryKeys.trainer.directorySearch(
       trimmed,
-      JSON.stringify({ ...apiFilterParams, categories: apiCategories })
+      JSON.stringify({ ...apiFilterParams, categories: apiCategories, traineeTimeZone })
     ),
     queryFn: () =>
       fetchTrainersWithSlots({
@@ -94,6 +96,7 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
         ...apiFilterParams,
         categories: apiCategories ?? apiFilterParams.categories,
         limit: 80,
+        traineeTimeZone,
       }),
     staleTime: 60_000,
   });

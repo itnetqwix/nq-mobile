@@ -44,6 +44,7 @@ import {
   type TrainerBrowseFilters,
 } from "../../../bookexpert/lib/trainerBrowseConstants";
 import { trainerHasOpenSlots } from "../../../bookexpert/lib/trainerUtils";
+import { resolveTraineeTimeZone } from "../../../../lib/user/resolveTraineeTimeZone";
 import { queryKeys } from "../../../../lib/queryKeys";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
@@ -145,10 +146,13 @@ export function TraineeDiscoverDashboard({
     interests,
   ]);
 
+  const traineeTimeZone = resolveTraineeTimeZone(user ?? undefined);
+
   const directoryFilterKey = JSON.stringify({
     apiCategories,
     searchActive,
     filters: apiFilterParams,
+    traineeTimeZone,
   });
 
   useEffect(() => {
@@ -171,6 +175,7 @@ export function TraineeDiscoverDashboard({
         categories: apiCategories ?? apiFilterParams.categories,
         page: pageParam,
         limit: TRAINEE_COACH_PAGE_SIZE,
+        traineeTimeZone,
       }),
     initialPageParam: 1,
     getNextPageParam: (lastPage, _pages, lastPageParam) =>
