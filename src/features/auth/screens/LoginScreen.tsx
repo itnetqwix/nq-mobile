@@ -100,6 +100,12 @@ export function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
       await setLastAuthMethod("password");
       await promptEnableAppUnlock();
     },
+    onSuccess: () => {
+      const parent = navigation.getParent();
+      if (parent?.canGoBack()) {
+        parent.goBack();
+      }
+    },
     onError: (err) => {
       if ((err as Error).message === "validation") return;
       const enriched = err as Error & {

@@ -1,4 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
+import { AccountType } from "../constants/accountType";
+import { store } from "../store/store";
 import { queryKeys, queryKeyRoots } from "./queryKeys";
 
 export function invalidateSessions(queryClient: QueryClient): void {
@@ -146,7 +148,12 @@ export function invalidateOnSocketReconnect(queryClient: QueryClient): void {
   invalidateSessions(queryClient);
   invalidatePresence(queryClient);
   invalidateChats(queryClient);
-  void queryClient.invalidateQueries({ queryKey: queryKeys.trainee.favorites });
-  void queryClient.invalidateQueries({ queryKey: queryKeys.wallet.earnings });
-  void queryClient.invalidateQueries({ queryKey: queryKeys.trainer.slots });
+  const accountType = store.getState().auth.accountType;
+  if (accountType === AccountType.TRAINEE) {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.trainee.favorites });
+  }
+  if (accountType === AccountType.TRAINER) {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.wallet.earnings });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.trainer.slots });
+  }
 }

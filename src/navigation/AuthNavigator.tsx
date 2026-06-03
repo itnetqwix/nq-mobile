@@ -1,6 +1,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { useRoute } from "@react-navigation/native";
-import React from "react";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import React, { useEffect, useRef } from "react";
+import { useAuth } from "../features/auth/context/AuthContext";
 import { ForgotPasswordScreen } from "../features/auth/screens/ForgotPasswordScreen";
 import { LoginScreen } from "../features/auth/screens/LoginScreen";
 import { MagicLinkRequestScreen } from "../features/auth/screens/MagicLinkRequestScreen";
@@ -17,11 +18,31 @@ type AuthRoute = RouteProp<RootStackParamList, "Auth">;
 
 export function AuthNavigator() {
   const route = useRoute<AuthRoute>();
+  const navigation = useNavigation();
+  const { status } = useAuth();
+  const dismissedAfterSignInRef = useRef(false);
   const authParams = route.params as NavigatorScreenParams<AuthStackParamList> | undefined;
   const initialScreen =
     authParams && "screen" in authParams && authParams.screen === "SignUp"
       ? "SignUp"
       : "Login";
+
+  useEffect(() => {
+    if (status !== "signedIn") {
+      dismissedAfterSignInRef.current = false;
+      return;
+    }
+    if (dismissedAfterSignInRef.current) return;
+    dismissedAfterSignInRef.current = true;
+    const parent = navigation.getParent();
+    if (parent?.canGoBack()) {
+      parent.goBack();
+      return;
+    }
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    }
+  }, [status, navigation]);
 
   return (
     <Stack.Navigator

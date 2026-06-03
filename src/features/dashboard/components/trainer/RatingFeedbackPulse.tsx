@@ -2,8 +2,11 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
 import { Skeleton } from "../../../../components/ui";
+import { AccountType } from "../../../../constants/accountType";
 import { queryKeys } from "../../../../lib/queryKeys";
+import { useAuth } from "../../../auth/context/AuthContext";
 import { fetchMyTrainerStats } from "../../../home/api/homeApi";
 import { mapTrainerStatsReviews } from "../../lib/mapTrainerStatsReviews";
 import { DashboardSection } from "../shared/DashboardSection";
@@ -18,11 +21,18 @@ export function RatingFeedbackPulse({ onOpenReviews }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const styles = useStyles();
+  const { accountType } = useAuth();
+  const isTrainer = accountType === AccountType.TRAINER;
 
   const q = useQuery({
     queryKey: queryKeys.trainer.myStats,
     queryFn: fetchMyTrainerStats,
+    enabled: isTrainer,
     staleTime: 60_000,
+    retry: (failureCount, error) => {
+      if (isAxiosError(error) && error.response?.status === 401) return false;
+      return failureCount < 1;
+    },
   });
 
   if (q.isLoading) {

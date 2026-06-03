@@ -58,6 +58,43 @@ export async function postForgotPassword(email: string): Promise<unknown> {
   return data;
 }
 
+/** Normalise GET /user/me bodies (`userInfo` at top level or under `data` / `result`). */
+export function parseUserMeResponse(data: unknown): Record<string, unknown> {
+  if (!data || typeof data !== "object") return {};
+  const root = data as Record<string, unknown>;
+  if (root.userInfo && typeof root.userInfo === "object" && !Array.isArray(root.userInfo)) {
+    return root.userInfo as Record<string, unknown>;
+  }
+  const nested = root.data ?? root.result;
+  if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+    const block = nested as Record<string, unknown>;
+    if (block.userInfo && typeof block.userInfo === "object" && !Array.isArray(block.userInfo)) {
+      return block.userInfo as Record<string, unknown>;
+    }
+    const inner = block.data;
+    if (inner && typeof inner === "object" && !Array.isArray(inner)) {
+      const innerBlock = inner as Record<string, unknown>;
+      if (
+        innerBlock.userInfo &&
+        typeof innerBlock.userInfo === "object" &&
+        !Array.isArray(innerBlock.userInfo)
+      ) {
+        return innerBlock.userInfo as Record<string, unknown>;
+      }
+    }
+  }
+  return root;
+}
+
+function resolveAccountType(
+  user: Record<string, unknown>,
+  fallback?: string | null
+): string | null {
+  const fromUser =
+    (user.account_type as string) ?? (user.accountType as string) ?? null;
+  return fromUser ?? fallback ?? null;
+}
+
 /** GET /user/me — userController returns `result.result` JSON; primary field is `userInfo`. */
 export async function getCurrentUser(options?: {
   skipAuthSignOut?: boolean;
@@ -65,9 +102,7 @@ export async function getCurrentUser(options?: {
   const { data } = await apiClient.get<Record<string, unknown>>(API_ROUTES.user.me, {
     _skipAuthSignOut: options?.skipAuthSignOut,
   } as { _skipAuthSignOut?: boolean });
-  const userInfo = (data as { userInfo?: Record<string, unknown> }).userInfo;
-  if (userInfo && typeof userInfo === "object") {
-    return userInfo;
-  }
-  return data ?? {};
+  return parseUserMeResponse(data);
 }
+
+export { resolveAccountType };

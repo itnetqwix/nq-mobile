@@ -1,7 +1,11 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { extractLoginTokens, summarizeLoginPayloadKeys } from "../../lib/http/parseLoginResponse";
 import { getApiErrorMessage } from "../../lib/http/getApiErrorMessage";
-import { getCurrentUser, postLogin } from "../../features/auth/api/authApi";
+import {
+  getCurrentUser,
+  postLogin,
+  resolveAccountType,
+} from "../../features/auth/api/authApi";
 import { ensureAuthSessionRegistered, postLogout } from "../../features/auth/api/authSessionsApi";
 import {
   clearSession,
@@ -56,8 +60,7 @@ export const hydrateAuth = createAsyncThunk(
       markAuthSessionEstablished();
       return {
         user: me,
-        accountType:
-          at ?? (me?.account_type as string) ?? (me?.accountType as string) ?? null,
+        accountType: at ?? resolveAccountType(me),
         signedIn: true as const,
       };
     } catch {
@@ -91,13 +94,21 @@ export const completeSessionFromTokens = createAsyncThunk(
     });
     try {
       const me = await getCurrentUser({ skipAuthSignOut: true });
+      const accountType = resolveAccountType(me, tokens.account_type);
+      if (accountType) {
+        await saveSession(tokens.access_token, accountType, {
+          refreshToken: tokens.refresh_token,
+          sessionId: tokens.session_id,
+        });
+      }
       void applyLanguageFromUser(me);
       const sid = await getSessionId();
       if (!sid) await ensureAuthSessionRegistered().catch(() => undefined);
       markAuthSessionEstablished();
-      getGlobalQueryClient()?.invalidateQueries();
+      /** Fresh session — drop stale queries (esp. trainer-only) so refetch cannot 401-sign-out. */
+      getGlobalQueryClient()?.clear();
       void registerMyChatPublicKey().catch(() => undefined);
-      return { user: me, accountType: tokens.account_type };
+      return { user: me, accountType: accountType ?? tokens.account_type };
     } catch (e) {
       await clearSession();
       return rejectWithValue(
@@ -158,7 +169,7 @@ export const refreshUserThunk = createAsyncThunk("auth/refreshUser", async () =>
   const at = await getAccountType();
   return {
     user: me,
-    accountType: at ?? (me?.account_type as string) ?? (me?.accountType as string) ?? null,
+    accountType: at ?? resolveAccountType(me),
   };
 });
 

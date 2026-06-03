@@ -169,7 +169,9 @@ export type MyTrainerStats = {
 };
 
 export async function fetchMyTrainerStats(): Promise<MyTrainerStats> {
-  const res = await apiClient.get(API_ROUTES.trainer.myStats);
+  const res = await apiClient.get(API_ROUTES.trainer.myStats, {
+    _skipAuthSignOut: true,
+  } as { _skipAuthSignOut: boolean });
   const raw = (res.data?.data ?? res.data?.result ?? res.data ?? {}) as Partial<MyTrainerStats>;
   return {
     avgRating: typeof raw.avgRating === "number" ? raw.avgRating : null,
