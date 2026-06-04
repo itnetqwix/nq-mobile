@@ -18,6 +18,15 @@ import { colors, radii, space, typography } from "../../../theme";
 import { fetchFriends, postMyClipsGrouped } from "../../home/api/homeApi";
 import { postClipShareRequests } from "../../clips/api/clipsShareApi";
 import { queryKeys } from "../../../lib/queryKeys";
+import { useAuth } from "../../auth/context/AuthContext";
+import { resolveFriendUser } from "../lib/resolveFriendUser";
+
+type ShareFriendRow = {
+  _id: string;
+  fullname: string;
+  email: string;
+  profile_picture: string;
+};
 
 /**
  * Flatten the locker's nested category → subcategory → clips response
@@ -49,9 +58,11 @@ function flattenClips(
 }
 
 export function ShareClipsPanel() {
+  const { user } = useAuth();
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [selectedFriends, setSelectedFriends] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
+  const currentUserId = String((user as any)?._id ?? (user as any)?.id ?? "");
 
   const { data: groups = [], isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["locker", "myClips"],
@@ -83,14 +94,19 @@ export function ShareClipsPanel() {
    */
   const friendRows = useMemo(() => {
     return (friendsQ.data ?? [])
-      .map((f: any) => ({
-        _id: String(f._id ?? f.id ?? f.user_id ?? ""),
-        fullname: f.fullname ?? f.full_name ?? f.name ?? "Friend",
-        email: f.email ?? "",
-        profile_picture: f.profile_picture ?? f.avatar ?? "",
-      }))
-      .filter((u: { _id: string }) => !!u._id);
-  }, [friendsQ.data]);
+      .reduce<ShareFriendRow[]>((rows, f: any) => {
+        const friend = resolveFriendUser(f, currentUserId);
+        if (!friend) return rows;
+        rows.push({
+          _id: friend.id,
+          fullname: friend.name,
+          email: friend.email ?? "",
+          profile_picture: friend.avatar ?? "",
+        });
+        return rows;
+      }, [])
+      .filter((u) => !!u._id);
+  }, [currentUserId, friendsQ.data]);
 
   const selectedFriendIds = useMemo(
     () => Object.keys(selectedFriends).filter((id) => selectedFriends[id]),
