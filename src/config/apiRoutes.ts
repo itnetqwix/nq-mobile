@@ -131,6 +131,12 @@ export const API_ROUTES = {
     /** Phase 2 — confirm hibernation (OTP → hibernated_at). */
     hibernateConfirm: "/user/me/hibernate/confirm",
   },
+  points: {
+    balance: "/points/balance",
+    catalog: "/points/catalog",
+    ledger: "/points/ledger",
+    redeem: "/points/redeem",
+  },
   referral: {
     program: "/referral/program",
     resolve: (code: string) => `/referral/resolve/${encodeURIComponent(code)}` as const,
@@ -197,6 +203,8 @@ export const API_ROUTES = {
     nudgeCandidates: "/trainer/nudge-candidates",
     traineeNudge: "/trainer/trainee-nudge",
     sessionRecap: "/trainer/session-recap",
+    promoCodes: "/trainer/promo-codes",
+    promoCodeToggle: (id: string) => `/trainer/promo-codes/${id}/toggle` as const,
   },
   trainee: {
     getTrainersWithSlots: "/trainee/get-trainers-with-slots",

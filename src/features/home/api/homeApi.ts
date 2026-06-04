@@ -310,9 +310,12 @@ export async function postInviteFriendEmail(
   });
 }
 
+export type BookingReminderCadence = "standard" | "minimal" | "aggressive" | "off";
+
 export type UserNotificationPrefs = {
   promotional: { email: boolean; sms: boolean };
   transactional: { email: boolean; sms: boolean };
+  bookingReminderCadence: BookingReminderCadence;
 };
 
 export async function patchUserNotificationSettings(

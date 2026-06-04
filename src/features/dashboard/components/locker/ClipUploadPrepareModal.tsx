@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
+import { ResizeMode, Video } from "expo-av";
 import * as ImagePicker from "expo-image-picker";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -8,6 +9,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -71,6 +73,15 @@ export function ClipUploadPrepareModal({
     onConfirm({ video, thumbUri });
   };
 
+  const durationLabel = useMemo(() => {
+    const sec = video?.duration;
+    if (sec == null || !Number.isFinite(sec)) return null;
+    const total = Math.max(0, Math.round(sec));
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    return `${m}:${String(s).padStart(2, "0")}`;
+  }, [video?.duration]);
+
   return (
     <>
       <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -80,40 +91,70 @@ export function ClipUploadPrepareModal({
             <Ionicons name="close" size={26} color={c.text} />
           </Pressable>
         </View>
-        <Text style={styles.lead}>{t("locker.prepareClipLead")}</Text>
-
-        <Pressable style={styles.replaceBtn} onPress={onReplaceVideo}>
-          <Ionicons name="film-outline" size={18} color={c.brandNavy} />
-          <Text style={styles.replaceText}>{t("locker.replaceVideo")}</Text>
-        </Pressable>
-        {Platform.OS === "ios" ? (
-          <Text style={styles.hint}>{t("locker.trimHintIos")}</Text>
-        ) : (
-          <Text style={styles.hint}>{t("locker.trimHintAndroid")}</Text>
-        )}
-
-        {thumbBusy ? (
-          <View style={styles.row}>
-            <ActivityIndicator color={c.brandNavy} />
-            <Text style={styles.hint}>{t("locker.preparingPreview")}</Text>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: space.md }}
+        >
+          <View style={styles.steps}>
+            <Text style={styles.stepOn}>{t("locker.prepareStepTrim")}</Text>
+            <Text style={styles.stepSep}>→</Text>
+            <Text style={styles.stepMuted}>{t("locker.prepareStepThumbnail")}</Text>
+            <Text style={styles.stepSep}>→</Text>
+            <Text style={styles.stepMuted}>{t("locker.prepareStepDetails")}</Text>
           </View>
-        ) : null}
+          <Text style={styles.lead}>{t("locker.prepareClipLead")}</Text>
 
-        {thumbUri ? (
-          <View style={styles.previewWrap}>
-            <Image source={{ uri: thumbUri }} style={styles.preview} resizeMode="cover" />
-            <View style={styles.thumbActions}>
-              <Pressable style={styles.thumbBtn} onPress={() => setCropVisible(true)}>
-                <Ionicons name="crop-outline" size={18} color={c.brandNavy} />
-                <Text style={styles.thumbBtnText}>{t("locker.cropThumbnail")}</Text>
-              </Pressable>
-              <Pressable style={styles.thumbBtn} onPress={pickCustomThumb}>
-                <Ionicons name="image-outline" size={18} color={c.brandNavy} />
-                <Text style={styles.thumbBtnText}>{t("locker.pickThumbnail")}</Text>
-              </Pressable>
+          {video?.uri ? (
+            <View style={styles.videoWrap}>
+              <Video
+                source={{ uri: video.uri }}
+                style={styles.video}
+                resizeMode={ResizeMode.CONTAIN}
+                useNativeControls
+                shouldPlay={false}
+              />
+              {durationLabel ? (
+                <View style={styles.durationBadge}>
+                  <Text style={styles.durationText}>{durationLabel}</Text>
+                </View>
+              ) : null}
             </View>
-          </View>
-        ) : null}
+          ) : null}
+
+          <Pressable style={styles.replaceBtn} onPress={onReplaceVideo}>
+            <Ionicons name="film-outline" size={18} color={c.brandNavy} />
+            <Text style={styles.replaceText}>{t("locker.replaceVideo")}</Text>
+          </Pressable>
+          {Platform.OS === "ios" ? (
+            <Text style={styles.hint}>{t("locker.trimHintIos")}</Text>
+          ) : (
+            <Text style={styles.hint}>{t("locker.trimHintAndroid")}</Text>
+          )}
+
+          {thumbBusy ? (
+            <View style={styles.row}>
+              <ActivityIndicator color={c.brandNavy} />
+              <Text style={styles.hint}>{t("locker.preparingPreview")}</Text>
+            </View>
+          ) : null}
+
+          {thumbUri ? (
+            <View style={styles.previewWrap}>
+              <Text style={styles.sectionLabel}>{t("locker.prepareStepThumbnail")}</Text>
+              <Image source={{ uri: thumbUri }} style={styles.preview} resizeMode="cover" />
+              <View style={styles.thumbActions}>
+                <Pressable style={styles.thumbBtn} onPress={() => setCropVisible(true)}>
+                  <Ionicons name="crop-outline" size={18} color={c.brandNavy} />
+                  <Text style={styles.thumbBtnText}>{t("locker.cropThumbnail")}</Text>
+                </Pressable>
+                <Pressable style={styles.thumbBtn} onPress={pickCustomThumb}>
+                  <Ionicons name="image-outline" size={18} color={c.brandNavy} />
+                  <Text style={styles.thumbBtnText}>{t("locker.pickThumbnail")}</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
+        </ScrollView>
 
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, space.md) }]}>
           <Pressable
@@ -150,6 +191,41 @@ function useStyles() {
         paddingBottom: space.sm,
       },
       title: { ...typography.titleMd, color: palette.text, flex: 1 },
+      steps: {
+        flexDirection: "row",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 6,
+        paddingHorizontal: space.md,
+        marginBottom: space.sm,
+      },
+      stepOn: { ...typography.label, color: palette.brandNavy, fontWeight: "700" },
+      stepMuted: { ...typography.label, color: palette.textMuted },
+      stepSep: { color: palette.textMuted, fontSize: 12 },
+      sectionLabel: {
+        ...typography.label,
+        color: palette.textMuted,
+        marginBottom: space.xs,
+        fontWeight: "600",
+      },
+      videoWrap: {
+        marginHorizontal: space.md,
+        marginBottom: space.md,
+        borderRadius: radii.md,
+        overflow: "hidden",
+        backgroundColor: palette.surfaceMuted,
+      },
+      video: { width: "100%", aspectRatio: 16 / 9 },
+      durationBadge: {
+        position: "absolute",
+        right: 8,
+        bottom: 8,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: radii.sm,
+        backgroundColor: "rgba(0,0,0,0.65)",
+      },
+      durationText: { color: "#fff", fontSize: 12, fontWeight: "600" },
       lead: {
         ...typography.bodySm,
         color: palette.textMuted,

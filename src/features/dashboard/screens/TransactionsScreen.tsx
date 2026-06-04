@@ -22,6 +22,7 @@ import { dedupeRowsById, fetchBookingTransactions } from "../../home/api/homeApi
 import type { MenuStackParamList } from "../../../navigation/types";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
+import { useFloatingTabBarBottomInset } from "../../../navigation/useFloatingTabBarBottomInset";
 import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { useHapticRefresh } from "../../../lib/refresh/useHapticRefresh";
 import { formatCurrency, useCurrencyFormatter } from "../../../lib/intl";
@@ -292,6 +293,7 @@ function datePresetWindow(id: DatePresetId): { from: Date | null; to: Date | nul
 
 export function TransactionsScreen() {
   const { t } = useAppTranslation();
+  const bottomPad = useFloatingTabBarBottomInset(space.md);
   const c = useThemeColors();
   const styles = useTransactionStyles();
   const { accountType } = useAuth();
@@ -386,7 +388,7 @@ export function TransactionsScreen() {
           onPress={() => item?._id && openDetail(String(item._id))}
         />
       )}
-      contentContainerStyle={styles.list}
+      contentContainerStyle={[styles.list, { paddingBottom: bottomPad }]}
       ListHeaderComponent={
         <>
           <View style={styles.listHeader}>

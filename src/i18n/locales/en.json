@@ -226,6 +226,8 @@
     "accountType": "Account type",
     "editProfile": "Edit profile",
     "mySchedule": "My schedule",
+    "coachPromoCodes": "Promo codes",
+    "coachPromoCodesSubtitle": "Discounts for your sessions (from your payout)",
     "themeMatchSystem": "Match system",
     "themeLight": "Light mode",
     "themeDark": "Dark mode",
@@ -420,7 +422,28 @@
     "removeSharedClipTitle": "Remove clip?",
     "removeSharedClipBody": "This removes the clip from your locker only. Your friend's original copy is not affected.",
     "removeSharedClipDone": "Clip removed from your locker.",
-    "removeSharedClipFailed": "Could not remove this clip. Try again."
+    "removeSharedClipFailed": "Could not remove this clip. Try again.",
+    "shareExternal": "Share outside NetQwix",
+    "externalShareMessage": "Check out this clip on NetQwix: {{title}}\n{{link}}",
+    "prepareStepTrim": "Trim",
+    "prepareStepThumbnail": "Thumbnail",
+    "prepareStepDetails": "Details"
+  },
+  "points": {
+    "balance": "Points balance",
+    "redeemHint": "Redeem {{block}} points for ${{dollars}} wallet credit.",
+    "redeemCta": "Redeem {{block}} points",
+    "howToEarn": "How to earn",
+    "history": "Recent activity",
+    "redeemSuccessTitle": "Redeemed",
+    "redeemSuccessBody": "{{points}} points converted to ${{dollars}} in your wallet.",
+    "errorTitle": "Points",
+    "needMore": "You need at least {{block}} points to redeem.",
+    "walletTitle": "NetQwix points",
+    "walletBalance": "{{balance}} pts · redeem {{block}} for ${{dollars}}",
+    "view": "View",
+    "inviteHowTitle": "How points work",
+    "inviteHowBody": "Earn 1–5 points for invites, lessons, reviews, and more. Redeem 100 points for $5 wallet credit in Wallet."
   },
   "chats": {
     "archived": "Archived",
@@ -1515,9 +1538,61 @@
     "wallet": "Wallet",
     "transactions": "Transactions",
     "trainerSchedule": "My schedule",
+    "trainerPromoCodes": "Promo codes",
     "editProfile": "Edit profile",
     "reportIssue": "Report an issue",
     "supportChat": "Chat with support"
+  },
+  "trainerPromo": {
+    "lead": "Create codes trainees can use when booking you. The discount is taken from your session earnings, not NetQwix commission.",
+    "fundingNote": "Coach promos only work on your sessions. Trainees see your code at checkout.",
+    "create": "New promo code",
+    "createTitle": "Create promo code",
+    "editTitle": "Edit promo code",
+    "save": "Save changes",
+    "share": "Share",
+    "edit": "Edit",
+    "pause": "Pause",
+    "resume": "Resume",
+    "generate": "Generate code",
+    "empty": "No promo codes yet. Create one to share with your community.",
+    "copiedTitle": "Copied",
+    "copiedBody": "Share message copied to clipboard.",
+    "defaultLabel": "{{name}} special",
+    "usage": "{{count}} uses · limit {{limit}}",
+    "stats": {
+      "active": "Active",
+      "codes": "Codes",
+      "uses": "Total uses"
+    },
+    "status": {
+      "active": "Active",
+      "paused": "Paused",
+      "expired": "Expired",
+      "upcoming": "Upcoming"
+    },
+    "fields": {
+      "code": "Code",
+      "label": "Display label",
+      "labelPlaceholder": "e.g. New trainee welcome",
+      "type": "Discount type",
+      "percent": "% Off",
+      "fixed": "$ Off",
+      "value": "Value",
+      "start": "Start date",
+      "end": "End date",
+      "usageLimit": "Total uses (0 = unlimited)",
+      "perUser": "Per trainee limit",
+      "visible": "Show in checkout suggestions",
+      "active": "Active"
+    },
+    "errors": {
+      "title": "Promo code",
+      "codeLength": "Code must be at least 4 characters.",
+      "discount": "Enter a discount greater than zero.",
+      "dates": "Start and end dates are required.",
+      "endAfterStart": "End date must be after start date."
+    }
   },
   "schedule": {
     "title": "Sessions",

@@ -49,7 +49,6 @@ export function InstantLessonBookingWizardModal({ visible, trainer, onDismiss }:
               onRemovePromo={w.handleRemovePromo}
               visiblePromos={w.visiblePromos}
               expectedPrice={w.expectedPrice}
-              referralCheckoutDiscount={w.referralCheckoutDiscount}
               durationPreviewQuote={w.durationPreviewQuote}
               eligibility={w.eligibility}
               eligibilityLoading={w.eligibilityLoading}
@@ -72,7 +71,10 @@ export function InstantLessonBookingWizardModal({ visible, trainer, onDismiss }:
               trainer={w.trainer}
               durationMinutes={w.durationMinutes}
               expectedPrice={w.expectedPrice}
-              referralCheckoutDiscount={w.referralCheckoutDiscount ?? 0}
+              payableAmount={w.payableAmount}
+              promoDiscountAmount={w.promoDiscountAmount}
+              promoSponsorType={w.promoSponsorType}
+              promoLabel={w.promoLabel}
               promoResult={w.promoResult}
               couponCode={w.couponCode}
               userStripeId={w.userStripeId}
@@ -92,8 +94,9 @@ export function InstantLessonBookingWizardModal({ visible, trainer, onDismiss }:
               selectedClipIds={w.selectedClipIds}
               couponCode={w.couponCode}
               expectedPrice={w.expectedPrice}
-              referralCheckoutDiscount={w.referralCheckoutDiscount}
               promoResult={w.promoResult}
+              promoDiscountAmount={w.promoDiscountAmount}
+              promoLabel={w.promoLabel}
               chargingPrice={w.chargingPrice}
               pricingQuote={w.pricingQuote}
               isSubmitting={w.submitIsPending}

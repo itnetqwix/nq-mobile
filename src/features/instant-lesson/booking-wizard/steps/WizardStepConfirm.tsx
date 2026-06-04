@@ -22,6 +22,8 @@ type Props = {
   couponCode: string;
   expectedPrice: number;
   promoResult: PromoResultShape | null;
+  promoDiscountAmount?: number;
+  promoLabel?: string;
   chargingPrice: number;
   pricingQuote?: PricingQuote | null;
   isSubmitting: boolean;
@@ -35,6 +37,8 @@ export function WizardStepConfirm({
   couponCode,
   expectedPrice,
   promoResult,
+  promoDiscountAmount = 0,
+  promoLabel,
   chargingPrice,
   pricingQuote,
   isSubmitting,
@@ -92,9 +96,13 @@ export function WizardStepConfirm({
           chargeTotalDollars(pricingQuote) ?? (chargingPrice > 0 ? chargingPrice : undefined)
         }
         promoDiscount={
-          promoResult?.valid ? promoResult.discount_amount : undefined
+          promoDiscountAmount > 0
+            ? promoDiscountAmount
+            : promoResult?.valid
+              ? promoResult.discount_amount
+              : undefined
         }
-        promoLabel={promoResult?.display_label}
+        promoLabel={promoLabel ?? promoResult?.display_label}
       />
       <Text style={sharedStepStyles.muted}>
         We create the instant booking, attach any clips you choose, then send the request to the coach.

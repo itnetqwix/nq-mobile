@@ -110,6 +110,10 @@ export function ScheduledBookingWizardModal({ visible, trainer, onDismiss, onBoo
               durationMinutes={w.durationMinutes}
               durationLabel={`${w.durationMinutes} min`}
               expectedPrice={w.expectedPrice}
+              payableAmount={w.payableAmount}
+              promoDiscountAmount={w.promoDiscountAmount}
+              promoSponsorType={w.promoSponsorType}
+              promoLabel={w.promoLabel}
               promoResult={w.promoResult}
               couponCode={w.couponCode}
               userStripeId={w.userStripeId}
@@ -131,6 +135,8 @@ export function ScheduledBookingWizardModal({ visible, trainer, onDismiss, onBoo
               durationMinutes={w.durationMinutes}
               expectedPrice={w.expectedPrice}
               promoResult={w.promoResult}
+              promoDiscountAmount={w.promoDiscountAmount}
+              promoLabel={w.promoLabel}
               chargingPrice={w.chargingPrice}
               pricingQuote={w.pricingQuote}
               couponCode={w.couponCode}

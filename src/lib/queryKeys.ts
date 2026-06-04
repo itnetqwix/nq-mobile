@@ -57,6 +57,7 @@ export const queryKeys = {
     myStats: ["trainer", "myStats"] as const,
     slots: ["trainerSlots"] as const,
     schedule: ["trainerSchedule"] as const,
+    promoCodes: ["trainerPromoCodes"] as const,
     availabilityAll: ["trainerAvailability"] as const,
     availability: (trainerId: string) => ["trainerAvailability", trainerId] as const,
     profile: (id: string) => ["trainerProfile", id] as const,
@@ -99,11 +100,20 @@ export const queryKeys = {
   user: {
     referrals: ["myReferrals"] as const,
   },
+  points: {
+    balance: ["pointsBalance"] as const,
+    catalog: ["pointsCatalog"] as const,
+    ledger: ["pointsLedger"] as const,
+  },
   referral: {
     program: ["referralProgram"] as const,
     invites: ["referralInvites"] as const,
-    checkoutPreview: (bookingType: string, amount: number, coupon: string) =>
-      ["referralCheckoutPreview", bookingType, amount, coupon] as const,
+    checkoutPreview: (
+      bookingType: string,
+      amount: number,
+      coupon: string,
+      trainerId = ""
+    ) => ["referralCheckoutPreview", bookingType, amount, coupon, trainerId] as const,
   },
   transactions: {
     bookingListById: ["transactions", "booking-list-by-id"] as const,

@@ -30,6 +30,7 @@ import {
   type NestedCategoryGroup,
   type SharedClipsGroup,
 } from "../../clips/api/clipsApi";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 const MAX_CLIPS = 2;
 
@@ -56,6 +57,7 @@ export function ClipPickerModal({
   bookingClips = [],
   selectedClipIds = [],
 }: Props) {
+  const { t } = useAppTranslation();
   const isTraineeAudience = audience === "trainee";
   const [loading, setLoading] = useState(false);
   const [lockerClips, setLockerClips] = useState<ClipRow[]>([]);
@@ -276,7 +278,7 @@ export function ClipPickerModal({
                 onPress={() => setActiveTab("locker")}
               >
                 <Text style={[styles.tabLabel, activeTab === "locker" && styles.tabLabelActive]}>
-                  Locker ({tabCounts.locker})
+                  {t("locker.myClips")} ({tabCounts.locker})
                 </Text>
               </Pressable>
               {!isTraineeAudience && tabCounts.shared > 0 ? (
@@ -285,7 +287,7 @@ export function ClipPickerModal({
                   onPress={() => setActiveTab("shared")}
                 >
                   <Text style={[styles.tabLabel, activeTab === "shared" && styles.tabLabelActive]}>
-                    Shared ({tabCounts.shared})
+                    {t("locker.sharedClips")} ({tabCounts.shared})
                   </Text>
                 </Pressable>
               ) : null}
@@ -295,7 +297,7 @@ export function ClipPickerModal({
                   onPress={() => setActiveTab("library")}
                 >
                   <Text style={[styles.tabLabel, activeTab === "library" && styles.tabLabelActive]}>
-                    NetQwix ({tabCounts.library})
+                    {t("locker.netqwixLibrary")} ({tabCounts.library})
                   </Text>
                 </Pressable>
               ) : null}

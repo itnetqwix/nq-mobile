@@ -36,6 +36,8 @@ type Props = {
   onRemoveFromLocker?: () => void;
   removeBusy?: boolean;
   removeAccessibilityLabel?: string;
+  onShareExternal?: () => void;
+  shareAccessibilityLabel?: string;
 };
 
 function buildPdfEmbedUrl(url: string): string {
@@ -55,6 +57,8 @@ export function LockerViewerModal({
   onRemoveFromLocker,
   removeBusy,
   removeAccessibilityLabel = "Remove from locker",
+  onShareExternal,
+  shareAccessibilityLabel = "Share",
 }: Props) {
   const insets = useSafeAreaInsets();
   const { width, height: mediaHeight } = useMediaViewport({
@@ -115,21 +119,36 @@ export function LockerViewerModal({
           onClose={onClose}
           onOpenExternal={openExternally}
           rightSlot={
-            onRemoveFromLocker ? (
-              <Pressable
-                onPress={onRemoveFromLocker}
-                style={styles.iconBtn}
-                hitSlop={10}
-                disabled={removeBusy}
-                accessibilityRole="button"
-                accessibilityLabel={removeAccessibilityLabel}
-              >
-                {removeBusy ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Ionicons name="trash-outline" size={22} color={colors.dangerTextOn} />
-                )}
-              </Pressable>
+            onShareExternal || onRemoveFromLocker ? (
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                {onShareExternal ? (
+                  <Pressable
+                    onPress={onShareExternal}
+                    style={styles.iconBtn}
+                    hitSlop={10}
+                    accessibilityRole="button"
+                    accessibilityLabel={shareAccessibilityLabel}
+                  >
+                    <Ionicons name="share-outline" size={22} color="#fff" />
+                  </Pressable>
+                ) : null}
+                {onRemoveFromLocker ? (
+                  <Pressable
+                    onPress={onRemoveFromLocker}
+                    style={styles.iconBtn}
+                    hitSlop={10}
+                    disabled={removeBusy}
+                    accessibilityRole="button"
+                    accessibilityLabel={removeAccessibilityLabel}
+                  >
+                    {removeBusy ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Ionicons name="trash-outline" size={22} color={colors.dangerTextOn} />
+                    )}
+                  </Pressable>
+                ) : null}
+              </View>
             ) : undefined
           }
         />

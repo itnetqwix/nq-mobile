@@ -21,6 +21,7 @@ import { SupportChatScreen } from "../../support/SupportChatScreen";
 import { DeleteAccountScreen } from "../../account-lifecycle/screens/DeleteAccountScreen";
 import { HibernateAccountScreen } from "../../account-lifecycle/screens/HibernateAccountScreen";
 import { TrainerReviewsScreen } from "./TrainerReviewsScreen";
+import { TrainerPromoCodesScreen } from "../../promo/screens/TrainerPromoCodesScreen";
 
 export type ShellSurfaceScreenProps = NativeStackScreenProps<HomeStackParamList, "ShellSurface">;
 
@@ -70,6 +71,8 @@ export function ShellSurfaceScreen({ route }: ShellSurfaceScreenProps) {
       return wrap(<DeleteAccountScreen />);
     case "hibernateAccount":
       return wrap(<HibernateAccountScreen />);
+    case "trainerPromoCodes":
+      return wrap(<TrainerPromoCodesScreen />);
     case "trainerReviews":
       return wrap(<TrainerReviewsScreen />);
     default:

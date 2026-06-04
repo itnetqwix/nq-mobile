@@ -8,6 +8,10 @@ import { AccountType } from "../../../constants/accountType";
 import { useAuth } from "../../auth/context/AuthContext";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { useWalletBalance } from "../hooks/useWalletBalance";
+import { useQuery } from "@tanstack/react-query";
+import { fetchPointsBalance } from "../../points/api/pointsApi";
+import { queryKeys } from "../../../lib/queryKeys";
+import { useFloatingTabBarBottomInset } from "../../../navigation/useFloatingTabBarBottomInset";
 import type { WalletStackParamList } from "../navigation/WalletNavigator";
 import { TrainerWalletHome } from "../components/TrainerWalletHome";
 import { useShellHeaderTitle } from "../../../navigation/useShellHeaderTitle";
@@ -95,7 +99,12 @@ function TraineeWalletHome({ navigation }: Props) {
   const { t } = useTranslation();
   const c = useThemeColors();
   const styles = useWalletHomeStyles();
+  const bottomPad = useFloatingTabBarBottomInset(space.md);
   const { data: balance, isLoading, isRefetching, refetch } = useWalletBalance();
+  const pointsQuery = useQuery({
+    queryKey: queryKeys.points.balance,
+    queryFn: fetchPointsBalance,
+  });
   const available = balance?.balances?.available ?? 0;
   const fmt = useCurrencyFormatter();
 
@@ -127,7 +136,7 @@ function TraineeWalletHome({ navigation }: Props) {
 
   return (
     <ScrollView
-      contentContainerStyle={styles.scroll}
+      contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad }]}
       refreshControl={
         <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.iconPrimary} />
       }
@@ -170,6 +179,35 @@ function TraineeWalletHome({ navigation }: Props) {
           </View>
         </View>
       ))}
+
+      <View
+        style={[
+          styles.benefitRow,
+          { marginBottom: space.md, backgroundColor: c.brandSubtle, borderColor: c.brandAccent },
+        ]}
+      >
+        <View style={styles.benefitIcon}>
+          <Ionicons name="star" size={22} color={c.iconPrimary} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.benefitTitle}>
+            {t("points.walletTitle", { defaultValue: "NetQwix points" })}
+          </Text>
+          <Text style={styles.benefitText}>
+            {t("points.walletBalance", {
+              defaultValue: "{{balance}} pts · redeem {{block}} for ${{dollars}}",
+              balance: pointsQuery.data?.balance ?? 0,
+              block: pointsQuery.data?.redeemBlockPoints ?? 100,
+              dollars: pointsQuery.data?.walletCreditPerBlock ?? 5,
+            })}
+          </Text>
+        </View>
+        <Pressable onPress={() => navigation.navigate("PointsActivity")}>
+          <Text style={{ color: c.brandAccent, fontWeight: "600" }}>
+            {t("points.view", { defaultValue: "View" })}
+          </Text>
+        </Pressable>
+      </View>
 
       <View style={styles.menuSection}>
         <MenuRow

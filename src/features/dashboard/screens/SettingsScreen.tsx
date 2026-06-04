@@ -595,7 +595,7 @@ export function SettingsScreen() {
   const suggestionRows = useMemo(() => searchResults.slice(0, 6), [searchResults]);
 
   return (
-    <ScreenContainer scroll padding="md" background={c.surface}>
+    <ScreenContainer scroll padding="md" background={c.surface} clearFloatingTabBar>
       <Pressable onPress={() => openShell("editProfile")}>
         <Card variant="outlined" padding="md" style={styles.profileCard}>
           <Avatar name={name} size="xl" user={user as Record<string, unknown>} />
@@ -727,6 +727,13 @@ export function SettingsScreen() {
               icon="calendar-outline"
               title={t("settings.mySchedule")}
               onPress={() => openShell("trainerSchedule")}
+            />
+            <Divider />
+            <ListRow
+              icon="pricetag-outline"
+              title={t("settings.coachPromoCodes")}
+              subtitle={t("settings.coachPromoCodesSubtitle")}
+              onPress={() => openShell("trainerPromoCodes")}
             />
           </>
         )}

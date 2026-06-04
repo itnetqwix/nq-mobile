@@ -2,10 +2,10 @@ import React, { useLayoutEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NetqwixLogo } from "../../../components/brand/NetqwixLogo";
 import { AccountType } from "../../../constants/accountType";
 import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
+import { useFloatingTabBarBottomInset } from "../../../navigation/useFloatingTabBarBottomInset";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import type { HomeStackParamList } from "../../../navigation/types";
 import { space, typography, useThemeColors } from "../../../theme";
@@ -18,7 +18,7 @@ type Nav = NativeStackNavigationProp<HomeStackParamList, "DashboardHome">;
 export function GuestDiscoverHomeScreen() {
   const { t } = useAppTranslation();
   const c = useThemeColors();
-  const insets = useSafeAreaInsets();
+  const tabBarPad = useFloatingTabBarBottomInset(space.xl);
   const gutter = useHorizontalGutter("md");
   const navigation = useNavigation<Nav>();
   const { requireAuth, openAuth } = useRequireAuth();
@@ -99,7 +99,7 @@ export function GuestDiscoverHomeScreen() {
             gutter,
             {
               paddingTop: space.sm,
-              paddingBottom: space.xl * 2 + insets.bottom,
+              paddingBottom: tabBarPad + 64,
             },
           ]}
           name={t("guest.explorerName")}

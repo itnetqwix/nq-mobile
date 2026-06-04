@@ -48,6 +48,10 @@ import type { PricingQuote } from "../payments/pricingTypes";
 import { fetchSmartSchedule } from "../ai/smartScheduleApi";
 import { resolveTraineeTimeZone } from "../../lib/user/resolveTraineeTimeZone";
 import { postReferralPreviewCheckout } from "../referral/api/referralApi";
+import {
+  promoDisplayLabel,
+  promoSponsorFromResult,
+} from "../../lib/promo/promoDisplay";
 
 export type ScheduledTrainer = Record<string, unknown> | null;
 
@@ -139,12 +143,15 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
 
   useEffect(() => {
     if (visible) {
+      const promoUrl = tid
+        ? `${API_ROUTES.promo.visible}?trainer_id=${encodeURIComponent(tid)}`
+        : API_ROUTES.promo.visible;
       apiClient
-        .get(API_ROUTES.promo.visible)
+        .get(promoUrl)
         .then((res: any) => setVisiblePromos(res?.data?.data || []))
         .catch(() => {});
     }
-  }, [visible]);
+  }, [visible, tid]);
 
   const dayAvailabilityQuery = useQuery({
     queryKey: queryKeys.scheduled.checkSlot(tid, bookedDateIso, traineeTz),
@@ -213,17 +220,41 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     queryKey: queryKeys.referral.checkoutPreview(
       "scheduled",
       expectedPrice,
-      couponCode.trim()
+      couponCode.trim(),
+      tid
     ),
     queryFn: () =>
       postReferralPreviewCheckout({
         amount: expectedPrice,
         booking_type: "scheduled",
         coupon_code: couponCode.trim() || undefined,
+        trainer_id: tid || undefined,
       }),
     enabled: visible && expectedPrice > 0,
     staleTime: 20_000,
   });
+
+  const promoDiscountAmount = useMemo(() => {
+    const preview = checkoutPreviewQuery.data?.promoDiscount;
+    if (preview != null && preview > 0) return Number(preview);
+    if (promoResult?.valid && promoResult.discount_amount != null) {
+      return Number(promoResult.discount_amount);
+    }
+    return 0;
+  }, [checkoutPreviewQuery.data, promoResult]);
+
+  const promoSponsorType = useMemo(
+    () =>
+      promoSponsorFromResult(promoResult) ??
+      checkoutPreviewQuery.data?.promoSponsorType ??
+      undefined,
+    [promoResult, checkoutPreviewQuery.data]
+  );
+
+  const promoLabel = useMemo(
+    () => promoDisplayLabel(promoSponsorType, promoResult?.display_label),
+    [promoSponsorType, promoResult?.display_label]
+  );
 
   const payableAmount = useMemo(() => {
     const preview = checkoutPreviewQuery.data;
@@ -234,7 +265,6 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     return expectedPrice;
   }, [checkoutPreviewQuery.data, promoResult, expectedPrice]);
 
-  const referralCheckoutDiscount = checkoutPreviewQuery.data?.referralDiscount ?? 0;
 
   const validateCoupon = useCallback(() => {
     if (couponCode.length > 50) {
@@ -258,13 +288,19 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
         code: couponCode.trim(),
         booking_type: "scheduled",
         amount: expectedPrice,
+        trainer_id: tid || undefined,
       });
       const data = res?.data;
       if (data?.valid) {
         setPromoResult(data);
         setCouponError("");
         void queryClient.invalidateQueries({
-          queryKey: queryKeys.referral.checkoutPreview("scheduled", expectedPrice, couponCode.trim()),
+          queryKey: queryKeys.referral.checkoutPreview(
+            "scheduled",
+            expectedPrice,
+            couponCode.trim(),
+            tid
+          ),
         });
       } else {
         setPromoResult(null);
@@ -276,7 +312,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     } finally {
       setPromoValidating(false);
     }
-  }, [couponCode, validateCoupon, expectedPrice]);
+  }, [couponCode, validateCoupon, expectedPrice, tid]);
 
   const handleRemovePromo = useCallback(() => {
     setCouponCode("");
@@ -311,9 +347,10 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     let cancelled = false;
     void fetchSessionPricingQuote({
       productType: "session_booking",
-      sessionSubtotalCents: Math.round(payableAmount * 100),
+      sessionSubtotalCents: Math.round(expectedPrice * 100),
       trainerId: tid,
-      promoDiscountCents: Math.round(Math.max(0, expectedPrice - payableAmount) * 100),
+      promoDiscountCents: Math.round(promoDiscountAmount * 100),
+      promoSponsorType,
       user: user as Record<string, unknown>,
     })
       .then((q) => {
@@ -325,7 +362,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     return () => {
       cancelled = true;
     };
-  }, [visible, step, tid, payableAmount, expectedPrice, durationMinutes]);
+  }, [visible, step, tid, payableAmount, expectedPrice, durationMinutes, promoDiscountAmount, promoSponsorType]);
 
   useEffect(() => {
     if (!visible || step !== "confirm" || !tid || payableAmount <= 0 || pricingQuote) {
@@ -334,9 +371,10 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     let cancelled = false;
     void fetchSessionPricingQuote({
       productType: "session_booking",
-      sessionSubtotalCents: Math.round(payableAmount * 100),
+      sessionSubtotalCents: Math.round(expectedPrice * 100),
       trainerId: tid,
-      promoDiscountCents: Math.round(Math.max(0, expectedPrice - payableAmount) * 100),
+      promoDiscountCents: Math.round(promoDiscountAmount * 100),
+      promoSponsorType,
       user: user as Record<string, unknown>,
     })
       .then((q) => {
@@ -360,6 +398,8 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     pricingQuote,
     chargingPrice,
     durationMinutes,
+    promoDiscountAmount,
+    promoSponsorType,
   ]);
 
   const goNext = useCallback(() => {
@@ -583,7 +623,6 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     flatClips,
     expectedPrice,
     payableAmount,
-    referralCheckoutDiscount,
     hourlyRate,
     couponCode,
     setCouponCode,
@@ -591,6 +630,9 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     setCouponError,
     promoValidating,
     promoResult,
+    promoDiscountAmount,
+    promoLabel,
+    promoSponsorType,
     handleApplyPromo,
     handleRemovePromo,
     visiblePromos,

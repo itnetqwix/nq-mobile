@@ -66,7 +66,7 @@ export function GuestSettingsScreen() {
     Constants.expoConfig?.version ?? Constants.nativeAppVersion ?? "1.0.0";
 
   return (
-    <ScreenContainer scroll padding="md">
+    <ScreenContainer scroll padding="md" clearFloatingTabBar>
       <Card
         variant="outlined"
         padding="md"

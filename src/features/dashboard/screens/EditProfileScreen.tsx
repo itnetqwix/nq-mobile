@@ -188,7 +188,7 @@ export function EditProfileScreen() {
   const displayName = initial.fullname || t("profile.userDefault");
 
   return (
-    <ScreenContainer scroll padding="md" background={c.surface}>
+    <ScreenContainer scroll padding="md" background={c.surface} clearFloatingTabBar>
       <View style={styles.avatarSection}>
         <Pressable onPress={pickAndUploadAvatar} disabled={avatarUploading} style={styles.avatarWrap}>
           {currentAvatar ? (

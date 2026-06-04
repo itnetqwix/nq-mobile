@@ -14,6 +14,7 @@ type Args = {
   sessionSubtotalCents: number;
   trainerId: string;
   promoDiscountCents?: number;
+  promoSponsorType?: "platform" | "trainer";
   billingCountry?: string;
   billingState?: string;
   /** When set, overrides country/state from the trainee profile. */
@@ -27,6 +28,7 @@ export async function fetchSessionPricingQuote({
   sessionSubtotalCents,
   trainerId,
   promoDiscountCents = 0,
+  promoSponsorType,
   billingCountry,
   billingState,
   user,
@@ -47,6 +49,7 @@ export async function fetchSessionPricingQuote({
     trainerId,
     paymentMethodHint,
     promoDiscountCents,
+    promoSponsorType,
     billingAddress: { country, state },
   });
   return unwrapApiData<PricingQuote>(res);

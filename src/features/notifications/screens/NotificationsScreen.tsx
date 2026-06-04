@@ -20,6 +20,7 @@ import {
 } from "../../../lib/notifications/notificationRouting";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { queryKeys } from "../../../lib/queryKeys";
+import { useFloatingTabBarBottomInset } from "../../../navigation/useFloatingTabBarBottomInset";
 import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { fetchNotifications } from "../../home/api/homeApi";
 import { useNotifications } from "../NotificationContext";
@@ -110,6 +111,7 @@ type ShellNav = NativeStackNavigationProp<RootStackParamList>;
 export function NotificationsScreen() {
   const c = useThemeColors();
   const styles = useNotificationListStyles();
+  const bottomPad = useFloatingTabBarBottomInset(space.md);
   const navigation = useNavigation<ShellNav>();
   const { markFirstPageRead, refreshInbox } = useNotifications();
 
@@ -181,7 +183,7 @@ export function NotificationsScreen() {
           onPress={() => handleNotificationPress(item)}
         />
       )}
-      contentContainerStyle={styles.list}
+      contentContainerStyle={[styles.list, { paddingBottom: bottomPad }]}
       refreshControl={
         <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.iconPrimary} />
       }

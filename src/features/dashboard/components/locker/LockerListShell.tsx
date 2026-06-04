@@ -11,6 +11,7 @@ import {
 import { EmptyState, Skeleton } from "../../../../components/ui";
 import { getApiErrorMessage } from "../../../../lib/http/getApiErrorMessage";
 import { radii, space, useThemedStyles } from "../../../../theme";
+import { useFloatingTabBarBottomInset } from "../../../../navigation/useFloatingTabBarBottomInset";
 
 type Props = {
   loading: boolean;
@@ -37,6 +38,7 @@ export function LockerListShell({
   contentStyle,
   skeletonRows = 3,
 }: Props) {
+  const bottomPad = useFloatingTabBarBottomInset(space.md);
   const styles = useThemedStyles((palette) =>
     StyleSheet.create({
       root: { flex: 1, backgroundColor: palette.background },
@@ -49,7 +51,6 @@ export function LockerListShell({
       scroll: { flex: 1 },
       content: {
         padding: space.md,
-        paddingBottom: space.xl * 2,
         gap: space.md,
         flexGrow: 1,
       },
@@ -99,7 +100,7 @@ export function LockerListShell({
       {toolbar ? <View style={styles.toolbar}>{toolbar}</View> : null}
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.content, contentStyle]}
+        contentContainerStyle={[styles.content, contentStyle, { paddingBottom: bottomPad }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator
         refreshControl={

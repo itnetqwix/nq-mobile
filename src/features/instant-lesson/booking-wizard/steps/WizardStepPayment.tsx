@@ -43,6 +43,7 @@ export type PromoResultShape = {
   discount_amount?: number;
   final_amount?: number;
   display_label?: string;
+  sponsor_type?: "platform" | "trainer";
 };
 
 type Props = {
@@ -54,7 +55,10 @@ type Props = {
   userStripeId: string;
   bookingType?: "instant" | "scheduled";
   durationLabel?: string;
-  referralCheckoutDiscount?: number;
+  payableAmount?: number;
+  promoDiscountAmount?: number;
+  promoSponsorType?: "platform" | "trainer";
+  promoLabel?: string;
   onPaymentComplete: (payload: PaymentCompletePayload) => void;
   onNext: () => void;
   onAddFunds?: (shortfallDollars: number) => void;
@@ -69,7 +73,10 @@ export function WizardStepPayment({
   userStripeId,
   bookingType = "instant",
   durationLabel,
-  referralCheckoutDiscount = 0,
+  payableAmount: payableAmountProp,
+  promoDiscountAmount = 0,
+  promoSponsorType,
+  promoLabel,
   onPaymentComplete,
   onNext,
   onAddFunds,
@@ -114,11 +121,12 @@ export function WizardStepPayment({
   );
 
   const payableAmount = useMemo(() => {
+    if (payableAmountProp != null) return payableAmountProp;
     if (promoResult?.valid && promoResult.final_amount != null) {
       return Number(promoResult.final_amount);
     }
     return expectedPrice;
-  }, [promoResult, expectedPrice]);
+  }, [payableAmountProp, promoResult, expectedPrice]);
 
   const totalToCharge =
     chargeTotalDollars(pricingQuote) ?? (priceInfo?.amount ?? payableAmount);
@@ -146,7 +154,8 @@ export function WizardStepPayment({
         productType: bookingType === "instant" ? "instant_lesson" : "session_booking",
         sessionSubtotalCents: Math.round(expectedPrice * 100),
         trainerId,
-        promoDiscountCents: Math.round(Math.max(0, expectedPrice - payableAmount) * 100),
+        promoDiscountCents: Math.round(promoDiscountAmount * 100),
+        promoSponsorType,
         user: user as Record<string, unknown>,
       });
       setPricingQuote(quote);
@@ -329,14 +338,6 @@ export function WizardStepPayment({
             <Text style={[styles.summaryValue, styles.promoApplied]}>{couponCode.trim()}</Text>
           </View>
         ) : null}
-        {referralCheckoutDiscount > 0 ? (
-          <View style={styles.summaryLine}>
-            <Text style={styles.summaryKey}>Referral</Text>
-            <Text style={[styles.summaryValue, styles.promoApplied]}>
-              -{fmt(referralCheckoutDiscount, { currency: activeCurrency })}
-            </Text>
-          </View>
-        ) : null}
       </View>
 
       {!isFree && payableAmount > 0 ? (
@@ -345,8 +346,8 @@ export function WizardStepPayment({
           pricingQuote={pricingQuote}
           chargeTotal={totalToCharge}
           currency={activeCurrency}
-          promoDiscount={hasDiscount ? promoResult!.discount_amount : undefined}
-          promoLabel={promoResult?.display_label}
+          promoDiscount={promoDiscountAmount > 0 ? promoDiscountAmount : undefined}
+          promoLabel={promoLabel}
         />
       ) : null}
 

@@ -7,6 +7,7 @@ import { WalletActivityScreen } from "../screens/WalletActivityScreen";
 import { WalletSecurityScreen } from "../screens/WalletSecurityScreen";
 import { SavedPaymentMethodsScreen } from "../screens/SavedPaymentMethodsScreen";
 import { AutoTopUpScreen } from "../screens/AutoTopUpScreen";
+import { PointsActivityScreen } from "../../points/screens/PointsActivityScreen";
 
 export type WalletStackParamList = {
   WalletHome: undefined;
@@ -15,6 +16,7 @@ export type WalletStackParamList = {
   WalletSecurity: undefined;
   WalletPaymentMethods: undefined;
   WalletAutoTopUp: undefined;
+  PointsActivity: undefined;
 };
 
 const Stack = createNativeStackNavigator<WalletStackParamList>();
@@ -47,6 +49,7 @@ export function WalletNavigator({
       <Stack.Screen name="WalletSecurity" component={WalletSecurityScreen} />
       <Stack.Screen name="WalletPaymentMethods" component={SavedPaymentMethodsScreen} />
       <Stack.Screen name="WalletAutoTopUp" component={AutoTopUpScreen} />
+      <Stack.Screen name="PointsActivity" component={PointsActivityScreen} />
     </Stack.Navigator>
   );
 }

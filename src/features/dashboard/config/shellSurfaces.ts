@@ -24,6 +24,7 @@ export const UTILITY_SURFACE_IDS = [
   "deleteAccount",
   "hibernateAccount",
   "trainerReviews",
+  "trainerPromoCodes",
 ] as const;
 export type UtilitySurfaceId = (typeof UTILITY_SURFACE_IDS)[number];
 
@@ -153,6 +154,13 @@ export const SHELL_SURFACES: readonly ShellSurfaceMeta[] = [
       "Take a break — sign out, hide from search, and come back later with a one-time wake-up code.",
     webContext: "Mobile-only — backend: POST /user/me/hibernate/request + confirm.",
     allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
+  },
+  {
+    id: "trainerPromoCodes",
+    title: "Promo codes",
+    subtitle: "Share discounts for your sessions. Discounts come from your coach payout.",
+    webContext: "Trainer-owned promos (`/trainer/promo-codes`).",
+    allowedRoles: [AccountType.TRAINER],
   },
   {
     id: "trainerReviews",

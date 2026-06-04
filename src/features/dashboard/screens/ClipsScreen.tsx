@@ -1,5 +1,13 @@
-import React, { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { EmptyState, ImageWithSkeleton } from "../../../components/ui";
@@ -27,6 +35,8 @@ import { ClipShareFriendsModal } from "../../clips/components/ClipShareFriendsMo
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
 import { dedupeClipsById } from "../../../lib/lists/clipListUtils";
+import { ClipShareInboxBanner } from "../../clips/components/ClipShareInboxBanner";
+import { shareClipExternally } from "../../clips/lib/shareClipExternally";
 
 type ClipTab = "mine" | "shared" | "library";
 
@@ -205,17 +215,23 @@ export function ClipsScreen() {
   const styles = useThemedStyles((palette) =>
     StyleSheet.create({
       toolbarRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
+      segmentScroll: { flex: 1, maxHeight: 44 },
       segment: {
-        flex: 1,
         flexDirection: "row",
         padding: 4,
         borderRadius: radii.md,
         backgroundColor: palette.surfaceMuted,
-        gap: 2,
+        gap: 4,
       },
-      segBtn: { flex: 1, paddingVertical: 8, borderRadius: radii.sm, alignItems: "center" },
+      segBtn: {
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: radii.sm,
+        alignItems: "center",
+        minWidth: 88,
+      },
       segBtnOn: { backgroundColor: palette.surfaceElevated },
-      segLabel: { ...typography.label, color: palette.textMuted, fontSize: 11 },
+      segLabel: { ...typography.label, color: palette.textMuted, fontSize: 12 },
       segLabelOn: { color: palette.brandNavy, fontWeight: "700" },
       uploadFab: {
         width: 44,
@@ -312,6 +328,10 @@ export function ClipsScreen() {
     setSelectedClipIds({});
   }, []);
 
+  useEffect(() => {
+    if (tab !== "mine") exitShareMode();
+  }, [tab, exitShareMode]);
+
   const myQ = useQuery({
     queryKey: queryKeys.locker.myClips,
     queryFn: () => postMyClipsGrouped({}),
@@ -398,7 +418,12 @@ export function ClipsScreen() {
   const toolbar = useMemo(
     () => (
       <View style={styles.toolbarRow}>
-        <View style={styles.segment}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.segmentScroll}
+          contentContainerStyle={styles.segment}
+        >
           <Pressable
             style={[styles.segBtn, tab === "mine" && styles.segBtnOn]}
             onPress={() => setTab("mine")}
@@ -423,7 +448,7 @@ export function ClipsScreen() {
               {t("locker.netqwixLibrary")}
             </Text>
           </Pressable>
-        </View>
+        </ScrollView>
         {tab === "mine" ? (
           <>
             <Pressable
@@ -631,6 +656,11 @@ export function ClipsScreen() {
 
         {tab === "shared" && (
           <>
+            <ClipShareInboxBanner
+              onAccepted={() => {
+                void sharedQ.refetch();
+              }}
+            />
             {sharedGroups.length === 0 ? (
               <EmptyState
                 icon="share-social-outline"
@@ -686,6 +716,18 @@ export function ClipsScreen() {
         title={viewer?.title}
         mode={viewer?.mode ?? "video"}
         sharedBy={viewer?.sharedBy}
+        onShareExternal={
+          viewer
+            ? () =>
+                void shareClipExternally({
+                  title: viewer.title,
+                  clipId: viewer.clipId,
+                  playbackUrl: viewer.uri,
+                  t,
+                })
+            : undefined
+        }
+        shareAccessibilityLabel={t("locker.shareExternal")}
         onRemoveFromLocker={
           viewer?.canRemove && viewer.clipId
             ? () => confirmRemoveSharedClip({ _id: viewer.clipId } as LockerClip)

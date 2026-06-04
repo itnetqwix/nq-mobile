@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, space, useThemeColors } from "../../theme";
+import { floatingTabBarBottomInset } from "../../navigation/FloatingTabBar";
 
 export type ScreenContainerProps = {
   /** Render mode — scroll wraps a `ScrollView`, plain skips it for flex
@@ -30,6 +31,8 @@ export type ScreenContainerProps = {
   dismissKeyboardOnTap?: boolean;
   contentStyle?: ViewStyle;
   style?: ViewStyle;
+  /** Extra bottom padding for floating MainTabs pill (~76px + safe area). */
+  clearFloatingTabBar?: boolean;
   children?: React.ReactNode;
 };
 
@@ -49,22 +52,24 @@ export function ScreenContainer({
   dismissKeyboardOnTap,
   contentStyle,
   style,
+  clearFloatingTabBar = false,
   children,
 }: ScreenContainerProps) {
   const c = useThemeColors();
   const insets = useSafeAreaInsets();
   const padValue = padding === 0 ? 0 : space[padding];
+  const tabBarPad = clearFloatingTabBar ? floatingTabBarBottomInset(insets.bottom) : 0;
 
   const containerStyle: ViewStyle = {
     flex: 1,
     backgroundColor: background ?? c.surface,
     paddingTop: applyTopInset ? insets.top : 0,
-    paddingBottom: applyBottomInset ? insets.bottom : 0,
+    paddingBottom: applyBottomInset && !clearFloatingTabBar ? insets.bottom : 0,
   };
 
   const innerPadding: ViewStyle = {
     paddingTop: padValue,
-    paddingBottom: padValue,
+    paddingBottom: padValue + tabBarPad,
     paddingLeft: padValue + insets.left,
     paddingRight: padValue + insets.right,
   };

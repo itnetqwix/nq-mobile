@@ -21,6 +21,8 @@ type Props = {
   durationMinutes: number;
   expectedPrice: number;
   promoResult: PromoResult;
+  promoDiscountAmount?: number;
+  promoLabel?: string;
   chargingPrice: number;
   pricingQuote?: PricingQuote | null;
   couponCode: string;
@@ -36,6 +38,8 @@ export function ScheduleStepConfirm({
   durationMinutes,
   expectedPrice,
   promoResult,
+  promoDiscountAmount = 0,
+  promoLabel,
   chargingPrice,
   pricingQuote,
   couponCode,
@@ -78,9 +82,13 @@ export function ScheduleStepConfirm({
           chargeTotalDollars(pricingQuote) ?? (chargingPrice > 0 ? chargingPrice : undefined)
         }
         promoDiscount={
-          promoResult?.valid ? promoResult.discount_amount : undefined
+          promoDiscountAmount > 0
+            ? promoDiscountAmount
+            : promoResult?.valid
+              ? promoResult.discount_amount
+              : undefined
         }
-        promoLabel={promoResult?.display_label}
+        promoLabel={promoLabel ?? promoResult?.display_label}
       />
       <Text style={shared.muted}>
         Your coach must confirm this request before the session is scheduled. You will see it as

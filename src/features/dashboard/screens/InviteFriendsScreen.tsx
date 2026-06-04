@@ -21,6 +21,7 @@ import {
   useThemeColors,
   useThemedStyles,
 } from "../../../theme";
+import { useFloatingTabBarBottomInset } from "../../../navigation/useFloatingTabBarBottomInset";
 import { fetchMyReferrals } from "../../home/api/homeApi";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
@@ -31,9 +32,9 @@ import { haptics } from "../../../lib/haptics";
 import { AccountType } from "../../../constants/accountType";
 import {
   fetchReferralProgram,
-  formatUsdFromMinor,
   postReferralInvites,
   type ReferralRewardPreview,
+  type ReferralRewardPreviewPoints,
 } from "../../referral/api/referralApi";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -66,22 +67,23 @@ function buildReferralLink(userId: string | null | undefined, code?: string | nu
   return `${WEB_APP_ORIGIN}/signup?ref=${encodeURIComponent(userId)}`;
 }
 
-function rewardSummary(preview: ReferralRewardPreview | undefined, currency: string): string {
+function rewardSummaryPoints(preview: ReferralRewardPreviewPoints | undefined): string {
   if (!preview) return "";
   const parts: string[] = [];
-  if (preview.referrerSignupMinor > 0) {
-    parts.push(formatUsdFromMinor(preview.referrerSignupMinor, currency));
+  if (preview.referrerSignupPoints > 0) {
+    parts.push(`${preview.referrerSignupPoints} pts signup`);
   }
-  if (preview.referrerFirstBookingMinor > 0) {
-    parts.push(`+${formatUsdFromMinor(preview.referrerFirstBookingMinor, currency)}`);
+  if (preview.referrerFirstBookingPoints > 0) {
+    parts.push(`+${preview.referrerFirstBookingPoints} pts first lesson`);
   }
-  return parts.join(" ");
+  return parts.join(" · ");
 }
 
 export function InviteFriendsScreen() {
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const styles = useInviteStyles();
+  const bottomPad = useFloatingTabBarBottomInset(space.md);
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [text, setText] = useState("");
@@ -109,18 +111,18 @@ export function InviteFriendsScreen() {
     );
   }, [user, program]);
 
-  const activeRewardPreview = useMemo(() => {
-    if (!program) return undefined;
+  const activeRewardPreviewPoints = useMemo(() => {
+    if (!program?.rewardMatrixPoints) return undefined;
     return inviteTarget === AccountType.TRAINER
-      ? program.rewardMatrix.inviteTrainer
-      : program.rewardMatrix.inviteTrainee;
+      ? program.rewardMatrixPoints.inviteTrainer
+      : program.rewardMatrixPoints.inviteTrainee;
   }, [program, inviteTarget]);
 
   const referralMessage = useMemo(
     () =>
       t("invites.shareMessage", {
         defaultValue:
-          "I'm using NetQwix to find personalised coaching. Sign up here and we both get a free intro lesson: {{link}}",
+          "Join me on NetQwix for coaching — we earn points when you sign up: {{link}}",
         link: referralLink,
       }),
     [referralLink, t]
@@ -137,8 +139,9 @@ export function InviteFriendsScreen() {
   const stats = useMemo(() => {
     const total = program?.stats.invitesSent ?? referrals.length;
     const joined = program?.stats.registered ?? referrals.filter((r: ReferralRow) => r.joined).length;
-    const earnedMinor = program?.stats.totalEarnedMinor ?? 0;
-    return { total, joined, pending: total - joined, earnedMinor };
+    const earnedPoints = program?.stats.totalEarnedPoints ?? 0;
+    const pointsBalance = program?.stats.pointsBalance ?? 0;
+    return { total, joined, pending: total - joined, earnedPoints, pointsBalance };
   }, [referrals, program]);
 
   const filteredReferrals = useMemo(() => {
@@ -305,7 +308,7 @@ export function InviteFriendsScreen() {
   return (
     <ScrollView
       style={styles.root}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: bottomPad }]}
       keyboardShouldPersistTaps="handled"
     >
       {/* Hero card with perk callout */}
@@ -347,11 +350,23 @@ export function InviteFriendsScreen() {
         />
         <View style={styles.statDivider} />
         <StatBlock
-          icon="wallet-outline"
-          label={t("invites.statEarned", { defaultValue: "Earned" })}
-          value={formatUsdFromMinor(stats.earnedMinor, program?.currency)}
+          icon="star-outline"
+          label={t("invites.statPoints", { defaultValue: "Points" })}
+          value={stats.pointsBalance}
           compact
         />
+      </View>
+
+      <View style={[styles.card, { backgroundColor: c.brandSubtle }]}>
+        <Text style={[styles.cardTitle, { color: c.text }]}>
+          {t("points.inviteHowTitle", { defaultValue: "How points work" })}
+        </Text>
+        <Text style={[styles.rewardLine, { color: c.textMuted }]}>
+          {t("points.inviteHowBody", {
+            defaultValue:
+              "Earn 1–5 points per action (lessons, reviews, referrals). Redeem 100 points for $5 wallet credit in the Wallet tab.",
+          })}
+        </Text>
       </View>
 
       <View style={styles.card}>
@@ -371,19 +386,16 @@ export function InviteFriendsScreen() {
           />
         </View>
         <Text style={[styles.rewardLine, { color: c.textMuted }]}>
-          {t("invites.rewardYouEarn", {
+          {t("invites.rewardYouEarnPoints", {
             defaultValue: "You earn {{amount}} when they join",
-            amount: rewardSummary(activeRewardPreview, program?.currency ?? "USD") || "—",
+            amount: rewardSummaryPoints(activeRewardPreviewPoints) || "—",
           })}
         </Text>
-        {activeRewardPreview && activeRewardPreview.refereeSignupMinor > 0 ? (
+        {activeRewardPreviewPoints && activeRewardPreviewPoints.refereeSignupPoints > 0 ? (
           <Text style={[styles.rewardLine, { color: c.textMuted }]}>
-            {t("invites.rewardTheyGet", {
-              defaultValue: "They get {{amount}} wallet credit on signup",
-              amount: formatUsdFromMinor(
-                activeRewardPreview.refereeSignupMinor,
-                program?.currency
-              ),
+            {t("invites.rewardTheyGetPoints", {
+              defaultValue: "They get {{amount}} on signup",
+              amount: `${activeRewardPreviewPoints.refereeSignupPoints} pts`,
             })}
           </Text>
         ) : null}

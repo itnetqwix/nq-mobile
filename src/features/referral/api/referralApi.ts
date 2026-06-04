@@ -8,6 +8,12 @@ export type ReferralRewardPreview = {
   referrerFirstBookingMinor: number;
 };
 
+export type ReferralRewardPreviewPoints = {
+  referrerSignupPoints: number;
+  refereeSignupPoints: number;
+  referrerFirstBookingPoints: number;
+};
+
 export type ReferralProgram = {
   enabled: boolean;
   currency: string;
@@ -21,10 +27,19 @@ export type ReferralProgram = {
     inviteTrainee: ReferralRewardPreview;
     inviteTrainer: ReferralRewardPreview;
   };
+  rewardMatrixPoints?: {
+    inviteTrainee: ReferralRewardPreviewPoints;
+    inviteTrainer: ReferralRewardPreviewPoints;
+  };
+  pointsEnabled?: boolean;
+  redemptionBlockPoints?: number;
+  walletDollarsPer100Points?: number;
   stats: {
     invitesSent: number;
     registered: number;
-    totalEarnedMinor: number;
+    totalEarnedMinor?: number;
+    totalEarnedPoints?: number;
+    pointsBalance?: number;
   };
 };
 
@@ -104,6 +119,7 @@ export type CheckoutPreview = {
   totalDiscount: number;
   finalPrice: number;
   referralEligible: boolean;
+  promoSponsorType?: "platform" | "trainer" | null;
   label?: string | null;
   stacksWithPromo?: boolean;
 };
@@ -123,6 +139,7 @@ export async function postReferralPreviewCheckout(body: {
   amount: number;
   booking_type: "instant" | "scheduled";
   coupon_code?: string;
+  trainer_id?: string;
 }): Promise<CheckoutPreview | null> {
   try {
     const res = await apiClient.post(API_ROUTES.referral.previewCheckout, body);

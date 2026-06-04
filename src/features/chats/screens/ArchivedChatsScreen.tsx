@@ -18,6 +18,7 @@ import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { queryKeys } from "../../../lib/queryKeys";
 import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { StackSwipeBackShell } from "../../../navigation/StackSwipeBackShell";
+import { useFloatingTabBarBottomInset } from "../../../navigation/useFloatingTabBarBottomInset";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
 import {
@@ -39,6 +40,7 @@ export function ArchivedChatsScreen() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const myId = String(user?._id ?? user?.id ?? "");
+  const bottomPad = useFloatingTabBarBottomInset(space.md);
   const [activeChat, setActiveChat] = useState<{
     conversationId: string;
     partner: any;
@@ -110,6 +112,7 @@ export function ArchivedChatsScreen() {
         <FlatList
           data={q.data ?? []}
           keyExtractor={flatListKeyExtractor}
+          contentContainerStyle={{ paddingBottom: bottomPad }}
           refreshControl={
             <RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />
           }
