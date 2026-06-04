@@ -20,6 +20,8 @@ import { fetchFriends } from "../../home/api/homeApi";
 import { postClipShareRequests } from "../api/clipsShareApi";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import { useAuth } from "../../auth/context/AuthContext";
+import { resolveFriendUser } from "../../friends/lib/resolveFriendUser";
 
 type FriendRow = {
   id: string;
@@ -39,8 +41,10 @@ export function ClipShareFriendsModal({ visible, clipIds, onClose, onSent }: Pro
   const insets = useSafeAreaInsets();
   const c = useThemeColors();
   const styles = useStyles();
+  const { user } = useAuth();
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
+  const currentUserId = String((user as any)?._id ?? (user as any)?.id ?? "");
 
   const { data: friendsRaw = [], isLoading } = useQuery({
     queryKey: queryKeys.friends.forClipShare,
@@ -52,16 +56,16 @@ export function ClipShareFriendsModal({ visible, clipIds, onClose, onSent }: Pro
   const friends: FriendRow[] = useMemo(() => {
     return (friendsRaw as any[])
       .map((f) => {
-        const id = String(f._id ?? f.id ?? f.user_id ?? "");
-        if (!id) return null;
+        const friend = resolveFriendUser(f, currentUserId);
+        if (!friend) return null;
         return {
-          id,
-          name: f.fullname ?? f.full_name ?? f.name ?? f.email ?? t("locker.friendDefault"),
-          avatar: f.profile_picture ?? f.avatar,
+          id: friend.id,
+          name: friend.name || t("locker.friendDefault"),
+          avatar: friend.avatar,
         };
       })
       .filter(Boolean) as FriendRow[];
-  }, [friendsRaw, t]);
+  }, [currentUserId, friendsRaw, t]);
 
   const selectedIds = useMemo(
     () => Object.keys(selected).filter((id) => selected[id]),

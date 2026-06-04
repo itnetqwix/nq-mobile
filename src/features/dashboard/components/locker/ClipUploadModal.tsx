@@ -33,6 +33,7 @@ import { API_ROUTES } from "../../../../config/apiRoutes";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
 import { ClipUploadPrepareModal } from "./ClipUploadPrepareModal";
+import { resolveFriendUser } from "../../../friends/lib/resolveFriendUser";
 
 const SHARE_MY_CLIPS = "My Clips";
 const SHARE_FRIENDS = "Friends";
@@ -53,6 +54,7 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
   const dispatch = useAppDispatch();
   const { user, accountType } = useAuth();
   const isTrainer = accountType === AccountType.TRAINER;
+  const currentUserId = String((user as any)?._id ?? (user as any)?.id ?? "");
 
   const profileCategory = useMemo(() => {
     const c = user?.category ?? (user as any)?.Category;
@@ -90,6 +92,14 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
     enabled: visible && shareTarget === SHARE_FRIENDS,
     staleTime: 60_000,
   });
+
+  const friendRows = useMemo(
+    () =>
+      friendsList
+        .map((friend) => resolveFriendUser(friend, currentUserId))
+        .filter(Boolean) as NonNullable<ReturnType<typeof resolveFriendUser>>[],
+    [currentUserId, friendsList]
+  );
 
   useEffect(() => {
     if (!visible) {
@@ -416,15 +426,12 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
           {shareTarget === SHARE_FRIENDS && (
             <View style={styles.friendPickerBox}>
               <Text style={styles.label}>{t("locker.selectFriends")}</Text>
-              {friendsList.length === 0 ? (
+              {friendRows.length === 0 ? (
                 <Text style={styles.muted}>{t("locker.noFriendsForShare")}</Text>
               ) : (
                 <View style={styles.friendChips}>
-                  {friendsList.map((f: any) => {
-                    const id = String(f?._id ?? f?.id ?? f?.user_id ?? "");
-                    const name =
-                      f?.fullname ?? f?.receiverId?.fullname ?? f?.fullName ?? f?.email ?? "";
-                    if (!id) return null;
+                  {friendRows.map((f) => {
+                    const id = f.id;
                     const on = selectedFriendIds.includes(id);
                     return (
                       <Pressable
@@ -433,7 +440,7 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
                         onPress={() => toggleFriend(id)}
                         disabled={uploadBusy}
                       >
-                        <Text style={[styles.chipText, on && styles.chipTextOn]} numberOfLines={1}>{name}</Text>
+                        <Text style={[styles.chipText, on && styles.chipTextOn]} numberOfLines={1}>{f.name}</Text>
                       </Pressable>
                     );
                   })}
