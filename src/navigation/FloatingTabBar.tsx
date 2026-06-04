@@ -2,8 +2,10 @@ import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { BottomTabBar } from "@react-navigation/bottom-tabs";
 import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme, useThemeColors } from "../theme";
+import { useTabBarAnimatedOffset } from "./TabBarScrollContext";
 
 /** Height of the pill bar itself (excluding outer margins and safe area). */
 export const FLOATING_TAB_BAR_HEIGHT = 58;
@@ -34,6 +36,7 @@ export function FloatingTabBar(props: Props) {
   const insets = useSafeAreaInsets();
   const { scheme } = useTheme();
   const c = useThemeColors();
+  const animatedHost = useTabBarAnimatedOffset();
   const bottomPad = Math.max(insets.bottom, FLOATING_TAB_BAR_BOTTOM_GAP);
   const focusedRouteKey = props.state.routes[props.state.index]?.key;
   const focusedOptions = focusedRouteKey ? props.descriptors[focusedRouteKey]?.options : undefined;
@@ -42,9 +45,13 @@ export function FloatingTabBar(props: Props) {
   if (hidden) return null;
 
   return (
-    <View
+    <Animated.View
       pointerEvents="box-none"
-      style={[styles.host, { paddingBottom: bottomPad, paddingHorizontal: FLOATING_TAB_BAR_HORIZONTAL_INSET }]}
+      style={[
+        styles.host,
+        { paddingBottom: bottomPad, paddingHorizontal: FLOATING_TAB_BAR_HORIZONTAL_INSET },
+        animatedHost,
+      ]}
     >
       <View
         style={[
@@ -70,7 +77,7 @@ export function FloatingTabBar(props: Props) {
           style={styles.innerBar}
         />
       </View>
-    </View>
+    </Animated.View>
   );
 }
 

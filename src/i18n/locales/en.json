@@ -1076,6 +1076,20 @@
       "signUp": "Sign up"
     }
   },
+  "homeMarketplace": {
+    "greeting": "Hi, {{name}}",
+    "sublineTz": "Coaches in {{tz}}",
+    "featured": "Featured",
+    "offersRibbon": "✦ OFFERS FOR YOU ✦",
+    "searchPlaceholder": "Search coaches, sports…",
+    "voice": {
+      "start": "Search by voice",
+      "permissionTitle": "Microphone needed",
+      "permissionBody": "Allow microphone access in Settings to search by voice.",
+      "failedTitle": "Couldn't hear that",
+      "failedBody": "Try again or type your search."
+    }
+  },
   "traineeDiscover": {
     "welcome": "Hi, {{name}}",
     "roleTrainee": "Trainee",

@@ -33,6 +33,8 @@ export type HomeBannerCta = {
   variant?: "primary" | "secondary" | "ghost";
 };
 
+export type BannerPlacement = "hero" | "strip" | "sticky_bottom";
+
 export type HomeBanner = {
   _id: string;
   title: string;
@@ -40,6 +42,8 @@ export type HomeBanner = {
   image_url?: string | null;
   audience: Array<"guest" | "trainer" | "trainee" | "all">;
   severity: "info" | "promo" | "maintenance" | "critical" | "success";
+  placement?: BannerPlacement;
+  auto_advance_sec?: number;
   cta_label?: string | null;
   cta_url?: string | null;
   ctas?: HomeBannerCta[];
@@ -84,17 +88,20 @@ export async function fetchHomeTips(opts?: { guest?: boolean }): Promise<Tip[]> 
 
 export async function fetchHomeBanners(opts?: {
   guest?: boolean;
+  placement?: BannerPlacement;
 }): Promise<HomeBanner[]> {
+  const qs = opts?.placement ? `?placement=${encodeURIComponent(opts.placement)}` : "";
+  const url = `${API_ROUTES.banners.list}${qs}`;
   try {
     if (opts?.guest) {
-      const res = await axios.get(`${API_BASE_URL}${API_ROUTES.banners.list}`, {
+      const res = await axios.get(`${API_BASE_URL}${url}`, {
         timeout: 15_000,
       });
       return unwrap<HomeBanner>(res.data);
     }
-    const res = await apiClient.get(API_ROUTES.banners.list, {
+    const res = await apiClient.get(url, {
       _skipAuthSignOut: true,
-    });
+    } as Parameters<typeof apiClient.get>[1]);
     return unwrap<HomeBanner>(res.data);
   } catch {
     return [];

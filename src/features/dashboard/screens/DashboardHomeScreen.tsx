@@ -63,6 +63,12 @@ import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wi
 import { ScheduledBookingWizardModal } from "../../scheduled-booking/ScheduledBookingWizardModal";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { floatingTabBarBottomInset } from "../../../navigation/FloatingTabBar";
+import { HomeHeroCarousel } from "../../home/components/HomeHeroCarousel";
+import { HomeOffersCarousel } from "../../home/components/HomeOffersCarousel";
+import { StickyBottomPromoBar } from "../../home/components/StickyBottomPromoBar";
+import { DiscoverHomeChrome } from "../../home/layout/DiscoverHomeChrome";
+import { TrainerQuickChipsRow } from "../../home/components/TrainerQuickChipsRow";
+import { useHomeScrollHandler } from "../../home/hooks/useHomeScrollHandler";
 
 function useDashboardHomeStyles() {
   return useThemedStyles((palette) => StyleSheet.create({
@@ -324,6 +330,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
   const showAsOnline = resolveShowAsOnline(user);
   const insets = useSafeAreaInsets();
   const gutter = useHorizontalGutter("md");
+  const homeScroll = useHomeScrollHandler();
   const isTrainee = accountType === AccountType.TRAINEE;
   const isTrainer = accountType === AccountType.TRAINER;
 
@@ -410,9 +417,17 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
           queryClient.refetchQueries({ queryKey: queryKeys.presence.onlineUsers }),
           queryClient.refetchQueries({ queryKey: queryKeys.presence.bookExpertOnline }),
           queryClient.refetchQueries({ queryKey: ["trainersDirectory"] }),
-          queryClient.refetchQueries({ queryKey: queryKeys.trainee.favorites })
+          queryClient.refetchQueries({ queryKey: queryKeys.trainee.favorites }),
+          queryClient.refetchQueries({ queryKey: queryKeys.content.banners }),
+          queryClient.refetchQueries({ queryKey: queryKeys.content.tips })
         );
       } else {
+        tasks.push(
+          queryClient.refetchQueries({ queryKey: queryKeys.content.banners }),
+          queryClient.refetchQueries({ queryKey: queryKeys.content.tips })
+        );
+      }
+      if (!isTrainee) {
         tasks.push(
           queryClient.refetchQueries({ queryKey: queryKeys.presence.onlineUsers }),
           queryClient.refetchQueries({ queryKey: queryKeys.wallet.earnings }),
@@ -567,8 +582,112 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
         onInstant={(t) => setWizardTrainer(t)}
         onSchedule={(t) => setScheduleTrainer(t)}
       />
+    {isTrainee ? (
+      <View style={[styles.root, { flex: 1, backgroundColor: themeColors.background }]}>
+        <TraineeDiscoverDashboard
+          name={name}
+          accountType={accountType ?? AccountType.TRAINEE}
+          profilePicture={(user as any)?.profile_picture}
+          user={user as Record<string, unknown> | undefined}
+          onSettings={() => openShell("settings")}
+          onViewTrainer={setProfileTrainer}
+          onInstantBook={setWizardTrainer}
+          onScheduleBook={setScheduleTrainer}
+          onOpenWallet={() => openShell("wallet")}
+          onOpenSession={openSession}
+          marketplaceLayout
+          contentContainerStyle={[gutter, styles.content]}
+          refreshControl={
+            <RefreshControl
+              refreshing={pullRefreshing}
+              onRefresh={onRefresh}
+              tintColor={themeColors.brandNavy}
+            />
+          }
+          footer={
+            <>
+              {friendRequests.length > 0 && (
+                <HomeMainCont
+                  title={t("dashboardHome.recentFriendRequests")}
+                  testID="card trainer-profile-card Home-main-Cont friend-requests"
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      flexWrap: "wrap",
+                      gap: 10,
+                      justifyContent: "center",
+                    }}
+                  >
+                    {friendRequests.map((req: any) => (
+                      <FriendRequestWebTile
+                        key={req._id}
+                        request={req}
+                        onAccept={handleAccept}
+                        onReject={handleReject}
+                      />
+                    ))}
+                  </View>
+                </HomeMainCont>
+              )}
+
+              {showEmptyDashboard ? (
+                <HomeMainCont testID="home-empty-sessions-hint" title={t("dashboardHome.upcomingSessions")}>
+                  <DashboardEmptyWelcome
+                    onBookLesson={() =>
+                      (navigation as { navigate: (name: string) => void }).navigate("Schedule")
+                    }
+                    onOpenClips={() => openShell("clips")}
+                  />
+                </HomeMainCont>
+              ) : null}
+
+              {recentCompletedForConcern ? (
+                <PostLessonConcernBanner
+                  sessionId={String(recentCompletedForConcern._id ?? recentCompletedForConcern.id)}
+                  otherPartyName={
+                    getOtherParty(recentCompletedForConcern, isTrainer)?.fullname ||
+                    getOtherParty(recentCompletedForConcern, isTrainer)?.fullName
+                  }
+                />
+              ) : null}
+
+              {(loadingSessions || nowSessions.length > 0) && (
+                <SessionListSection
+                  title={t("dashboardHome.activeSessions")}
+                  subtitle={t("dashboardHome.activeSessionsSub")}
+                  sessions={nowSessions}
+                  accountType={accountType}
+                  loading={loadingSessions}
+                  maxPreview={5}
+                  onSessionPress={openSession}
+                  testID="home-active-sessions"
+                />
+              )}
+
+              {upcomingConfirmed.length > 0 && nowSessions.length === 0 && (
+                <SessionListSection
+                  title={t("dashboardHome.upcomingSessions")}
+                  subtitle={t("dashboardHome.upcomingSessionsSub")}
+                  sessions={upcomingConfirmed}
+                  accountType={accountType}
+                  maxPreview={3}
+                  seeAllLabel={t("dashboardHome.seeAllSessions", { count: upcomingConfirmed.length })}
+                  onSeeAll={() => openFeature("upcoming-sessions")}
+                  onSessionPress={openSession}
+                  testID="home-upcoming-sessions"
+                />
+              )}
+
+              <LockerHub accountType={accountType} onOpenSurface={openShell} />
+            </>
+          }
+        />
+      </View>
+    ) : (
+    <View style={[styles.root, { flex: 1, backgroundColor: themeColors.background }]}>
     <ScrollView
-      style={[styles.root, { backgroundColor: themeColors.background }]}
+      style={{ flex: 1, backgroundColor: themeColors.background }}
       contentContainerStyle={[
         gutter,
         styles.content,
@@ -579,6 +698,8 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
       ]}
       nestedScrollEnabled
       keyboardShouldPersistTaps="handled"
+      onScroll={homeScroll.onScroll}
+      scrollEventThrottle={homeScroll.scrollEventThrottle}
       refreshControl={
         <RefreshControl
           refreshing={pullRefreshing}
@@ -587,25 +708,34 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
         />
       }
     >
-      {/* Quick Actions — trainee only (trainer hub has shortcuts) */}
-      {isTrainee && (
-        <View style={styles.quickRow}>
-          <QuickActionButton
-            icon="calendar-outline"
-            label={t("dashboardHome.quickSessions")}
-            onPress={() => openFeature("upcoming-sessions")}
+      {isTrainer && (
+        <>
+          <DiscoverHomeChrome
+            headline={t("homeMarketplace.greeting", { name, defaultValue: `Hi, ${name}` })}
+            subline={t("trainerDashboard.roleTrainer")}
+            profilePicture={(user as any)?.profile_picture}
+            profileName={name}
+            onPressProfile={() => openShell("settings")}
+            showSearch={false}
+            bottomSlot={
+              <TrainerQuickChipsRow
+                onSchedule={() => openFeature("schedule")}
+                onSessions={() => openFeature("upcoming-sessions")}
+                onWallet={() => openShell("wallet")}
+                onClips={() => openShell("clips")}
+                onGoLive={() => void handleAvailabilityToggle(true)}
+              />
+            }
           />
-          <QuickActionButton
-            icon="chatbubbles-outline"
-            label={t("dashboardHome.quickChats")}
-            onPress={() => navigation.getParent()?.navigate("Chats" as never)}
-          />
-        </View>
+          <HomeHeroCarousel />
+          <HomeOffersCarousel />
+        </>
       )}
 
-      <View style={isTrainee ? { paddingTop: space.md } : undefined}>
+      <View>
         {isTrainer && (
           <TrainerDashboardHub
+            marketplaceHeader
             name={name}
             accountType={accountType ?? AccountType.TRAINER}
             profilePicture={(user as any)?.profile_picture}
@@ -626,100 +756,11 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
             onSessionPress={openSession}
           />
         )}
-        {isTrainee && (
-          <TraineeDiscoverDashboard
-            name={name}
-            accountType={accountType ?? AccountType.TRAINEE}
-            profilePicture={(user as any)?.profile_picture}
-            user={user as Record<string, unknown> | undefined}
-            onSettings={() => openShell("settings")}
-            onViewTrainer={setProfileTrainer}
-            onInstantBook={setWizardTrainer}
-            onScheduleBook={setScheduleTrainer}
-            onOpenWallet={() => openShell("wallet")}
-            onOpenSession={openSession}
-          />
-        )}
-
-        {isTrainee && friendRequests.length > 0 && (
-          <HomeMainCont
-            title={t("dashboardHome.recentFriendRequests")}
-            testID="card trainer-profile-card Home-main-Cont friend-requests"
-          >
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                gap: 10,
-                justifyContent: "center",
-              }}
-            >
-              {friendRequests.map((req: any) => (
-                <FriendRequestWebTile
-                  key={req._id}
-                  request={req}
-                  onAccept={handleAccept}
-                  onReject={handleReject}
-                />
-              ))}
-            </View>
-          </HomeMainCont>
-        )}
-
-        {isTrainee && showEmptyDashboard ? (
-          <HomeMainCont testID="home-empty-sessions-hint" title={t("dashboardHome.upcomingSessions")}>
-            <DashboardEmptyWelcome
-              onBookLesson={() =>
-                (navigation as { navigate: (name: string) => void }).navigate("Schedule")
-              }
-              onOpenClips={() => openShell("clips")}
-            />
-          </HomeMainCont>
-        ) : null}
-
-        {recentCompletedForConcern ? (
-          <PostLessonConcernBanner
-            sessionId={String(recentCompletedForConcern._id ?? recentCompletedForConcern.id)}
-            otherPartyName={
-              getOtherParty(recentCompletedForConcern, isTrainer)?.fullname ||
-              getOtherParty(recentCompletedForConcern, isTrainer)?.fullName
-            }
-          />
-        ) : null}
-
-        {/* Trainer session lists live in TrainerDashboardHub; trainee lists below discover */}
-        {isTrainee && (loadingSessions || nowSessions.length > 0) && (
-          <SessionListSection
-            title={t("dashboardHome.activeSessions")}
-            subtitle={t("dashboardHome.activeSessionsSub")}
-            sessions={nowSessions}
-            accountType={accountType}
-            loading={loadingSessions}
-            maxPreview={5}
-            onSessionPress={openSession}
-            testID="home-active-sessions"
-          />
-        )}
-
-        {isTrainee && upcomingConfirmed.length > 0 && nowSessions.length === 0 && (
-          <SessionListSection
-            title={t("dashboardHome.upcomingSessions")}
-            subtitle={t("dashboardHome.upcomingSessionsSub")}
-            sessions={upcomingConfirmed}
-            accountType={accountType}
-            maxPreview={3}
-            seeAllLabel={t("dashboardHome.seeAllSessions", { count: upcomingConfirmed.length })}
-            onSeeAll={() => openFeature("upcoming-sessions")}
-            onSessionPress={openSession}
-            testID="home-upcoming-sessions"
-          />
-        )}
-
-        {isTrainee && (
-          <LockerHub accountType={accountType} onOpenSurface={openShell} />
-        )}
       </View>
     </ScrollView>
+    <StickyBottomPromoBar />
+    </View>
+    )}
 
       <AIFloatingButton onPress={() => setAiOpen(true)} />
 

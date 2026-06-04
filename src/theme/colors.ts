@@ -122,6 +122,9 @@ export const colorsLight: Palette & {
   sidebarActiveBg: BRAND.brandAccentSubtle,
   primary: BRAND.brandAccent,
   primaryPressed: BRAND.brandAccentPressed,
+
+  /** Blinkit-style home header / offers band */
+  homeMarketplaceBand: "#fff8e1",
 };
 
 export const colorsDark: typeof colorsLight = {
@@ -195,6 +198,8 @@ export const colorsDark: typeof colorsLight = {
   dangerText: "#fca5a5",
   infoSubtle: "#172554",
   infoText: "#93c5fd",
+
+  homeMarketplaceBand: "#2a2410",
 };
 
 export type AppColors = typeof colorsLight;

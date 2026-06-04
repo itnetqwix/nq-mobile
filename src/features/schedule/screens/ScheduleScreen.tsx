@@ -24,6 +24,7 @@ import type { MainTabScreenProps } from "../../../navigation/types";
 import { floatingTabBarBottomInset } from "../../../navigation/FloatingTabBar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CoachMark } from "../../onboarding";
+import { useHomeScrollHandler } from "../../home/hooks/useHomeScrollHandler";
 
 const WEEK_ORDER = [
   "monday",
@@ -56,6 +57,7 @@ type DaySection = {
 
 function TrainerSchedule() {
   const { t } = useTranslation();
+  const homeScroll = useHomeScrollHandler();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const insets = useSafeAreaInsets();
   const listPadBottom = useMemo(() => floatingTabBarBottomInset(insets.bottom), [insets.bottom]);
@@ -136,6 +138,8 @@ function TrainerSchedule() {
       <SectionList
         sections={sections}
         keyExtractor={(item, index) => `${item.start_time}-${item.end_time}-${index}`}
+        onScroll={homeScroll.onScroll}
+        scrollEventThrottle={homeScroll.scrollEventThrottle}
         refreshControl={
           <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brandNavy} />
         }

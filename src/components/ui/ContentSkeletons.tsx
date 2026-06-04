@@ -307,6 +307,85 @@ export function ClipTileSkeleton() {
   );
 }
 
+/** Blinkit-style hero carousel placeholder on home. */
+export function HeroCarouselSkeleton() {
+  const c = useThemeColors();
+  return (
+    <View style={{ marginBottom: space.sm, paddingHorizontal: space.md }}>
+      <View style={styles.carouselHeader}>
+        <Skeleton width={100} height={16} />
+        <Skeleton width={32} height={12} />
+      </View>
+      <Skeleton
+        width="100%"
+        height={168}
+        radius={radii.lg}
+        style={{ backgroundColor: c.surfaceMuted }}
+      />
+      <View style={[styles.dotsRow, { marginTop: space.sm }]}>
+        {[0, 1, 2].map((i) => (
+          <Skeleton key={i} width={i === 0 ? 16 : 6} height={6} radius={3} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+/** “Offers for you” horizontal strip placeholder. */
+export function OffersCarouselSkeleton() {
+  const c = useThemeColors();
+  return (
+    <View
+      style={{
+        marginHorizontal: -space.md,
+        paddingVertical: space.md,
+        marginBottom: space.sm,
+        backgroundColor: c.surfaceMuted,
+      }}
+    >
+      <Skeleton width={180} height={14} style={{ alignSelf: "center", marginBottom: space.sm }} />
+      <View style={[styles.carouselStrip, { borderColor: "transparent", paddingHorizontal: space.md }]}>
+        {[0, 1].map((i) => (
+          <View
+            key={i}
+            style={[
+              styles.offerCard,
+              { backgroundColor: c.surfaceElevated, borderColor: c.border },
+            ]}
+          >
+            <Skeleton width={48} height={48} radius={radii.md} />
+            <View style={[styles.flex1Stack, { gap: 6 }]}>
+              <Skeleton width="85%" height={14} />
+              <Skeleton width="70%" height={11} />
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+/** Search bar + category chips in marketplace header. */
+export function MarketplaceSearchSkeleton() {
+  return (
+    <View style={{ paddingHorizontal: space.md, paddingBottom: space.sm, gap: space.sm }}>
+      <View style={{ flexDirection: "row", gap: space.sm, alignItems: "center" }}>
+        <Skeleton width="55%" height={18} />
+        <Skeleton width={44} height={44} radius={22} />
+      </View>
+      <Skeleton width="100%" height={48} radius={radii.lg} />
+      <View style={{ flexDirection: "row", gap: space.md, paddingVertical: space.xs }}>
+        {[0, 1, 2, 3, 4].map((i) => (
+          <View key={i} style={{ alignItems: "center", width: 64, gap: 6 }}>
+            <Skeleton width={52} height={52} radius={26} />
+            <Skeleton width={48} height={10} />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   card: {
     flexDirection: "row",
@@ -357,6 +436,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     marginBottom: 4,
+  },
+  dotsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 6,
+  },
+  offerCard: {
+    width: 280,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.sm,
+    padding: space.md,
+    borderRadius: radii.lg,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   carouselStrip: {
     flexDirection: "row",

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -57,6 +58,15 @@ import {
   getTraineeInterests,
   resolveTraineeDashboardCategories,
 } from "../../lib/traineeInterests";
+import { HomeHeroCarousel } from "../../../home/components/HomeHeroCarousel";
+import { HomeOffersCarousel } from "../../../home/components/HomeOffersCarousel";
+import { StickyBottomPromoBar } from "../../../home/components/StickyBottomPromoBar";
+import { DiscoverHomeChrome } from "../../../home/layout/DiscoverHomeChrome";
+import { useHomeScrollHandler } from "../../../home/hooks/useHomeScrollHandler";
+import { useSearchVoice } from "../../../home/hooks/useSearchVoice";
+import type { HomeCategoryChip } from "../../../home/components/HomeCategoryChipsRow";
+import { floatingTabBarBottomInset } from "../../../../navigation/FloatingTabBar";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { HomeUserAvatar } from "./HomeUserAvatar";
 
 type Props = {
@@ -76,8 +86,13 @@ type Props = {
   onOpenSession?: (session: Record<string, unknown>) => void;
   /** Guest home: own vertical scroll (no parent ScrollView). */
   scrollable?: boolean;
+  /** Blinkit-style header, hero carousel, offers, hideable tab bar. */
+  marketplaceLayout?: boolean;
   leadingContent?: React.ReactNode;
+  footer?: React.ReactNode;
   contentContainerStyle?: StyleProp<ViewStyle>;
+  refreshControl?: React.ReactElement<React.ComponentProps<typeof RefreshControl>>;
+  onDeepLink?: (url: string) => void;
 };
 
 export function TraineeDiscoverDashboard({
@@ -94,13 +109,20 @@ export function TraineeDiscoverDashboard({
   onOpenWallet,
   onOpenSession,
   scrollable = false,
+  marketplaceLayout = true,
   leadingContent,
+  footer,
   contentContainerStyle,
+  refreshControl,
+  onDeepLink,
 }: Props) {
+  const insets = useSafeAreaInsets();
+  const homeScroll = useHomeScrollHandler();
   const { t } = useAppTranslation();
   const themeColors = useThemeColors();
   const styles = useStyles();
   const [search, setSearch] = useState("");
+  const { voice, toggle: toggleVoice } = useSearchVoice(setSearch);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [browseFilters, setBrowseFilters] = useState<TrainerBrowseFilters>(DEFAULT_BROWSE_FILTERS);
@@ -261,6 +283,19 @@ export function TraineeDiscoverDashboard({
       ? t("traineeDiscover.roleTrainee")
       : accountType || t("menu.member");
 
+  const marketplaceHeadline = t("homeMarketplace.greeting", {
+    name,
+    defaultValue: `Hi, ${name}`,
+  });
+  const marketplaceSubline = isGuest
+    ? t("guest.exploringAsGuest")
+    : traineeTimeZone
+      ? t("homeMarketplace.sublineTz", {
+          tz: traineeTimeZone,
+          defaultValue: `Coaches in ${traineeTimeZone}`,
+        })
+      : roleLabel;
+
   const listTitle = searchActive
     ? t("traineeDiscover.resultsFor", { query: trimmed })
     : selectedCategory
@@ -281,10 +316,14 @@ export function TraineeDiscoverDashboard({
     return dashboardCategories.filter((c) => c !== selectedCategory).slice(0, 3);
   }, [selectedCategory, dashboardCategories]);
 
-  const categoryStripItems = useMemo(
+  const categoryStripItems = useMemo<HomeCategoryChip[]>(
     () => [
-      { id: "__all__", label: t("traineeDiscover.all") },
-      ...dashboardCategories.map((c) => ({ id: c, label: c })),
+      { id: "__all__", label: t("traineeDiscover.all"), icon: "grid-outline" },
+      ...dashboardCategories.map((c) => ({
+        id: c,
+        label: c,
+        icon: getCategoryIcon(c),
+      })),
     ],
     [dashboardCategories, t]
   );
@@ -298,21 +337,23 @@ export function TraineeDiscoverDashboard({
         onDismiss={() => setFiltersOpen(false)}
       />
 
-      <View style={styles.headerCard}>
-        <View style={styles.headerTextCol}>
-          <Text style={styles.welcome}>{t("traineeDiscover.welcome", { name })}</Text>
-          <View style={styles.rolePill}>
-            <Text style={styles.rolePillText}>{roleLabel}</Text>
+      {!marketplaceLayout ? (
+        <View style={styles.headerCard}>
+          <View style={styles.headerTextCol}>
+            <Text style={styles.welcome}>{t("traineeDiscover.welcome", { name })}</Text>
+            <View style={styles.rolePill}>
+              <Text style={styles.rolePillText}>{roleLabel}</Text>
+            </View>
           </View>
+          <Pressable
+            onPress={onSettings}
+            accessibilityRole="button"
+            accessibilityLabel={t("traineeDiscover.profileA11y")}
+          >
+            <HomeUserAvatar uri={profilePicture} name={name} size={72} />
+          </Pressable>
         </View>
-        <Pressable
-          onPress={onSettings}
-          accessibilityRole="button"
-          accessibilityLabel={t("traineeDiscover.profileA11y")}
-        >
-          <HomeUserAvatar uri={profilePicture} name={name} size={72} />
-        </Pressable>
-      </View>
+      ) : null}
 
       {onOpenWallet && !isGuest ? (
         <Pressable
@@ -352,47 +393,50 @@ export function TraineeDiscoverDashboard({
 
       {!isGuest ? <PastBookedTrainersSection onSelectTrainer={handleViewTrainer} /> : null}
 
-      <View style={styles.searchBar}>
-        <Ionicons name="search-outline" size={20} color={themeColors.textMuted} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder={t("traineeDiscover.searchPlaceholder")}
-          placeholderTextColor={themeColors.textMuted}
-          value={search}
-          onChangeText={setSearch}
-          returnKeyType="search"
-          autoCorrect={false}
-        />
-        {!!search && (
-          <Pressable onPress={() => setSearch("")} hitSlop={8}>
-            <Ionicons name="close-circle" size={20} color={themeColors.textMuted} />
-          </Pressable>
-        )}
-        <Pressable
-          style={[styles.filterBtn, activeFilterCount > 0 && styles.filterBtnActive]}
-          onPress={() => setFiltersOpen(true)}
-          accessibilityLabel={t("traineeDiscover.openFiltersA11y")}
-        >
-          <Ionicons
-            name="options-outline"
-            size={20}
-            color={activeFilterCount > 0 ? themeColors.brandTextOn : themeColors.brandNavy}
-          />
-          {activeFilterCount > 0 ? (
-            <View style={styles.filterBadge}>
-              <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
-            </View>
-          ) : null}
-        </Pressable>
-      </View>
-
-      {search.trim().length > 0 && search.trim().length < 2 && (
-        <Text style={styles.searchHint}>{t("bookExpert.searchMinHint")}</Text>
-      )}
+      {!marketplaceLayout ? (
+        <>
+          <View style={styles.searchBar}>
+            <Ionicons name="search-outline" size={20} color={themeColors.textMuted} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder={t("traineeDiscover.searchPlaceholder")}
+              placeholderTextColor={themeColors.textMuted}
+              value={search}
+              onChangeText={setSearch}
+              returnKeyType="search"
+              autoCorrect={false}
+            />
+            {!!search && (
+              <Pressable onPress={() => setSearch("")} hitSlop={8}>
+                <Ionicons name="close-circle" size={20} color={themeColors.textMuted} />
+              </Pressable>
+            )}
+            <Pressable
+              style={[styles.filterBtn, activeFilterCount > 0 && styles.filterBtnActive]}
+              onPress={() => setFiltersOpen(true)}
+              accessibilityLabel={t("traineeDiscover.openFiltersA11y")}
+            >
+              <Ionicons
+                name="options-outline"
+                size={20}
+                color={activeFilterCount > 0 ? themeColors.brandTextOn : themeColors.brandNavy}
+              />
+              {activeFilterCount > 0 ? (
+                <View style={styles.filterBadge}>
+                  <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+                </View>
+              ) : null}
+            </Pressable>
+          </View>
+          {search.trim().length > 0 && search.trim().length < 2 && (
+            <Text style={styles.searchHint}>{t("bookExpert.searchMinHint")}</Text>
+          )}
+        </>
+      ) : null}
 
       {!isGuest ? <FavoriteCoachesSection onSelectTrainer={handleViewTrainer} /> : null}
 
-      {!searchActive && (
+      {!searchActive && !marketplaceLayout && (
         <>
           <Text style={styles.sectionLabel}>
             {interests.length > 0
@@ -552,6 +596,63 @@ export function TraineeDiscoverDashboard({
     </>
   );
 
+  const scrollPaddingBottom =
+    floatingTabBarBottomInset(insets.bottom) + space.xl + 72;
+
+  const marketplaceScrollContent = (
+    <>
+      {leadingContent}
+      <HomeHeroCarousel guest={isGuest} onDeepLink={onDeepLink} />
+      <HomeOffersCarousel guest={isGuest} onDeepLink={onDeepLink} />
+      <View style={styles.root}>{discoverBody}</View>
+      {footer}
+    </>
+  );
+
+  if (marketplaceLayout) {
+    return (
+      <View style={{ flex: 1 }}>
+        <DiscoverHomeChrome
+          compactTop={scrollable}
+          headline={marketplaceHeadline}
+          subline={marketplaceSubline}
+          profilePicture={profilePicture}
+          profileName={name}
+          onPressProfile={onSettings}
+          searchValue={search}
+          onSearchChange={setSearch}
+          onOpenFilters={() => setFiltersOpen(true)}
+          activeFilterCount={activeFilterCount}
+          categoryChips={!searchActive ? categoryStripItems : undefined}
+          selectedCategoryId={selectedCategory ?? "__all__"}
+          onSelectCategory={(id) => setSelectedCategory(id)}
+          voiceState={voice.state}
+          onVoicePress={toggleVoice}
+        />
+        {search.trim().length > 0 && search.trim().length < 2 ? (
+          <Text style={[styles.searchHint, { paddingHorizontal: space.md }]}>
+            {t("bookExpert.searchMinHint")}
+          </Text>
+        ) : null}
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={[
+            contentContainerStyle,
+            { paddingBottom: scrollPaddingBottom },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          onScroll={homeScroll.onScroll}
+          scrollEventThrottle={homeScroll.scrollEventThrottle}
+          refreshControl={refreshControl}
+        >
+          {marketplaceScrollContent}
+        </ScrollView>
+        <StickyBottomPromoBar guest={isGuest} onDeepLink={onDeepLink} />
+      </View>
+    );
+  }
+
   if (scrollable) {
     return (
       <ScrollView
@@ -559,6 +660,8 @@ export function TraineeDiscoverDashboard({
         contentContainerStyle={contentContainerStyle}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        onScroll={homeScroll.onScroll}
+        scrollEventThrottle={homeScroll.scrollEventThrottle}
       >
         {leadingContent}
         <View style={styles.root}>{discoverBody}</View>

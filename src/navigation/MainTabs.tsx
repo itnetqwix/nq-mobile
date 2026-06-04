@@ -8,6 +8,7 @@ import { ScheduleScreen } from "../features/schedule/screens/ScheduleScreen";
 import { useThemeColors } from "../theme";
 import { AppScreenHeader } from "./AppScreenHeader";
 import { FloatingTabBar } from "./FloatingTabBar";
+import { TabBarScrollProvider } from "./TabBarScrollContext";
 import { HomeNavigator } from "./HomeNavigator";
 import { TabSwipeShell } from "./TabSwipeShell";
 import i18n from "../i18n";
@@ -32,6 +33,7 @@ export function MainTabs() {
   const isGuest = useGuestMode();
 
   return (
+    <TabBarScrollProvider>
     <Tab.Navigator
       tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{
@@ -115,5 +117,6 @@ export function MainTabs() {
         )}
       </Tab.Screen>
     </Tab.Navigator>
+    </TabBarScrollProvider>
   );
 }

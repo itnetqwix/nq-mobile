@@ -23,6 +23,7 @@ import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { queryKeys } from "../../../lib/queryKeys";
 import { floatingTabBarBottomInset } from "../../../navigation/FloatingTabBar";
 import { fetchScheduledMeetings } from "../../home/api/homeApi";
+import { useHomeScrollHandler } from "../../home/hooks/useHomeScrollHandler";
 import { useHapticRefresh } from "../../../lib/refresh/useHapticRefresh";
 import {
   canEnterLesson,
@@ -291,6 +292,7 @@ function isSameDay(dateStr: string | undefined, target: string): boolean {
 
 export function UpcomingSessionsScreen() {
   const { t } = useAppTranslation();
+  const homeScroll = useHomeScrollHandler();
   const { accountType } = useAuth();
   const insets = useSafeAreaInsets();
   const isTrainerOuter = accountType === AccountType.TRAINER;
@@ -446,6 +448,8 @@ export function UpcomingSessionsScreen() {
       ) : (
         <ScrollView
           ref={listScrollRef}
+          onScroll={homeScroll.onScroll}
+          scrollEventThrottle={homeScroll.scrollEventThrottle}
           contentContainerStyle={[
             styles.list,
             { flexGrow: 1, paddingBottom: floatingTabBarBottomInset(insets.bottom) + space.md },

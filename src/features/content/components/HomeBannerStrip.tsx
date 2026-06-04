@@ -70,8 +70,8 @@ export function HomeBannerStrip({ guest, onDeepLink }: Props) {
   }, []);
 
   const { data } = useQuery({
-    queryKey: [...queryKeys.content.banners, guest ? "guest" : "auth"] as const,
-    queryFn: () => fetchHomeBanners({ guest }),
+    queryKey: [...queryKeys.content.banners, guest ? "guest" : "auth", "strip"] as const,
+    queryFn: () => fetchHomeBanners({ guest, placement: "strip" }),
     staleTime: 2 * 60_000,
     refetchOnWindowFocus: true,
   });

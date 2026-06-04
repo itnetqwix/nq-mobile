@@ -26,6 +26,7 @@ import { radii, space, typography, useThemeColors, useThemedStyles } from "../..
 import { useAuth } from "../../auth/context/AuthContext";
 import { useOnlinePresence } from "../../socket/useOnlinePresence";
 import { fetchFriends } from "../../home/api/homeApi";
+import { useHomeScrollHandler } from "../../home/hooks/useHomeScrollHandler";
 import {
   archiveChatConversation,
   createGroupWithInvites,
@@ -118,6 +119,7 @@ type ChatPartner = {
 
 export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
   const { t } = useAppTranslation();
+  const homeScroll = useHomeScrollHandler();
   const c = useThemeColors();
   const styles = useThemedStyles((palette) => StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.surfaceElevated },
@@ -681,6 +683,8 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
         <FlatList<any>
           data={filtered as any[]}
           keyExtractor={(item, index) => flatListKeyExtractor(item, index)}
+          onScroll={homeScroll.onScroll}
+          scrollEventThrottle={homeScroll.scrollEventThrottle}
           renderItem={({ item }) => {
             const partner = getPartner(item);
             const lastMsg = item.lastMessage ?? item.last_message ?? "";

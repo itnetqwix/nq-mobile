@@ -43,6 +43,8 @@ type Props = {
   onOpenSurface: (id: UtilitySurfaceId) => void;
   onOpenReviews?: () => void;
   onSessionPress: (session: Record<string, unknown>) => void;
+  /** When true, top profile card is omitted (marketplace chrome handles header). */
+  marketplaceHeader?: boolean;
 };
 
 export function TrainerDashboardHub({
@@ -64,6 +66,7 @@ export function TrainerDashboardHub({
   onOpenSurface,
   onOpenReviews,
   onSessionPress,
+  marketplaceHeader = false,
 }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
@@ -80,23 +83,27 @@ export function TrainerDashboardHub({
 
   return (
     <View style={theme.stack}>
-      <View style={[theme.card, theme.cardPadding, theme.cardGap]}>
-        <Pressable style={theme.rowStart} onPress={onSettings}>
-          <HomeUserAvatar
-            uri={profilePicture}
-            name={name}
-            size={64}
-            onlineStatus={showAsOnline ? "online" : "offline"}
-          />
-          <View style={theme.flex1}>
-            <Text style={theme.welcome}>{t("trainerDashboard.welcome", { name })}</Text>
-            <Text style={theme.role}>{t("trainerDashboard.roleTrainer")}</Text>
-            <TrainerGreetingRating onPress={() => onOpenReviews?.()} />
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={c.textMuted} />
-        </Pressable>
+      {!marketplaceHeader ? (
+        <View style={[theme.card, theme.cardPadding, theme.cardGap]}>
+          <Pressable style={theme.rowStart} onPress={onSettings}>
+            <HomeUserAvatar
+              uri={profilePicture}
+              name={name}
+              size={64}
+              onlineStatus={showAsOnline ? "online" : "offline"}
+            />
+            <View style={theme.flex1}>
+              <Text style={theme.welcome}>{t("trainerDashboard.welcome", { name })}</Text>
+              <Text style={theme.role}>{t("trainerDashboard.roleTrainer")}</Text>
+              <TrainerGreetingRating onPress={() => onOpenReviews?.()} />
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={c.textMuted} />
+          </Pressable>
+          <TrainerEarningsSnapshot onPress={onOpenWallet} />
+        </View>
+      ) : (
         <TrainerEarningsSnapshot onPress={onOpenWallet} />
-      </View>
+      )}
 
       <PendingRequestsBanner count={pendingSessions.length} onPress={onOpenSessions} />
 
