@@ -6,7 +6,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
   type StyleProp,
   type ViewStyle,
@@ -65,10 +64,11 @@ import { DiscoverHomeChrome } from "../../../home/layout/DiscoverHomeChrome";
 import { useHomeScrollHandler } from "../../../home/hooks/useHomeScrollHandler";
 import { useSearchVoice } from "../../../home/hooks/useSearchVoice";
 import type { HomeCategoryChip } from "../../../home/components/HomeCategoryChipsRow";
-import { floatingTabBarBottomInset } from "../../../../navigation/FloatingTabBar";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { HomeUserAvatar } from "./HomeUserAvatar";
-
+import {
+  useMarketplaceContentWidth,
+  useMarketplaceHorizontalPad,
+  useMarketplaceScrollPadding,
+} from "../../../home/layout/marketplaceLayout";
 type Props = {
   /** Browse without account — trainer directory only; booking requires sign-in. */
   isGuest?: boolean;
@@ -84,10 +84,6 @@ type Props = {
   onToggleFavoriteGuest?: (t: Record<string, unknown>) => void;
   onOpenWallet?: () => void;
   onOpenSession?: (session: Record<string, unknown>) => void;
-  /** Guest home: own vertical scroll (no parent ScrollView). */
-  scrollable?: boolean;
-  /** Blinkit-style header, hero carousel, offers, hideable tab bar. */
-  marketplaceLayout?: boolean;
   leadingContent?: React.ReactNode;
   footer?: React.ReactNode;
   contentContainerStyle?: StyleProp<ViewStyle>;
@@ -108,15 +104,15 @@ export function TraineeDiscoverDashboard({
   onToggleFavoriteGuest,
   onOpenWallet,
   onOpenSession,
-  scrollable = false,
-  marketplaceLayout = true,
   leadingContent,
   footer,
   contentContainerStyle,
   refreshControl,
   onDeepLink,
 }: Props) {
-  const insets = useSafeAreaInsets();
+  const marketplacePad = useMarketplaceHorizontalPad();
+  const marketplaceContentWidth = useMarketplaceContentWidth();
+  const marketplaceScrollBottom = useMarketplaceScrollPadding();
   const homeScroll = useHomeScrollHandler();
   const { t } = useAppTranslation();
   const themeColors = useThemeColors();
@@ -304,8 +300,6 @@ export function TraineeDiscoverDashboard({
         ? t("traineeDiscover.coachesForYou")
         : t("traineeDiscover.allCoaches");
 
-  const showCategoryHint = interests.length === 0 && dashboardCategories.length > 0;
-
   const walletCredits =
     walletBalance?.balances?.available != null
       ? `$${(walletBalance.balances.available).toFixed(0)}`
@@ -336,24 +330,6 @@ export function TraineeDiscoverDashboard({
         onApply={setBrowseFilters}
         onDismiss={() => setFiltersOpen(false)}
       />
-
-      {!marketplaceLayout ? (
-        <View style={styles.headerCard}>
-          <View style={styles.headerTextCol}>
-            <Text style={styles.welcome}>{t("traineeDiscover.welcome", { name })}</Text>
-            <View style={styles.rolePill}>
-              <Text style={styles.rolePillText}>{roleLabel}</Text>
-            </View>
-          </View>
-          <Pressable
-            onPress={onSettings}
-            accessibilityRole="button"
-            accessibilityLabel={t("traineeDiscover.profileA11y")}
-          >
-            <HomeUserAvatar uri={profilePicture} name={name} size={72} />
-          </Pressable>
-        </View>
-      ) : null}
 
       {onOpenWallet && !isGuest ? (
         <Pressable
@@ -393,103 +369,7 @@ export function TraineeDiscoverDashboard({
 
       {!isGuest ? <PastBookedTrainersSection onSelectTrainer={handleViewTrainer} /> : null}
 
-      {!marketplaceLayout ? (
-        <>
-          <View style={styles.searchBar}>
-            <Ionicons name="search-outline" size={20} color={themeColors.textMuted} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder={t("traineeDiscover.searchPlaceholder")}
-              placeholderTextColor={themeColors.textMuted}
-              value={search}
-              onChangeText={setSearch}
-              returnKeyType="search"
-              autoCorrect={false}
-            />
-            {!!search && (
-              <Pressable onPress={() => setSearch("")} hitSlop={8}>
-                <Ionicons name="close-circle" size={20} color={themeColors.textMuted} />
-              </Pressable>
-            )}
-            <Pressable
-              style={[styles.filterBtn, activeFilterCount > 0 && styles.filterBtnActive]}
-              onPress={() => setFiltersOpen(true)}
-              accessibilityLabel={t("traineeDiscover.openFiltersA11y")}
-            >
-              <Ionicons
-                name="options-outline"
-                size={20}
-                color={activeFilterCount > 0 ? themeColors.brandTextOn : themeColors.brandNavy}
-              />
-              {activeFilterCount > 0 ? (
-                <View style={styles.filterBadge}>
-                  <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
-                </View>
-              ) : null}
-            </Pressable>
-          </View>
-          {search.trim().length > 0 && search.trim().length < 2 && (
-            <Text style={styles.searchHint}>{t("bookExpert.searchMinHint")}</Text>
-          )}
-        </>
-      ) : null}
-
       {!isGuest ? <FavoriteCoachesSection onSelectTrainer={handleViewTrainer} /> : null}
-
-      {!searchActive && !marketplaceLayout && (
-        <>
-          <Text style={styles.sectionLabel}>
-            {interests.length > 0
-              ? t("traineeDiscover.yourSports")
-              : t("traineeDiscover.browseSports")}
-          </Text>
-          {showCategoryHint && (
-            <Text style={styles.hint}>{t("traineeDiscover.addInterestsHint")}</Text>
-          )}
-          <ScrollView
-            horizontal
-            nestedScrollEnabled
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoryStrip}
-            decelerationRate="fast"
-          >
-            {categoryStripItems.map((item) => {
-              const active =
-                item.id === "__all__" ? selectedCategory === null : selectedCategory === item.label;
-              const icon =
-                item.id === "__all__"
-                  ? ("grid-outline" as const)
-                  : getCategoryIcon(item.label);
-              return (
-                <Pressable
-                  key={item.id}
-                  style={[styles.categoryTile, active && styles.categoryTileActive]}
-                  onPress={() =>
-                    setSelectedCategory(item.id === "__all__" ? null : item.label)
-                  }
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  accessibilityLabel={item.label}
-                >
-                  <View style={[styles.categoryIconWrap, active && styles.categoryIconWrapActive]}>
-                    <Ionicons
-                      name={icon}
-                      size={22}
-                      color={active ? themeColors.brandTextOn : themeColors.brandNavy}
-                    />
-                  </View>
-                  <Text
-                    style={[styles.categoryLabel, active && styles.categoryLabelActive]}
-                    numberOfLines={2}
-                  >
-                    {item.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </>
-      )}
 
       <View style={styles.listHeaderRow}>
         <View style={{ flex: 1 }}>
@@ -596,113 +476,81 @@ export function TraineeDiscoverDashboard({
     </>
   );
 
-  const scrollPaddingBottom =
-    floatingTabBarBottomInset(insets.bottom) + space.xl + 72;
-
   const marketplaceScrollContent = (
     <>
       {leadingContent}
-      <HomeHeroCarousel guest={isGuest} onDeepLink={onDeepLink} />
+      <HomeHeroCarousel
+        guest={isGuest}
+        onDeepLink={onDeepLink}
+        contentWidth={marketplaceContentWidth}
+      />
       <HomeOffersCarousel guest={isGuest} onDeepLink={onDeepLink} />
       <View style={styles.root}>{discoverBody}</View>
       {footer}
     </>
   );
 
-  if (marketplaceLayout) {
-    return (
-      <View style={{ flex: 1 }}>
-        <DiscoverHomeChrome
-          compactTop={scrollable}
-          headline={marketplaceHeadline}
-          subline={marketplaceSubline}
-          profilePicture={profilePicture}
-          profileName={name}
-          onPressProfile={onSettings}
-          searchValue={search}
-          onSearchChange={setSearch}
-          onOpenFilters={() => setFiltersOpen(true)}
-          activeFilterCount={activeFilterCount}
-          categoryChips={!searchActive ? categoryStripItems : undefined}
-          selectedCategoryId={selectedCategory ?? "__all__"}
-          onSelectCategory={(id) => setSelectedCategory(id)}
-          voiceState={voice.state}
-          onVoicePress={toggleVoice}
-        />
-        {search.trim().length > 0 && search.trim().length < 2 ? (
-          <Text style={[styles.searchHint, { paddingHorizontal: space.md }]}>
-            {t("bookExpert.searchMinHint")}
-          </Text>
-        ) : null}
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={[
-            contentContainerStyle,
-            { paddingBottom: scrollPaddingBottom },
+  return (
+    <View style={{ flex: 1 }}>
+      <DiscoverHomeChrome
+        compactTop
+        headline={marketplaceHeadline}
+        subline={marketplaceSubline}
+        profilePicture={profilePicture}
+        profileName={name}
+        onPressProfile={onSettings}
+        searchValue={search}
+        onSearchChange={setSearch}
+        onOpenFilters={() => setFiltersOpen(true)}
+        activeFilterCount={activeFilterCount}
+        categoryChips={!searchActive ? categoryStripItems : undefined}
+        selectedCategoryId={selectedCategory ?? "__all__"}
+        onSelectCategory={(id) => setSelectedCategory(id)}
+        voiceState={voice.state}
+        onVoicePress={toggleVoice}
+      />
+      {search.trim().length > 0 && search.trim().length < 2 ? (
+        <Text
+          style={[
+            styles.searchHint,
+            {
+              paddingLeft: marketplacePad.paddingLeft,
+              paddingRight: marketplacePad.paddingRight,
+            },
           ]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          onScroll={homeScroll.onScroll}
-          scrollEventThrottle={homeScroll.scrollEventThrottle}
-          refreshControl={refreshControl}
         >
-          {marketplaceScrollContent}
-        </ScrollView>
-        <StickyBottomPromoBar guest={isGuest} onDeepLink={onDeepLink} />
-      </View>
-    );
-  }
-
-  if (scrollable) {
-    return (
+          {t("bookExpert.searchMinHint")}
+        </Text>
+      ) : null}
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={contentContainerStyle}
+        contentContainerStyle={[
+          contentContainerStyle,
+          { paddingBottom: marketplaceScrollBottom },
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         onScroll={homeScroll.onScroll}
         scrollEventThrottle={homeScroll.scrollEventThrottle}
+        refreshControl={refreshControl}
       >
-        {leadingContent}
-        <View style={styles.root}>{discoverBody}</View>
+        {marketplaceScrollContent}
       </ScrollView>
-    );
-  }
-
-  return <View style={styles.root}>{discoverBody}</View>;
+      <StickyBottomPromoBar guest={isGuest} onDeepLink={onDeepLink} />
+    </View>
+  );
 }
 
 function useStyles() {
   const c = useThemeColors();
   return useThemedStyles((palette) =>
     StyleSheet.create({
-      root: { gap: space.sm },
-      headerCard: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        backgroundColor: palette.surfaceElevated,
-        borderRadius: radii.lg,
-        padding: space.md,
-        borderWidth: 1,
-        borderColor: palette.border,
-      },
-      headerTextCol: { flex: 1, minWidth: 0, paddingRight: space.md },
-      welcome: { ...typography.titleMd, color: palette.text, fontWeight: "700" },
-      rolePill: {
-        alignSelf: "flex-start",
-        marginTop: space.sm,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: radii.pill,
-        backgroundColor: palette.brandSubtle,
-      },
-      rolePillText: { ...typography.caption, color: palette.brandNavy, fontWeight: "700" },
+      root: { gap: space.md },
       walletCard: {
         flexDirection: "row",
         alignItems: "center",
         gap: space.sm,
-        marginTop: space.sm,
+        marginTop: 0,
         paddingHorizontal: space.md,
         paddingVertical: space.md,
         borderRadius: radii.lg,
@@ -746,77 +594,11 @@ function useStyles() {
         paddingHorizontal: 4,
       },
       filterBadgeText: { fontSize: 10, fontWeight: "700", color: "#fff" },
-      searchBar: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: space.sm,
-        backgroundColor: palette.surfaceElevated,
-        borderRadius: radii.lg,
-        paddingHorizontal: space.md,
-        paddingVertical: 12,
-        borderWidth: 1,
-        borderColor: palette.border,
-      },
-      searchInput: {
-        flex: 1,
-        fontSize: typography.bodyMd.fontSize,
-        color: palette.text,
-        paddingVertical: 0,
-      },
       searchHint: {
         ...typography.caption,
         color: palette.textMuted,
-        paddingHorizontal: 4,
+        marginBottom: space.xs,
       },
-      sectionLabel: {
-        ...typography.titleSm,
-        color: palette.text,
-        fontWeight: "700",
-        marginTop: space.xs,
-      },
-      hint: {
-        ...typography.caption,
-        color: palette.textMuted,
-        marginBottom: 4,
-      },
-      categoryStrip: {
-        flexDirection: "row",
-        gap: space.sm,
-        paddingVertical: space.sm,
-        paddingRight: space.md,
-      },
-      categoryTile: {
-        width: 88,
-        flexShrink: 0,
-        alignItems: "center",
-        paddingVertical: space.sm,
-        paddingHorizontal: 6,
-        borderRadius: radii.md,
-        backgroundColor: palette.surfaceElevated,
-        borderWidth: 1,
-        borderColor: palette.border,
-      },
-      categoryTileActive: {
-        borderColor: palette.brandNavy,
-        backgroundColor: palette.brandSubtle,
-      },
-      categoryIconWrap: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: palette.surface,
-        alignItems: "center",
-        justifyContent: "center",
-        marginBottom: 6,
-      },
-      categoryIconWrapActive: { backgroundColor: palette.brandNavy },
-      categoryLabel: {
-        ...typography.caption,
-        color: palette.textSecondary,
-        textAlign: "center",
-        fontWeight: "600",
-      },
-      categoryLabelActive: { color: palette.brandNavy },
       listHeaderRow: {
         flexDirection: "row",
         alignItems: "center",
@@ -825,12 +607,12 @@ function useStyles() {
         gap: space.sm,
       },
       listTitle: { ...typography.titleSm, color: palette.text, fontWeight: "700" },
-      listMeta: { ...typography.caption, color: palette.textMuted, marginTop: 2 },
+      listMeta: { ...typography.caption, color: palette.textMuted, marginTop: space.xxs },
       showMoreBtn: {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
-        gap: 6,
+        gap: space.xs,
         paddingVertical: space.md,
         borderRadius: radii.lg,
         borderWidth: 1,
@@ -841,7 +623,7 @@ function useStyles() {
       liveFilter: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 6,
+        gap: space.xs,
         paddingHorizontal: 10,
         paddingVertical: 6,
         borderRadius: radii.pill,

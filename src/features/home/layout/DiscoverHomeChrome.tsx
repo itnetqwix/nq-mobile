@@ -1,8 +1,8 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { space, typography, useThemeColors } from "../../../theme";
+import { useMarketplaceTopPadding } from "./marketplaceLayout";
 import { HomeUserAvatar } from "../../dashboard/components/home/HomeUserAvatar";
 import {
   HomeCategoryChipsRow,
@@ -25,7 +25,7 @@ type Props = {
   categoryChips?: HomeCategoryChip[];
   selectedCategoryId?: string | null;
   onSelectCategory?: (id: string | null) => void;
-  /** Guest uses stack header — less top padding. */
+  /** When true, stack header is shown — avoid double safe-area padding. */
   compactTop?: boolean;
   showSearch?: boolean;
   trailing?: React.ReactNode;
@@ -58,8 +58,8 @@ export function DiscoverHomeChrome({
   onVoicePress,
 }: Props) {
   const c = useThemeColors();
-  const insets = useSafeAreaInsets();
   const { t } = useAppTranslation();
+  const topPadding = useMarketplaceTopPadding(compactTop);
 
   return (
     <View
@@ -67,7 +67,7 @@ export function DiscoverHomeChrome({
         styles.band,
         {
           backgroundColor: c.homeMarketplaceBand,
-          paddingTop: compactTop ? space.sm : Math.max(insets.top, space.sm),
+          paddingTop: topPadding,
         },
       ]}
     >
@@ -124,7 +124,6 @@ export function DiscoverHomeChrome({
 
 const styles = StyleSheet.create({
   band: {
-    marginHorizontal: -space.md,
     marginBottom: space.sm,
     paddingBottom: space.xs,
   },
@@ -142,6 +141,6 @@ const styles = StyleSheet.create({
   },
   subline: {
     ...typography.caption,
-    marginTop: 2,
+    marginTop: space.xxs,
   },
 });

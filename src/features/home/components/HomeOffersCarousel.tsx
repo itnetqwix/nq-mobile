@@ -16,6 +16,7 @@ import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { radii, space, typography, useThemeColors } from "../../../theme";
+import { useMarketplaceHorizontalPad } from "../layout/marketplaceLayout";
 import { fetchHomeTips, type Tip } from "../../content/api/contentApi";
 import { isReactNavigationDeepLink } from "../../content/lib/deepLinks";
 
@@ -42,6 +43,7 @@ function openTip(tip: Tip, onDeepLink?: (url: string) => void) {
 export function HomeOffersCarousel({ guest, onDeepLink }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
+  const marketplacePad = useMarketplaceHorizontalPad();
 
   const { data: tips = [], isLoading, isFetching } = useQuery({
     queryKey: [...queryKeys.content.tips, guest ? "guest" : "auth", "offers"] as const,
@@ -61,7 +63,16 @@ export function HomeOffersCarousel({ guest, onDeepLink }: Props) {
   if (!tips.length) return null;
 
   return (
-    <View style={[styles.root, { backgroundColor: c.homeMarketplaceBand }]}>
+    <View
+      style={[
+        styles.root,
+        {
+          backgroundColor: c.homeMarketplaceBand,
+          marginLeft: -marketplacePad.paddingLeft,
+          marginRight: -marketplacePad.paddingRight,
+        },
+      ]}
+    >
       <Text style={[styles.ribbon, { color: c.brandNavy }]}>
         {t("homeMarketplace.offersRibbon", { defaultValue: "✦ OFFERS FOR YOU ✦" })}
       </Text>
@@ -118,7 +129,6 @@ export function HomeOffersCarousel({ guest, onDeepLink }: Props) {
 
 const styles = StyleSheet.create({
   root: {
-    marginHorizontal: -space.md,
     paddingVertical: space.md,
     marginBottom: space.sm,
   },

@@ -15,6 +15,7 @@ export function useHorizontalGutter(gutter: SpaceKey = "md") {
     return {
       paddingLeft: g + insets.left,
       paddingRight: g + insets.right,
+      gutter: g,
     };
   }, [gutter, insets.left, insets.right]);
 }

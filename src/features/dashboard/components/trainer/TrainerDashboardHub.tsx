@@ -82,7 +82,7 @@ export function TrainerDashboardHub({
   const nextSlot = formatNextOpenSlot(scheduleSlots);
 
   return (
-    <View style={theme.stack}>
+    <View style={[theme.stack, marketplaceHeader && theme.stackMarketplace]}>
       {!marketplaceHeader ? (
         <View style={[theme.card, theme.cardPadding, theme.cardGap]}>
           <Pressable style={theme.rowStart} onPress={onSettings}>

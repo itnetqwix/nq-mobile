@@ -35,8 +35,7 @@ import {
   respondGroupInvite,
 } from "../api/chatActionsApi";
 import { useFocusEffect } from "@react-navigation/native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { floatingTabBarBottomInset } from "../../../navigation/FloatingTabBar";
+import { useFloatingTabBarBottomInset } from "../../../navigation/useFloatingTabBarBottomInset";
 import type { MainTabScreenProps } from "../../../navigation/types";
 import { useChatRoomChrome } from "../hooks/useChatRoomChrome";
 import { ChatRoomScreen } from "./ChatRoomScreen";
@@ -122,11 +121,11 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
   const homeScroll = useHomeScrollHandler();
   const c = useThemeColors();
   const styles = useThemedStyles((palette) => StyleSheet.create({
-  root: { flex: 1, backgroundColor: palette.surfaceElevated },
+  root: { flex: 1, backgroundColor: palette.surface },
   listHeader: {
     paddingHorizontal: space.md,
-    paddingBottom: 8,
-    backgroundColor: palette.surfaceElevated,
+    paddingBottom: space.sm,
+    backgroundColor: palette.surface,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: palette.border,
   },
@@ -139,10 +138,11 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: palette.surfaceMuted,
-    margin: space.md,
-    borderRadius: radii.md,
-    paddingHorizontal: space.sm,
-    paddingVertical: 9,
+    marginHorizontal: space.md,
+    marginBottom: space.sm,
+    borderRadius: radii.lg,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
     gap: space.sm,
   },
   searchInput: {
@@ -158,7 +158,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: space.md,
-    paddingVertical: 12,
+    paddingVertical: space.md,
     gap: space.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: palette.border,
@@ -233,10 +233,11 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: palette.surfaceMuted,
-    margin: space.md,
-    borderRadius: radii.md,
-    paddingHorizontal: space.sm,
-    paddingVertical: 9,
+    marginHorizontal: space.md,
+    marginBottom: space.sm,
+    borderRadius: radii.lg,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
     gap: space.sm,
   },
   modalSearchInput: {
@@ -334,12 +335,8 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
   },
   inviteDeclineText: { color: palette.textMuted, fontSize: 13, fontWeight: "600" },
 }));
-  const insets = useSafeAreaInsets();
-  const fabBottom = useMemo(
-    () => floatingTabBarBottomInset(insets.bottom) + space.sm,
-    [insets.bottom]
-  );
-  const listPadBottom = useMemo(() => fabBottom + 56 + space.md, [fabBottom]);
+  const tabBarPad = useFloatingTabBarBottomInset(space.md);
+  const listPadBottom = useMemo(() => tabBarPad + 56 + space.md, [tabBarPad]);
 
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -808,7 +805,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
       <Pressable
         style={({ pressed }) => [
           styles.fab,
-          { bottom: fabBottom },
+          { bottom: tabBarPad },
           pressed && { transform: [{ scale: 0.92 }] },
         ]}
         onPress={() => setShowNewChat(true)}

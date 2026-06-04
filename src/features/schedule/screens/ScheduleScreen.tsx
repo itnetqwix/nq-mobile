@@ -60,7 +60,10 @@ function TrainerSchedule() {
   const homeScroll = useHomeScrollHandler();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const insets = useSafeAreaInsets();
-  const listPadBottom = useMemo(() => floatingTabBarBottomInset(insets.bottom), [insets.bottom]);
+  const listPadBottom = useMemo(
+    () => floatingTabBarBottomInset(insets.bottom) + space.md,
+    [insets.bottom]
+  );
   const { data: inventory = [], isLoading, isRefetching, refetch } = useQuery({
     queryKey: queryKeys.trainer.slots,
     queryFn: fetchTrainerSlots,
@@ -239,7 +242,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: { ...typography.titleSm, color: colors.brandNavy, fontSize: 18 },
 
-  listContent: { padding: space.md, paddingBottom: space.xl },
+  listContent: { padding: space.md },
   listEmptyGrow: { flexGrow: 1, padding: space.md },
   skeletonSection: { paddingHorizontal: space.md, paddingTop: space.md },
 

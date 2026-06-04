@@ -15,7 +15,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { PendingAuthResumeBridge } from "../../auth/components/PendingAuthResumeBridge";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Skeleton, ImageWithSkeleton } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { queryKeys } from "../../../lib/queryKeys";
@@ -62,8 +61,11 @@ import { TrainerProfileModal } from "../../bookexpert/components/TrainerProfileM
 import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
 import { ScheduledBookingWizardModal } from "../../scheduled-booking/ScheduledBookingWizardModal";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
-import { floatingTabBarBottomInset } from "../../../navigation/FloatingTabBar";
 import { HomeHeroCarousel } from "../../home/components/HomeHeroCarousel";
+import {
+  useMarketplaceContentWidth,
+  useMarketplaceScrollPadding,
+} from "../../home/layout/marketplaceLayout";
 import { HomeOffersCarousel } from "../../home/components/HomeOffersCarousel";
 import { StickyBottomPromoBar } from "../../home/components/StickyBottomPromoBar";
 import { DiscoverHomeChrome } from "../../home/layout/DiscoverHomeChrome";
@@ -328,8 +330,9 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
   const { openSession } = useSessionBooking();
   const queryClient = useQueryClient();
   const showAsOnline = resolveShowAsOnline(user);
-  const insets = useSafeAreaInsets();
   const gutter = useHorizontalGutter("md");
+  const marketplaceScrollBottom = useMarketplaceScrollPadding();
+  const marketplaceContentWidth = useMarketplaceContentWidth();
   const homeScroll = useHomeScrollHandler();
   const isTrainee = accountType === AccountType.TRAINEE;
   const isTrainer = accountType === AccountType.TRAINER;
@@ -583,7 +586,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
         onSchedule={(t) => setScheduleTrainer(t)}
       />
     {isTrainee ? (
-      <View style={[styles.root, { flex: 1, backgroundColor: themeColors.background }]}>
+      <View style={[styles.root, { flex: 1, backgroundColor: themeColors.surface }]}>
         <TraineeDiscoverDashboard
           name={name}
           accountType={accountType ?? AccountType.TRAINEE}
@@ -595,7 +598,6 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
           onScheduleBook={setScheduleTrainer}
           onOpenWallet={() => openShell("wallet")}
           onOpenSession={openSession}
-          marketplaceLayout
           contentContainerStyle={[gutter, styles.content]}
           refreshControl={
             <RefreshControl
@@ -615,7 +617,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
                     style={{
                       flexDirection: "row",
                       flexWrap: "wrap",
-                      gap: 10,
+                      gap: space.sm,
                       justifyContent: "center",
                     }}
                   >
@@ -685,55 +687,46 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
         />
       </View>
     ) : (
-    <View style={[styles.root, { flex: 1, backgroundColor: themeColors.background }]}>
-    <ScrollView
-      style={{ flex: 1, backgroundColor: themeColors.background }}
-      contentContainerStyle={[
-        gutter,
-        styles.content,
-        {
-          paddingBottom:
-            floatingTabBarBottomInset(insets.bottom) + space.xl + 64,
-        },
-      ]}
-      nestedScrollEnabled
-      keyboardShouldPersistTaps="handled"
-      onScroll={homeScroll.onScroll}
-      scrollEventThrottle={homeScroll.scrollEventThrottle}
-      refreshControl={
-        <RefreshControl
-          refreshing={pullRefreshing}
-          onRefresh={onRefresh}
-          tintColor={themeColors.brandNavy}
+      <View style={[styles.root, { flex: 1, backgroundColor: themeColors.surface }]}>
+        <DiscoverHomeChrome
+          compactTop
+          headline={t("homeMarketplace.greeting", { name, defaultValue: `Hi, ${name}` })}
+          subline={t("trainerDashboard.roleTrainer")}
+          profilePicture={(user as any)?.profile_picture}
+          profileName={name}
+          onPressProfile={() => openShell("settings")}
+          showSearch={false}
+          bottomSlot={
+            <TrainerQuickChipsRow
+              onSchedule={() => openFeature("schedule")}
+              onSessions={() => openFeature("upcoming-sessions")}
+              onWallet={() => openShell("wallet")}
+              onClips={() => openShell("clips")}
+              onGoLive={() => void handleAvailabilityToggle(true)}
+            />
+          }
         />
-      }
-    >
-      {isTrainer && (
-        <>
-          <DiscoverHomeChrome
-            headline={t("homeMarketplace.greeting", { name, defaultValue: `Hi, ${name}` })}
-            subline={t("trainerDashboard.roleTrainer")}
-            profilePicture={(user as any)?.profile_picture}
-            profileName={name}
-            onPressProfile={() => openShell("settings")}
-            showSearch={false}
-            bottomSlot={
-              <TrainerQuickChipsRow
-                onSchedule={() => openFeature("schedule")}
-                onSessions={() => openFeature("upcoming-sessions")}
-                onWallet={() => openShell("wallet")}
-                onClips={() => openShell("clips")}
-                onGoLive={() => void handleAvailabilityToggle(true)}
-              />
-            }
-          />
-          <HomeHeroCarousel />
+        <ScrollView
+          style={{ flex: 1, backgroundColor: themeColors.background }}
+          contentContainerStyle={[
+            gutter,
+            styles.content,
+            { paddingBottom: marketplaceScrollBottom },
+          ]}
+          nestedScrollEnabled
+          keyboardShouldPersistTaps="handled"
+          onScroll={homeScroll.onScroll}
+          scrollEventThrottle={homeScroll.scrollEventThrottle}
+          refreshControl={
+            <RefreshControl
+              refreshing={pullRefreshing}
+              onRefresh={onRefresh}
+              tintColor={themeColors.brandNavy}
+            />
+          }
+        >
+          <HomeHeroCarousel contentWidth={marketplaceContentWidth} />
           <HomeOffersCarousel />
-        </>
-      )}
-
-      <View>
-        {isTrainer && (
           <TrainerDashboardHub
             marketplaceHeader
             name={name}
@@ -755,11 +748,9 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
             onOpenReviews={() => openShell("trainerReviews")}
             onSessionPress={openSession}
           />
-        )}
+        </ScrollView>
+        <StickyBottomPromoBar />
       </View>
-    </ScrollView>
-    <StickyBottomPromoBar />
-    </View>
     )}
 
       <AIFloatingButton onPress={() => setAiOpen(true)} />

@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     gap: space.xs,
     borderRadius: radii.lg,
     paddingHorizontal: space.md,
-    paddingVertical: 10,
+    paddingVertical: space.sm,
     borderWidth: StyleSheet.hairlineWidth,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },

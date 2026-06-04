@@ -10,6 +10,9 @@ export function createTrainerDashboardStyles(palette: AppColors) {
       paddingTop: space.md,
       paddingBottom: space.sm,
     },
+    stackMarketplace: {
+      paddingTop: space.sm,
+    },
     card: {
       backgroundColor: palette.surfaceElevated,
       borderRadius: radii.lg,

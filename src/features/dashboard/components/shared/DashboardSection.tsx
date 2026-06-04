@@ -33,7 +33,12 @@ export function DashboardSection({
         gap: space.sm,
       },
       title: { ...typography.titleSm, color: palette.text, fontWeight: "700", flex: 1 },
-      subtitle: { ...typography.caption, color: palette.textMuted, marginTop: 4, marginBottom: space.sm },
+      subtitle: {
+        ...typography.caption,
+        color: palette.textMuted,
+        marginTop: space.xs,
+        marginBottom: space.sm,
+      },
     })
   );
 

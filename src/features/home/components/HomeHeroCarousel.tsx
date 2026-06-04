@@ -28,14 +28,20 @@ import { isReactNavigationDeepLink } from "../../content/lib/deepLinks";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const CARD_GAP = space.sm;
-const CARD_W = Math.round(SCREEN_W - space.md * 2 - 28);
-const CARD_H = Math.round(CARD_W * 0.52);
 const DEFAULT_ADVANCE_SEC = 5;
+const CARD_ASPECT = 0.45;
 
 type Props = {
   guest?: boolean;
   onDeepLink?: (url: string) => void;
+  /** Width inside horizontal gutter; avoids oversized cards on notched devices. */
+  contentWidth?: number;
 };
+
+function heroCardMetrics(contentWidth?: number) {
+  const cardW = Math.round(contentWidth ?? SCREEN_W - space.md * 2);
+  return { cardW, cardH: Math.round(cardW * CARD_ASPECT) };
+}
 
 function bannerImageUri(banner: HomeBanner): string | null {
   const raw = banner.image_url?.trim();
@@ -95,10 +101,14 @@ function HeroCtaRow({
 
 function HeroCard({
   banner,
+  cardW,
+  cardH,
   onDeepLink,
   onDismiss,
 }: {
   banner: HomeBanner;
+  cardW: number;
+  cardH: number;
   onDeepLink?: (url: string) => void;
   onDismiss?: () => void;
 }) {
@@ -107,7 +117,7 @@ function HeroCard({
   const tappable = !!(banner.cta_url || banner.ctas?.length);
 
   const body = (
-    <View style={[styles.card, { borderColor: c.border }]}>
+    <View style={[styles.card, { width: cardW, height: cardH, borderColor: c.border }]}>
       {imageUri ? (
         <Image source={{ uri: imageUri }} style={styles.cardImage} contentFit="cover" />
       ) : (
@@ -147,9 +157,10 @@ function HeroCard({
 /**
  * Blinkit-style hero carousel — CMS `placement=hero`, auto-advance from admin.
  */
-export function HomeHeroCarousel({ guest, onDeepLink }: Props) {
+export function HomeHeroCarousel({ guest, onDeepLink, contentWidth }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
+  const { cardW, cardH } = useMemo(() => heroCardMetrics(contentWidth), [contentWidth]);
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
   const [page, setPage] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -192,12 +203,12 @@ export function HomeHeroCarousel({ guest, onDeepLink }: Props) {
   const scrollToPage = useCallback(
     (idx: number, animated = true) => {
       scrollRef.current?.scrollTo({
-        x: idx * (CARD_W + CARD_GAP),
+        x: idx * (cardW + CARD_GAP),
         animated,
       });
       setPage(idx);
     },
-    []
+    [cardW]
   );
 
   useEffect(() => {
@@ -212,11 +223,11 @@ export function HomeHeroCarousel({ guest, onDeepLink }: Props) {
   const onScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const x = e.nativeEvent.contentOffset.x;
-      const idx = Math.round(x / (CARD_W + CARD_GAP));
+      const idx = Math.round(x / (cardW + CARD_GAP));
       setPage(Math.max(0, Math.min(idx, Math.max(0, items.length - 1))));
       userDragging.current = false;
     },
-    [items.length]
+    [items.length, cardW]
   );
 
   const handleDismiss = useCallback((id: string) => {
@@ -231,7 +242,7 @@ export function HomeHeroCarousel({ guest, onDeepLink }: Props) {
 
   return (
     <View style={styles.root}>
-      <View style={styles.headerRow}>
+      <View style={[styles.headerRow, contentWidth != null && styles.headerRowInset]}>
         <Text style={[typography.titleSm, { color: c.text, fontWeight: "800" }]}>
           {t("homeMarketplace.featured", { defaultValue: "Featured" })}
         </Text>
@@ -246,9 +257,9 @@ export function HomeHeroCarousel({ guest, onDeepLink }: Props) {
         horizontal
         nestedScrollEnabled
         showsHorizontalScrollIndicator={false}
-        snapToInterval={CARD_W + CARD_GAP}
+        snapToInterval={cardW + CARD_GAP}
         decelerationRate="fast"
-        contentContainerStyle={styles.strip}
+        contentContainerStyle={[styles.strip, contentWidth != null && styles.stripInset]}
         onMomentumScrollEnd={onScrollEnd}
         onScrollBeginDrag={() => {
           userDragging.current = true;
@@ -265,6 +276,8 @@ export function HomeHeroCarousel({ guest, onDeepLink }: Props) {
           <HeroCard
             key={String(banner._id)}
             banner={banner}
+            cardW={cardW}
+            cardH={cardH}
             onDeepLink={onDeepLink}
             onDismiss={
               banner.dismissible
@@ -304,13 +317,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.md,
     marginBottom: space.xs,
   },
+  headerRowInset: {
+    paddingHorizontal: 0,
+  },
   strip: {
     paddingHorizontal: space.md,
     gap: CARD_GAP,
   },
+  stripInset: {
+    paddingHorizontal: 0,
+  },
   card: {
-    width: CARD_W,
-    height: CARD_H,
     borderRadius: radii.lg,
     overflow: "hidden",
     borderWidth: StyleSheet.hairlineWidth,

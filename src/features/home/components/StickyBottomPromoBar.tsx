@@ -14,6 +14,7 @@ import {
   FLOATING_TAB_BAR_HEIGHT,
   floatingTabBarBottomInset,
 } from "../../../navigation/FloatingTabBar";
+import { useMarketplaceStickyHostInsets } from "../layout/marketplaceLayout";
 
 const STICKY_DISMISS_PREFIX = "sticky:";
 
@@ -82,10 +83,20 @@ export function StickyBottomPromoBar({ guest, onDeepLink }: Props) {
 
   if (isLoading || !banner) return null;
 
+  const stickyInsets = useMarketplaceStickyHostInsets();
   const bottom = floatingTabBarBottomInset(insets.bottom) - FLOATING_TAB_BAR_HEIGHT - FLOATING_TAB_BAR_BOTTOM_GAP;
 
   return (
-    <View style={[styles.host, { bottom: Math.max(bottom, insets.bottom + 8) }]}>
+    <View
+      style={[
+        styles.host,
+        {
+          bottom: Math.max(bottom, insets.bottom + 8),
+          left: stickyInsets.left,
+          right: stickyInsets.right,
+        },
+      ]}
+    >
       <Pressable
         onPress={banner.cta_url ? handleOpen : undefined}
         style={({ pressed }) => [
@@ -119,8 +130,6 @@ export function StickyBottomPromoBar({ guest, onDeepLink }: Props) {
 const styles = StyleSheet.create({
   host: {
     position: "absolute",
-    left: space.md,
-    right: space.md,
     zIndex: 20,
   },
   bar: {

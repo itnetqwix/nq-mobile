@@ -203,8 +203,13 @@ function formatReason(
 function useStyles() {
   return useThemedStyles((palette) =>
     StyleSheet.create({
-      wrap: { marginBottom: space.sm },
-      headerRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 },
+      wrap: { marginBottom: space.md },
+      headerRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: space.xs,
+        marginBottom: space.xs,
+      },
       title: { ...typography.titleSm, color: palette.text, fontWeight: "700" },
       sub: { ...typography.caption, color: palette.textMuted, flex: 1, marginLeft: 4 },
       strip: { gap: space.sm, paddingVertical: 4 },

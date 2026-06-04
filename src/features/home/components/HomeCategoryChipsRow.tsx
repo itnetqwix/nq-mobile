@@ -89,12 +89,12 @@ function useStyles() {
       chipWrap: {
         alignItems: "center",
         width: 72,
-        minHeight: 88,
+        minHeight: 64,
       },
       iconWrap: {
-        width: 52,
-        height: 52,
-        borderRadius: 26,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         backgroundColor: palette.surfaceElevated,
         borderWidth: 1,
         borderColor: palette.border,
@@ -109,7 +109,7 @@ function useStyles() {
         ...typography.caption,
         color: palette.textMuted,
         textAlign: "center",
-        marginTop: 6,
+        marginTop: space.xs,
         fontWeight: "600",
       },
       labelActive: {

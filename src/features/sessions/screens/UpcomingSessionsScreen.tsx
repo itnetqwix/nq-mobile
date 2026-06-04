@@ -536,11 +536,11 @@ const styles = StyleSheet.create({
   tabs: {
     flexDirection: "row",
     paddingHorizontal: space.sm,
-    gap: 8,
+    gap: space.sm,
     alignItems: "center",
   },
   tab: {
-    paddingVertical: 8,
+    paddingVertical: space.sm,
     paddingHorizontal: space.md,
     height: 44,
     justifyContent: "center",

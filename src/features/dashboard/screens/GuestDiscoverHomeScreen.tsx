@@ -5,7 +5,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { NetqwixLogo } from "../../../components/brand/NetqwixLogo";
 import { AccountType } from "../../../constants/accountType";
 import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
-import { useFloatingTabBarBottomInset } from "../../../navigation/useFloatingTabBarBottomInset";
+import { useMarketplaceScrollPadding } from "../../home/layout/marketplaceLayout";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import type { HomeStackParamList } from "../../../navigation/types";
 import { space, typography, useThemeColors } from "../../../theme";
@@ -18,7 +18,7 @@ type Nav = NativeStackNavigationProp<HomeStackParamList, "DashboardHome">;
 export function GuestDiscoverHomeScreen() {
   const { t } = useAppTranslation();
   const c = useThemeColors();
-  const tabBarPad = useFloatingTabBarBottomInset(space.xl);
+  const scrollBottomPad = useMarketplaceScrollPadding();
   const gutter = useHorizontalGutter("md");
   const navigation = useNavigation<Nav>();
   const { requireAuth, openAuth } = useRequireAuth();
@@ -71,7 +71,6 @@ export function GuestDiscoverHomeScreen() {
       />
       <TraineeDiscoverDashboard
           isGuest
-          scrollable
           leadingContent={
             <View style={[styles.banner, { backgroundColor: c.brandAccentSubtle, borderColor: c.brandAccent }]}>
               <Text style={[typography.titleSm, { color: c.brandNavy }]}>
@@ -98,8 +97,8 @@ export function GuestDiscoverHomeScreen() {
           contentContainerStyle={[
             gutter,
             {
-              paddingTop: space.sm,
-              paddingBottom: tabBarPad + 64,
+              paddingTop: space.xs,
+              paddingBottom: scrollBottomPad,
             },
           ]}
           name={t("guest.explorerName")}
@@ -139,8 +138,8 @@ const styles = StyleSheet.create({
   headerBtn: { paddingHorizontal: space.sm, paddingVertical: space.xs },
   headerBtnText: { fontWeight: "700", fontSize: 16 },
   banner: {
-    marginBottom: space.md,
-    padding: space.md,
+    marginBottom: space.sm,
+    padding: space.sm,
     borderRadius: 12,
     borderWidth: 1,
   },
@@ -153,8 +152,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flexWrap: "wrap",
-    gap: space.md,
-    marginTop: space.md,
+    gap: space.sm,
+    marginTop: space.sm,
   },
   bannerPrimary: {
     paddingHorizontal: space.md,
