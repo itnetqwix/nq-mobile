@@ -21,6 +21,13 @@ import { queryKeys } from "../../../lib/queryKeys";
 import { useAuth } from "../../auth/context/AuthContext";
 import { resolveFriendUser } from "../lib/resolveFriendUser";
 
+type ShareFriendRow = {
+  _id: string;
+  fullname: string;
+  email: string;
+  profile_picture: string;
+};
+
 /**
  * Flatten the locker's nested category → subcategory → clips response
  * into a flat list, tagging each clip with the originating category id
@@ -87,18 +94,18 @@ export function ShareClipsPanel() {
    */
   const friendRows = useMemo(() => {
     return (friendsQ.data ?? [])
-      .map((f: any) => {
+      .reduce<ShareFriendRow[]>((rows, f: any) => {
         const friend = resolveFriendUser(f, currentUserId);
-        if (!friend) return null;
-        return {
+        if (!friend) return rows;
+        rows.push({
           _id: friend.id,
           fullname: friend.name,
           email: friend.email ?? "",
           profile_picture: friend.avatar ?? "",
-        };
-      })
-      .filter(Boolean)
-      .filter((u: { _id: string }) => !!u._id);
+        });
+        return rows;
+      }, [])
+      .filter((u) => !!u._id);
   }, [currentUserId, friendsQ.data]);
 
   const selectedFriendIds = useMemo(
