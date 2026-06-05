@@ -84,7 +84,7 @@ export function PinnedTraineeNoteCard({ traineeId, traineeName }: Props) {
           accessibilityState={{ expanded: !collapsed }}
         >
           <View style={[styles.iconBubble, { backgroundColor: c.brandAccent }]}>
-            <Ionicons name="bookmark" size={12} color="#fff" />
+            <Ionicons name="bookmark" size={12} color={c.brandTextOn} />
           </View>
           <Text style={[styles.title, { color: c.brandAccent }]}>
             {t("traineeNote.pinnedLabel")}

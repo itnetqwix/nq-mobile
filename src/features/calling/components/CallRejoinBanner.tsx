@@ -47,7 +47,7 @@ export function CallRejoinBanner() {
       accessibilityLabel={t("callRejoin.rejoinBtn")}
     >
       <View style={[styles.iconWrap, { backgroundColor: c.warning }]}>
-        <Ionicons name="reload" size={14} color="#fff" />
+        <Ionicons name="reload" size={14} color={c.brandTextOn} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={[styles.title, { color: c.text }]}>
@@ -60,7 +60,7 @@ export function CallRejoinBanner() {
         </Text>
       </View>
       <View style={[styles.rejoinPill, { backgroundColor: c.warning }]}>
-        <Text style={[styles.rejoinText, { color: "#fff" }]}>
+        <Text style={[styles.rejoinText, { color: c.brandTextOn }]}>
           {t("callRejoin.rejoinBtn")}
         </Text>
       </View>

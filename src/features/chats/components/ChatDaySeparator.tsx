@@ -17,7 +17,7 @@ export function ChatDaySeparator({ label }: Props) {
           styles.pill,
           {
             backgroundColor: c.chatDayPill,
-            shadowColor: "#000",
+            shadowColor: c.neutral900,
           },
         ]}
       >

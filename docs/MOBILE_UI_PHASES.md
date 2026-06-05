@@ -12,7 +12,7 @@ Mobile-only plan for responsive layout, loading states, and performance. Each ph
 |-------------|------|--------|
 | Breakpoints + live window metrics | `src/lib/layout/responsive.ts` | ✅ |
 | Tab screen wrapper | `src/lib/layout/TabScreenShell.tsx` | ✅ |
-| Unified loading API | `src/components/ui/ScreenLoadingState.tsx` | ✅ wired on legal, report issue, share clips |
+| Unified loading API | `src/components/ui/ScreenLoadingState.tsx` | ✅ wired on legal, report issue, share clips, verify contact |
 | Content skeletons | `src/components/ui/ContentSkeletons.tsx` | ✅ |
 | Theme breakpoints export | `src/theme/index.ts` | ✅ |
 
@@ -35,9 +35,9 @@ Mobile-only plan for responsive layout, loading states, and performance. Each ph
 
 | Screen | Skeleton / UX | Status |
 |--------|----------------|--------|
-| `TrainerPromoCodesScreen` | `PromoRowSkeleton` | ✅ |
+| `TrainerPromoCodesScreen` | `PromoRowSkeleton` + morph + `FlatList` | ✅ |
 | `SavedPaymentMethodsScreen` | `PaymentMethodRowSkeleton` + morph | ✅ |
-| `BlockedUsersScreen` | `ChatRowSkeleton` | ✅ |
+| `BlockedUsersScreen` | `ChatRowSkeleton` + `getItemLayout` | ✅ |
 | `LockerListShell` / clips | `ClipCardSkeleton` + morph | ✅ |
 | `ChatRoomScreen` | `ChatMessageListSkeleton` | ✅ |
 | `ChatsScreen` | Morph refresh | ✅ |
@@ -77,8 +77,9 @@ Mobile-only plan for responsive layout, loading states, and performance. Each ph
 | **Dashboard** | `TransactionsScreen`, `StudentsScreen`, `NotificationsScreen`, `LockerListShell`, `TrainerScheduleScreen`, `ReportIssueScreen`, `InstantBookingScreen` | ✅ |
 | **Book** | `BookExpertScreen` | ✅ |
 | **Schedule** | `ScheduleScreen`, `UpcomingSessionsScreen` | ✅ |
+| **Promo** | `TrainerPromoCodesScreen` | ✅ |
 | **Auth** | `ActiveSessionsScreen` | ✅ |
-| **Instant lesson** | `InstantLessonTraineeModal`, `WizardStepClips` (clip picker) | ✅ |
+| **Instant lesson** | `InstantLessonTraineeModal`, `WizardStepClips` | ✅ |
 | **Shell** | `ScreenContainer` when `onRefresh` set | ✅ |
 
 ### FlatList `getItemLayout` coverage
@@ -96,10 +97,11 @@ Mobile-only plan for responsive layout, loading states, and performance. Each ph
 | Book Expert | `trainerBrowseRowGetItemLayout` | ✅ |
 | Instant booking | `instantBookingRowGetItemLayout` | ✅ |
 | Blocked users | `blockedUserRowGetItemLayout` | ✅ |
+| Trainer promo codes | `promoRowGetItemLayout` | ✅ |
 
 ---
 
-## Phase 6 — Splash, loaders & dark theme ✅ / ⚠️
+## Phase 6 — Splash, loaders & dark theme ✅
 
 | Area | Status |
 |------|--------|
@@ -108,51 +110,74 @@ Mobile-only plan for responsive layout, loading states, and performance. Each ph
 | Dark palette + `skeletonShimmer` + surface ladder | ✅ |
 | Theme primitives (`Sheet`, `Banner`, `Avatar`, `ImageWithSkeleton`) | ✅ |
 | `themedShadow()` | ✅ |
-| Chat overlay hook `useChatOverlayStyles` | ✅ |
-| Chat sheets themed (`ForwardPicker`, `Disappearing`, `Scheduled`, `GlobalSearch`, `MessageActions`) | ✅ |
-| `ChatRoomScreen` + `ChatsScreen` presence / icon tokens | ✅ |
-| `VerifyContactScreen` → `ScreenLoadingState` + themed brand strip | ✅ |
-| Spinner → skeleton (`TrainerScheduleScreen`, `ActiveSessionsScreen`) | ✅ |
-| **Remaining static `colors` imports** (calling overlays, push tokens, small banners) | ⚠️ incremental |
-| **Chat micro-components** (`ChatMessageStatus`, `ChatMediaViewer`, policy banners) | ⚠️ low-traffic |
-| **Calling / meeting island** (`meetingTheme.ts`) | ⚠️ intentional separate palette |
+| Chat overlay hook + all major chat sheets | ✅ |
+| Chat micro-components (`ChatMessageStatus`, `ChatMediaViewer`, `ChatPolicyBanner`, `ChatDaySeparator`, `PinnedTraineeNote`) | ✅ |
+| Dashboard banners (`GracePeriodBanner`, `PostSessionRatingBanner`, `CallRejoinBanner`) | ✅ |
+| Push tokens — `colorsLight.brandNavy` for OS channels | ✅ |
+| **Calling / meeting island** (`meetingTheme.ts` + `NetworkLessonBanner`) | ✅ intentional high-contrast palette |
+
+---
+
+## Auth tokens (mobile + backend) ✅
+
+See backend `docs/AUTH_TOKENS.md`.
+
+| Item | Status |
+|------|--------|
+| Refresh rotation + reuse detection | ✅ backend |
+| Access JWT `sid` + `typ` claims | ✅ backend |
+| `expires_in` in token bundle | ✅ backend |
+| Mobile SecureStore + 401 refresh interceptor | ✅ |
+| Hydrate with refresh retry | ✅ |
+| Proactive refresh (`useProactiveTokenRefresh`) | ✅ |
+| Active sessions API wired | ✅ |
 
 ---
 
 ## Conventions
 
-1. **Responsive:** Use `useWindowMetrics` / `useContentWidth` — not module-scope `Dimensions.get` (`FriendsScreen` migrated).
+1. **Responsive:** Use `useWindowMetrics` / `useContentWidth` — not module-scope `Dimensions.get`.
 2. **Loading:** Content skeleton → `ScreenLoadingState` → inline `ActivityIndicator` (buttons/pagination only).
 3. **Tab screens:** `TabScreenShell` on main tabs; settings/auth use `ScreenContainer`.
 4. **Pull refresh:** `useMorphRefreshBundle` or `MorphRefreshScrollSurface`; chain tab scroll with `useCombinedScroll`.
 5. **Lists:** `FLATLIST_PERF_DEFAULTS` + `getItemLayout` when row height is stable.
 6. **Dark mode:** `useThemeColors()` / `useThemedStyles()` — never static `colors` in feature UI.
+7. **In-call UI:** Use `meetingTheme` tokens (separate from app light/dark).
 
 ---
 
 ## Device QA checklist
 
-Run on iOS + Android (light + dark) before release.
+Run on iOS + Android (light + dark) before release. Code paths are wired; boxes require physical verification.
 
 ### Loading & splash
 - [ ] Cold start — tagline, dot loader, smooth fade (no double flash)
 - [ ] Legal doc — branded fullscreen loader, not spinner
 - [ ] Report issue / share clips — skeleton first paint
+- [ ] Verify contact — fullscreen `ScreenLoadingState`
 
 ### Morph refresh
 - [ ] Home trainee + trainer pull — morph + tab bar hide
 - [ ] Wallet, notifications, friends, transactions pull
 - [ ] Active sessions, trainer schedule editor, instant booking pull
 - [ ] Share clips tab pull inside friends
+- [ ] Trainer promo codes pull
 
 ### Performance
 - [ ] Chats 50+ rows — smooth scroll
-- [ ] Book Expert / instant booking lists — no jank
+- [ ] Book Expert / instant booking / promo lists — no jank
+- [ ] Blocked users 10+ rows — smooth scroll
 
 ### Dark theme
 - [ ] Settings → Dark — sheets, banners, avatars, chat room
 - [ ] Skeleton shimmer visible on dark lists
-- [ ] Chat action sheet + attachment picker readable
+- [ ] Chat forward / schedule / disappearing sheets readable
+- [ ] Chat media viewer + delivery ticks
+
+### Auth
+- [ ] Login → background app → resume (refresh keeps session)
+- [ ] Revoke other sessions from Active Sessions
+- [ ] Logout clears local tokens
 
 ### Accessibility
 - [ ] iPhone SE + large Dynamic Type — marketplace headline doesn't clip

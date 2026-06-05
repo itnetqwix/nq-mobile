@@ -13,7 +13,10 @@
  * client logs and gracefully no-ops so dev builds don't crash.
  */
 
-import { colors } from "../../theme";
+import { colorsLight } from "../../theme";
+
+/** OS notification channel accent — stable brand navy (not theme-scoped). */
+const NOTIFICATION_LED_COLOR = colorsLight.brandNavy;
 
 import { Platform } from "react-native";
 import Constants from "expo-constants";
@@ -119,13 +122,13 @@ export async function configureAndroidChannels(): Promise<void> {
       name: "General",
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: colors.brandNavy,
+      lightColor: NOTIFICATION_LED_COLOR,
     });
     await Notifications.setNotificationChannelAsync("lessons", {
       name: "Lessons",
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: colors.brandNavy,
+      lightColor: NOTIFICATION_LED_COLOR,
     });
     /**
      * One channel per logical category — Android stacks notifications
@@ -137,24 +140,24 @@ export async function configureAndroidChannels(): Promise<void> {
       name: "Messages",
       importance: Notifications.AndroidImportance.DEFAULT,
       vibrationPattern: [0, 200],
-      lightColor: colors.brandNavy,
+      lightColor: NOTIFICATION_LED_COLOR,
     });
     await Notifications.setNotificationChannelAsync("bookings", {
       name: "Bookings",
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 200],
-      lightColor: colors.brandNavy,
+      lightColor: NOTIFICATION_LED_COLOR,
     });
     await Notifications.setNotificationChannelAsync("payments", {
       name: "Payments",
       importance: Notifications.AndroidImportance.DEFAULT,
       vibrationPattern: [0, 200],
-      lightColor: colors.brandNavy,
+      lightColor: NOTIFICATION_LED_COLOR,
     });
     await Notifications.setNotificationChannelAsync("marketing", {
       name: "Promos & updates",
       importance: Notifications.AndroidImportance.LOW,
-      lightColor: colors.brandNavy,
+      lightColor: NOTIFICATION_LED_COLOR,
     });
   } catch {
     /** Channel setup is best-effort. */

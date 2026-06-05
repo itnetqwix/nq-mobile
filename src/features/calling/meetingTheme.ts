@@ -16,4 +16,14 @@ export const meetingTheme = {
   barBorder: "rgba(197, 221, 240, 0.35)",
   videoPlaceholder: "#1A1A1A",
   onPrimary: "#0A0A0A",
+  /** In-call network warning strip (slow / offline). */
+  bannerSlowBg: "rgba(120, 53, 15, 0.92)",
+  bannerSlowBorder: "rgba(253, 224, 71, 0.35)",
+  bannerSlowIcon: "#fde68a",
+  bannerOfflineBg: "rgba(127, 29, 29, 0.92)",
+  bannerOfflineBorder: "rgba(248, 113, 113, 0.35)",
+  bannerOfflineIcon: "#fecaca",
+  bannerTitle: "#F5F5F5",
+  bannerBody: "rgba(255,255,255,0.88)",
+  bannerDismiss: "rgba(255,255,255,0.85)",
 } as const;

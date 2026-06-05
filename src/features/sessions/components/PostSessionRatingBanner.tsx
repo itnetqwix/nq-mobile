@@ -15,7 +15,7 @@ import { shouldOfferSessionRating } from "../../../lib/sessions/shouldOfferSessi
 import { hasViewerRated } from "../../../lib/sessions/sessionRatingUtils";
 import { queryKeys } from "../../../lib/queryKeys";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
-import { colors, radii, space, typography } from "../../../theme";
+import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 
 type Props = {
   session: Record<string, unknown>;
@@ -36,6 +36,8 @@ export function PostSessionRatingBanner({
   activeSessions,
 }: Props) {
   const { t } = useAppTranslation();
+  const c = useThemeColors();
+  const styles = useStyles();
   const queryClient = useQueryClient();
   const sessionId = String(session._id ?? session.id ?? "");
   const isTrainer = accountType === AccountType.TRAINER;
@@ -84,7 +86,7 @@ export function PostSessionRatingBanner({
   return (
     <>
       <View style={styles.banner}>
-        <Ionicons name="star-outline" size={22} color={colors.brandNavy} />
+        <Ionicons name="star-outline" size={22} color={c.brandNavy} />
         <View style={styles.textCol}>
           <Text style={styles.title}>
             {t("postSessionRating.title", { defaultValue: "Rate your lesson" })}
@@ -111,7 +113,7 @@ export function PostSessionRatingBanner({
           hitSlop={8}
           accessibilityLabel={t("postSessionRating.dismissA11y", { defaultValue: "Dismiss" })}
         >
-          <Ionicons name="close" size={20} color={colors.textMuted} />
+          <Ionicons name="close" size={20} color={c.textMuted} />
         </Pressable>
       </View>
       <RatingsModal
@@ -127,27 +129,31 @@ export function PostSessionRatingBanner({
   );
 }
 
-const styles = StyleSheet.create({
-  banner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.sm,
-    marginHorizontal: space.md,
-    marginBottom: space.md,
-    padding: space.md,
-    borderRadius: radii.md,
-    backgroundColor: "#EEF2FF",
-    borderWidth: 1,
-    borderColor: "#C7D2FE",
-  },
-  textCol: { flex: 1 },
-  title: { ...typography.bodyMd, fontWeight: "700", color: colors.text },
-  sub: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
-  cta: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: radii.sm,
-    backgroundColor: colors.brandNavy,
-  },
-  ctaText: { ...typography.caption, fontWeight: "700", color: colors.brandTextOn },
-});
+function useStyles() {
+  return useThemedStyles((palette) =>
+    StyleSheet.create({
+      banner: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: space.sm,
+        marginHorizontal: space.md,
+        marginBottom: space.md,
+        padding: space.md,
+        borderRadius: radii.md,
+        backgroundColor: palette.brandSubtle,
+        borderWidth: 1,
+        borderColor: palette.borderFocus,
+      },
+      textCol: { flex: 1 },
+      title: { ...typography.bodyMd, fontWeight: "700", color: palette.text },
+      sub: { ...typography.caption, color: palette.textMuted, marginTop: 2 },
+      cta: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: radii.sm,
+        backgroundColor: palette.brandNavy,
+      },
+      ctaText: { ...typography.caption, fontWeight: "700", color: palette.brandTextOn },
+    })
+  );
+}

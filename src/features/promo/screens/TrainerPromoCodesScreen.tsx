@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   Alert,
+  FlatList,
   Modal,
   Pressable,
   ScrollView,
@@ -17,11 +18,16 @@ import { useTranslation } from "react-i18next";
 import {
   Button,
   Card,
+  MorphRefreshScrollSurface,
   Pill,
   PromoRowSkeleton,
   ScreenContainer,
   SkeletonGroup,
 } from "../../../components/ui";
+import {
+  FLATLIST_PERF_DEFAULTS,
+  promoRowGetItemLayout,
+} from "../../../lib/lists/flatListPerf";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { queryKeys } from "../../../lib/queryKeys";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
@@ -194,44 +200,70 @@ export function TrainerPromoCodesScreen() {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  return (
-    <ScreenContainer
-      scroll
-      clearFloatingTabBar
-      refreshing={listQuery.isRefetching}
-      onRefresh={() => listQuery.refetch()}
-    >
+  const listHeader = (
+    <>
       <Text style={styles.lead}>{t("trainerPromo.lead")}</Text>
       <Card variant="outlined" style={styles.infoCard}>
         <Text style={styles.infoText}>{t("trainerPromo.fundingNote")}</Text>
       </Card>
-
       <View style={styles.statsRow}>
         <StatBox label={t("trainerPromo.stats.active")} value={String(stats.active)} />
         <StatBox label={t("trainerPromo.stats.codes")} value={String(stats.total)} />
         <StatBox label={t("trainerPromo.stats.uses")} value={String(stats.totalUses)} />
       </View>
-
       <View style={styles.toolbar}>
         <Button label={t("trainerPromo.create")} onPress={openCreate} />
       </View>
+    </>
+  );
 
-      {listQuery.isLoading ? (
-        <SkeletonGroup count={3} gap={space.sm} renderRow={() => <PromoRowSkeleton />} />
-      ) : rows.length === 0 ? (
-        <Text style={styles.empty}>{t("trainerPromo.empty")}</Text>
-      ) : (
-        rows.map((row) => (
-          <PromoCard
-            key={row._id}
-            row={row}
-            onShare={() => sharePromo(row)}
-            onEdit={() => openEdit(row)}
-            onToggle={() => toggleMutation.mutate(row._id)}
-            toggling={toggleMutation.isPending}
-          />
-        ))
-      )}
+  const renderPromoRow = useCallback(
+    ({ item }: { item: TrainerPromoRow }) => (
+      <PromoCard
+        row={item}
+        onShare={() => sharePromo(item)}
+        onEdit={() => openEdit(item)}
+        onToggle={() => toggleMutation.mutate(item._id)}
+        toggling={toggleMutation.isPending}
+      />
+    ),
+    [openEdit, sharePromo, toggleMutation]
+  );
+
+  return (
+    <ScreenContainer scroll={false} clearFloatingTabBar>
+      <MorphRefreshScrollSurface
+        onRefresh={() => listQuery.refetch()}
+        externalRefreshing={listQuery.isRefetching}
+      >
+        {({ refreshControl, onScroll, scrollEventThrottle }) =>
+          listQuery.isLoading ? (
+            <ScrollView
+              contentContainerStyle={{ padding: space.md, paddingBottom: space.xl * 2 }}
+              refreshControl={refreshControl}
+              onScroll={onScroll}
+              scrollEventThrottle={scrollEventThrottle}
+            >
+              {listHeader}
+              <SkeletonGroup count={3} gap={space.sm} renderRow={() => <PromoRowSkeleton />} />
+            </ScrollView>
+          ) : (
+            <FlatList
+              data={rows}
+              keyExtractor={(row) => row._id}
+              renderItem={renderPromoRow}
+              ListHeaderComponent={listHeader}
+              ListEmptyComponent={<Text style={styles.empty}>{t("trainerPromo.empty")}</Text>}
+              contentContainerStyle={{ padding: space.md, paddingBottom: space.xl * 2 }}
+              refreshControl={refreshControl}
+              onScroll={onScroll}
+              scrollEventThrottle={scrollEventThrottle}
+              getItemLayout={promoRowGetItemLayout}
+              {...FLATLIST_PERF_DEFAULTS}
+            />
+          )
+        }
+      </MorphRefreshScrollSurface>
 
       <Modal visible={formOpen} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.modalShell}>

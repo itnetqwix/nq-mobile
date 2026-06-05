@@ -130,6 +130,17 @@ export function blockedUserRowGetItemLayout(_data: unknown, index: number) {
   };
 }
 
+/** Trainer promo code card row. */
+export const PROMO_ROW_HEIGHT = 132;
+
+export function promoRowGetItemLayout(_data: unknown, index: number) {
+  return {
+    length: PROMO_ROW_HEIGHT,
+    offset: PROMO_ROW_HEIGHT * index,
+    index,
+  };
+}
+
 export function createFixedRowGetItemLayout(height: number) {
   return (_data: unknown, index: number) => ({
     length: height,

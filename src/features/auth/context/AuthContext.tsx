@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useMemo } from "react";
+import { useProactiveTokenRefresh } from "../../../lib/auth/useProactiveTokenRefresh";
 import {
   completeSessionFromTokens as completeSessionFromTokensThunk,
   patchUser,
@@ -40,6 +41,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const status = useAppSelector(selectAuthStatus);
   const user = useAppSelector(selectAuthUser);
   const accountType = useAppSelector(selectAccountType);
+
+  useProactiveTokenRefresh(status === "signedIn");
 
   const signIn = useCallback(
     async (email: string, password: string) => {

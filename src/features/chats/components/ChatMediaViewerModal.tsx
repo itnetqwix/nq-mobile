@@ -18,6 +18,7 @@ import {
   NativeMediaSurface,
 } from "../../../components/media";
 import { useMediaViewport } from "../../../components/media/useMediaViewport";
+import { colorsDark, typography, useThemedStyles } from "../../../theme";
 import type { ChatMediaItem } from "../lib/chatMediaUtils";
 
 type Props = {
@@ -29,8 +30,53 @@ type Props = {
 
 const HEADER_BLOCK = 56;
 
+/** Immersive fullscreen viewer — always uses dark chrome regardless of app theme. */
+function useMediaViewerStyles() {
+  return useThemedStyles(() =>
+    StyleSheet.create({
+      root: { flex: 1, backgroundColor: colorsDark.overlayVideo },
+      page: { alignItems: "center", justifyContent: "center" },
+      failBox: {
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        backgroundColor: colorsDark.surface,
+      },
+      failText: { ...typography.bodySm, color: colorsDark.textMuted },
+      navBtn: {
+        position: "absolute",
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: "rgba(0,0,128,0.65)",
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.15)",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 15,
+      },
+      navLeft: { left: 10 },
+      navRight: { right: 10 },
+      bottomBar: {
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        paddingTop: 10,
+        backgroundColor: colorsDark.overlay,
+      },
+      hintText: { color: "rgba(255,255,255,0.8)", fontSize: 13 },
+    })
+  );
+}
+
 export function ChatMediaViewerModal({ visible, items, initialIndex, onClose }: Props) {
   const insets = useSafeAreaInsets();
+  const styles = useMediaViewerStyles();
   const listRef = useRef<FlatList<ChatMediaItem>>(null);
   const [index, setIndex] = useState(initialIndex);
   const { width: pageWidth, height: mediaHeight } = useMediaViewport({
@@ -117,6 +163,7 @@ export function ChatMediaViewerModal({ visible, items, initialIndex, onClose }: 
                   width={pageWidth}
                   height={mediaHeight}
                   isActive={isActive && visible}
+                  styles={styles}
                 />
               </View>
             );
@@ -129,7 +176,7 @@ export function ChatMediaViewerModal({ visible, items, initialIndex, onClose }: 
             onPress={() => goTo(index - 1)}
             accessibilityLabel="Previous"
           >
-            <Ionicons name="chevron-back" size={28} color="#fff" />
+            <Ionicons name="chevron-back" size={28} color={colorsDark.brandTextOn} />
           </Pressable>
         ) : null}
 
@@ -139,7 +186,7 @@ export function ChatMediaViewerModal({ visible, items, initialIndex, onClose }: 
             onPress={() => goTo(index + 1)}
             accessibilityLabel="Next"
           >
-            <Ionicons name="chevron-forward" size={28} color="#fff" />
+            <Ionicons name="chevron-forward" size={28} color={colorsDark.brandTextOn} />
           </Pressable>
         ) : null}
 
@@ -161,11 +208,13 @@ function MediaPage({
   width,
   height,
   isActive,
+  styles,
 }: {
   item: ChatMediaItem;
   width: number;
   height: number;
   isActive: boolean;
+  styles: ReturnType<typeof useMediaViewerStyles>;
 }) {
   const [failed, setFailed] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -178,7 +227,7 @@ function MediaPage({
   if (failed) {
     return (
       <View style={[styles.failBox, { width, height }]}>
-        <Ionicons name="image-outline" size={40} color="#6b7280" />
+        <Ionicons name="image-outline" size={40} color={colorsDark.textMuted} />
         <Text style={styles.failText}>Could not load media</Text>
       </View>
     );
@@ -206,45 +255,3 @@ function MediaPage({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#0a0a12" },
-  page: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  failBox: {
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#111",
-  },
-  failText: { color: "#9ca3af", fontSize: 14 },
-  navBtn: {
-    position: "absolute",
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(0,0,128,0.65)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 15,
-  },
-  navLeft: { left: 10 },
-  navRight: { right: 10 },
-  bottomBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingTop: 10,
-    backgroundColor: "rgba(0,0,0,0.75)",
-  },
-  hintText: { color: "rgba(255,255,255,0.8)", fontSize: 13 },
-});

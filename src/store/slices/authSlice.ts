@@ -14,6 +14,7 @@ import {
   getSessionId,
   saveSession,
 } from "../../features/auth/session/tokenStorage";
+import { refreshAccessToken } from "../../api/authRefresh";
 import { registerMyChatPublicKey } from "../../features/chats/crypto/chatKeysApi";
 import { applyLanguageFromUser } from "../../i18n/applyLanguageFromUser";
 import { getGlobalQueryClient } from "../queryClientRef";
@@ -66,6 +67,29 @@ export const hydrateAuth = createAsyncThunk(
     } catch {
       if (hydrateEpoch !== getAuthEpoch()) {
         return rejectWithValue("superseded");
+      }
+      const refreshed = await refreshAccessToken();
+      if (refreshed) {
+        try {
+          const [me, at] = await Promise.all([
+            getCurrentUser({ skipAuthSignOut: true }),
+            getAccountType(),
+          ]);
+          if (hydrateEpoch !== getAuthEpoch()) {
+            return rejectWithValue("superseded");
+          }
+          void applyLanguageFromUser(me);
+          const sid = await getSessionId();
+          if (!sid) await ensureAuthSessionRegistered().catch(() => undefined);
+          markAuthSessionEstablished();
+          return {
+            user: me,
+            accountType: at ?? resolveAccountType(me),
+            signedIn: true as const,
+          };
+        } catch {
+          /* fall through to clear */
+        }
       }
       const tokenNow = await getAccessToken();
       if (tokenNow && tokenNow === tokenAtStart) {

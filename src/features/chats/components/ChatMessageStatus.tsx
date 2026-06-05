@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { useThemeColors } from "../../../theme";
 
 export type ChatDeliveryStatus = "sending" | "sent" | "delivered" | "read" | "failed";
 
@@ -17,10 +18,12 @@ type Props = {
  * Single gray/white = sent · double gray = delivered · double blue = read.
  */
 export function ChatMessageStatus({ status, pending, failed, isMine = true }: Props) {
+  const c = useThemeColors();
+
   if (failed || status === "failed") {
     return (
       <View style={styles.row}>
-        <Ionicons name="alert-circle" size={14} color="#ef4444" />
+        <Ionicons name="alert-circle" size={14} color={c.danger} />
       </View>
     );
   }
@@ -28,14 +31,14 @@ export function ChatMessageStatus({ status, pending, failed, isMine = true }: Pr
   if (pending || status === "sending") {
     return (
       <View style={styles.row}>
-        <ActivityIndicator size={10} color="#94a3b8" />
+        <ActivityIndicator size={10} color={c.chatStatusMuted} />
       </View>
     );
   }
 
-  const sentColor = "#94a3b8";
-  const deliveredColor = "#64748b";
-  const readColor = "#1976d2";
+  const sentColor = isMine ? c.brandTextOn : c.chatStatusMuted;
+  const deliveredColor = isMine ? "rgba(255,255,255,0.85)" : c.textSecondary;
+  const readColor = isMine ? c.brandTextOn : c.chatStatusRead;
 
   if (!status || status === "sent") {
     return (

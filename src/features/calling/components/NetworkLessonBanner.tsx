@@ -62,11 +62,11 @@ export function NetworkLessonBanner({
 
   return (
     <View style={[styles.wrap, { top: topOffset }]} pointerEvents="box-none">
-      <View style={[styles.card, isOffline && styles.cardOffline]}>
+      <View style={[styles.card, isOffline ? styles.cardOffline : styles.cardSlow]}>
         <Ionicons
           name={isOffline ? "cloud-offline-outline" : "speedometer-outline"}
           size={20}
-          color={isOffline ? "#fecaca" : "#fde68a"}
+          color={isOffline ? meetingTheme.bannerOfflineIcon : meetingTheme.bannerSlowIcon}
         />
         <View style={styles.textCol}>
           <Text style={styles.title}>{title}</Text>
@@ -79,7 +79,7 @@ export function NetworkLessonBanner({
         </View>
         {onDismiss ? (
           <Pressable onPress={onDismiss} hitSlop={8} accessibilityLabel="Dismiss">
-            <Ionicons name="close" size={18} color="rgba(255,255,255,0.85)" />
+            <Ionicons name="close" size={18} color={meetingTheme.bannerDismiss} />
           </Pressable>
         ) : null}
       </View>
@@ -100,22 +100,24 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 12,
     borderRadius: 12,
-    backgroundColor: "rgba(120, 53, 15, 0.92)",
     borderWidth: 1,
-    borderColor: "rgba(253, 224, 71, 0.35)",
+  },
+  cardSlow: {
+    backgroundColor: meetingTheme.bannerSlowBg,
+    borderColor: meetingTheme.bannerSlowBorder,
   },
   cardOffline: {
-    backgroundColor: "rgba(127, 29, 29, 0.92)",
-    borderColor: "rgba(248, 113, 113, 0.35)",
+    backgroundColor: meetingTheme.bannerOfflineBg,
+    borderColor: meetingTheme.bannerOfflineBorder,
   },
   textCol: { flex: 1, gap: 4 },
   title: {
-    color: "#fff",
+    color: meetingTheme.bannerTitle,
     fontSize: 13,
     fontWeight: "800",
   },
   body: {
-    color: "rgba(255,255,255,0.88)",
+    color: meetingTheme.bannerBody,
     fontSize: 12,
     lineHeight: 17,
   },
@@ -128,7 +130,7 @@ const styles = StyleSheet.create({
     backgroundColor: meetingTheme.navy,
   },
   ctaText: {
-    color: "#fff",
+    color: meetingTheme.onPrimary,
     fontSize: 12,
     fontWeight: "700",
   },

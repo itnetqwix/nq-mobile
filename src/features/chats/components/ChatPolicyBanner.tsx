@@ -52,8 +52,8 @@ export function ChatPolicyBanner({
       style={[
         styles.wrap,
         {
-          backgroundColor: exhausted ? c.warningSubtle ?? "#FEF3C7" : c.brandSubtle,
-          borderBottomColor: exhausted ? c.warning ?? "#F59E0B" : c.border,
+          backgroundColor: exhausted ? c.warningSubtle : c.brandSubtle,
+          borderBottomColor: exhausted ? c.warning : c.border,
         },
       ]}
     >
@@ -90,7 +90,7 @@ export function ChatPolicyBanner({
               {
                 width: `${Math.round(progress * 100)}%`,
                 backgroundColor:
-                  remainingToday <= 2 ? c.warning ?? "#F59E0B" : c.brandNavy,
+                  remainingToday <= 2 ? c.warning : c.brandNavy,
               },
             ]}
           />
