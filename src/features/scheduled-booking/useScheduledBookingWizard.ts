@@ -83,6 +83,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     discount_amount?: number;
     final_amount?: number;
     display_label?: string;
+    sponsor_type?: "platform" | "trainer";
   } | null>(null);
   const [visiblePromos, setVisiblePromos] = useState<any[]>([]);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);

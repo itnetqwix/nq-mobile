@@ -75,6 +75,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     discount_amount?: number;
     final_amount?: number;
     display_label?: string;
+    sponsor_type?: "platform" | "trainer";
   } | null>(null);
   const [visiblePromos, setVisiblePromos] = useState<any[]>([]);
 
