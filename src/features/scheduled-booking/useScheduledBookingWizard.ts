@@ -47,6 +47,7 @@ import { fetchSessionPricingQuote } from "../payments/fetchSessionPricingQuote";
 import type { PricingQuote } from "../payments/pricingTypes";
 import { fetchSmartSchedule } from "../ai/smartScheduleApi";
 import { resolveTraineeTimeZone } from "../../lib/user/resolveTraineeTimeZone";
+import { resolveCheckoutDiscountAmount } from "../../lib/booking/checkoutDiscount";
 import { postReferralPreviewCheckout } from "../referral/api/referralApi";
 import {
   promoDisplayLabel,
@@ -265,6 +266,15 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     return expectedPrice;
   }, [checkoutPreviewQuery.data, promoResult, expectedPrice]);
 
+  const checkoutDiscountAmount = useMemo(
+    () =>
+      resolveCheckoutDiscountAmount({
+        expectedPrice,
+        payableAmount,
+        reportedTotalDiscount: checkoutPreviewQuery.data?.totalDiscount,
+      }),
+    [expectedPrice, payableAmount, checkoutPreviewQuery.data?.totalDiscount]
+  );
 
   const validateCoupon = useCallback(() => {
     if (couponCode.length > 50) {
@@ -349,7 +359,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
       productType: "session_booking",
       sessionSubtotalCents: Math.round(expectedPrice * 100),
       trainerId: tid,
-      promoDiscountCents: Math.round(promoDiscountAmount * 100),
+      promoDiscountCents: Math.round(checkoutDiscountAmount * 100),
       promoSponsorType,
       user: user as Record<string, unknown>,
     })
@@ -362,7 +372,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     return () => {
       cancelled = true;
     };
-  }, [visible, step, tid, payableAmount, expectedPrice, durationMinutes, promoDiscountAmount, promoSponsorType]);
+  }, [visible, step, tid, payableAmount, expectedPrice, durationMinutes, checkoutDiscountAmount, promoSponsorType]);
 
   useEffect(() => {
     if (!visible || step !== "confirm" || !tid || payableAmount <= 0 || pricingQuote) {
@@ -373,7 +383,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
       productType: "session_booking",
       sessionSubtotalCents: Math.round(expectedPrice * 100),
       trainerId: tid,
-      promoDiscountCents: Math.round(promoDiscountAmount * 100),
+      promoDiscountCents: Math.round(checkoutDiscountAmount * 100),
       promoSponsorType,
       user: user as Record<string, unknown>,
     })
@@ -398,7 +408,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     pricingQuote,
     chargingPrice,
     durationMinutes,
-    promoDiscountAmount,
+    checkoutDiscountAmount,
     promoSponsorType,
   ]);
 
@@ -631,6 +641,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     promoValidating,
     promoResult,
     promoDiscountAmount,
+    checkoutDiscountAmount,
     promoLabel,
     promoSponsorType,
     handleApplyPromo,
