@@ -49,7 +49,7 @@ export function NetQwixLoader({
   const logoW = stage;
   const logoH = stage * LOGO_ASPECT;
   const useScrim = backdrop === "scrim" && variant !== "inline";
-  const scrimColor = isDark ? "rgba(15,23,42,0.62)" : "rgba(255,255,255,0.55)";
+  const scrimColor = isDark ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)";
 
   const breathe = useSharedValue(0);
   const shimmer = useSharedValue(0);

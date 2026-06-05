@@ -4,8 +4,8 @@
  * Use `useThemeColors()` in components — never the static `colors` export for UI.
  */
 
-/** Neutral grayscale ramp — Material/Tailwind hybrid. */
-const NEUTRALS = {
+/** Neutral grayscale ramp — light surfaces. */
+const NEUTRALS_LIGHT = {
   neutral50: "#fafafa",
   neutral100: "#f4f4f5",
   neutral200: "#e4e4e7",
@@ -13,6 +13,23 @@ const NEUTRALS = {
   neutral400: "#a1a1aa",
   neutral500: "#71717a",
   neutral600: "#52525b",
+  neutral700: "#3f3f46",
+  neutral800: "#27272a",
+  neutral900: "#18181b",
+} as const;
+
+/**
+ * Dark-mode neutral ramp — avoids light grays on zinc surfaces (switches,
+ * sheet handles, skeleton shimmer).
+ */
+const NEUTRALS_DARK = {
+  neutral50: "#fafafa",
+  neutral100: "#2a2a32",
+  neutral200: "#35353f",
+  neutral300: "#45454f",
+  neutral400: "#6b7280",
+  neutral500: "#9ca3af",
+  neutral600: "#b8bcc6",
   neutral700: "#3f3f46",
   neutral800: "#27272a",
   neutral900: "#18181b",
@@ -69,8 +86,9 @@ export const colorsLight: Palette & {
   info: string;
   input: string;
   inputBorder: string;
+  skeletonShimmer: string;
 } = {
-  ...NEUTRALS,
+  ...NEUTRALS_LIGHT,
   ...BRAND,
   ...STATUS,
 
@@ -112,7 +130,6 @@ export const colorsLight: Palette & {
   chatDayPillText: "#6b7280",
   divider: "#e5e7eb",
 
-  /** Icons & accents on surfaces — prefer over raw `brandNavy` in UI. */
   iconPrimary: BRAND.brandAccent,
   iconSecondary: BRAND.brand,
   iconMuted: "#6b7280",
@@ -123,83 +140,100 @@ export const colorsLight: Palette & {
   primary: BRAND.brandAccent,
   primaryPressed: BRAND.brandAccentPressed,
 
-  /** Blinkit-style home header / offers band */
   homeMarketplaceBand: "#fff8e1",
+  skeletonShimmer: NEUTRALS_LIGHT.neutral200,
+  drawerHeader: BRAND.brand,
+  /** In-message search hit highlight. */
+  chatSearchHighlight: "#FFF59D",
+  chatPresence: STATUS.success,
+  chatStatusMuted: "#94a3b8",
+  chatStatusRead: BRAND.brandAccent,
 };
 
 export const colorsDark: typeof colorsLight = {
-  ...NEUTRALS,
+  ...NEUTRALS_DARK,
   ...BRAND,
   ...STATUS,
 
-  background: NEUTRALS.neutral900,
-  surface: NEUTRALS.neutral800,
-  surfaceElevated: "#1f1f23",
-  surfaceMuted: "#222227",
+  /** Deepest layer — app chrome behind lists. */
+  background: "#0c0c10",
+  /** Primary list / screen fill. */
+  surface: "#141419",
+  /** Cards, rows, modals — one step above surface. */
+  surfaceElevated: "#1e1e24",
+  /** Skeleton bases, muted wells. */
+  surfaceMuted: "#18181e",
 
-  text: "#f9fafb",
-  textSecondary: "#e4e4e7",
-  /**
-   * Bumped from `#9ca3af` to `#b1b8c2` so 13–14 px copy still hits WCAG AA
-   * (≥ 4.5:1) against the lighter dark surfaces (`surfaceMuted #222227`,
-   * `chatBubbleIncoming #2a2a32`). Previously bordered AA at small sizes.
-   */
-  textMuted: "#b1b8c2",
+  text: "#f4f4f5",
+  textSecondary: "#d4d4d8",
+  textMuted: "#a8b0bc",
   textInverse: "#111827",
 
-  border: NEUTRALS.neutral700,
-  borderSubtle: NEUTRALS.neutral800,
-  borderStrong: NEUTRALS.neutral600,
-  borderFocus: "#64b5f6",
+  border: "#2e2e36",
+  borderSubtle: "#222228",
+  borderStrong: "#45454f",
+  borderFocus: "#60a5fa",
 
-  input: "#1f1f23",
-  inputBorder: NEUTRALS.neutral700,
+  input: "#1a1a20",
+  inputBorder: "#35353f",
 
-  tabBarBorder: "#2a3d52",
-  tabBar: "#141c28",
-  tabBarActive: "#64b5f6",
-  tabBarInactive: "#b1b8c2",
+  tabBarBorder: "#252530",
+  tabBar: "#101015",
+  tabBarActive: "#60a5fa",
+  tabBarInactive: "#a8b0bc",
 
-  headerTitle: "#f9fafb",
-  headerTint: "#f9fafb",
+  headerTitle: "#f4f4f5",
+  headerTint: "#f4f4f5",
 
-  overlay: "rgba(0, 0, 0, 0.72)",
-  scrim: "rgba(0, 0, 0, 0.5)",
+  overlay: "rgba(0, 0, 0, 0.78)",
+  scrim: "rgba(0, 0, 0, 0.58)",
   overlayVideo: "#000000",
 
-  chatBubbleIncoming: "#2a3444",
+  chatBubbleIncoming: "#252b38",
   chatBubbleIncomingText: "#e8eef6",
-  chatBubbleOutgoing: "#1e3a5f",
+  chatBubbleOutgoing: "#1a3658",
   chatBubbleOutgoingText: "#dbeafe",
-  chatDayPill: "rgba(255, 255, 255, 0.16)",
-  chatDayPillText: "#c7ccd4",
-  divider: NEUTRALS.neutral700,
+  chatDayPill: "rgba(255, 255, 255, 0.12)",
+  chatDayPillText: "#b8bcc6",
+  divider: "#2e2e36",
 
-  /** Readable blues on dark surfaces (fixes invisible navy icons). */
-  iconPrimary: "#64b5f6",
-  iconSecondary: "#90caf9",
-  iconMuted: "#b1b8c2",
+  iconPrimary: "#60a5fa",
+  iconSecondary: "#93c5fd",
+  iconMuted: "#a8b0bc",
 
-  brand: "#7c9cff",
-  brandNavy: "#7c9cff",
-  brandSubtle: "#1e2a45",
-  brandAccentSubtle: "#172554",
-  brandPressed: "#5c7cfa",
-  sidebarActive: "#64b5f6",
-  sidebarActiveBg: "#1a2744",
-  primary: "#64b5f6",
-  primaryPressed: "#42a5f5",
+  brand: "#8ba4ff",
+  brandNavy: "#8ba4ff",
+  brandSubtle: "#1a2744",
+  brandAccent: "#60a5fa",
+  brandAccentSubtle: "#172a45",
+  brandAccentPressed: "#3b82f6",
+  brandPressed: "#6b8cff",
+  brandTextOn: "#ffffff",
+  sidebarActive: "#60a5fa",
+  sidebarActiveBg: "#172a45",
+  primary: "#60a5fa",
+  primaryPressed: "#3b82f6",
 
+  success: "#34d399",
   successSubtle: "#052e16",
   successText: "#86efac",
+  warning: "#fbbf24",
   warningSubtle: "#422006",
   warningText: "#fcd34d",
+  danger: "#f87171",
   dangerSubtle: "#450a0a",
   dangerText: "#fca5a5",
+  info: "#60a5fa",
   infoSubtle: "#172554",
   infoText: "#93c5fd",
 
   homeMarketplaceBand: "#2a2410",
+  skeletonShimmer: NEUTRALS_DARK.neutral200,
+  drawerHeader: "#101018",
+  chatSearchHighlight: "#4a4520",
+  chatPresence: "#34d399",
+  chatStatusMuted: "#9ca3af",
+  chatStatusRead: "#60a5fa",
 };
 
 export type AppColors = typeof colorsLight;

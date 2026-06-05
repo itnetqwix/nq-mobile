@@ -10,6 +10,8 @@ import {
   Text,
   View,
 } from "react-native";
+import { MorphRefreshHeader } from "../../../../components/ui";
+import { useMorphRefreshBundle } from "../../../../lib/refresh/useMorphRefreshBundle";
 import { space, useThemeColors } from "../../../../theme";
 import type { ClipRow } from "../../instantLessonClipsApi";
 import { MAX_CLIPS } from "../constants";
@@ -35,6 +37,11 @@ export function WizardStepClips({
 }: Props) {
   const c = useThemeColors();
   const sharedStepStyles = useSharedStepStyles();
+  const morph = useMorphRefreshBundle(
+    () => clipsQuery.refetch(),
+    clipsQuery.isRefetching
+  );
+
   return (
     <View style={sharedStepStyles.card}>
       <Text style={sharedStepStyles.sectionTitle}>Videos (optional)</Text>
@@ -51,26 +58,32 @@ export function WizardStepClips({
       ) : flatClips.length === 0 ? (
         <Text style={sharedStepStyles.muted}>No clips yet. You can skip and add them later.</Text>
       ) : (
-        <ScrollView
-          nestedScrollEnabled
-          style={styles.clipScroll}
-          refreshControl={
-            <RefreshControl
-              refreshing={clipsQuery.isRefetching}
-              onRefresh={() => clipsQuery.refetch()}
-              tintColor={c.iconPrimary}
-            />
-          }
-        >
-          {flatClips.map((clip, index) => (
-            <ClipPickerRow
-              key={`wizard-clip-${String(clip._id ?? "row")}-${index}`}
-              clip={clip}
-              selected={selectedClipIds.includes(clip._id)}
-              onToggle={onToggleClip}
-            />
-          ))}
-        </ScrollView>
+        <View style={styles.clipScrollWrap}>
+          <MorphRefreshHeader {...morph.headerProps} />
+          <ScrollView
+            nestedScrollEnabled
+            style={styles.clipScroll}
+            onScroll={morph.onMorphScroll}
+            scrollEventThrottle={morph.scrollEventThrottle}
+            refreshControl={
+              <RefreshControl
+                refreshing={morph.refreshing}
+                onRefresh={morph.onRefreshControl}
+                tintColor={c.brandAccent}
+                colors={[c.brandAccent]}
+              />
+            }
+          >
+            {flatClips.map((clip, index) => (
+              <ClipPickerRow
+                key={`wizard-clip-${String(clip._id ?? "row")}-${index}`}
+                clip={clip}
+                selected={selectedClipIds.includes(clip._id)}
+                onToggle={onToggleClip}
+              />
+            ))}
+          </ScrollView>
+        </View>
       )}
       <Text style={sharedStepStyles.mutedSmall}>
         Selected: {selectedClipIds.length} / {MAX_CLIPS}
@@ -90,5 +103,6 @@ export function WizardStepClips({
 }
 
 const styles = StyleSheet.create({
-  clipScroll: { maxHeight: 260, marginTop: space.sm },
+  clipScrollWrap: { marginTop: space.sm },
+  clipScroll: { maxHeight: 260 },
 });

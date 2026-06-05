@@ -111,7 +111,7 @@ export function DashboardDrawerContent(props: DrawerContentComponentProps) {
       <View
         style={[
           styles.brandBlock,
-          { borderBottomColor: colors.border, backgroundColor: "#000000" },
+          { borderBottomColor: colors.border, backgroundColor: colors.drawerHeader },
         ]}
       >
         <View style={styles.brandLogoFrame}>

@@ -7,6 +7,8 @@ import {
   StyleSheet,
   Text,
   View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
@@ -88,6 +90,9 @@ type Props = {
   footer?: React.ReactNode;
   contentContainerStyle?: StyleProp<ViewStyle>;
   refreshControl?: React.ReactElement<React.ComponentProps<typeof RefreshControl>>;
+  /** Combined morph + tab-bar scroll handler from the parent home screen. */
+  onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  scrollEventThrottle?: number;
   onDeepLink?: (url: string) => void;
 };
 
@@ -108,6 +113,8 @@ export function TraineeDiscoverDashboard({
   footer,
   contentContainerStyle,
   refreshControl,
+  onScroll: onScrollProp,
+  scrollEventThrottle: scrollEventThrottleProp,
   onDeepLink,
 }: Props) {
   const marketplacePad = useMarketplaceHorizontalPad();
@@ -530,8 +537,8 @@ export function TraineeDiscoverDashboard({
         ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        onScroll={homeScroll.onScroll}
-        scrollEventThrottle={homeScroll.scrollEventThrottle}
+        onScroll={onScrollProp ?? homeScroll.onScroll}
+        scrollEventThrottle={scrollEventThrottleProp ?? homeScroll.scrollEventThrottle}
         refreshControl={refreshControl}
       >
         {marketplaceScrollContent}

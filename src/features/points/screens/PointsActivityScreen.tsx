@@ -12,7 +12,8 @@ import {
   Text,
   View,
 } from "react-native";
-import { Button, Card } from "../../../components/ui";
+import { Button, Card, MorphRefreshHeader } from "../../../components/ui";
+import { useMorphRefreshBundle } from "../../../lib/refresh/useMorphRefreshBundle";
 import { queryKeys } from "../../../lib/queryKeys";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
@@ -69,6 +70,15 @@ export function PointsActivityScreen({ navigation }: Props) {
     onSettled: () => setRedeeming(false),
   });
 
+  const onPointsRefresh = () => {
+    void balanceQuery.refetch();
+    void ledgerQuery.refetch();
+  };
+  const morph = useMorphRefreshBundle(
+    onPointsRefresh,
+    balanceQuery.isRefetching || ledgerQuery.isRefetching
+  );
+
   const onRedeem = () => {
     if ((balance?.redeemableBlocks ?? 0) < 1) {
       Alert.alert(t("points.errorTitle"), t("points.needMore", { block }));
@@ -83,15 +93,15 @@ export function PointsActivityScreen({ navigation }: Props) {
       <Pressable style={styles.backRow} onPress={() => navigation.goBack()}>
         <Text style={styles.backText}>← {t("common.back")}</Text>
       </Pressable>
+      <MorphRefreshHeader {...morph.headerProps} />
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad }]}
+        onScroll={morph.onMorphScroll}
+        scrollEventThrottle={morph.scrollEventThrottle}
         refreshControl={
           <RefreshControl
-            refreshing={balanceQuery.isRefetching}
-            onRefresh={() => {
-              void balanceQuery.refetch();
-              void ledgerQuery.refetch();
-            }}
+            refreshing={morph.refreshing}
+            onRefresh={morph.onRefreshControl}
           />
         }
       >

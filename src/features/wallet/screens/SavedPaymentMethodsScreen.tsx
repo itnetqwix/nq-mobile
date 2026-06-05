@@ -20,17 +20,18 @@ import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { Pill } from "../../../components/ui";
-import { EmptyState } from "../../../components/ui";
+  EmptyState,
+  MorphRefreshScrollSurface,
+  PaymentMethodRowSkeleton,
+  Pill,
+  SkeletonGroup,
+} from "../../../components/ui";
+import {
+  FLATLIST_PERF_DEFAULTS,
+  paymentMethodGetItemLayout,
+} from "../../../lib/lists/flatListPerf";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { queryKeys } from "../../../lib/queryKeys";
 import {
@@ -236,8 +237,13 @@ export function SavedPaymentMethodsScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color={c.iconPrimary} />
+      <View style={styles.root}>
+        <SkeletonGroup
+          count={3}
+          gap={space.sm}
+          style={{ padding: space.md }}
+          renderRow={() => <PaymentMethodRowSkeleton />}
+        />
       </View>
     );
   }
@@ -255,10 +261,17 @@ export function SavedPaymentMethodsScreen() {
 
   return (
     <View style={styles.root}>
+      <MorphRefreshScrollSurface onRefresh={refetch} externalRefreshing={isRefetching}>
+        {({ refreshControl, onScroll, scrollEventThrottle }) => (
       <FlatList
         data={sorted}
         keyExtractor={(m) => m.id}
         contentContainerStyle={styles.list}
+        refreshControl={refreshControl}
+        onScroll={onScroll}
+        scrollEventThrottle={scrollEventThrottle}
+        {...FLATLIST_PERF_DEFAULTS}
+        getItemLayout={paymentMethodGetItemLayout}
         renderItem={({ item }) => (
           <PaymentRow method={item} onMakeDefault={handleMakeDefault} onRemove={handleRemove} />
         )}
@@ -271,9 +284,9 @@ export function SavedPaymentMethodsScreen() {
             })}
           />
         }
-        refreshing={isRefetching}
-        onRefresh={refetch}
       />
+        )}
+      </MorphRefreshScrollSurface>
     </View>
   );
 }

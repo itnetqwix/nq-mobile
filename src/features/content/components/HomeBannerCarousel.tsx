@@ -1,21 +1,14 @@
-import { Image } from "expo-image";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Dimensions,
-  Linking,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { radii, space, typography, useThemeColors } from "../../../theme";
+import { ImageWithSkeleton } from "../../../components/ui";
 import { type HomeBanner } from "../api/contentApi";
 import { useCmsHome } from "../hooks/useCmsHome";
 import { dismissedBanners } from "../dismissedBanners";
 import { isReactNavigationDeepLink } from "../lib/deepLinks";
+import { useContentWidth } from "../../../lib/layout";
 
 type BannerCta = { label: string; url: string; variant?: string };
 
@@ -23,8 +16,6 @@ type Props = {
   guest?: boolean;
   onDeepLink?: (url: string) => void;
 };
-
-const CARD_WIDTH = Dimensions.get("window").width - space.md * 2;
 
 function severityPalette(
   c: ReturnType<typeof useThemeColors>,
@@ -56,6 +47,7 @@ function resolveCtas(banner: HomeBanner): BannerCta[] {
 export function HomeBannerCarousel({ guest, onDeepLink }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
+  const cardWidth = useContentWidth();
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
 
   useEffect(() => {
@@ -105,7 +97,7 @@ export function HomeBannerCarousel({ guest, onDeepLink }: Props) {
         horizontal
         showsHorizontalScrollIndicator={false}
         decelerationRate="fast"
-        snapToInterval={CARD_WIDTH + space.sm}
+        snapToInterval={cardWidth + space.sm}
         contentContainerStyle={styles.scrollContent}
       >
         {visible.map((banner) => {
@@ -117,18 +109,18 @@ export function HomeBannerCarousel({ guest, onDeepLink }: Props) {
               style={[
                 styles.card,
                 {
-                  width: CARD_WIDTH,
+                  width: cardWidth,
                   backgroundColor: palette.bg,
                   borderColor: palette.border,
                 },
               ]}
             >
               {banner.image_url ? (
-                <Image
-                  source={{ uri: banner.image_url }}
-                  style={styles.heroImage}
-                  contentFit="cover"
-                  transition={200}
+                <ImageWithSkeleton
+                  uri={banner.image_url}
+                  width={cardWidth}
+                  height={140}
+                  borderRadius={0}
                 />
               ) : null}
               <View style={styles.cardBody}>

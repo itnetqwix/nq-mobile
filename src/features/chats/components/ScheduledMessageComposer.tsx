@@ -13,7 +13,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../../../lib/queryKeys";
 import { haptics } from "../../../lib/haptics";
+import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { scheduleChatMessage } from "../api/chatActionsApi";
+import { useChatOverlayStyles } from "../hooks/useChatOverlayStyles";
 
 type Props = {
   visible: boolean;
@@ -32,6 +34,9 @@ export function ScheduledMessageComposer({
   conversationId,
   onClose,
 }: Props) {
+  const c = useThemeColors();
+  const overlay = useChatOverlayStyles();
+  const styles = useComposerStyles();
   const queryClient = useQueryClient();
   const [text, setText] = useState("");
   const [date, setDate] = useState<Date>(() => {
@@ -43,7 +48,6 @@ export function ScheduledMessageComposer({
   const [picker, setPicker] = useState<"date" | "time" | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  /** A handful of upcoming day rows for the picker. */
   const dayOptions = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -53,7 +57,7 @@ export function ScheduledMessageComposer({
       return d;
     });
   }, []);
-  /** Every 30 minutes across the day. */
+
   const timeOptions = useMemo(() => {
     const items: { h: number; m: number; label: string }[] = [];
     for (let h = 0; h < 24; h += 1) {
@@ -116,17 +120,19 @@ export function ScheduledMessageComposer({
 
   return (
     <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
+      <View style={overlay.backdrop}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        <View style={styles.sheet}>
-          <View style={styles.handleRow}>
-            <View style={styles.handle} />
+        <View style={overlay.bottomSheet}>
+          <View style={overlay.handleRow}>
+            <View style={overlay.handle} />
           </View>
-          <View style={styles.headerRow}>
-            <Ionicons name="calendar-outline" size={20} color="#2563EB" />
-            <Text style={styles.title}>Schedule message</Text>
+          <View style={overlay.headerRowBetween}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+              <Ionicons name="calendar-outline" size={20} color={c.brand} />
+              <Text style={overlay.sheetTitle}>Schedule message</Text>
+            </View>
             <Pressable hitSlop={12} onPress={onClose}>
-              <Ionicons name="close" size={22} color="#374151" />
+              <Ionicons name="close" size={22} color={c.textSecondary} />
             </Pressable>
           </View>
 
@@ -135,7 +141,7 @@ export function ScheduledMessageComposer({
             value={text}
             onChangeText={setText}
             placeholder="E.g. Don't forget your 7 AM session tomorrow ☀️"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={c.textMuted}
             multiline
             style={styles.input}
             maxLength={2000}
@@ -144,11 +150,11 @@ export function ScheduledMessageComposer({
           <Text style={styles.label}>Delivery time</Text>
           <View style={styles.row}>
             <Pressable style={styles.pill} onPress={() => setPicker("date")}>
-              <Ionicons name="calendar-outline" size={16} color="#2563EB" />
+              <Ionicons name="calendar-outline" size={16} color={c.brand} />
               <Text style={styles.pillLabel}>{formatDate(date)}</Text>
             </Pressable>
             <Pressable style={styles.pill} onPress={() => setPicker("time")}>
-              <Ionicons name="time-outline" size={16} color="#2563EB" />
+              <Ionicons name="time-outline" size={16} color={c.brand} />
               <Text style={styles.pillLabel}>{formatTime(date)}</Text>
             </Pressable>
           </View>
@@ -249,11 +255,11 @@ export function ScheduledMessageComposer({
             disabled={submitting || !text.trim()}
             style={[
               styles.sendBtn,
-              (submitting || !text.trim()) && styles.sendBtnDisabled,
+              (submitting || !text.trim()) && overlay.sendBtnDisabled,
             ]}
           >
-            <Ionicons name="paper-plane" size={16} color="#FFFFFF" />
-            <Text style={styles.sendLabel}>
+            <Ionicons name="paper-plane" size={16} color={c.brandTextOn} />
+            <Text style={overlay.sendLabel}>
               {submitting ? "Scheduling…" : "Schedule"}
             </Text>
           </Pressable>
@@ -263,106 +269,83 @@ export function ScheduledMessageComposer({
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    justifyContent: "flex-end",
-  },
-  sheet: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    paddingHorizontal: 16,
-    paddingBottom: 28,
-  },
-  handleRow: { alignItems: "center", paddingTop: 8, paddingBottom: 4 },
-  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: "#D1D5DB" },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 12,
-  },
-  title: { flex: 1, fontSize: 17, fontWeight: "700", color: "#111827" },
-  label: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#475569",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-    marginTop: 8,
-    marginBottom: 6,
-  },
-  input: {
-    minHeight: 90,
-    backgroundColor: "#F9FAFB",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 15,
-    color: "#111827",
-    textAlignVertical: "top",
-  },
-  row: { flexDirection: "row", gap: 8 },
-  pill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: "#EFF6FF",
-    borderWidth: 1,
-    borderColor: "#DBEAFE",
-  },
-  pillLabel: { color: "#1E3A8A", fontWeight: "600", fontSize: 14 },
-  presetsRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 8,
-    flexWrap: "wrap",
-  },
-  preset: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: "#F3F4F6",
-    borderRadius: 999,
-  },
-  presetText: { fontSize: 12, color: "#374151", fontWeight: "600" },
-  sendBtn: {
-    marginTop: 16,
-    backgroundColor: "#2563EB",
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 8,
-  },
-  sendBtnDisabled: { backgroundColor: "#94A3B8" },
-  sendLabel: { color: "#FFFFFF", fontWeight: "700", fontSize: 15 },
-  pickerBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-  },
-  pickerCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    padding: 14,
-  },
-  pickerTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#0F172A",
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  pickerRow: { paddingVertical: 12, paddingHorizontal: 12, borderRadius: 10 },
-  pickerRowActive: { backgroundColor: "#EFF6FF" },
-  pickerRowText: { fontSize: 15, color: "#111827" },
-  pickerRowTextActive: { color: "#1D4ED8", fontWeight: "700" },
-});
+function useComposerStyles() {
+  return useThemedStyles((palette) =>
+    StyleSheet.create({
+      label: {
+        ...typography.overline,
+        color: palette.textSecondary,
+        marginTop: space.sm,
+        marginBottom: 6,
+      },
+      input: {
+        minHeight: 90,
+        backgroundColor: palette.surfaceMuted,
+        borderWidth: 1,
+        borderColor: palette.border,
+        borderRadius: radii.md,
+        padding: space.sm,
+        ...typography.bodyMd,
+        color: palette.text,
+        textAlignVertical: "top",
+      },
+      row: { flexDirection: "row", gap: space.sm },
+      pill: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        paddingHorizontal: space.sm,
+        paddingVertical: 10,
+        borderRadius: radii.md,
+        backgroundColor: palette.brandSubtle,
+        borderWidth: 1,
+        borderColor: palette.borderFocus,
+      },
+      pillLabel: { color: palette.brandNavy, fontWeight: "600", fontSize: 14 },
+      presetsRow: {
+        flexDirection: "row",
+        gap: space.sm,
+        marginTop: space.sm,
+        flexWrap: "wrap",
+      },
+      preset: {
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        backgroundColor: palette.surfaceMuted,
+        borderRadius: radii.pill,
+      },
+      presetText: { ...typography.caption, color: palette.textSecondary, fontWeight: "600" },
+      sendBtn: {
+        marginTop: space.md,
+        backgroundColor: palette.brand,
+        borderRadius: radii.md,
+        paddingVertical: 14,
+        alignItems: "center",
+        flexDirection: "row",
+        justifyContent: "center",
+        gap: space.sm,
+      },
+      pickerBackdrop: {
+        flex: 1,
+        backgroundColor: palette.scrim,
+        justifyContent: "center",
+        paddingHorizontal: space.lg,
+      },
+      pickerCard: {
+        backgroundColor: palette.surfaceElevated,
+        borderRadius: radii.lg,
+        padding: space.sm,
+      },
+      pickerTitle: {
+        ...typography.label,
+        color: palette.text,
+        marginBottom: space.sm,
+        textAlign: "center",
+      },
+      pickerRow: { paddingVertical: 12, paddingHorizontal: space.sm, borderRadius: radii.sm },
+      pickerRowActive: { backgroundColor: palette.brandSubtle },
+      pickerRowText: { ...typography.bodyMd, color: palette.text },
+      pickerRowTextActive: { color: palette.brand, fontWeight: "700" },
+    })
+  );
+}

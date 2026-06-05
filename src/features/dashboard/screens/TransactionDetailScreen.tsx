@@ -3,7 +3,6 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useQuery } from "@tanstack/react-query";
 import React, { useMemo } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
@@ -12,7 +11,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { Button, Pill } from "../../../components/ui";
+import { Button, Pill, TransactionDetailSkeleton } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import type { MenuStackParamList } from "../../../navigation/types";
 import {
@@ -241,11 +240,7 @@ export function TransactionDetailScreen({ navigation, route }: Props) {
   };
 
   if (isLoading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={c.iconPrimary} />
-      </View>
-    );
+    return <TransactionDetailSkeleton />;
   }
 
   if (error || !data) {

@@ -14,7 +14,14 @@ import {
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { Button, HelpBubble, TimeZoneSearchModal } from "../../../components/ui";
+import {
+  Button,
+  HelpBubble,
+  MorphRefreshHeader,
+  TimeZoneSearchModal,
+  TrainerScheduleSkeleton,
+} from "../../../components/ui";
+import { useMorphRefreshBundle } from "../../../lib/refresh/useMorphRefreshBundle";
 import { colors, radii, space, typography } from "../../../theme";
 import {
   fetchTrainerSlots,
@@ -356,26 +363,27 @@ export function TrainerScheduleScreen() {
     },
   });
 
+  const morph = useMorphRefreshBundle(refetch, isRefetching);
+
   if (isLoading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.brandNavy} />
-      </View>
-    );
+    return <TrainerScheduleSkeleton />;
   }
 
   return (
     <View style={styles.root}>
+      <MorphRefreshHeader {...morph.headerProps} />
       <ScrollView
         contentContainerStyle={styles.content}
         // While the trainer is mid-drag inside `WeeklyAvailabilityPainter`,
         // we suspend the outer scroll so a downward sweep across cells
         // doesn't accidentally scroll the page out from under them.
         scrollEnabled={!isPainting}
+        onScroll={morph.onMorphScroll}
+        scrollEventThrottle={morph.scrollEventThrottle}
         refreshControl={
           <RefreshControl
-            refreshing={isRefetching}
-            onRefresh={refetch}
+            refreshing={morph.refreshing}
+            onRefresh={morph.onRefreshControl}
             tintColor={colors.brandNavy}
           />
         }

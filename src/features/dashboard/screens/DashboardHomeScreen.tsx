@@ -15,12 +15,21 @@ import { Ionicons } from "@expo/vector-icons";
 import { PendingAuthResumeBridge } from "../../auth/components/PendingAuthResumeBridge";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
-import { Skeleton, ImageWithSkeleton } from "../../../components/ui";
+import {
+  FriendRequestTilesSkeleton,
+  ImageWithSkeleton,
+  MorphRefreshHeader,
+  Skeleton,
+  TrainerHomeSkeleton,
+} from "../../../components/ui";
+import { useCombinedScroll } from "../../../lib/refresh/useCombinedScroll";
+import { useMorphRefreshBundle } from "../../../lib/refresh/useMorphRefreshBundle";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { queryKeys } from "../../../lib/queryKeys";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { resolveShowAsOnline } from "../../../lib/user/resolveShowAsOnline";
-import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
+import { TabScreenShell, useHorizontalGutter } from "../../../lib/layout";
+import { useCmsHome } from "../../content/hooks/useCmsHome";
 import {
   fetchScheduledMeetings,
   fetchFriendRequests,
@@ -337,6 +346,12 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
   const isTrainee = accountType === AccountType.TRAINEE;
   const isTrainer = accountType === AccountType.TRAINER;
 
+  const { data: cmsHome, isLoading: cmsHomeLoading } = useCmsHome(false, {
+    enabled: isTrainer,
+    refetchOnMount: "always",
+  });
+  const showTrainerHomeSkeleton = isTrainer && cmsHomeLoading && !cmsHome;
+
   const name =
     (user?.fullname as string) ||
     (user?.fullName as string) ||
@@ -445,6 +460,9 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
       setPullRefreshing(false);
     }
   }, [queryClient, isTrainee, user?._id]);
+
+  const morphHome = useMorphRefreshBundle(onRefresh, pullRefreshing);
+  const onHomeScroll = useCombinedScroll(morphHome.onMorphScroll, homeScroll.onScroll);
 
   const openFeature = (id: DashboardRouteId, extra?: Partial<{ bookLessonTrainerId: string }>) => {
     // Some dashboard “features” map directly to bottom tabs for correct tab highlighting.
@@ -584,7 +602,8 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
         onSchedule={(t) => setScheduleTrainer(t)}
       />
     {isTrainee ? (
-      <View style={[styles.root, { flex: 1, backgroundColor: themeColors.surface }]}>
+      <TabScreenShell clearFloatingTabBar={false} background={themeColors.surface}>
+        <MorphRefreshHeader {...morphHome.headerProps} />
         <TraineeDiscoverDashboard
           name={name}
           accountType={accountType ?? AccountType.TRAINEE}
@@ -597,16 +616,25 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
           onOpenWallet={() => openShell("wallet")}
           onOpenSession={openSession}
           contentContainerStyle={[gutter, styles.content]}
+          onScroll={onHomeScroll}
+          scrollEventThrottle={morphHome.scrollEventThrottle}
           refreshControl={
             <RefreshControl
-              refreshing={pullRefreshing}
-              onRefresh={onRefresh}
+              refreshing={morphHome.refreshing}
+              onRefresh={morphHome.onRefreshControl}
               tintColor={themeColors.brandNavy}
             />
           }
           footer={
             <>
-              {friendRequests.length > 0 && (
+              {loadingFriends ? (
+                <HomeMainCont
+                  title={t("dashboardHome.recentFriendRequests")}
+                  testID="card trainer-profile-card Home-main-Cont friend-requests-loading"
+                >
+                  <FriendRequestTilesSkeleton count={2} />
+                </HomeMainCont>
+              ) : friendRequests.length > 0 ? (
                 <HomeMainCont
                   title={t("dashboardHome.recentFriendRequests")}
                   testID="card trainer-profile-card Home-main-Cont friend-requests"
@@ -629,7 +657,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
                     ))}
                   </View>
                 </HomeMainCont>
-              )}
+              ) : null}
 
               {showEmptyDashboard ? (
                 <HomeMainCont testID="home-empty-sessions-hint" title={t("dashboardHome.upcomingSessions")}>
@@ -683,9 +711,9 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
             </>
           }
         />
-      </View>
+      </TabScreenShell>
     ) : (
-      <View style={[styles.root, { flex: 1, backgroundColor: themeColors.surface }]}>
+      <TabScreenShell clearFloatingTabBar={false} background={themeColors.surface}>
         <DiscoverHomeChrome
           compactTop
           headline={t("homeMarketplace.greeting", { name, defaultValue: `Hi, ${name}` })}
@@ -704,6 +732,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
             />
           }
         />
+        <MorphRefreshHeader {...morphHome.headerProps} />
         <ScrollView
           style={{ flex: 1, backgroundColor: themeColors.background }}
           contentContainerStyle={[
@@ -713,18 +742,24 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
           ]}
           nestedScrollEnabled
           keyboardShouldPersistTaps="handled"
-          onScroll={homeScroll.onScroll}
-          scrollEventThrottle={homeScroll.scrollEventThrottle}
+          onScroll={onHomeScroll}
+          scrollEventThrottle={morphHome.scrollEventThrottle}
           refreshControl={
             <RefreshControl
-              refreshing={pullRefreshing}
-              onRefresh={onRefresh}
+              refreshing={morphHome.refreshing}
+              onRefresh={morphHome.onRefreshControl}
               tintColor={themeColors.brandNavy}
             />
           }
         >
-          <HomeHeroCarousel contentWidth={marketplaceContentWidth} />
-          <HomeOffersCarousel />
+          {showTrainerHomeSkeleton ? (
+            <TrainerHomeSkeleton />
+          ) : (
+            <>
+              <HomeHeroCarousel contentWidth={marketplaceContentWidth} />
+              <HomeOffersCarousel />
+            </>
+          )}
           <TrainerDashboardHub
             marketplaceHeader
             name={name}
@@ -734,6 +769,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
             user={user as Record<string, unknown> | undefined}
             recentTrainees={recentTrainees}
             friendRequests={friendRequests}
+            loadingFriendRequests={loadingFriends}
             onAcceptFriend={handleAccept}
             onRejectFriend={handleReject}
             onSettings={() => openShell("settings")}
@@ -748,7 +784,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
           />
         </ScrollView>
         <StickyBottomPromoBar />
-      </View>
+      </TabScreenShell>
     )}
 
       <AIFloatingButton onPress={() => setAiOpen(true)} />

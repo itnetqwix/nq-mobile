@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button } from "../../../components/ui";
+import { Button, EarningsCardSkeleton } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { queryKeys } from "../../../lib/queryKeys";
 import { useCurrencyFormatter } from "../../../lib/intl";
@@ -80,7 +80,13 @@ export function TrainerEarningsScreen() {
     }
   };
 
-  if (isLoading) return null;
+  if (isLoading) {
+    return (
+      <ScrollView style={styles.root} contentContainerStyle={styles.content}>
+        <EarningsCardSkeleton />
+      </ScrollView>
+    );
+  }
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>

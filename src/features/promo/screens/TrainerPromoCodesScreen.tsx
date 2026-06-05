@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Modal,
   Pressable,
@@ -15,7 +14,14 @@ import {
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { Button, Card, Pill, ScreenContainer } from "../../../components/ui";
+import {
+  Button,
+  Card,
+  Pill,
+  PromoRowSkeleton,
+  ScreenContainer,
+  SkeletonGroup,
+} from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { queryKeys } from "../../../lib/queryKeys";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
@@ -211,7 +217,7 @@ export function TrainerPromoCodesScreen() {
       </View>
 
       {listQuery.isLoading ? (
-        <ActivityIndicator style={{ marginTop: space.xl }} color={c.brandAccent} />
+        <SkeletonGroup count={3} gap={space.sm} renderRow={() => <PromoRowSkeleton />} />
       ) : rows.length === 0 ? (
         <Text style={styles.empty}>{t("trainerPromo.empty")}</Text>
       ) : (

@@ -17,7 +17,9 @@ import { API_ROUTES } from "../../../config/apiRoutes";
 import { queryKeys } from "../../../lib/queryKeys";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { haptics } from "../../../lib/haptics";
+import { useThemeColors } from "../../../theme";
 import { forwardChatMessage } from "../api/chatActionsApi";
+import { useChatOverlayStyles } from "../hooks/useChatOverlayStyles";
 
 type Conversation = {
   _id: string;
@@ -51,6 +53,8 @@ export function ForwardPickerSheet({
   excludeConversationId,
   onForwarded,
 }: Props) {
+  const c = useThemeColors();
+  const styles = useChatOverlayStyles();
   const [selected, setSelected] = useState<Record<string, true>>({});
   const [search, setSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -116,31 +120,31 @@ export function ForwardPickerSheet({
     <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        <View style={styles.sheet}>
+        <View style={styles.bottomSheet}>
           <View style={styles.handleRow}>
             <View style={styles.handle} />
           </View>
-          <View style={styles.headerRow}>
-            <Text style={styles.title}>Forward to…</Text>
+          <View style={styles.headerRowBetween}>
+            <Text style={styles.sheetTitle}>Forward to…</Text>
             <Pressable hitSlop={12} onPress={onClose}>
-              <Ionicons name="close" size={22} color="#374151" />
+              <Ionicons name="close" size={22} color={c.textSecondary} />
             </Pressable>
           </View>
 
           <View style={styles.searchBar}>
-            <Ionicons name="search" size={18} color="#9CA3AF" />
+            <Ionicons name="search" size={18} color={c.textMuted} />
             <TextInput
               value={search}
               onChangeText={setSearch}
               placeholder="Search chats"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={c.textMuted}
               style={styles.searchInput}
               autoCorrect={false}
             />
           </View>
 
           {isLoading ? (
-            <ActivityIndicator style={{ marginTop: 24 }} />
+            <ActivityIndicator style={{ marginTop: 24 }} color={c.brand} />
           ) : (
             <FlatList
               data={filtered}
@@ -152,8 +156,8 @@ export function ForwardPickerSheet({
                   <Pressable
                     onPress={() => toggleSelect(item._id)}
                     style={({ pressed }) => [
-                      styles.row,
-                      pressed && { backgroundColor: "rgba(0,0,0,0.03)" },
+                      styles.listRow,
+                      pressed && styles.listRowPressed,
                     ]}
                   >
                     {avatarUri ? (
@@ -166,31 +170,26 @@ export function ForwardPickerSheet({
                       </View>
                     )}
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.name} numberOfLines={1}>
+                      <Text style={styles.listTitle} numberOfLines={1}>
                         {item._title}
                       </Text>
                       {!!item.lastMessage && (
-                        <Text style={styles.preview} numberOfLines={1}>
+                        <Text style={styles.listSub} numberOfLines={1}>
                           {item.lastMessage}
                         </Text>
                       )}
                     </View>
-                    <View
-                      style={[
-                        styles.checkbox,
-                        checked && styles.checkboxChecked,
-                      ]}
-                    >
+                    <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
                       {checked ? (
-                        <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                        <Ionicons name="checkmark" size={16} color={c.brandTextOn} />
                       ) : null}
                     </View>
                   </Pressable>
                 );
               }}
-              ItemSeparatorComponent={() => <View style={styles.sep} />}
+              ItemSeparatorComponent={() => <View style={styles.separator} />}
               ListEmptyComponent={
-                <Text style={styles.empty}>No chats match your search.</Text>
+                <Text style={styles.emptyText}>No chats match your search.</Text>
               }
               contentContainerStyle={{ paddingBottom: 80 }}
             />
@@ -204,7 +203,7 @@ export function ForwardPickerSheet({
               (!selectedIds.length || submitting) && styles.sendBtnDisabled,
             ]}
           >
-            <Ionicons name="paper-plane" size={16} color="#FFFFFF" />
+            <Ionicons name="paper-plane" size={16} color={c.brandTextOn} />
             <Text style={styles.sendLabel}>
               {submitting
                 ? "Sending…"
@@ -218,82 +217,3 @@ export function ForwardPickerSheet({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    justifyContent: "flex-end",
-  },
-  sheet: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-    maxHeight: "82%",
-  },
-  handleRow: { alignItems: "center", paddingTop: 8, paddingBottom: 4 },
-  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: "#D1D5DB" },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingBottom: 12,
-  },
-  title: { fontSize: 18, fontWeight: "700", color: "#111827" },
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F3F4F6",
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 8,
-    marginBottom: 8,
-  },
-  searchInput: { flex: 1, fontSize: 15, color: "#111827", padding: 0 },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-    gap: 12,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#E5E7EB",
-  },
-  avatarFallback: { alignItems: "center", justifyContent: "center" },
-  avatarLetter: { color: "#374151", fontWeight: "700", fontSize: 16 },
-  name: { fontSize: 15, fontWeight: "600", color: "#111827" },
-  preview: { fontSize: 13, color: "#6B7280", marginTop: 2 },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    borderColor: "#D1D5DB",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  checkboxChecked: { backgroundColor: "#2563EB", borderColor: "#2563EB" },
-  sep: { height: StyleSheet.hairlineWidth, backgroundColor: "#E5E7EB" },
-  empty: { textAlign: "center", color: "#6B7280", marginTop: 16 },
-  sendBtn: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    bottom: 14,
-    backgroundColor: "#2563EB",
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 8,
-  },
-  sendBtnDisabled: { backgroundColor: "#94A3B8" },
-  sendLabel: { color: "#FFFFFF", fontWeight: "700", fontSize: 15 },
-});

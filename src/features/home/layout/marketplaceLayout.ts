@@ -1,7 +1,6 @@
 import { useMemo } from "react";
-import { Dimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
+import { useContentWidth, useHorizontalGutter } from "../../../lib/layout";
 import { floatingTabBarBottomInset } from "../../../navigation/FloatingTabBar";
 import { space } from "../../../theme";
 
@@ -17,11 +16,7 @@ export function useMarketplaceHorizontalPad(gutter: SpaceKey = "md") {
 
 /** Usable width inside horizontal gutter (for hero card sizing). */
 export function useMarketplaceContentWidth(gutter: SpaceKey = "md") {
-  const pad = useMarketplaceHorizontalPad(gutter);
-  return useMemo(
-    () => Dimensions.get("window").width - pad.paddingLeft - pad.paddingRight,
-    [pad.paddingLeft, pad.paddingRight]
-  );
+  return useContentWidth(gutter);
 }
 
 /**

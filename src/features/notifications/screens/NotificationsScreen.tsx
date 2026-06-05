@@ -7,12 +7,15 @@ import {
   ActivityIndicator,
   FlatList,
   Pressable,
-  RefreshControl,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { ChatRowSkeleton, EmptyState, SkeletonGroup } from "../../../components/ui";
+import { ChatRowSkeleton, EmptyState, MorphRefreshScrollSurface, SkeletonGroup } from "../../../components/ui";
+import {
+  FLATLIST_PERF_DEFAULTS,
+  notificationRowGetItemLayout,
+} from "../../../lib/lists/flatListPerf";
 import type { RootStackParamList } from "../../../navigation/types";
 import {
   buildNotificationRoute,
@@ -174,21 +177,27 @@ export function NotificationsScreen() {
   }
 
   return (
-    <FlatList
-      data={notifications}
-      keyExtractor={flatListKeyExtractor}
-      renderItem={({ item }) => (
-        <NotificationItem
-          item={item}
-          onPress={() => handleNotificationPress(item)}
+    <MorphRefreshScrollSurface onRefresh={refetch} externalRefreshing={isRefetching} tintColor={c.iconPrimary}>
+      {({ refreshControl, onScroll, scrollEventThrottle }) => (
+        <FlatList
+          data={notifications}
+          keyExtractor={flatListKeyExtractor}
+          renderItem={({ item }) => (
+            <NotificationItem
+              item={item}
+              onPress={() => handleNotificationPress(item)}
+            />
+          )}
+          contentContainerStyle={[styles.list, { paddingBottom: bottomPad }]}
+          refreshControl={refreshControl}
+          onScroll={onScroll}
+          scrollEventThrottle={scrollEventThrottle}
+          {...FLATLIST_PERF_DEFAULTS}
+          getItemLayout={notificationRowGetItemLayout}
+          ListEmptyComponent={<EmptyState preset="no_notifications" />}
         />
       )}
-      contentContainerStyle={[styles.list, { paddingBottom: bottomPad }]}
-      refreshControl={
-        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.iconPrimary} />
-      }
-      ListEmptyComponent={<EmptyState preset="no_notifications" />}
-    />
+    </MorphRefreshScrollSurface>
   );
 }
 

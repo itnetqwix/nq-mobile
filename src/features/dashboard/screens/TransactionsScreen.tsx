@@ -8,13 +8,24 @@ import {
   FlatList,
   Modal,
   Pressable,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { Button, EmptyState, Pill, Skeleton, SkeletonGroup, TransactionRowSkeleton } from "../../../components/ui";
+import {
+  Button,
+  EmptyState,
+  MorphRefreshScrollSurface,
+  Pill,
+  Skeleton,
+  SkeletonGroup,
+  TransactionRowSkeleton,
+} from "../../../components/ui";
+import {
+  FLATLIST_PERF_DEFAULTS,
+  transactionRowGetItemLayout,
+} from "../../../lib/lists/flatListPerf";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { AccountType } from "../../../constants/accountType";
 import { useAuth } from "../../auth/context/AuthContext";
@@ -307,6 +318,7 @@ export function TransactionsScreen() {
   const {
     data,
     isLoading,
+    isRefetching,
     refetch,
     fetchNextPage,
     hasNextPage,
@@ -378,6 +390,12 @@ export function TransactionsScreen() {
 
   return (
     <>
+    <MorphRefreshScrollSurface
+      onRefresh={onRefreshTransactions}
+      externalRefreshing={transactionsRefreshing || isRefetching}
+      tintColor={c.iconPrimary}
+    >
+      {({ refreshControl, onScroll, scrollEventThrottle }) => (
     <FlatList
       data={rows}
       keyExtractor={flatListKeyExtractor}
@@ -389,6 +407,11 @@ export function TransactionsScreen() {
         />
       )}
       contentContainerStyle={[styles.list, { paddingBottom: bottomPad }]}
+      refreshControl={refreshControl}
+      onScroll={onScroll}
+      scrollEventThrottle={scrollEventThrottle}
+      {...FLATLIST_PERF_DEFAULTS}
+      getItemLayout={transactionRowGetItemLayout}
       ListHeaderComponent={
         <>
           <View style={styles.listHeader}>
@@ -424,13 +447,6 @@ export function TransactionsScreen() {
             </Pressable>
           </View>
         </>
-      }
-      refreshControl={
-        <RefreshControl
-          refreshing={transactionsRefreshing}
-          onRefresh={onRefreshTransactions}
-          tintColor={c.iconPrimary}
-        />
       }
       onEndReached={() => {
         if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
@@ -485,6 +501,8 @@ export function TransactionsScreen() {
         )
       }
     />
+      )}
+    </MorphRefreshScrollSurface>
 
     <Modal
       visible={filtersOpen}

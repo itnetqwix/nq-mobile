@@ -4,7 +4,6 @@ import {
   FlatList,
   Image,
   Pressable,
-  StyleSheet,
   Text,
   View,
 } from "react-native";
@@ -12,7 +11,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "../../../lib/queryKeys";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
+import { useThemeColors } from "../../../theme";
 import { searchAllMessages } from "../api/chatActionsApi";
+import { useChatOverlayStyles } from "../hooks/useChatOverlayStyles";
 
 type Props = {
   query: string;
@@ -38,6 +39,8 @@ export function GlobalMessageSearchResults({
   currentUserId,
   onOpenResult,
 }: Props) {
+  const c = useThemeColors();
+  const styles = useChatOverlayStyles();
   const [debounced, setDebounced] = useState(query);
   useEffect(() => {
     const t = setTimeout(() => setDebounced(query.trim()), 220);
@@ -82,22 +85,22 @@ export function GlobalMessageSearchResults({
   if (!enabled) return null;
 
   return (
-    <View style={styles.wrap}>
-      <View style={styles.headerRow}>
-        <Ionicons name="search" size={14} color="#6B7280" />
-        <Text style={styles.headerLabel}>
+    <View style={styles.searchResultsWrap}>
+      <View style={styles.searchResultsHeader}>
+        <Ionicons name="search" size={14} color={c.textMuted} />
+        <Text style={styles.searchResultsHeaderLabel}>
           {isLoading
             ? "Searching messages…"
             : `Matches in messages — ${hits.length}`}
         </Text>
       </View>
       {isLoading ? (
-        <ActivityIndicator style={{ marginTop: 12 }} />
+        <ActivityIndicator style={{ marginTop: 12 }} color={c.brand} />
       ) : (
         <FlatList
           data={hits}
           keyExtractor={(h) => h.messageId}
-          ItemSeparatorComponent={() => <View style={styles.sep} />}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
           renderItem={({ item }) => {
             const avatarUri = getS3ImageUrl(item.avatar) || null;
             return (
@@ -115,33 +118,33 @@ export function GlobalMessageSearchResults({
                   )
                 }
                 style={({ pressed }) => [
-                  styles.row,
-                  pressed && { backgroundColor: "rgba(0,0,0,0.03)" },
+                  styles.listRow,
+                  pressed && styles.listRowPressed,
                 ]}
               >
                 {avatarUri ? (
-                  <Image source={{ uri: avatarUri }} style={styles.avatar} />
+                  <Image source={{ uri: avatarUri }} style={styles.avatarSm} />
                 ) : (
-                  <View style={[styles.avatar, styles.avatarFallback]}>
+                  <View style={[styles.avatarSm, styles.avatarFallback]}>
                     <Text style={styles.avatarLetter}>
                       {item.title?.[0]?.toUpperCase() || "?"}
                     </Text>
                   </View>
                 )}
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.title} numberOfLines={1}>
+                  <Text style={styles.listTitle} numberOfLines={1}>
                     {item.title}
                   </Text>
-                  <Text style={styles.snippet} numberOfLines={1}>
+                  <Text style={styles.listSub} numberOfLines={1}>
                     {item.content || "(no preview)"}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+                <Ionicons name="chevron-forward" size={16} color={c.textMuted} />
               </Pressable>
             );
           }}
           ListEmptyComponent={
-            <Text style={styles.empty}>
+            <Text style={styles.emptyText}>
               No messages match "{debounced}". Try a different word.
             </Text>
           }
@@ -150,33 +153,3 @@ export function GlobalMessageSearchResults({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { paddingHorizontal: 12, paddingTop: 8 },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 4,
-    paddingVertical: 8,
-  },
-  headerLabel: { fontSize: 12, color: "#6B7280", fontWeight: "600" },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-    gap: 12,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#E5E7EB",
-  },
-  avatarFallback: { alignItems: "center", justifyContent: "center" },
-  avatarLetter: { color: "#374151", fontWeight: "700" },
-  title: { fontSize: 14, fontWeight: "600", color: "#111827" },
-  snippet: { fontSize: 13, color: "#6B7280", marginTop: 2 },
-  sep: { height: StyleSheet.hairlineWidth, backgroundColor: "#F3F4F6" },
-  empty: { textAlign: "center", color: "#9CA3AF", marginTop: 16, fontSize: 13 },
-});

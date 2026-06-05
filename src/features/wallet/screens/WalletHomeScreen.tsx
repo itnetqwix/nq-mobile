@@ -3,6 +3,8 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { MorphRefreshHeader } from "../../../components/ui";
+import { useMorphRefreshBundle } from "../../../lib/refresh/useMorphRefreshBundle";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AccountType } from "../../../constants/accountType";
 import { useAuth } from "../../auth/context/AuthContext";
@@ -134,13 +136,23 @@ function TraineeWalletHome({ navigation }: Props) {
     [t]
   );
 
+  const morph = useMorphRefreshBundle(refetch, isRefetching);
+
   return (
-    <ScrollView
-      contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad }]}
-      refreshControl={
-        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.iconPrimary} />
-      }
-    >
+    <>
+      <MorphRefreshHeader {...morph.headerProps} />
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad }]}
+        onScroll={morph.onMorphScroll}
+        scrollEventThrottle={morph.scrollEventThrottle}
+        refreshControl={
+          <RefreshControl
+            refreshing={morph.refreshing}
+            onRefresh={morph.onRefreshControl}
+            tintColor={c.iconPrimary}
+          />
+        }
+      >
       <View style={styles.balanceCard}>
         <Text style={styles.balanceLabel}>{t("wallet.availableBalance")}</Text>
         {isLoading && !balance ? (
@@ -236,6 +248,7 @@ function TraineeWalletHome({ navigation }: Props) {
         />
       </View>
     </ScrollView>
+    </>
   );
 }
 

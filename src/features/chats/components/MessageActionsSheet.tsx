@@ -10,15 +10,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { haptics } from "../../../lib/haptics";
-
-/**
- * Centralised long-press action sheet for chat bubbles.
- *
- * Renders a small floating bar of quick emoji reactions on top, then
- * a vertical list of contextual actions (Reply / Forward / Pin / Copy /
- * Edit / Delete / Report …) — feels close to iMessage / Telegram while
- * staying fully cross-platform with React Native primitives.
- */
+import { useThemeColors } from "../../../theme";
+import { useChatOverlayStyles } from "../hooks/useChatOverlayStyles";
 
 const REACTION_EMOJIS = ["👍", "❤️", "😂", "🎉", "🙏", "🔥"] as const;
 
@@ -56,6 +49,8 @@ export function MessageActionsSheet({
   onReact,
   currentReaction,
 }: Props) {
+  const c = useThemeColors();
+  const styles = useChatOverlayStyles();
   const fade = useRef(new Animated.Value(0)).current;
   const slide = useRef(new Animated.Value(40)).current;
 
@@ -102,16 +97,11 @@ export function MessageActionsSheet({
                 <Pressable
                   key={emoji}
                   onPress={() => {
-                    haptics.select();
+                    haptics.tap();
                     onReact(emoji);
+                    onClose();
                   }}
-                  style={({ pressed }) => [
-                    styles.reactionPill,
-                    active && styles.reactionPillActive,
-                    pressed && { transform: [{ scale: 1.18 }] },
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`React with ${emoji}`}
+                  style={[styles.reactionPill, active && styles.reactionPillActive]}
                 >
                   <Text style={styles.reactionEmoji}>{emoji}</Text>
                 </Pressable>
@@ -131,7 +121,7 @@ export function MessageActionsSheet({
                 style={({ pressed }) => [
                   styles.actionRow,
                   idx !== actions.length - 1 && styles.actionRowBorder,
-                  pressed && { backgroundColor: "rgba(0,0,0,0.04)" },
+                  pressed && styles.actionRowPressed,
                 ]}
               >
                 <Text
@@ -145,7 +135,7 @@ export function MessageActionsSheet({
                 <Ionicons
                   name={a.icon}
                   size={20}
-                  color={a.destructive ? "#EF4444" : "#374151"}
+                  color={a.destructive ? c.danger : c.textSecondary}
                 />
               </Pressable>
             ))}
@@ -155,72 +145,3 @@ export function MessageActionsSheet({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    justifyContent: "flex-end",
-  },
-  sheetWrap: {
-    paddingHorizontal: 14,
-    paddingBottom: 36,
-    gap: 12,
-  },
-  reactionsRow: {
-    flexDirection: "row",
-    alignSelf: "center",
-    backgroundColor: "#FFFFFF",
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    borderRadius: 999,
-    gap: 4,
-    shadowColor: "#000",
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
-  },
-  reactionPill: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  reactionPillActive: {
-    backgroundColor: "#E0F2FE",
-  },
-  reactionEmoji: {
-    fontSize: 24,
-  },
-  actionsCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
-  },
-  actionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  actionRowBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E5E7EB",
-  },
-  actionLabel: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#111827",
-  },
-  actionLabelDestructive: {
-    color: "#EF4444",
-  },
-});

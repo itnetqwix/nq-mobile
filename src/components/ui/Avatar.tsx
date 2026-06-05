@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
-import { colors, typography } from "../../theme";
+import { typography, useThemedStyles } from "../../theme";
 import {
   pickProfileImageKey,
   resolveProfileImageFallback,
@@ -31,6 +31,22 @@ const SIZE_MAP: Record<AvatarSize, { dim: number; font: number }> = {
 export function Avatar({ uri, user, name, size = "md", style }: AvatarProps) {
   const { dim, font } = SIZE_MAP[size];
   const initials = pickInitials(name);
+  const styles = useThemedStyles((c) =>
+    StyleSheet.create({
+      fallback: {
+        backgroundColor: c.brandNavy,
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
+      },
+      initials: {
+        ...typography.label,
+        color: c.brandTextOn,
+        fontWeight: "700",
+      },
+    })
+  );
+
   const storageKey = useMemo(
     () => uri ?? pickProfileImageKey(user) ?? null,
     [uri, user]
@@ -83,14 +99,7 @@ export function Avatar({ uri, user, name, size = "md", style }: AvatarProps) {
         style,
       ]}
     >
-      <Text
-        style={[
-          typography.label,
-          { fontSize: font, color: colors.brandTextOn, fontWeight: "700" },
-        ]}
-      >
-        {initials}
-      </Text>
+      <Text style={[styles.initials, { fontSize: font }]}>{initials}</Text>
     </View>
   );
 }
@@ -102,12 +111,3 @@ function pickInitials(name?: string | null): string {
   if (parts.length === 1) return parts[0]!.charAt(0).toUpperCase();
   return (parts[0]!.charAt(0) + parts[parts.length - 1]!.charAt(0)).toUpperCase();
 }
-
-const styles = StyleSheet.create({
-  fallback: {
-    backgroundColor: colors.brandNavy,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-});

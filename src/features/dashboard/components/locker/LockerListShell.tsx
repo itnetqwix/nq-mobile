@@ -3,14 +3,14 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Text,
   View,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { EmptyState, Skeleton } from "../../../../components/ui";
+import { ClipCardSkeleton, EmptyState, MorphRefreshHeader, SkeletonGroup } from "../../../../components/ui";
 import { getApiErrorMessage } from "../../../../lib/http/getApiErrorMessage";
-import { radii, space, useThemedStyles } from "../../../../theme";
+import { useMorphRefreshBundle } from "../../../../lib/refresh/useMorphRefreshBundle";
+import { space, useThemeColors, useThemedStyles } from "../../../../theme";
 import { useFloatingTabBarBottomInset } from "../../../../navigation/useFloatingTabBarBottomInset";
 
 type Props = {
@@ -38,6 +38,8 @@ export function LockerListShell({
   contentStyle,
   skeletonRows = 3,
 }: Props) {
+  const c = useThemeColors();
+  const morph = useMorphRefreshBundle(onRefresh, refreshing);
   const bottomPad = useFloatingTabBarBottomInset(space.md);
   const styles = useThemedStyles((palette) =>
     StyleSheet.create({
@@ -70,9 +72,11 @@ export function LockerListShell({
       <View style={styles.root}>
         {toolbar ? <View style={styles.toolbar}>{toolbar}</View> : null}
         <View style={styles.skeletonWrap}>
-          {Array.from({ length: skeletonRows }).map((_, i) => (
-            <Skeleton key={i} width="100%" height={96} radius={radii.md} />
-          ))}
+          <SkeletonGroup
+            count={skeletonRows}
+            gap={space.md}
+            renderRow={() => <ClipCardSkeleton />}
+          />
         </View>
       </View>
     );
@@ -98,13 +102,20 @@ export function LockerListShell({
   return (
     <View style={styles.root}>
       {toolbar ? <View style={styles.toolbar}>{toolbar}</View> : null}
+      <MorphRefreshHeader {...morph.headerProps} />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[styles.content, contentStyle, { paddingBottom: bottomPad }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator
+        onScroll={morph.onMorphScroll}
+        scrollEventThrottle={morph.scrollEventThrottle}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={morph.refreshing}
+            onRefresh={morph.onRefreshControl}
+            tintColor={c.brandAccent}
+          />
         }
       >
         {children}

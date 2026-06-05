@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { MorphRefreshHeader } from "../../../components/ui";
+import { useMorphRefreshBundle } from "../../../lib/refresh/useMorphRefreshBundle";
 import { queryKeys } from "../../../lib/queryKeys";
 import { useFloatingTabBarBottomInset } from "../../../navigation/useFloatingTabBarBottomInset";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
@@ -43,14 +45,23 @@ export function TrainerWalletHome({ navigation }: Props) {
     })
   );
   const { isRefetching, refetch } = useWalletBalance();
+  const morph = useMorphRefreshBundle(refetch, isRefetching);
 
   return (
-    <ScrollView
-      contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad }]}
-      refreshControl={
-        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.iconPrimary} />
-      }
-    >
+    <>
+      <MorphRefreshHeader {...morph.headerProps} />
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad }]}
+        onScroll={morph.onMorphScroll}
+        scrollEventThrottle={morph.scrollEventThrottle}
+        refreshControl={
+          <RefreshControl
+            refreshing={morph.refreshing}
+            onRefresh={morph.onRefreshControl}
+            tintColor={c.iconPrimary}
+          />
+        }
+      >
       <TrainerEarningsPanel />
 
       <Pressable
@@ -83,5 +94,6 @@ export function TrainerWalletHome({ navigation }: Props) {
         <Ionicons name="chevron-forward" size={20} color={c.textMuted} />
       </Pressable>
     </ScrollView>
+    </>
   );
 }

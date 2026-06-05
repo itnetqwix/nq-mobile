@@ -1,19 +1,21 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text } from "react-native";
 import { NetqwixLogo } from "../../../components/brand/NetqwixLogo";
-import { Banner, Button, ScreenContainer } from "../../../components/ui";
+import { Banner, Button, ScreenContainer, ScreenLoadingState } from "../../../components/ui";
 import { AuthEscapeLink } from "../../auth/components/AuthEscapeLink";
 import { useAuth } from "../../auth/context/AuthContext";
 import { OtpVerificationStep } from "../components/OtpVerificationStep";
 import { VerificationProgressHeader } from "../components/VerificationProgressHeader";
 import { getVerificationStatus, type OnboardingStatus } from "../verificationApi";
-import { colors, space, typography } from "../../../theme";
+import { space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 
 type ContactPhase = "email" | "phone";
 
 type Props = { onDone: () => void };
 
 export function VerifyContactScreen({ onDone }: Props) {
+  const c = useThemeColors();
+  const styles = useVerifyContactStyles();
   const { user, refreshUser } = useAuth();
   const [status, setStatus] = useState<OnboardingStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,11 +65,7 @@ export function VerifyContactScreen({ onDone }: Props) {
   };
 
   if (loading && !status) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={colors.brand} />
-      </View>
-    );
+    return <ScreenLoadingState variant="fullscreen" />;
   }
 
   const emailDest =
@@ -78,7 +76,7 @@ export function VerifyContactScreen({ onDone }: Props) {
     (typeof user?.mobile_no === "string" ? user.mobile_no : "your phone");
 
   return (
-    <ScreenContainer scroll applyTopInset padding="lg" background={colors.background}>
+    <ScreenContainer scroll applyTopInset padding="lg" background={c.background}>
       <AuthEscapeLink variant="signout" />
       <View style={styles.brand}>
         <NetqwixLogo variant="wordmark" fullWidth maxWidth={400} height={120} />
@@ -156,20 +154,23 @@ export function VerifyContactScreen({ onDone }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  brand: {
-    alignItems: "center",
-    width: "100%",
-    backgroundColor: "#000000",
-    borderRadius: 12,
-    paddingVertical: space.sm,
-    marginBottom: space.lg,
-    marginTop: space.md,
-  },
-  centered: { flex: 1, alignItems: "center", justifyContent: "center" },
-  phoneIntro: {
-    ...typography.bodyMd,
-    color: colors.textMuted,
-    marginBottom: space.md,
-  },
-});
+function useVerifyContactStyles() {
+  return useThemedStyles((palette) =>
+    StyleSheet.create({
+      brand: {
+        alignItems: "center",
+        width: "100%",
+        backgroundColor: palette.drawerHeader,
+        borderRadius: 12,
+        paddingVertical: space.sm,
+        marginBottom: space.lg,
+        marginTop: space.md,
+      },
+      phoneIntro: {
+        ...typography.bodyMd,
+        color: palette.textMuted,
+        marginBottom: space.md,
+      },
+    })
+  );
+}

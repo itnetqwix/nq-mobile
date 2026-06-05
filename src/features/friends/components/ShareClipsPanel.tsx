@@ -5,16 +5,22 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { ImageWithSkeleton, Skeleton } from "../../../components/ui";
+import {
+  ClipCardSkeleton,
+  ImageWithSkeleton,
+  MorphRefreshScrollSurface,
+  ScreenLoadingState,
+  Skeleton,
+  SkeletonGroup,
+} from "../../../components/ui";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
-import { colors, radii, space, typography } from "../../../theme";
+import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { fetchFriends, postMyClipsGrouped } from "../../home/api/homeApi";
 import { postClipShareRequests } from "../../clips/api/clipsShareApi";
 import { queryKeys } from "../../../lib/queryKeys";
@@ -49,6 +55,8 @@ function flattenClips(
 }
 
 export function ShareClipsPanel() {
+  const c = useThemeColors();
+  const styles = useShareClipsStyles();
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [selectedFriends, setSelectedFriends] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
@@ -132,24 +140,28 @@ export function ShareClipsPanel() {
 
   if (isLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.brandNavy} />
-      </View>
+      <ScreenLoadingState
+        variant="skeleton"
+        style={{ flex: 1, padding: space.md }}
+        skeleton={<SkeletonGroup count={3} gap={space.md} renderRow={() => <ClipCardSkeleton />} />}
+      />
     );
   }
 
   return (
+    <MorphRefreshScrollSurface onRefresh={refetch} externalRefreshing={isRefetching} tintColor={c.brandNavy}>
+      {({ refreshControl, onScroll, scrollEventThrottle }) => (
     <ScrollView
       style={styles.root}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
-      refreshControl={
-        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brandNavy} />
-      }
+      refreshControl={refreshControl}
+      onScroll={onScroll}
+      scrollEventThrottle={scrollEventThrottle}
     >
       <Text style={styles.intro}>
         Share clips with friends only. Clips are added to their locker right away; they can remove them later.
-        Use <Text style={{ fontWeight: "700", color: colors.brandNavy }}>Invite Friends</Text> to
+        Use <Text style={{ fontWeight: "700", color: c.brandNavy }}>Invite Friends</Text> to
         add new people first.
       </Text>
 
@@ -181,7 +193,7 @@ export function ShareClipsPanel() {
                 <Ionicons
                   name={on ? "checkmark-circle" : "ellipse-outline"}
                   size={22}
-                  color={on ? colors.brandNavy : colors.textMuted}
+                  color={on ? c.brandNavy : c.textMuted}
                 />
               </Pressable>
             );
@@ -215,11 +227,11 @@ export function ShareClipsPanel() {
                   <ClipGridThumb uri={thumb} />
                 ) : (
                   <View style={styles.thumbPh}>
-                    <Ionicons name="videocam" size={28} color={colors.brandNavy} />
+                    <Ionicons name="videocam" size={28} color={c.brandNavy} />
                   </View>
                 )}
                 <View style={[styles.check, on && styles.checkOn]}>
-                  <Ionicons name={on ? "checkmark" : "ellipse-outline"} size={16} color={colors.brandTextOn} />
+                  <Ionicons name={on ? "checkmark" : "ellipse-outline"} size={16} color={c.brandTextOn} />
                 </View>
               </View>
               <Text style={styles.tileTitle} numberOfLines={2}>
@@ -237,7 +249,7 @@ export function ShareClipsPanel() {
 
       {clips.length === 0 && (
         <View style={styles.empty}>
-          <Ionicons name="film-outline" size={40} color={colors.borderStrong} />
+          <Ionicons name="film-outline" size={40} color={c.borderStrong} />
           <Text style={styles.emptyText}>No clips in your locker yet.</Text>
         </View>
       )}
@@ -248,7 +260,7 @@ export function ShareClipsPanel() {
         disabled={busy}
       >
         {busy ? (
-          <ActivityIndicator color={colors.brandTextOn} />
+          <ActivityIndicator color={c.brandTextOn} />
         ) : (
           <Text style={styles.shareBtnText}>
             Share with {selectedFriendIds.length} friend
@@ -257,10 +269,13 @@ export function ShareClipsPanel() {
         )}
       </Pressable>
     </ScrollView>
+      )}
+    </MorphRefreshScrollSurface>
   );
 }
 
 function ClipGridThumb({ uri }: { uri: string }) {
+  const styles = useShareClipsStyles();
   const [side, setSide] = useState(0);
   return (
     <View
@@ -288,6 +303,7 @@ function ClipGridThumb({ uri }: { uri: string }) {
 }
 
 function RecipientAvatar({ uri, name }: { uri: string; name: string }) {
+  const styles = useShareClipsStyles();
   const [failed, setFailed] = useState(false);
   const url = getS3ImageUrl(uri);
   useEffect(() => {
@@ -314,7 +330,9 @@ function RecipientAvatar({ uri, name }: { uri: string; name: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+function useShareClipsStyles() {
+  return useThemedStyles((colors) =>
+    StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surface },
   content: { padding: space.md, paddingBottom: space.xl * 2, gap: space.sm },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: space.xl },
@@ -398,7 +416,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: "#c7d2fe",
+    borderColor: colors.borderFocus,
   },
   recipientAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceElevated },
   recipientAvatarFb: { alignItems: "center", justifyContent: "center" },
@@ -457,4 +475,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   shareBtnText: { ...typography.button, color: colors.brandTextOn, fontSize: 16 },
-});
+    })
+  );
+}

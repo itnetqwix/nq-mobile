@@ -11,7 +11,17 @@ import {
   type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, durations, easings, radii, shadows, space, typography } from "../../theme";
+import {
+  durations,
+  easings,
+  radii,
+  space,
+  themedShadow,
+  typography,
+  useTheme,
+  useThemeColors,
+  useThemedStyles,
+} from "../../theme";
 
 export type SheetProps = {
   visible: boolean;
@@ -44,6 +54,53 @@ export function Sheet({
   const translateY = useRef(new Animated.Value(40)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
+  const { scheme } = useTheme();
+  const isDark = scheme === "dark";
+  const palette = useThemeColors();
+
+  const styles = useThemedStyles((c) =>
+    StyleSheet.create({
+      backdrop: {
+        flex: 1,
+        backgroundColor: c.scrim,
+        justifyContent: "flex-end",
+      },
+      sheet: {
+        backgroundColor: c.surfaceElevated,
+        borderTopLeftRadius: radii.xl,
+        borderTopRightRadius: radii.xl,
+        paddingTop: space.sm,
+        paddingHorizontal: space.lg,
+        ...(Platform.OS === "ios" ? themedShadow("xl", isDark) : { elevation: 12 }),
+      },
+      sheetTall: { minHeight: "70%" },
+      handle: {
+        alignSelf: "center",
+        width: 36,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: c.neutral300,
+        marginBottom: space.sm,
+      },
+      header: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: space.sm,
+        paddingBottom: space.sm,
+      },
+      title: { ...typography.titleMd, color: c.text },
+      description: { ...typography.bodySm, color: c.textMuted, marginTop: 4 },
+      closeBtn: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: c.surfaceMuted,
+        alignItems: "center",
+        justifyContent: "center",
+      },
+      body: { paddingTop: space.xs },
+    })
+  );
 
   useEffect(() => {
     if (!visible) {
@@ -91,12 +148,8 @@ export function Sheet({
           {(title || showClose) && (
             <View style={styles.header}>
               <View style={{ flex: 1 }}>
-                {title ? <Text style={typography.titleMd}>{title}</Text> : null}
-                {description ? (
-                  <Text style={[typography.bodySm, { color: colors.textMuted, marginTop: 4 }]}>
-                    {description}
-                  </Text>
-                ) : null}
+                {title ? <Text style={styles.title}>{title}</Text> : null}
+                {description ? <Text style={styles.description}>{description}</Text> : null}
               </View>
               {showClose ? (
                 <Pressable
@@ -106,7 +159,7 @@ export function Sheet({
                   accessibilityLabel="Close"
                   style={styles.closeBtn}
                 >
-                  <Ionicons name="close" size={20} color={colors.text} />
+                  <Ionicons name="close" size={20} color={palette.text} />
                 </Pressable>
               ) : null}
             </View>
@@ -117,43 +170,3 @@ export function Sheet({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: colors.scrim,
-    justifyContent: "flex-end",
-  },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radii.xl,
-    borderTopRightRadius: radii.xl,
-    paddingTop: space.sm,
-    paddingHorizontal: space.lg,
-    ...(Platform.OS === "ios" ? shadows.xl : { elevation: 12 }),
-  },
-  sheetTall: { minHeight: "70%" },
-  handle: {
-    alignSelf: "center",
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.neutral200,
-    marginBottom: space.sm,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: space.sm,
-    paddingBottom: space.sm,
-  },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.neutral100,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  body: { paddingTop: space.xs },
-});

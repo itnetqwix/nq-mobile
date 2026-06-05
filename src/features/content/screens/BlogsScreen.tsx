@@ -2,10 +2,10 @@ import { Image } from "expo-image";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import React from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { ScreenContainer } from "../../../components/ui";
+import { BlogCardSkeleton, ScreenContainer, SkeletonGroup } from "../../../components/ui";
 import { useGuestMode } from "../../auth/hooks/useGuestMode";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
@@ -31,7 +31,7 @@ export function BlogsScreen() {
         {t("cms.blogsSubtitle")}
       </Text>
       {isLoading ? (
-        <ActivityIndicator color={c.brandAccent} style={{ marginTop: space.xl }} />
+        <SkeletonGroup count={3} gap={space.md} renderRow={() => <BlogCardSkeleton />} />
       ) : data.length === 0 ? (
         <View style={styles.empty}>
           <Ionicons name="newspaper-outline" size={40} color={c.textMuted} />

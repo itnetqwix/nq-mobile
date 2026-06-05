@@ -4,7 +4,6 @@ import {
   Alert,
   FlatList,
   Pressable,
-  RefreshControl,
   StyleSheet,
   Text,
   View,
@@ -15,7 +14,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { EmptyState, ImageWithSkeleton, Skeleton } from "../../../components/ui";
+import { EmptyState, ImageWithSkeleton, MorphRefreshScrollSurface, Skeleton } from "../../../components/ui";
+import {
+  FLATLIST_PERF_DEFAULTS,
+  studentRowGetItemLayout,
+} from "../../../lib/lists/flatListPerf";
 import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
@@ -270,6 +273,8 @@ export function StudentsScreen() {
 
   return (
     <>
+      <MorphRefreshScrollSurface onRefresh={refetch} externalRefreshing={isRefetching} tintColor={colors.brandNavy}>
+        {({ refreshControl, onScroll, scrollEventThrottle }) => (
       <FlatList
         data={students}
         keyExtractor={flatListKeyExtractor}
@@ -292,9 +297,11 @@ export function StudentsScreen() {
           );
         }}
         contentContainerStyle={listPad}
-        refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brandNavy} />
-        }
+        refreshControl={refreshControl}
+        onScroll={onScroll}
+        scrollEventThrottle={scrollEventThrottle}
+        {...FLATLIST_PERF_DEFAULTS}
+        getItemLayout={studentRowGetItemLayout}
         ListEmptyComponent={
           <EmptyState
             icon="people-outline"
@@ -303,6 +310,8 @@ export function StudentsScreen() {
           />
         }
       />
+        )}
+      </MorphRefreshScrollSurface>
       {noteTarget ? (
         <StudentNoteSheet
           visible

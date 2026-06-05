@@ -23,8 +23,9 @@
  * effect from independent timers).
  */
 
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, View, type ViewStyle } from "react-native";
+import { useContentWidth, useContentWidthFraction } from "../../lib/layout";
 import { radii, space, useThemeColors } from "../../theme";
 import { Skeleton } from "./Skeleton";
 
@@ -308,7 +309,7 @@ export function ClipTileSkeleton() {
 }
 
 /** Blinkit-style hero carousel placeholder on home. */
-export function HeroCarouselSkeleton() {
+export function HeroCarouselSkeleton({ cardHeight = 168 }: { cardHeight?: number }) {
   const c = useThemeColors();
   return (
     <View style={{ marginBottom: space.sm, paddingHorizontal: space.md }}>
@@ -318,7 +319,7 @@ export function HeroCarouselSkeleton() {
       </View>
       <Skeleton
         width="100%"
-        height={168}
+        height={cardHeight}
         radius={radii.lg}
         style={{ backgroundColor: c.surfaceMuted }}
       />
@@ -334,6 +335,7 @@ export function HeroCarouselSkeleton() {
 /** “Offers for you” horizontal strip placeholder. */
 export function OffersCarouselSkeleton() {
   const c = useThemeColors();
+  const offerWidth = useContentWidthFraction(0.72);
   return (
     <View
       style={{
@@ -350,7 +352,11 @@ export function OffersCarouselSkeleton() {
             key={i}
             style={[
               styles.offerCard,
-              { backgroundColor: c.surfaceElevated, borderColor: c.border },
+              {
+                width: offerWidth,
+                backgroundColor: c.surfaceElevated,
+                borderColor: c.border,
+              },
             ]}
           >
             <Skeleton width={48} height={48} radius={radii.md} />
@@ -361,6 +367,256 @@ export function OffersCarouselSkeleton() {
           </View>
         ))}
       </View>
+    </View>
+  );
+}
+
+/** Trainer/trainee home — unified gate while `GET /cms/home` is in flight. */
+export function TrainerHomeSkeleton() {
+  const contentWidth = useContentWidth();
+  const heroHeight = useMemo(() => Math.round(contentWidth * 0.45), [contentWidth]);
+  return (
+    <View style={{ gap: space.sm }}>
+      <HeroCarouselSkeleton cardHeight={heroHeight} />
+      <OffersCarouselSkeleton />
+    </View>
+  );
+}
+
+/** Wallet tab — balance card + ledger block. */
+export function WalletBalanceSkeleton() {
+  const c = useThemeColors();
+  return (
+    <View style={{ padding: space.lg, gap: space.md }}>
+      <View
+        style={[
+          styles.walletCard,
+          { backgroundColor: c.surfaceElevated, borderColor: c.border },
+        ]}
+      >
+        <Skeleton width={120} height={12} />
+        <Skeleton width={180} height={32} style={{ marginTop: space.sm }} />
+        <Skeleton width="60%" height={11} style={{ marginTop: space.sm }} />
+      </View>
+      <Skeleton width="100%" height={120} radius={radii.lg} />
+      <Skeleton width={100} height={16} style={{ marginTop: space.sm }} />
+      {Array.from({ length: 4 }, (_, i) => (
+        <View key={i} style={styles.walletLedgerRow}>
+          <Skeleton width="55%" height={12} />
+          <Skeleton width={72} height={12} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** Trainer promo code card — matches `PromoCard` in TrainerPromoCodesScreen. */
+export function PromoRowSkeleton() {
+  const c = useThemeColors();
+  return (
+    <View
+      style={[
+        styles.promoSkeletonCard,
+        { backgroundColor: c.surfaceElevated, borderColor: c.border },
+      ]}
+    >
+      <View style={styles.promoSkeletonTop}>
+        <View style={styles.flex1Stack}>
+          <Skeleton width="45%" height={18} />
+          <Skeleton width="70%" height={12} />
+        </View>
+        <Skeleton width={64} height={24} radius={radii.pill} />
+      </View>
+      <Skeleton width="50%" height={11} style={{ marginTop: space.sm }} />
+      <View style={[styles.promoSkeletonActions, { marginTop: space.md }]}>
+        <Skeleton width={72} height={14} />
+        <Skeleton width={56} height={14} />
+        <Skeleton width={64} height={14} />
+      </View>
+    </View>
+  );
+}
+
+/** Saved payment method row. */
+export function PaymentMethodRowSkeleton() {
+  const c = useThemeColors();
+  return (
+    <View
+      style={[
+        styles.paymentRow,
+        { backgroundColor: c.surfaceElevated, borderColor: c.border },
+      ]}
+    >
+      <Skeleton width={44} height={32} radius={6} />
+      <View style={[styles.flex1Stack, { gap: 6 }]}>
+        <Skeleton width="40%" height={14} />
+        <Skeleton width="35%" height={12} />
+        <Skeleton width="28%" height={10} />
+      </View>
+      <Skeleton width={36} height={36} radius={18} />
+    </View>
+  );
+}
+
+/** Chat room — alternating message bubbles while history loads. */
+export function ChatMessageListSkeleton({ rows = 6 }: { rows?: number }) {
+  const c = useThemeColors();
+  return (
+    <View style={{ flex: 1, padding: space.md, gap: space.sm, justifyContent: "flex-end" }}>
+      {Array.from({ length: rows }, (_, i) => {
+        const mine = i % 2 === 1;
+        return (
+          <View
+            key={i}
+            style={{
+              alignSelf: mine ? "flex-end" : "flex-start",
+              maxWidth: "78%",
+            }}
+          >
+            <Skeleton
+              width={mine ? 160 : 200}
+              height={i % 3 === 0 ? 48 : 36}
+              radius={radii.lg}
+              style={{ backgroundColor: c.surfaceMuted }}
+            />
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+/** Trainer weekly availability tab on Schedule. */
+export function TrainerScheduleSkeleton() {
+  return (
+    <View style={{ flex: 1 }}>
+      <View style={styles.scheduleHeader}>
+        <Skeleton height={22} width={160} />
+        <Skeleton height={36} width={120} radius={radii.md} />
+      </View>
+      {[0, 1, 2, 3].map((row) => (
+        <View key={row} style={styles.skeletonSection}>
+          <Skeleton height={14} width={110} />
+          <View style={{ height: 8 }} />
+          <Skeleton height={62} radius={radii.lg} />
+          <View style={{ height: 6 }} />
+          <Skeleton height={62} radius={radii.lg} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** “Tips for you” card rows — matches `TipsForYouSection`. */
+export function TipsCardSkeleton({ rows = 3 }: { rows?: number }) {
+  const c = useThemeColors();
+  return (
+    <View
+      style={[
+        styles.tipsCard,
+        { backgroundColor: c.surfaceElevated, borderColor: c.border },
+      ]}
+    >
+      {Array.from({ length: rows }, (_, i) => (
+        <View key={i} style={[styles.tipsRow, i > 0 && styles.tipsRowBorder, { borderTopColor: c.border }]}>
+          <Skeleton width={18} height={18} radius={9} />
+          <View style={[styles.flex1Stack, { gap: 6 }]}>
+            <Skeleton width="75%" height={13} />
+            <Skeleton width="90%" height={11} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** Trainer earnings hero card + action rows. */
+export function EarningsCardSkeleton() {
+  const c = useThemeColors();
+  return (
+    <View style={{ gap: space.md, padding: space.lg }}>
+      <View
+        style={[
+          styles.earningsHero,
+          { backgroundColor: c.surfaceElevated, borderColor: c.border },
+        ]}
+      >
+        <Skeleton width={140} height={12} />
+        <Skeleton width={160} height={32} style={{ marginTop: space.sm }} />
+        <Skeleton width="70%" height={11} style={{ marginTop: space.sm }} />
+      </View>
+      <Skeleton width={120} height={16} />
+      <View style={{ flexDirection: "row", gap: space.sm }}>
+        <Skeleton width="48%" height={44} radius={radii.md} />
+        <Skeleton width="48%" height={44} radius={radii.md} />
+      </View>
+      <Skeleton width={80} height={16} style={{ marginTop: space.sm }} />
+      <Skeleton width="100%" height={44} radius={radii.md} />
+      <Skeleton width="100%" height={48} radius={radii.md} />
+    </View>
+  );
+}
+
+/** Friend request tiles on dashboard home. */
+export function FriendRequestTilesSkeleton({ count = 2 }: { count?: number }) {
+  return (
+    <View style={styles.friendTilesRow}>
+      {Array.from({ length: count }, (_, i) => (
+        <View key={i} style={styles.friendTile}>
+          <Skeleton width={56} height={56} radius={28} />
+          <Skeleton width={72} height={11} style={{ marginTop: 6 }} />
+          <View style={{ flexDirection: "row", gap: space.xs, marginTop: space.sm }}>
+            <Skeleton width={36} height={28} radius={radii.pill} />
+            <Skeleton width={36} height={28} radius={radii.pill} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** Blog list card — image + title + excerpt. */
+export function BlogCardSkeleton() {
+  const c = useThemeColors();
+  return (
+    <View
+      style={[
+        styles.blogCard,
+        { backgroundColor: c.surfaceElevated, borderColor: c.border },
+      ]}
+    >
+      <Skeleton width="100%" height={160} radius={radii.md} />
+      <View style={{ padding: space.md, gap: 8 }}>
+        <Skeleton width="85%" height={16} />
+        <Skeleton width="100%" height={11} />
+        <Skeleton width="60%" height={11} />
+      </View>
+    </View>
+  );
+}
+
+/** Transaction / wallet detail — amount header + metadata rows. */
+export function TransactionDetailSkeleton() {
+  const c = useThemeColors();
+  return (
+    <View style={{ padding: space.lg, gap: space.md }}>
+      <View style={{ alignItems: "center", gap: space.sm, paddingVertical: space.lg }}>
+        <Skeleton width={120} height={12} />
+        <Skeleton width={180} height={36} />
+        <Skeleton width={100} height={24} radius={radii.pill} />
+      </View>
+      {Array.from({ length: 4 }, (_, i) => (
+        <View
+          key={i}
+          style={[
+            styles.txDetailRow,
+            { backgroundColor: c.surfaceElevated, borderColor: c.border },
+          ]}
+        >
+          <Skeleton width="35%" height={12} />
+          <Skeleton width="50%" height={12} />
+        </View>
+      ))}
     </View>
   );
 }
@@ -443,7 +699,6 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   offerCard: {
-    width: 280,
     flexDirection: "row",
     alignItems: "center",
     gap: space.sm,
@@ -486,5 +741,91 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     alignItems: "center",
+  },
+  tipsCard: {
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  tipsRow: {
+    flexDirection: "row",
+    gap: space.sm,
+    padding: space.md,
+    alignItems: "flex-start",
+  },
+  tipsRowBorder: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  earningsHero: {
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    padding: space.lg,
+  },
+  friendTilesRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: space.sm,
+    justifyContent: "center",
+  },
+  friendTile: {
+    alignItems: "center",
+    padding: space.sm,
+    minWidth: 120,
+  },
+  blogCard: {
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  txDetailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: space.md,
+    borderRadius: radii.md,
+    borderWidth: 1,
+  },
+  walletCard: {
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    padding: space.lg,
+  },
+  walletLedgerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: space.sm,
+  },
+  scheduleHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: space.sm,
+    paddingHorizontal: space.md,
+    paddingVertical: space.md,
+  },
+  skeletonSection: { paddingHorizontal: space.md, paddingTop: space.md },
+  promoSkeletonCard: {
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    padding: space.md,
+    marginBottom: space.sm,
+  },
+  promoSkeletonTop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: space.sm,
+  },
+  promoSkeletonActions: {
+    flexDirection: "row",
+    gap: space.lg,
+  },
+  paymentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    padding: space.md,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    marginBottom: space.sm,
   },
 });

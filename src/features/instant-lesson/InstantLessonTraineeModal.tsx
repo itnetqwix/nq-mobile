@@ -16,6 +16,8 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { MorphRefreshHeader } from "../../components/ui";
+import { useMorphRefreshBundle } from "../../lib/refresh/useMorphRefreshBundle";
 import { colors, radii, space, typography } from "../../theme";
 import type { RootStackParamList } from "../../navigation/types";
 import { useInstantLesson } from "./InstantLessonContext";
@@ -89,6 +91,7 @@ export function InstantLessonTraineeModal() {
   });
 
   const flatClips = useMemo(() => flattenGroupedClips(clipGroups), [clipGroups]);
+  const morphClips = useMorphRefreshBundle(() => void refetchClips(), clipsRefetching);
 
   React.useEffect(() => {
     if (!visible) setSelectedIds([]);
@@ -151,12 +154,20 @@ export function InstantLessonTraineeModal() {
         ) : flatClips.length === 0 ? (
           <Text style={styles.emptyClips}>No clips in your locker yet. Upload above, then pull to refresh.</Text>
         ) : (
+          <>
+          <MorphRefreshHeader {...morphClips.headerProps} />
           <ScrollView
             style={styles.clipList}
             nestedScrollEnabled
             keyboardShouldPersistTaps="handled"
+            onScroll={morphClips.onMorphScroll}
+            scrollEventThrottle={morphClips.scrollEventThrottle}
             refreshControl={
-              <RefreshControl refreshing={clipsRefetching} onRefresh={() => refetchClips()} tintColor={colors.brandNavy} />
+              <RefreshControl
+                refreshing={morphClips.refreshing}
+                onRefresh={morphClips.onRefreshControl}
+                tintColor={colors.brandNavy}
+              />
             }
           >
             {flatClips.map((clip, index) => (
@@ -168,6 +179,7 @@ export function InstantLessonTraineeModal() {
               />
             ))}
           </ScrollView>
+          </>
         )}
 
         <Text style={styles.selectedCount}>

@@ -1,9 +1,9 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import React from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { WebView } from "react-native-webview";
 import { useQuery } from "@tanstack/react-query";
-import { ScreenContainer } from "../../../components/ui";
+import { ScreenContainer, ScreenLoadingState } from "../../../components/ui";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
 import type { HomeStackParamList } from "../../../navigation/types";
@@ -46,9 +46,7 @@ export function LegalDocumentScreen({ route, navigation }: Props) {
   if (isLoading && !data) {
     return (
       <ScreenContainer scroll={false} padding="md">
-        <View style={styles.center}>
-          <ActivityIndicator color={c.brandAccent} />
-        </View>
+        <ScreenLoadingState variant="fullscreen" message={t("splash.preparing", { defaultValue: "Loading" })} />
       </ScreenContainer>
     );
   }

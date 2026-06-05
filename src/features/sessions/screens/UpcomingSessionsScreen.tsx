@@ -17,7 +17,19 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
-import { Button, Card, EmptyState, Pill, SessionRowSkeleton, Skeleton, SkeletonGroup, Stack } from "../../../components/ui";
+import {
+  Button,
+  Card,
+  EmptyState,
+  MorphRefreshHeader,
+  Pill,
+  SessionRowSkeleton,
+  Skeleton,
+  SkeletonGroup,
+  Stack,
+} from "../../../components/ui";
+import { useCombinedScroll } from "../../../lib/refresh/useCombinedScroll";
+import { useMorphRefresh } from "../../../lib/refresh/useMorphRefresh";
 import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { queryKeys } from "../../../lib/queryKeys";
@@ -356,6 +368,9 @@ export function UpcomingSessionsScreen() {
   /** Pull-to-refresh haptics — tick on trigger, success/error on resolve. */
   const { refreshing: isRefetching, onRefresh: onRefreshSessions } = useHapticRefresh(refetch);
 
+  const morphRefresh = useMorphRefresh({ onRefresh: onRefreshSessions });
+  const onSessionsScroll = useCombinedScroll(morphRefresh.scrollProps.onScroll, homeScroll.onScroll);
+
   const sessions = useMemo(() => {
     const nowMs = Date.now();
     const now = new Date(nowMs);
@@ -399,7 +414,11 @@ export function UpcomingSessionsScreen() {
   }, [rawSessions]);
 
   return (
-    <View style={styles.root}>
+    <View style={styles.flex}>
+      <MorphRefreshHeader
+        {...morphRefresh.headerProps}
+        refreshing={morphRefresh.refreshing || isRefetching}
+      />
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -448,14 +467,18 @@ export function UpcomingSessionsScreen() {
       ) : (
         <ScrollView
           ref={listScrollRef}
-          onScroll={homeScroll.onScroll}
-          scrollEventThrottle={homeScroll.scrollEventThrottle}
+          onScroll={onSessionsScroll}
+          scrollEventThrottle={16}
           contentContainerStyle={[
             styles.list,
             { flexGrow: 1, paddingBottom: floatingTabBarBottomInset(insets.bottom) + space.md },
           ]}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={onRefreshSessions} tintColor={colors.brand} />
+            <RefreshControl
+              refreshing={morphRefresh.refreshing || isRefetching}
+              onRefresh={morphRefresh.onRefreshControl}
+              tintColor={colors.brand}
+            />
           }
         >
           {sessions.length === 0 ? (
@@ -524,6 +547,7 @@ export function UpcomingSessionsScreen() {
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   root: { flex: 1, backgroundColor: colors.surface },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
 

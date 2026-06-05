@@ -1,7 +1,8 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
-import { space, typography, useThemeColors } from "../../../theme";
+import { space, useScaledTypography, useThemeColors } from "../../../theme";
+import { useCompactA11yGuard } from "../../../lib/layout";
 import { useMarketplaceTopPadding } from "./marketplaceLayout";
 import { HomeUserAvatar } from "../../dashboard/components/home/HomeUserAvatar";
 import {
@@ -58,6 +59,8 @@ export function DiscoverHomeChrome({
   onVoicePress,
 }: Props) {
   const c = useThemeColors();
+  const text = useScaledTypography();
+  const a11y = useCompactA11yGuard();
   const { t } = useAppTranslation();
   const topPadding = useMarketplaceTopPadding(compactTop);
 
@@ -73,11 +76,17 @@ export function DiscoverHomeChrome({
     >
       <View style={styles.topRow}>
         <View style={styles.headlineCol}>
-          <Text style={[styles.headline, { color: c.brandNavy }]} numberOfLines={1}>
+          <Text
+            style={[styles.headline, text.titleSm, { color: c.brandNavy, fontWeight: "800" }]}
+            numberOfLines={a11y.preferSingleLineTitles ? 1 : 2}
+          >
             {headline}
           </Text>
           {subline ? (
-            <Text style={[styles.subline, { color: c.textSecondary }]} numberOfLines={1}>
+            <Text
+              style={[styles.subline, text.caption, { color: c.textSecondary }]}
+              numberOfLines={a11y.preferSingleLineTitles ? 1 : 2}
+            >
               {subline}
             </Text>
           ) : null}
@@ -135,12 +144,8 @@ const styles = StyleSheet.create({
     gap: space.sm,
   },
   headlineCol: { flex: 1, minWidth: 0 },
-  headline: {
-    ...typography.titleSm,
-    fontWeight: "800",
-  },
+  headline: {},
   subline: {
-    ...typography.caption,
     marginTop: space.xxs,
   },
 });

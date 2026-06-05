@@ -4,13 +4,19 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { Card, ScreenContainer, SectionHeader } from "../../../components/ui";
+import {
+  Card,
+  MorphRefreshScrollSurface,
+  ScreenContainer,
+  SectionHeader,
+  Skeleton,
+  SkeletonGroup,
+} from "../../../components/ui";
 import { space, typography, useThemeColors } from "../../../theme";
 import {
   fetchAuthSessions,
@@ -182,20 +188,28 @@ export function ActiveSessionsScreen() {
 
   return (
     <ScreenContainer scroll={false}>
+      <MorphRefreshScrollSurface
+        onRefresh={() => void load(true)}
+        externalRefreshing={refreshing}
+        tintColor={c.brandAccent}
+      >
+        {({ refreshControl, onScroll, scrollEventThrottle }) => (
       <ScrollView
         contentContainerStyle={{ padding: space.md, paddingBottom: space.xxl }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} tintColor={c.brandAccent} />
-        }
+        refreshControl={refreshControl}
+        onScroll={onScroll}
+        scrollEventThrottle={scrollEventThrottle}
       >
         <Text style={styles.intro}>
           See where your account is signed in — phone, tablet, or web. Remove any session you do not recognize.
         </Text>
 
         {loading && !refreshing ? (
-          <View style={styles.center}>
-            <ActivityIndicator size="large" color={c.brandAccent} />
-          </View>
+          <SkeletonGroup
+            count={3}
+            gap={space.md}
+            renderRow={() => <Skeleton width="100%" height={96} radius={12} />}
+          />
         ) : error ? (
           <View style={styles.center}>
             <Text style={styles.error}>{error}</Text>
@@ -257,6 +271,8 @@ export function ActiveSessionsScreen() {
           </>
         )}
       </ScrollView>
+        )}
+      </MorphRefreshScrollSurface>
     </ScreenContainer>
   );
 }

@@ -21,7 +21,7 @@ export {
   scaledFontSize,
   type TypographyToken,
 } from "./typography";
-export { shadows, type ShadowToken } from "./shadows";
+export { shadows, themedShadow, type ShadowToken } from "./shadows";
 export { durations, easings, type DurationToken, type EasingToken } from "./motion";
 
 /**
@@ -53,6 +53,14 @@ export const radii = {
   lg: 16,
   xl: 20,
   pill: 999,
+} as const;
+
+/** Width breakpoints for responsive layout (see `lib/layout/responsive.ts`). */
+export const breakpoints = {
+  compact: 0,
+  regular: 360,
+  large: 414,
+  tablet: 768,
 } as const;
 
 /** Layout primitives matching the website rails. */

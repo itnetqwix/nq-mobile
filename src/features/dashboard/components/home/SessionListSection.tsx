@@ -21,7 +21,7 @@ type Props = {
   count?: number;
 };
 
-export function SessionListSection({
+function SessionListSectionInner({
   title,
   subtitle,
   sessions,
@@ -78,3 +78,5 @@ export function SessionListSection({
     </HomeSection>
   );
 }
+
+export const SessionListSection = React.memo(SessionListSectionInner);

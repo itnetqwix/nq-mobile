@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import React, { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   SectionList,
@@ -14,7 +13,10 @@ import {
   View,
 } from "react-native";
 import { AccountType } from "../../../constants/accountType";
-import { Button, EmptyState, Pill, Skeleton } from "../../../components/ui";
+import { Button, EmptyState, MorphRefreshHeader, Pill, TrainerScheduleSkeleton } from "../../../components/ui";
+import { useCombinedScroll } from "../../../lib/refresh/useCombinedScroll";
+import { useMorphRefreshBundle } from "../../../lib/refresh/useMorphRefreshBundle";
+import { TabScreenShell } from "../../../lib/layout";
 import { colors, radii, space, typography } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
 import { queryKeys } from "../../../lib/queryKeys";
@@ -90,28 +92,15 @@ function TrainerSchedule() {
     }
   }, [navigation]);
 
+  const morph = useMorphRefreshBundle(refetch, isRefetching);
+  const onScheduleScroll = useCombinedScroll(morph.onMorphScroll, homeScroll.onScroll);
+
   if (isLoading) {
-    return (
-      <View style={styles.root}>
-        <View style={styles.header}>
-          <Skeleton height={22} width={160} />
-          <Skeleton height={36} width={120} radius={radii.md} />
-        </View>
-        {[0, 1, 2, 3].map((row) => (
-          <View key={row} style={styles.skeletonSection}>
-            <Skeleton height={14} width={110} />
-            <View style={{ height: 8 }} />
-            <Skeleton height={62} radius={radii.lg} />
-            <View style={{ height: 6 }} />
-            <Skeleton height={62} radius={radii.lg} />
-          </View>
-        ))}
-      </View>
-    );
+    return <TrainerScheduleSkeleton />;
   }
 
   return (
-    <View style={styles.root}>
+    <View style={styles.flex}>
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>{t("schedule.mySchedule")}</Text>
@@ -138,13 +127,18 @@ function TrainerSchedule() {
         </CoachMark>
       </View>
 
+      <MorphRefreshHeader {...morph.headerProps} />
       <SectionList
         sections={sections}
         keyExtractor={(item, index) => `${item.start_time}-${item.end_time}-${index}`}
-        onScroll={homeScroll.onScroll}
-        scrollEventThrottle={homeScroll.scrollEventThrottle}
+        onScroll={onScheduleScroll}
+        scrollEventThrottle={morph.scrollEventThrottle}
         refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brandNavy} />
+          <RefreshControl
+            refreshing={morph.refreshing}
+            onRefresh={morph.onRefreshControl}
+            tintColor={colors.brandNavy}
+          />
         }
         contentContainerStyle={
           sections.length === 0
@@ -188,7 +182,7 @@ export function TrainerScheduleTabs() {
   const [segment, setSegment] = useState<TrainerSegment>("sessions");
 
   return (
-    <View style={styles.root}>
+    <View style={styles.flex}>
       <View style={styles.segmentRow}>
         <Pressable
           style={[styles.segmentBtn, segment === "sessions" && styles.segmentBtnActive]}
@@ -220,14 +214,19 @@ export function TrainerScheduleTabs() {
 
 export function ScheduleScreen(_props: MainTabScreenProps<"Schedule">) {
   const { accountType } = useAuth();
-  if (accountType === AccountType.TRAINER) {
-    return <TrainerScheduleTabs />;
-  }
-  return <UpcomingSessionsScreen />;
+  return (
+    <TabScreenShell clearFloatingTabBar={false}>
+      {accountType === AccountType.TRAINER ? (
+        <TrainerScheduleTabs />
+      ) : (
+        <UpcomingSessionsScreen />
+      )}
+    </TabScreenShell>
+  );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.surface },
+  flex: { flex: 1 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
 
   header: {

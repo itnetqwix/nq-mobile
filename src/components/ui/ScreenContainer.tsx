@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -11,8 +11,10 @@ import {
   type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, space, useThemeColors } from "../../theme";
+import { useMorphRefreshBundle } from "../../lib/refresh/useMorphRefreshBundle";
+import { space, useThemeColors } from "../../theme";
 import { floatingTabBarBottomInset } from "../../navigation/FloatingTabBar";
+import { MorphRefreshHeader } from "./MorphRefreshHeader";
 
 export type ScreenContainerProps = {
   /** Render mode — scroll wraps a `ScrollView`, plain skips it for flex
@@ -60,6 +62,11 @@ export function ScreenContainer({
   const padValue = padding === 0 ? 0 : space[padding];
   const tabBarPad = clearFloatingTabBar ? floatingTabBarBottomInset(insets.bottom) : 0;
 
+  const morphOnRefresh = useCallback(async () => {
+    onRefresh?.();
+  }, [onRefresh]);
+  const morph = useMorphRefreshBundle(morphOnRefresh, !!(refreshing && onRefresh));
+
   const containerStyle: ViewStyle = {
     flex: 1,
     backgroundColor: background ?? c.surface,
@@ -75,22 +82,27 @@ export function ScreenContainer({
   };
 
   const body = scroll ? (
-    <ScrollView
-      contentContainerStyle={[styles.scrollContent, innerPadding, contentStyle]}
-      keyboardShouldPersistTaps="handled"
+    <View style={styles.flex}>
+      {onRefresh ? <MorphRefreshHeader {...morph.headerProps} /> : null}
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, innerPadding, contentStyle]}
+        keyboardShouldPersistTaps="handled"
+        onScroll={onRefresh ? morph.onMorphScroll : undefined}
+        scrollEventThrottle={onRefresh ? morph.scrollEventThrottle : undefined}
         refreshControl={
-        onRefresh ? (
-          <RefreshControl
-            refreshing={!!refreshing}
-            onRefresh={onRefresh}
-            tintColor={c.brandAccent}
-            colors={[c.brandAccent]}
-          />
-        ) : undefined
-      }
-    >
-      {children}
-    </ScrollView>
+          onRefresh ? (
+            <RefreshControl
+              refreshing={morph.refreshing}
+              onRefresh={morph.onRefreshControl}
+              tintColor={c.brandAccent}
+              colors={[c.brandAccent]}
+            />
+          ) : undefined
+        }
+      >
+        {children}
+      </ScrollView>
+    </View>
   ) : (
     <View style={[styles.flex, innerPadding, contentStyle]}>{children}</View>
   );

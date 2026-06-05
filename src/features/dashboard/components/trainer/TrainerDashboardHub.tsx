@@ -18,6 +18,7 @@ import { RatingFeedbackPulse } from "./RatingFeedbackPulse";
 import { TrainerGreetingRating } from "./TrainerGreetingRating";
 import { PerformanceTipsCard } from "./PerformanceTipsCard";
 import { TrainerRecentTraineesSection } from "./TrainerRecentTraineesSection";
+import { FriendRequestTilesSkeleton } from "../../../../components/ui";
 import { TrainerFriendRequestsSection } from "./TrainerFriendRequestsSection";
 import { TrainerLockerSection } from "./TrainerLockerSection";
 import { createTrainerDashboardStyles } from "./trainerDashboardTheme";
@@ -32,6 +33,7 @@ type Props = {
   user?: Record<string, unknown> | null;
   recentTrainees?: Record<string, unknown>[];
   friendRequests?: Array<Record<string, unknown>>;
+  loadingFriendRequests?: boolean;
   onAcceptFriend?: (id: string) => void;
   onRejectFriend?: (id: string) => void;
   onSettings: () => void;
@@ -47,7 +49,7 @@ type Props = {
   marketplaceHeader?: boolean;
 };
 
-export function TrainerDashboardHub({
+function TrainerDashboardHubInner({
   name,
   accountType,
   profilePicture,
@@ -55,6 +57,7 @@ export function TrainerDashboardHub({
   user,
   recentTrainees = [],
   friendRequests = [],
+  loadingFriendRequests = false,
   onAcceptFriend,
   onRejectFriend,
   onSettings,
@@ -131,7 +134,9 @@ export function TrainerDashboardHub({
         onSeeAll={onOpenSessions}
       />
 
-      {friendRequests.length > 0 && onAcceptFriend && onRejectFriend ? (
+      {loadingFriendRequests ? (
+        <FriendRequestTilesSkeleton count={2} />
+      ) : friendRequests.length > 0 && onAcceptFriend && onRejectFriend ? (
         <TrainerFriendRequestsSection
           requests={friendRequests}
           onAccept={onAcceptFriend}
@@ -157,3 +162,5 @@ export function TrainerDashboardHub({
     </View>
   );
 }
+
+export const TrainerDashboardHub = React.memo(TrainerDashboardHubInner);

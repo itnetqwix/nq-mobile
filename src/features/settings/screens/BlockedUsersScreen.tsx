@@ -13,18 +13,24 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback } from "react";
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import {
   Avatar,
   Card,
+  ChatRowSkeleton,
   EmptyState,
   ScreenContainer,
   SectionHeader,
+  SkeletonGroup,
 } from "../../../components/ui";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { queryKeys } from "../../../lib/queryKeys";
+import {
+  blockedUserRowGetItemLayout,
+  FLATLIST_PERF_DEFAULTS,
+} from "../../../lib/lists/flatListPerf";
 import { space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import {
   fetchBlockedUsers,
@@ -171,9 +177,9 @@ export function BlockedUsersScreen() {
       </Card>
 
       {q.isLoading ? (
-        <View style={{ paddingVertical: space.xl, alignItems: "center" }}>
-          <ActivityIndicator color={c.brandAccent} />
-        </View>
+        <Card variant="outlined" padding={0}>
+          <SkeletonGroup count={4} renderRow={() => <ChatRowSkeleton />} />
+        </Card>
       ) : q.isError ? (
         <EmptyState
           icon="alert-circle-outline"
@@ -197,6 +203,8 @@ export function BlockedUsersScreen() {
             data={q.data ?? []}
             keyExtractor={(u) => u._id}
             renderItem={renderItem}
+            getItemLayout={blockedUserRowGetItemLayout}
+            {...FLATLIST_PERF_DEFAULTS}
             ItemSeparatorComponent={() => (
               <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: c.border, marginLeft: 64 }} />
             )}

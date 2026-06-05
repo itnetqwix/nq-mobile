@@ -22,6 +22,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ChatMessageListSkeleton } from "../../../components/ui";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
@@ -165,31 +166,32 @@ function MessageStatus({
   status?: string;
   pending?: boolean;
 }) {
+  const c = useThemeColors();
   if (pending || status === "sending") {
     return (
       <View style={statusStyles.row}>
-        <ActivityIndicator size={10} color="#94a3b8" />
+        <ActivityIndicator size={10} color={c.chatStatusMuted} />
       </View>
     );
   }
   if (!status || status === "sent") {
     return (
       <View style={statusStyles.row}>
-        <Ionicons name="checkmark" size={15} color="#94a3b8" />
+        <Ionicons name="checkmark" size={15} color={c.chatStatusMuted} />
       </View>
     );
   }
   if (status === "delivered") {
     return (
       <View style={statusStyles.row}>
-        <Ionicons name="checkmark-done" size={15} color="#64748b" />
+        <Ionicons name="checkmark-done" size={15} color={c.textMuted} />
       </View>
     );
   }
   if (status === "read") {
     return (
       <View style={statusStyles.row}>
-        <Ionicons name="checkmark-done" size={15} color="#1976d2" />
+        <Ionicons name="checkmark-done" size={15} color={c.chatStatusRead} />
       </View>
     );
   }
@@ -224,15 +226,15 @@ function useChatRoomStyles() {
   },
   headerAvatar: { width: 36, height: 36, borderRadius: 18 },
   headerAvatarFb: { backgroundColor: themeColors.brandNavy, alignItems: "center", justifyContent: "center" },
-  headerAvatarInitial: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  headerAvatarInitial: { color: themeColors.brandTextOn, fontWeight: "700", fontSize: 14 },
   onlineDot: {
-    width: 10, height: 10, borderRadius: 5, backgroundColor: "#4CAF50",
+    width: 10, height: 10, borderRadius: 5, backgroundColor: themeColors.chatPresence,
     position: "absolute", bottom: 0, right: -1, borderWidth: 2, borderColor: themeColors.surfaceElevated,
   },
   headerInfo: { flex: 1 },
   headerName: { ...typography.titleSm, color: themeColors.text, fontSize: 16 },
   headerSub: { fontSize: 12, color: themeColors.textMuted, marginTop: 1 },
-  headerSubTyping: { color: "#4CAF50", fontStyle: "italic" },
+  headerSubTyping: { color: themeColors.chatPresence, fontStyle: "italic" },
   headerMore: { padding: 6 },
   messageArea: { flex: 1 },
   messageList: {
@@ -371,13 +373,20 @@ function useChatRoomStyles() {
     color: themeColors.textMuted,
     textAlign: "center",
   },
-  recordDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: "#F44336" },
+  recordDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: themeColors.danger },
   recordTime: { fontSize: 16, fontWeight: "600", color: themeColors.text, fontVariant: ["tabular-nums"] },
   recordLabel: { fontSize: 13, color: themeColors.textMuted },
   recordCancel: { padding: 6 },
   recordSend: { width: 40, height: 40, borderRadius: 20, backgroundColor: themeColors.brandNavy, alignItems: "center", justifyContent: "center" },
   uploadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.3)", alignItems: "center", justifyContent: "center" },
-  uploadingCard: { backgroundColor: "#fff", borderRadius: 16, padding: 32, alignItems: "center", gap: 12, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 },
+  uploadingCard: {
+    backgroundColor: themeColors.surfaceElevated,
+    borderRadius: 16,
+    padding: 32,
+    alignItems: "center",
+    gap: 12,
+    elevation: 8,
+  },
   editModalBackdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
@@ -448,7 +457,7 @@ function useChatRoomStyles() {
     paddingHorizontal: 2,
   },
   searchHitHighlight: {
-    backgroundColor: "#FFF59D",
+    backgroundColor: themeColors.chatSearchHighlight,
     fontWeight: "700",
     color: themeColors.text,
   },
@@ -478,9 +487,9 @@ function useChatRoomStyles() {
   policyBanner: {
     flexDirection: "row", alignItems: "center", gap: 8,
     paddingHorizontal: 14, paddingVertical: 8,
-    backgroundColor: "#fef3c7",
+    backgroundColor: themeColors.warningSubtle,
   },
-  policyText: { flex: 1, fontSize: 12, color: "#92400e", lineHeight: 16 },
+  policyText: { flex: 1, fontSize: 12, color: themeColors.warningText, lineHeight: 16 },
   limitedBar: {
     flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 8, paddingVertical: 10,
@@ -494,11 +503,11 @@ function useChatRoomStyles() {
   profileCenter: { alignItems: "center", marginTop: 40 },
   profileAvatar: { width: 100, height: 100, borderRadius: 50 },
   profileAvatarFb: { backgroundColor: themeColors.brandNavy, alignItems: "center", justifyContent: "center" },
-  profileAvatarInitial: { color: "#fff", fontWeight: "700", fontSize: 40 },
+  profileAvatarInitial: { color: themeColors.brandTextOn, fontWeight: "700", fontSize: 40 },
   profileName: { fontSize: 22, fontWeight: "700", color: themeColors.text, marginTop: 16 },
   profileStatusRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
   profileDot: { width: 10, height: 10, borderRadius: 5 },
-  profileDotOnline: { backgroundColor: "#4CAF50" },
+  profileDotOnline: { backgroundColor: themeColors.chatPresence },
   profileDotOffline: { backgroundColor: themeColors.textMuted },
   profileStatusText: { fontSize: 14, color: themeColors.textMuted },
   profileActions: { flexDirection: "row", justifyContent: "center", gap: 40, marginTop: 40 },
@@ -721,7 +730,7 @@ export function ChatRoomScreen({
     emitTyping();
   }, [emitTyping]);
 
-  const { data: serverMessages = [] } = useQuery<Message[]>({
+  const { data: serverMessages = [], isLoading: messagesLoading } = useQuery<Message[]>({
     queryKey: queryKeys.chats.messages(conversationId),
     queryFn: async () => {
       const res = await apiClient.get(API_ROUTES.chat.messages(conversationId), {
@@ -1465,7 +1474,7 @@ export function ChatRoomScreen({
                 <Image source={{ uri: groupAvatarUrl }} style={styles.headerAvatar} />
               ) : (
                 <View style={[styles.headerAvatar, styles.headerAvatarFb]}>
-                  <Ionicons name="people" size={20} color="#fff" />
+                  <Ionicons name="people" size={20} color={themeColors.brandTextOn} />
                 </View>
               )
             ) : partnerAvatar ? (
@@ -1499,7 +1508,7 @@ export function ChatRoomScreen({
       >
         {showPolicyBanner && (
           <View style={styles.policyBanner}>
-            <Ionicons name="information-circle-outline" size={16} color="#f59e0b" />
+            <Ionicons name="information-circle-outline" size={16} color={themeColors.warning} />
             <Text style={styles.policyText}>
               {rateLimited || chatPolicy!.remainingToday <= 0
                 ? "Daily message limit reached. Book a lesson to unlock unlimited messaging!"
@@ -1507,33 +1516,41 @@ export function ChatRoomScreen({
             </Text>
           </View>
         )}
-        <SectionList
-          ref={sectionListRef}
-          sections={messageSections}
-          keyExtractor={flatListKeyExtractor}
-          renderItem={renderMessage}
-          renderSectionHeader={({ section: { title } }) => (
-            <ChatDaySeparator label={title} />
-          )}
-          stickySectionHeadersEnabled={false}
-          contentContainerStyle={[
-            styles.messageList,
-            allMessages.length === 0 && styles.messageListEmpty,
-          ]}
-          ListEmptyComponent={
-            <View style={styles.emptyChat}>
-              <Text style={styles.emptyChatText}>
-                Say hello — your messages are private and secure.
-              </Text>
-            </View>
-          }
-          onScrollToIndexFailed={() => {
-            /* SectionList scroll recovery */
-          }}
-          style={styles.messageArea}
-          keyboardDismissMode="interactive"
-          keyboardShouldPersistTaps="handled"
-        />
+        {messagesLoading && allMessages.length === 0 ? (
+          <ChatMessageListSkeleton rows={7} />
+        ) : (
+          <SectionList
+            ref={sectionListRef}
+            sections={messageSections}
+            keyExtractor={flatListKeyExtractor}
+            renderItem={renderMessage}
+            renderSectionHeader={({ section: { title } }) => (
+              <ChatDaySeparator label={title} />
+            )}
+            stickySectionHeadersEnabled={false}
+            contentContainerStyle={[
+              styles.messageList,
+              allMessages.length === 0 && styles.messageListEmpty,
+            ]}
+            ListEmptyComponent={
+              <View style={styles.emptyChat}>
+                <Text style={styles.emptyChatText}>
+                  Say hello — your messages are private and secure.
+                </Text>
+              </View>
+            }
+            onScrollToIndexFailed={() => {
+              /* SectionList scroll recovery */
+            }}
+            style={styles.messageArea}
+            keyboardDismissMode="interactive"
+            keyboardShouldPersistTaps="handled"
+            removeClippedSubviews
+            windowSize={9}
+            initialNumToRender={16}
+            maxToRenderPerBatch={12}
+          />
+        )}
 
         <View style={styles.composer}>
           {replyTo ? (
@@ -1576,7 +1593,7 @@ export function ChatRoomScreen({
                 <Ionicons name="trash-outline" size={22} color={themeColors.danger} />
               </Pressable>
               <Pressable onPress={finishRecording} hitSlop={10} style={styles.recordSend}>
-                <Ionicons name="send" size={20} color="#fff" />
+                <Ionicons name="send" size={20} color={themeColors.brandTextOn} />
               </Pressable>
             </View>
           ) : (
@@ -1622,9 +1639,9 @@ export function ChatRoomScreen({
                   {text.trim() ? (
                     <Pressable style={styles.sendBtn} onPress={sendMessage} disabled={isSendingMessage}>
                       {isSendingMessage ? (
-                        <ActivityIndicator size={16} color="#fff" />
+                        <ActivityIndicator size={16} color={themeColors.brandTextOn} />
                       ) : (
-                        <Ionicons name="send" size={18} color="#fff" />
+                        <Ionicons name="send" size={18} color={themeColors.brandTextOn} />
                       )}
                     </Pressable>
                   ) : (
@@ -1689,26 +1706,26 @@ export function ChatRoomScreen({
           <Text style={styles.sheetTitle}>Share</Text>
           <View style={styles.sheetGrid}>
             <Pressable style={styles.sheetOption} onPress={pickImage}>
-              <View style={[styles.sheetIcon, { backgroundColor: "#4CAF50" }]}>
-                <Ionicons name="image-outline" size={28} color="#fff" />
+              <View style={[styles.sheetIcon, { backgroundColor: themeColors.success }]}>
+                <Ionicons name="image-outline" size={28} color={themeColors.brandTextOn} />
               </View>
               <Text style={styles.sheetLabel}>Gallery</Text>
             </Pressable>
             <Pressable style={styles.sheetOption} onPress={takePhoto}>
-              <View style={[styles.sheetIcon, { backgroundColor: "#FF9800" }]}>
-                <Ionicons name="camera-outline" size={28} color="#fff" />
+              <View style={[styles.sheetIcon, { backgroundColor: themeColors.warning }]}>
+                <Ionicons name="camera-outline" size={28} color={themeColors.brandTextOn} />
               </View>
               <Text style={styles.sheetLabel}>Camera</Text>
             </Pressable>
             <Pressable style={styles.sheetOption} onPress={pickVideo}>
-              <View style={[styles.sheetIcon, { backgroundColor: "#2196F3" }]}>
-                <Ionicons name="videocam-outline" size={28} color="#fff" />
+              <View style={[styles.sheetIcon, { backgroundColor: themeColors.info }]}>
+                <Ionicons name="videocam-outline" size={28} color={themeColors.brandTextOn} />
               </View>
               <Text style={styles.sheetLabel}>Video</Text>
             </Pressable>
             <Pressable style={styles.sheetOption} onPress={startRecording}>
-              <View style={[styles.sheetIcon, { backgroundColor: "#F44336" }]}>
-                <Ionicons name="mic-outline" size={28} color="#fff" />
+              <View style={[styles.sheetIcon, { backgroundColor: themeColors.danger }]}>
+                <Ionicons name="mic-outline" size={28} color={themeColors.brandTextOn} />
               </View>
               <Text style={styles.sheetLabel}>Voice</Text>
             </Pressable>

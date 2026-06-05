@@ -5,12 +5,13 @@
  * shadow* triplet — same name, identical visual weight.
  *
  * Usage:
- *   <View style={[styles.card, shadows.md]}>
+ *   const c = useThemeColors();
+ *   <View style={[styles.card, themedShadow("md", c)]}>
  */
 
 import { Platform, ViewStyle } from "react-native";
-
 const shadow = (
+  color: string,
   opacity: number,
   radius: number,
   offsetY: number,
@@ -18,26 +19,39 @@ const shadow = (
 ): ViewStyle =>
   Platform.select({
     ios: {
-      shadowColor: "#0f172a",
+      shadowColor: color,
       shadowOpacity: opacity,
       shadowRadius: radius,
       shadowOffset: { width: 0, height: offsetY },
     },
     android: {
       elevation,
-      /** Android shadows are tinted by the surface — keep elevation as the
-       *  primary driver; shadowColor on Android is best-effort. */
-      shadowColor: "#0f172a",
+      shadowColor: color,
     },
     default: {},
   }) as ViewStyle;
 
-export const shadows = {
-  none: {} as ViewStyle,
-  sm: shadow(0.08, 4, 1, 2),
-  md: shadow(0.12, 8, 4, 4),
-  lg: shadow(0.18, 16, 6, 8),
-  xl: shadow(0.24, 24, 12, 12),
-} as const;
+const LIGHT_SHADOW_COLOR = "#0f172a";
+const DARK_SHADOW_COLOR = "#000000";
+
+function buildShadows(isDark: boolean) {
+  const color = isDark ? DARK_SHADOW_COLOR : LIGHT_SHADOW_COLOR;
+  const boost = isDark ? 1.35 : 1;
+  return {
+    none: {} as ViewStyle,
+    sm: shadow(color, 0.08 * boost, 4, 1, isDark ? 3 : 2),
+    md: shadow(color, 0.12 * boost, 8, 4, isDark ? 6 : 4),
+    lg: shadow(color, 0.18 * boost, 16, 6, isDark ? 10 : 8),
+    xl: shadow(color, 0.24 * boost, 24, 12, isDark ? 14 : 12),
+  } as const;
+}
+
+/** Static light-theme shadows — module-scope StyleSheet only. */
+export const shadows = buildShadows(false);
 
 export type ShadowToken = keyof typeof shadows;
+
+/** Runtime shadows that read better on dark elevated surfaces. */
+export function themedShadow(token: ShadowToken, isDark: boolean): ViewStyle {
+  return buildShadows(isDark)[token];
+}

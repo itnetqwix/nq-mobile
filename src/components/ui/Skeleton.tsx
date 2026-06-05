@@ -20,7 +20,7 @@ export function Skeleton({ width = "100%", height = 16, radius = radii.sm, style
       },
       shimmer: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: c.neutral200,
+        backgroundColor: c.skeletonShimmer,
       },
     })
   );

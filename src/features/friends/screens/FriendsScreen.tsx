@@ -3,14 +3,12 @@ import {
   ActionSheetIOS,
   ActivityIndicator,
   Alert,
-  Dimensions,
   FlatList,
   Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Platform,
   Pressable,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,7 +18,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../../../lib/queryKeys";
 import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { Ionicons } from "@expo/vector-icons";
-import { Button, EmptyState, Skeleton } from "../../../components/ui";
+import { Button, EmptyState, MorphRefreshScrollSurface, Skeleton } from "../../../components/ui";
+import { useWindowMetrics } from "../../../lib/layout";
+import {
+  FLATLIST_PERF_DEFAULTS,
+  friendRowGetItemLayout,
+} from "../../../lib/lists/flatListPerf";
 import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { apiClient } from "../../../api/client";
@@ -236,10 +239,9 @@ function SentRequestCard({
   );
 }
 
-const SCREEN_WIDTH = Dimensions.get("window").width;
-
 export function FriendsScreen() {
   const { t } = useAppTranslation();
+  const { width: screenWidth } = useWindowMetrics();
   const scrollRef = useRef<ScrollView>(null);
   const [tab, setTab] = useState<Tab>("friends");
   const [messageBusy, setMessageBusy] = useState(false);
@@ -438,6 +440,8 @@ export function FriendsScreen() {
     }
 
     return (
+      <MorphRefreshScrollSurface onRefresh={refetch} externalRefreshing={isRefetching} tintColor={colors.brandNavy}>
+        {({ refreshControl, onScroll, scrollEventThrottle }) => (
       <FlatList
         data={data}
         keyExtractor={flatListKeyExtractor}
@@ -466,9 +470,11 @@ export function FriendsScreen() {
           )
         }
         contentContainerStyle={styles.list}
-        refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brandNavy} />
-        }
+        refreshControl={refreshControl}
+        onScroll={onScroll}
+        scrollEventThrottle={scrollEventThrottle}
+        {...FLATLIST_PERF_DEFAULTS}
+        getItemLayout={friendRowGetItemLayout}
         ListEmptyComponent={
           <EmptyState
             icon={
@@ -493,6 +499,8 @@ export function FriendsScreen() {
           />
         }
       />
+        )}
+      </MorphRefreshScrollSurface>
     );
   };
 
@@ -518,7 +526,7 @@ export function FriendsScreen() {
             style={[styles.tabBtn, tab === tabItem.key && styles.tabBtnActive]}
             onPress={() => {
               setTab(tabItem.key);
-              scrollRef.current?.scrollTo({ x: index * SCREEN_WIDTH, animated: true });
+              scrollRef.current?.scrollTo({ x: index * screenWidth, animated: true });
             }}
           >
             <Text style={[styles.tabText, tab === tabItem.key && styles.tabTextActive]}>
@@ -538,13 +546,13 @@ export function FriendsScreen() {
         showsHorizontalScrollIndicator={false}
         style={{ flex: 1 }}
         onMomentumScrollEnd={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
-          const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+          const index = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
           const next = TABS[index];
           if (next) setTab(next.key);
         }}
       >
         {TABS.map((tabItem) => (
-          <View key={tabItem.key} style={{ width: SCREEN_WIDTH, flex: 1 }}>
+          <View key={tabItem.key} style={{ width: screenWidth, flex: 1 }}>
             {renderTabBody(tabItem.key)}
           </View>
         ))}

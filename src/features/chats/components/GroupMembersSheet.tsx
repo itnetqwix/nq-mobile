@@ -252,15 +252,15 @@ export function GroupMembersSheet({
             <Image source={{ uri: groupAvatarUrl }} style={styles.groupAvatar} />
           ) : (
             <View style={[styles.groupAvatar, styles.groupAvatarFb]}>
-              <Ionicons name="people" size={28} color="#fff" />
+              <Ionicons name="people" size={28} color={c.brandTextOn} />
             </View>
           )}
           {isAdmin ? (
             <View style={styles.avatarBadge}>
               {uploadingAvatar ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={c.brandTextOn} />
               ) : (
-                <Ionicons name="camera" size={14} color="#fff" />
+                <Ionicons name="camera" size={14} color={c.brandTextOn} />
               )}
             </View>
           ) : null}

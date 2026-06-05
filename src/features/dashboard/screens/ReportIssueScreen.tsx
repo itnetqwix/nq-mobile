@@ -10,14 +10,23 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { AccountType } from "../../../constants/accountType";
-import { Button, EmptyState, FormField, ImageWithSkeleton, Pill, Skeleton } from "../../../components/ui";
+import {
+  Button,
+  EmptyState,
+  FormField,
+  ImageWithSkeleton,
+  MorphRefreshScrollSurface,
+  Pill,
+  ScreenLoadingState,
+  Skeleton,
+  SkeletonGroup,
+} from "../../../components/ui";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { type AppColors, radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
@@ -483,15 +492,29 @@ export function ReportIssueScreen() {
       </Pressable>
 
       {loadingList ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={c.iconPrimary} />
-        </View>
+        <ScreenLoadingState
+          variant="skeleton"
+          skeleton={
+            <SkeletonGroup
+              count={4}
+              gap={space.sm}
+              style={{ padding: space.md }}
+              renderRow={() => <Skeleton width="100%" height={72} radius={radii.md} />}
+            />
+          }
+        />
       ) : (
+        <MorphRefreshScrollSurface
+          onRefresh={onRefreshSessions}
+          externalRefreshing={refreshingList}
+          tintColor={c.iconPrimary}
+        >
+          {({ refreshControl, onScroll, scrollEventThrottle }) => (
         <ScrollView
           contentContainerStyle={styles.list}
-          refreshControl={
-            <RefreshControl refreshing={refreshingList} onRefresh={onRefreshSessions} tintColor={c.iconPrimary} />
-          }
+          refreshControl={refreshControl}
+          onScroll={onScroll}
+          scrollEventThrottle={scrollEventThrottle}
         >
           {sessions.length === 0 ? (
             <EmptyState
@@ -510,6 +533,8 @@ export function ReportIssueScreen() {
             ))
           )}
         </ScrollView>
+          )}
+        </MorphRefreshScrollSurface>
       )}
     </View>
   );

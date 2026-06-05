@@ -17,7 +17,19 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { apiClient } from "../../../api/client";
-import { ChatRowSkeleton, EmptyState, Skeleton, SkeletonGroup } from "../../../components/ui";
+import {
+  ChatRowSkeleton,
+  EmptyState,
+  MorphRefreshHeader,
+  Skeleton,
+  SkeletonGroup,
+} from "../../../components/ui";
+import {
+  FLATLIST_PERF_DEFAULTS,
+  chatListGetItemLayout,
+} from "../../../lib/lists/flatListPerf";
+import { useCombinedScroll } from "../../../lib/refresh/useCombinedScroll";
+import { useMorphRefresh } from "../../../lib/refresh/useMorphRefresh";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { queryKeys } from "../../../lib/queryKeys";
 import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
@@ -35,6 +47,7 @@ import {
   respondGroupInvite,
 } from "../api/chatActionsApi";
 import { useFocusEffect } from "@react-navigation/native";
+import { TabScreenShell } from "../../../lib/layout";
 import { useFloatingTabBarBottomInset } from "../../../navigation/useFloatingTabBarBottomInset";
 import type { MainTabScreenProps } from "../../../navigation/types";
 import { useChatRoomChrome } from "../hooks/useChatRoomChrome";
@@ -171,7 +184,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: "#4CAF50",
+    backgroundColor: palette.chatPresence,
     borderWidth: 2,
     borderColor: palette.surface,
   },
@@ -181,7 +194,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
   rowTime: { ...typography.caption, color: palette.textMuted },
   rowBottom: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 3 },
   rowPreviewWrap: { flex: 1, marginRight: 8, minWidth: 0 },
-  rowOnline: { fontSize: 12, fontWeight: "600", color: "#43A047", marginBottom: 1 },
+  rowOnline: { fontSize: 12, fontWeight: "600", color: palette.chatPresence, marginBottom: 1 },
   rowPreview: { ...typography.bodySm, color: palette.textMuted },
   unreadBadge: {
     backgroundColor: palette.brandNavy,
@@ -211,7 +224,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
     justifyContent: "center",
     zIndex: 20,
     elevation: 8,
-    shadowColor: "#000",
+    shadowColor: palette.neutral900,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
     shadowRadius: 6,
@@ -377,6 +390,13 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
     staleTime: 15_000,
     refetchInterval: 25_000,
   });
+
+  const morphRefresh = useMorphRefresh({
+    onRefresh: async () => {
+      await refetch();
+    },
+  });
+  const onListScroll = useCombinedScroll(morphRefresh.scrollProps.onScroll, homeScroll.onScroll);
 
   const { data: groupInvites = [], refetch: refetchGroupInvites } = useQuery({
     queryKey: queryKeys.chats.groupInvites,
@@ -608,7 +628,11 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
   }
 
   return (
-    <View style={styles.root}>
+    <TabScreenShell clearFloatingTabBar={false}>
+      <MorphRefreshHeader
+        {...morphRefresh.headerProps}
+        refreshing={morphRefresh.refreshing || isRefetching}
+      />
       <View style={styles.searchBar}>
         <Ionicons name="search-outline" size={18} color={c.textMuted} />
         <TextInput
@@ -680,8 +704,10 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
         <FlatList<any>
           data={filtered as any[]}
           keyExtractor={(item, index) => flatListKeyExtractor(item, index)}
-          onScroll={homeScroll.onScroll}
-          scrollEventThrottle={homeScroll.scrollEventThrottle}
+          onScroll={onListScroll}
+          scrollEventThrottle={16}
+          {...FLATLIST_PERF_DEFAULTS}
+          getItemLayout={chatListGetItemLayout}
           renderItem={({ item }) => {
             const partner = getPartner(item);
             const lastMsg = item.lastMessage ?? item.last_message ?? "";
@@ -747,7 +773,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
                       />
                     ) : (
                       <View style={[styles.avatarFallback, { width: 48, height: 48, borderRadius: 24 }]}>
-                        <Ionicons name="people" size={22} color="#fff" />
+                        <Ionicons name="people" size={22} color={c.brandTextOn} />
                       </View>
                     )
                   ) : (
@@ -786,7 +812,11 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
             );
           }}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.iconPrimary} />
+            <RefreshControl
+              refreshing={morphRefresh.refreshing || isRefetching}
+              onRefresh={morphRefresh.onRefreshControl}
+              tintColor={c.iconPrimary}
+            />
           }
           contentContainerStyle={
             filtered.length > 0 ? { paddingBottom: listPadBottom } : undefined
@@ -871,7 +901,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
                     {groupAvatarUri ? (
                       <Image source={{ uri: groupAvatarUri }} style={{ width: 44, height: 44, borderRadius: 22 }} />
                     ) : (
-                      <Ionicons name="camera-outline" size={22} color="#fff" />
+                      <Ionicons name="camera-outline" size={22} color={c.brandTextOn} />
                     )}
                   </Pressable>
                   <Text style={{ fontSize: 11, color: c.textMuted, marginTop: 4, textAlign: "center" }}>
@@ -1018,7 +1048,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
           />
         </View>
       </Modal>
-    </View>
+    </TabScreenShell>
   );
 }
 

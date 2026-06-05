@@ -9,7 +9,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { colors } from "../../theme";
+import { useThemeColors, useThemedStyles } from "../../theme";
 import { Skeleton } from "./Skeleton";
 
 const RESIZE_MAP: Record<string, string> = {
@@ -50,6 +50,20 @@ export function ImageWithSkeleton({
   accessibilityLabel,
   onLoadError,
 }: ImageWithSkeletonProps) {
+  const c = useThemeColors();
+  const styles = useThemedStyles((palette) =>
+    StyleSheet.create({
+      box: {
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: palette.surfaceMuted,
+      },
+      img: {
+        ...StyleSheet.absoluteFillObject,
+      },
+    })
+  );
+
   const resolved = source ?? (uri ? { uri } : null);
   const isRemoteUri =
     typeof resolved === "object" &&
@@ -74,15 +88,11 @@ export function ImageWithSkeleton({
     const iconSize = Math.round(Math.min(width, height) * 0.38);
     return (
       <View
-        style={[
-          styles.box,
-          { width, height, borderRadius, backgroundColor: colors.surfaceMuted },
-          style,
-        ]}
+        style={[styles.box, { width, height, borderRadius }, style]}
         accessibilityLabel={accessibilityLabel}
         accessibilityRole="image"
       >
-        <Ionicons name="image-outline" size={Math.max(14, iconSize)} color={colors.textMuted} />
+        <Ionicons name="image-outline" size={Math.max(14, iconSize)} color={c.textMuted} />
       </View>
     );
   }
@@ -111,14 +121,3 @@ export function ImageWithSkeleton({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  box: {
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.surfaceMuted,
-  },
-  img: {
-    ...StyleSheet.absoluteFillObject,
-  },
-});

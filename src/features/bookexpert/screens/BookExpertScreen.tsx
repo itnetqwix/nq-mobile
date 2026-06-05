@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   Pressable,
-  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -12,7 +11,11 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { EmptyState, SkeletonGroup, TrainerBrowseCardSkeleton } from "../../../components/ui";
+import { EmptyState, MorphRefreshScrollSurface, SkeletonGroup, TrainerBrowseCardSkeleton } from "../../../components/ui";
+import {
+  FLATLIST_PERF_DEFAULTS,
+  trainerBrowseRowGetItemLayout,
+} from "../../../lib/lists/flatListPerf";
 import { type AppColors, radii, space, typography, useThemeColors } from "../../../theme";
 import { fetchOnlineUsers, fetchTrainersWithSlots } from "../../home/api/homeApi";
 import { useOnlinePresence } from "../../socket/useOnlinePresence";
@@ -235,6 +238,13 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
           renderRow={() => <TrainerBrowseCardSkeleton />}
         />
       ) : (
+        <MorphRefreshScrollSurface
+          style={{ flex: 1 }}
+          onRefresh={() => void refetchDirectory()}
+          externalRefreshing={directoryRefetching}
+          tintColor={themeColors.brandNavy}
+        >
+          {({ refreshControl, onScroll, scrollEventThrottle }) => (
         <FlatList
           data={mergedRows}
           keyExtractor={flatListKeyExtractor}
@@ -262,13 +272,11 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
             />
           )}
           contentContainerStyle={styles.list}
-          refreshControl={
-            <RefreshControl
-              refreshing={directoryRefetching}
-              onRefresh={() => void refetchDirectory()}
-              tintColor={themeColors.brandNavy}
-            />
-          }
+          refreshControl={refreshControl}
+          onScroll={onScroll}
+          scrollEventThrottle={scrollEventThrottle}
+          {...FLATLIST_PERF_DEFAULTS}
+          getItemLayout={trainerBrowseRowGetItemLayout}
           ListHeaderComponent={
             <View style={styles.listBanner}>
               <Ionicons name="people-outline" size={16} color={themeColors.brandNavy} />
@@ -287,6 +295,8 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
             />
           }
         />
+          )}
+        </MorphRefreshScrollSurface>
       )}
     </View>
   );

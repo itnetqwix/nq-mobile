@@ -1,25 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import React, { useCallback } from "react";
-import {
-  Dimensions,
-  Linking,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { OffersCarouselSkeleton } from "../../../components/ui";
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ImageWithSkeleton, OffersCarouselSkeleton } from "../../../components/ui";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { radii, space, typography, useThemeColors } from "../../../theme";
+import { useContentWidthFraction } from "../../../lib/layout";
 import { useMarketplaceHorizontalPad } from "../layout/marketplaceLayout";
 import { type Tip } from "../../content/api/contentApi";
 import { useCmsHomeTips } from "../../content/hooks/useCmsHome";
 import { isReactNavigationDeepLink } from "../../content/lib/deepLinks";
-
-const OFFER_W = Math.round(Dimensions.get("window").width * 0.72);
 
 type Props = {
   guest?: boolean;
@@ -43,6 +33,7 @@ export function HomeOffersCarousel({ guest, onDeepLink }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const marketplacePad = useMarketplaceHorizontalPad();
+  const offerWidth = useContentWidthFraction(0.72);
 
   const { data: tips = [], isLoading, isFetching } = useCmsHomeTips(guest);
 
@@ -88,13 +79,17 @@ export function HomeOffersCarousel({ guest, onDeepLink }: Props) {
               onPress={() => onPress(tip)}
               style={({ pressed }) => [
                 styles.card,
-                { backgroundColor: c.surfaceElevated, borderColor: c.border },
+                {
+                  width: offerWidth,
+                  backgroundColor: c.surfaceElevated,
+                  borderColor: c.border,
+                },
                 pressed && tappable && { opacity: 0.92, transform: [{ scale: 0.99 }] },
               ]}
             >
               <View style={[styles.iconWrap, { backgroundColor: c.brandAccentSubtle }]}>
                 {img ? (
-                  <Image source={{ uri: img }} style={styles.iconImg} contentFit="cover" />
+                  <ImageWithSkeleton uri={img} width={48} height={48} borderRadius={radii.md} />
                 ) : (
                   <Ionicons name="pricetag" size={22} color={c.brandAccent} />
                 )}
@@ -139,7 +134,6 @@ const styles = StyleSheet.create({
     gap: space.sm,
   },
   card: {
-    width: OFFER_W,
     flexDirection: "row",
     alignItems: "center",
     gap: space.sm,

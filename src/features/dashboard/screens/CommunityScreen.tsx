@@ -4,7 +4,6 @@ import {
   Alert,
   FlatList,
   Pressable,
-  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -13,7 +12,11 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { EmptyState, ImageWithSkeleton, Pill, Skeleton } from "../../../components/ui";
+import { EmptyState, ImageWithSkeleton, MorphRefreshScrollSurface, Pill, Skeleton } from "../../../components/ui";
+import {
+  FLATLIST_PERF_DEFAULTS,
+  communityRowGetItemLayout,
+} from "../../../lib/lists/flatListPerf";
 import { colors, radii, space, typography } from "../../../theme";
 import { queryKeys } from "../../../lib/queryKeys";
 import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
@@ -383,6 +386,13 @@ export function CommunityScreen() {
           </Pressable>
         )}
       </View>
+      <MorphRefreshScrollSurface
+        style={{ flex: 1 }}
+        onRefresh={refetch}
+        externalRefreshing={isRefetching}
+        tintColor={colors.brandNavy}
+      >
+        {({ refreshControl, onScroll, scrollEventThrottle }) => (
       <FlatList
         data={filteredMembers}
         keyExtractor={flatListKeyExtractor}
@@ -397,9 +407,11 @@ export function CommunityScreen() {
           />
         )}
         contentContainerStyle={listPad}
-        refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brandNavy} />
-        }
+        refreshControl={refreshControl}
+        onScroll={onScroll}
+        scrollEventThrottle={scrollEventThrottle}
+        {...FLATLIST_PERF_DEFAULTS}
+        getItemLayout={communityRowGetItemLayout}
         ListHeaderComponent={
           <View style={styles.headerCard}>
             <Ionicons name="globe-outline" size={28} color={colors.brandNavy} />
@@ -419,6 +431,8 @@ export function CommunityScreen() {
           />
         }
       />
+        )}
+      </MorphRefreshScrollSurface>
     </View>
   );
 }

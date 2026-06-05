@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, radii, space, typography } from "../../theme";
+import { radii, space, typography, useThemeColors } from "../../theme";
 
 export type BannerTone = "info" | "success" | "warning" | "danger";
 export type BannerProps = {
@@ -16,7 +16,8 @@ export type BannerProps = {
 /** Inline status banner — drop above a form or list when something needs the
  *  user's attention but shouldn't pop a modal. */
 export function Banner({ tone = "info", title, description, onDismiss, action }: BannerProps) {
-  const palette = getTonePalette(tone);
+  const c = useThemeColors();
+  const palette = getTonePalette(tone, c);
   return (
     <View
       style={[
@@ -49,35 +50,35 @@ export function Banner({ tone = "info", title, description, onDismiss, action }:
   );
 }
 
-function getTonePalette(tone: BannerTone) {
+function getTonePalette(tone: BannerTone, c: ReturnType<typeof useThemeColors>) {
   switch (tone) {
     case "success":
       return {
-        bg: colors.successSubtle,
-        accent: colors.success,
-        text: colors.successText,
+        bg: c.successSubtle,
+        accent: c.success,
+        text: c.successText,
         icon: "checkmark-circle-outline" as const,
       };
     case "warning":
       return {
-        bg: colors.warningSubtle,
-        accent: colors.warning,
-        text: colors.warningText,
+        bg: c.warningSubtle,
+        accent: c.warning,
+        text: c.warningText,
         icon: "alert-outline" as const,
       };
     case "danger":
       return {
-        bg: colors.dangerSubtle,
-        accent: colors.danger,
-        text: colors.dangerText,
+        bg: c.dangerSubtle,
+        accent: c.danger,
+        text: c.dangerText,
         icon: "alert-circle-outline" as const,
       };
     case "info":
     default:
       return {
-        bg: colors.infoSubtle,
-        accent: colors.info,
-        text: colors.infoText,
+        bg: c.infoSubtle,
+        accent: c.info,
+        text: c.infoText,
         icon: "information-circle-outline" as const,
       };
   }
@@ -89,10 +90,11 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: space.sm,
     padding: space.md,
+    borderLeftWidth: 4,
     borderRadius: radii.md,
-    borderLeftWidth: 3,
+    marginBottom: space.sm,
   },
   icon: { marginTop: 2 },
   body: { flex: 1 },
-  actionBtn: { marginTop: space.xs, alignSelf: "flex-start" },
+  actionBtn: { marginTop: space.sm, alignSelf: "flex-start" },
 });

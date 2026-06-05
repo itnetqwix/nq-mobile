@@ -1,12 +1,5 @@
 import React, { useCallback, useMemo } from "react";
-import {
-  ActivityIndicator,
-  Linking,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { TrainerScheduleDay } from "../../../home/api/homeApi";
 import { type Tip } from "../../../content/api/contentApi";
@@ -14,6 +7,7 @@ import { useCmsHomeTips } from "../../../content/hooks/useCmsHome";
 import { isReactNavigationDeepLink } from "../../../content/lib/deepLinks";
 import { countSlotsNextWeek, hasThursdaySlot } from "../../lib/trainerSlotUtils";
 import { useAuth } from "../../../auth/context/AuthContext";
+import { TipsCardSkeleton } from "../../../../components/ui";
 import { DashboardSection } from "./DashboardSection";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
@@ -111,14 +105,7 @@ export function TipsForYouSection({ guest = false, onDeepLink, trainerContext }:
   if (isLoading) {
     return (
       <DashboardSection embedded title={title}>
-        <View style={styles.card}>
-          <View style={styles.loadingRow}>
-            <ActivityIndicator size="small" color={c.brandNavy} />
-            <Text style={[styles.text, { color: c.textMuted }]}>
-              {t("common.loading", { defaultValue: "Loading…" })}
-            </Text>
-          </View>
-        </View>
+        <TipsCardSkeleton rows={3} />
       </DashboardSection>
     );
   }

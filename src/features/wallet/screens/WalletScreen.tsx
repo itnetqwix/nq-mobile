@@ -12,8 +12,10 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Button, Skeleton } from "../../../components/ui";
+import { Button, MorphRefreshHeader, WalletBalanceSkeleton } from "../../../components/ui";
+import { TabScreenShell } from "../../../lib/layout";
 import { useHapticRefresh } from "../../../lib/refresh/useHapticRefresh";
+import { useMorphRefreshBundle } from "../../../lib/refresh/useMorphRefreshBundle";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
@@ -30,6 +32,7 @@ import {
 export function WalletScreen() {
   const c = useThemeColors();
   const styles = useThemedStyles((c) => StyleSheet.create({
+  flex: { flex: 1 },
   root: { flex: 1, backgroundColor: c.background },
   content: { padding: space.lg, gap: space.md },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
@@ -87,6 +90,7 @@ export function WalletScreen() {
   });
 
   const { refreshing: hapticRefreshing, onRefresh } = useHapticRefresh(refetch);
+  const morph = useMorphRefreshBundle(onRefresh, hapticRefreshing || isRefetching);
 
   const handleTopUp = async () => {
     const dollars = parseFloat(topUpDollars);
@@ -143,42 +147,40 @@ export function WalletScreen() {
     }
   };
 
+  const refreshControl = (
+    <RefreshControl
+      refreshing={morph.refreshing}
+      onRefresh={morph.onRefreshControl}
+      tintColor={c.iconPrimary}
+    />
+  );
+
   if (isLoading) {
     return (
-      <ScrollView
-        style={styles.root}
-        contentContainerStyle={styles.content}
-        refreshControl={
-          <RefreshControl
-            refreshing={hapticRefreshing || isRefetching}
-            onRefresh={onRefresh}
-            tintColor={c.iconPrimary}
-          />
-        }
-      >
-        <View style={styles.card}>
-          <Skeleton width={120} height={12} />
-          <View style={{ height: space.sm }} />
-          <Skeleton width={180} height={28} radius={6} />
-          <View style={{ height: space.sm }} />
-          <Skeleton width={"60%"} height={10} />
-        </View>
-        <Skeleton width={"100%"} height={120} radius={radii.lg} />
-      </ScrollView>
+      <TabScreenShell clearFloatingTabBar={false}>
+        <MorphRefreshHeader {...morph.headerProps} />
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.content}
+          onScroll={morph.onMorphScroll}
+          scrollEventThrottle={morph.scrollEventThrottle}
+          refreshControl={refreshControl}
+        >
+          <WalletBalanceSkeleton />
+        </ScrollView>
+      </TabScreenShell>
     );
   }
 
   return (
+    <TabScreenShell clearFloatingTabBar={false}>
+    <MorphRefreshHeader {...morph.headerProps} />
     <ScrollView
-      style={styles.root}
+      style={styles.flex}
       contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl
-          refreshing={hapticRefreshing || isRefetching}
-          onRefresh={onRefresh}
-          tintColor={c.iconPrimary}
-        />
-      }
+      onScroll={morph.onMorphScroll}
+      scrollEventThrottle={morph.scrollEventThrottle}
+      refreshControl={refreshControl}
     >
       <View style={styles.card}>
         <Text style={styles.label}>Available balance</Text>
@@ -249,6 +251,7 @@ export function WalletScreen() {
         <Text style={styles.hint}>No ledger entries yet.</Text>
       )}
     </ScrollView>
+    </TabScreenShell>
   );
 }
 

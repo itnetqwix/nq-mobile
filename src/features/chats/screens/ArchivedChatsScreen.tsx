@@ -7,13 +7,16 @@ import {
   Alert,
   FlatList,
   Pressable,
-  RefreshControl,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { EmptyState, Skeleton } from "../../../components/ui";
+import { EmptyState, MorphRefreshScrollSurface, Skeleton } from "../../../components/ui";
+import {
+  FLATLIST_PERF_DEFAULTS,
+  chatListGetItemLayout,
+} from "../../../lib/lists/flatListPerf";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { queryKeys } from "../../../lib/queryKeys";
 import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
@@ -109,13 +112,21 @@ export function ArchivedChatsScreen() {
   return (
     <StackSwipeBackShell>
       <View style={{ flex: 1, backgroundColor: c.surface }}>
+        <MorphRefreshScrollSurface
+          onRefresh={() => void q.refetch()}
+          externalRefreshing={q.isRefetching}
+          tintColor={c.brandAccent}
+        >
+          {({ refreshControl, onScroll, scrollEventThrottle }) => (
         <FlatList
           data={q.data ?? []}
           keyExtractor={flatListKeyExtractor}
           contentContainerStyle={{ paddingBottom: bottomPad }}
-          refreshControl={
-            <RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />
-          }
+          refreshControl={refreshControl}
+          onScroll={onScroll}
+          scrollEventThrottle={scrollEventThrottle}
+          {...FLATLIST_PERF_DEFAULTS}
+          getItemLayout={chatListGetItemLayout}
           ListEmptyComponent={
             q.isLoading ? (
               <Skeleton height={64} style={{ margin: space.md }} />
@@ -168,6 +179,8 @@ export function ArchivedChatsScreen() {
             );
           }}
         />
+          )}
+        </MorphRefreshScrollSurface>
         {q.isFetching && !q.isLoading ? (
           <ActivityIndicator style={{ padding: space.md }} color={c.brandNavy} />
         ) : null}

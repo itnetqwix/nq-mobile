@@ -1,8 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Dimensions,
   Linking,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -12,7 +10,8 @@ import {
   Text,
   View,
 } from "react-native";
-import { HeroCarouselSkeleton } from "../../../components/ui";
+import { HeroCarouselSkeleton, ImageWithSkeleton } from "../../../components/ui";
+import { useContentWidth } from "../../../lib/layout";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { radii, space, typography, useThemeColors } from "../../../theme";
@@ -21,7 +20,6 @@ import { useCmsHomeHero } from "../../content/hooks/useCmsHome";
 import { dismissedBanners } from "../../content/dismissedBanners";
 import { isReactNavigationDeepLink } from "../../content/lib/deepLinks";
 
-const { width: SCREEN_W } = Dimensions.get("window");
 const CARD_GAP = space.sm;
 const DEFAULT_ADVANCE_SEC = 5;
 const CARD_ASPECT = 0.45;
@@ -33,8 +31,8 @@ type Props = {
   contentWidth?: number;
 };
 
-function heroCardMetrics(contentWidth?: number) {
-  const cardW = Math.round(contentWidth ?? SCREEN_W - space.md * 2);
+function heroCardMetrics(contentWidth: number) {
+  const cardW = Math.round(contentWidth);
   return { cardW, cardH: Math.round(cardW * CARD_ASPECT) };
 }
 
@@ -114,7 +112,13 @@ function HeroCard({
   const body = (
     <View style={[styles.card, { width: cardW, height: cardH, borderColor: c.border }]}>
       {imageUri ? (
-        <Image source={{ uri: imageUri }} style={styles.cardImage} contentFit="cover" />
+        <ImageWithSkeleton
+          uri={imageUri}
+          width={cardW}
+          height={cardH}
+          borderRadius={radii.lg}
+          style={styles.cardImage}
+        />
       ) : (
         <View style={[styles.cardImage, { backgroundColor: c.brandAccentSubtle }]} />
       )}
@@ -155,7 +159,9 @@ function HeroCard({
 export function HomeHeroCarousel({ guest, onDeepLink, contentWidth }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
-  const { cardW, cardH } = useMemo(() => heroCardMetrics(contentWidth), [contentWidth]);
+  const fallbackWidth = useContentWidth();
+  const resolvedWidth = contentWidth ?? fallbackWidth;
+  const { cardW, cardH } = useMemo(() => heroCardMetrics(resolvedWidth), [resolvedWidth]);
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
   const [page, setPage] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -226,7 +232,7 @@ export function HomeHeroCarousel({ guest, onDeepLink, contentWidth }: Props) {
   }, []);
 
   if (isLoading || (isFetching && !items.length)) {
-    return <HeroCarouselSkeleton />;
+    return <HeroCarouselSkeleton cardHeight={cardH} />;
   }
 
   if (!items.length) return null;
