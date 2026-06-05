@@ -421,13 +421,11 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
           queryClient.refetchQueries({ queryKey: queryKeys.presence.bookExpertOnline }),
           queryClient.refetchQueries({ queryKey: ["trainersDirectory"] }),
           queryClient.refetchQueries({ queryKey: queryKeys.trainee.favorites }),
-          queryClient.refetchQueries({ queryKey: queryKeys.content.banners }),
-          queryClient.refetchQueries({ queryKey: queryKeys.content.tips })
+          queryClient.refetchQueries({ queryKey: queryKeys.content.home(false) }),
         );
       } else {
         tasks.push(
-          queryClient.refetchQueries({ queryKey: queryKeys.content.banners }),
-          queryClient.refetchQueries({ queryKey: queryKeys.content.tips })
+          queryClient.refetchQueries({ queryKey: queryKeys.content.home(false) }),
         );
       }
       if (!isTrainee) {

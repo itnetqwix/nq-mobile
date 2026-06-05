@@ -135,6 +135,7 @@ export const queryKeys = {
   },
   content: {
     all: ["content"] as const,
+    home: (guest: boolean) => ["content", "home", guest ? "guest" : "auth"] as const,
     cmsManifest: ["content", "cmsManifest"] as const,
     banners: ["content", "banners"] as const,
     tips: ["content", "tips"] as const,

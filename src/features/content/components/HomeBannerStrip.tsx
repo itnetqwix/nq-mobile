@@ -7,11 +7,10 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { radii, space, typography, useThemeColors } from "../../../theme";
-import { queryKeys } from "../../../lib/queryKeys";
-import { fetchHomeBanners, type HomeBanner } from "../api/contentApi";
+import { type HomeBanner } from "../api/contentApi";
+import { useCmsHomeStrip } from "../hooks/useCmsHome";
 import { dismissedBanners } from "../dismissedBanners";
 import { isReactNavigationDeepLink } from "../lib/deepLinks";
 
@@ -69,12 +68,7 @@ export function HomeBannerStrip({ guest, onDeepLink }: Props) {
     };
   }, []);
 
-  const { data } = useQuery({
-    queryKey: [...queryKeys.content.banners, guest ? "guest" : "auth", "strip"] as const,
-    queryFn: () => fetchHomeBanners({ guest, placement: "strip" }),
-    staleTime: 2 * 60_000,
-    refetchOnWindowFocus: true,
-  });
+  const { data } = useCmsHomeStrip(guest, { refetchOnMount: "always" });
 
   const banner =
     (data ?? []).find((b) => !dismissedIds.includes(String(b._id))) || null;

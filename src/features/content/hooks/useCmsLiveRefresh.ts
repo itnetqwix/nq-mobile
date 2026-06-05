@@ -6,7 +6,7 @@ import { fetchCmsManifest } from "../api/cmsApi";
 const POLL_MS = 60_000;
 
 /**
- * Polls CMS manifest and invalidates banners/tips/legal/blogs when
+ * Polls CMS manifest and invalidates home bundle + legal/blogs when
  * `content_version` changes — OTA-style updates without app store releases.
  */
 export function useCmsLiveRefresh(enabled = true) {

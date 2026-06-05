@@ -12,17 +12,12 @@ import {
   Text,
   View,
 } from "react-native";
-import { useQuery } from "@tanstack/react-query";
 import { HeroCarouselSkeleton } from "../../../components/ui";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
-import { queryKeys } from "../../../lib/queryKeys";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { radii, space, typography, useThemeColors } from "../../../theme";
-import {
-  fetchHomeBanners,
-  type HomeBanner,
-  type HomeBannerCta,
-} from "../../content/api/contentApi";
+import { type HomeBanner, type HomeBannerCta } from "../../content/api/contentApi";
+import { useCmsHomeHero } from "../../content/hooks/useCmsHome";
 import { dismissedBanners } from "../../content/dismissedBanners";
 import { isReactNavigationDeepLink } from "../../content/lib/deepLinks";
 
@@ -183,11 +178,7 @@ export function HomeHeroCarousel({ guest, onDeepLink, contentWidth }: Props) {
     };
   }, []);
 
-  const { data, isLoading, isFetching } = useQuery({
-    queryKey: [...queryKeys.content.banners, guest ? "guest" : "auth", "hero"] as const,
-    queryFn: () => fetchHomeBanners({ guest, placement: "hero" }),
-    staleTime: 2 * 60_000,
-  });
+  const { data, isLoading, isFetching } = useCmsHomeHero(guest);
 
   const items = useMemo(
     () => (data ?? []).filter((b) => !dismissedIds.includes(String(b._id))),

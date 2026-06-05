@@ -8,12 +8,11 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
 import type { TrainerScheduleDay } from "../../../home/api/homeApi";
-import { fetchHomeTips, type Tip } from "../../../content/api/contentApi";
+import { type Tip } from "../../../content/api/contentApi";
+import { useCmsHomeTips } from "../../../content/hooks/useCmsHome";
 import { isReactNavigationDeepLink } from "../../../content/lib/deepLinks";
 import { countSlotsNextWeek, hasThursdaySlot } from "../../lib/trainerSlotUtils";
-import { queryKeys } from "../../../../lib/queryKeys";
 import { useAuth } from "../../../auth/context/AuthContext";
 import { DashboardSection } from "./DashboardSection";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
@@ -50,13 +49,9 @@ export function TipsForYouSection({ guest = false, onDeepLink, trainerContext }:
     isLoading,
     isError,
     refetch,
-  } = useQuery({
-    queryKey: [...queryKeys.content.tips, guest ? "guest" : "auth"] as const,
-    queryFn: () => fetchHomeTips({ guest }),
+  } = useCmsHomeTips(guest, {
     enabled: guest || status === "signedIn",
-    staleTime: 2 * 60_000,
     refetchOnMount: "always",
-    retry: 2,
   });
 
   const contextualTips = useMemo(() => {

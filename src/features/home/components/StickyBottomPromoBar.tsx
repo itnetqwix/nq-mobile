@@ -1,12 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useState } from "react";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
-import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
-import { queryKeys } from "../../../lib/queryKeys";
 import { radii, space, typography, useThemeColors } from "../../../theme";
-import { fetchHomeBanners, type HomeBanner } from "../../content/api/contentApi";
+import { type HomeBanner } from "../../content/api/contentApi";
+import { useCmsHomeSticky } from "../../content/hooks/useCmsHome";
 import { dismissedBanners } from "../../content/dismissedBanners";
 import { isReactNavigationDeepLink } from "../../content/lib/deepLinks";
 import {
@@ -50,11 +49,7 @@ export function StickyBottomPromoBar({ guest, onDeepLink }: Props) {
     };
   }, []);
 
-  const { data, isLoading } = useQuery({
-    queryKey: [...queryKeys.content.banners, guest ? "guest" : "auth", "sticky_bottom"] as const,
-    queryFn: () => fetchHomeBanners({ guest, placement: "sticky_bottom" }),
-    staleTime: 2 * 60_000,
-  });
+  const { data, isLoading } = useCmsHomeSticky(guest);
 
   const promos = (data ?? []).filter((b) => {
     const id = String(b._id);

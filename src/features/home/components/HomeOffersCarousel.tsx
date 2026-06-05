@@ -10,14 +10,13 @@ import {
   Text,
   View,
 } from "react-native";
-import { useQuery } from "@tanstack/react-query";
 import { OffersCarouselSkeleton } from "../../../components/ui";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
-import { queryKeys } from "../../../lib/queryKeys";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { radii, space, typography, useThemeColors } from "../../../theme";
 import { useMarketplaceHorizontalPad } from "../layout/marketplaceLayout";
-import { fetchHomeTips, type Tip } from "../../content/api/contentApi";
+import { type Tip } from "../../content/api/contentApi";
+import { useCmsHomeTips } from "../../content/hooks/useCmsHome";
 import { isReactNavigationDeepLink } from "../../content/lib/deepLinks";
 
 const OFFER_W = Math.round(Dimensions.get("window").width * 0.72);
@@ -45,11 +44,7 @@ export function HomeOffersCarousel({ guest, onDeepLink }: Props) {
   const c = useThemeColors();
   const marketplacePad = useMarketplaceHorizontalPad();
 
-  const { data: tips = [], isLoading, isFetching } = useQuery({
-    queryKey: [...queryKeys.content.tips, guest ? "guest" : "auth", "offers"] as const,
-    queryFn: () => fetchHomeTips({ guest }),
-    staleTime: 2 * 60_000,
-  });
+  const { data: tips = [], isLoading, isFetching } = useCmsHomeTips(guest);
 
   const onPress = useCallback(
     (tip: Tip) => openTip(tip, onDeepLink),

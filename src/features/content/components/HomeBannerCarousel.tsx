@@ -10,11 +10,10 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
-import { queryKeys } from "../../../lib/queryKeys";
 import { radii, space, typography, useThemeColors } from "../../../theme";
-import { fetchHomeBanners, type HomeBanner } from "../api/contentApi";
+import { type HomeBanner } from "../api/contentApi";
+import { useCmsHome } from "../hooks/useCmsHome";
 import { dismissedBanners } from "../dismissedBanners";
 import { isReactNavigationDeepLink } from "../lib/deepLinks";
 
@@ -75,17 +74,16 @@ export function HomeBannerCarousel({ guest, onDeepLink }: Props) {
     };
   }, []);
 
-  const { data } = useQuery({
-    queryKey: [...queryKeys.content.banners, guest ? "guest" : "auth"] as const,
-    queryFn: () => fetchHomeBanners({ guest }),
-    staleTime: 45_000,
-    refetchOnWindowFocus: true,
-  });
+  const { data: bundle } = useCmsHome(guest, { refetchOnMount: "always" });
 
-  const visible = useMemo(
-    () => (data ?? []).filter((b) => !dismissedIds.includes(String(b._id))),
-    [data, dismissedIds]
-  );
+  const visible = useMemo(() => {
+    const all = [
+      ...(bundle?.banners.hero ?? []),
+      ...(bundle?.banners.strip ?? []),
+      ...(bundle?.banners.sticky_bottom ?? []),
+    ];
+    return all.filter((b) => !dismissedIds.includes(String(b._id)));
+  }, [bundle, dismissedIds]);
 
   const openUrl = useCallback(
     (url: string) => {

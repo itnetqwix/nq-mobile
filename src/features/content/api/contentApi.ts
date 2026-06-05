@@ -69,41 +69,65 @@ function unwrap<T>(raw: unknown): T[] {
   return [];
 }
 
-export async function fetchHomeTips(opts?: { guest?: boolean }): Promise<Tip[]> {
+export type CmsHomeBundle = {
+  content_version: number;
+  updated_at: string;
+  banners: {
+    hero: HomeBanner[];
+    strip: HomeBanner[];
+    sticky_bottom: HomeBanner[];
+  };
+  tips: Tip[];
+};
+
+function unwrapRecord<T>(raw: unknown): T | null {
+  const body = raw as Record<string, unknown> | null | undefined;
+  if (!body || typeof body !== "object") return null;
+  if (body.status === "FAIL" || body.status === "fail") return null;
+  const data = body.data ?? body.result;
+  return data && typeof data === "object" ? (data as T) : null;
+}
+
+/** Aggregated home CMS — one request for hero, strip, sticky, tips. */
+export async function fetchCmsHome(opts?: { guest?: boolean }): Promise<CmsHomeBundle> {
+  const empty: CmsHomeBundle = {
+    content_version: 0,
+    updated_at: new Date().toISOString(),
+    banners: { hero: [], strip: [], sticky_bottom: [] },
+    tips: [],
+  };
   try {
     if (opts?.guest) {
-      const res = await axios.get(`${API_BASE_URL}${API_ROUTES.tips.list}`, {
+      const res = await axios.get(`${API_BASE_URL}${API_ROUTES.cms.home}`, {
         timeout: 15_000,
       });
-      return unwrap<Tip>(res.data);
+      return unwrapRecord<CmsHomeBundle>(res.data) ?? empty;
     }
-    const res = await apiClient.get(API_ROUTES.tips.list, {
+    const res = await apiClient.get(API_ROUTES.cms.home, {
       _skipAuthSignOut: true,
     });
-    return unwrap<Tip>(res.data);
+    return unwrapRecord<CmsHomeBundle>(res.data) ?? empty;
   } catch {
-    return [];
+    return empty;
   }
+}
+
+export async function fetchHomeTips(opts?: { guest?: boolean }): Promise<Tip[]> {
+  const bundle = await fetchCmsHome(opts);
+  return bundle.tips;
 }
 
 export async function fetchHomeBanners(opts?: {
   guest?: boolean;
   placement?: BannerPlacement;
 }): Promise<HomeBanner[]> {
-  const qs = opts?.placement ? `?placement=${encodeURIComponent(opts.placement)}` : "";
-  const url = `${API_ROUTES.banners.list}${qs}`;
-  try {
-    if (opts?.guest) {
-      const res = await axios.get(`${API_BASE_URL}${url}`, {
-        timeout: 15_000,
-      });
-      return unwrap<HomeBanner>(res.data);
-    }
-    const res = await apiClient.get(url, {
-      _skipAuthSignOut: true,
-    } as Parameters<typeof apiClient.get>[1]);
-    return unwrap<HomeBanner>(res.data);
-  } catch {
-    return [];
-  }
+  const bundle = await fetchCmsHome(opts);
+  if (opts?.placement === "hero") return bundle.banners.hero;
+  if (opts?.placement === "strip") return bundle.banners.strip;
+  if (opts?.placement === "sticky_bottom") return bundle.banners.sticky_bottom;
+  return [
+    ...bundle.banners.hero,
+    ...bundle.banners.strip,
+    ...bundle.banners.sticky_bottom,
+  ];
 }

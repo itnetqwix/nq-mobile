@@ -153,6 +153,7 @@ export const API_ROUTES = {
     list: "/banners",
   },
   cms: {
+    home: "/cms/home",
     manifest: "/cms/manifest",
     faq: "/cms/faq",
     legal: (slug: string) => `/cms/legal/${slug}` as const,
