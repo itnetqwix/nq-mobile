@@ -112,6 +112,7 @@ export function ScheduledBookingWizardModal({ visible, trainer, onDismiss, onBoo
               expectedPrice={w.expectedPrice}
               payableAmount={w.payableAmount}
               promoDiscountAmount={w.promoDiscountAmount}
+              checkoutDiscountAmount={w.checkoutDiscountAmount}
               promoSponsorType={w.promoSponsorType}
               promoLabel={w.promoLabel}
               promoResult={w.promoResult}

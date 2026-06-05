@@ -22,6 +22,7 @@ import { fetchSessionPricingQuote } from "../../payments/fetchSessionPricingQuot
 import type { PricingQuote } from "../../payments/pricingTypes";
 import { chargeTotalDollars } from "../../payments/pricingTypes";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
+import { resolveCheckoutDiscountAmount } from "../../../lib/booking/checkoutDiscount";
 import { postReferralPreviewCheckout } from "../../referral/api/referralApi";
 import {
   promoDisplayLabel,
@@ -74,6 +75,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     discount_amount?: number;
     final_amount?: number;
     display_label?: string;
+    sponsor_type?: "platform" | "trainer";
   } | null>(null);
   const [visiblePromos, setVisiblePromos] = useState<any[]>([]);
 
@@ -275,6 +277,16 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     return expectedPrice;
   }, [checkoutPreviewQuery.data, promoResult, expectedPrice]);
 
+  const checkoutDiscountAmount = useMemo(
+    () =>
+      resolveCheckoutDiscountAmount({
+        expectedPrice,
+        payableAmount,
+        reportedTotalDiscount: checkoutPreviewQuery.data?.totalDiscount,
+      }),
+    [expectedPrice, payableAmount, checkoutPreviewQuery.data?.totalDiscount]
+  );
+
   useEffect(() => {
     if (!visible || step !== "duration" || !tid || payableAmount <= 0) {
       setDurationPreviewQuote(null);
@@ -285,7 +297,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
       productType: "instant_lesson",
       sessionSubtotalCents: Math.round(expectedPrice * 100),
       trainerId: tid,
-      promoDiscountCents: Math.round(promoDiscountAmount * 100),
+      promoDiscountCents: Math.round(checkoutDiscountAmount * 100),
       promoSponsorType,
       user: user as Record<string, unknown>,
     })
@@ -298,7 +310,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     return () => {
       cancelled = true;
     };
-  }, [visible, step, tid, payableAmount, expectedPrice, durationMinutes, promoDiscountAmount, promoSponsorType]);
+  }, [visible, step, tid, payableAmount, expectedPrice, durationMinutes, checkoutDiscountAmount, promoSponsorType]);
 
   useEffect(() => {
     if (!visible || step !== "confirm" || !tid || payableAmount <= 0 || pricingQuote) {
@@ -309,7 +321,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
       productType: "instant_lesson",
       sessionSubtotalCents: Math.round(expectedPrice * 100),
       trainerId: tid,
-      promoDiscountCents: Math.round(promoDiscountAmount * 100),
+      promoDiscountCents: Math.round(checkoutDiscountAmount * 100),
       promoSponsorType,
       user: user as Record<string, unknown>,
     })
@@ -334,7 +346,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     pricingQuote,
     chargingPrice,
     durationMinutes,
-    promoDiscountAmount,
+    checkoutDiscountAmount,
     promoSponsorType,
   ]);
 
@@ -477,6 +489,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     promoValidating,
     promoResult,
     promoDiscountAmount,
+    checkoutDiscountAmount,
     promoLabel,
     promoSponsorType,
     handleApplyPromo,

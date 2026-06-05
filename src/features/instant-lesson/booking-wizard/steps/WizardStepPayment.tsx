@@ -57,6 +57,7 @@ type Props = {
   durationLabel?: string;
   payableAmount?: number;
   promoDiscountAmount?: number;
+  checkoutDiscountAmount?: number;
   promoSponsorType?: "platform" | "trainer";
   promoLabel?: string;
   onPaymentComplete: (payload: PaymentCompletePayload) => void;
@@ -75,6 +76,7 @@ export function WizardStepPayment({
   durationLabel,
   payableAmount: payableAmountProp,
   promoDiscountAmount = 0,
+  checkoutDiscountAmount,
   promoSponsorType,
   promoLabel,
   onPaymentComplete,
@@ -154,7 +156,7 @@ export function WizardStepPayment({
         productType: bookingType === "instant" ? "instant_lesson" : "session_booking",
         sessionSubtotalCents: Math.round(expectedPrice * 100),
         trainerId,
-        promoDiscountCents: Math.round(promoDiscountAmount * 100),
+        promoDiscountCents: Math.round((checkoutDiscountAmount ?? promoDiscountAmount) * 100),
         promoSponsorType,
         user: user as Record<string, unknown>,
       });
@@ -217,6 +219,9 @@ export function WizardStepPayment({
     billing.state,
     user,
     trainer,
+    checkoutDiscountAmount,
+    promoDiscountAmount,
+    promoSponsorType,
   ]);
 
   useEffect(() => {
