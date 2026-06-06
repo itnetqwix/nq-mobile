@@ -11,6 +11,10 @@ LogBox.ignoreLogs([
   "forwardRef render functions accept exactly two parameters",
   "VirtualizedLists should never be nested inside plain ScrollViews",
   "Cannot find native module 'ExpoNetwork'",
+  "PushNotificationIOS has been extracted",
+  "Clipboard has been extracted",
+  "SafeAreaView has been deprecated",
+  "ProgressBarAndroid has been extracted",
 ]);
 
 if (__DEV__) {
@@ -20,7 +24,9 @@ if (__DEV__) {
     if (
       typeof first === "string" &&
       (first.includes("forwardRef render functions accept exactly two parameters") ||
-        first.includes("VirtualizedLists should never be nested"))
+        first.includes("VirtualizedLists should never be nested") ||
+        (first.includes("NativeEventEmitter") &&
+          first.includes("non-null argument")))
     ) {
       return;
     }

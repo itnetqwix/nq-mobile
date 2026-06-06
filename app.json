@@ -123,6 +123,13 @@
         }
       ],
       "@config-plugins/react-native-callkeep",
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.netqwix.nqmobile",
+          "enableGooglePay": true
+        }
+      ],
       "expo-web-browser",
       "expo-asset"
     ],

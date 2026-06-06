@@ -1,3 +1,30 @@
+diff --git a/node_modules/react-native/.DS_Store b/node_modules/react-native/.DS_Store
+new file mode 100644
+index 0000000..364a4a4
+Binary files /dev/null and b/node_modules/react-native/.DS_Store differ
+diff --git a/node_modules/react-native/Libraries/PushNotificationIOS/PushNotificationIOS.js b/node_modules/react-native/Libraries/PushNotificationIOS/PushNotificationIOS.js
+index 2e71f02..d725c01 100644
+--- a/node_modules/react-native/Libraries/PushNotificationIOS/PushNotificationIOS.js
++++ b/node_modules/react-native/Libraries/PushNotificationIOS/PushNotificationIOS.js
+@@ -63,12 +63,13 @@ type NativePushNotificationIOSEventDefinitions = {
+   localNotificationReceived: [{...}],
+ };
+ 
++// Expo uses expo-notifications; RN's PushNotificationManager turbo module is often absent.
+ const PushNotificationEmitter =
+-  new NativeEventEmitter<NativePushNotificationIOSEventDefinitions>(
+-    // T88715063: NativeEventEmitter only used this parameter on iOS. Now it uses it on all platforms, so this code was modified automatically to preserve its behavior
+-    // If you want to use the native module on other platforms, please remove this condition and test its behavior
+-    Platform.OS !== 'ios' ? null : NativePushNotificationManagerIOS,
+-  );
++  Platform.OS === 'ios' && NativePushNotificationManagerIOS != null
++    ? new NativeEventEmitter<NativePushNotificationIOSEventDefinitions>(
++        NativePushNotificationManagerIOS,
++      )
++    : require('../EventEmitter/RCTDeviceEventEmitter').default;
+ 
+ const _notifHandlers = new Map<string, void | EventSubscription>();
+ 
 diff --git a/node_modules/react-native/ReactAndroid/src/main/java/com/facebook/react/modules/websocket/WebSocketModule.kt b/node_modules/react-native/ReactAndroid/src/main/java/com/facebook/react/modules/websocket/WebSocketModule.kt
 index 8dcd8c7..e7ed4e4 100644
 --- a/node_modules/react-native/ReactAndroid/src/main/java/com/facebook/react/modules/websocket/WebSocketModule.kt
