@@ -32,6 +32,7 @@ import {
   hasViewerRated,
 } from "../../../lib/sessions/sessionRatingUtils";
 import { colors, radii, space, typography } from "../../../theme";
+import { SessionBillSummary } from "./SessionBillSummary";
 
 type Props = {
   visible: boolean;
@@ -244,60 +245,88 @@ export function BookingDetailsModal({
               </Section>
             ) : null}
 
-            <Section title="Payment">
-              <Row label="Session amount" value={fmtMoney(merged.amount)} />
-              {escrow?.session_subtotal_minor != null && escrow.session_subtotal_minor > 0 ? (
-                <Row
-                  label="Session subtotal"
-                  value={fmtMoney(escrow.session_subtotal_minor / 100)}
-                />
-              ) : null}
-              {escrow?.trainee_platform_fee_minor ? (
-                <Row
-                  label="Platform fee"
-                  value={fmtMoney(escrow.trainee_platform_fee_minor / 100)}
-                />
-              ) : null}
-              {escrow?.processing_fee_minor ? (
-                <Row
-                  label="Processing fee"
-                  value={fmtMoney(escrow.processing_fee_minor / 100)}
-                />
-              ) : null}
-              {escrow?.tax_minor ? (
-                <Row label="Tax" value={fmtMoney(escrow.tax_minor / 100)} />
-              ) : null}
-              {escrow?.charge_total_minor != null ? (
-                <Row
-                  label="Total charged"
-                  value={fmtMoney(escrow.charge_total_minor / 100)}
-                />
-              ) : null}
-              {merged.coupon_code ? <Row label="Coupon" value={merged.coupon_code} /> : null}
-              {merged._refund?.status || merged.refund_status ? (
-                <Row
-                  label="Refund status"
-                  value={
-                    formatRefundStatusLabel(
-                      String(merged._refund?.status ?? merged.refund_status),
-                      refundTransferLabel
-                    ) ?? String(merged._refund?.status ?? merged.refund_status)
+            {/* ── Bill Summary (trainee-facing visual breakdown) ── */}
+            {!isTrainer ? (
+              <View style={{ marginTop: space.sm }}>
+                <SessionBillSummary
+                  sessionAmount={
+                    escrow?.session_subtotal_minor != null
+                      ? escrow.session_subtotal_minor / 100
+                      : Number(merged.amount ?? 0)
+                  }
+                  durationMinutes={merged.duration_minutes ?? null}
+                  platformFee={
+                    escrow?.trainee_platform_fee_minor
+                      ? escrow.trainee_platform_fee_minor / 100
+                      : null
+                  }
+                  processingFee={
+                    escrow?.processing_fee_minor
+                      ? escrow.processing_fee_minor / 100
+                      : null
+                  }
+                  tax={escrow?.tax_minor ? escrow.tax_minor / 100 : null}
+                  promoDiscount={
+                    merged.promo_discount_applied
+                      ? Number(merged.promo_discount_applied)
+                      : merged.discount_applied
+                        ? Number(merged.discount_applied)
+                        : null
+                  }
+                  promoCode={merged.coupon_code ?? null}
+                  referralDiscount={
+                    merged.referral_discount_applied
+                      ? Number(merged.referral_discount_applied)
+                      : null
+                  }
+                  extensions={extensions as any}
+                  chargeTotal={
+                    escrow?.charge_total_minor != null
+                      ? escrow.charge_total_minor / 100
+                      : null
                   }
                 />
-              ) : null}
-              {refundReasonLabel ? (
-                <Row label="Refund reason" value={String(refundReasonLabel)} />
-              ) : null}
-              {refundTransferLabel ? (
-                <Row label="Refund transfer" value={refundTransferLabel} />
-              ) : null}
-              {escrow ? (
-                <Row
-                  label="Escrow"
-                  value={formatEscrowStatusLabel(String(escrow.status)) ?? String(escrow.status ?? "—")}
-                />
-              ) : null}
-            </Section>
+                {/* Refund / escrow status for trainee when relevant */}
+                {(merged._refund?.status || merged.refund_status || refundReasonLabel || refundTransferLabel) ? (
+                  <View style={{ marginTop: space.sm }}>
+                    <Section title="Refund">
+                      {merged._refund?.status || merged.refund_status ? (
+                        <Row
+                          label="Status"
+                          value={
+                            formatRefundStatusLabel(
+                              String(merged._refund?.status ?? merged.refund_status),
+                              refundTransferLabel
+                            ) ?? String(merged._refund?.status ?? merged.refund_status)
+                          }
+                        />
+                      ) : null}
+                      {refundReasonLabel ? (
+                        <Row label="Reason" value={String(refundReasonLabel)} />
+                      ) : null}
+                      {refundTransferLabel ? (
+                        <Row label="Transfer" value={refundTransferLabel} />
+                      ) : null}
+                    </Section>
+                  </View>
+                ) : null}
+              </View>
+            ) : (
+              /* Trainer sees a compact payment summary (no bill detail needed) */
+              <Section title="Payment">
+                <Row label="Session amount" value={fmtMoney(merged.amount)} />
+                {escrow?.charge_total_minor != null ? (
+                  <Row label="Total charged" value={fmtMoney(escrow.charge_total_minor / 100)} />
+                ) : null}
+                {merged.coupon_code ? <Row label="Coupon" value={merged.coupon_code} /> : null}
+                {escrow ? (
+                  <Row
+                    label="Escrow"
+                    value={formatEscrowStatusLabel(String(escrow.status)) ?? String(escrow.status ?? "—")}
+                  />
+                ) : null}
+              </Section>
+            )}
 
             {ratings ? (
               <Section title="Ratings">

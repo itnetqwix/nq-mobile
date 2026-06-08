@@ -282,7 +282,12 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
   }, [navigation]);
   const handleCallEnded = useCallback(() => {
     if (postCallActiveRef.current) {
-      goHome();
+      /**
+       * Post-call flow is currently open (ratings / game-plan / handoff modals
+       * are visible). Don't navigate away — the modals call goHome() themselves
+       * via onDone / onExit once the user finishes. Navigating here would
+       * unmount everything before the user sees the post-call UI.
+       */
       return;
     }
     /**
@@ -2778,18 +2783,17 @@ function MeetingSurface({
           void openHandoff();
         }}
         onSkip={() => {
-          if (!isTrainer) return;
           void markSessionRatingShown(lessonId);
-          if (endedNotifiedRef.current || lessonTimer.status === "ended") {
+          if (!isTrainer && (endedNotifiedRef.current || lessonTimer.status === "ended")) {
             void stashPendingSessionRating(lessonId);
           }
+          // onClose fires immediately after onSkip in RatingsModal — it handles
+          // setRatingsOpen(false) + openHandoff() for both roles.
         }}
         onSubmitted={() => {
           void markSessionRatingShown(lessonId);
-          if (!isTrainer) {
-            setRatingsOpen(false);
-            void openHandoff();
-          }
+          setRatingsOpen(false);
+          void openHandoff();
         }}
         bookingId={lessonId}
         accountType={accountType}
