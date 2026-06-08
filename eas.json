@@ -20,13 +20,28 @@
         "simulator": false
       },
       "android": {
-        "jsEngine": "hermes"
+        "jsEngine": "hermes",
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://api-netqwix.com",
+        "EXPO_PUBLIC_WEB_ORIGIN": "https://netqwix.com",
+        "EXPO_PUBLIC_ICE_CONFIG_URL": "https://netqwix.com/api/peer",
+        "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "378280665890-gdb7rkg1t181kksi0et73ridtrop0hnh.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "378280665890-gdb7rkg1t181kksi0et73ridtrop0hnh.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "1091317890785-h3crivkdgccmsi82th74b5p41p9dmr8e.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "1091317890785-mhmf8e37ge3v57cqi6u5r6iffqtne9n7.apps.googleusercontent.com"
       }
     },
     "production": {
+      "distribution": "store",
       "autoIncrement": true,
+      "ios": {
+        "simulator": false
+      },
       "android": {
-        "jsEngine": "hermes"
+        "jsEngine": "hermes",
+        "buildType": "app-bundle"
       },
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://api-netqwix.com",
@@ -41,10 +56,11 @@
   },
   "submit": {
     "production": {
-      "ios": {
-        "appleId": "YOUR_APPLE_ID_EMAIL",
-        "ascAppId": "YOUR_APP_STORE_CONNECT_APP_ID",
-        "appleTeamId": "YOUR_TEAM_ID"
+      "ios": {},
+      "android": {
+        "track": "internal",
+        "releaseStatus": "completed",
+        "serviceAccountKeyPath": "./credentials/play-store-service-account.json"
       }
     }
   }
