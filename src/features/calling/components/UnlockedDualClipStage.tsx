@@ -147,7 +147,10 @@ const styles = StyleSheet.create({
   },
   controlsDock: {
     flexShrink: 0,
-    paddingTop: 2,
-    paddingBottom: 2,
+    paddingTop: 3,
+    paddingBottom: 3,
+    backgroundColor: "#fff",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(0,0,0,0.10)",
   },
 });

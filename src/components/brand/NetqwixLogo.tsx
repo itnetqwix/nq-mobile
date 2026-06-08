@@ -64,6 +64,7 @@ export function NetqwixLogo({
         accessibilityLabel="NetQwix"
         source={source}
         contentFit="contain"
+        backgroundColor="transparent"
         style={[
           wordmarkFull
             ? { width: "100%", maxWidth: maxW, height: imgHeight }

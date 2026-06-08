@@ -142,7 +142,7 @@ export const colorsLight: Palette & {
 
   homeMarketplaceBand: "#fff8e1",
   skeletonShimmer: NEUTRALS_LIGHT.neutral200,
-  drawerHeader: BRAND.brand,
+  drawerHeader: "#ffffff",
   /** In-message search hit highlight. */
   chatSearchHighlight: "#FFF59D",
   chatPresence: STATUS.success,
@@ -229,7 +229,7 @@ export const colorsDark: typeof colorsLight = {
 
   homeMarketplaceBand: "#2a2410",
   skeletonShimmer: NEUTRALS_DARK.neutral200,
-  drawerHeader: "#101018",
+  drawerHeader: "#1a1a2e",
   chatSearchHighlight: "#4a4520",
   chatPresence: "#34d399",
   chatStatusMuted: "#9ca3af",

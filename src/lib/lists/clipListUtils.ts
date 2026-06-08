@@ -42,6 +42,12 @@ export type PickerClipRow = {
   category?: string;
   thumbnail?: string;
   file_name?: string;
+  /** Direct playback URL if returned by the API (preferred over file_name). */
+  video_url?: string;
+  /** Alternate URL field names from various API shapes. */
+  playbackUrl?: string;
+  file_url?: string;
+  stream_url?: string;
 };
 
 export function flattenNestedClipsForPicker(groups: NestedCategoryGroupLike[]): PickerClipRow[] {
@@ -54,12 +60,18 @@ export function flattenNestedClipsForPicker(groups: NestedCategoryGroupLike[]): 
         const id = clip._id != null ? String(clip._id) : "";
         if (!id) continue;
         const row = clip as Record<string, unknown>;
+        const strOrUndef = (k: string) =>
+          typeof row[k] === "string" && (row[k] as string) ? (row[k] as string) : undefined;
         out.push({
           _id: id,
-          title: typeof row.title === "string" ? row.title : undefined,
-          name: typeof row.name === "string" ? row.name : undefined,
-          thumbnail: typeof row.thumbnail === "string" ? row.thumbnail : undefined,
-          file_name: typeof row.file_name === "string" ? row.file_name : undefined,
+          title: strOrUndef("title"),
+          name: strOrUndef("name"),
+          thumbnail: strOrUndef("thumbnail"),
+          file_name: strOrUndef("file_name"),
+          video_url: strOrUndef("video_url"),
+          playbackUrl: strOrUndef("playbackUrl"),
+          file_url: strOrUndef("file_url"),
+          stream_url: strOrUndef("stream_url"),
           category: categoryName || subName || undefined,
         });
       }

@@ -111,10 +111,18 @@ export function DashboardDrawerContent(props: DrawerContentComponentProps) {
       <View
         style={[
           styles.brandBlock,
-          { borderBottomColor: colors.border, backgroundColor: colors.drawerHeader },
+          {
+            borderBottomColor: colors.border,
+            backgroundColor: colors.drawerHeader,
+          },
         ]}
       >
-        <View style={styles.brandLogoFrame}>
+        <View
+          style={[
+            styles.brandLogoFrame,
+            { backgroundColor: "transparent" },
+          ]}
+        >
           <NetqwixLogo
             variant="wordmark"
             fullWidth

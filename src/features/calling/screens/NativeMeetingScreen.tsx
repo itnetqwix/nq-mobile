@@ -2968,12 +2968,12 @@ const styles = StyleSheet.create({
   },
   singleClipControlsDock: {
     flexShrink: 0,
-    paddingHorizontal: 6,
-    paddingTop: 6,
+    paddingHorizontal: 4,
+    paddingTop: 4,
     paddingBottom: 4,
-    backgroundColor: meetingTheme.surface,
+    backgroundColor: "#fff",
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: meetingTheme.border,
+    borderTopColor: "rgba(0,0,0,0.10)",
   },
   dualColumn: {
     flex: 1,

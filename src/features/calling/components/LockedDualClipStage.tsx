@@ -94,9 +94,10 @@ const styles = StyleSheet.create({
   },
   controlsFooter: {
     backgroundColor: CLIP_BG,
-    paddingTop: 4,
-    paddingBottom: 2,
+    paddingTop: 3,
+    paddingBottom: 3,
+    paddingHorizontal: 4,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(0,0,0,0.12)",
+    borderTopColor: "rgba(0,0,0,0.10)",
   },
 });
