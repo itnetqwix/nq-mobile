@@ -57,6 +57,7 @@ import { useDrawingSync } from "../useDrawingSync";
 import { useMeetingScreenshot } from "../useMeetingScreenshot";
 
 import { CallProvider, useCall } from "../CallContext";
+import { CALL_EVENTS } from "../callEvents";
 import {
   registerActiveCall,
   unregisterActiveCall,
@@ -136,6 +137,7 @@ import {
   type AnnotationBurnInHostHandle,
 } from "../components/AnnotationBurnInHost";
 import { LiveVideoCaptureHost } from "../components/LiveVideoCaptureHost";
+import { DualVideoStrip } from "../components/DualVideoStrip";
 import {
   captureLiveVideoFrame,
   isMediaStreamVideoReady,
@@ -275,6 +277,14 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
    *  `MeetingSurface` when it opens the post-call flow so the CallContext's
    *  `onEnded` (engine teardown) doesn't yank us back to Home prematurely. */
   const postCallActiveRef = useRef(false);
+  /**
+   * Set when the PEER (trainer) explicitly presses "End call". In this case
+   * the trainee should NOT be navigated home — MeetingSurface will open their
+   * post-call flow (ratings + handoff). We only stash a drop record when a
+   * call tears down for unknown reasons (ICE failure etc.), not a clean end.
+   */
+  const peerEndedCallRef = useRef(false);
+  const [peerEndedCall, setPeerEndedCall] = useState(false);
   const peerNameRef = useRef<string | undefined>(undefined);
   const goHome = useCallback(() => {
     postCallActiveRef.current = false;
@@ -287,6 +297,14 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
        * are visible). Don't navigate away — the modals call goHome() themselves
        * via onDone / onExit once the user finishes. Navigating here would
        * unmount everything before the user sees the post-call UI.
+       */
+      return;
+    }
+    if (peerEndedCallRef.current) {
+      /**
+       * Peer (trainer) explicitly ended the lesson. MeetingSurface is already
+       * opening the post-call flow via onPeerEndedLesson — don't navigate home
+       * here; let the user complete their ratings and handoff normally.
        */
       return;
     }
@@ -425,6 +443,11 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
           type: NOTIFICATION_TYPES.TRANSCATIONAL,
           persistInInbox: true,
         });
+        // Guard: peer (trainer) explicitly ended — don't let handleCallEnded
+        // navigate home; MeetingSurface will open the post-call flow.
+        peerEndedCallRef.current = true;
+        setPeerEndedCall(true);
+        beginPostCallFlow();
       }}
       onSlotTakenOver={() => {
         setSlotTakenOverOpen(true);
@@ -443,6 +466,7 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
           });
         }}
         onPostCallFlowStart={beginPostCallFlow}
+        peerEndedCall={peerEndedCall}
         myId={me._id}
         peerId={peer._id}
         peerDisplayName={peerDisplayName}
@@ -464,6 +488,7 @@ function MeetingSurface({
   onExit,
   onRejoinLesson,
   onPostCallFlowStart,
+  peerEndedCall = false,
   myId,
   peerId,
   peerDisplayName,
@@ -475,6 +500,11 @@ function MeetingSurface({
   onExit: () => void;
   onRejoinLesson: () => void;
   onPostCallFlowStart: () => void;
+  /**
+   * Flips to `true` when the remote peer (trainer) explicitly presses "End call".
+   * Trainee uses this to open their post-call flow immediately.
+   */
+  peerEndedCall?: boolean;
   myId: string;
   peerId: string;
   peerDisplayName: string;
@@ -931,6 +961,10 @@ function MeetingSurface({
     drawingEmitMinMs: networkTierConfig.drawingEmitMinMs,
   });
 
+  // Track latest camera state in a ref so the socket-replay closure stays current.
+  const cameraEnabledRef = useRef(cameraEnabled);
+  useEffect(() => { cameraEnabledRef.current = cameraEnabled; }, [cameraEnabled]);
+
   useEffect(() => {
     if (!socket) return;
 
@@ -939,6 +973,12 @@ function MeetingSurface({
       clipSync.replayClipSocketState();
       meetingLayout.replayLayoutState();
       drawingSync.replaySocketState();
+      // Re-broadcast camera state so the trainee doesn't see a stale
+      // "camera on" tile after WebRTC ICE reconnect.
+      socket.emit(CALL_EVENTS.STOP_FEED, {
+        feedStatus: cameraEnabledRef.current,
+        userInfo: { from_user: myId, to_user: peerId, sessionId: lessonId },
+      });
     };
 
     const requestMediaReplay = () => {
@@ -1536,7 +1576,19 @@ function MeetingSurface({
   );
 
   const continueAfterRecap = useCallback(async () => {
+    // Trainer path: recap → game plan → ratings → handoff
     setGamePlanOpen(true);
+  }, []);
+
+  /**
+   * Safety valve: if the trainer skips/dismisses the game plan without the
+   * normal onClose path (e.g. back button, modal error), we still ensure
+   * ratings open. Called as fallback from RecapSheet directly when the
+   * trainer taps "Skip game plan".
+   */
+  const openTrainerRatingsDirectly = useCallback(() => {
+    setGamePlanOpen(false);
+    setRatingsOpen(true);
   }, []);
 
   const openPostCallFlow = useCallback(async () => {
@@ -1556,6 +1608,37 @@ function MeetingSurface({
      */
     setRecapSheetOpen(true);
   }, [isTrainer, lessonId, onPostCallFlowStart, openHandoff]);
+
+  /**
+   * When `peerEndedCall` flips to true (peer explicitly pressed "End call"):
+   *
+   * TRAINEE path: trainer ended → open post-call flow immediately, before
+   * the server LESSON_TIMER_ENDED event arrives, and dismiss any in-flight
+   * extension UI so the two sheets don't compete.
+   *
+   * TRAINER path: trainee ended → the server will send LESSON_TIME_ENDED
+   * which triggers openPostCallFlow via the timer-ended useEffect. As a
+   * safety net, if that event is slow (network lag / server delay), open
+   * the trainer's post-call flow after a 4-second fallback.
+   */
+  useEffect(() => {
+    if (!peerEndedCall) return;
+    if (!isTrainer) {
+      // Dismiss any in-flight extension modal before opening post-call flow
+      setTraineeExtendOpen(false);
+      extensionResetRef.current?.();
+      void openPostCallFlow();
+      return;
+    }
+    // Trainer: trainee ended — wait for LESSON_TIME_ENDED, but open after 4s
+    // if the server event is delayed.
+    const fallbackTimer = setTimeout(() => {
+      void openPostCallFlow();
+    }, 4000);
+    return () => clearTimeout(fallbackTimer);
+  // openPostCallFlow is stable (useCallback); peerEndedCall only goes true→true once
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [peerEndedCall]);
 
   /** Show ratings after the call ends — `endCall()` will pop us back, so we
    *  open the post-call modal FIRST (which flips the parent guard) and only
@@ -2279,100 +2362,27 @@ function MeetingSurface({
           ) : null}
         </>
       ) : inClipMode ? (
-        <>
-          <DraggableVideoPip
-            tileId="local"
-            user={null}
-            stream={localStream}
-            isStreamOff={!cameraEnabled || !localStream}
-            streamOffHint={localStreamOffHint}
-            muted
-            fallbackLabel="You"
-            tabLabel="You"
-            bounds={pipBounds}
-            safeTop={chrome.insets.top}
-            safeBottom={chrome.insets.bottom}
-            pipReservedBottom={chrome.pipSafeBottom}
-            position={pipLayout.pipLayout.local.position}
-            isHidden={pipLayout.pipLayout.local.isHidden || networkHideLocalPip}
-            hiddenEdge={pipLayout.pipLayout.local.hiddenEdge}
-            width={localPipSize.w}
-            height={localPipSize.h}
-            onPositionChange={(pos) => {
-              pipLayout.updatePosition("local", pos);
-              meetingLayout.updateTile("local", pipPositionPatch(pos, localPipSize));
-            }}
-            onHide={(edge, last) => {
-              pipLayout.hideTile("local", edge, last);
-              meetingLayout.updateTile("local", {
-                hidden: true,
-                hiddenEdge: edge,
-                ...pipPositionPatch(last, localPipSize),
-              });
-            }}
-            onRestore={() => {
-              pipLayout.restoreTile("local");
-              meetingLayout.updateTile("local", { hidden: false });
-            }}
-            onExpand={
-              isTrainer ? () => meetingLayout.focusStream(myId) : undefined
-            }
-            onSizeChange={(w, h) => {
-              setLocalPipSize({ w, h });
-              if (isTrainer) {
-                meetingLayout.updateTile(
-                  "local",
-                  pipPositionPatch(pipLayout.pipLayout.local.position, { w, h })
-                );
-              }
-            }}
-          />
-          <DraggableVideoPip
-            tileId="remote"
-            user={peerUser}
-            stream={remoteStream}
-            isStreamOff={!remoteStream || remoteCameraOff}
-            streamOffHint={remoteStreamOffHint}
-            tabLabel={peerDisplayName.split(" ")[0] || "Partner"}
-            bounds={pipBounds}
-            safeTop={chrome.insets.top}
-            safeBottom={chrome.insets.bottom}
-            pipReservedBottom={chrome.pipSafeBottom}
-            position={pipLayout.pipLayout.remote.position}
-            isHidden={pipLayout.pipLayout.remote.isHidden}
-            hiddenEdge={pipLayout.pipLayout.remote.hiddenEdge}
-            width={remotePipSize.w}
-            height={remotePipSize.h}
-            onPositionChange={(pos) => {
-              pipLayout.updatePosition("remote", pos);
-              meetingLayout.updateTile("remote", pipPositionPatch(pos, remotePipSize));
-            }}
-            onHide={(edge, last) => {
-              pipLayout.hideTile("remote", edge, last);
-              meetingLayout.updateTile("remote", {
-                hidden: true,
-                hiddenEdge: edge,
-                ...pipPositionPatch(last, remotePipSize),
-              });
-            }}
-            onRestore={() => {
-              pipLayout.restoreTile("remote");
-              meetingLayout.updateTile("remote", { hidden: false });
-            }}
-            onExpand={
-              isTrainer ? () => meetingLayout.focusStream(peerId) : undefined
-            }
-            onSizeChange={(w, h) => {
-              setRemotePipSize({ w, h });
-              if (isTrainer) {
-                meetingLayout.updateTile(
-                  "remote",
-                  pipPositionPatch(pipLayout.pipLayout.remote.position, { w, h })
-                );
-              }
-            }}
-          />
-        </>
+        /* Bottom-docked video strip — both participants always visible above the action bar */
+        <DualVideoStrip
+          localUser={
+            authUser
+              ? {
+                  _id: String((authUser as any)._id ?? myId),
+                  fullname: (authUser as any).fullname ?? (authUser as any).fullName,
+                  profile_picture: (authUser as any).profile_picture,
+                }
+              : null
+          }
+          remoteUser={peerUser}
+          localStream={localStream}
+          remoteStream={remoteStream}
+          localStreamOff={!cameraEnabled || !localStream || networkHideLocalPip}
+          remoteStreamOff={!remoteStream || remoteCameraOff}
+          peerDisplayName={peerDisplayName}
+          bottomOffset={chrome.bottomChrome + 4}
+          onTapLocal={isTrainer ? () => meetingLayout.focusStream(myId) : undefined}
+          onTapRemote={() => meetingLayout.focusStream(peerId)}
+        />
       ) : null}
 
       {instantRecording.showRecordingBar ? (
@@ -2908,7 +2918,7 @@ const styles = StyleSheet.create({
     flex: 1,
     overflow: "hidden",
     borderRadius: 16,
-    backgroundColor: "#ffffff",
+    backgroundColor: meetingTheme.surface,
     borderWidth: 1,
     borderColor: meetingTheme.border,
   },
@@ -2961,9 +2971,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingTop: 6,
     paddingBottom: 4,
-    backgroundColor: "#ffffff",
+    backgroundColor: meetingTheme.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(0,0,0,0.1)",
+    borderTopColor: meetingTheme.border,
   },
   dualColumn: {
     flex: 1,
