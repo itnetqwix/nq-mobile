@@ -32,12 +32,16 @@
         "NSCameraUsageDescription": "NetQwix needs camera access so you can join lessons over video.",
         "NSMicrophoneUsageDescription": "NetQwix needs microphone access so you can talk to your coach or trainee during a lesson.",
         "NSBluetoothPeripheralUsageDescription": "NetQwix uses Bluetooth so you can answer calls on connected headphones.",
+        "NSBluetoothAlwaysUsageDescription": "NetQwix uses Bluetooth to connect to wireless headsets and speakers during coaching sessions.",
         "UIBackgroundModes": [
           "audio",
           "voip",
+          "fetch",
           "remote-notification",
           "picture-in-picture"
         ],
+        "NSPhotoLibraryUsageDescription": "NetQwix accesses your photo library to upload training clips to your locker.",
+        "NSPhotoLibraryAddUsageDescription": "NetQwix saves session screenshots to your photo library.",
         "ITSAppUsesNonExemptEncryption": false
       },
       "bitcode": false,
