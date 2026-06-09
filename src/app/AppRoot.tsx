@@ -116,7 +116,7 @@ export function AppRoot() {
       <SafeAreaProvider>
       <AppBootstrapGate appInitReady={localeReady}>
         <StripeProvider
-          publishableKey={STRIPE_PUBLISHABLE_KEY}
+          publishableKey={STRIPE_PUBLISHABLE_KEY || "pk_test_placeholder"}
           merchantIdentifier={
             STRIPE_APPLE_MERCHANT_IDENTIFIER || undefined
           }

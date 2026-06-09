@@ -92,7 +92,6 @@
         }
       ],
       "expo-secure-store",
-      "expo-dev-client",
       [
         "expo-image-picker",
         {
