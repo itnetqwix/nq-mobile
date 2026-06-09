@@ -43,8 +43,6 @@
         "EXPO_PUBLIC_API_BASE_URL": "https://api-netqwix.com",
         "EXPO_PUBLIC_WEB_ORIGIN": "https://netqwix.com",
         "EXPO_PUBLIC_ICE_CONFIG_URL": "https://netqwix.com/api/peer",
-        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_live_51NgTiRDgyuWCS2oCvpHwXA2rMt4pOntiFAgyVaBlS1vcilJGD9sV58IAXnfOehMg9vi4ydVYHo1yzybDdgrfysPC007q8klzkX",
-        "EXPO_PUBLIC_STRIPE_APPLE_MERCHANT_IDENTIFIER": "merchant.com.netqwix.nqmobile",
         "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "378280665890-gdb7rkg1t181kksi0et73ridtrop0hnh.apps.googleusercontent.com",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "378280665890-gdb7rkg1t181kksi0et73ridtrop0hnh.apps.googleusercontent.com",
         "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "1091317890785-h3crivkdgccmsi82th74b5p41p9dmr8e.apps.googleusercontent.com",
