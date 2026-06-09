@@ -37,8 +37,7 @@
           "audio",
           "voip",
           "fetch",
-          "remote-notification",
-          "picture-in-picture"
+          "remote-notification"
         ],
         "NSPhotoLibraryUsageDescription": "NetQwix accesses your photo library to upload training clips to your locker.",
         "NSPhotoLibraryAddUsageDescription": "NetQwix saves session screenshots to your photo library.",
