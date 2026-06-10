@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useMemo, useState } from "react";
+import { PlatformPayButton, PlatformPay } from "@stripe/stripe-react-native";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
@@ -54,7 +55,7 @@ export function WalletTopUpScreen({ navigation, route }: Props) {
     staleTime: 300_000,
   });
 
-  const { phase, runTopUp } = useWalletTopUpFlow();
+  const { phase, runTopUp, runNativePayTopUp, nativePaySupported } = useWalletTopUpFlow();
   const busy = phase === "presenting" || phase === "confirming";
 
   const styles = useThemedStyles((palette) =>
@@ -142,6 +143,37 @@ export function WalletTopUpScreen({ navigation, route }: Props) {
     },
     [t, minDollars, maxDollars]
   );
+
+  const handleNativePay = async () => {
+    const dollars = parseFloat(amount);
+    const err = validateAmount(dollars);
+    if (err) {
+      setAmountError(err);
+      return;
+    }
+    setAmountError(undefined);
+
+    const result = await runNativePayTopUp(dollars);
+    if (result.ok) {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all });
+      await refetchBalance();
+      Alert.alert(
+        t("wallet.fundsAdded"),
+        t("wallet.fundsAddedBody", { amount: result.amountDollars.toFixed(2) }),
+        [{ text: t("common.done"), onPress: () => navigation.goBack() }]
+      );
+      return;
+    }
+    if (result.code === "canceled") return;
+    if (result.code === "timeout") {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all });
+      Alert.alert(t("wallet.processingPayment"), result.message, [
+        { text: t("systemActions.ok"), onPress: () => navigation.goBack() },
+      ]);
+      return;
+    }
+    Alert.alert(t("wallet.topUpFailed"), result.message);
+  };
 
   const handleSubmit = async () => {
     const dollars = parseFloat(amount);
@@ -305,6 +337,20 @@ export function WalletTopUpScreen({ navigation, route }: Props) {
           style={{ marginTop: space.lg }}
           size="lg"
         />
+
+        {nativePaySupported && !busy ? (
+          <PlatformPayButton
+            type={PlatformPay.ButtonType.TopUp}
+            onPress={handleNativePay}
+            appearance={PlatformPay.ButtonStyle.Black}
+            style={{
+              width: "100%",
+              height: Platform.OS === "ios" ? 44 : 48,
+              borderRadius: 12,
+              marginTop: space.sm,
+            }}
+          />
+        ) : null}
       </ScrollView>
 
       {busy && (

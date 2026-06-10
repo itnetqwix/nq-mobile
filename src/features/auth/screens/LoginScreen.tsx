@@ -185,6 +185,8 @@ export function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
               name={
                 lastMethod === "google"
                   ? "logo-google"
+                  : lastMethod === "apple"
+                  ? "logo-apple"
                   : lastMethod === "magic-link"
                   ? "link"
                   : "mail-outline"

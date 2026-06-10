@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { space, typography, useThemeColors } from "../../../theme";
 import { isGoogleConfigured } from "../api/socialAuth";
 import { peekLastAuthMethod } from "../lib/lastAuthMethod";
 import { GoogleSignInButton } from "./GoogleSignInButton";
+import { AppleSignInButton } from "./AppleSignInButton";
 import type { AuthScreenProps } from "../../../navigation/types";
 
 type Props = {
@@ -14,14 +15,17 @@ type Props = {
 };
 
 /**
- * Social sign-in row — Google only (Apple removed per product decision).
+ * Social sign-in row — Google (all platforms) + Apple (iOS only).
  */
 export function SocialAuthButtons({ navigation, onTokens, mode = "login" }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const [busy, setBusy] = useState(false);
 
-  if (!isGoogleConfigured()) {
+  const hasGoogle = isGoogleConfigured();
+  const hasApple = Platform.OS === "ios";
+
+  if (!hasGoogle && !hasApple) {
     return null;
   }
 
@@ -37,15 +41,30 @@ export function SocialAuthButtons({ navigation, onTokens, mode = "login" }: Prop
         <View style={[styles.line, { backgroundColor: c.border }]} />
       </View>
 
-      <View style={styles.providerCol}>
-        <GoogleSignInButton
-          navigation={navigation}
-          onTokens={onTokens}
-          busy={busy}
-          setBusy={setBusy}
-          mode={mode}
-        />
-        {lastMethod === "google" ? <LastUsedBadge label={t("auth.lastUsed")} /> : null}
+      <View style={styles.providerRow}>
+        {hasGoogle ? (
+          <View style={styles.providerSlot}>
+            <GoogleSignInButton
+              navigation={navigation}
+              onTokens={onTokens}
+              busy={busy}
+              setBusy={setBusy}
+              mode={mode}
+            />
+            {lastMethod === "google" ? <LastUsedBadge label={t("auth.lastUsed")} /> : null}
+          </View>
+        ) : null}
+        {hasApple ? (
+          <View style={styles.providerSlot}>
+            <AppleSignInButton
+              navigation={navigation}
+              onTokens={onTokens}
+              busy={busy}
+              setBusy={setBusy}
+            />
+            {lastMethod === "apple" ? <LastUsedBadge label={t("auth.lastUsed")} /> : null}
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -70,7 +89,8 @@ const styles = StyleSheet.create({
   },
   line: { flex: 1, height: StyleSheet.hairlineWidth },
   or: { ...typography.caption, fontWeight: "600" },
-  providerCol: { gap: 6, alignItems: "stretch" },
+  providerRow: { flexDirection: "row", gap: space.sm },
+  providerSlot: { flex: 1, gap: 6, alignItems: "stretch" },
   lastUsedPill: {
     alignSelf: "center",
     paddingHorizontal: 10,

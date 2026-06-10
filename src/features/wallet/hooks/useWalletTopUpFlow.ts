@@ -1,5 +1,10 @@
-import { useStripe } from "@stripe/stripe-react-native";
-import { useCallback, useState } from "react";
+import {
+  PlatformPay,
+  confirmPlatformPayPayment,
+  isPlatformPaySupported,
+  useStripe,
+} from "@stripe/stripe-react-native";
+import { useCallback, useEffect, useState } from "react";
 import { Platform } from "react-native";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { STRIPE_APPLE_MERCHANT_IDENTIFIER } from "../../../config/env";
@@ -19,6 +24,23 @@ export type TopUpFlowResult =
 export function useWalletTopUpFlow() {
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [phase, setPhase] = useState<TopUpFlowPhase>("idle");
+  const [nativePaySupported, setNativePaySupported] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (Platform.OS === "ios" && !STRIPE_APPLE_MERCHANT_IDENTIFIER) {
+        return;
+      }
+      try {
+        const ok = await isPlatformPaySupported({ googlePay: { testEnv: __DEV__ } });
+        if (mounted) setNativePaySupported(ok);
+      } catch {
+        // not supported
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   const presentStripeSheet = useCallback(
     async (intent: TopUpIntentResult, amountDollars: number) => {
@@ -142,5 +164,106 @@ export function useWalletTopUpFlow() {
     [presentStripeSheet]
   );
 
-  return { phase, runTopUp, setPhase };
+  const runNativePayTopUp = useCallback(
+    async (amountDollars: number): Promise<TopUpFlowResult> => {
+      if (!Number.isFinite(amountDollars) || amountDollars <= 0) {
+        return { ok: false, code: "validation", message: "Enter a valid amount." };
+      }
+
+      const amountMinor = Math.round(amountDollars * 100);
+      setPhase("presenting");
+
+      let intent: TopUpIntentResult;
+      try {
+        intent = await createTopUpIntent(amountMinor);
+      } catch (e) {
+        setPhase("failed");
+        return {
+          ok: false,
+          code: "failed",
+          message: getApiErrorMessage(e, "Could not start top-up."),
+        };
+      }
+
+      const topupId = String(intent.topupId ?? "");
+      if (!topupId || !intent.client_secret) {
+        setPhase("failed");
+        return {
+          ok: false,
+          code: "failed",
+          message: "Invalid response from server. Please try again.",
+        };
+      }
+
+      try {
+        const result = await confirmPlatformPayPayment(intent.client_secret, {
+          applePay: {
+            cartItems: [
+              {
+                label: "NetQwix Wallet Top-up",
+                amount: amountDollars.toFixed(2),
+                paymentType: PlatformPay.PaymentType.Immediate,
+              },
+            ],
+            merchantCountryCode: "US",
+            currencyCode: "USD",
+          },
+          googlePay: {
+            testEnv: __DEV__,
+            merchantName: "NetQwix",
+            merchantCountryCode: "US",
+            currencyCode: "USD",
+          },
+        });
+
+        if (result.error) {
+          if (String(result.error.code) === "Canceled") {
+            setPhase("canceled");
+            return { ok: false, code: "canceled", message: "Payment canceled." };
+          }
+          setPhase("failed");
+          return { ok: false, code: "failed", message: result.error.message };
+        }
+      } catch (e) {
+        setPhase("failed");
+        return {
+          ok: false,
+          code: "failed",
+          message: getApiErrorMessage(e, "Payment failed."),
+        };
+      }
+
+      setPhase("confirming");
+      try {
+        await confirmTopUp(topupId);
+      } catch {
+        /* webhook may still complete */
+      }
+
+      const settled = await waitForTopUpSettled(topupId, { maxAttempts: 12, intervalMs: 2000 });
+      if (settled === "succeeded") {
+        setPhase("succeeded");
+        return { ok: true, topupId, amountDollars };
+      }
+      if (settled === "failed") {
+        setPhase("failed");
+        return {
+          ok: false,
+          code: "failed",
+          message: "Payment was declined or could not be completed.",
+        };
+      }
+
+      setPhase("confirming");
+      return {
+        ok: false,
+        code: "timeout",
+        message:
+          "Payment received — your balance may take a minute to update. Check Activity or pull to refresh.",
+      };
+    },
+    []
+  );
+
+  return { phase, runTopUp, runNativePayTopUp, nativePaySupported, setPhase };
 }
