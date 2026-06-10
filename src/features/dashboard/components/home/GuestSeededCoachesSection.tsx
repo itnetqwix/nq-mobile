@@ -1,7 +1,7 @@
+import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
-import { Ionicons } from "@expo/vector-icons";
 import { CoachCarouselSkeleton, Skeleton } from "../../../../components/ui";
 import { fetchGuestSeededTrainers } from "../../../home/api/homeApi";
 import { getTrainerName } from "../../../bookexpert/lib/trainerUtils";
@@ -11,14 +11,13 @@ import { radii, space, typography, useThemeColors, useThemedStyles } from "../..
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
 import { HomeUserAvatar } from "./HomeUserAvatar";
 
+const TILE_WIDTH = 136;
+const AVATAR_SIZE = 58;
+
 type Props = {
   onSelectTrainer: (trainer: Record<string, unknown>) => void;
 };
 
-/**
- * Coaches the user browsed as a guest — ranked server-side from
- * `GET /trainee/guest-activity/seeded-trainers` after signup replay.
- */
 export function GuestSeededCoachesSection({ onSelectTrainer }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
@@ -33,7 +32,7 @@ export function GuestSeededCoachesSection({ onSelectTrainer }: Props) {
   if (isLoading) {
     return (
       <View style={styles.wrap}>
-        <Skeleton width={160} height={16} style={{ marginBottom: space.sm }} />
+        <Skeleton width={160} height={14} style={{ marginBottom: space.sm }} />
         <CoachCarouselSkeleton count={3} variant="guestSeeded" showHeader={false} />
       </View>
     );
@@ -43,8 +42,10 @@ export function GuestSeededCoachesSection({ onSelectTrainer }: Props) {
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.title}>{t("traineeDiscover.guestSeededTitle")}</Text>
-      <Text style={styles.sub}>{t("traineeDiscover.guestSeededSub")}</Text>
+      <View style={styles.headerRow}>
+        <Ionicons name="eye-outline" size={15} color={c.textSecondary} />
+        <Text style={styles.title}>{t("traineeDiscover.guestSeededTitle")}</Text>
+      </View>
       <ScrollView
         horizontal
         nestedScrollEnabled
@@ -56,18 +57,16 @@ export function GuestSeededCoachesSection({ onSelectTrainer }: Props) {
           return (
             <Pressable
               key={trainerListItemKey(item, i, "seeded-")}
-              style={({ pressed }) => [styles.tile, pressed && { opacity: 0.9 }]}
+              style={({ pressed }) => [styles.tile, pressed && { opacity: 0.88, transform: [{ scale: 0.97 }] }]}
               onPress={() => onSelectTrainer(item)}
               accessibilityRole="button"
               accessibilityLabel={t("traineeDiscover.guestSeededA11y", { name })}
             >
-              <HomeUserAvatar uri={item?.profile_picture as string} name={name} size={56} />
-              <Text style={styles.name} numberOfLines={2}>
-                {name}
-              </Text>
-              <View style={styles.bookAgainRow}>
-                <Ionicons name="eye-outline" size={14} color={c.brandNavy} />
-                <Text style={styles.cta}>{t("traineeDiscover.guestSeededCta")}</Text>
+              <HomeUserAvatar uri={item?.profile_picture as string} name={name} size={AVATAR_SIZE} />
+              <Text style={styles.name} numberOfLines={2}>{name}</Text>
+              <View style={styles.ctaRow}>
+                <Ionicons name="sparkles-outline" size={11} color={c.brandNavy} />
+                <Text style={styles.ctaText}>{t("traineeDiscover.guestSeededCta")}</Text>
               </View>
             </Pressable>
           );
@@ -80,29 +79,44 @@ export function GuestSeededCoachesSection({ onSelectTrainer }: Props) {
 function useStyles() {
   return useThemedStyles((palette) =>
     StyleSheet.create({
-      wrap: { marginBottom: space.sm },
-      title: { ...typography.titleSm, color: palette.text, fontWeight: "700" },
-      sub: { ...typography.caption, color: palette.textMuted, marginTop: 4, marginBottom: space.sm },
-      strip: { gap: space.sm, paddingVertical: 4 },
-      tile: {
-        width: 108,
+      wrap: {},
+      headerRow: {
+        flexDirection: "row",
         alignItems: "center",
+        gap: space.xs,
+        marginBottom: space.sm,
+      },
+      title: { ...typography.titleSm, color: palette.text, fontWeight: "700" },
+      strip: { gap: space.sm, paddingVertical: space.xs },
+      tile: {
+        width: TILE_WIDTH,
         padding: space.sm,
-        borderRadius: radii.md,
+        borderRadius: radii.lg,
+        backgroundColor: palette.surfaceElevated,
         borderWidth: 1,
         borderColor: palette.border,
-        backgroundColor: palette.surfaceElevated,
+        alignItems: "center",
+        gap: 4,
       },
       name: {
-        ...typography.caption,
+        ...typography.bodySm,
         color: palette.text,
-        fontWeight: "600",
-        marginTop: space.xs,
+        fontWeight: "700",
         textAlign: "center",
-        minHeight: 32,
+        marginTop: 2,
+        minHeight: 34,
       },
-      bookAgainRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 },
-      cta: { ...typography.caption, color: palette.brandNavy, fontWeight: "700" },
+      ctaRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        marginTop: 2,
+        paddingHorizontal: space.xs,
+        paddingVertical: 4,
+        borderRadius: radii.pill,
+        backgroundColor: palette.brandAccentSubtle,
+      },
+      ctaText: { ...typography.caption, color: palette.brandNavy, fontWeight: "700", fontSize: 11 },
     })
   );
 }

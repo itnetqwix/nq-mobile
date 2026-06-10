@@ -552,7 +552,7 @@ function useStyles() {
   const c = useThemeColors();
   return useThemedStyles((palette) =>
     StyleSheet.create({
-      root: { gap: space.lg, paddingTop: space.xs },
+      root: { gap: space.md, paddingTop: space.xs },
       footerWrap: { marginTop: space.md },
       walletCard: {
         flexDirection: "row",

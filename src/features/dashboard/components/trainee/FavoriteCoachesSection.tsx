@@ -71,7 +71,7 @@ export function FavoriteCoachesSection({ onSelectTrainer }: Props) {
 function useStyles() {
   return useThemedStyles((palette) =>
     StyleSheet.create({
-      wrap: { marginBottom: space.md },
+      wrap: {},
       headerRow: {
         flexDirection: "row",
         alignItems: "center",
