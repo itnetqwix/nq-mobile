@@ -553,7 +553,7 @@ function useStyles() {
   return useThemedStyles((palette) =>
     StyleSheet.create({
       root: { gap: space.lg, paddingTop: space.xs },
-      footerWrap: { marginTop: space.md, gap: space.sm },
+      footerWrap: { marginTop: space.md },
       walletCard: {
         flexDirection: "row",
         alignItems: "center",

@@ -47,9 +47,9 @@ import type {
   ShellSurfaceRouteId,
 } from "../../../navigation/types";
 import type { DashboardRouteId } from "../config/dashboardRoutes";
-import { HomeMainCont, useWebHomeStyles } from "../components/webHome";
 import {
   DashboardEmptyWelcome,
+  HomeSection,
   LockerHub,
   SessionListSection,
   TraineeDiscoverDashboard,
@@ -252,44 +252,71 @@ function SectionHeader({ title }: { title: string }) {
   return <Text style={styles.sectionHeader}>{title}</Text>;
 }
 
-/** Web `NavHomePage` friend request tiles — column card with navy border */
-function FriendRequestWebTile({
+/** Native compact friend-request row (replaces the old web-ported tile layout) */
+function FriendRequestRow({
   request,
   onAccept,
   onReject,
+  isLast,
 }: {
   request: any;
   onAccept: (id: string) => void;
   onReject: (id: string) => void;
+  isLast?: boolean;
 }) {
   const { t } = useAppTranslation();
-  const styles = useDashboardHomeStyles();
   const themeColors = useThemeColors();
-  const webHomeStyles = useWebHomeStyles();
+  const styles = useThemedStyles((palette) =>
+    StyleSheet.create({
+      row: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: space.md,
+        paddingVertical: space.sm,
+        gap: space.sm,
+        borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
+        borderBottomColor: palette.border,
+      },
+      nameWrap: { flex: 1, minWidth: 0 },
+      name: { ...typography.label, color: palette.text, fontSize: 14 },
+      sport: { ...typography.caption, color: palette.textMuted, marginTop: 1 },
+      actions: { flexDirection: "row", gap: space.xs },
+      btn: {
+        borderRadius: radii.sm,
+        paddingHorizontal: space.sm,
+        paddingVertical: 5,
+        minWidth: 56,
+        alignItems: "center",
+      },
+      btnText: { fontSize: 12, color: palette.brandTextOn, fontWeight: "600" },
+    })
+  );
   const sender = request?.senderId;
   const name = sender?.fullname || sender?.fullName || t("dashboardHome.userDefault");
+  const sport = sender?.sport || sender?.sports?.[0];
   return (
-    <View style={webHomeStyles.friendRequestTile}>
-      <Avatar uri={sender?.profile_picture} name={name} size={72} />
-      <Text style={[styles.friendName, { marginTop: 10, textAlign: "center" }]} numberOfLines={2}>
-        {name}
-      </Text>
-      <View style={[styles.friendActions, { justifyContent: "center" }]}>
+    <View style={styles.row}>
+      <Avatar uri={sender?.profile_picture} name={name} size={44} />
+      <View style={styles.nameWrap}>
+        <Text style={styles.name} numberOfLines={1}>{name}</Text>
+        {!!sport && <Text style={styles.sport} numberOfLines={1}>{sport}</Text>}
+      </View>
+      <View style={styles.actions}>
         <Pressable
-          style={[styles.friendBtn, { backgroundColor: themeColors.success }]}
+          style={[styles.btn, { backgroundColor: themeColors.success }]}
           onPress={() => onAccept(request._id)}
           accessibilityRole="button"
           accessibilityLabel={t("dashboardHome.acceptRequestA11y", { name })}
         >
-          <Text style={styles.friendBtnText}>{t("dashboardHome.accept")}</Text>
+          <Text style={styles.btnText}>{t("dashboardHome.accept")}</Text>
         </Pressable>
         <Pressable
-          style={[styles.friendBtn, { backgroundColor: themeColors.danger }]}
+          style={[styles.btn, { backgroundColor: themeColors.danger }]}
           onPress={() => onReject(request._id)}
           accessibilityRole="button"
           accessibilityLabel={t("dashboardHome.rejectRequestA11y", { name })}
         >
-          <Text style={styles.friendBtnText}>{t("dashboardHome.reject")}</Text>
+          <Text style={styles.btnText}>{t("dashboardHome.reject")}</Text>
         </Pressable>
       </View>
     </View>
@@ -330,7 +357,6 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
   const { t } = useAppTranslation();
   const themeColors = useThemeColors();
   const styles = useDashboardHomeStyles();
-  const webHomeStyles = useWebHomeStyles();
   const [aiOpen, setAiOpen] = useState(false);
   const [profileTrainer, setProfileTrainer] = useState<Record<string, unknown> | null>(null);
   const [wizardTrainer, setWizardTrainer] = useState<Record<string, unknown> | null>(null);
@@ -627,47 +653,38 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
           }
           footer={
             <>
-              {loadingFriends ? (
-                <HomeMainCont
+              {(loadingFriends || friendRequests.length > 0) ? (
+                <HomeSection
                   title={t("dashboardHome.recentFriendRequests")}
-                  testID="card trainer-profile-card Home-main-Cont friend-requests-loading"
+                  testID="home-friend-requests"
                 >
-                  <FriendRequestTilesSkeleton count={2} />
-                </HomeMainCont>
-              ) : friendRequests.length > 0 ? (
-                <HomeMainCont
-                  title={t("dashboardHome.recentFriendRequests")}
-                  testID="card trainer-profile-card Home-main-Cont friend-requests"
-                >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      flexWrap: "wrap",
-                      gap: space.sm,
-                      justifyContent: "center",
-                    }}
-                  >
-                    {friendRequests.map((req: any) => (
-                      <FriendRequestWebTile
+                  {loadingFriends ? (
+                    <View style={{ padding: space.md }}>
+                      <FriendRequestTilesSkeleton count={2} />
+                    </View>
+                  ) : (
+                    friendRequests.map((req: any, idx: number) => (
+                      <FriendRequestRow
                         key={req._id}
                         request={req}
                         onAccept={handleAccept}
                         onReject={handleReject}
+                        isLast={idx === friendRequests.length - 1}
                       />
-                    ))}
-                  </View>
-                </HomeMainCont>
+                    ))
+                  )}
+                </HomeSection>
               ) : null}
 
               {showEmptyDashboard ? (
-                <HomeMainCont testID="home-empty-sessions-hint" title={t("dashboardHome.upcomingSessions")}>
+                <HomeSection testID="home-empty-sessions-hint" title={t("dashboardHome.upcomingSessions")}>
                   <DashboardEmptyWelcome
                     onBookLesson={() =>
                       (navigation as { navigate: (name: string) => void }).navigate("Schedule")
                     }
                     onOpenClips={() => openShell("clips")}
                   />
-                </HomeMainCont>
+                </HomeSection>
               ) : null}
 
               {recentCompletedForConcern ? (
