@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image as ExpoImage } from "expo-image";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   StyleSheet,
   View,
@@ -33,8 +33,8 @@ export type ImageWithSkeletonProps = {
   accessibilityLabel?: string;
   /** Fired when the remote image fails so parents can swap UI (e.g. Avatar → initials). */
   onLoadError?: () => void;
-  /** Override expo-image cache policy. Pass "reload" to force a fresh fetch (e.g. after upload). */
-  cachePolicy?: "disk" | "memory" | "memory-disk" | "none" | "reload";
+  /** Override expo-image cache policy. Default is "disk". Use "none" for always-fresh resources. */
+  cachePolicy?: "disk" | "memory" | "memory-disk" | "none";
 };
 
 /**
@@ -77,6 +77,20 @@ export function ImageWithSkeleton({
 
   const [loaded, setLoaded] = useState(!isRemoteUri);
   const [error, setError] = useState(false);
+
+  // Reset state when the source URI changes so stale error/loaded flags
+  // from a previous URL don't bleed into the new render cycle.
+  const prevUriRef = useRef<string | null | undefined>(
+    isRemoteUri ? (resolved as { uri: string }).uri : null
+  );
+  useEffect(() => {
+    const nextUri = isRemoteUri ? (resolved as { uri: string }).uri : null;
+    if (nextUri !== prevUriRef.current) {
+      prevUriRef.current = nextUri;
+      setLoaded(!isRemoteUri);
+      setError(false);
+    }
+  });
 
   const handleLoad = useCallback(() => {
     setLoaded(true);

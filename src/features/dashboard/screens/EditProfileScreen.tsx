@@ -78,7 +78,7 @@ export function EditProfileScreen() {
   },
 }));
 
-  const { user, accountType, refreshUser } = useAuth();
+  const { user, accountType, refreshUser, patchUser } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<MenuStackParamList>>();
   const isTrainer = accountType === AccountType.TRAINER;
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -113,13 +113,26 @@ export function EditProfileScreen() {
         name: asset.fileName ?? "avatar.jpg",
       } as any);
 
-      await apiClient.put("/common/update-profile-picture", formData, {
+      // transformRequest bypasses Axios's default serializer so FormData is
+      // sent as-is (Hermes + RN XHR sets the multipart boundary automatically).
+      const uploadRes = await apiClient.put("/common/update-profile-picture", formData, {
         headers: { "Content-Type": "multipart/form-data" },
+        transformRequest: [(data: unknown) => data as FormData],
       });
-      // Refresh user object in Redux so all screens get the updated field.
+      // If the API echoes back the new profile_picture key, patch Redux
+      // immediately so all screens update without waiting for refreshUser.
+      const newPic =
+        uploadRes.data?.profile_picture ??
+        uploadRes.data?.data?.profile_picture ??
+        uploadRes.data?.userInfo?.profile_picture ??
+        uploadRes.data?.result?.profile_picture;
+      if (newPic && typeof newPic === "string") {
+        patchUser({ profile_picture: newPic });
+      }
+      // Full refresh to guarantee the Redux user is in sync with the server.
       await refreshUser();
       // Bump the global cache-bust token — ProfileAvatar/Avatar everywhere will
-      // re-fetch with cachePolicy="reload" so they show the new image.
+      // get a new ?t=<timestamp> URL (new cache key), forcing a fresh disk fetch.
       bumpAvatarCacheBust();
       // Clear local URI so we switch to the fresh server URL.
       setLocalAvatar(null);

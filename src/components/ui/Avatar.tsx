@@ -88,7 +88,7 @@ export function Avatar({ uri, user, name, size = "md", style, cacheBust }: Avata
         borderRadius={dim / 2}
         resizeMode="cover"
         style={style}
-        cachePolicy={cacheBust ? "reload" : "disk"}
+        cachePolicy="disk"
         onLoadError={handleError}
         accessibilityLabel={name ? `Profile photo, ${name}` : "Profile photo"}
       />

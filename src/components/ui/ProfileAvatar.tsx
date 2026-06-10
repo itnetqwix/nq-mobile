@@ -83,7 +83,7 @@ export function ProfileAvatar({
         height={size}
         borderRadius={size / 2}
         resizeMode="cover"
-        cachePolicy={cacheBust ? "reload" : "disk"}
+        cachePolicy="disk"
         onLoadError={handleError}
         accessibilityLabel={name ? `Photo of ${name}` : "Profile photo"}
       />
