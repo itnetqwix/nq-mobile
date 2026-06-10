@@ -19,20 +19,15 @@ import {
 } from "../../../home/api/homeApi";
 import { HomeUserAvatar } from "./HomeUserAvatar";
 
+const TILE_WIDTH = 136;
+const AVATAR_SIZE = 58;
+
 type Props = {
   recentTrainerIds: string[];
   onSelectTrainer: (trainer: Record<string, unknown>) => void;
   enabled?: boolean;
 };
 
-/**
- * Server-ranked "For you" carousel.
- *
- * The backend folds together past sessions, pre-signup guest activity,
- * the recently-viewed snapshot we forward from the client, and an
- * online-now boost. Each tile shows a tiny "why" chip so the user
- * understands why a coach is being recommended.
- */
 export function ForYouTrainersSection({
   recentTrainerIds,
   onSelectTrainer,
@@ -42,10 +37,6 @@ export function ForYouTrainersSection({
   const c = useThemeColors();
   const styles = useStyles();
 
-  /**
-   * Cap the IDs we forward so the query key doesn't bloat. The backend
-   * also caps server-side as defense in depth.
-   */
   const cappedRecentIds = useMemo(
     () => recentTrainerIds.slice(0, 8),
     [recentTrainerIds]
@@ -68,9 +59,7 @@ export function ForYouTrainersSection({
   }, [data?.reasoning]);
 
   if (isLoading) {
-    return (
-      <CoachCarouselSkeleton count={3} variant="forYou" showHeader />
-    );
+    return <CoachCarouselSkeleton count={3} variant="forYou" showHeader />;
   }
 
   const trainers = data?.for_you ?? [];
@@ -78,7 +67,10 @@ export function ForYouTrainersSection({
 
   return (
     <View style={styles.wrap}>
-      <SectionHeader />
+      <View style={styles.headerRow}>
+        <Ionicons name="sparkles" size={15} color={c.brandAccent} />
+        <Text style={styles.title}>{t("traineeDiscover.forYouTitle")}</Text>
+      </View>
       <ScrollView
         horizontal
         nestedScrollEnabled
@@ -96,24 +88,22 @@ export function ForYouTrainersSection({
           return (
             <Pressable
               key={trainerListItemKey(trainer, i, "foryou-")}
-              style={({ pressed }) => [styles.tile, pressed && { opacity: 0.9 }]}
+              style={({ pressed }) => [styles.tile, pressed && { opacity: 0.88, transform: [{ scale: 0.97 }] }]}
               onPress={() => onSelectTrainer(trainer)}
               accessibilityRole="button"
               accessibilityLabel={t("traineeDiscover.forYouTileA11y", { name })}
             >
               <View style={styles.avatarWrap}>
-                <HomeUserAvatar uri={trainer?.profile_picture as string} name={name} size={56} />
-                {isOnline ? <View style={[styles.onlineDot, { backgroundColor: c.success, borderColor: c.surfaceElevated }]} /> : null}
+                <HomeUserAvatar uri={trainer?.profile_picture as string} name={name} size={AVATAR_SIZE} />
+                {isOnline ? (
+                  <View style={[styles.onlineDot, { backgroundColor: c.success, borderColor: c.surfaceElevated }]} />
+                ) : null}
               </View>
-              <Text style={styles.name} numberOfLines={2}>
-                {name}
-              </Text>
+              <Text style={styles.name} numberOfLines={2}>{name}</Text>
               {rating != null ? (
-                <View style={styles.ratingRow}>
+                <View style={styles.metaRow}>
                   <Ionicons name="star" size={11} color={c.warning} />
-                  <Text style={styles.ratingText}>
-                    {rating.toFixed(1)}
-                  </Text>
+                  <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
                   {rate != null ? (
                     <Text style={styles.rateText}>· ${rate.toFixed(0)}/hr</Text>
                   ) : null}
@@ -123,14 +113,8 @@ export function ForYouTrainersSection({
               ) : null}
               {reason ? (
                 <View style={[styles.reasonChip, { borderColor: c.brandAccentBorder, backgroundColor: c.brandAccentSubtle }]}>
-                  <Ionicons
-                    name={reasonIcon(meta?.primary_reason)}
-                    size={10}
-                    color={c.brandAccent}
-                  />
-                  <Text style={[styles.reasonText, { color: c.brandAccent }]} numberOfLines={2}>
-                    {reason}
-                  </Text>
+                  <Ionicons name={reasonIcon(meta?.primary_reason)} size={10} color={c.brandAccent} />
+                  <Text style={[styles.reasonText, { color: c.brandAccent }]} numberOfLines={2}>{reason}</Text>
                 </View>
               ) : null}
             </Pressable>
@@ -141,36 +125,15 @@ export function ForYouTrainersSection({
   );
 }
 
-function SectionHeader() {
-  const { t } = useAppTranslation();
-  const styles = useStyles();
-  const c = useThemeColors();
-  return (
-    <View style={styles.headerRow}>
-      <Ionicons name="sparkles" size={16} color={c.brandAccent} />
-      <Text style={styles.title}>{t("traineeDiscover.forYouTitle")}</Text>
-      <Text style={styles.sub}>{t("traineeDiscover.forYouSub")}</Text>
-    </View>
-  );
-}
-
-function reasonIcon(
-  primary: PersonalizedReason | undefined
-): keyof typeof Ionicons.glyphMap {
+function reasonIcon(primary: PersonalizedReason | undefined): keyof typeof Ionicons.glyphMap {
   switch (primary) {
-    case "past_session_repeat":
-      return "refresh-outline";
-    case "past_session_same_category":
-      return "albums-outline";
-    case "guest_favorite":
-      return "heart";
+    case "past_session_repeat": return "refresh-outline";
+    case "past_session_same_category": return "albums-outline";
+    case "guest_favorite": return "heart";
     case "guest_view":
-    case "recently_viewed":
-      return "eye-outline";
-    case "online_now":
-      return "radio";
-    default:
-      return "sparkles-outline";
+    case "recently_viewed": return "eye-outline";
+    case "online_now": return "radio";
+    default: return "sparkles-outline";
   }
 }
 
@@ -185,18 +148,12 @@ function formatReason(
       return meta.repeat_count > 1
         ? t("traineeDiscover.forYouReason.repeatN", { n: meta.repeat_count })
         : t("traineeDiscover.forYouReason.repeat1");
-    case "past_session_same_category":
-      return t("traineeDiscover.forYouReason.sameCategory");
-    case "guest_favorite":
-      return t("traineeDiscover.forYouReason.guestFavorite");
-    case "guest_view":
-      return t("traineeDiscover.forYouReason.guestView");
-    case "recently_viewed":
-      return t("traineeDiscover.forYouReason.recentlyViewed");
-    case "online_now":
-      return t("traineeDiscover.forYouReason.onlineNow");
-    default:
-      return t("traineeDiscover.forYouReason.matchYourTaste");
+    case "past_session_same_category": return t("traineeDiscover.forYouReason.sameCategory");
+    case "guest_favorite": return t("traineeDiscover.forYouReason.guestFavorite");
+    case "guest_view": return t("traineeDiscover.forYouReason.guestView");
+    case "recently_viewed": return t("traineeDiscover.forYouReason.recentlyViewed");
+    case "online_now": return t("traineeDiscover.forYouReason.onlineNow");
+    default: return t("traineeDiscover.forYouReason.matchYourTaste");
   }
 }
 
@@ -208,28 +165,28 @@ function useStyles() {
         flexDirection: "row",
         alignItems: "center",
         gap: space.xs,
-        marginBottom: space.xs,
+        marginBottom: space.sm,
       },
       title: { ...typography.titleSm, color: palette.text, fontWeight: "700" },
-      sub: { ...typography.caption, color: palette.textMuted, flex: 1, marginLeft: 4 },
-      strip: { gap: space.sm, paddingVertical: 4 },
+      strip: { gap: space.sm, paddingVertical: space.xs },
       tile: {
-        width: 148,
+        width: TILE_WIDTH,
         padding: space.sm,
         borderRadius: radii.lg,
         backgroundColor: palette.surfaceElevated,
         borderWidth: 1,
         borderColor: palette.border,
+        alignItems: "center",
         gap: 4,
       },
-      avatarWrap: { position: "relative", alignSelf: "center" },
+      avatarWrap: { position: "relative" },
       onlineDot: {
         position: "absolute",
-        right: -2,
-        bottom: -2,
-        width: 12,
-        height: 12,
-        borderRadius: 6,
+        right: -1,
+        bottom: -1,
+        width: 13,
+        height: 13,
+        borderRadius: 7,
         borderWidth: 2,
       },
       name: {
@@ -240,7 +197,7 @@ function useStyles() {
         marginTop: 2,
         minHeight: 34,
       },
-      ratingRow: {
+      metaRow: {
         flexDirection: "row",
         alignItems: "center",
         gap: 3,
@@ -249,14 +206,15 @@ function useStyles() {
       ratingText: { ...typography.caption, color: palette.text, fontWeight: "700" },
       rateText: { ...typography.caption, color: palette.textMuted, fontWeight: "600", textAlign: "center" },
       reasonChip: {
-        marginTop: 6,
+        marginTop: 4,
         borderWidth: 1,
         borderRadius: radii.pill,
         paddingHorizontal: 8,
         paddingVertical: 4,
         flexDirection: "row",
         alignItems: "center",
-        gap: 4,
+        gap: 3,
+        alignSelf: "stretch",
       },
       reasonText: { fontSize: 10, fontWeight: "700", flex: 1, lineHeight: 13 },
     })

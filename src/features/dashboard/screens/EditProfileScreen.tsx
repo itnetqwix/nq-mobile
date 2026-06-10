@@ -78,7 +78,7 @@ export function EditProfileScreen() {
   },
 }));
 
-  const { user, accountType, refreshUser, patchUser } = useAuth();
+  const { user, accountType, refreshUser } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<MenuStackParamList>>();
   const isTrainer = accountType === AccountType.TRAINER;
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -101,34 +101,40 @@ export function EditProfileScreen() {
     });
     if (result.canceled || !result.assets?.[0]?.uri) return;
 
+    const asset = result.assets[0];
+    const mimeType = asset.mimeType ?? "image/jpeg";
+
     setAvatarUploading(true);
     // Show the local file immediately for instant feedback.
-    setLocalAvatar(result.assets[0].uri);
+    setLocalAvatar(asset.uri);
     try {
-      const asset = result.assets[0];
-      const formData = new FormData();
-      formData.append("profile_picture", {
-        uri: asset.uri,
-        type: asset.mimeType ?? "image/jpeg",
-        name: asset.fileName ?? "avatar.jpg",
-      } as any);
-
-      // transformRequest bypasses Axios's default serializer so FormData is
-      // sent as-is (Hermes + RN XHR sets the multipart boundary automatically).
-      const uploadRes = await apiClient.put("/common/update-profile-picture", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-        transformRequest: [(data: unknown) => data as FormData],
-      });
-      // If the API echoes back the new profile_picture key, patch Redux
-      // immediately so all screens update without waiting for refreshUser.
-      const newPic =
-        uploadRes.data?.profile_picture ??
-        uploadRes.data?.data?.profile_picture ??
-        uploadRes.data?.userInfo?.profile_picture ??
-        uploadRes.data?.result?.profile_picture;
-      if (newPic && typeof newPic === "string") {
-        patchUser({ profile_picture: newPic });
+      // Step 1 — ask the server to pre-register the filename and return an
+      // S3 pre-signed PUT URL. The server sets profile_picture to the new
+      // filename immediately so it is available after we refresh the user.
+      const signRes = await apiClient.put(
+        "/common/update-profile-picture",
+        { fileType: mimeType },
+      );
+      const presignedUrl: string | undefined =
+        signRes.data?.url ?? signRes.data?.data?.url;
+      if (!presignedUrl) {
+        throw new Error("Server did not return an upload URL.");
       }
+
+      // Step 2 — upload the raw image bytes directly to S3 via the presigned
+      // PUT URL. We use the native fetch (not apiClient) so we can send the
+      // binary body without auth headers that would break the S3 signature.
+      const imageRes = await fetch(asset.uri);
+      const blob = await imageRes.blob();
+      const s3Res = await fetch(presignedUrl, {
+        method: "PUT",
+        headers: { "Content-Type": mimeType },
+        body: blob,
+      });
+      if (!s3Res.ok) {
+        throw new Error(`S3 upload failed (${s3Res.status})`);
+      }
+
       // Full refresh to guarantee the Redux user is in sync with the server.
       await refreshUser();
       // Bump the global cache-bust token — ProfileAvatar/Avatar everywhere will

@@ -165,11 +165,11 @@ export type CoachBoxSkeletonVariant =
   | "recentlyViewed";
 
 const COACH_BOX_WIDTH: Record<CoachBoxSkeletonVariant, number> = {
-  forYou: 148,
-  pastBooked: 108,
-  favorite: 96,
-  guestSeeded: 108,
-  recentlyViewed: 116,
+  forYou: 136,
+  pastBooked: 136,
+  favorite: 136,
+  guestSeeded: 136,
+  recentlyViewed: 136,
 };
 
 export function CoachBoxSkeleton({
@@ -194,9 +194,9 @@ export function CoachBoxSkeleton({
       ]}
     >
       <Skeleton
-        width={variant === "favorite" ? 52 : 56}
-        height={variant === "favorite" ? 52 : 56}
-        radius={variant === "favorite" ? 26 : 28}
+        width={58}
+        height={58}
+        radius={29}
         style={{ alignSelf: "center" }}
       />
       <Skeleton width="85%" height={12} style={{ alignSelf: "center", marginTop: 6 }} />
