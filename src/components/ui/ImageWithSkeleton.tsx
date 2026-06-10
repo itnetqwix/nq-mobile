@@ -33,6 +33,8 @@ export type ImageWithSkeletonProps = {
   accessibilityLabel?: string;
   /** Fired when the remote image fails so parents can swap UI (e.g. Avatar → initials). */
   onLoadError?: () => void;
+  /** Override expo-image cache policy. Pass "reload" to force a fresh fetch (e.g. after upload). */
+  cachePolicy?: "disk" | "memory" | "memory-disk" | "none" | "reload";
 };
 
 /**
@@ -49,6 +51,7 @@ export function ImageWithSkeleton({
   style,
   accessibilityLabel,
   onLoadError,
+  cachePolicy = "disk",
 }: ImageWithSkeletonProps) {
   const c = useThemeColors();
   const styles = useThemedStyles((palette) =>
@@ -112,7 +115,7 @@ export function ImageWithSkeleton({
         source={resolved}
         style={[styles.img, { opacity: loaded ? 1 : 0 }]}
         contentFit={(RESIZE_MAP[resizeMode] as any) ?? "cover"}
-        cachePolicy="disk"
+        cachePolicy={cachePolicy}
         transition={280}
         recyclingKey={isRemoteUri ? (resolved as { uri: string }).uri : undefined}
         onLoad={handleLoad}

@@ -18,6 +18,8 @@ export type AvatarProps = {
   name?: string | null;
   size?: AvatarSize;
   style?: StyleProp<ViewStyle>;
+  /** Append to URL as ?t=<value> to bust the expo-image disk cache after an upload. */
+  cacheBust?: string | number;
 };
 
 const SIZE_MAP: Record<AvatarSize, { dim: number; font: number }> = {
@@ -28,7 +30,7 @@ const SIZE_MAP: Record<AvatarSize, { dim: number; font: number }> = {
   xl: { dim: 80, font: 28 },
 };
 
-export function Avatar({ uri, user, name, size = "md", style }: AvatarProps) {
+export function Avatar({ uri, user, name, size = "md", style, cacheBust }: AvatarProps) {
   const { dim, font } = SIZE_MAP[size];
   const initials = pickInitials(name);
   const styles = useThemedStyles((c) =>
@@ -51,10 +53,11 @@ export function Avatar({ uri, user, name, size = "md", style }: AvatarProps) {
     () => uri ?? pickProfileImageKey(user) ?? null,
     [uri, user]
   );
-  const primaryUrl = useMemo(
-    () => resolveProfileImageUrl(storageKey ?? undefined),
-    [storageKey]
-  );
+  const primaryUrl = useMemo(() => {
+    const base = resolveProfileImageUrl(storageKey ?? undefined);
+    if (!base || !cacheBust) return base;
+    return `${base}${base.includes("?") ? "&" : "?"}t=${cacheBust}`;
+  }, [storageKey, cacheBust]);
   const fallbackUrl = useMemo(
     () => resolveProfileImageFallback(storageKey ?? undefined),
     [storageKey]
@@ -85,6 +88,7 @@ export function Avatar({ uri, user, name, size = "md", style }: AvatarProps) {
         borderRadius={dim / 2}
         resizeMode="cover"
         style={style}
+        cachePolicy={cacheBust ? "reload" : "disk"}
         onLoadError={handleError}
         accessibilityLabel={name ? `Profile photo, ${name}` : "Profile photo"}
       />

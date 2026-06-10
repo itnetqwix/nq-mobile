@@ -14,6 +14,8 @@ type Props = {
   name?: string;
   size?: number;
   onlineStatus?: "online" | "offline";
+  /** Append to URL as ?t=<value> to bust the expo-image disk cache after an upload. */
+  cacheBust?: string | number;
 };
 
 /**
@@ -25,16 +27,18 @@ export function ProfileAvatar({
   name,
   size = 48,
   onlineStatus,
+  cacheBust,
 }: Props) {
   const c = useThemeColors();
   const storageKey = useMemo(
     () => uri ?? pickProfileImageKey(user) ?? null,
     [uri, user]
   );
-  const primaryUrl = useMemo(
-    () => resolveProfileImageUrl(storageKey ?? undefined),
-    [storageKey]
-  );
+  const primaryUrl = useMemo(() => {
+    const base = resolveProfileImageUrl(storageKey ?? undefined);
+    if (!base || !cacheBust) return base;
+    return `${base}${base.includes("?") ? "&" : "?"}t=${cacheBust}`;
+  }, [storageKey, cacheBust]);
   const fallbackUrl = useMemo(
     () => resolveProfileImageFallback(storageKey ?? undefined),
     [storageKey]
@@ -72,13 +76,14 @@ export function ProfileAvatar({
           {(name ?? "?")[0]?.toUpperCase()}
         </Text>
       </View>
-    ) : (
+    )     : (
       <ImageWithSkeleton
         uri={activeUrl}
         width={size}
         height={size}
         borderRadius={size / 2}
         resizeMode="cover"
+        cachePolicy={cacheBust ? "reload" : "disk"}
         onLoadError={handleError}
         accessibilityLabel={name ? `Photo of ${name}` : "Profile photo"}
       />

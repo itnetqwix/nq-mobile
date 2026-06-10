@@ -1,5 +1,6 @@
 import React from "react";
 import { ProfileAvatar } from "../../../../components/ui/ProfileAvatar";
+import { useAvatarCacheBust } from "../../../../lib/avatarCacheBust";
 
 type Props = {
   uri?: string;
@@ -9,7 +10,8 @@ type Props = {
   onlineStatus?: "online" | "offline";
 };
 
-/** Dashboard home avatar — uses shared {@link ProfileAvatar}. */
+/** Dashboard home avatar — auto-refreshes after a profile picture upload. */
 export function HomeUserAvatar(props: Props) {
-  return <ProfileAvatar {...props} />;
+  const cacheBust = useAvatarCacheBust();
+  return <ProfileAvatar {...props} cacheBust={cacheBust || undefined} />;
 }

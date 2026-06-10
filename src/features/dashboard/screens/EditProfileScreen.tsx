@@ -2,10 +2,9 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as ImagePicker from "expo-image-picker";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {
-  Avatar,
   Button,
   Card,
   FormField,
@@ -13,9 +12,10 @@ import {
   ScreenContainer,
   SectionHeader,
 } from "../../../components/ui";
+import { ProfileAvatar } from "../../../components/ui/ProfileAvatar";
 import { AccountType } from "../../../constants/accountType";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
-import { resolveProfileImageUrl } from "../../../lib/profileImage";
+import { bumpAvatarCacheBust, useAvatarCacheBust } from "../../../lib/avatarCacheBust";
 import type { MenuStackParamList } from "../../../navigation/types";
 import { space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
@@ -83,10 +83,9 @@ export function EditProfileScreen() {
   const isTrainer = accountType === AccountType.TRAINER;
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
+  // Local file URI shown immediately after picking — cleared once server refresh succeeds.
   const [localAvatar, setLocalAvatar] = useState<string | null>(null);
-
-  const currentAvatar =
-    localAvatar ?? resolveProfileImageUrl(user as Record<string, unknown>);
+  const cacheBust = useAvatarCacheBust();
 
   const pickAndUploadAvatar = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -103,6 +102,8 @@ export function EditProfileScreen() {
     if (result.canceled || !result.assets?.[0]?.uri) return;
 
     setAvatarUploading(true);
+    // Show the local file immediately for instant feedback.
+    setLocalAvatar(result.assets[0].uri);
     try {
       const asset = result.assets[0];
       const formData = new FormData();
@@ -115,9 +116,15 @@ export function EditProfileScreen() {
       await apiClient.put("/common/update-profile-picture", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      setLocalAvatar(asset.uri);
+      // Refresh user object in Redux so all screens get the updated field.
       await refreshUser();
+      // Bump the global cache-bust token — ProfileAvatar/Avatar everywhere will
+      // re-fetch with cachePolicy="reload" so they show the new image.
+      bumpAvatarCacheBust();
+      // Clear local URI so we switch to the fresh server URL.
+      setLocalAvatar(null);
     } catch (e) {
+      setLocalAvatar(null);
       Alert.alert(t("profile.uploadFailedTitle"), getApiErrorMessage(e, t("profile.uploadFailedBody")));
     } finally {
       setAvatarUploading(false);
@@ -191,19 +198,18 @@ export function EditProfileScreen() {
     <ScreenContainer scroll padding="md" background={c.surface} clearFloatingTabBar>
       <View style={styles.avatarSection}>
         <Pressable onPress={pickAndUploadAvatar} disabled={avatarUploading} style={styles.avatarWrap}>
-          {currentAvatar ? (
-            <Image
-              source={{ uri: currentAvatar }}
-              style={styles.avatarImg}
-            />
-          ) : (
-            <Avatar name={displayName} size="xl" />
-          )}
-          <View style={styles.cameraBadge}>
+          <ProfileAvatar
+            uri={localAvatar ?? undefined}
+            user={localAvatar ? undefined : (user as Record<string, unknown>)}
+            name={displayName}
+            size={96}
+            cacheBust={localAvatar ? undefined : cacheBust}
+          />
+          <View style={[styles.cameraBadge, { borderColor: c.surface }]}>
             {avatarUploading ? (
               <ActivityIndicator size={14} color="#fff" />
             ) : (
-              <Text style={{ color: "#fff", fontSize: 14 }}>📷</Text>
+              <Ionicons name="camera" size={16} color="#fff" />
             )}
           </View>
         </Pressable>
