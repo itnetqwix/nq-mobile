@@ -44,14 +44,18 @@ export function AuthModalChrome({ children }: Props) {
       edges={["top", "bottom"]}
       style={[styles.root, { backgroundColor: c.background }]}
     >
-      <View style={styles.topBar}>
+      {/* Fixed-height top bar so the close button is never clipped by the safe area */}
+      <View style={[styles.topBar, { borderBottomColor: c.border }]}>
         <Pressable
           onPress={dismissToBrowse}
-          style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.85 }]}
+          style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.7 }]}
           accessibilityRole="button"
           accessibilityLabel={t("auth.continueBrowsing")}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Ionicons name="close" size={22} color={c.text} />
+          <View style={[styles.closeIconWrap, { backgroundColor: c.surfaceElevated, borderColor: c.border }]}>
+            <Ionicons name="close" size={18} color={c.text} />
+          </View>
           <Text style={[styles.closeText, { color: c.text }]}>{t("auth.continueBrowsing")}</Text>
         </Pressable>
       </View>
@@ -69,16 +73,25 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   body: { flex: 1 },
   topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: 52,
     paddingHorizontal: space.md,
-    paddingTop: space.xs,
-    paddingBottom: space.xs,
+    paddingVertical: space.xs,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   closeBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    alignSelf: "flex-start",
-    paddingVertical: space.xs,
+    gap: 8,
+  },
+  closeIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   closeText: { ...typography.bodyMd, fontWeight: "600" },
   contextBanner: {

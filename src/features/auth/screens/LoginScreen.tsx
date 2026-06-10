@@ -35,12 +35,23 @@ export function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
   const styles = StyleSheet.create({
     linkWrap: { marginTop: space.md, alignItems: "center" },
     link: { color: c.brandAccent, fontSize: 15, fontWeight: "600" },
+    createAccountRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      marginTop: space.md,
+      paddingVertical: 8,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: c.border,
+      paddingTop: space.md,
+    },
     guestRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
       gap: 6,
-      marginTop: space.sm,
+      marginTop: space.xs,
       paddingVertical: 8,
     },
     guestText: { color: c.textMuted, fontSize: 14 },
@@ -98,6 +109,9 @@ export function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
       showLoader(t("auth.signingIn"));
       await signIn(email.trim(), password);
       await setLastAuthMethod("password");
+      // Hide loader before the app-unlock prompt so the dashboard is
+      // immediately interactive after sign-in (not blocked by the overlay).
+      hideLoader();
       await promptEnableAppUnlock();
     },
     onSuccess: () => {
@@ -153,6 +167,16 @@ export function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
           >
             <Text style={styles.link}>{t("auth.forgotPassword")}</Text>
           </Pressable>
+          {/* Create Account CTA */}
+          <View style={styles.createAccountRow}>
+            <Text style={styles.guestText}>{t("auth.dontHaveAccount", { defaultValue: "Don't have an account?" })}</Text>
+            <Pressable
+              onPress={() => navigation.navigate("SignUp")}
+              accessibilityRole="button"
+            >
+              <Text style={styles.guestLink}>{t("auth.createAccount")}</Text>
+            </Pressable>
+          </View>
           <Pressable
             onPress={() => exitAuthAsGuest(navigation)}
             style={styles.guestRow}

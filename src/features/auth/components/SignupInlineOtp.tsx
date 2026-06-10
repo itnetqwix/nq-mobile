@@ -195,8 +195,25 @@ export function SignupInlineOtp({
       contactMessage ||
       (formatValid && contactGate === "available"));
 
+  const channelLabel = channel === "email" ? t("auth.email") : t("auth.phone");
+
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, { borderColor: c.border, backgroundColor: c.surfaceElevated }]}>
+      {/* Header: channel label + destination */}
+      <View style={styles.headerRow}>
+        <Ionicons
+          name={channel === "email" ? "mail-outline" : "phone-portrait-outline"}
+          size={16}
+          color={c.brandNavy}
+        />
+        <Text style={[styles.channelLabel, { color: c.brandNavy }]}>{channelLabel}</Text>
+        {destination ? (
+          <Text style={[styles.destination, { color: c.textMuted }]} numberOfLines={1}>
+            {destination}
+          </Text>
+        ) : null}
+      </View>
+
       {error ? <Text style={[styles.error, { color: c.danger }]}>{error}</Text> : null}
 
       {showStatusLine ? (
@@ -237,6 +254,11 @@ export function SignupInlineOtp({
 
       {sent ? (
         <View style={styles.verifyBlock}>
+          <Text style={[styles.sentHint, { color: c.textMuted }]}>
+            {channel === "email"
+              ? t("auth.otpSentToEmail", { defaultValue: `Code sent to ${destination}` })
+              : t("auth.otpSentToPhone", { defaultValue: `Code sent to ${destination}` })}
+          </Text>
           <FormField
             label={t("auth.verificationCode")}
             placeholder={t("auth.sixDigitCode")}
@@ -270,7 +292,22 @@ export function SignupInlineOtp({
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginTop: space.xs, marginBottom: space.sm },
+  wrap: {
+    marginTop: space.xs,
+    marginBottom: space.sm,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: space.sm,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: space.sm,
+  },
+  channelLabel: { fontWeight: "700", fontSize: 13 },
+  destination: { flex: 1, fontSize: 13 },
+  sentHint: { fontSize: 12, marginBottom: space.xs },
   hint: { ...typography.caption, marginTop: space.xs, marginBottom: space.sm },
   statusRow: {
     flexDirection: "row",

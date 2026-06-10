@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Pressable,
+  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -127,7 +128,6 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
   const signInAfterSignup = async (payload: SignUpPayload, loginPassword: string) => {
     await postSignUp(payload);
     await signIn(payload.email.trim().toLowerCase(), loginPassword);
-    await promptEnableAppUnlock();
   };
 
   const signInAfterSsoSignup = async (payload: SignUpPayload) => {
@@ -154,7 +154,6 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
     } else {
       throw new Error(t("auth.signUpSsoLoginFailed"));
     }
-    await promptEnableAppUnlock();
   };
 
   const runSignup = async (
@@ -172,10 +171,15 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
       }
     } catch (err) {
       Alert.alert(t("auth.signUpFailed"), getApiErrorMessage(err));
+      return;
     } finally {
+      // Always dismiss the loader before yielding so the dashboard is
+      // immediately interactive — promptEnableAppUnlock runs after.
       hideLoader();
       setSubmitting(false);
     }
+    // Non-blocking: runs after the loader is gone and navigation is settled.
+    void promptEnableAppUnlock().catch(() => {});
   };
 
   const profileError = (): string | null => {
@@ -360,14 +364,19 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
           <Stack gap="md">
             <Text style={styles.sectionLabel}>{t("auth.categoryTrainerTitle")}</Text>
             <Text style={styles.categoryHint}>{t("auth.categoryStepHint")}</Text>
-            <View style={styles.categoryPickerBox}>
+            <ScrollView
+              style={styles.categoryPickerScroll}
+              contentContainerStyle={styles.categoryPickerContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
               <SignupCategoryPicker
                 categories={categories}
                 selected={category}
                 onSelect={setCategory}
                 loading={categoriesQuery.isLoading}
               />
-            </View>
+            </ScrollView>
             <Button label={t("auth.continue")} size="lg" onPress={onContinueFromCategory} />
           </Stack>
         ) : null}
@@ -449,18 +458,15 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
                 onVerified={() => setPhoneVerified(true)}
               />
             )}
-            {isSsoSignup ? (
-              <>
-                <LegalTermsAcceptance
-                  value={acceptedTermsAndPrivacy}
-                  onValueChange={setAcceptedTermsAndPrivacy}
-                />
-                <View style={styles.tcpaRow}>
-                  <Switch value={tcpa} onValueChange={setTcpa} />
-                  <Text style={styles.tcpaText}>{t("auth.tcpaConsent")}</Text>
-                </View>
-              </>
-            ) : null}
+            {/* T&C required on verify step for ALL signup paths */}
+            <LegalTermsAcceptance
+              value={acceptedTermsAndPrivacy}
+              onValueChange={setAcceptedTermsAndPrivacy}
+            />
+            <View style={styles.tcpaRow}>
+              <Switch value={tcpa} onValueChange={setTcpa} />
+              <Text style={styles.tcpaText}>{t("auth.tcpaConsent")}</Text>
+            </View>
             <Button
               label={isSsoSignup ? t("auth.createAccount") : t("auth.continue")}
               size="lg"
@@ -521,9 +527,11 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
           </Stack>
         ) : null}
 
-        <Pressable onPress={() => navigation.navigate("Login")} style={styles.back}>
-          <Text style={styles.link}>{t("auth.alreadyHaveAccountSignIn")}</Text>
-        </Pressable>
+        {step === "accountType" ? (
+          <Pressable onPress={() => navigation.navigate("Login")} style={styles.back}>
+            <Text style={styles.link}>{t("auth.alreadyHaveAccountSignIn")}</Text>
+          </Pressable>
+        ) : null}
       </ScreenContainer>
     </AuthModalChrome>
   );
@@ -644,9 +652,12 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginBottom: space.sm,
   },
-  categoryPickerBox: {
-    maxHeight: 360,
-    marginBottom: space.md,
+  categoryPickerScroll: {
+    maxHeight: 340,
+    marginBottom: space.sm,
+  },
+  categoryPickerContent: {
+    paddingBottom: space.sm,
   },
   chip: {
     flex: 1,
