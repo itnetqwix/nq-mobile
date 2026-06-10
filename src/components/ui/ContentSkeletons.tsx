@@ -621,6 +621,99 @@ export function TransactionDetailSkeleton() {
   );
 }
 
+/**
+ * Game plan card — large image/icon area + title + badge strip.
+ * Matches the `planCard` layout in `GamePlansScreen`.
+ */
+export function GamePlanCardSkeleton() {
+  const c = useThemeColors();
+  return (
+    <View
+      style={[
+        styles.gamePlanCard,
+        { backgroundColor: c.surfaceElevated, borderColor: c.border },
+      ]}
+    >
+      {/* thumbnail area */}
+      <Skeleton width="100%" height={120} radius={radii.md} />
+      <View style={{ padding: space.sm, gap: 8 }}>
+        {/* title */}
+        <Skeleton width="75%" height={14} />
+        {/* badge row */}
+        <View style={{ flexDirection: "row", gap: 6, marginTop: 4 }}>
+          <Skeleton width={64} height={22} radius={radii.pill} />
+          <Skeleton width={80} height={22} radius={radii.pill} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Notification row — icon circle + title + body + timestamp + unread dot.
+ * Matches `NotificationItem` in `NotificationsScreen`.
+ */
+export function NotificationRowSkeleton() {
+  const c = useThemeColors();
+  return (
+    <View
+      style={[
+        styles.notifRow,
+        { backgroundColor: c.surfaceElevated, borderBottomColor: c.border },
+      ]}
+    >
+      {/* 40px icon circle */}
+      <Skeleton width={40} height={40} radius={20} style={{ flexShrink: 0 }} />
+      <View style={[styles.flex1Stack, { gap: 5 }]}>
+        <Skeleton width="55%" height={14} />
+        <Skeleton width="85%" height={11} />
+        <Skeleton width="30%" height={10} />
+      </View>
+      {/* unread dot placeholder */}
+      <Skeleton width={8} height={8} radius={4} style={{ flexShrink: 0 }} />
+    </View>
+  );
+}
+
+/**
+ * Settings page — a section header + N list rows.
+ * Used as a page-level skeleton while preferences load.
+ */
+export function SettingsSectionSkeleton({ rows = 4 }: { rows?: number }) {
+  const c = useThemeColors();
+  return (
+    <View style={{ gap: 0 }}>
+      {/* section header */}
+      <Skeleton width={120} height={12} style={{ margin: space.md, marginBottom: space.sm }} />
+      <View
+        style={[
+          styles.settingsBlock,
+          { backgroundColor: c.surfaceElevated, borderColor: c.border },
+        ]}
+      >
+        {Array.from({ length: rows }, (_, i) => (
+          <View
+            key={i}
+            style={[
+              styles.settingsRow,
+              i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border },
+            ]}
+          >
+            {/* leading icon circle */}
+            <Skeleton width={32} height={32} radius={16} />
+            <View style={[styles.flex1Stack, { gap: 5 }]}>
+              <Skeleton width="55%" height={14} />
+              <Skeleton width="35%" height={10} />
+            </View>
+            {/* trailing control or chevron */}
+            <Skeleton width={40} height={24} radius={radii.pill} />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 /** Search bar + category chips in marketplace header. */
 export function MarketplaceSearchSkeleton() {
   return (
@@ -818,6 +911,31 @@ const styles = StyleSheet.create({
   promoSkeletonActions: {
     flexDirection: "row",
     gap: space.lg,
+  },
+  gamePlanCard: {
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  notifRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.sm,
+    paddingHorizontal: space.md,
+    paddingVertical: space.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  settingsBlock: {
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    overflow: "hidden",
+    marginHorizontal: space.md,
+  },
+  settingsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    padding: space.md,
   },
   paymentRow: {
     flexDirection: "row",

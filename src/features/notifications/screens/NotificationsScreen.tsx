@@ -11,7 +11,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { ChatRowSkeleton, EmptyState, MorphRefreshScrollSurface, SkeletonGroup } from "../../../components/ui";
+import { NotificationRowSkeleton, EmptyState, MorphRefreshScrollSurface, SkeletonGroup } from "../../../components/ui";
 import {
   FLATLIST_PERF_DEFAULTS,
   notificationRowGetItemLayout,
@@ -170,8 +170,8 @@ export function NotificationsScreen() {
 
   if (isLoading) {
     return (
-      <View style={{ padding: space.md }}>
-        <SkeletonGroup count={5} renderRow={() => <ChatRowSkeleton />} />
+      <View style={{ flex: 1 }}>
+        <SkeletonGroup count={6} renderRow={() => <NotificationRowSkeleton />} />
       </View>
     );
   }

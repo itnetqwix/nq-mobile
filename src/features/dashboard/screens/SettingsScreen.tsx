@@ -24,6 +24,8 @@ import {
   Pill,
   ScreenContainer,
   SectionHeader,
+  SettingsSectionSkeleton,
+  SkeletonGroup,
   TimeZoneSearchModal,
 } from "../../../components/ui";
 import { useInlineSaved } from "../../../lib/forms/useInlineSaved";
@@ -593,6 +595,14 @@ export function SettingsScreen() {
   }, [searchableRows, debouncedSettingsSearch]);
 
   const suggestionRows = useMemo(() => searchResults.slice(0, 6), [searchResults]);
+
+  if (!user) {
+    return (
+      <ScreenContainer scroll padding={0} background={c.surface} clearFloatingTabBar>
+        <SkeletonGroup count={4} gap={0} renderRow={() => <SettingsSectionSkeleton rows={4} />} />
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer scroll padding="md" background={c.surface} clearFloatingTabBar>

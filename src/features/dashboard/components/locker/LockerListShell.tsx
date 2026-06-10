@@ -7,7 +7,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { ClipCardSkeleton, EmptyState, MorphRefreshHeader, SkeletonGroup } from "../../../../components/ui";
+import { ClipCardSkeleton, EmptyState, MorphRefreshHeader, SkeletonGroup, type SkeletonGroupProps } from "../../../../components/ui";
 import { getApiErrorMessage } from "../../../../lib/http/getApiErrorMessage";
 import { useMorphRefreshBundle } from "../../../../lib/refresh/useMorphRefreshBundle";
 import { space, useThemeColors, useThemedStyles } from "../../../../theme";
@@ -24,6 +24,8 @@ type Props = {
   children: React.ReactNode;
   contentStyle?: StyleProp<ViewStyle>;
   skeletonRows?: number;
+  /** Override the per-row skeleton — defaults to `ClipCardSkeleton`. */
+  renderSkeletonRow?: SkeletonGroupProps["renderRow"];
 };
 
 export function LockerListShell({
@@ -37,6 +39,7 @@ export function LockerListShell({
   children,
   contentStyle,
   skeletonRows = 3,
+  renderSkeletonRow,
 }: Props) {
   const c = useThemeColors();
   const morph = useMorphRefreshBundle(onRefresh, refreshing);
@@ -75,7 +78,7 @@ export function LockerListShell({
           <SkeletonGroup
             count={skeletonRows}
             gap={space.md}
-            renderRow={() => <ClipCardSkeleton />}
+            renderRow={renderSkeletonRow ?? (() => <ClipCardSkeleton />)}
           />
         </View>
       </View>

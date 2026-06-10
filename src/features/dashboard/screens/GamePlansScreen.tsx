@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { EmptyState, ImageWithSkeleton } from "../../../components/ui";
+import { EmptyState, GamePlanCardSkeleton, ImageWithSkeleton } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { isLikelyAudio, isLikelyPdf } from "../../../lib/clipMediaUrl";
@@ -205,6 +205,7 @@ export function GamePlansScreen() {
         onRetry={() => void reportsQ.refetch()}
         refreshing={reportsQ.isRefetching}
         onRefresh={onRefresh}
+        renderSkeletonRow={() => <GamePlanCardSkeleton />}
       >
         {reportSections.length === 0 ? (
           <EmptyState

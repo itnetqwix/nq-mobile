@@ -3,7 +3,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { MorphRefreshHeader } from "../../../components/ui";
+import { MorphRefreshHeader, Skeleton } from "../../../components/ui";
 import { useMorphRefreshBundle } from "../../../lib/refresh/useMorphRefreshBundle";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AccountType } from "../../../constants/accountType";
@@ -156,7 +156,11 @@ function TraineeWalletHome({ navigation }: Props) {
       <View style={styles.balanceCard}>
         <Text style={styles.balanceLabel}>{t("wallet.availableBalance")}</Text>
         {isLoading && !balance ? (
-          <View style={styles.balanceSkeleton} />
+          <Skeleton
+            width={140}
+            height={40}
+            style={{ marginTop: 8, backgroundColor: "rgba(255,255,255,0.18)" }}
+          />
         ) : (
           <Text style={styles.balanceValue}>
             {fmt(available, { currency: balance?.currency })}
