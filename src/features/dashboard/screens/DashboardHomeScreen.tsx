@@ -66,6 +66,7 @@ import {
   shouldShowInDashboardUpcoming,
 } from "../../../lib/sessions/sessionUtils";
 import { PostLessonConcernBanner } from "../../sessions/components/PostLessonConcernBanner";
+import { ProfilePhotoRequiredBanner } from "../components/shared/ProfilePhotoRequiredBanner";
 import { TrainerProfileModal } from "../../bookexpert/components/TrainerProfileModal";
 import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
 import { ScheduledBookingWizardModal } from "../../scheduled-booking/ScheduledBookingWizardModal";
@@ -371,6 +372,9 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
   const homeScroll = useHomeScrollHandler();
   const isTrainee = accountType === AccountType.TRAINEE;
   const isTrainer = accountType === AccountType.TRAINER;
+  const hasProfilePhoto = !!((user as any)?.profile_picture);
+  const openEditProfile = () =>
+    navigation.navigate("ShellSurface", { surfaceId: "editProfile" } as any);
 
   const { data: cmsHome, isLoading: cmsHomeLoading } = useCmsHome(false, {
     enabled: isTrainer,
@@ -653,6 +657,10 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
           }
           footer={
             <>
+              {!hasProfilePhoto && (
+                <ProfilePhotoRequiredBanner onAddPhoto={openEditProfile} />
+              )}
+
               {(loadingFriends || friendRequests.length > 0) ? (
                 <HomeSection
                   title={t("dashboardHome.recentFriendRequests")}
@@ -777,6 +785,9 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
               <HomeOffersCarousel />
             </>
           )}
+          {!hasProfilePhoto && (
+            <ProfilePhotoRequiredBanner onAddPhoto={openEditProfile} />
+          )}
           <TrainerDashboardHub
             marketplaceHeader
             name={name}
@@ -791,7 +802,6 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
             onRejectFriend={handleReject}
             onSettings={() => openShell("settings")}
             onAvailabilityToggle={handleAvailabilityToggle}
-            onOpenWallet={() => openShell("wallet")}
             onOpenSchedule={() => openFeature("schedule")}
             onOpenSessions={() => openFeature("upcoming-sessions")}
             onOpenClips={() => openShell("clips")}

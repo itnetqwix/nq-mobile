@@ -12,9 +12,7 @@ import { useDashboardSessions } from "../../hooks/useDashboardSessions";
 import { formatNextOpenSlot } from "../../lib/trainerSlotUtils";
 import { PendingRequestsBanner } from "./PendingRequestsBanner";
 import { TodayScheduleTimeline } from "./TodayScheduleTimeline";
-import { TrainerEarningsSnapshot } from "./TrainerEarningsSnapshot";
 import { RecentTraineeClipsSection } from "./RecentTraineeClipsSection";
-import { RatingFeedbackPulse } from "./RatingFeedbackPulse";
 import { TrainerGreetingRating } from "./TrainerGreetingRating";
 import { PerformanceTipsCard } from "./PerformanceTipsCard";
 import { TrainerRecentTraineesSection } from "./TrainerRecentTraineesSection";
@@ -38,7 +36,6 @@ type Props = {
   onRejectFriend?: (id: string) => void;
   onSettings: () => void;
   onAvailabilityToggle: (next: boolean) => Promise<void>;
-  onOpenWallet?: () => void;
   onOpenSchedule: () => void;
   onOpenSessions: () => void;
   onOpenClips: () => void;
@@ -62,7 +59,6 @@ function TrainerDashboardHubInner({
   onRejectFriend,
   onSettings,
   onAvailabilityToggle,
-  onOpenWallet,
   onOpenSchedule,
   onOpenSessions,
   onOpenClips,
@@ -102,11 +98,8 @@ function TrainerDashboardHubInner({
             </View>
             <Ionicons name="chevron-forward" size={20} color={c.textMuted} />
           </Pressable>
-          <TrainerEarningsSnapshot onPress={onOpenWallet} />
         </View>
-      ) : (
-        <TrainerEarningsSnapshot onPress={onOpenWallet} />
-      )}
+      ) : null}
 
       <PendingRequestsBanner count={pendingSessions.length} onPress={onOpenSessions} />
 
@@ -144,7 +137,7 @@ function TrainerDashboardHubInner({
         />
       ) : null}
 
-      <RatingFeedbackPulse onOpenReviews={onOpenReviews} />
+      <TrainerRecentTraineesSection trainees={recentTrainees} />
 
       <PerformanceTipsCard
         pendingCount={pendingSessions.length}
@@ -153,8 +146,6 @@ function TrainerDashboardHubInner({
       />
 
       <RecentTraineeClipsSection onOpenClips={onOpenClips} />
-
-      <TrainerRecentTraineesSection trainees={recentTrainees} />
 
       <ReviewAnalysisCard embedded />
 
