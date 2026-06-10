@@ -247,7 +247,7 @@ function SessionCard({
             leftIcon="document-text-outline"
             onPress={() => openSession(session)}
             size="md"
-            fullWidth={false}
+            fullWidth
           />
         ) : (
           <>
@@ -265,7 +265,7 @@ function SessionCard({
                 leftIcon="checkmark-circle-outline"
                 onPress={() => openSession(session)}
                 size="md"
-                fullWidth={false}
+                fullWidth
               />
             ) : null}
             {!pending && (
@@ -276,7 +276,7 @@ function SessionCard({
                 leftIcon="videocam-outline"
                 onPress={handleJoin}
                 size="md"
-                fullWidth={false}
+                fullWidth
                 disabled={!joinEnabled}
               />
             )}
@@ -499,14 +499,14 @@ export function UpcomingSessionsScreen() {
                       : t("sessions.emptyTabDescription", { tab: t(TAB_LABEL_KEYS[activeTab]) })
               }
               actionLabel={
-                activeTab === "upcoming" && !selectedDate
+                activeTab === "upcoming"
                   ? isTrainerOuter
                     ? t("sessions.emptyCtaTrainer", { defaultValue: "Edit availability" })
                     : t("sessions.emptyCtaTrainee", { defaultValue: "Find a trainer" })
                   : undefined
               }
               onAction={
-                activeTab === "upcoming" && !selectedDate
+                activeTab === "upcoming"
                   ? () => {
                       try {
                         if (isTrainerOuter) {
@@ -580,22 +580,23 @@ const styles = StyleSheet.create({
 
   card: {
     backgroundColor: colors.surfaceElevated,
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
     padding: space.md,
+    paddingBottom: space.sm,
     borderWidth: 1,
     borderColor: colors.border,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
     elevation: 2,
   },
-  cardBody: {},
+  cardBody: { paddingBottom: space.sm },
   cardTop: { flexDirection: "row", alignItems: "flex-start", gap: space.sm },
   cardInfo: { flex: 1 },
-  cardName: { ...typography.subtitle, color: colors.text },
+  cardName: { ...typography.subtitle, color: colors.text, fontWeight: "700" },
   cardRole: { ...typography.caption, color: colors.textMuted, marginTop: 2, marginBottom: space.xs },
-  metaRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 },
   metaText: { ...typography.bodySm, color: colors.textMuted },
   outcomeRow: {
     flexDirection: "row",
@@ -625,13 +626,12 @@ const styles = StyleSheet.create({
     paddingTop: space.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
-    alignItems: "flex-end",
-    gap: space.xs,
+    gap: space.sm,
   },
   joinHint: {
     ...typography.caption,
     color: colors.textMuted,
-    textAlign: "right",
+    textAlign: "center",
   },
 
   avatarFallback: {

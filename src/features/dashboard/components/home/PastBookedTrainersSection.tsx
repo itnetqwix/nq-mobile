@@ -76,12 +76,12 @@ export function PastBookedTrainersSection({ onSelectTrainer }: Props) {
 function useStyles() {
   return useThemedStyles((palette) =>
     StyleSheet.create({
-      wrap: { marginBottom: space.sm },
+      wrap: { marginBottom: space.md },
       title: { ...typography.titleSm, color: palette.text, fontWeight: "700" },
       sub: { ...typography.caption, color: palette.textMuted, marginTop: 4, marginBottom: space.sm },
       strip: { gap: space.sm, paddingVertical: 4 },
       tile: {
-        width: 108,
+        width: 120,
         alignItems: "center",
         padding: space.sm,
         borderRadius: radii.md,

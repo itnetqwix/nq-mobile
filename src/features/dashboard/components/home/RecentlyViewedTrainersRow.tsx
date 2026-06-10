@@ -95,9 +95,10 @@ const styles = StyleSheet.create({
   scroll: {
     paddingHorizontal: space.md,
     gap: space.sm,
+    paddingVertical: 4,
   },
   card: {
-    width: 116,
+    width: 120,
     paddingVertical: space.sm,
     paddingHorizontal: space.xs,
     borderRadius: radii.md,

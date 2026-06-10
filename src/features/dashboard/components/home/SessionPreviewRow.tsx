@@ -6,6 +6,7 @@ import { AccountType } from "../../../../constants/accountType";
 import {
   canEnterLesson,
   canJoinSession,
+  formatSessionWhen,
   getInstantAcceptDeadlineMs,
   getInstantJoinDeadlineMs,
   getJoinDisabledReason,
@@ -64,13 +65,7 @@ export function SessionPreviewRow({ session, accountType, onPress, isLast }: Pro
     | Record<string, unknown>
     | undefined;
   const name = String(other?.fullname ?? other?.fullName ?? "Unknown");
-  const date = session.booked_date ? String(session.booked_date).slice(0, 10) : "";
-  const time =
-    session.session_start_time && session.session_end_time
-      ? `${session.session_start_time} – ${session.session_end_time}`
-      : session.start_time && session.end_time
-        ? `${session.start_time} – ${session.end_time}`
-        : "";
+  const { dateLabel, timeLabel } = formatSessionWhen(session);
   const pending = isPendingBooking(session);
   const status = normalizeSessionStatus(session.status as string);
   const instant = isInstantLesson(session);
@@ -91,8 +86,8 @@ export function SessionPreviewRow({ session, accountType, onPress, isLast }: Pro
         <Text style={styles.name} numberOfLines={1}>
           {name}
         </Text>
-        {!!date && <Text style={styles.meta}>{date}</Text>}
-        {!!time && <Text style={styles.meta}>{time}</Text>}
+        {!!dateLabel && <Text style={styles.meta}>{dateLabel}</Text>}
+        {!!timeLabel && <Text style={styles.meta}>{timeLabel}</Text>}
         <Pill
           label={pending ? "Needs confirmation" : status}
           tone={pending ? "warning" : getStatusTone(status)}
@@ -111,7 +106,9 @@ export function SessionPreviewRow({ session, accountType, onPress, isLast }: Pro
           />
         ) : null}
         {isTrainer && pending && instant ? (
-          <InstantLessonSessionActions session={session} />
+          <View style={{ marginTop: space.sm }}>
+            <InstantLessonSessionActions session={session} />
+          </View>
         ) : null}
         {!pending ? (
           <View onStartShouldSetResponder={() => true}>

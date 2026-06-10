@@ -59,9 +59,9 @@ export function FavoriteCoachesSection({ onSelectTrainer }: Props) {
 function useStyles() {
   return useThemedStyles((palette) =>
     StyleSheet.create({
-      strip: { gap: space.sm },
+      strip: { gap: space.sm, paddingVertical: 4 },
       tile: {
-        width: 96,
+        width: 108,
         alignItems: "center",
         padding: space.sm,
         borderRadius: radii.md,
@@ -75,6 +75,7 @@ function useStyles() {
         fontWeight: "600",
         textAlign: "center",
         marginTop: 6,
+        minHeight: 30,
       },
     })
   );

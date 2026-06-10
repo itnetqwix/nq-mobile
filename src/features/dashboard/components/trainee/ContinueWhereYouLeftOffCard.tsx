@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Button } from "../../../../components/ui";
 import { AccountType } from "../../../../constants/accountType";
-import { canEnterLesson } from "../../../../lib/sessions/sessionUtils";
+import { canEnterLesson, formatSessionWhen } from "../../../../lib/sessions/sessionUtils";
 import { navigationRef } from "../../../../navigation/navigationRef";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
@@ -21,11 +21,7 @@ export function ContinueWhereYouLeftOffCard({ session, onOpenSession }: Props) {
   const other = (session.trainer_info ?? session.trainerInfo) as Record<string, unknown> | undefined;
   const name = String(other?.fullname ?? other?.fullName ?? "Coach");
   const category = String(other?.category ?? session.category ?? "");
-  const date = session.booked_date ? String(session.booked_date).slice(0, 10) : "";
-  const time =
-    session.session_start_time && session.session_end_time
-      ? `${session.session_start_time} – ${session.session_end_time}`
-      : "";
+  const { dateLabel, timeLabel } = formatSessionWhen(session);
   const lessonId = String(session._id ?? session.id ?? "");
   const canJoin = canEnterLesson(session);
 
@@ -41,7 +37,11 @@ export function ContinueWhereYouLeftOffCard({ session, onOpenSession }: Props) {
         <View style={styles.meta}>
           <Text style={styles.name}>{t("traineeDiscover.continueWith", { name })}</Text>
           {!!category && <Text style={styles.sub}>{category}</Text>}
-          {!!date && <Text style={styles.sub}>{date}{time ? ` · ${time}` : ""}</Text>}
+          {!!dateLabel && (
+            <Text style={styles.sub}>
+              {dateLabel}{timeLabel ? ` · ${timeLabel}` : ""}
+            </Text>
+          )}
         </View>
         {onOpenSession ? <Ionicons name="chevron-forward" size={20} color={c.textMuted} /> : null}
       </Pressable>

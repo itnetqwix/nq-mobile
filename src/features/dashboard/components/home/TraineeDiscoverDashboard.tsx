@@ -493,7 +493,7 @@ export function TraineeDiscoverDashboard({
       />
       <HomeOffersCarousel guest={isGuest} onDeepLink={onDeepLink} />
       <View style={styles.root}>{discoverBody}</View>
-      {footer}
+      {footer ? <View style={styles.footerWrap}>{footer}</View> : null}
     </>
   );
 
@@ -552,7 +552,8 @@ function useStyles() {
   const c = useThemeColors();
   return useThemedStyles((palette) =>
     StyleSheet.create({
-      root: { gap: space.md },
+      root: { gap: space.lg, paddingTop: space.xs },
+      footerWrap: { marginTop: space.md, gap: space.sm },
       walletCard: {
         flexDirection: "row",
         alignItems: "center",

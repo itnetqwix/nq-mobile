@@ -66,25 +66,29 @@ export function InstantLessonSessionActions({
 
   return (
     <View style={[styles.root, layout === "column" && styles.column]}>
-      <Button
-        label={busy === "accept" ? "Accepting…" : "Accept"}
-        leftIcon="checkmark-circle-outline"
-        size={size}
-        fullWidth={false}
-        onPress={handleAccept}
-        disabled={!!busy}
-        loading={busy === "accept"}
-      />
-      <Button
-        label="Decline"
-        variant="danger"
-        leftIcon="close-circle-outline"
-        size={size}
-        fullWidth={false}
-        onPress={handleDecline}
-        disabled={!!busy}
-        loading={busy === "decline"}
-      />
+      <View style={styles.btnWrap}>
+        <Button
+          label={busy === "accept" ? "Accepting…" : "Accept"}
+          leftIcon="checkmark-circle-outline"
+          size={size}
+          fullWidth
+          onPress={handleAccept}
+          disabled={!!busy}
+          loading={busy === "accept"}
+        />
+      </View>
+      <View style={styles.btnWrap}>
+        <Button
+          label="Decline"
+          variant="danger"
+          leftIcon="close-circle-outline"
+          size={size}
+          fullWidth
+          onPress={handleDecline}
+          disabled={!!busy}
+          loading={busy === "decline"}
+        />
+      </View>
     </View>
   );
 }
@@ -92,12 +96,10 @@ export function InstantLessonSessionActions({
 const styles = StyleSheet.create({
   root: {
     flexDirection: "row",
-    flexWrap: "wrap",
     gap: space.sm,
-    marginTop: space.sm,
   },
   column: {
     flexDirection: "column",
-    alignItems: "stretch",
   },
+  btnWrap: { flex: 1 },
 });
