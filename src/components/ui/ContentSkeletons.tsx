@@ -735,6 +735,105 @@ export function MarketplaceSearchSkeleton() {
   );
 }
 
+/**
+ * Clip list row — 64×64 thumbnail + title + date line.
+ * Matches the `clipCard` row layout in `ClipsScreen`.
+ */
+export function ClipRowSkeleton() {
+  const c = useThemeColors();
+  return (
+    <View
+      style={[
+        {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: space.md,
+          paddingVertical: 10,
+          paddingHorizontal: space.sm,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: c.border,
+        },
+      ]}
+    >
+      <Skeleton width={64} height={64} radius={radii.sm} style={{ flexShrink: 0 }} />
+      <View style={{ flex: 1, gap: 7 }}>
+        <Skeleton width="75%" height={13} />
+        <Skeleton width="45%" height={10} />
+      </View>
+      <Skeleton width={18} height={18} radius={9} style={{ flexShrink: 0 }} />
+    </View>
+  );
+}
+
+/**
+ * Category section + rows — section header (icon + title + count pill)
+ * followed by 3 `ClipRowSkeleton` rows. Used in the My Clips / Shared / Library tabs.
+ */
+export function ClipSectionSkeleton({ rows = 3 }: { rows?: number }) {
+  const c = useThemeColors();
+  return (
+    <View
+      style={{
+        borderRadius: radii.lg,
+        borderWidth: 1,
+        borderColor: c.border,
+        backgroundColor: c.surfaceElevated,
+        overflow: "hidden",
+        marginBottom: space.sm,
+      }}
+    >
+      {/* Section header */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingHorizontal: space.md,
+          paddingVertical: 12,
+          backgroundColor: c.surfaceMuted,
+        }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
+          <Skeleton width={32} height={32} radius={radii.sm} />
+          <Skeleton width="50%" height={14} />
+          <Skeleton width={28} height={20} radius={radii.pill} />
+        </View>
+        <Skeleton width={20} height={20} radius={10} />
+      </View>
+      {/* Clip rows */}
+      <View style={{ paddingHorizontal: space.sm }}>
+        {Array.from({ length: rows }, (_, i) => (
+          <ClipRowSkeleton key={i} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Friend list row for the share modal — avatar + name + check circle.
+ */
+export function FriendRowSkeleton() {
+  const c = useThemeColors();
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: space.md,
+        paddingHorizontal: space.md,
+        paddingVertical: 12,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: c.border,
+      }}
+    >
+      <Skeleton width={40} height={40} radius={20} style={{ flexShrink: 0 }} />
+      <Skeleton width="55%" height={14} style={{ flex: 1 }} />
+      <Skeleton width={22} height={22} radius={11} style={{ flexShrink: 0 }} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   card: {
     flexDirection: "row",

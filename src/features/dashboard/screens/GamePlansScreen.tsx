@@ -32,7 +32,7 @@ function formatReportDate(
   const y = id.year;
   try {
     return new Date(y, m - 1, d).toLocaleDateString(undefined, {
-      month: "short",
+      month: "long",
       day: "numeric",
       year: "numeric",
     });
@@ -41,69 +41,29 @@ function formatReportDate(
   }
 }
 
+type KindType = "image" | "pdf" | "video" | "audio" | "none";
+
+const KIND_META: Record<
+  KindType,
+  { icon: keyof typeof Ionicons.glyphMap; label: string; color: string; bg: string }
+> = {
+  image:  { icon: "image-outline",         label: "Image",     color: "#16a34a", bg: "#f0fdf4" },
+  pdf:    { icon: "document-text-outline",  label: "PDF",       color: "#d97706", bg: "#fffbeb" },
+  video:  { icon: "videocam-outline",       label: "Recording", color: "#2563eb", bg: "#eff6ff" },
+  audio:  { icon: "musical-notes-outline",  label: "Audio",     color: "#7c3aed", bg: "#f5f3ff" },
+  none:   { icon: "document-outline",       label: "Plan",      color: "#6b7280", bg: "#f3f4f6" },
+};
+
 export function GamePlansScreen() {
   const { t } = useAppTranslation();
   const { user, accountType } = useAuth();
   const myId = String(user?._id ?? "");
   const c = useThemeColors();
   const { width: windowWidth } = useWindowDimensions();
-  const planThumbWidth = Math.max(140, windowWidth - space.md * 4);
+  const cardWidth = windowWidth - space.md * 2;
+  const isTrainer = accountType !== AccountType.TRAINEE;
 
-  const styles = useThemedStyles((palette) =>
-    StyleSheet.create({
-      section: {
-        backgroundColor: palette.surfaceElevated,
-        borderRadius: radii.lg,
-        borderWidth: 1,
-        borderColor: palette.border,
-        padding: space.md,
-        gap: space.sm,
-      },
-      sectionHead: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
-      sectionTitle: { ...typography.subtitle, color: palette.brandNavy, fontWeight: "700" },
-      planCard: {
-        borderRadius: radii.md,
-        borderWidth: 1,
-        borderColor: palette.border,
-        padding: space.sm,
-        backgroundColor: palette.surface,
-      },
-      planPh: {
-        height: 120,
-        borderRadius: radii.sm,
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: palette.brandSubtle,
-      },
-      planTitle: { ...typography.bodyMd, fontWeight: "600", color: palette.text, marginTop: 8 },
-      planHint: { ...typography.caption, color: palette.textMuted, marginTop: 4 },
-      badgeRow: { flexDirection: "row", gap: 6, marginTop: 6, flexWrap: "wrap" },
-      badge: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: radii.pill,
-        backgroundColor: palette.surfaceMuted,
-      },
-      badgeText: { ...typography.caption, color: palette.textMuted, fontSize: 11 },
-      editBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        marginTop: 8,
-        alignSelf: "flex-start",
-        paddingVertical: 6,
-        paddingHorizontal: 10,
-        borderRadius: radii.pill,
-        borderWidth: 1,
-        borderColor: palette.border,
-        backgroundColor: palette.surfaceMuted,
-      },
-      editBtnText: { ...typography.caption, color: palette.brandNavy, fontWeight: "700" },
-    })
-  );
+  const styles = useStyles();
 
   const reportsQ = useQuery({
     queryKey: queryKeys.locker.reports,
@@ -126,50 +86,40 @@ export function GamePlansScreen() {
 
   const reportSections = useMemo(() => {
     const rows = reportsQ.data ?? [];
-    const reportsFallback = t("gamePlans.reportsFallback");
-    const isTrainee = accountType === AccountType.TRAINEE;
+    const reportsFallback = t("gamePlans.reportsFallback", { defaultValue: "Session" });
 
     return rows
       .map((grp: { _id?: { month?: number; day?: number; year?: number }; report?: unknown[] }) => {
         const data = ((grp.report ?? []) as Record<string, unknown>[]).filter((item) => {
           if (!myId) return true;
-          const trainerId = String(
-            (item.trainer as { _id?: string })?._id ?? item.trainer ?? ""
-          );
-          const traineeId = String(
-            (item.trainee as { _id?: string })?._id ?? item.trainee ?? ""
-          );
-          if (isTrainee) return traineeId === myId;
+          const trainerId = String((item.trainer as { _id?: string })?._id ?? item.trainer ?? "");
+          const traineeId = String((item.trainee as { _id?: string })?._id ?? item.trainee ?? "");
+          if (!isTrainer) return traineeId === myId;
           return trainerId === myId;
         });
         return {
-          title: formatReportDate(grp._id, reportsFallback),
+          date: formatReportDate(grp._id, reportsFallback),
           data,
         };
       })
-      .filter((section) => section.data.length > 0);
-  }, [reportsQ.data, t, accountType, myId]);
+      .filter((s) => s.data.length > 0);
+  }, [reportsQ.data, t, isTrainer, myId]);
 
   const openPlan = (item: Record<string, unknown>) => {
     const reportData = (item.reportData as { imageUrl?: string; title?: string }[] | undefined)?.[0];
     const img = reportData?.imageUrl;
-    const title = reportData?.title ?? String(item.title ?? t("gamePlans.planDefault"));
+    const title = reportData?.title ?? String(item.title ?? t("gamePlans.planDefault", { defaultValue: "Game Plan" }));
     const session = item.session as { report?: string; sessionRecordingUrl?: string } | undefined;
     const pdfName = session?.report;
-    const recording =
-      session?.sessionRecordingUrl ?? (item.sessionRecordingUrl as string | undefined);
+    const recording = session?.sessionRecordingUrl ?? (item.sessionRecordingUrl as string | undefined);
 
     const fromImg = img ? getS3ImageUrl(img) : "";
     const fromPdf = pdfName ? getS3ImageUrl(pdfName) : "";
-    const fromRec =
-      typeof recording === "string" && recording.length > 0 ? getS3ImageUrl(recording) : "";
+    const fromRec = typeof recording === "string" && recording.length > 0 ? getS3ImageUrl(recording) : "";
 
     const uri = fromPdf || fromImg || fromRec;
     if (!uri) {
-      Alert.alert(
-        t("gamePlans.nothingToPreviewTitle"),
-        t("gamePlans.nothingToPreviewBody")
-      );
+      Alert.alert(t("gamePlans.nothingToPreviewTitle"), t("gamePlans.nothingToPreviewBody"));
       return;
     }
 
@@ -180,11 +130,9 @@ export function GamePlansScreen() {
     setViewer({ uri, title, mode });
   };
 
-  const onRefresh = useCallback(() => {
-    void reportsQ.refetch();
-  }, [reportsQ]);
+  const onRefresh = useCallback(() => { void reportsQ.refetch(); }, [reportsQ]);
 
-  const planKind = (item: Record<string, unknown>) => {
+  const planKind = (item: Record<string, unknown>): KindType => {
     const reportData = (item.reportData as { imageUrl?: string }[] | undefined)?.[0];
     const session = item.session as { report?: string; sessionRecordingUrl?: string } | undefined;
     if (reportData?.imageUrl) return "image";
@@ -195,6 +143,8 @@ export function GamePlansScreen() {
     }
     return "none";
   };
+
+  const totalPlans = reportSections.reduce((n, s) => n + s.data.length, 0);
 
   return (
     <>
@@ -214,120 +164,126 @@ export function GamePlansScreen() {
             description={t("gamePlans.emptyDescription")}
           />
         ) : (
-          reportSections.map((section, si) => (
-            <View key={`${section.title}-${si}`} style={styles.section}>
-              <View style={styles.sectionHead}>
-                <Ionicons name="calendar-outline" size={18} color={c.iconPrimary} />
-                <Text style={styles.sectionTitle}>{section.title}</Text>
-              </View>
-              {section.data.map((item, index) => {
-                const reportData = (item.reportData as { imageUrl?: string; title?: string }[] | undefined)?.[0];
-                const title = reportData?.title ?? String(item.title ?? t("gamePlans.planDefault"));
-                const uri = reportData?.imageUrl ? getS3ImageUrl(reportData.imageUrl) : "";
-                const kind = planKind(item);
-                const sessionId = String(
-                  item.sessions ??
-                    (item.session as { _id?: string } | undefined)?._id ??
-                    ""
-                );
-                const trainerId = String(
-                  (item.trainer as { _id?: string })?._id ?? item.trainer ?? ""
-                );
-                const traineeId = String(
-                  (item.trainee as { _id?: string })?._id ?? item.trainee ?? ""
-                );
-                const traineeLabel = String(
-                  (item.trainee as { fullname?: string; fullName?: string })?.fullname ??
-                    (item.trainee as { fullName?: string })?.fullName ??
-                    ""
-                );
-                const canEdit =
-                  accountType !== AccountType.TRAINEE &&
-                  !!sessionId &&
-                  !!trainerId &&
-                  !!traineeId;
-
-                return (
-                  <Pressable
-                    key={`plan-${String(item._id ?? "row")}-${index}`}
-                    style={styles.planCard}
-                    onPress={() => openPlan(item)}
-                  >
-                    {uri ? (
-                      <ImageWithSkeleton
-                        uri={uri}
-                        width={planThumbWidth}
-                        height={120}
-                        borderRadius={radii.sm}
-                        resizeMode="cover"
-                        accessibilityLabel={title}
-                      />
-                    ) : (
-                      <View style={[styles.planPh, { width: planThumbWidth }]}>
-                        <Ionicons
-                          name={
-                            kind === "pdf"
-                              ? "document-text-outline"
-                              : kind === "video"
-                                ? "videocam-outline"
-                                : "document-outline"
-                          }
-                          size={32}
-                          color={c.brandAccent}
-                        />
-                      </View>
-                    )}
-                    <Text style={styles.planTitle} numberOfLines={2}>
-                      {title}
-                    </Text>
-                    {canEdit ? (
-                      <Pressable
-                        style={styles.editBtn}
-                        onPress={(e) => {
-                          e.stopPropagation?.();
-                          setEditPlan({
-                            sessionId,
-                            trainerId,
-                            traineeId,
-                            traineeName: traineeLabel || undefined,
-                          });
-                        }}
-                        hitSlop={8}
-                      >
-                        <Ionicons name="create-outline" size={18} color={c.brandNavy} />
-                        <Text style={styles.editBtnText}>{t("gamePlans.edit", "Edit plan")}</Text>
-                      </Pressable>
-                    ) : null}
-                    <View style={styles.badgeRow}>
-                      {kind !== "none" ? (
-                        <View style={styles.badge}>
-                          <Ionicons
-                            name={
-                              kind === "pdf"
-                                ? "document-outline"
-                                : kind === "video"
-                                  ? "play-outline"
-                                  : "image-outline"
-                            }
-                            size={12}
-                            color={c.textMuted}
-                          />
-                          <Text style={styles.badgeText}>
-                            {kind === "pdf"
-                              ? t("gamePlans.badgePdf")
-                              : kind === "video"
-                                ? t("gamePlans.badgeRecording")
-                                : t("gamePlans.badgeImage")}
-                          </Text>
-                        </View>
-                      ) : null}
-                      <Text style={styles.planHint}>{t("gamePlans.tapToPreview")}</Text>
-                    </View>
-                  </Pressable>
-                );
-              })}
+          <>
+            {/* total count header */}
+            <View style={styles.listHeader}>
+              <Ionicons name="folder-open-outline" size={18} color={c.brandNavy} />
+              <Text style={styles.listHeaderText}>
+                {t("gamePlans.totalPlans", {
+                  defaultValue: "{{count}} game plans",
+                  count: totalPlans,
+                })}
+              </Text>
             </View>
-          ))
+
+            {reportSections.map((section, si) => (
+              <View key={`${section.date}-${si}`} style={styles.section}>
+                {/* sticky-feeling date header */}
+                <View style={styles.dateHeader}>
+                  <View style={styles.dateIconWrap}>
+                    <Ionicons name="calendar-outline" size={15} color={c.brandNavy} />
+                  </View>
+                  <Text style={styles.dateText}>{section.date}</Text>
+                  <View style={styles.datePill}>
+                    <Text style={styles.datePillText}>{section.data.length}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.cardsWrap}>
+                  {section.data.map((item, index) => {
+                    const reportData = (item.reportData as { imageUrl?: string; title?: string }[] | undefined)?.[0];
+                    const title = reportData?.title ?? String(item.title ?? t("gamePlans.planDefault", { defaultValue: "Game Plan" }));
+                    const uri = reportData?.imageUrl ? getS3ImageUrl(reportData.imageUrl) : "";
+                    const kind = planKind(item);
+                    const km = KIND_META[kind];
+
+                    const sessionId = String(
+                      item.sessions ?? (item.session as { _id?: string } | undefined)?._id ?? ""
+                    );
+                    const trainerId = String((item.trainer as { _id?: string })?._id ?? item.trainer ?? "");
+                    const traineeId = String((item.trainee as { _id?: string })?._id ?? item.trainee ?? "");
+                    const traineeLabel = String(
+                      (item.trainee as { fullname?: string; fullName?: string })?.fullname ??
+                        (item.trainee as { fullName?: string })?.fullName ?? ""
+                    );
+                    const canEdit = isTrainer && !!sessionId && !!trainerId && !!traineeId;
+
+                    return (
+                      <Pressable
+                        key={`plan-${String(item._id ?? "row")}-${index}`}
+                        style={({ pressed }) => [styles.planCard, pressed && { opacity: 0.94 }]}
+                        onPress={() => openPlan(item)}
+                        accessibilityRole="button"
+                        accessibilityLabel={title}
+                      >
+                        {/* Hero area */}
+                        <View style={[styles.heroWrap, { width: cardWidth - space.md * 2 }]}>
+                          {uri ? (
+                            <ImageWithSkeleton
+                              uri={uri}
+                              width={cardWidth - space.md * 2}
+                              height={160}
+                              borderRadius={radii.md}
+                              resizeMode="cover"
+                              accessibilityLabel={title}
+                            />
+                          ) : (
+                            <View style={[styles.heroPh, { backgroundColor: km.bg }]}>
+                              <Ionicons name={km.icon} size={40} color={km.color} />
+                            </View>
+                          )}
+                          {/* kind badge overlaid on hero */}
+                          <View style={[styles.kindBadge, { backgroundColor: km.bg, borderColor: km.color + "44" }]}>
+                            <Ionicons name={km.icon} size={11} color={km.color} />
+                            <Text style={[styles.kindBadgeText, { color: km.color }]}>{km.label}</Text>
+                          </View>
+                        </View>
+
+                        {/* Content area */}
+                        <View style={styles.cardBody}>
+                          <Text style={styles.planTitle} numberOfLines={2}>{title}</Text>
+
+                          {/* Trainee tag for trainer view */}
+                          {isTrainer && traineeLabel ? (
+                            <View style={styles.traineeTag}>
+                              <Ionicons name="person-outline" size={11} color={c.textMuted} />
+                              <Text style={styles.traineeTagText} numberOfLines={1}>{traineeLabel}</Text>
+                            </View>
+                          ) : null}
+
+                          <View style={styles.cardFooter}>
+                            {/* Edit button for trainers */}
+                            {canEdit ? (
+                              <Pressable
+                                style={styles.editBtn}
+                                onPress={(e) => {
+                                  e.stopPropagation?.();
+                                  setEditPlan({ sessionId, trainerId, traineeId, traineeName: traineeLabel || undefined });
+                                }}
+                                hitSlop={8}
+                                accessibilityRole="button"
+                              >
+                                <Ionicons name="create-outline" size={14} color={c.brandNavy} />
+                                <Text style={styles.editBtnText}>{t("gamePlans.edit", { defaultValue: "Edit plan" })}</Text>
+                              </Pressable>
+                            ) : (
+                              <View />
+                            )}
+
+                            {/* Preview CTA */}
+                            <View style={styles.previewCta}>
+                              <Text style={styles.previewCtaText}>{t("gamePlans.tapToPreview", { defaultValue: "Tap to preview" })}</Text>
+                              <Ionicons name="arrow-forward" size={13} color={c.brandNavy} />
+                            </View>
+                          </View>
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            ))}
+          </>
         )}
       </LockerListShell>
 
@@ -355,5 +311,150 @@ export function GamePlansScreen() {
         mode={viewer?.mode ?? "pdf"}
       />
     </>
+  );
+}
+
+function useStyles() {
+  return useThemedStyles((palette) =>
+    StyleSheet.create({
+      listHeader: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: space.xs,
+        marginBottom: space.sm,
+        paddingHorizontal: 2,
+      },
+      listHeaderText: {
+        ...typography.titleSm,
+        color: palette.textMuted,
+        fontWeight: "600",
+      },
+      section: {
+        marginBottom: space.md,
+      },
+      dateHeader: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: space.xs,
+        marginBottom: space.sm,
+        paddingHorizontal: 2,
+      },
+      dateIconWrap: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: palette.brandSubtle,
+        alignItems: "center",
+        justifyContent: "center",
+      },
+      dateText: {
+        ...typography.titleSm,
+        color: palette.text,
+        fontWeight: "700",
+        flex: 1,
+      },
+      datePill: {
+        backgroundColor: palette.brandNavy,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: radii.pill,
+        minWidth: 24,
+        alignItems: "center",
+      },
+      datePillText: {
+        color: palette.brandTextOn,
+        fontSize: 11,
+        fontWeight: "700",
+      },
+      cardsWrap: {
+        gap: space.sm,
+      },
+      planCard: {
+        borderRadius: radii.lg,
+        borderWidth: 1,
+        borderColor: palette.border,
+        backgroundColor: palette.surfaceElevated,
+        overflow: "hidden",
+      },
+      heroWrap: {
+        position: "relative",
+      },
+      heroPh: {
+        height: 160,
+        alignItems: "center",
+        justifyContent: "center",
+        borderTopLeftRadius: radii.lg,
+        borderTopRightRadius: radii.lg,
+      },
+      kindBadge: {
+        position: "absolute",
+        top: 10,
+        left: 10,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: radii.pill,
+        borderWidth: 1,
+      },
+      kindBadgeText: {
+        fontSize: 11,
+        fontWeight: "700",
+      },
+      cardBody: {
+        padding: space.md,
+        gap: space.xs,
+      },
+      planTitle: {
+        ...typography.bodyMd,
+        fontWeight: "700",
+        color: palette.text,
+        lineHeight: 20,
+      },
+      traineeTag: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        marginTop: 2,
+      },
+      traineeTagText: {
+        ...typography.caption,
+        color: palette.textMuted,
+        flex: 1,
+      },
+      cardFooter: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        marginTop: space.xs,
+      },
+      editBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 5,
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        borderRadius: radii.pill,
+        borderWidth: 1,
+        borderColor: palette.border,
+        backgroundColor: palette.surfaceMuted,
+      },
+      editBtnText: {
+        ...typography.caption,
+        color: palette.brandNavy,
+        fontWeight: "700",
+      },
+      previewCta: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+      },
+      previewCtaText: {
+        ...typography.caption,
+        color: palette.brandNavy,
+        fontWeight: "600",
+      },
+    })
   );
 }

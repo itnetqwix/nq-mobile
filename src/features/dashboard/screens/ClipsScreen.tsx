@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { EmptyState, ImageWithSkeleton } from "../../../components/ui";
+import { ClipSectionSkeleton, EmptyState, ImageWithSkeleton } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { getClipPlaybackUrl, getClipThumbnailUrl } from "../../../lib/clipMediaUrl";
 import {
@@ -616,6 +616,7 @@ export function ClipsScreen() {
         refreshing={active.isRefetching}
         onRefresh={onRefresh}
         toolbar={toolbar}
+        renderSkeletonRow={() => <ClipSectionSkeleton rows={3} />}
       >
         {tab === "mine" && shareMode ? (
           <View style={styles.shareBar}>
