@@ -67,6 +67,7 @@ import {
 } from "../../../lib/sessions/sessionUtils";
 import { PostLessonConcernBanner } from "../../sessions/components/PostLessonConcernBanner";
 import { ProfilePhotoRequiredBanner } from "../components/shared/ProfilePhotoRequiredBanner";
+import { ReferFriendsBanner } from "../components/shared/ReferFriendsBanner";
 import { TrainerProfileModal } from "../../bookexpert/components/TrainerProfileModal";
 import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
 import { ScheduledBookingWizardModal } from "../../scheduled-booking/ScheduledBookingWizardModal";
@@ -645,6 +646,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
           onScheduleBook={setScheduleTrainer}
           onOpenWallet={() => openShell("wallet")}
           onOpenSession={openSession}
+          onOpenFriends={() => openFeature("friends")}
           contentContainerStyle={[gutter, styles.content]}
           onScroll={onHomeScroll}
           scrollEventThrottle={morphHome.scrollEventThrottle}
@@ -733,6 +735,8 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
               )}
 
               <LockerHub accountType={accountType} onOpenSurface={openShell} />
+
+              <ReferFriendsBanner onPressInvite={() => openShell("invite")} />
             </>
           }
         />
@@ -741,19 +745,17 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
       <TabScreenShell clearFloatingTabBar={false} background={themeColors.surface}>
         <DiscoverHomeChrome
           compactTop
-          headline={t("homeMarketplace.greeting", { name, defaultValue: `Hi, ${name}` })}
-          subline={t("trainerDashboard.roleTrainer")}
+          headline={name || t("trainerDashboard.roleTrainer", { defaultValue: "Trainer" })}
+          subline={undefined}
           profilePicture={(user as any)?.profile_picture}
           profileName={name}
           onPressProfile={() => openShell("settings")}
           showSearch={false}
           bottomSlot={
             <TrainerQuickChipsRow
-              onSchedule={() => openFeature("schedule")}
+              onSchedule={() => openFeature("availability")}
               onSessions={() => openFeature("upcoming-sessions")}
-              onWallet={() => openShell("wallet")}
               onClips={() => openShell("clips")}
-              onGoLive={() => void handleAvailabilityToggle(true)}
             />
           }
         />

@@ -9,7 +9,7 @@ type Props = {
 export function WizardTitleBlock({ trainerName }: Props) {
   return (
     <>
-      <Text style={styles.screenTitle}>Book instant lesson</Text>
+      <Text style={styles.screenTitle}>Book Instant Lesson</Text>
       <Text style={styles.trainerLine}>
         with <Text style={styles.trainerName}>{trainerName}</Text>
       </Text>

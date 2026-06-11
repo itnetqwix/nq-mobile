@@ -63,6 +63,7 @@ import { HomeHeroCarousel } from "../../../home/components/HomeHeroCarousel";
 import { HomeOffersCarousel } from "../../../home/components/HomeOffersCarousel";
 import { StickyBottomPromoBar } from "../../../home/components/StickyBottomPromoBar";
 import { DiscoverHomeChrome } from "../../../home/layout/DiscoverHomeChrome";
+import { MiniFriendsSection } from "../shared/MiniFriendsSection";
 import { useHomeScrollHandler } from "../../../home/hooks/useHomeScrollHandler";
 import { useSearchVoice } from "../../../home/hooks/useSearchVoice";
 import type { HomeCategoryChip } from "../../../home/components/HomeCategoryChipsRow";
@@ -86,6 +87,7 @@ type Props = {
   onToggleFavoriteGuest?: (t: Record<string, unknown>) => void;
   onOpenWallet?: () => void;
   onOpenSession?: (session: Record<string, unknown>) => void;
+  onOpenFriends?: () => void;
   leadingContent?: React.ReactNode;
   footer?: React.ReactNode;
   contentContainerStyle?: StyleProp<ViewStyle>;
@@ -109,6 +111,7 @@ export function TraineeDiscoverDashboard({
   onToggleFavoriteGuest,
   onOpenWallet,
   onOpenSession,
+  onOpenFriends,
   leadingContent,
   footer,
   contentContainerStyle,
@@ -286,18 +289,8 @@ export function TraineeDiscoverDashboard({
       ? t("traineeDiscover.roleTrainee")
       : accountType || t("menu.member");
 
-  const marketplaceHeadline = t("homeMarketplace.greeting", {
-    name,
-    defaultValue: `Hi, ${name}`,
-  });
-  const marketplaceSubline = isGuest
-    ? t("guest.exploringAsGuest")
-    : traineeTimeZone
-      ? t("homeMarketplace.sublineTz", {
-          tz: traineeTimeZone,
-          defaultValue: `Coaches in ${traineeTimeZone}`,
-        })
-      : roleLabel;
+  const marketplaceHeadline = name || t("traineeDiscover.roleTrainee", { defaultValue: "Trainee" });
+  const marketplaceSubline = isGuest ? t("guest.exploringAsGuest") : undefined;
 
   const listTitle = searchActive
     ? t("traineeDiscover.resultsFor", { query: trimmed })
@@ -338,20 +331,6 @@ export function TraineeDiscoverDashboard({
         onDismiss={() => setFiltersOpen(false)}
       />
 
-      {onOpenWallet && !isGuest ? (
-        <Pressable
-          style={({ pressed }) => [styles.walletCard, pressed && { opacity: 0.92 }]}
-          onPress={onOpenWallet}
-          accessibilityRole="button"
-          accessibilityLabel={t("traineeDiscover.walletA11y")}
-        >
-          <Ionicons name="wallet-outline" size={22} color={themeColors.brandNavy} />
-          <Text style={styles.walletLabel}>{t("traineeDiscover.walletCredits")}</Text>
-          <Text style={styles.walletValue}>{walletCredits}</Text>
-          <Ionicons name="chevron-forward" size={18} color={themeColors.textMuted} />
-        </Pressable>
-      ) : null}
-
       {!isGuest && nextSession ? (
         <ContinueWhereYouLeftOffCard
           session={nextSession}
@@ -359,24 +338,13 @@ export function TraineeDiscoverDashboard({
         />
       ) : null}
 
-      {!isGuest && !searchActive ? (
-        <ForYouTrainersSection
-          recentTrainerIds={recentTrainerIds}
-          onSelectTrainer={handleViewTrainer}
-        />
-      ) : null}
-
-      {!isGuest && !searchActive ? (
-        <GuestSeededCoachesSection onSelectTrainer={handleViewTrainer} />
-      ) : null}
-
-      {!isGuest && !searchActive && recentTrainers.length > 0 ? (
-        <RecentlyViewedTrainersRow rows={recentTrainers} onSelectTrainer={handleViewTrainer} />
-      ) : null}
-
       {!isGuest ? <PastBookedTrainersSection onSelectTrainer={handleViewTrainer} /> : null}
 
       {!isGuest ? <FavoriteCoachesSection onSelectTrainer={handleViewTrainer} /> : null}
+
+      {!isGuest && onOpenFriends ? (
+        <MiniFriendsSection onPressAll={onOpenFriends} />
+      ) : null}
 
       <View style={styles.listHeaderRow}>
         <View style={{ flex: 1 }}>

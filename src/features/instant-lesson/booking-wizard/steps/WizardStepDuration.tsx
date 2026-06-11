@@ -103,9 +103,9 @@ export function WizardStepDuration({
         </View>
       ) : eligibility?.eligible && eligibility.totalWindowMinutes ? (
         <Text style={styles.eligibilityOk}>
-          Coach is available. Lesson: {durationMinutes} min · Total hold: ~
-          {eligibility.totalWindowMinutes} min (accept + join windows + buffer).
+          Coach is available. Lesson: {durationMinutes} min
         </Text>
+   
       ) : null}
 
       <Text style={[sharedStepStyles.sectionTitle, styles.promoTitle]}>Promo code (optional)</Text>
@@ -153,20 +153,20 @@ export function WizardStepDuration({
         <View style={styles.discountCard}>
           <View style={styles.discountRow}>
             <Text style={styles.discountLabel}>Original Price</Text>
-            <Text style={styles.discountLabel}>${expectedPrice.toFixed(2)}</Text>
+            <Text style={[styles.discountLabel, styles.discountPrice]}>${expectedPrice.toFixed(2)}</Text>
           </View>
           <View style={styles.discountRow}>
-            <Text style={styles.discountGreen}>
+            <Text style={styles.discountGreen} numberOfLines={1} ellipsizeMode="tail">
               Discount ({promoResult.display_label || couponCode})
             </Text>
-            <Text style={styles.discountGreen}>
+            <Text style={[styles.discountGreen, styles.discountPrice]}>
               -${promoResult.discount_amount?.toFixed(2)}
             </Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.discountRow}>
             <Text style={styles.discountFinal}>Final Price</Text>
-            <Text style={styles.discountFinal}>${promoResult.final_amount?.toFixed(2)}</Text>
+            <Text style={[styles.discountFinal, styles.discountPrice]}>${promoResult.final_amount?.toFixed(2)}</Text>
           </View>
         </View>
       )}
@@ -202,7 +202,7 @@ export function WizardStepDuration({
       ) : null}
 
       <Pressable style={sharedStepStyles.primaryBtn} onPress={onNext}>
-        <Text style={sharedStepStyles.primaryBtnText}>Next: clips</Text>
+        <Text style={sharedStepStyles.primaryBtnText}>Next</Text>
         <Ionicons name="arrow-forward" size={18} color={c.brandTextOn} />
       </Pressable>
     </View>
@@ -273,11 +273,14 @@ function useDurationStyles() {
       },
       discountRow: {
         flexDirection: "row",
+        alignItems: "center",
         justifyContent: "space-between",
         marginBottom: 4,
+        gap: 8,
       },
-      discountLabel: { color: palette.textMuted, fontSize: 14 },
-      discountGreen: { color: palette.success, fontSize: 14, fontWeight: "600" },
+      discountLabel: { flex: 1, color: palette.textMuted, fontSize: 14 },
+      discountGreen: { flex: 1, color: palette.success, fontSize: 14, fontWeight: "600" },
+      discountPrice: { flex: 0, flexShrink: 0, textAlign: "right", minWidth: 64 },
       divider: { height: 1, backgroundColor: palette.success, marginVertical: 6 },
       discountFinal: { color: palette.iconPrimary, fontSize: 16, fontWeight: "700" },
       availableSection: { marginTop: 12 },

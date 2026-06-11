@@ -295,10 +295,16 @@ export function ClipsScreen() {
       },
       shareBarText: { flex: 1, ...typography.caption, color: palette.textMuted },
       shareBtn: {
-        paddingHorizontal: 12,
+        paddingHorizontal: 10,
         paddingVertical: 8,
         borderRadius: radii.md,
         backgroundColor: palette.brandNavy,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+      },
+      deleteBtn: {
+        backgroundColor: "#dc2626",
       },
       shareBtnText: { color: palette.brandTextOn, fontWeight: "700", fontSize: 13 },
       shareModeBtn: {
@@ -620,15 +626,49 @@ export function ClipsScreen() {
       >
         {tab === "mine" && shareMode ? (
           <View style={styles.shareBar}>
-            <Text style={styles.shareBarText}>{t("locker.shareModeHint")}</Text>
+            <Text style={styles.shareBarText}>
+              {selectedIds.length > 0
+                ? `${selectedIds.length} selected`
+                : t("locker.shareModeHint")}
+            </Text>
             <Pressable
               style={[styles.shareBtn, selectedIds.length === 0 && { opacity: 0.45 }]}
               disabled={selectedIds.length === 0}
               onPress={() => setShareModalVisible(true)}
             >
+              <Ionicons name="share-social-outline" size={14} color="#fff" />
               <Text style={styles.shareBtnText}>
-                {t("locker.shareMode")} ({selectedIds.length})
+                {t("locker.shareMode")}
               </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.shareBtn, styles.deleteBtn, selectedIds.length === 0 && { opacity: 0.45 }]}
+              disabled={selectedIds.length === 0}
+              onPress={() => {
+                Alert.alert(
+                  "Delete Clips",
+                  `Delete ${selectedIds.length} clip${selectedIds.length === 1 ? "" : "s"}? This cannot be undone.`,
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Delete",
+                      style: "destructive",
+                      onPress: async () => {
+                        for (const id of selectedIds) {
+                          try {
+                            await deleteLockerClip(id);
+                          } catch { /* skip failed deletions */ }
+                        }
+                        void queryClient.invalidateQueries({ queryKey: queryKeys.locker.myClips });
+                        exitShareMode();
+                      },
+                    },
+                  ]
+                );
+              }}
+            >
+              <Ionicons name="trash-outline" size={14} color="#fff" />
+              <Text style={styles.shareBtnText}>Delete</Text>
             </Pressable>
           </View>
         ) : null}
@@ -717,6 +757,7 @@ export function ClipsScreen() {
         title={viewer?.title}
         mode={viewer?.mode ?? "video"}
         sharedBy={viewer?.sharedBy}
+        clipId={viewer?.clipId}
         onShareExternal={
           viewer
             ? () =>
@@ -729,6 +770,30 @@ export function ClipsScreen() {
             : undefined
         }
         shareAccessibilityLabel={t("locker.shareExternal")}
+        onDeleteClip={
+          viewer?.clipId && tab === "mine" && !viewer.canRemove
+            ? () => {
+                const cId = viewer.clipId!;
+                Alert.alert("Delete Clip", "Delete this clip? This cannot be undone.", [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                      try {
+                        await deleteLockerClip(cId);
+                        void queryClient.invalidateQueries({ queryKey: queryKeys.locker.myClips });
+                        setViewer(null);
+                      } catch {
+                        Alert.alert("Error", "Could not delete the clip. Please try again.");
+                      }
+                    },
+                  },
+                ]);
+              }
+            : undefined
+        }
+        deleteAccessibilityLabel="Delete clip"
         onRemoveFromLocker={
           viewer?.canRemove && viewer.clipId
             ? () => confirmRemoveSharedClip({ _id: viewer.clipId } as LockerClip)

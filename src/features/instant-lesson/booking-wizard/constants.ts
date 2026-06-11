@@ -8,7 +8,7 @@ export const INSTANT_LESSON_DURATIONS = [
 
 export const MAX_CLIPS = 2;
 
-export const WIZARD_STEPS: readonly WizardStep[] = ["duration", "clips", "payment", "confirm"];
+export const WIZARD_STEPS: readonly WizardStep[] = ["duration", "clips", "confirm"];
 
 export function wizardStepIndex(step: WizardStep): number {
   return WIZARD_STEPS.indexOf(step);

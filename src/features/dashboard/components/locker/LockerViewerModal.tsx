@@ -32,6 +32,11 @@ type Props = {
   title?: string;
   mode: LockerViewerMode;
   sharedBy?: string;
+  clipId?: string;
+  /** When set, shows delete-clip control (own clips). */
+  onDeleteClip?: () => void;
+  deleteBusy?: boolean;
+  deleteAccessibilityLabel?: string;
   /** When set, shows remove-from-locker control (shared clips). */
   onRemoveFromLocker?: () => void;
   removeBusy?: boolean;
@@ -54,6 +59,10 @@ export function LockerViewerModal({
   title,
   mode,
   sharedBy,
+  clipId,
+  onDeleteClip,
+  deleteBusy,
+  deleteAccessibilityLabel = "Delete clip",
   onRemoveFromLocker,
   removeBusy,
   removeAccessibilityLabel = "Remove from locker",
@@ -88,15 +97,32 @@ export function LockerViewerModal({
   const nativeMode = resolvedMode === "video" ? "video" : "image";
 
   const openExternally = useCallback(async () => {
+    // For clips: open the Netqwix web URL, not the raw S3 URL
+    const webUrl = clipId
+      ? `https://netqwix.com/clips/${encodeURIComponent(clipId)}`
+      : uri;
     try {
-      const can = await Linking.canOpenURL(uri);
+      const can = await Linking.canOpenURL(webUrl);
       if (!can) {
         Alert.alert("Cannot open link", "No app on the device can open this file.");
         return;
       }
-      await Linking.openURL(uri);
+      await Linking.openURL(webUrl);
     } catch {
       Alert.alert("Failed to open", "Could not launch the system browser for this file.");
+    }
+  }, [uri, clipId]);
+
+  const downloadVideo = useCallback(async () => {
+    try {
+      const can = await Linking.canOpenURL(uri);
+      if (!can) {
+        Alert.alert("Download", "Cannot access the file URL.");
+        return;
+      }
+      await Linking.openURL(uri);
+    } catch {
+      Alert.alert("Download failed", "Could not start the download.");
     }
   }, [uri]);
 
@@ -119,37 +145,62 @@ export function LockerViewerModal({
           onClose={onClose}
           onOpenExternal={openExternally}
           rightSlot={
-            onShareExternal || onRemoveFromLocker ? (
-              <View style={{ flexDirection: "row", gap: 8 }}>
-                {onShareExternal ? (
-                  <Pressable
-                    onPress={onShareExternal}
-                    style={styles.iconBtn}
-                    hitSlop={10}
-                    accessibilityRole="button"
-                    accessibilityLabel={shareAccessibilityLabel}
-                  >
-                    <Ionicons name="share-outline" size={22} color="#fff" />
-                  </Pressable>
-                ) : null}
-                {onRemoveFromLocker ? (
-                  <Pressable
-                    onPress={onRemoveFromLocker}
-                    style={styles.iconBtn}
-                    hitSlop={10}
-                    disabled={removeBusy}
-                    accessibilityRole="button"
-                    accessibilityLabel={removeAccessibilityLabel}
-                  >
-                    {removeBusy ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <Ionicons name="trash-outline" size={22} color={colors.dangerTextOn} />
-                    )}
-                  </Pressable>
-                ) : null}
-              </View>
-            ) : undefined
+            <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+              {resolvedMode === "video" ? (
+                <Pressable
+                  onPress={downloadVideo}
+                  style={styles.iconBtn}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel="Download video"
+                >
+                  <Ionicons name="download-outline" size={22} color="#fff" />
+                </Pressable>
+              ) : null}
+              {onShareExternal ? (
+                <Pressable
+                  onPress={onShareExternal}
+                  style={styles.iconBtn}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel={shareAccessibilityLabel}
+                >
+                  <Ionicons name="share-outline" size={22} color="#fff" />
+                </Pressable>
+              ) : null}
+              {onDeleteClip ? (
+                <Pressable
+                  onPress={onDeleteClip}
+                  style={styles.iconBtn}
+                  hitSlop={10}
+                  disabled={deleteBusy}
+                  accessibilityRole="button"
+                  accessibilityLabel={deleteAccessibilityLabel}
+                >
+                  {deleteBusy ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Ionicons name="trash-outline" size={22} color={colors.dangerTextOn} />
+                  )}
+                </Pressable>
+              ) : null}
+              {onRemoveFromLocker ? (
+                <Pressable
+                  onPress={onRemoveFromLocker}
+                  style={styles.iconBtn}
+                  hitSlop={10}
+                  disabled={removeBusy}
+                  accessibilityRole="button"
+                  accessibilityLabel={removeAccessibilityLabel}
+                >
+                  {removeBusy ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Ionicons name="trash-outline" size={22} color={colors.dangerTextOn} />
+                  )}
+                </Pressable>
+              ) : null}
+            </View>
           }
         />
 
@@ -222,30 +273,14 @@ export function LockerViewerModal({
         ) : null}
 
         <View style={[styles.footer, { paddingBottom: insets.bottom + 8 }]}>
-          {onRemoveFromLocker ? (
-            <Pressable
-              style={[styles.removeFooterBtn, removeBusy && { opacity: 0.6 }]}
-              onPress={onRemoveFromLocker}
-              disabled={removeBusy}
-              accessibilityRole="button"
-              accessibilityLabel={removeAccessibilityLabel}
-            >
-              {removeBusy ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Ionicons name="trash-outline" size={18} color="#fff" />
-              )}
-              <Text style={styles.removeFooterText}>{removeAccessibilityLabel}</Text>
-            </Pressable>
-          ) : null}
           <Text style={styles.footerText}>
-            {resolvedMode === "audio"
-              ? "Session audio recording"
-              : resolvedMode === "video"
-                ? "Use player controls to scrub · Pinch-friendly fullscreen"
-                : resolvedMode === "pdf"
-                  ? "PDF preview · Open externally if it doesn’t render"
-                  : "Pinch to zoom in system viewer when opened externally"}
+            {resolvedMode === 'audio'
+              ? 'Audio recording • Use headphones for best quality'
+              : resolvedMode === 'video'
+                ? 'Tap to play/pause • Scrub with controls • ⬇ to download'
+                : resolvedMode === 'pdf'
+                  ? 'PDF preview • Tap ↗ to open in browser'
+                  : 'Tap ↗ to open full resolution in browser'}
           </Text>
         </View>
       </View>

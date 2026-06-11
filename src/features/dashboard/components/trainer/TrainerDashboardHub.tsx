@@ -2,7 +2,6 @@ import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import ReviewAnalysisCard from "../../../ai/ReviewAnalysisCard";
 import { queryKeys } from "../../../../lib/queryKeys";
 import { fetchTrainerSlots } from "../../../home/api/homeApi";
 import type { UtilitySurfaceId } from "../../config/shellSurfaces";
@@ -19,6 +18,8 @@ import { TrainerRecentTraineesSection } from "./TrainerRecentTraineesSection";
 import { FriendRequestTilesSkeleton } from "../../../../components/ui";
 import { TrainerFriendRequestsSection } from "./TrainerFriendRequestsSection";
 import { TrainerLockerSection } from "./TrainerLockerSection";
+import { MiniFriendsSection } from "../shared/MiniFriendsSection";
+import { ReferFriendsBanner } from "../shared/ReferFriendsBanner";
 import { createTrainerDashboardStyles } from "./trainerDashboardTheme";
 import { useThemeColors, useThemedStyles } from "../../../../theme";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
@@ -92,7 +93,7 @@ function TrainerDashboardHubInner({
               onlineStatus={showAsOnline ? "online" : "offline"}
             />
             <View style={theme.flex1}>
-              <Text style={theme.welcome}>{t("trainerDashboard.welcome", { name })}</Text>
+              <Text style={theme.welcome}>{name}</Text>
               <Text style={theme.role}>{t("trainerDashboard.roleTrainer")}</Text>
               <TrainerGreetingRating onPress={() => onOpenReviews?.()} />
             </View>
@@ -139,6 +140,8 @@ function TrainerDashboardHubInner({
 
       <TrainerRecentTraineesSection trainees={recentTrainees} />
 
+      <MiniFriendsSection onPressAll={() => onOpenSurface("friends" as any)} />
+
       <PerformanceTipsCard
         pendingCount={pendingSessions.length}
         showAsOnline={showAsOnline}
@@ -147,7 +150,7 @@ function TrainerDashboardHubInner({
 
       <RecentTraineeClipsSection onOpenClips={onOpenClips} />
 
-      <ReviewAnalysisCard embedded />
+      <ReferFriendsBanner onPressInvite={() => onOpenSurface("invite" as any)} />
 
       <TrainerLockerSection accountType={accountType} onOpenSurface={onOpenSurface} />
     </View>

@@ -74,6 +74,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     discount_amount?: number;
     final_amount?: number;
     display_label?: string;
+    sponsor_type?: string | null;
   } | null>(null);
   const [visiblePromos, setVisiblePromos] = useState<any[]>([]);
 
@@ -341,15 +342,15 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
   const goNext = useCallback(() => {
     const i = wizardStepIndex(step);
     if (step === "duration" && !validateCoupon()) return;
-    const nextStep = WIZARD_STEPS[i + 1];
-    if (step === "clips" && nextStep === "payment" && requiresPayment && payableAmount > 0) {
+    // When going from clips → confirm, check wallet balance if payment is required.
+    if (step === "clips" && requiresPayment && payableAmount > 0) {
       void (async () => {
         const quoteTotal =
           chargeTotalDollars(pricingQuote ?? durationPreviewQuote) ?? payableAmount;
         const ok = await confirmProceedToPaymentIfWalletShort(quoteTotal, (shortfall) => {
           navigateToWalletTopUp(shortfall);
         });
-        if (ok) setStep("payment");
+        if (ok) setStep("confirm");
       })();
       return;
     }
@@ -374,11 +375,12 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
         duration: durationMinutes,
         charging_price: expectedPrice,
       };
-      if (paymentIntentId) bookingPayload.payment_intent_id = paymentIntentId;
-      if (paymentMethod === "wallet") {
+      // Payment step is skipped — always pay via wallet (backend deducts balance).
+      if (requiresPayment) {
         bookingPayload.payment_method = "wallet";
         if (pinSessionToken) bookingPayload.pin_session_token = pinSessionToken;
       }
+      if (paymentIntentId) bookingPayload.payment_intent_id = paymentIntentId;
       if (couponCode.trim()) bookingPayload.coupon_code = couponCode.trim();
       if (quoteId) bookingPayload.quote_id = quoteId;
       const res = await apiClient.post(API_ROUTES.trainee.bookInstantMeeting, bookingPayload, {
@@ -425,22 +427,10 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
       );
       return;
     }
-    const promoMadeFree = requiresPayment && chargingPrice === 0 && !paymentIntentId;
-    if (requiresPayment && !paymentIntentId && !promoMadeFree) {
-      Alert.alert(
-        "Payment required",
-        `This trainer charges $${trainerHourlyRate}/hr. Please complete payment before booking.`
-      );
-      return;
-    }
     submitMutation.mutate();
   }, [
     validateCoupon,
     submitMutation,
-    requiresPayment,
-    paymentIntentId,
-    trainerHourlyRate,
-    chargingPrice,
     eligibilityQuery.data,
   ]);
 

@@ -170,7 +170,7 @@ export function TrainerOnlineToggle({ value, onToggle, embedded }: Props) {
           <Animated.View style={[styles.statusDot, { backgroundColor: dotColor }]}>
             <Ionicons
               name={displayOnline ? "checkmark-circle" : "moon-outline"}
-              size={22}
+              size={16}
               color="#fff"
             />
           </Animated.View>
@@ -193,11 +193,6 @@ export function TrainerOnlineToggle({ value, onToggle, embedded }: Props) {
               />
             ) : null}
           </View>
-          <Animated.Text style={[styles.subtitle, { color: subtitleColor }]}>
-            {displayOnline
-              ? "Visible in chat, booking, and to trainees browsing coaches"
-              : "Hidden from online lists — you can still use the app normally"}
-          </Animated.Text>
         </Pressable>
 
         <View
@@ -239,27 +234,27 @@ const styles = StyleSheet.create({
   pressable: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: space.md,
+    paddingVertical: 10,
     paddingHorizontal: space.md,
-    gap: space.md,
-    minHeight: 76,
+    gap: space.sm,
+    minHeight: 52,
   },
   iconWrap: {
-    width: 44,
-    height: 44,
+    width: 32,
+    height: 32,
     alignItems: "center",
     justifyContent: "center",
   },
   statusRing: {
     position: "absolute",
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
   },
   statusDot: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -273,17 +268,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   title: {
-    ...typography.subtitle,
+    ...typography.bodySm,
     fontWeight: "700",
   },
   syncSpinner: {
     marginLeft: 2,
-  },
-  subtitle: {
-    ...typography.caption,
-    marginTop: 4,
-    lineHeight: 18,
-    opacity: 0.92,
   },
   switchWrap: {
     borderRadius: 16,

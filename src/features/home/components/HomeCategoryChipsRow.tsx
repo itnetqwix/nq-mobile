@@ -57,13 +57,13 @@ export function HomeCategoryChipsRow({
             <View style={[styles.iconWrap, active && styles.iconWrapActive]}>
               <Ionicons
                 name={item.icon ?? "ellipse-outline"}
-                size={22}
+                size={16}
                 color={active ? c.brandTextOn : c.brandNavy}
               />
             </View>
             <Text
               style={[styles.label, active && styles.labelActive]}
-              numberOfLines={2}
+              numberOfLines={1}
             >
               {item.label}
             </Text>
@@ -83,21 +83,22 @@ function useStyles() {
     StyleSheet.create({
       strip: {
         paddingHorizontal: space.md,
-        paddingBottom: space.sm,
-        gap: space.md,
+        paddingBottom: space.xs,
+        paddingTop: space.xs,
+        gap: space.sm,
       },
       chipWrap: {
         alignItems: "center",
-        width: 72,
-        minHeight: 64,
+        width: 54,
+        minHeight: 52,
       },
       iconWrap: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: palette.surfaceElevated,
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: palette.brandSubtle,
         borderWidth: 1,
-        borderColor: palette.border,
+        borderColor: palette.brandAccentSubtle,
         alignItems: "center",
         justifyContent: "center",
       },
@@ -106,21 +107,22 @@ function useStyles() {
         borderColor: c.brandNavy,
       },
       label: {
-        ...typography.caption,
+        fontSize: 10,
+        fontWeight: "600",
         color: palette.textMuted,
         textAlign: "center",
-        marginTop: space.xs,
-        fontWeight: "600",
+        marginTop: 3,
+        lineHeight: 13,
       },
       labelActive: {
-        color: palette.text,
+        color: palette.brandNavy,
         fontWeight: "700",
       },
       underline: {
-        marginTop: 6,
-        height: 3,
-        width: 28,
-        borderRadius: 2,
+        marginTop: 4,
+        height: 2,
+        width: 20,
+        borderRadius: 1,
       },
     })
   );

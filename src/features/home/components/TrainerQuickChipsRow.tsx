@@ -8,55 +8,33 @@ import {
 type Props = {
   onSchedule: () => void;
   onSessions: () => void;
-  onWallet?: () => void;
   onClips: () => void;
-  onGoLive?: () => void;
 };
 
-/** Trainer home quick actions as Blinkit-style chips. */
-export function TrainerQuickChipsRow({
-  onSchedule,
-  onSessions,
-  onWallet,
-  onClips,
-  onGoLive,
-}: Props) {
+/** Trainer home quick actions — Schedule (→ Availability) · Sessions (→ My Sessions) · Clips */
+export function TrainerQuickChipsRow({ onSchedule, onSessions, onClips }: Props) {
   const { t } = useAppTranslation();
 
-  const items = useMemo<HomeCategoryChip[]>(() => {
-    const row: HomeCategoryChip[] = [
+  const items = useMemo<HomeCategoryChip[]>(
+    () => [
       {
         id: "schedule",
-        label: t("trainerDashboard.quickSchedule", { defaultValue: "Schedule" }),
+        label: t("trainerDashboard.quickAvailability", { defaultValue: "Availability" }),
         icon: "calendar-outline",
       },
       {
         id: "sessions",
-        label: t("trainerDashboard.quickSessions", { defaultValue: "Sessions" }),
+        label: t("trainerDashboard.quickMySessions", { defaultValue: "My Sessions" }),
         icon: "time-outline",
       },
-    ];
-    if (onWallet) {
-      row.push({
-        id: "wallet",
-        label: t("trainerDashboard.quickWallet", { defaultValue: "Wallet" }),
-        icon: "wallet-outline",
-      });
-    }
-    row.push({
-      id: "clips",
-      label: t("trainerDashboard.quickClips", { defaultValue: "Clips" }),
-      icon: "film-outline",
-    });
-    if (onGoLive) {
-      row.push({
-        id: "live",
-        label: t("trainerDashboard.quickGoLive", { defaultValue: "Go live" }),
-        icon: "radio-outline",
-      });
-    }
-    return row;
-  }, [t, onWallet, onGoLive]);
+      {
+        id: "clips",
+        label: t("trainerDashboard.quickClips", { defaultValue: "Clips" }),
+        icon: "film-outline",
+      },
+    ],
+    [t]
+  );
 
   const handleSelect = (id: string | null) => {
     if (!id) return;
@@ -67,16 +45,8 @@ export function TrainerQuickChipsRow({
       case "sessions":
         onSessions();
         break;
-      case "wallet":
-        onWallet?.();
-        break;
       case "clips":
         onClips();
-        break;
-      case "live":
-        onGoLive?.();
-        break;
-      default:
         break;
     }
   };

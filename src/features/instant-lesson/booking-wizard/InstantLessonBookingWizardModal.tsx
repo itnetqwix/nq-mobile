@@ -9,8 +9,6 @@ import { WizardTitleBlock } from "./WizardTitleBlock";
 import { WizardStepClips } from "./steps/WizardStepClips";
 import { WizardStepConfirm } from "./steps/WizardStepConfirm";
 import { WizardStepDuration } from "./steps/WizardStepDuration";
-import { navigateToWalletTopUp } from "../../../navigation/navigationRef";
-import { WizardStepPayment } from "./steps/WizardStepPayment";
 
 /**
  * Trainee instant-lesson booking: multi-step flow (duration → clips → confirm).
@@ -63,27 +61,6 @@ export function InstantLessonBookingWizardModal({ visible, trainer, onDismiss }:
               onToggleClip={w.toggleClip}
               onSkip={w.goNext}
               onNext={w.goNext}
-            />
-          )}
-
-          {w.step === "payment" && (
-            <WizardStepPayment
-              trainer={w.trainer}
-              durationMinutes={w.durationMinutes}
-              expectedPrice={w.expectedPrice}
-              payableAmount={w.payableAmount}
-              promoDiscountAmount={w.promoDiscountAmount}
-              promoSponsorType={w.promoSponsorType}
-              promoLabel={w.promoLabel}
-              promoResult={w.promoResult}
-              couponCode={w.couponCode}
-              userStripeId={w.userStripeId}
-              onPaymentComplete={w.handlePaymentComplete}
-              onNext={w.goNext}
-              onAddFunds={(shortfall) => {
-                onDismiss();
-                navigateToWalletTopUp(shortfall);
-              }}
             />
           )}
 

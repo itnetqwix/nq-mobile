@@ -89,6 +89,7 @@ export type MainTabParamList = {
         open?: ChatTabOpenPayload;
       }
     | undefined;
+  Capture: undefined;
 };
 
 /** Drawer wraps the bottom-tab shell — mirrors web `DashboardLayout` + left rail. */

@@ -10,6 +10,7 @@ import { AppScreenHeader } from "./AppScreenHeader";
 import { FloatingTabBar } from "./FloatingTabBar";
 import { TabBarScrollProvider } from "./TabBarScrollContext";
 import { HomeNavigator } from "./HomeNavigator";
+import { CaptureNavigator } from "./CaptureNavigator";
 import { TabSwipeShell } from "./TabSwipeShell";
 import i18n from "../i18n";
 import type { MainTabParamList } from "./types";
@@ -116,6 +117,18 @@ export function MainTabs() {
           </TabSwipeShell>
         )}
       </Tab.Screen>
+
+      <Tab.Screen
+        name="Capture"
+        component={CaptureNavigator}
+        options={{
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="videocam-outline" color={color} size={size} />
+          ),
+          tabBarLabel: i18n.t("tabs.capture", { defaultValue: "Capture" }),
+        }}
+      />
     </Tab.Navigator>
     </TabBarScrollProvider>
   );

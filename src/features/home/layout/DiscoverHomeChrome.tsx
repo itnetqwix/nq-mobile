@@ -10,6 +10,7 @@ import {
   type HomeCategoryChip,
 } from "../components/HomeCategoryChipsRow";
 import { HomeStickySearchBar } from "../components/HomeStickySearchBar";
+import { NetqwixLogo } from "../../../components/brand/NetqwixLogo";
 import type { VoiceInputState } from "../../ai/useVoiceInput";
 
 type Props = {
@@ -76,16 +77,18 @@ export function DiscoverHomeChrome({
     >
       <View style={styles.topRow}>
         <View style={styles.headlineCol}>
-          <Text
-            style={[styles.headline, text.titleSm, { color: c.brandNavy, fontWeight: "800" }]}
-            numberOfLines={a11y.preferSingleLineTitles ? 1 : 2}
-          >
-            {headline}
-          </Text>
+          <NetqwixLogo
+            variant="wordmark"
+            maxWidth={160}
+            height={32}
+            compact
+            align="start"
+            style={{ marginBottom: 0 }}
+          />
           {subline ? (
             <Text
               style={[styles.subline, text.caption, { color: c.textSecondary }]}
-              numberOfLines={a11y.preferSingleLineTitles ? 1 : 2}
+              numberOfLines={1}
             >
               {subline}
             </Text>

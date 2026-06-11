@@ -83,7 +83,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
   },
   {
     id: "instant-booking",
-    label: "Instant booking",
+    label: "Instant Booking",
     icon: "flash-outline",
     target: { kind: "feature", featureId: "instant-booking" },
     surfaces: ["drawer", "more"],
@@ -92,7 +92,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
   },
   {
     id: "book-lesson",
-    label: "Book expert",
+    label: "Book Expert",
     icon: "book-outline",
     target: { kind: "feature", featureId: "book-lesson" },
     surfaces: ["drawer", "more"],
@@ -101,7 +101,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
   },
   {
     id: "students",
-    label: "My trainees",
+    label: "My Trainees",
     icon: "school-outline",
     target: { kind: "feature", featureId: "students" },
     surfaces: ["more"],
@@ -110,7 +110,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
   },
   {
     id: "upcoming-sessions",
-    label: "Upcoming sessions",
+    label: "Upcoming Sessions",
     icon: "time-outline",
     target: { kind: "feature", featureId: "upcoming-sessions" },
     surfaces: ["drawer", "more"],
@@ -126,7 +126,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
   },
   {
     id: "my-community",
-    label: "My community",
+    label: "My Community",
     icon: "people-outline",
     target: { kind: "feature", featureId: "my-community" },
     surfaces: ["drawer", "more"],
@@ -142,7 +142,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
   },
   {
     id: "clipSubmissions",
-    label: "Library submissions",
+    label: "Library Submissions",
     icon: "library-outline",
     target: { kind: "shell", surfaceId: "clipSubmissions" },
     surfaces: ["more"],
@@ -150,7 +150,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
   },
   {
     id: "gamePlans",
-    label: "Game plans",
+    label: "Game Plans",
     icon: "clipboard-outline",
     target: { kind: "shell", surfaceId: "gamePlans" },
     surfaces: ["drawer", "more"],
@@ -182,7 +182,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
   },
   {
     id: "invite",
-    label: "Invite friends",
+    label: "Invite Friends",
     icon: "mail-outline",
     target: { kind: "shell", surfaceId: "invite" },
     surfaces: ["drawer", "more"],
@@ -190,7 +190,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
   },
   {
     id: "reportIssue",
-    label: "Report an issue",
+    label: "Report An Issue",
     icon: "alert-circle-outline",
     target: { kind: "shell", surfaceId: "reportIssue" },
     surfaces: ["drawer", "more"],
@@ -198,7 +198,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
   },
   {
     id: "contact-us",
-    label: "Contact us",
+    label: "Contact Us",
     icon: "mail-outline",
     target: { kind: "feature", featureId: "contact-us" },
     surfaces: ["drawer", "more"],
@@ -206,7 +206,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
   },
   {
     id: "about-us",
-    label: "About us",
+    label: "About Us",
     icon: "information-circle-outline",
     target: { kind: "feature", featureId: "about-us" },
     surfaces: ["drawer", "more"],
@@ -221,19 +221,20 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
     group: "tools",
   },
 
-  {
-    id: "blogs",
-    label: "Blog",
-    icon: "newspaper-outline",
-    target: { kind: "feature", featureId: "blogs" },
-    surfaces: ["drawer", "more"],
-    group: "tools",
-  },
+  // Blog section temporarily hidden
+  // {
+  //   id: "blogs",
+  //   label: "Blog",
+  //   icon: "newspaper-outline",
+  //   target: { kind: "feature", featureId: "blogs" },
+  //   surfaces: ["drawer", "more"],
+  //   group: "tools",
+  // },
 
   /** Items below are only reachable via the More menu or deep links. */
   {
     id: "practice-session",
-    label: "Practice session",
+    label: "Practice Session",
     icon: "fitness-outline",
     target: { kind: "feature", featureId: "practice-session" },
     surfaces: ["more"],
@@ -241,7 +242,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
   },
   {
     id: "savedLessons",
-    label: "Saved lessons",
+    label: "Saved Lessons",
     icon: "bookmark-outline",
     target: { kind: "shell", surfaceId: "savedLessons" },
     surfaces: ["more"],
@@ -249,7 +250,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
   },
   {
     id: "trainerSchedule",
-    label: "Manage availability",
+    label: "Manage Availability",
     icon: "calendar-outline",
     target: { kind: "shell", surfaceId: "trainerSchedule" },
     surfaces: ["more"],
@@ -258,7 +259,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
   },
   {
     id: "editProfile",
-    label: "Edit profile",
+    label: "Edit Profile",
     icon: "person-outline",
     target: { kind: "shell", surfaceId: "editProfile" },
     surfaces: [],
@@ -280,7 +281,6 @@ export function navMatrixFor(
       "about-us",
       "contact-us",
       "settings",
-      "blogs",
     ]);
     return NAV_MATRIX.filter(
       (entry) => entry.surfaces.includes(surface) && guestIds.has(entry.id)
