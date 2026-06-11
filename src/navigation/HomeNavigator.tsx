@@ -1,6 +1,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React from "react";
 import { useThemeColors } from "../theme";
+import { NetqwixLogo } from "../components/brand/NetqwixLogo";
 import { dashboardRouteById } from "../features/dashboard/config/dashboardRoutes";
 import { shellSurfaceById } from "../features/dashboard/config/shellSurfaces";
 import { DashboardHomeEntry } from "./DashboardHomeEntry";
@@ -41,7 +42,19 @@ export function HomeNavigator() {
       <Stack.Screen
         name="DashboardHome"
         component={DashboardHomeEntry}
-        options={{ title: i18n.t("nav.dashboard") }}
+        options={{
+          title: i18n.t("nav.dashboard"),
+          headerTitle: () => (
+            <NetqwixLogo
+              variant="wordmark"
+              maxWidth={160}
+              height={32}
+              compact
+              align="center"
+              style={{ marginBottom: 2 }}
+            />
+          ),
+        }}
       />
       <Stack.Screen
         name="DashboardFeature"

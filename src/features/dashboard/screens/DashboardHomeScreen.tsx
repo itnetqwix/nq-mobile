@@ -686,17 +686,6 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
                 </HomeSection>
               ) : null}
 
-              {showEmptyDashboard ? (
-                <HomeSection testID="home-empty-sessions-hint" title={t("dashboardHome.upcomingSessions")}>
-                  <DashboardEmptyWelcome
-                    onBookLesson={() =>
-                      (navigation as { navigate: (name: string) => void }).navigate("Schedule")
-                    }
-                    onOpenClips={() => openShell("clips")}
-                  />
-                </HomeSection>
-              ) : null}
-
               {recentCompletedForConcern ? (
                 <PostLessonConcernBanner
                   sessionId={String(recentCompletedForConcern._id ?? recentCompletedForConcern.id)}
@@ -720,6 +709,19 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
                 />
               )}
 
+              <ReferFriendsBanner onPressInvite={() => openShell("invite")} />
+
+              {showEmptyDashboard ? (
+                <HomeSection testID="home-empty-sessions-hint" title={t("dashboardHome.upcomingSessions")}>
+                  <DashboardEmptyWelcome
+                    onBookLesson={() =>
+                      (navigation as { navigate: (name: string) => void }).navigate("Schedule")
+                    }
+                    onOpenClips={() => openShell("clips")}
+                  />
+                </HomeSection>
+              ) : null}
+
               {upcomingConfirmed.length > 0 && nowSessions.length === 0 && (
                 <SessionListSection
                   title={t("dashboardHome.upcomingSessions")}
@@ -735,8 +737,6 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
               )}
 
               <LockerHub accountType={accountType} onOpenSurface={openShell} />
-
-              <ReferFriendsBanner onPressInvite={() => openShell("invite")} />
             </>
           }
         />
@@ -745,11 +745,12 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
       <TabScreenShell clearFloatingTabBar={false} background={themeColors.surface}>
         <DiscoverHomeChrome
           compactTop
-          headline={name || t("trainerDashboard.roleTrainer", { defaultValue: "Trainer" })}
-          subline={undefined}
+          role={AccountType.TRAINER}
           profilePicture={(user as any)?.profile_picture}
           profileName={name}
-          onPressProfile={() => openShell("settings")}
+          user={user as Record<string, unknown> | undefined}
+          onPressProfile={() => openShell("editProfile")}
+          onPressReviews={() => openShell("trainerReviews")}
           showSearch={false}
           bottomSlot={
             <TrainerQuickChipsRow

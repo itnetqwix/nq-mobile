@@ -1,6 +1,5 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React, { useEffect, useState } from "react";
-import { BrandedSessionLoader } from "../components/brand/BrandedSessionLoader";
 import { AppUnlockGate } from "../features/auth/components/AppUnlockGate";
 import { useAuth } from "../features/auth/context/AuthContext";
 import { OnboardingNavigator } from "./OnboardingNavigator";
@@ -46,13 +45,7 @@ export function RootNavigator() {
     if (status !== "signedIn") setStartVerificationEarly(false);
   }, [status]);
 
-  const authLoading = status === "loading";
   const signedIn = status === "signedIn";
-  const gateLoading = signedIn && verificationGate.loading;
-
-  if (authLoading || gateLoading) {
-    return <BrandedSessionLoader />;
-  }
 
   const isAccountRejected = signedIn && String(user?.status ?? "").toLowerCase() === "rejected";
 

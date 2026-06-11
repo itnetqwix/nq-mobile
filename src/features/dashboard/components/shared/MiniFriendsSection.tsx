@@ -2,12 +2,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Avatar } from "../../../../components/ui";
 import { queryKeys } from "../../../../lib/queryKeys";
-import { getS3ImageUrl } from "../../../../lib/imageUtils";
 import { fetchFriends } from "../../../home/api/homeApi";
-import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
+import { space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
+import { DashboardPersonTile, PERSON_TILE_AVATAR } from "./DashboardPersonTile";
 
 const MAX_DISPLAY = 5;
 
@@ -67,32 +66,25 @@ export function MiniFriendsSection({ onPressAll }: Props) {
               </View>
             ))
           : friends.map((f) => (
-              <Pressable
+              <DashboardPersonTile
                 key={f.id}
-                style={({ pressed }) => [styles.friendTile, pressed && { opacity: 0.8 }]}
+                name={f.name}
+                avatar={f.avatar}
                 onPress={onPressAll}
-                accessibilityRole="button"
-              >
-                <Avatar
-                  uri={f.avatar ? getS3ImageUrl(f.avatar) : undefined}
-                  name={f.name}
-                  size={46}
-                />
-                <Text style={styles.friendName} numberOfLines={1}>{f.name}</Text>
-              </Pressable>
+                useHomeAvatar
+              />
             ))}
 
-        {/* "More" button if there are friends */}
         {!isLoading && friends.length >= MAX_DISPLAY && (
           <Pressable
-            style={[styles.friendTile, { opacity: 0.9 }]}
+            style={[styles.moreTile, { borderColor: c.border, backgroundColor: c.surfaceElevated }]}
             onPress={onPressAll}
             accessibilityRole="button"
           >
             <View style={[styles.moreCircle, { backgroundColor: c.brandSubtle, borderColor: c.border }]}>
-              <Ionicons name="ellipsis-horizontal" size={18} color={c.brandNavy} />
+              <Ionicons name="ellipsis-horizontal" size={16} color={c.brandNavy} />
             </View>
-            <Text style={styles.friendName}>
+            <Text style={styles.moreName}>
               {t("common.more", { defaultValue: "More" })}
             </Text>
           </Pressable>
@@ -105,12 +97,12 @@ export function MiniFriendsSection({ onPressAll }: Props) {
 function useStyles() {
   return useThemedStyles((palette) =>
     StyleSheet.create({
-      wrap: {},
+      wrap: { marginBottom: space.sm },
       header: {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        marginBottom: space.sm,
+        marginBottom: space.md,
       },
       headerLeft: {
         flexDirection: "row",
@@ -133,39 +125,47 @@ function useStyles() {
         fontWeight: "600",
       },
       strip: {
-        gap: space.sm,
-        paddingVertical: space.xs,
+        gap: space.md,
+        paddingVertical: space.sm,
         paddingRight: space.sm,
       },
       friendTile: {
+        width: 108,
         alignItems: "center",
         gap: 5,
-        width: 58,
       },
       avatarPh: {
-        width: 46,
-        height: 46,
-        borderRadius: 23,
+        width: PERSON_TILE_AVATAR,
+        height: PERSON_TILE_AVATAR,
+        borderRadius: PERSON_TILE_AVATAR / 2,
       },
       namePh: {
-        width: 44,
+        width: 56,
         height: 8,
         borderRadius: 4,
       },
-      friendName: {
+      moreTile: {
+        width: 108,
+        alignItems: "center",
+        paddingTop: space.sm,
+        paddingBottom: space.md,
+        borderRadius: 12,
+        borderWidth: 1,
+      },
+      moreCircle: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        borderWidth: 1,
+        alignItems: "center",
+        justifyContent: "center",
+      },
+      moreName: {
         fontSize: 10,
         fontWeight: "600",
         color: palette.textMuted,
         textAlign: "center",
-        width: "100%",
-      },
-      moreCircle: {
-        width: 46,
-        height: 46,
-        borderRadius: 23,
-        borderWidth: 1,
-        alignItems: "center",
-        justifyContent: "center",
+        marginTop: space.sm,
       },
     })
   );

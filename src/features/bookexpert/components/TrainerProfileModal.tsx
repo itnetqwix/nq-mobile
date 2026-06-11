@@ -71,9 +71,9 @@ function ProfileAvatar({
   return (
     <ImageWithSkeleton
       uri={url}
-      width={96}
-      height={96}
-      borderRadius={48}
+      width={72}
+      height={72}
+      borderRadius={36}
       style={styles.avatar}
       onLoadError={() => setFailed(true)}
     />
@@ -141,11 +141,11 @@ export function TrainerProfileModal({
   const todaySlotPreviews = getTrainerNextSlots(data, 4);
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onDismiss}>
-      <View style={[styles.root, { paddingTop: insets.top + 4 }]}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onDismiss}>
+      <View style={[styles.root, { paddingTop: Math.max(insets.top, 8) }]}>
         <View style={styles.header}>
           <Pressable onPress={onDismiss} hitSlop={12}>
-            <Ionicons name="close" size={26} color={themeColors.text} />
+            <Ionicons name="chevron-down" size={28} color={themeColors.text} />
           </Pressable>
           <Text style={styles.headerTitle}>Coach profile</Text>
           {data ? (
@@ -177,35 +177,40 @@ export function TrainerProfileModal({
         ) : (
           <ScrollView
             style={styles.scroll}
-            contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 88 }]}
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.hero}>
               <ProfileAvatar uri={data.profile_picture as string} name={name} styles={styles} />
-              <Text style={styles.name}>{name}</Text>
-              {online && (
-                <View style={styles.onlineRow}>
-                  <View style={styles.onlineDot} />
-                  <Text style={styles.onlineText}>Online now</Text>
+              <View style={styles.heroBody}>
+                <Text style={styles.name}>{name}</Text>
+                <View style={styles.statsRow}>
+                  {online && (
+                    <View style={styles.onlinePill}>
+                      <View style={styles.onlineDot} />
+                      <Text style={styles.onlineText}>Online</Text>
+                    </View>
+                  )}
+                  {avgRating != null && (
+                    <View style={styles.statChip}>
+                      <Ionicons name="star" size={14} color={themeColors.warning} />
+                      <Text style={styles.statChipText}>{avgRating.toFixed(1)}</Text>
+                      <Text style={styles.statChipMuted}>({reviews.length})</Text>
+                    </View>
+                  )}
+                  {hourly != null && (
+                    <View style={styles.statChip}>
+                      <Text style={styles.statChipText}>${hourly.toFixed(0)}</Text>
+                      <Text style={styles.statChipMuted}>/hr</Text>
+                    </View>
+                  )}
                 </View>
-              )}
-              {avgRating != null && (
-                <View style={styles.ratingRow}>
-                  <Ionicons name="star" size={18} color={themeColors.warning} />
-                  <Text style={styles.ratingValue}>{avgRating.toFixed(1)}</Text>
-                  <Text style={styles.ratingCount}>
-                    ({reviews.length} review{reviews.length !== 1 ? "s" : ""})
-                  </Text>
-                </View>
-              )}
-              {hourly != null && (
-                <Text style={styles.rate}>${hourly.toFixed(0)} <Text style={styles.rateUnit}>/ hour</Text></Text>
-              )}
-              <FriendSocialStrip trainer={data} />
+                <FriendSocialStrip trainer={data} />
+              </View>
             </View>
 
             <View style={styles.block}>
-              <Text style={styles.blockTitle}>Availability today</Text>
+              <Text style={styles.blockTitle}>Today&apos;s availability</Text>
               {todaySlotsCount != null && todaySlotsCount > 0 ? (
                 <>
                   <Text style={styles.bodyText}>
@@ -437,43 +442,73 @@ function makeStyles(colors: AppColors) {
       alignItems: "center",
       justifyContent: "space-between",
       paddingHorizontal: space.md,
-      paddingVertical: 12,
+      paddingVertical: 8,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
     },
     headerTitle: { ...typography.titleSm, color: colors.text },
     loading: { flex: 1, alignItems: "center", justifyContent: "center" },
     scroll: { flex: 1 },
-    scrollContent: { paddingHorizontal: space.md },
-    hero: { alignItems: "center", paddingVertical: space.lg },
-    avatar: { width: 96, height: 96, borderRadius: 48 },
+    scrollContent: { paddingHorizontal: space.md, paddingTop: space.sm },
+    hero: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: space.md,
+      paddingVertical: space.sm,
+      marginBottom: space.sm,
+    },
+    heroBody: { flex: 1, minWidth: 0 },
+    avatar: { width: 72, height: 72, borderRadius: 36 },
     avatarFallback: {
-      width: 96,
-      height: 96,
-      borderRadius: 48,
+      width: 72,
+      height: 72,
+      borderRadius: 36,
       backgroundColor: colors.brandNavy,
       alignItems: "center",
       justifyContent: "center",
     },
-    avatarInitial: { color: colors.brandTextOn, fontSize: 36, fontWeight: "700" },
-    name: { ...typography.titleMd, color: colors.text, marginTop: space.md, textAlign: "center" },
-    onlineRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
-    onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success },
-    onlineText: { ...typography.bodySm, color: colors.success, fontWeight: "600" },
-    ratingRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10 },
-    ratingValue: { ...typography.titleSm, color: colors.text, fontWeight: "700" },
-    ratingCount: { ...typography.bodySm, color: colors.textMuted },
-    rate: { ...typography.titleMd, color: colors.brandNavy, marginTop: 8, fontWeight: "700" },
-    rateUnit: { ...typography.bodyMd, color: colors.textMuted, fontWeight: "500" },
+    avatarInitial: { color: colors.brandTextOn, fontSize: 28, fontWeight: "700" },
+    name: { ...typography.titleSm, color: colors.text, fontWeight: "700" },
+    statsRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "center",
+      gap: 6,
+      marginTop: 6,
+    },
+    onlinePill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: radii.pill,
+      backgroundColor: `${colors.success}18`,
+    },
+    onlineDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.success },
+    onlineText: { ...typography.caption, color: colors.success, fontWeight: "700" },
+    statChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 3,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: radii.pill,
+      backgroundColor: colors.surfaceElevated,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    statChipText: { ...typography.caption, color: colors.text, fontWeight: "700" },
+    statChipMuted: { ...typography.caption, color: colors.textMuted },
     block: {
-      marginBottom: space.md,
-      padding: space.md,
+      marginBottom: space.sm,
+      padding: space.sm,
       backgroundColor: colors.surfaceElevated,
       borderRadius: radii.md,
       borderWidth: 1,
       borderColor: colors.border,
     },
-    blockTitle: { ...typography.subtitle, color: colors.text, marginBottom: space.sm, fontWeight: "700" },
+    blockTitle: { ...typography.bodyMd, color: colors.text, marginBottom: 6, fontWeight: "700" },
     bodyText: { ...typography.bodyMd, color: colors.textSecondary, lineHeight: 22 },
     todaySlotsRow: {
       flexDirection: "row",
@@ -558,11 +593,11 @@ function makeStyles(colors: AppColors) {
       right: 0,
       bottom: 0,
       paddingHorizontal: space.md,
-      paddingTop: space.sm,
+      paddingTop: 8,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
       backgroundColor: colors.surfaceElevated,
     },
-    footerBtns: { flexDirection: "row", gap: 10 },
+    footerBtns: { flexDirection: "row", gap: 8 },
   });
 }

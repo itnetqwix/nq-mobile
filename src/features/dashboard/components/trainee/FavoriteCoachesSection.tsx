@@ -1,16 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { CoachCarouselSkeleton } from "../../../../components/ui";
 import { getTrainerName } from "../../../bookexpert/lib/trainerUtils";
 import { trainerListItemKey } from "../../../../lib/lists/trainerListUtils";
 import { useFavoriteTrainers } from "../../hooks/useFavoriteTrainers";
-import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
+import { space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
-import { HomeUserAvatar } from "../home/HomeUserAvatar";
-
-const TILE_WIDTH = 136;
-const AVATAR_SIZE = 58;
+import { DashboardPersonTile } from "../shared/DashboardPersonTile";
 
 type Props = {
   onSelectTrainer: (trainer: Record<string, unknown>) => void;
@@ -47,20 +44,18 @@ export function FavoriteCoachesSection({ onSelectTrainer }: Props) {
         {favorites.map((item, i) => {
           const name = getTrainerName(item);
           return (
-            <Pressable
+            <DashboardPersonTile
               key={trainerListItemKey(item, i, "fav-")}
-              style={({ pressed }) => [styles.tile, pressed && { opacity: 0.88, transform: [{ scale: 0.97 }] }]}
+              name={name}
+              avatar={item.profile_picture as string | undefined}
               onPress={() => onSelectTrainer(item)}
-              accessibilityRole="button"
-            >
-              <View style={styles.avatarWrap}>
-                <HomeUserAvatar uri={item.profile_picture as string} name={name} size={AVATAR_SIZE} />
+              useHomeAvatar
+              badge={
                 <View style={[styles.heartBadge, { backgroundColor: c.surfaceElevated }]}>
                   <Ionicons name="heart" size={8} color="#E57373" />
                 </View>
-              </View>
-              <Text style={styles.name} numberOfLines={2}>{name}</Text>
-            </Pressable>
+              }
+            />
           );
         })}
       </ScrollView>
@@ -71,45 +66,26 @@ export function FavoriteCoachesSection({ onSelectTrainer }: Props) {
 function useStyles() {
   return useThemedStyles((palette) =>
     StyleSheet.create({
-      wrap: {},
+      wrap: { marginBottom: space.sm },
       headerRow: {
         flexDirection: "row",
         alignItems: "center",
         gap: space.xs,
-        marginBottom: space.sm,
+        marginBottom: space.md,
       },
       title: { ...typography.titleSm, color: palette.text, fontWeight: "700" },
-      strip: { gap: space.sm, paddingVertical: space.xs },
-      tile: {
-        width: TILE_WIDTH,
-        padding: space.sm,
-        borderRadius: radii.lg,
-        backgroundColor: palette.surfaceElevated,
-        borderWidth: 1,
-        borderColor: palette.border,
-        alignItems: "center",
-        gap: 4,
-      },
-      avatarWrap: { position: "relative" },
+      strip: { gap: space.md, paddingVertical: space.sm, paddingRight: space.sm },
       heartBadge: {
         position: "absolute",
         right: -2,
         bottom: -2,
-        width: 18,
-        height: 18,
-        borderRadius: 9,
+        width: 16,
+        height: 16,
+        borderRadius: 8,
         borderWidth: 1.5,
         borderColor: "#E57373",
         alignItems: "center",
         justifyContent: "center",
-      },
-      name: {
-        ...typography.bodySm,
-        color: palette.text,
-        fontWeight: "700",
-        textAlign: "center",
-        marginTop: 2,
-        minHeight: 34,
       },
     })
   );

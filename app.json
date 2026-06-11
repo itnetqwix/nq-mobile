@@ -93,14 +93,6 @@
       ],
       "expo-secure-store",
       [
-        "expo-camera",
-        {
-          "cameraPermission": "NetQwix needs camera access to record training clips.",
-          "microphonePermission": "NetQwix needs microphone access to record training clips with audio.",
-          "recordAudioAndroid": true
-        }
-      ],
-      [
         "expo-image-picker",
         {
           "photosPermission": "NetQwix needs access to your photo library so you can upload training video clips to your locker.",

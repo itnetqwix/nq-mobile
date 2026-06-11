@@ -73,6 +73,7 @@ export {
 export { HelpBubble, type HelpBubbleProps } from "./HelpBubble";
 export { InlineSavedIndicator, type InlineSavedIndicatorProps } from "./InlineSavedIndicator";
 export { MorphRefreshHeader, type MorphRefreshHeaderProps } from "./MorphRefreshHeader";
+export { OnlinePulseBorder } from "./OnlinePulseBorder";
 export {
   MorphRefreshScrollSurface,
   type MorphRefreshScrollRenderProps,

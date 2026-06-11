@@ -25,7 +25,6 @@ export function AppScreenHeader(props: Props) {
   const { options, navigation } = props;
   const insets = useSafeAreaInsets();
   const c = useThemeColors();
-  const title = resolveTitle(options);
   const HeaderRight = options.headerRight;
   /**
    * React Navigation 7 made `canGoBack` a required prop on the
@@ -37,6 +36,12 @@ export function AppScreenHeader(props: Props) {
     typeof (navigation as { canGoBack?: () => boolean })?.canGoBack === "function"
       ? !!(navigation as { canGoBack: () => boolean }).canGoBack()
       : false;
+
+  const titleIsCustom = typeof options.headerTitle === "function";
+  const TitleComponent = titleIsCustom
+    ? (options.headerTitle as () => React.ReactElement)
+    : null;
+  const titleText = titleIsCustom ? "" : resolveTitle(options);
 
   return (
     <View
@@ -57,9 +62,13 @@ export function AppScreenHeader(props: Props) {
           {canGoBack ? <HeaderBackButton /> : <DrawerMarkButton />}
         </View>
         <View style={styles.titleSlot}>
-          <Text style={[styles.title, { color: c.headerTitle }]} numberOfLines={1}>
-            {title}
-          </Text>
+          {TitleComponent ? (
+            <TitleComponent />
+          ) : (
+            <Text style={[styles.title, { color: c.headerTitle }]} numberOfLines={1}>
+              {titleText}
+            </Text>
+          )}
         </View>
         <View style={[styles.sideSlot, styles.sideSlotRight]}>
           {HeaderRight ? (

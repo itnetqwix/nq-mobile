@@ -289,7 +289,6 @@ export function TraineeDiscoverDashboard({
       ? t("traineeDiscover.roleTrainee")
       : accountType || t("menu.member");
 
-  const marketplaceHeadline = name || t("traineeDiscover.roleTrainee", { defaultValue: "Trainee" });
   const marketplaceSubline = isGuest ? t("guest.exploringAsGuest") : undefined;
 
   const listTitle = searchActive
@@ -469,10 +468,11 @@ export function TraineeDiscoverDashboard({
     <View style={{ flex: 1 }}>
       <DiscoverHomeChrome
         compactTop
-        headline={marketplaceHeadline}
+        role={AccountType.TRAINEE}
         subline={marketplaceSubline}
         profilePicture={profilePicture}
         profileName={name}
+        user={user}
         onPressProfile={onSettings}
         searchValue={search}
         onSearchChange={setSearch}
@@ -621,7 +621,7 @@ function useStyles() {
       liveFilterText: { ...typography.caption, color: palette.textMuted, fontWeight: "600" },
       liveFilterTextOn: { color: palette.success },
       loading: { gap: space.sm, marginTop: space.sm },
-      trainerList: { gap: space.md, marginTop: space.sm },
+      trainerList: { gap: space.sm, marginTop: space.sm },
       empty: {
         alignItems: "center",
         paddingVertical: space.xl,

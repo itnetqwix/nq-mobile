@@ -193,6 +193,11 @@ export function TrainerOnlineToggle({ value, onToggle, embedded }: Props) {
               />
             ) : null}
           </View>
+          {displayOnline ? (
+            <Animated.Text style={[styles.subtitle, { color: subtitleColor }]} numberOfLines={2}>
+              Reopen the app within 15 minutes to stay visible for instant lessons.
+            </Animated.Text>
+          ) : null}
         </Pressable>
 
         <View
@@ -270,6 +275,12 @@ const styles = StyleSheet.create({
   title: {
     ...typography.bodySm,
     fontWeight: "700",
+  },
+  subtitle: {
+    ...typography.caption,
+    marginTop: 2,
+    lineHeight: 15,
+    fontWeight: "500",
   },
   syncSpinner: {
     marginLeft: 2,

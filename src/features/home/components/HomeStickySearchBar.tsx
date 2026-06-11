@@ -48,7 +48,7 @@ export function HomeStickySearchBar({
           },
         ]}
       >
-        <Ionicons name="search-outline" size={20} color={c.textMuted} />
+        <Ionicons name="search-outline" size={16} color={c.textMuted} />
         <TextInput
           style={[styles.input, { color: c.text }]}
           placeholder={
@@ -78,13 +78,13 @@ export function HomeStickySearchBar({
             {voiceState === "processing" ? (
               <ActivityIndicator size="small" color={voiceColor} />
             ) : (
-              <Ionicons name={voiceIcon} size={20} color={voiceColor} />
+              <Ionicons name={voiceIcon} size={16} color={voiceColor} />
             )}
           </Pressable>
         ) : null}
         {!!value && (
           <Pressable onPress={() => onChangeText("")} hitSlop={8}>
-            <Ionicons name="close-circle" size={20} color={c.textMuted} />
+            <Ionicons name="close-circle" size={16} color={c.textMuted} />
           </Pressable>
         )}
         {onOpenFilters ? (
@@ -102,7 +102,7 @@ export function HomeStickySearchBar({
           >
             <Ionicons
               name="options-outline"
-              size={20}
+              size={16}
               color={activeFilterCount > 0 ? c.brandTextOn : c.brandNavy}
             />
             {activeFilterCount > 0 ? (
@@ -130,8 +130,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: space.xs,
     borderRadius: radii.lg,
-    paddingHorizontal: space.md,
-    paddingVertical: space.sm,
+    paddingHorizontal: space.sm,
+    paddingVertical: 8,
     borderWidth: StyleSheet.hairlineWidth,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -141,21 +141,21 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    fontSize: typography.bodyMd.fontSize,
-    paddingVertical: 4,
-    minHeight: 28,
+    fontSize: typography.bodySm.fontSize,
+    paddingVertical: 2,
+    minHeight: 24,
   },
   voiceBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: "center",
     justifyContent: "center",
   },
   filterBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",

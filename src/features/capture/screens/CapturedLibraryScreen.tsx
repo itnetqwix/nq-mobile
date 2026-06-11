@@ -1,6 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Video, ResizeMode } from "expo-av";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -11,6 +10,12 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
+import { ClipUploadModal } from "../../dashboard/components/locker/ClipUploadModal";
+import { CapturedClipPlayer } from "../components/CapturedClipPlayer";
+import {
+  CapturedShareSheet,
+  type CapturedShareTarget,
+} from "../components/CapturedShareSheet";
 import {
   getCapturedClips,
   deleteCapturedClip,
@@ -18,20 +23,40 @@ import {
 } from "./CaptureScreen";
 import { colors, radii, space, typography } from "../../../theme";
 
+const SHARE_MY_CLIPS = "My Clips";
+const SHARE_FRIENDS = "Friends";
+const SHARE_EMAIL = "Email";
+
 export function CapturedLibraryScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const [clips, setClips] = useState<CapturedClip[]>([]);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [selectMode, setSelectMode] = useState(false);
-  const [playingId, setPlayingId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [shareSheetVisible, setShareSheetVisible] = useState(false);
+  const [uploadVisible, setUploadVisible] = useState(false);
+  const [uploadShareTarget, setUploadShareTarget] = useState<
+    typeof SHARE_MY_CLIPS | typeof SHARE_FRIENDS | typeof SHARE_EMAIL
+  >(SHARE_MY_CLIPS);
 
   const load = useCallback(async () => {
     const c = await getCapturedClips();
     setClips(c);
+    setActiveId((prev) => {
+      if (prev && c.some((clip) => clip.id === prev)) return prev;
+      return c[0]?.id ?? null;
+    });
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const activeClip = useMemo(
+    () => clips.find((c) => c.id === activeId) ?? null,
+    [clips, activeId]
+  );
 
   const toggleSelect = (id: string) => {
     setSelected((s) => {
@@ -41,18 +66,20 @@ export function CapturedLibraryScreen() {
     });
   };
 
-  const handleDeleteSelected = () => {
-    if (selected.size === 0) return;
+  const confirmDelete = (ids: string[]) => {
+    if (ids.length === 0) return;
     Alert.alert(
-      "Delete Clips",
-      `Delete ${selected.size} clip${selected.size === 1 ? "" : "s"}? This cannot be undone.`,
+      "Delete clip",
+      ids.length === 1
+        ? "Delete this clip? This cannot be undone."
+        : `Delete ${ids.length} clips? This cannot be undone.`,
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            for (const id of selected) {
+            for (const id of ids) {
               await deleteCapturedClip(id);
             }
             setSelected(new Set());
@@ -64,25 +91,36 @@ export function CapturedLibraryScreen() {
     );
   };
 
+  const openShare = (target: CapturedShareTarget) => {
+    if (!activeClip) return;
+    const map: Record<CapturedShareTarget, typeof SHARE_MY_CLIPS | typeof SHARE_FRIENDS | typeof SHARE_EMAIL> = {
+      "my-clips": SHARE_MY_CLIPS,
+      friends: SHARE_FRIENDS,
+      email: SHARE_EMAIL,
+    };
+    setUploadShareTarget(map[target]);
+    setUploadVisible(true);
+  };
+
   const formatDuration = (secs?: number) => {
     if (!secs) return "";
     const m = Math.floor(secs / 60);
     const s = secs % 60;
-    return m > 0 ? `${m}m ${s}s` : `${s}s`;
+    return m > 0 ? `${m}:${s.toString().padStart(2, "0")}` : `0:${s.toString().padStart(2, "0")}`;
   };
 
   const renderItem = ({ item }: { item: CapturedClip }) => {
+    const isActive = activeId === item.id;
     const isSelected = selected.has(item.id);
-    const isPlaying = playingId === item.id;
     return (
       <Pressable
-        style={styles.clipCard}
+        style={[styles.clipRow, isActive && styles.clipRowActive]}
         onPress={() => {
           if (selectMode) {
             toggleSelect(item.id);
             return;
           }
-          setPlayingId(isPlaying ? null : item.id);
+          setActiveId(item.id);
         }}
         onLongPress={() => {
           if (!selectMode) setSelectMode(true);
@@ -94,26 +132,11 @@ export function CapturedLibraryScreen() {
             {isSelected && <Ionicons name="checkmark" size={12} color="#fff" />}
           </View>
         )}
-
-        <View style={styles.thumbWrap}>
-          {isPlaying ? (
-            <Video
-              source={{ uri: item.uri }}
-              style={styles.thumb}
-              resizeMode={ResizeMode.COVER}
-              shouldPlay
-              isLooping={false}
-              useNativeControls
-            />
-          ) : (
-            <View style={styles.thumbPh}>
-              <Ionicons name="play-circle" size={32} color="#fff" />
-            </View>
-          )}
+        <View style={styles.thumb}>
+          <Ionicons name="videocam" size={20} color="#94a3b8" />
         </View>
-
-        <View style={styles.meta}>
-          <Text style={styles.date}>
+        <View style={styles.clipMeta}>
+          <Text style={styles.clipDate} numberOfLines={1}>
             {new Date(item.createdAt).toLocaleDateString(undefined, {
               month: "short",
               day: "numeric",
@@ -122,58 +145,31 @@ export function CapturedLibraryScreen() {
             })}
           </Text>
           {item.durationSecs ? (
-            <Text style={styles.dur}>{formatDuration(item.durationSecs)}</Text>
+            <Text style={styles.clipDur}>{formatDuration(item.durationSecs)}</Text>
           ) : null}
         </View>
-
-        <View style={styles.actions}>
-          <Pressable
-            style={styles.actionBtn}
-            onPress={(e) => {
-              e.stopPropagation?.();
-              navigation.navigate("ClipUpload", { capturedUri: item.uri });
-            }}
-          >
-            <Ionicons name="cloud-upload-outline" size={18} color={colors.brandNavy} />
-            <Text style={styles.actionText}>Upload</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.actionBtn, styles.deleteActionBtn]}
-            onPress={(e) => {
-              e.stopPropagation?.();
-              Alert.alert("Delete", "Delete this clip?", [
-                { text: "Cancel", style: "cancel" },
-                {
-                  text: "Delete",
-                  style: "destructive",
-                  onPress: async () => {
-                    await deleteCapturedClip(item.id);
-                    void load();
-                  },
-                },
-              ]);
-            }}
-          >
-            <Ionicons name="trash-outline" size={18} color="#ef4444" />
-          </Pressable>
-        </View>
+        {isActive && !selectMode ? (
+          <Ionicons name="volume-high-outline" size={18} color={colors.brandNavy} />
+        ) : null}
       </Pressable>
     );
   };
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
-      {/* Header */}
       <View style={styles.header}>
         <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.brandNavy} />
         </Pressable>
         <Text style={styles.title}>Captured Library</Text>
         {selectMode ? (
-          <Pressable style={styles.headerAction} onPress={() => {
-            setSelectMode(false);
-            setSelected(new Set());
-          }}>
+          <Pressable
+            style={styles.headerAction}
+            onPress={() => {
+              setSelectMode(false);
+              setSelected(new Set());
+            }}
+          >
             <Text style={styles.cancelText}>Cancel</Text>
           </Pressable>
         ) : (
@@ -190,7 +186,7 @@ export function CapturedLibraryScreen() {
       {selectMode && selected.size > 0 && (
         <View style={styles.selectBar}>
           <Text style={styles.selectBarText}>{selected.size} selected</Text>
-          <Pressable style={styles.deleteBar} onPress={handleDeleteSelected}>
+          <Pressable style={styles.deleteBar} onPress={() => confirmDelete([...selected])}>
             <Ionicons name="trash-outline" size={16} color="#fff" />
             <Text style={styles.deleteBarText}>Delete</Text>
           </Pressable>
@@ -201,26 +197,52 @@ export function CapturedLibraryScreen() {
         <View style={styles.empty}>
           <Ionicons name="videocam-outline" size={48} color="#9ca3af" />
           <Text style={styles.emptyTitle}>No captured clips yet</Text>
-          <Text style={styles.emptySub}>
-            Tap the Capture tab to record your first clip.
-          </Text>
-          <Pressable
-            style={styles.captureBtn}
-            onPress={() => navigation.navigate("Capture")}
-          >
+          <Text style={styles.emptySub}>Tap the Capture tab to record your first clip.</Text>
+          <Pressable style={styles.captureBtn} onPress={() => navigation.navigate("Capture")}>
             <Ionicons name="videocam-outline" size={16} color="#fff" />
             <Text style={styles.captureBtnText}>Start Recording</Text>
           </Pressable>
         </View>
       ) : (
-        <FlatList
-          data={clips}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-        />
+        <>
+          <CapturedClipPlayer
+            clip={activeClip}
+            onDelete={() => activeClip && confirmDelete([activeClip.id])}
+            onShare={() => setShareSheetVisible(true)}
+          />
+
+          <Text style={styles.listHeading}>All clips ({clips.length})</Text>
+          <FlatList
+            data={clips}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}
+          />
+        </>
       )}
+
+      <CapturedShareSheet
+        visible={shareSheetVisible}
+        onClose={() => setShareSheetVisible(false)}
+        onSelect={openShare}
+      />
+
+      <ClipUploadModal
+        visible={uploadVisible}
+        onClose={() => setUploadVisible(false)}
+        onUploaded={() => void load()}
+        initialVideo={
+          activeClip
+            ? {
+                uri: activeClip.uri,
+                durationSecs: activeClip.durationSecs,
+                fileName: `capture_${activeClip.id}.mp4`,
+              }
+            : null
+        }
+        defaultShareTarget={uploadShareTarget}
+      />
     </View>
   );
 }
@@ -258,17 +280,31 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
   },
   deleteBarText: { color: "#fff", fontWeight: "700", fontSize: 13 },
-  list: { padding: space.md, gap: space.sm },
-  clipCard: {
+  listHeading: {
+    marginHorizontal: space.md,
+    marginBottom: space.xs,
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#6b7280",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  list: { paddingHorizontal: space.md, paddingBottom: space.xl },
+  clipRow: {
     flexDirection: "row",
     alignItems: "center",
-    padding: space.sm,
-    backgroundColor: "#f9fafb",
+    gap: space.sm,
+    paddingVertical: 10,
+    paddingHorizontal: space.sm,
     borderRadius: radii.md,
+    marginBottom: 6,
+    backgroundColor: "#f9fafb",
     borderWidth: 1,
     borderColor: "#e5e7eb",
-    gap: space.sm,
-    marginBottom: space.sm,
+  },
+  clipRowActive: {
+    borderColor: colors.brandNavy,
+    backgroundColor: "#eff6ff",
   },
   check: {
     width: 22,
@@ -278,40 +314,19 @@ const styles = StyleSheet.create({
     borderColor: "#d1d5db",
     alignItems: "center",
     justifyContent: "center",
-    flexShrink: 0,
   },
   checkOn: { backgroundColor: colors.brandNavy, borderColor: colors.brandNavy },
-  thumbWrap: {
-    width: 72,
-    height: 56,
+  thumb: {
+    width: 44,
+    height: 44,
     borderRadius: radii.sm,
-    overflow: "hidden",
-    backgroundColor: "#1f2937",
-    flexShrink: 0,
-  },
-  thumb: { width: "100%", height: "100%" },
-  thumbPh: {
-    flex: 1,
+    backgroundColor: "#1e293b",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#111827",
   },
-  meta: { flex: 1 },
-  date: { fontSize: 13, fontWeight: "600", color: "#111827" },
-  dur: { fontSize: 11, color: "#6b7280", marginTop: 2 },
-  actions: { flexDirection: "row", alignItems: "center", gap: 6 },
-  actionBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: colors.brandNavy,
-  },
-  deleteActionBtn: { borderColor: "#fecaca", paddingHorizontal: 8 },
-  actionText: { fontSize: 11, fontWeight: "700", color: colors.brandNavy },
+  clipMeta: { flex: 1 },
+  clipDate: { fontSize: 14, fontWeight: "600", color: "#111827" },
+  clipDur: { fontSize: 12, color: "#6b7280", marginTop: 2 },
   empty: {
     flex: 1,
     alignItems: "center",

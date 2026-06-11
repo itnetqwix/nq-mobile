@@ -42,6 +42,8 @@ export type NavMatrixEntry = {
   group?: "dashboard" | "tools";
   /** Role gating. Defaults to all roles. */
   roles?: ReadonlyArray<AccountTypeValue>;
+  /** Drawer-only role gating (e.g. trainer-only drawer items). */
+  drawerRoles?: ReadonlyArray<AccountTypeValue>;
 };
 
 /**
@@ -60,7 +62,7 @@ export type NavMatrixEntry = {
 export const NAV_MATRIX: readonly NavMatrixEntry[] = [
   {
     id: "my-locker",
-    label: "Dashboard",
+    label: "damdam",
     icon: "home-outline",
     target: { kind: "tab", tab: "Home" },
     surfaces: ["drawer"],
@@ -86,7 +88,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
     label: "Instant Booking",
     icon: "flash-outline",
     target: { kind: "feature", featureId: "instant-booking" },
-    surfaces: ["drawer", "more"],
+    surfaces: ["more"],
     group: "dashboard",
     roles: [AccountType.TRAINEE],
   },
@@ -115,6 +117,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
     target: { kind: "feature", featureId: "upcoming-sessions" },
     surfaces: ["drawer", "more"],
     group: "dashboard",
+    drawerRoles: [AccountType.TRAINER],
   },
   {
     id: "friends",
@@ -179,6 +182,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
     target: { kind: "shell", surfaceId: "transactions" },
     surfaces: ["drawer", "more"],
     group: "tools",
+    drawerRoles: [AccountType.TRAINER],
   },
   {
     id: "invite",
@@ -289,6 +293,10 @@ export function navMatrixFor(
   return NAV_MATRIX.filter((entry) => {
     if (!entry.surfaces.includes(surface)) return false;
     if (group && entry.group !== group) return false;
+    if (surface === "drawer" && entry.drawerRoles && entry.drawerRoles.length > 0) {
+      if (!accountType) return false;
+      if (!entry.drawerRoles.includes(accountType as AccountTypeValue)) return false;
+    }
     if (entry.roles && entry.roles.length > 0) {
       if (!accountType) return false;
       if (!entry.roles.includes(accountType as AccountTypeValue)) return false;

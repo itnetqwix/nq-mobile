@@ -36,16 +36,31 @@ import { ClipUploadPrepareModal } from "./ClipUploadPrepareModal";
 
 const SHARE_MY_CLIPS = "My Clips";
 const SHARE_FRIENDS = "Friends";
+const SHARE_EMAIL = "Email";
 
-type ShareTarget = typeof SHARE_MY_CLIPS | typeof SHARE_FRIENDS;
+type ShareTarget = typeof SHARE_MY_CLIPS | typeof SHARE_FRIENDS | typeof SHARE_EMAIL;
+
+export type ClipUploadInitialVideo = {
+  uri: string;
+  durationSecs?: number;
+  fileName?: string;
+};
 
 type Props = {
   visible: boolean;
   onClose: () => void;
   onUploaded: () => void;
+  initialVideo?: ClipUploadInitialVideo | null;
+  defaultShareTarget?: ShareTarget;
 };
 
-export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
+export function ClipUploadModal({
+  visible,
+  onClose,
+  onUploaded,
+  initialVideo = null,
+  defaultShareTarget = SHARE_MY_CLIPS,
+}: Props) {
   const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const c = useThemeColors();
@@ -69,9 +84,11 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
   const [videoProgress, setVideoProgress] = useState(0);
   const [thumbProgress, setThumbProgress] = useState(0);
   const [uploadPhase, setUploadPhase] = useState<"idle" | "video" | "thumb" | "finalize">("idle");
-  const [shareTarget, setShareTarget] = useState<ShareTarget>(SHARE_MY_CLIPS);
+  const [shareTarget, setShareTarget] = useState<ShareTarget>(defaultShareTarget);
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
+  const [shareEmail, setShareEmail] = useState("");
   const [prepareVisible, setPrepareVisible] = useState(false);
+  const [initializingVideo, setInitializingVideo] = useState(false);
 
   const { data: taxonomy, isLoading: catLoading } = useQuery({
     queryKey: queryKeys.clips.taxonomy,
@@ -103,11 +120,69 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
       setVideoProgress(0);
       setThumbProgress(0);
       setUploadPhase("idle");
-      setShareTarget(SHARE_MY_CLIPS);
+      setShareTarget(defaultShareTarget);
       setSelectedFriendIds([]);
+      setShareEmail("");
       setPrepareVisible(false);
+      setInitializingVideo(false);
     }
-  }, [visible]);
+  }, [visible, defaultShareTarget]);
+
+  useEffect(() => {
+    if (!visible || !initialVideo?.uri) return;
+    let cancelled = false;
+
+    const loadCapturedVideo = async () => {
+      setInitializingVideo(true);
+      const asset: ImagePicker.ImagePickerAsset = {
+        uri: initialVideo.uri,
+        width: 0,
+        height: 0,
+        duration: initialVideo.durationSecs,
+        fileName: initialVideo.fileName ?? `capture_${Date.now()}.mp4`,
+        mimeType: "video/mp4",
+        assetId: null,
+        type: "video",
+      };
+      setVideoAsset(asset);
+      const base = (asset.fileName ?? "clip").replace(/\.[^/.]+$/, "");
+      setTitle(base || t("locker.clipDefault"));
+      setThumbUri(null);
+      setThumbBusy(true);
+      try {
+        const durationSec = asset.duration ?? 2;
+        const timeMs = Math.min(
+          60_000,
+          Math.max(250, Math.floor((durationSec / 2) * 1000))
+        );
+        const { uri } = await VideoThumbnails.getThumbnailAsync(asset.uri, {
+          time: timeMs,
+          quality: 0.85,
+        });
+        if (cancelled) return;
+        setThumbUri(uri);
+        setPrepareVisible(true);
+      } catch (e) {
+        if (cancelled) return;
+        Alert.alert(
+          t("locker.previewErrorTitle"),
+          getApiErrorMessage(e, t("locker.previewError"))
+        );
+        setVideoAsset(null);
+        setTitle("");
+      } finally {
+        if (!cancelled) {
+          setThumbBusy(false);
+          setInitializingVideo(false);
+        }
+      }
+    };
+
+    void loadCapturedVideo();
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, initialVideo?.uri, initialVideo?.durationSecs, initialVideo?.fileName, t]);
 
   useEffect(() => {
     if (!visible || !isTrainer || !profileCategory || !taxonomy) return;
@@ -169,6 +244,8 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
     );
   };
 
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shareEmail.trim());
+
   const canSubmit =
     !!videoAsset &&
     !!thumbUri &&
@@ -177,7 +254,10 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
     subcategoryId.length > 0 &&
     !thumbBusy &&
     !uploadBusy &&
-    (shareTarget === SHARE_MY_CLIPS || selectedFriendIds.length > 0);
+    !initializingVideo &&
+    (shareTarget === SHARE_MY_CLIPS ||
+      (shareTarget === SHARE_FRIENDS && selectedFriendIds.length > 0) ||
+      (shareTarget === SHARE_EMAIL && emailValid));
 
   const submit = async () => {
     if (!videoAsset || !thumbUri || !canSubmit) return;
@@ -235,7 +315,9 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
         shareOptions:
           shareTarget === SHARE_FRIENDS
             ? { type: SHARE_FRIENDS, friends: selectedFriendIds }
-            : { type: SHARE_MY_CLIPS },
+            : shareTarget === SHARE_EMAIL
+              ? { type: SHARE_EMAIL, emails: [shareEmail.trim().toLowerCase()] }
+              : { type: SHARE_MY_CLIPS },
         onVideoProgress: (percent) => {
           setUploadPhase("video");
           setVideoProgress(percent);
@@ -253,7 +335,13 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
 
       Alert.alert(
         t("locker.uploadedTitle"),
-        shareTarget === SHARE_FRIENDS ? t("locker.uploadSharedBody") : t("locker.uploadedBody")
+        shareTarget === SHARE_FRIENDS
+          ? t("locker.uploadSharedBody")
+          : shareTarget === SHARE_EMAIL
+            ? t("locker.uploadEmailBody", {
+                defaultValue: "Your clip was uploaded and an invite was sent by email.",
+              })
+            : t("locker.uploadedBody")
       );
       dispatch(lockerMutated());
       onUploaded();
@@ -289,18 +377,20 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
           contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 100 }]}
           keyboardShouldPersistTaps="handled"
         >
-          <Pressable
-            style={({ pressed }) => [styles.pickBtn, pressed && { opacity: 0.9 }]}
-            onPress={pickVideo}
-            disabled={thumbBusy || uploadBusy}
-          >
-            <Ionicons name="folder-open-outline" size={22} color={c.brandNavy} />
-            <Text style={styles.pickBtnText}>
-              {videoAsset ? t("locker.replaceVideo") : t("locker.chooseVideo")}
-            </Text>
-          </Pressable>
+          {!initialVideo && (
+            <Pressable
+              style={({ pressed }) => [styles.pickBtn, pressed && { opacity: 0.9 }]}
+              onPress={pickVideo}
+              disabled={thumbBusy || uploadBusy || initializingVideo}
+            >
+              <Ionicons name="folder-open-outline" size={22} color={c.brandNavy} />
+              <Text style={styles.pickBtnText}>
+                {videoAsset ? t("locker.replaceVideo") : t("locker.chooseVideo")}
+              </Text>
+            </Pressable>
+          )}
 
-          {thumbBusy && (
+          {(thumbBusy || initializingVideo) && (
             <View style={styles.rowCenter}>
               <ActivityIndicator color={c.brandNavy} />
               <Text style={styles.muted}>{t("locker.preparingPreview")}</Text>
@@ -411,6 +501,16 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
                 {t("locker.shareFriends")}
               </Text>
             </Pressable>
+            <Pressable
+              style={[styles.shareTargetBtn, shareTarget === SHARE_EMAIL && styles.shareTargetBtnOn]}
+              onPress={() => setShareTarget(SHARE_EMAIL)}
+              disabled={uploadBusy}
+            >
+              <Ionicons name="mail-outline" size={16} color={shareTarget === SHARE_EMAIL ? c.brandNavy : c.textMuted} />
+              <Text style={[styles.shareTargetText, shareTarget === SHARE_EMAIL && styles.shareTargetTextOn]}>
+                {t("locker.shareEmail", { defaultValue: "Email invite" })}
+              </Text>
+            </Pressable>
           </View>
 
           {shareTarget === SHARE_FRIENDS && (
@@ -447,6 +547,30 @@ export function ClipUploadModal({ visible, onClose, onUploaded }: Props) {
                   <Text style={styles.muted}>{t("locker.uploadSharedHint")}</Text>
                 </>
               )}
+            </View>
+          )}
+
+          {shareTarget === SHARE_EMAIL && (
+            <View style={styles.friendPickerBox}>
+              <Text style={styles.label}>
+                {t("locker.shareEmailLabel", { defaultValue: "Recipient email" })}
+              </Text>
+              <TextInput
+                style={styles.input}
+                value={shareEmail}
+                onChangeText={setShareEmail}
+                placeholder={t("locker.shareEmailPlaceholder", { defaultValue: "friend@email.com" })}
+                placeholderTextColor={c.textMuted}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!uploadBusy}
+              />
+              <Text style={styles.muted}>
+                {t("locker.shareEmailHint", {
+                  defaultValue: "They will receive an invite to view this clip on Netqwix.",
+                })}
+              </Text>
             </View>
           )}
 
@@ -646,7 +770,7 @@ function useStyles() {
       },
       progressFill: { height: "100%", backgroundColor: palette.brandNavy, borderRadius: 4 },
       progressHint: { ...typography.caption, color: palette.textMuted, fontStyle: "italic" },
-      shareTargetRow: { flexDirection: "row", gap: 10 },
+      shareTargetRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
       shareTargetBtn: {
         flex: 1,
         flexDirection: "row",

@@ -91,7 +91,7 @@ export function InviteFriendsScreen() {
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<TrackerTab>("all");
-  const [composerOpen, setComposerOpen] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(true);
   const [inviteTarget, setInviteTarget] = useState<typeof AccountType.TRAINEE | typeof AccountType.TRAINER>(
     AccountType.TRAINEE
   );
@@ -434,7 +434,7 @@ export function InviteFriendsScreen() {
         </View>
       </View>
 
-      {/* Email composer — de-emphasised as a secondary path */}
+      {/* Email composer */}
       <View style={styles.card}>
         <Pressable
           onPress={() => setComposerOpen((v) => !v)}
@@ -445,7 +445,10 @@ export function InviteFriendsScreen() {
               {t("invites.title")}
             </Text>
             <Text style={[styles.cardSub, { color: c.textMuted }]}>
-              {t("invites.subtitle")}
+              {t("invites.subtitleExpanded", {
+                defaultValue:
+                  "Enter one or more emails. We will send your friend a personal invite to join Netqwix.",
+              })}
             </Text>
           </View>
           <Ionicons

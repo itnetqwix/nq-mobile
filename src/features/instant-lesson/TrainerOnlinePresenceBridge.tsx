@@ -1,7 +1,8 @@
 /**
  * Trainer online presence vs app lifecycle:
- * - Stay online while the app is in the background (socket may stay connected).
- * - Mark offline ~30s after the socket disconnects (app force-closed / network drop).
+ * - Stay online while the app is in the background for up to 15 minutes.
+ * - Mark offline only after the grace window expires without reopening the app.
+ * - Socket disconnect in the foreground still uses the same grace window.
  * - Mark offline immediately on sign-out.
  */
 
@@ -13,13 +14,14 @@ import { setOnlineAvailability } from "../home/api/homeApi";
 import { resolveShowAsOnline } from "../../lib/user/resolveShowAsOnline";
 import { useSocket } from "../socket/SocketContext";
 
-const OFFLINE_AFTER_DISCONNECT_MS = 30_000;
+/** Trainers must reopen the app within this window to stay visible for instant booking. */
+export const TRAINER_ONLINE_GRACE_MS = 15 * 60 * 1000;
 
 export function TrainerOnlinePresenceBridge() {
   const { status, accountType, user, patchUser } = useAuth();
   const { isConnected } = useSocket();
   const wantsOnlineRef = useRef(false);
-  const disconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const graceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   const isTrainer = accountType === AccountType.TRAINER && status === "signedIn";
@@ -28,46 +30,52 @@ export function TrainerOnlinePresenceBridge() {
     wantsOnlineRef.current = isTrainer && resolveShowAsOnline(user);
   }, [isTrainer, user]);
 
-  const clearDisconnectTimer = () => {
-    if (disconnectTimerRef.current) {
-      clearTimeout(disconnectTimerRef.current);
-      disconnectTimerRef.current = null;
+  const clearGraceTimer = () => {
+    if (graceTimerRef.current) {
+      clearTimeout(graceTimerRef.current);
+      graceTimerRef.current = null;
     }
   };
 
-  const scheduleOfflineAfterDisconnect = () => {
+  const markOffline = () => {
     if (!wantsOnlineRef.current) return;
-    clearDisconnectTimer();
-    disconnectTimerRef.current = setTimeout(() => {
-      disconnectTimerRef.current = null;
-      if (!wantsOnlineRef.current) return;
-      void (async () => {
-        try {
-          await setOnlineAvailability(false);
-          patchUser({ showAsOnline: false });
-        } catch {
-          /* best effort */
-        }
-      })();
-    }, OFFLINE_AFTER_DISCONNECT_MS);
+    void (async () => {
+      try {
+        await setOnlineAvailability(false);
+        patchUser({ showAsOnline: false });
+      } catch {
+        /* best effort */
+      }
+    })();
+  };
+
+  const scheduleOfflineAfterGrace = () => {
+    if (!wantsOnlineRef.current) return;
+    clearGraceTimer();
+    graceTimerRef.current = setTimeout(() => {
+      graceTimerRef.current = null;
+      markOffline();
+    }, TRAINER_ONLINE_GRACE_MS);
   };
 
   useEffect(() => {
     if (!isTrainer) {
-      clearDisconnectTimer();
+      clearGraceTimer();
       return;
     }
 
     if (isConnected) {
-      clearDisconnectTimer();
+      if (appStateRef.current === "active") {
+        clearGraceTimer();
+      }
       return;
     }
 
     if (wantsOnlineRef.current) {
-      scheduleOfflineAfterDisconnect();
+      scheduleOfflineAfterGrace();
     }
 
-    return clearDisconnectTimer;
+    return clearGraceTimer;
   }, [isConnected, isTrainer]);
 
   useEffect(() => {
@@ -78,13 +86,17 @@ export function TrainerOnlinePresenceBridge() {
       appStateRef.current = next;
 
       if (next === "active") {
-        clearDisconnectTimer();
+        clearGraceTimer();
         return;
       }
 
-      /** Background: keep online; socket heartbeat continues when OS allows. */
-      if (next === "background" && prev === "active") {
-        clearDisconnectTimer();
+      /** Background / inactive: keep online during the 15-minute grace window. */
+      if (
+        wantsOnlineRef.current &&
+        (next === "background" || next === "inactive") &&
+        prev === "active"
+      ) {
+        scheduleOfflineAfterGrace();
       }
     });
 
@@ -93,7 +105,7 @@ export function TrainerOnlinePresenceBridge() {
 
   useEffect(() => {
     if (status !== "signedOut") return;
-    clearDisconnectTimer();
+    clearGraceTimer();
     if (wantsOnlineRef.current) {
       void (async () => {
         try {
