@@ -633,7 +633,6 @@ function MeetingSurface({
     recoverConnection,
     socket,
     lessonId,
-    status,
   ]);
 
   const bothUsersForTimer =
@@ -1924,16 +1923,19 @@ function MeetingSurface({
     if (endedNotifiedRef.current) return;
     endedNotifiedRef.current = true;
     void (async () => {
-      const already = await hasShownSessionRating(lessonId);
-      pushLocalToast({
-        title: NOTIFICATION_TITLES.sessionEnded,
-        description: already
-          ? "Your lesson has ended."
-          : "Your lesson has ended. Tap to rate the session.",
-        type: NOTIFICATION_TYPES.TRANSCATIONAL,
-        bookingInfo: { lessonId },
-        persistInInbox: true,
-      });
+      const skipToast = postCallFlowStartedRef.current;
+      if (!skipToast) {
+        const already = await hasShownSessionRating(lessonId);
+        pushLocalToast({
+          title: NOTIFICATION_TITLES.sessionEnded,
+          description: already
+            ? "Your lesson has ended."
+            : "Your lesson has ended. Tap to rate the session.",
+          type: NOTIFICATION_TYPES.TRANSCATIONAL,
+          bookingInfo: { lessonId },
+          persistInInbox: true,
+        });
+      }
       void openPostCallFlow();
     })();
   }, [lessonTimer.status, pushLocalToast, lessonId, openPostCallFlow]);

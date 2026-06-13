@@ -690,13 +690,13 @@
     "semantic_hash": "5084cac3afa2c008074089e631257bff"
   },
   "src/features/calling/CallContext.tsx": {
-    "mtime": 1780301270.3040807,
-    "ast_hash": "f38cf8bc30b568243e9bfb268d8aada8",
-    "semantic_hash": "f38cf8bc30b568243e9bfb268d8aada8"
+    "mtime": 1781340863.2809403,
+    "ast_hash": "9fe678a1aed8d9a9dfc8776e562b081d",
+    "semantic_hash": ""
   },
   "src/features/calling/NativeCallEngine.ts": {
-    "mtime": 1781339825.990443,
-    "ast_hash": "ed27dc38eb29b69b6905aad3274b8f6f",
+    "mtime": 1781340861.8921432,
+    "ast_hash": "c85de8eec1744d1a80f76370d3ff4b68",
     "semantic_hash": ""
   },
   "src/features/calling/__tests__/reportDataUtils.test.ts": {
@@ -1195,8 +1195,8 @@
     "semantic_hash": "806f6c977ce3955f42cdad76e91901c3"
   },
   "src/features/calling/screens/NativeMeetingScreen.tsx": {
-    "mtime": 1781339322.6593046,
-    "ast_hash": "6d631f5a2281ac373dfb26b1557315e9",
+    "mtime": 1781340864.8409202,
+    "ast_hash": "137173b519276a221ef169d0948272f8",
     "semantic_hash": ""
   },
   "src/features/calling/screens/PrecallLobbyScreen.tsx": {
@@ -3370,8 +3370,8 @@
     "semantic_hash": "a9ef6096411b4ae82db38c13bd8a6f5c"
   },
   "src/lib/sessions/__tests__/sessionUtils.test.ts": {
-    "mtime": 1781331035.7241802,
-    "ast_hash": "8913660c643ce9e37665fec76658571e",
+    "mtime": 1781340843.6341283,
+    "ast_hash": "369ca613d522739d3252988864881532",
     "semantic_hash": ""
   },
   "src/lib/sessions/formatDualTimezone.ts": {
@@ -3410,8 +3410,8 @@
     "semantic_hash": "86828b1b11ffe2fbbb15ca455a23dcb0"
   },
   "src/lib/sessions/sessionUtils.ts": {
-    "mtime": 1781339827.540735,
-    "ast_hash": "9641544fb4434c341af769397212a2ac",
+    "mtime": 1781340839.9088883,
+    "ast_hash": "32ade6274f763b8989d81bfc05a15bc0",
     "semantic_hash": ""
   },
   "src/lib/sessions/shouldOfferSessionRating.ts": {

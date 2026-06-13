@@ -126,6 +126,16 @@ export function getSessionEnd(session: any): Date | null {
   return parseYmdHm(session?.booked_date, session?.session_end_time);
 }
 
+/** True when the lesson has ended (early hang-up, completed phase, or past window). */
+export function isLessonEffectivelyEnded(session: any, now = new Date()): boolean {
+  if (session?.actual_end_at) return true;
+  const phase = String(session?.instant_phase ?? "").toLowerCase();
+  if (phase === INSTANT_PHASE.COMPLETED || phase === "completed") return true;
+  const end = getSessionEnd(session);
+  if (end && now.getTime() > end.getTime() + LATE_JOIN_MS) return true;
+  return false;
+}
+
 export function formatSessionWhen(session: any): { dateLabel: string; timeLabel: string } {
   const start = getSessionStart(session);
   const end = getSessionEnd(session);
@@ -193,8 +203,9 @@ export function isInstantAcceptExpired(session: any, now = new Date()): boolean 
 }
 
 /** Instant lesson has started (both parties joined or server marked ACTIVE). */
-export function isInstantLessonLive(session: any): boolean {
+export function isInstantLessonLive(session: any, now = new Date()): boolean {
   if (!isInstantLesson(session)) return false;
+  if (isLessonEffectivelyEnded(session, now)) return false;
   if (session?.both_joined_at) return true;
   if (session?.first_joined_at) return true;
   const phase = String(session?.instant_phase ?? "").toUpperCase();
@@ -335,12 +346,11 @@ export function getSessionOutcomeI18nKey(session: any, now = new Date()): string
 export function isSessionInProgress(session: any, now = new Date()): boolean {
   const status = normalizeSessionStatus(session?.status);
   if (status === "cancelled" || status === "completed") return false;
+  if (isLessonEffectivelyEnded(session, now)) return false;
 
   if (isInstantLesson(session)) {
     if (isPendingBooking(session)) return false;
-    const phase = String(session?.instant_phase ?? "").toUpperCase();
-    if (phase === "ACTIVE") return true;
-    if (session?.both_joined_at) return true;
+    if (isInstantLessonLive(session, now)) return true;
     if (canJoinSession(session, now)) return true;
     return canRejoinLesson(session, now);
   }
@@ -379,10 +389,11 @@ export function isSessionInProgress(session: any, now = new Date()): boolean {
 export function canRejoinLesson(session: any, now = new Date()): boolean {
   const status = normalizeSessionStatus(session?.status);
   if (status === "cancelled" || status === "completed") return false;
+  if (isLessonEffectivelyEnded(session, now)) return false;
   if (canJoinSession(session, now)) return true;
 
   if (isInstantLesson(session)) {
-    if (isInstantLessonLive(session)) {
+    if (isInstantLessonLive(session, now)) {
       const endMs = getInstantLessonEndMs(session);
       if (endMs == null) return status === "confirmed" || status === "upcoming";
       return (
@@ -397,11 +408,9 @@ export function canRejoinLesson(session: any, now = new Date()): boolean {
       const endMs = getInstantLessonEndMs(session);
       if (endMs != null) return now.getTime() <= endMs;
     }
+    return false;
   }
 
-  if (session?.both_joined_at) return true;
-  const phase = String(session?.instant_phase ?? "").toUpperCase();
-  if (phase === "ACTIVE") return true;
   const start = getSessionStart(session);
   if (!start) return false;
   const end = getSessionEnd(session);

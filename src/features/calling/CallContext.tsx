@@ -24,6 +24,7 @@ import React, {
 import type { MediaStream } from "react-native-webrtc";
 
 import { useSocket } from "../socket/SocketContext";
+import { fetchSessionJoinReadiness } from "./sessionLiveApi";
 import {
   NativeCallEngine,
   type NativeCallEngineConfig,
@@ -432,12 +433,27 @@ export function CallProvider({
     if (!engine) return;
     const st = engine.getStatus();
     if (st === "idle" || st === "ended" || st === "preparing") return;
-    if (st === "reconnecting" || partnerDisconnectedRef.current) {
-      engine.reconnectPeer();
-    } else {
-      engine.rejoinSignal();
-    }
-  }, []);
+
+    void (async () => {
+      const sessionId = startArgs.sessionId;
+      if (sessionId) {
+        try {
+          const readiness = await fetchSessionJoinReadiness(sessionId);
+          if (readiness?.iceServers?.length) {
+            engine.updateIceServers(readiness.iceServers as IceServer[]);
+          }
+        } catch {
+          /* keep existing ICE */
+        }
+      }
+
+      if (st === "reconnecting" || partnerDisconnectedRef.current) {
+        engine.reconnectPeer();
+      } else {
+        engine.rejoinSignal();
+      }
+    })();
+  }, [startArgs.sessionId]);
 
   const getNetworkStats = useCallback(async () => {
     return (

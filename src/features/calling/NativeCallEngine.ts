@@ -743,6 +743,11 @@ export class NativeCallEngine {
     this.emitJoin();
   }
 
+  /** Apply fresh TURN/STUN credentials before rebuilding the peer connection. */
+  updateIceServers(servers?: IceServer[]): void {
+    if (servers?.length) this.iceServers = servers;
+  }
+
   /** Rebuild WebRTC after partner returns (optional — also handled on ON_CALL_JOIN). */
   reconnectPeer(): void {
     if (this.disposed) return;

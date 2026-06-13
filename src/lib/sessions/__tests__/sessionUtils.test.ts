@@ -1,11 +1,13 @@
 /** Matrix: P4, B8 — instant vs scheduled join windows */
 import {
   canJoinSession,
+  canRejoinLesson,
   dedupeSessionsById,
   filterSessionsForStatusTab,
   isInstantLesson,
   isPendingBooking,
   isSessionConfirmedForJoin,
+  isSessionInProgress,
   shouldShowInDashboardRequests,
 } from "../sessionUtils";
 
@@ -97,5 +99,20 @@ describe("sessionUtils", () => {
   it("dedupes sessions by id", () => {
     const rows = [{ _id: "a" }, { _id: "a" }, { _id: "b" }];
     expect(dedupeSessionsById(rows)).toHaveLength(2);
+  });
+
+  it("treats early-ended instant lesson as not in progress", () => {
+    const now = new Date("2026-06-15T12:10:00.000Z");
+    const endedEarly = {
+      is_instant: true,
+      status: "confirmed",
+      both_joined_at: "2026-06-15T12:00:00.000Z",
+      instant_phase: "completed",
+      actual_end_at: "2026-06-15T12:05:00.000Z",
+      end_time: "2026-06-15T12:05:00.000Z",
+      start_time: "2026-06-15T12:00:00.000Z",
+    };
+    expect(isSessionInProgress(endedEarly, now)).toBe(false);
+    expect(canRejoinLesson(endedEarly, now)).toBe(false);
   });
 });
