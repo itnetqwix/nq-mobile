@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { StyleSheet, Text } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { NetqwixLogo } from "../../../components/brand/NetqwixLogo";
 import { Banner, Button, ScreenContainer, ScreenLoadingState } from "../../../components/ui";
 import { AuthEscapeLink } from "../../auth/components/AuthEscapeLink";

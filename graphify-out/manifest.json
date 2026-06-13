@@ -655,8 +655,8 @@
     "semantic_hash": "decc45c9de8231827fb0b97356859a8b"
   },
   "src/features/bookexpert/components/TrainerBrowseCard.tsx": {
-    "mtime": 1781191273.3625674,
-    "ast_hash": "37e64724970dc6977445ad7dbc17a5b6",
+    "mtime": 1781333079.4992812,
+    "ast_hash": "3c2a1b2c3ffa54e8f50a63c12079175b",
     "semantic_hash": ""
   },
   "src/features/bookexpert/components/TrainerBrowseFiltersSheet.tsx": {
@@ -2840,19 +2840,19 @@
     "semantic_hash": "684504e0826a606ee28bf5e968f32016"
   },
   "src/features/verification/screens/PendingReviewScreen.tsx": {
-    "mtime": 1779778366.594439,
-    "ast_hash": "1e66d163a897b7c6694979943a19631d",
-    "semantic_hash": "1e66d163a897b7c6694979943a19631d"
+    "mtime": 1781333675.8135347,
+    "ast_hash": "e71d389f4fc47beb308e2bdb32836e78",
+    "semantic_hash": ""
   },
   "src/features/verification/screens/ProfileFaceScreen.tsx": {
-    "mtime": 1779447803.121636,
-    "ast_hash": "d0d193dbb89a7b60b27a1898cc99f0f0",
-    "semantic_hash": "d0d193dbb89a7b60b27a1898cc99f0f0"
+    "mtime": 1781333668.644879,
+    "ast_hash": "a3c3e8e2964864a4d7e9224c2c327c85",
+    "semantic_hash": ""
   },
   "src/features/verification/screens/VerifyContactScreen.tsx": {
-    "mtime": 1780640178.572142,
-    "ast_hash": "07b0e71a04ee8f21b7163d6573cdd7b6",
-    "semantic_hash": "07b0e71a04ee8f21b7163d6573cdd7b6"
+    "mtime": 1781333650.247998,
+    "ast_hash": "2f7cda150ccf671e238b1aedb3cb1b6d",
+    "semantic_hash": ""
   },
   "src/features/verification/verificationApi.ts": {
     "mtime": 1779896677.9041843,
@@ -3515,8 +3515,8 @@
     "semantic_hash": "d6c12475632e6d32450b71cc86c2b29d"
   },
   "src/navigation/RootNavigator.tsx": {
-    "mtime": 1781191864.990191,
-    "ast_hash": "8d3734595f361f0c39bdac616df53016",
+    "mtime": 1781333671.0846658,
+    "ast_hash": "4303552f5256ef50aa55865a1ecaba74",
     "semantic_hash": ""
   },
   "src/navigation/StackSwipeBackShell.tsx": {
@@ -8497,6 +8497,11 @@
   "src/lib/social/socialLinks.ts": {
     "mtime": 1781332991.0346572,
     "ast_hash": "58f91fc9ee4501d46670f4f653b6c0c0",
+    "semantic_hash": ""
+  },
+  "docs/TRAINER_VERIFICATION.md": {
+    "mtime": 1781333693.5241973,
+    "ast_hash": "b6dc60657e7c89b73f4841656402003b",
     "semantic_hash": ""
   }
 }

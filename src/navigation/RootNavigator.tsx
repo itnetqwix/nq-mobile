@@ -8,6 +8,7 @@ import { needsTrainerProfileSetup } from "../features/trainer-profile/lib/traine
 import { AccountType } from "../constants/accountType";
 import { useTrainerVerificationGate } from "../features/verification/hooks/useTrainerVerificationGate";
 import { AccountRejectedScreen } from "../features/verification/screens/AccountRejectedScreen";
+import { PendingReviewScreen } from "../features/verification/screens/PendingReviewScreen";
 import { GracePeriodBanner } from "../features/verification/components/GracePeriodBanner";
 import { InstantLessonStatusBanner } from "../features/instant-lesson/InstantLessonStatusBanner";
 import { InstantLessonTraineeModal } from "../features/instant-lesson/InstantLessonTraineeModal";
@@ -49,15 +50,22 @@ export function RootNavigator() {
 
   const isAccountRejected = signedIn && String(user?.status ?? "").toLowerCase() === "rejected";
 
+  const isTraineePendingReview =
+    signedIn &&
+    accountType === AccountType.TRAINEE &&
+    String(user?.status ?? "").toLowerCase() === "pending";
+
   const showTrainerProfileSetup =
     signedIn &&
     !isAccountRejected &&
+    !isTraineePendingReview &&
     accountType === AccountType.TRAINER &&
     needsTrainerProfileSetup(accountType, user);
 
   const showVerificationWizard =
     signedIn &&
     !isAccountRejected &&
+    !isTraineePendingReview &&
     !showTrainerProfileSetup &&
     (verificationGate.required || startVerificationEarly);
 
@@ -65,6 +73,17 @@ export function RootNavigator() {
     return (
       <AccountRejectedScreen
         onReapplied={() => {
+          void refreshUser();
+          refetchVerificationGate();
+        }}
+      />
+    );
+  }
+
+  if (isTraineePendingReview) {
+    return (
+      <PendingReviewScreen
+        onApproved={() => {
           void refreshUser();
           refetchVerificationGate();
         }}

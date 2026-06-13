@@ -665,8 +665,8 @@
     "semantic_hash": "a51bd5a26782b125156b5badf820fe22"
   },
   "src/features/bookexpert/components/TrainerProfileModal.tsx": {
-    "mtime": 1781191897.0907829,
-    "ast_hash": "fcba1594bd5b50664be9178236e8482e",
+    "mtime": 1781333034.7473,
+    "ast_hash": "93d19fb83fbf65e96a7f89e0ea757352",
     "semantic_hash": ""
   },
   "src/features/bookexpert/lib/compareTrainersStore.ts": {
@@ -2010,8 +2010,8 @@
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/EditProfileScreen.tsx": {
-    "mtime": 1781082730.5964544,
-    "ast_hash": "b14acf7cdde8dfb3f1aff3bfb45fccd1",
+    "mtime": 1781333033.1975596,
+    "ast_hash": "70621595d7e5c7ee132eb001e695fb81",
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/FaqScreen.tsx": {
@@ -2120,8 +2120,8 @@
     "semantic_hash": ""
   },
   "src/features/home/components/HomeCategoryChipsRow.tsx": {
-    "mtime": 1781186096.2842205,
-    "ast_hash": "93eb20db9a434508bf7db2a5701002ba",
+    "mtime": 1781332997.4503856,
+    "ast_hash": "8a9badf42563c7d4ef3872ec96cc4df8",
     "semantic_hash": ""
   },
   "src/features/home/components/HomeHeroCarousel.tsx": {
@@ -2165,8 +2165,8 @@
     "semantic_hash": "a394746bacaaacd44ac8ae07a1925bbb"
   },
   "src/features/home/layout/DiscoverHomeChrome.tsx": {
-    "mtime": 1781331032.731062,
-    "ast_hash": "edaeb4aa66ae4ef9a4ddb76f60df1a5b",
+    "mtime": 1781333026.9618888,
+    "ast_hash": "4e577ac8d3e83bee3e6a2b8db937be24",
     "semantic_hash": ""
   },
   "src/features/home/layout/marketplaceLayout.ts": {
@@ -2685,9 +2685,9 @@
     "semantic_hash": "b67773dba943c9f6f875108737d738a7"
   },
   "src/features/students/screens/StudentsScreen.tsx": {
-    "mtime": 1780638687.445421,
-    "ast_hash": "34d6e315530b1058ebb123a6249b7853",
-    "semantic_hash": "34d6e315530b1058ebb123a6249b7853"
+    "mtime": 1781333041.4564378,
+    "ast_hash": "504c7ea6b91255d29ea734a0dc3bb4d5",
+    "semantic_hash": ""
   },
   "src/features/support/SessionTimelineCard.tsx": {
     "mtime": 1780222752.368268,
@@ -8482,6 +8482,21 @@
   "src/features/auth/security/coldStartUnlock.ts": {
     "mtime": 1781332536.078199,
     "ast_hash": "67d0396cf469669c0b2cf14c4804eb2f",
+    "semantic_hash": ""
+  },
+  "src/components/social/PublicSocialLinksRow.tsx": {
+    "mtime": 1781332994.1663847,
+    "ast_hash": "1410ca7e9c2d4ffb8f64d43f2a1f63b8",
+    "semantic_hash": ""
+  },
+  "src/features/students/components/TraineeProfileModal.tsx": {
+    "mtime": 1781333020.546508,
+    "ast_hash": "82ad08dad243d40022dcae89602b00e0",
+    "semantic_hash": ""
+  },
+  "src/lib/social/socialLinks.ts": {
+    "mtime": 1781332991.0346572,
+    "ast_hash": "58f91fc9ee4501d46670f4f653b6c0c0",
     "semantic_hash": ""
   }
 }

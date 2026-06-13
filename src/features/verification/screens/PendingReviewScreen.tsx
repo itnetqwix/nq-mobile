@@ -60,7 +60,10 @@ export function PendingReviewScreen({ onApproved }: Props) {
         const s = await getVerificationStatus();
         setStatus(s);
         setLastCheckedAt(new Date());
-        if (s.step === "completed" && s.status === "approved") {
+        if (
+          (s.step === "completed" && s.status === "approved") ||
+          s.status === "approved"
+        ) {
           haptics.success();
           onApproved();
         } else if (manual) {
