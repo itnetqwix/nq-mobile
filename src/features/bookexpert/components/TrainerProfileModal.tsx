@@ -40,6 +40,7 @@ import { useRequireAuth } from "../../auth/hooks/useRequireAuth";
 import { useFavoriteTrainers } from "../../dashboard/hooks/useFavoriteTrainers";
 import { FavoriteHeartButton } from "../../dashboard/components/trainee/FavoriteHeartButton";
 import { FriendSocialStrip } from "../../dashboard/components/trainee/FriendSocialStrip";
+import { PublicSocialLinksRow } from "../../../components/social/PublicSocialLinksRow";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
 type Props = {
@@ -205,6 +206,7 @@ export function TrainerProfileModal({
                     </View>
                   )}
                 </View>
+                <PublicSocialLinksRow user={data} size="sm" />
                 <FriendSocialStrip trainer={data} />
               </View>
             </View>
@@ -490,16 +492,16 @@ function makeStyles(colors: AppColors) {
     statChip: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 3,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
+      gap: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
       borderRadius: radii.pill,
       backgroundColor: colors.surfaceElevated,
       borderWidth: 1,
       borderColor: colors.border,
     },
-    statChipText: { ...typography.caption, color: colors.text, fontWeight: "700" },
-    statChipMuted: { ...typography.caption, color: colors.textMuted },
+    statChipText: { ...typography.caption, color: colors.text, fontWeight: "800" },
+    statChipMuted: { ...typography.caption, color: colors.textMuted, fontWeight: "600" },
     block: {
       marginBottom: space.sm,
       padding: space.sm,

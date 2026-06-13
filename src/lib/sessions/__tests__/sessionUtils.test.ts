@@ -1,6 +1,8 @@
 /** Matrix: P4, B8 — instant vs scheduled join windows */
 import {
   canJoinSession,
+  dedupeSessionsById,
+  filterSessionsForStatusTab,
   isInstantLesson,
   isPendingBooking,
   isSessionConfirmedForJoin,
@@ -61,5 +63,39 @@ describe("sessionUtils", () => {
     };
     expect(isPendingBooking(pending)).toBe(true);
     expect(isSessionConfirmedForJoin(pending)).toBe(false);
+  });
+
+  it("confirmed scheduled appears in upcoming and confirmed tabs", () => {
+    const future = {
+      is_instant: false,
+      status: "confirmed",
+      booked_date: "2026-12-15",
+      session_start_time: "14:00",
+      session_end_time: "15:00",
+      start_time: "2026-12-15T19:00:00.000Z",
+      end_time: "2026-12-15T20:00:00.000Z",
+    };
+    const now = new Date("2026-06-15T12:00:00.000Z");
+    expect(filterSessionsForStatusTab([future], "upcoming", now)).toHaveLength(1);
+    expect(filterSessionsForStatusTab([future], "confirmed", now)).toHaveLength(1);
+  });
+
+  it("instant pending accept stays in upcoming only", () => {
+    const pending = {
+      is_instant: true,
+      status: "booked",
+      instant_phase: "pending_accept",
+      booked_date: "2026-06-15",
+      session_start_time: "12:00",
+      session_end_time: "12:30",
+    };
+    const now = new Date("2026-06-15T12:00:00.000Z");
+    expect(filterSessionsForStatusTab([pending], "upcoming", now)).toHaveLength(1);
+    expect(filterSessionsForStatusTab([pending], "confirmed", now)).toHaveLength(0);
+  });
+
+  it("dedupes sessions by id", () => {
+    const rows = [{ _id: "a" }, { _id: "a" }, { _id: "b" }];
+    expect(dedupeSessionsById(rows)).toHaveLength(2);
   });
 });

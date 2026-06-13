@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { Ionicons as IconSet } from "@expo/vector-icons";
-import { space, typography, useThemeColors, useThemedStyles } from "../../../theme";
+import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 
 export type HomeCategoryChip = {
   id: string;
@@ -14,66 +14,69 @@ type Props = {
   items: HomeCategoryChip[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
-  /** Underline on active chip (Blinkit category tabs). */
+  /** @deprecated Underline removed — active chip uses filled pill style. */
   showTabUnderline?: boolean;
 };
 
 /**
- * Horizontal category / quick-action chips (Blinkit-style).
+ * Horizontal sport/category filter — compact pills with icon + label inline.
  */
-export function HomeCategoryChipsRow({
-  items,
-  selectedId,
-  onSelect,
-  showTabUnderline = true,
-}: Props) {
+export function HomeCategoryChipsRow({ items, selectedId, onSelect }: Props) {
   const c = useThemeColors();
   const styles = useStyles();
 
   return (
-    <ScrollView
-      horizontal
-      nestedScrollEnabled
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.strip}
-      decelerationRate="fast"
-    >
-      {items.map((item) => {
-        const active =
-          item.id === "__all__"
-            ? selectedId === null || selectedId === "__all__"
-            : selectedId === item.id;
-        return (
-          <Pressable
-            key={item.id}
-            style={styles.chipWrap}
-            onPress={() => {
-              if (item.id === "__all__") onSelect(null);
-              else onSelect(item.id);
-            }}
-            accessibilityRole="button"
-            accessibilityState={{ selected: active }}
-          >
-            <View style={[styles.iconWrap, active && styles.iconWrapActive]}>
-              <Ionicons
-                name={item.icon ?? "ellipse-outline"}
-                size={16}
-                color={active ? c.brandTextOn : c.brandNavy}
-              />
-            </View>
-            <Text
-              style={[styles.label, active && styles.labelActive]}
-              numberOfLines={1}
+    <View style={styles.shell}>
+      <ScrollView
+        horizontal
+        nestedScrollEnabled
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.strip}
+        decelerationRate="fast"
+      >
+        {items.map((item) => {
+          const active =
+            item.id === "__all__"
+              ? selectedId === null || selectedId === "__all__"
+              : selectedId === item.id;
+          return (
+            <Pressable
+              key={item.id}
+              style={({ pressed }) => [
+                styles.chip,
+                active ? styles.chipActive : styles.chipIdle,
+                pressed && { opacity: 0.9 },
+              ]}
+              onPress={() => {
+                if (item.id === "__all__") onSelect(null);
+                else onSelect(item.id);
+              }}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
             >
-              {item.label}
-            </Text>
-            {showTabUnderline && active ? (
-              <View style={[styles.underline, { backgroundColor: c.brandNavy }]} />
-            ) : null}
-          </Pressable>
-        );
-      })}
-    </ScrollView>
+              <View
+                style={[
+                  styles.iconBadge,
+                  active ? styles.iconBadgeActive : styles.iconBadgeIdle,
+                ]}
+              >
+                <Ionicons
+                  name={item.icon ?? "ellipse-outline"}
+                  size={14}
+                  color={active ? c.brandTextOn : c.brandNavy}
+                />
+              </View>
+              <Text
+                style={[styles.label, active && styles.labelActive]}
+                numberOfLines={1}
+              >
+                {item.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -81,48 +84,60 @@ function useStyles() {
   const c = useThemeColors();
   return useThemedStyles((palette) =>
     StyleSheet.create({
+      shell: {
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: palette.border,
+        backgroundColor: palette.surface,
+      },
       strip: {
         paddingHorizontal: space.md,
-        paddingBottom: space.xs,
-        paddingTop: space.xs,
-        gap: space.sm,
-      },
-      chipWrap: {
+        paddingVertical: space.sm,
+        gap: space.xs,
         alignItems: "center",
-        width: 54,
-        minHeight: 52,
       },
-      iconWrap: {
-        width: 34,
-        height: 34,
-        borderRadius: 17,
-        backgroundColor: palette.brandSubtle,
+      chip: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: radii.pill,
+        minHeight: 36,
+        maxWidth: 148,
+      },
+      chipIdle: {
+        backgroundColor: palette.surfaceElevated,
         borderWidth: 1,
-        borderColor: palette.brandAccentSubtle,
+        borderColor: palette.border,
+      },
+      chipActive: {
+        backgroundColor: c.brandNavy,
+        borderWidth: 1,
+        borderColor: c.brandNavy,
+      },
+      iconBadge: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
         alignItems: "center",
         justifyContent: "center",
       },
-      iconWrapActive: {
-        backgroundColor: c.brandNavy,
-        borderColor: c.brandNavy,
+      iconBadgeIdle: {
+        backgroundColor: palette.brandSubtle,
+      },
+      iconBadgeActive: {
+        backgroundColor: "rgba(255,255,255,0.18)",
       },
       label: {
-        fontSize: 10,
+        ...typography.caption,
+        fontSize: 12,
         fontWeight: "600",
-        color: palette.textMuted,
-        textAlign: "center",
-        marginTop: 3,
-        lineHeight: 13,
+        color: palette.textSecondary,
+        flexShrink: 1,
       },
       labelActive: {
-        color: palette.brandNavy,
+        color: c.brandTextOn,
         fontWeight: "700",
-      },
-      underline: {
-        marginTop: 4,
-        height: 2,
-        width: 20,
-        borderRadius: 1,
       },
     })
   );

@@ -508,3 +508,73 @@ export function isNewBookingNotificationTitle(title?: string | null): boolean {
   const t = (title ?? "").toLowerCase();
   return t.includes("booking request") || t.includes("instant lesson request");
 }
+
+export type SessionStatusTab = "upcoming" | "confirmed" | "completed" | "cancelled";
+
+export function dedupeSessionsById(sessions: any[]): any[] {
+  const seen = new Set<string>();
+  return sessions.filter((session) => {
+    const id = String(session?._id ?? session?.id ?? "");
+    if (!id || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
+
+/**
+ * Client-side tab filter aligned with backend status values (`booked`, `confirmed`,
+ * `completed`, `canceled`) and instant-lesson phases.
+ */
+export function filterSessionsForStatusTab(
+  sessions: any[],
+  tab: SessionStatusTab,
+  now = new Date()
+): any[] {
+  const nowMs = now.getTime();
+
+  return sessions.filter((session) => {
+    const status = normalizeSessionStatus(session?.status);
+    const phase = String(session?.instant_phase ?? "").toLowerCase();
+
+    if (tab === "cancelled") {
+      return status === "cancelled" || phase === "cancelled";
+    }
+
+    if (tab === "completed") {
+      return status === "completed" || phase === "completed";
+    }
+
+    if (status === "cancelled" || status === "completed" || phase === "cancelled" || phase === "completed") {
+      return false;
+    }
+
+    if (isInstantExpiredForLists(session, now)) return false;
+
+    if (tab === "confirmed") {
+      if (status === "confirmed") return true;
+      if (isInstantLesson(session) && isSessionConfirmedForJoin(session) && !isPendingBooking(session)) {
+        return true;
+      }
+      return false;
+    }
+
+    // Upcoming: pending requests + active future sessions (scheduled or instant).
+    if (isPendingBooking(session)) return true;
+    if (status === "upcoming") return true;
+
+    if (status === "confirmed") {
+      if (isInstantLesson(session)) {
+        return canEnterLesson(session, now) || canRejoinLesson(session, now);
+      }
+      const end = getSessionEnd(session);
+      const start = getSessionStart(session);
+      const anchor = end ?? start;
+      if (!anchor) return true;
+      return nowMs <= anchor.getTime() + LATE_JOIN_MS;
+    }
+
+    if (status === "booked" && !isInstantLesson(session)) return true;
+
+    return false;
+  });
+}

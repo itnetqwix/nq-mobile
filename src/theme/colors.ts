@@ -140,7 +140,7 @@ export const colorsLight: Palette & {
   primary: BRAND.brandAccent,
   primaryPressed: BRAND.brandAccentPressed,
 
-  homeMarketplaceBand: "#fff8e1",
+  homeMarketplaceBand: BRAND.brandSubtle,
   skeletonShimmer: NEUTRALS_LIGHT.neutral200,
   drawerHeader: "#ffffff",
   /** In-message search hit highlight. */
@@ -227,7 +227,7 @@ export const colorsDark: typeof colorsLight = {
   infoSubtle: "#172554",
   infoText: "#93c5fd",
 
-  homeMarketplaceBand: "#2a2410",
+  homeMarketplaceBand: "#1a2040",
   skeletonShimmer: NEUTRALS_DARK.neutral200,
   drawerHeader: "#1a1a2e",
   chatSearchHighlight: "#4a4520",

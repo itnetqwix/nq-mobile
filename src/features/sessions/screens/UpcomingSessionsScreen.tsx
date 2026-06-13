@@ -40,13 +40,14 @@ import { useHapticRefresh } from "../../../lib/refresh/useHapticRefresh";
 import {
   canEnterLesson,
   canJoinSession,
+  dedupeSessionsById,
+  filterSessionsForStatusTab,
   formatSessionWhen,
   getInstantAcceptDeadlineMs,
   getInstantJoinDeadlineMs,
   getJoinDisabledReason,
   getOtherParty,
   getSessionOutcomeI18nKey,
-  isInstantExpiredForLists,
   isInstantLesson,
   isPendingBooking,
   isSessionTerminalForUI,
@@ -352,7 +353,7 @@ export function UpcomingSessionsScreen() {
           fetchScheduledMeetings("upcoming").catch(() => []),
           fetchScheduledMeetings("confirmed").catch(() => []),
         ]);
-        return [...upcoming, ...confirmed];
+        return dedupeSessionsById([...upcoming, ...confirmed]);
       }
       return fetchScheduledMeetings(activeTab);
     },
@@ -372,37 +373,17 @@ export function UpcomingSessionsScreen() {
   const onSessionsScroll = useCombinedScroll(morphRefresh.scrollProps.onScroll, homeScroll.onScroll);
 
   const sessions = useMemo(() => {
-    const nowMs = Date.now();
-    const now = new Date(nowMs);
-    let list = rawSessions;
-    if (activeTab === "upcoming" || activeTab === "confirmed") {
-      list = list.filter((s: any) => !isInstantExpiredForLists(s, now));
-      list = list.filter((s: any) => {
-        const status = normalizeSessionStatus(s?.status);
-        if (activeTab === "confirmed") {
-          return status === "confirmed" || isInstantLesson(s);
-        }
-        if (status === "confirmed" && isInstantLesson(s) && canEnterLesson(s, now)) {
-          return true;
-        }
-        return status !== "confirmed";
-      });
-    }
+    let list = filterSessionsForStatusTab(rawSessions, activeTab);
     if (selectedDate) {
       list = list.filter((s: any) => isSameDay(s.booked_date, selectedDate));
     }
-    const seen = new Set<string>();
-    return list.filter((s: any) => {
-      const id = String(s._id);
-      if (seen.has(id)) return false;
-      seen.add(id);
-      return true;
-    });
+    return dedupeSessionsById(list);
   }, [rawSessions, activeTab, selectedDate]);
 
   const sessionDates = useMemo(() => {
     const dates = new Set<string>();
-    for (const s of rawSessions as any[]) {
+    const tabList = filterSessionsForStatusTab(rawSessions, activeTab);
+    for (const s of tabList as any[]) {
       if (s.booked_date) {
         try {
           const key = new Date(s.booked_date).toISOString().slice(0, 10);
@@ -411,7 +392,7 @@ export function UpcomingSessionsScreen() {
       }
     }
     return dates;
-  }, [rawSessions]);
+  }, [rawSessions, activeTab]);
 
   return (
     <View style={styles.flex}>

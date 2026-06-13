@@ -11,7 +11,6 @@ import { useDashboardSessions } from "../../hooks/useDashboardSessions";
 import { formatNextOpenSlot } from "../../lib/trainerSlotUtils";
 import { PendingRequestsBanner } from "./PendingRequestsBanner";
 import { TodayScheduleTimeline } from "./TodayScheduleTimeline";
-import { RecentTraineeClipsSection } from "./RecentTraineeClipsSection";
 import { TrainerGreetingRating } from "./TrainerGreetingRating";
 import { PerformanceTipsCard } from "./PerformanceTipsCard";
 import { TrainerRecentTraineesSection } from "./TrainerRecentTraineesSection";
@@ -19,6 +18,7 @@ import { FriendRequestTilesSkeleton } from "../../../../components/ui";
 import { TrainerFriendRequestsSection } from "./TrainerFriendRequestsSection";
 import { TrainerLockerSection } from "./TrainerLockerSection";
 import { MiniFriendsSection } from "../shared/MiniFriendsSection";
+import { DashboardClipsPreviewSection } from "../shared/DashboardClipsPreviewSection";
 import { ReferFriendsBanner } from "../shared/ReferFriendsBanner";
 import { createTrainerDashboardStyles } from "./trainerDashboardTheme";
 import { useThemeColors, useThemedStyles } from "../../../../theme";
@@ -148,7 +148,7 @@ function TrainerDashboardHubInner({
         scheduleSlots={scheduleSlots}
       />
 
-      <RecentTraineeClipsSection onOpenClips={onOpenClips} />
+      <DashboardClipsPreviewSection onViewMore={onOpenClips} />
 
       <ReferFriendsBanner onPressInvite={() => onOpenSurface("invite" as any)} />
 

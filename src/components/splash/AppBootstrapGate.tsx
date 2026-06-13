@@ -1,6 +1,11 @@
 import * as SplashScreen from "expo-splash-screen";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
+import { requireAppUnlock } from "../../features/auth/security/appUnlock";
+import {
+  markColdStartUnlockResult,
+  resetColdStartUnlockState,
+} from "../../features/auth/security/coldStartUnlock";
 import { useAppSelector } from "../../store/hooks";
 import { selectAuthStatus } from "../../store/selectors";
 import { AppSplashScreen } from "./AppSplashScreen";
@@ -23,16 +28,54 @@ type Props = {
 };
 
 /**
- * Application-level splash: keeps native splash visible until JS is ready,
- * plays branded animation, then hands off to navigation.
+ * Single cold-start splash: auth restore + locale + biometric unlock all happen
+ * behind the light-blue branded screen so the white in-app loader never stacks.
  */
 export function AppBootstrapGate({ children, appInitReady = true }: Props) {
   const authStatus = useAppSelector(selectAuthStatus);
   const [phase, setPhase] = useState<BootstrapPhase>("splash");
+  const [unlockHandled, setUnlockHandled] = useState(false);
   const bootStartedAt = useRef(Date.now());
   const finishTriggered = useRef(false);
+  const nativeSplashHidden = useRef(false);
 
   const authReady = authStatus !== "loading";
+
+  useEffect(() => {
+    if (!nativeSplashHidden.current) {
+      nativeSplashHidden.current = true;
+      void SplashScreen.hideAsync().catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    if (authStatus === "loading") {
+      setUnlockHandled(false);
+      resetColdStartUnlockState();
+      return;
+    }
+
+    if (authStatus !== "signedIn") {
+      markColdStartUnlockResult(true);
+      setUnlockHandled(true);
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      const ok = await requireAppUnlock();
+      if (!cancelled) {
+        markColdStartUnlockResult(ok);
+        setUnlockHandled(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authStatus]);
+
+  const shellReady = authReady && appInitReady && unlockHandled;
 
   const beginExit = useCallback(() => {
     if (finishTriggered.current) return;
@@ -41,13 +84,13 @@ export function AppBootstrapGate({ children, appInitReady = true }: Props) {
   }, []);
 
   useEffect(() => {
-    if (!authReady || !appInitReady) return;
+    if (!shellReady) return;
 
     const elapsed = Date.now() - bootStartedAt.current;
     const remaining = Math.max(0, SPLASH_MIN_DISPLAY_MS - elapsed);
     const timer = setTimeout(beginExit, remaining);
     return () => clearTimeout(timer);
-  }, [authReady, appInitReady, beginExit]);
+  }, [shellReady, beginExit]);
 
   useEffect(() => {
     const failsafe = setTimeout(beginExit, SPLASH_MAX_WAIT_MS);
@@ -56,10 +99,7 @@ export function AppBootstrapGate({ children, appInitReady = true }: Props) {
 
   useEffect(() => {
     if (phase !== "exiting") return;
-    const timer = setTimeout(() => {
-      void SplashScreen.hideAsync().catch(() => {});
-      setPhase("ready");
-    }, SPLASH_EXIT_ANIMATION_MS);
+    const timer = setTimeout(() => setPhase("ready"), SPLASH_EXIT_ANIMATION_MS);
     return () => clearTimeout(timer);
   }, [phase]);
 

@@ -12,7 +12,7 @@
     "splash": {
       "image": "./assets/netqwix_logo-fulll.png",
       "resizeMode": "contain",
-      "backgroundColor": "#000080"
+      "backgroundColor": "#E8F1FF"
     },
     "ios": {
       "supportsTablet": true,

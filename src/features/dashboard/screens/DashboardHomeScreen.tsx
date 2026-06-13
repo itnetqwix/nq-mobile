@@ -456,6 +456,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
       const tasks = [
         queryClient.refetchQueries({ queryKey: queryKeys.sessions.upcoming }),
         queryClient.refetchQueries({ queryKey: queryKeys.friends.requests }),
+        queryClient.refetchQueries({ queryKey: queryKeys.locker.myClips }),
         queryClient.refetchQueries({ queryKey: queryKeys.presence.recentTrainees }),
         isTrainee
           ? queryClient.refetchQueries({ queryKey: queryKeys.presence.recentTrainers })
@@ -647,6 +648,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
           onOpenWallet={() => openShell("wallet")}
           onOpenSession={openSession}
           onOpenFriends={() => openFeature("friends")}
+          onOpenClips={() => openShell("clips")}
           contentContainerStyle={[gutter, styles.content]}
           onScroll={onHomeScroll}
           scrollEventThrottle={morphHome.scrollEventThrottle}

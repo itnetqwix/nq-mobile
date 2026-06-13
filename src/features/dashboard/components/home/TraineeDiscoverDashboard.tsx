@@ -64,6 +64,7 @@ import { HomeOffersCarousel } from "../../../home/components/HomeOffersCarousel"
 import { StickyBottomPromoBar } from "../../../home/components/StickyBottomPromoBar";
 import { DiscoverHomeChrome } from "../../../home/layout/DiscoverHomeChrome";
 import { MiniFriendsSection } from "../shared/MiniFriendsSection";
+import { DashboardClipsPreviewSection } from "../shared/DashboardClipsPreviewSection";
 import { useHomeScrollHandler } from "../../../home/hooks/useHomeScrollHandler";
 import { useSearchVoice } from "../../../home/hooks/useSearchVoice";
 import type { HomeCategoryChip } from "../../../home/components/HomeCategoryChipsRow";
@@ -88,6 +89,7 @@ type Props = {
   onOpenWallet?: () => void;
   onOpenSession?: (session: Record<string, unknown>) => void;
   onOpenFriends?: () => void;
+  onOpenClips?: () => void;
   leadingContent?: React.ReactNode;
   footer?: React.ReactNode;
   contentContainerStyle?: StyleProp<ViewStyle>;
@@ -112,6 +114,7 @@ export function TraineeDiscoverDashboard({
   onOpenWallet,
   onOpenSession,
   onOpenFriends,
+  onOpenClips,
   leadingContent,
   footer,
   contentContainerStyle,
@@ -343,6 +346,10 @@ export function TraineeDiscoverDashboard({
 
       {!isGuest && onOpenFriends ? (
         <MiniFriendsSection onPressAll={onOpenFriends} />
+      ) : null}
+
+      {!isGuest && onOpenClips ? (
+        <DashboardClipsPreviewSection onViewMore={onOpenClips} />
       ) : null}
 
       <View style={styles.listHeaderRow}>

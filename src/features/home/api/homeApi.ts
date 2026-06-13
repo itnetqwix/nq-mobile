@@ -67,9 +67,16 @@ export async function fetchOnlineUsers(): Promise<any[]> {
 }
 
 /** Backend returns `{ data: Session[], page, limit, hasMore, ... }` for scheduled-meetings. */
-export async function fetchScheduledMeetings(status = "upcoming"): Promise<any[]> {
+export async function fetchScheduledMeetings(
+  status = "upcoming",
+  options?: { limit?: number; id?: string }
+): Promise<any[]> {
   const res = await apiClient.get(API_ROUTES.user.scheduledMeetings, {
-    params: { status },
+    params: {
+      status,
+      limit: options?.limit ?? 100,
+      ...(options?.id ? { id: options.id } : {}),
+    },
   });
   const body = res.data?.result ?? res.data;
   const rows = Array.isArray(body) ? body : body && Array.isArray(body.data) ? body.data : [];

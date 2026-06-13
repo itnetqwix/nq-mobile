@@ -77,10 +77,10 @@ export function LoaderProvider({ children }: { children: ReactNode }) {
         <View style={styles.modalRoot}>
           <NetQwixLoader
             message={message}
-            variant="overlay"
+            variant="fullscreen"
             size="md"
             motion="quick"
-            backdrop="scrim"
+            backdrop="solid"
             showTips
           />
         </View>

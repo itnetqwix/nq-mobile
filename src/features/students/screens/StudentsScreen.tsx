@@ -30,6 +30,7 @@ import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { openChatWithUser } from "../../chats/lib/openChatWithUser";
 import { sendTraineeNudge } from "../../dashboard/api/trainerNotesApi";
 import { StudentNoteSheet } from "../components/StudentNoteSheet";
+import { TraineeProfileModal } from "../components/TraineeProfileModal";
 
 function Avatar({
   uri,
@@ -75,6 +76,7 @@ function Avatar({
 
 function StudentCard({
   student,
+  onPressProfile,
   onMessage,
   onNudge,
   onNote,
@@ -82,6 +84,7 @@ function StudentCard({
   nudgeBusy,
 }: {
   student: Record<string, unknown>;
+  onPressProfile: () => void;
   onMessage: () => void;
   onNudge: () => void;
   onNote: () => void;
@@ -99,15 +102,26 @@ function StudentCard({
 
   return (
     <View style={styles.card}>
-      <Avatar
-        uri={student?.profile_picture as string | undefined}
-        name={name}
-        size={52}
-        photoLabel={t("trainees.photoOf", { name })}
-        profilePhotoLabel={t("trainees.profilePhoto")}
-      />
+      <Pressable
+        onPress={onPressProfile}
+        accessibilityRole="button"
+        accessibilityLabel={t("trainees.viewProfileA11y", {
+          name,
+          defaultValue: "View {{name}} profile",
+        })}
+      >
+        <Avatar
+          uri={student?.profile_picture as string | undefined}
+          name={name}
+          size={52}
+          photoLabel={t("trainees.photoOf", { name })}
+          profilePhotoLabel={t("trainees.profilePhoto")}
+        />
+      </Pressable>
       <View style={styles.cardInfo}>
-        <Text style={styles.studentName}>{name}</Text>
+        <Pressable onPress={onPressProfile} accessibilityRole="button">
+          <Text style={styles.studentName}>{name}</Text>
+        </Pressable>
         {!!email && <Text style={styles.studentEmail}>{email}</Text>}
         {!!joined && (
           <View style={styles.metaRow}>
@@ -175,6 +189,7 @@ export function StudentsScreen() {
   const [messageBusyId, setMessageBusyId] = useState<string | null>(null);
   const [nudgeBusyId, setNudgeBusyId] = useState<string | null>(null);
   const [noteTarget, setNoteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [profileTarget, setProfileTarget] = useState<Record<string, unknown> | null>(null);
 
   const listPad = useMemo(
     () => ({
@@ -288,6 +303,7 @@ export function StudentsScreen() {
           return (
             <StudentCard
               student={item as Record<string, unknown>}
+              onPressProfile={() => setProfileTarget(item as Record<string, unknown>)}
               onMessage={() => void handleMessage(item as Record<string, unknown>)}
               onNudge={() => void handleNudge(item as Record<string, unknown>)}
               onNote={() => setNoteTarget({ id, name })}
@@ -318,6 +334,21 @@ export function StudentsScreen() {
           traineeId={noteTarget.id}
           traineeName={noteTarget.name}
           onClose={() => setNoteTarget(null)}
+        />
+      ) : null}
+      {profileTarget ? (
+        <TraineeProfileModal
+          visible
+          trainee={profileTarget}
+          onDismiss={() => setProfileTarget(null)}
+          onMessage={() => {
+            void handleMessage(profileTarget);
+          }}
+          onNudge={() => {
+            void handleNudge(profileTarget);
+          }}
+          messageBusy={messageBusyId === String(profileTarget._id ?? "")}
+          nudgeBusy={nudgeBusyId === String(profileTarget._id ?? "")}
         />
       ) : null}
     </>

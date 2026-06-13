@@ -27,6 +27,11 @@ import {
   type ProfileUpdate,
 } from "../../home/api/homeApi";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import {
+  buildSocialLinksPayload,
+  getSocialLinksFromUser,
+  isValidSocialUrl,
+} from "../../../lib/social/socialLinks";
 
 export function EditProfileScreen() {
   const { t } = useAppTranslation();
@@ -75,6 +80,11 @@ export function EditProfileScreen() {
     ...typography.label,
     color: palette.brandAccent,
     fontSize: 13,
+  },
+  publicLinksHint: {
+    ...typography.bodySm,
+    marginBottom: space.sm,
+    lineHeight: 20,
   },
 }));
 
@@ -173,11 +183,33 @@ export function EditProfileScreen() {
     setHourlyRate(initial.hourly_rate);
   }, [initial]);
 
+  const initialSocial = useMemo(() => {
+    const links = getSocialLinksFromUser(user as Record<string, unknown> | null);
+    return {
+      facebook: links.fb ?? "",
+      instagram: links.instagram ?? "",
+      website: links.slack ?? "",
+    };
+  }, [user]);
+
+  const [facebook, setFacebook] = useState(initialSocial.facebook);
+  const [instagram, setInstagram] = useState(initialSocial.instagram);
+  const [website, setWebsite] = useState(initialSocial.website);
+
+  useEffect(() => {
+    setFacebook(initialSocial.facebook);
+    setInstagram(initialSocial.instagram);
+    setWebsite(initialSocial.website);
+  }, [initialSocial]);
+
   const dirty =
     fullname !== initial.fullname ||
     bio !== initial.bio ||
     mobile !== initial.mobile_no ||
-    hourlyRate !== initial.hourly_rate;
+    hourlyRate !== initial.hourly_rate ||
+    facebook !== initialSocial.facebook ||
+    instagram !== initialSocial.instagram ||
+    website !== initialSocial.website;
 
   const save = async () => {
     if (!fullname.trim()) {
@@ -186,9 +218,41 @@ export function EditProfileScreen() {
     }
     setBusy(true);
     try {
+      const socialPayload = buildSocialLinksPayload({ facebook, instagram, website });
+      for (const [label, url] of [
+        ["Facebook", socialPayload.fb],
+        ["Instagram", socialPayload.instagram],
+        ["Website", socialPayload.slack],
+      ] as const) {
+        if (url && !isValidSocialUrl(url)) {
+          Alert.alert(
+            t("profile.invalidLinkTitle", { defaultValue: "Invalid link" }),
+            t("profile.invalidLinkBody", {
+              defaultValue: "Please enter a valid {{label}} URL.",
+              label,
+            })
+          );
+          setBusy(false);
+          return;
+        }
+      }
+
+      const existingExtra = ((user as Record<string, unknown>)?.extraInfo as Record<string, unknown>) ?? {};
+      const existingSocial =
+        (existingExtra.social_media_links as Record<string, unknown>) ?? {};
+
       const profile: ProfileUpdate = {
         fullname: fullname.trim(),
         bio: bio.trim(),
+        extraInfo: {
+          ...existingExtra,
+          social_media_links: {
+            ...existingSocial,
+            fb: socialPayload.fb ?? "",
+            instagram: socialPayload.instagram ?? "",
+            slack: socialPayload.slack ?? "",
+          },
+        },
       };
       if (isTrainer && hourlyRate) {
         profile.hourly_rate = hourlyRate.trim();
@@ -333,6 +397,69 @@ export function EditProfileScreen() {
                 </Text>
               </Pressable>
             </View>
+          </Card>
+        </>
+      )}
+
+      <SectionHeader
+        label={t("profile.publicLinksSection", { defaultValue: "Public links" })}
+      />
+      <Card variant="outlined" padding="md" style={styles.sectionCard}>
+        <Text style={[styles.publicLinksHint, { color: c.textMuted }]}>
+          {t("profile.publicLinksHint", {
+            defaultValue:
+              "Instagram, Facebook, and your website appear on your profile. Anyone viewing you can tap to open them.",
+          })}
+        </Text>
+        <View style={styles.fieldStack}>
+          <FormField
+            label={t("profile.instagramLabel", { defaultValue: "Instagram" })}
+            value={instagram}
+            onChangeText={setInstagram}
+            placeholder={t("profile.instagramPlaceholder", {
+              defaultValue: "instagram.com/you or @handle",
+            })}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+          />
+          <FormField
+            label={t("profile.facebookLabel", { defaultValue: "Facebook" })}
+            value={facebook}
+            onChangeText={setFacebook}
+            placeholder={t("profile.facebookPlaceholder", {
+              defaultValue: "facebook.com/you",
+            })}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+          />
+          <FormField
+            label={t("profile.websiteLabel", { defaultValue: "Website" })}
+            value={website}
+            onChangeText={setWebsite}
+            placeholder={t("profile.websitePlaceholder", {
+              defaultValue: "yoursite.com",
+            })}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+          />
+        </View>
+      </Card>
+
+      {!isTrainer && (
+        <>
+          <SectionHeader label={t("profile.aboutSection", { defaultValue: "About you" })} />
+          <Card variant="outlined" padding="md" style={styles.sectionCard}>
+            <FormField
+              label={t("profile.bioLabel")}
+              value={bio}
+              onChangeText={setBio}
+              placeholder={t("profile.bioPlaceholder")}
+              multiline
+              inputStyle={{ minHeight: 96, textAlignVertical: "top" }}
+            />
           </Card>
         </>
       )}

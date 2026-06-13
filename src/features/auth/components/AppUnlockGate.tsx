@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 import { NetQwixLoader } from "../../../components/brand/NetQwixLoader";
+import { getColdStartUnlockSnapshot } from "../security/coldStartUnlock";
 import { requireAppUnlock } from "../security/appUnlock";
 
 type Props = {
@@ -11,13 +12,21 @@ type Props = {
 const RELOCK_THRESHOLD_MS = 60 * 1000;
 
 export function AppUnlockGate({ children }: Props) {
-  const [ready, setReady] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const coldStart = getColdStartUnlockSnapshot();
+  const [ready, setReady] = useState(
+    coldStart.attempted ? coldStart.succeeded === true : false
+  );
+  const [failed, setFailed] = useState(
+    coldStart.attempted ? coldStart.succeeded === false : false
+  );
+  const coldStartConsumed = useRef(coldStart.attempted);
   const backgroundedAt = useRef<number | null>(null);
 
   useEffect(() => {
+    if (coldStartConsumed.current) return;
+
     let cancelled = false;
-    (async () => {
+    void (async () => {
       const ok = await requireAppUnlock();
       if (cancelled) return;
       if (!ok) {
@@ -34,8 +43,7 @@ export function AppUnlockGate({ children }: Props) {
   /**
    * Foreground re-lock — keeps the app unlocked while the user is actively
    * using it but forces a fresh biometric prompt if it sat in the background
-   * for longer than `RELOCK_THRESHOLD_MS`. Cheaper than re-prompting on every
-   * resume (which would be annoying when checking a quick notification).
+   * for longer than `RELOCK_THRESHOLD_MS`.
    */
   useEffect(() => {
     if (!ready) return;
@@ -51,6 +59,7 @@ export function AppUnlockGate({ children }: Props) {
         if (Date.now() - since < RELOCK_THRESHOLD_MS) return;
 
         setReady(false);
+        setFailed(false);
         void (async () => {
           const ok = await requireAppUnlock();
           if (!ok) {
@@ -70,7 +79,7 @@ export function AppUnlockGate({ children }: Props) {
         message="Unlock to continue"
         variant="fullscreen"
         motion="quick"
-        backdrop="scrim"
+        backdrop="solid"
         showTips
       />
     );
@@ -82,7 +91,7 @@ export function AppUnlockGate({ children }: Props) {
         message="Unlocking…"
         variant="fullscreen"
         motion="quick"
-        backdrop="scrim"
+        backdrop="solid"
         showTips
       />
     );

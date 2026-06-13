@@ -143,7 +143,7 @@ export function TrainerBrowseCard({
             )}
             <View style={styles.metaRow}>
               {rating != null ? (
-                <View style={styles.ratingRow}>
+                <View style={styles.metaPill}>
                   <Ionicons name="star" size={12} color={themeColors.warning} />
                   <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
                   {reviewCount > 0 ? (
@@ -153,17 +153,19 @@ export function TrainerBrowseCard({
                   ) : null}
                 </View>
               ) : null}
+              {hourly != null ? (
+                <View style={[styles.metaPill, styles.ratePill]}>
+                  <Text style={styles.rateText}>
+                    {t("traineeDiscover.fromRate", { rate: hourly.toFixed(0) })}
+                  </Text>
+                </View>
+              ) : null}
               {completedCount > 0 ? (
                 <Text style={styles.sessionsText}>
                   {t("traineeDiscover.sessionsCompleted", { count: completedCount })}
                 </Text>
               ) : null}
             </View>
-            {hourly != null ? (
-              <Text style={styles.rateText}>
-                {t("traineeDiscover.fromRate", { rate: hourly.toFixed(0) })}
-              </Text>
-            ) : null}
             {!compact && todaySlotsCount !== null && todaySlotsCount > 0 ? (
               <Text style={styles.slotsText}>
                 {t("bookExpert.slotsAvailableToday", { count: todaySlotsCount })}
@@ -277,13 +279,26 @@ function makeCardStyles(colors: AppColors) {
       flexWrap: "wrap",
       alignItems: "center",
       gap: 6,
-      marginTop: 3,
+      marginTop: 4,
     },
-    ratingRow: { flexDirection: "row", alignItems: "center", gap: 3 },
-    ratingText: { ...typography.caption, fontWeight: "600", color: colors.textSecondary },
+    metaPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 3,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: radii.pill,
+      backgroundColor: colors.surfaceElevated,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    ratePill: {
+      backgroundColor: colors.brandSubtle,
+    },
+    ratingText: { ...typography.caption, fontWeight: "800", color: colors.text },
     reviewsHint: { ...typography.caption, color: colors.textMuted, fontSize: 11 },
     sessionsText: { ...typography.caption, color: colors.textMuted, fontSize: 11 },
-    rateText: { ...typography.caption, color: colors.brandNavy, marginTop: 2, fontWeight: "600", fontSize: 11 },
+    rateText: { ...typography.caption, color: colors.brandNavy, fontWeight: "800", fontSize: 11 },
     slotsText: { ...typography.caption, color: colors.success, marginTop: 2, fontWeight: "500", fontSize: 11 },
     slotsHintMuted: {
       ...typography.caption,

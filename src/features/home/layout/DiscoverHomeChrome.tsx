@@ -17,8 +17,10 @@ import {
 import { HomeStickySearchBar } from "../components/HomeStickySearchBar";
 import type { VoiceInputState } from "../../ai/useVoiceInput";
 import { useMarketplaceTopPadding } from "./marketplaceLayout";
+import { PublicSocialLinksRow } from "../../../components/social/PublicSocialLinksRow";
+import { hasPublicSocialLinks, getSocialLinksFromUser } from "../../../lib/social/socialLinks";
 
-const PROFILE_AVATAR_SIZE = 58;
+const PROFILE_AVATAR_SIZE = 80;
 
 type Props = {
   /** @deprecated Use profileName in the profile band. Kept for callers that still pass it. */
@@ -88,18 +90,25 @@ function TrainerProfileMeta({
     );
   }
 
+  const pillBg = c.surfaceElevated;
+  const pillBorder = c.border;
+
   return (
     <View style={metaStyles.row}>
       {onPressReviews ? (
         <Pressable
           onPress={onPressReviews}
-          style={({ pressed }) => [metaStyles.chip, pressed && { opacity: 0.85 }]}
+          style={({ pressed }) => [
+            metaStyles.pill,
+            { backgroundColor: pillBg, borderColor: pillBorder },
+            pressed && { opacity: 0.85 },
+          ]}
           accessibilityRole="button"
           accessibilityLabel={t("trainerDashboard.openReviewsA11y", {
             defaultValue: "Your rating and reviews",
           })}
         >
-          <Ionicons name="star" size={13} color={c.warning} />
+          <Ionicons name="star" size={14} color={c.warning} />
           <Text style={[metaStyles.chipText, text.caption, { color: c.text }]}>
             {hasRating ? avg!.toFixed(1) : "—"}
           </Text>
@@ -110,8 +119,8 @@ function TrainerProfileMeta({
           </Text>
         </Pressable>
       ) : (
-        <View style={metaStyles.chip}>
-          <Ionicons name="star" size={13} color={c.warning} />
+        <View style={[metaStyles.pill, { backgroundColor: pillBg, borderColor: pillBorder }]}>
+          <Ionicons name="star" size={14} color={c.warning} />
           <Text style={[metaStyles.chipText, text.caption, { color: c.text }]}>
             {hasRating ? avg!.toFixed(1) : "—"}
           </Text>
@@ -123,15 +132,12 @@ function TrainerProfileMeta({
         </View>
       )}
       {hourly ? (
-        <>
-          <Text style={[metaStyles.dot, { color: c.textMuted }]}>•</Text>
-          <View style={metaStyles.chip}>
-            <Text style={[metaStyles.rate, text.caption, { color: c.brandNavy }]}>
-              ${hourly}
-              <Text style={{ color: c.textMuted, fontWeight: "500" }}>/hr</Text>
-            </Text>
-          </View>
-        </>
+        <View style={[metaStyles.pill, { backgroundColor: c.brandSubtle, borderColor: pillBorder }]}>
+          <Text style={[metaStyles.rate, text.caption, { color: c.brandNavy }]}>
+            ${hourly}
+            <Text style={{ color: c.textMuted, fontWeight: "600" }}>/hr</Text>
+          </Text>
+        </View>
       ) : null}
     </View>
   );
@@ -142,26 +148,26 @@ const metaStyles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     alignItems: "center",
-    gap: 6,
-    marginTop: 4,
+    gap: 8,
+    marginTop: 6,
   },
-  chip: {
+  pill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    borderWidth: 1,
   },
   chipText: {
-    fontWeight: "700",
+    fontWeight: "800",
   },
   chipMuted: {
     fontWeight: "500",
   },
   rate: {
-    fontWeight: "700",
-  },
-  dot: {
-    fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "800",
   },
 });
 
@@ -229,7 +235,7 @@ export function DiscoverHomeChrome({
         {avatar}
         <View style={styles.profileCol}>
           <Text
-            style={[styles.name, text.titleSm, { color: c.text }]}
+            style={[styles.name, text.titleMd, { color: c.text }]}
             numberOfLines={1}
           >
             {displayName}
@@ -243,6 +249,9 @@ export function DiscoverHomeChrome({
             >
               {subline}
             </Text>
+          ) : null}
+          {user && hasPublicSocialLinks(getSocialLinksFromUser(user)) ? (
+            <PublicSocialLinksRow user={user} size="sm" />
           ) : null}
         </View>
         {trailing}
@@ -285,7 +294,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: space.md,
-    paddingBottom: space.sm,
+    paddingBottom: space.md,
     gap: space.md,
   },
   profileCol: {
@@ -294,7 +303,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   name: {
-    fontWeight: "700",
+    fontWeight: "800",
+    letterSpacing: -0.3,
   },
   subline: {
     marginTop: space.xxs,
