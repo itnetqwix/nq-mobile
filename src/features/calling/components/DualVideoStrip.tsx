@@ -1,16 +1,11 @@
 /**
- * DualVideoStrip
- * ─────────────
- * A fixed horizontal row of two compact video tiles shown at the bottom of
- * the screen while clips are in the main stage.  Both participants remain
- * visible without blocking the clip area, matching the user's request for
- * "both video streaming boxes at the bottom".
- *
- * The strip slides just above the ActionButtons (respects `bottomOffset`).
+ * Corner live-camera PIPs during clip review — remote + local tiles float above
+ * the action bar (not a full-width bottom strip).
  */
 
 import React, { useCallback, useState } from "react";
 import {
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -25,8 +20,8 @@ import type { CallParticipant } from "../types";
 import { meetingTheme } from "../meetingTheme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 
-const TILE_HEIGHT = 90;
-const TILE_ASPECT = 4 / 3;
+const TILE_W = 108;
+const TILE_H = 132;
 
 type TileProps = {
   user: CallParticipant | null;
@@ -38,7 +33,7 @@ type TileProps = {
 };
 
 function VideoTile({ user, stream, isStreamOff, muted = false, label, style }: TileProps) {
-  const streamId = (stream as any)?.toURL?.() ?? null;
+  const streamId = (stream as { toURL?: () => string } | null)?.toURL?.() ?? null;
   const videoCount = stream?.getVideoTracks?.()?.length ?? 0;
   const rtcKey = streamId ? `${streamId}-v${videoCount}` : "no-stream";
   const avatarUri = getS3ImageUrl(user?.profile_picture ?? null);
@@ -57,10 +52,7 @@ function VideoTile({ user, stream, isStreamOff, muted = false, label, style }: T
       ) : (
         <View style={styles.avatarWrap}>
           {avatarUri ? (
-            // eslint-disable-next-line react-native/no-inline-styles
-            <View style={{ width: 32, height: 32, borderRadius: 16, overflow: "hidden" }}>
-              {/* Use RTCView placeholder avatar */}
-            </View>
+            <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
           ) : (
             <View style={styles.avatarCircle}>
               <Text style={styles.avatarInitial}>
@@ -70,7 +62,6 @@ function VideoTile({ user, stream, isStreamOff, muted = false, label, style }: T
           )}
         </View>
       )}
-      {/* Name badge */}
       <View style={styles.nameBadge}>
         {isStreamOff ? (
           <Ionicons
@@ -96,9 +87,7 @@ type Props = {
   localStreamOff?: boolean;
   remoteStreamOff?: boolean;
   peerDisplayName: string;
-  /** Bottom inset so the strip sits above the action-bar (pass `chrome.bottomChrome`). */
   bottomOffset?: number;
-  /** Called when either tile is tapped — lets the caller expand to full-screen. */
   onTapLocal?: () => void;
   onTapRemote?: () => void;
 };
@@ -116,7 +105,6 @@ export function DualVideoStrip({
   onTapRemote,
 }: Props) {
   const [collapsed, setCollapsed] = useState(false);
-
   const toggleCollapse = useCallback(() => setCollapsed((v) => !v), []);
 
   if (collapsed) {
@@ -132,14 +120,15 @@ export function DualVideoStrip({
     );
   }
 
+  const remoteLabel = peerDisplayName.split(" ")[0] ?? "Partner";
+
   return (
-    <View style={[styles.strip, { bottom: bottomOffset + 4 }]} pointerEvents="box-none">
+    <View style={[styles.overlay, { bottom: bottomOffset + 6 }]} pointerEvents="box-none">
       <Pressable
-        style={styles.tile}
+        style={[styles.tile, styles.tileLeft]}
         onPress={onTapLocal}
         accessibilityLabel="Your camera"
         disabled={!onTapLocal}
-        pointerEvents="auto"
       >
         <VideoTile
           user={localUser}
@@ -151,17 +140,16 @@ export function DualVideoStrip({
       </Pressable>
 
       <Pressable
-        style={styles.tile}
+        style={[styles.tile, styles.tileRight]}
         onPress={onTapRemote}
         accessibilityLabel={peerDisplayName}
         disabled={!onTapRemote}
-        pointerEvents="auto"
       >
         <VideoTile
           user={remoteUser}
           stream={remoteStream}
           isStreamOff={remoteStreamOff}
-          label={peerDisplayName.split(" ")[0] ?? "Partner"}
+          label={remoteLabel}
         />
       </Pressable>
 
@@ -170,33 +158,44 @@ export function DualVideoStrip({
         onPress={toggleCollapse}
         hitSlop={8}
         accessibilityLabel="Hide cameras"
-        pointerEvents="auto"
       >
-        <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.7)" />
+        <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.85)" />
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  strip: {
+  overlay: {
     position: "absolute",
-    left: 12,
-    right: 12,
-    flexDirection: "row",
-    gap: 8,
-    alignItems: "flex-end",
+    left: 0,
+    right: 0,
+    height: TILE_H + 8,
     zIndex: 25,
+    pointerEvents: "box-none",
   },
   tile: {
-    flex: 1,
-    height: TILE_HEIGHT,
-    maxWidth: TILE_HEIGHT * TILE_ASPECT,
-    borderRadius: 12,
+    position: "absolute",
+    width: TILE_W,
+    height: TILE_H,
+    borderRadius: 14,
     overflow: "hidden",
     backgroundColor: meetingTheme.videoPlaceholder,
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.18)",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.28)",
+    shadowColor: "#000",
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 6,
+  },
+  tileLeft: {
+    left: 14,
+    bottom: 0,
+  },
+  tileRight: {
+    right: 14,
+    bottom: 0,
   },
   avatarWrap: {
     ...StyleSheet.absoluteFillObject,
@@ -204,50 +203,58 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: meetingTheme.surface,
   },
+  avatarImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
   avatarCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: meetingTheme.navy,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#000080",
     alignItems: "center",
     justifyContent: "center",
   },
   avatarInitial: {
     color: "#fff",
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "700",
   },
   nameBadge: {
     position: "absolute",
-    bottom: 5,
-    left: 6,
+    bottom: 6,
+    left: 8,
+    right: 8,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.55)",
-    borderRadius: 6,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
+    backgroundColor: "rgba(0,0,0,0.62)",
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
   },
   nameText: {
-    color: "rgba(255,255,255,0.9)",
-    fontSize: 10,
-    fontWeight: "600",
-    maxWidth: 70,
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "700",
+    flex: 1,
   },
   collapseBtn: {
     position: "absolute",
-    right: -4,
-    top: -10,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    alignSelf: "center",
+    bottom: TILE_H + 2,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(0,0,0,0.55)",
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
   },
   collapsedPill: {
     position: "absolute",
-    left: 12,
+    left: 14,
     flexDirection: "row",
     alignItems: "center",
     gap: 5,

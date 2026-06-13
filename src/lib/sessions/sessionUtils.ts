@@ -115,6 +115,10 @@ export function isSessionToday(session: any, now = new Date()): boolean {
 }
 
 export function getSessionEnd(session: any): Date | null {
+  if (session?.actual_end_at) {
+    const actual = new Date(session.actual_end_at);
+    if (Number.isFinite(actual.getTime())) return actual;
+  }
   if (session?.end_time) {
     const d = new Date(session.end_time);
     if (Number.isFinite(d.getTime())) return d;
@@ -342,6 +346,14 @@ export function isSessionInProgress(session: any, now = new Date()): boolean {
   }
 
   if (!session?.booked_date || !session?.start_time || !session?.end_time) {
+    return canRejoinLesson(session, now);
+  }
+
+  const start = getSessionStart(session);
+  const end = getSessionEnd(session);
+  if (start && end) {
+    const nowMs = now.getTime();
+    if (nowMs >= start.getTime() && nowMs <= end.getTime()) return true;
     return canRejoinLesson(session, now);
   }
 

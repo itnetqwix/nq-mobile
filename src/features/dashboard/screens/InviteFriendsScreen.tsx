@@ -447,7 +447,7 @@ export function InviteFriendsScreen() {
             <Text style={[styles.cardSub, { color: c.textMuted }]}>
               {t("invites.subtitleExpanded", {
                 defaultValue:
-                  "Enter one or more emails. We will send your friend a personal invite to join Netqwix.",
+                  "Enter one or more emails. We will send your friend a personal invite to join NetQwix.",
               })}
             </Text>
           </View>

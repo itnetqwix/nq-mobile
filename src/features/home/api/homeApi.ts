@@ -521,7 +521,7 @@ export async function postSharedClipsGrouped() {
   return postSharedClipsBySharer();
 }
 
-/** POST `/common/get-library-clips` — Netqwix library nested groups. */
+/** POST `/common/get-library-clips` — NetQwix library nested groups. */
 export async function postLibraryClipsGrouped() {
   const { postLibraryClipsNested } = await import("../../clips/api/clipsApi");
   return postLibraryClipsNested();

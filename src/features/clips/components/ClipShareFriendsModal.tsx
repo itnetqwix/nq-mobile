@@ -113,7 +113,7 @@ export function ClipShareFriendsModal({ visible, clipIds, onClose, onSent }: Pro
     if (clipIds.length === 0) return;
     const firstClipId = clipIds[0];
     await shareClipExternally({
-      title: t("locker.sharedClipTitle", { defaultValue: "Check out this clip on Netqwix!" }),
+      title: t("locker.sharedClipTitle", { defaultValue: "Check out this clip on NetQwix!" }),
       clipId: firstClipId,
       t,
     });
@@ -153,7 +153,7 @@ export function ClipShareFriendsModal({ visible, clipIds, onClose, onSent }: Pro
             color={tab === "friends" ? c.brandNavy : c.textMuted}
           />
           <Text style={[styles.tabLabel, tab === "friends" && styles.tabLabelActive]}>
-            {t("locker.shareTabFriends", { defaultValue: "Netqwix friends" })}
+            {t("locker.shareTabFriends", { defaultValue: "NetQwix friends" })}
           </Text>
         </Pressable>
         <Pressable
@@ -253,7 +253,7 @@ export function ClipShareFriendsModal({ visible, clipIds, onClose, onSent }: Pro
             <Text style={styles.infoText}>
               {t("locker.externalShareNote", {
                 defaultValue:
-                  "Recipients will need a Netqwix account to view the full clip. They'll be prompted to sign up if they don't have one.",
+                  "Recipients will need a NetQwix account to view the full clip. They'll be prompted to sign up if they don't have one.",
               })}
             </Text>
           </View>
@@ -294,7 +294,7 @@ export function ClipShareFriendsModal({ visible, clipIds, onClose, onSent }: Pro
             </View>
             <View style={styles.shareOptionMeta}>
               <Text style={styles.shareOptionTitle}>
-                {t("locker.sendToNetqwixFriends", { defaultValue: "Send to Netqwix friends" })}
+                {t("locker.sendToNetqwixFriends", { defaultValue: "Send to NetQwix friends" })}
               </Text>
               <Text style={styles.shareOptionSub}>
                 {t("locker.sendToNetqwixFriendsSub", { defaultValue: "Share directly with your connections" })}

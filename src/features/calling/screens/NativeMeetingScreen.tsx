@@ -45,6 +45,8 @@ import { useSocket } from "../../socket/SocketContext";
 import { queryKeys } from "../../../lib/queryKeys";
 import { fetchMeetingSession, fetchScheduledMeetings } from "../../home/api/homeApi";
 import { parseIceServersFromSession } from "../meetingIceServers";
+import { fetchSessionReport } from "../meetingReportApi";
+import { parseReportScreenshotItems } from "../reportDataUtils";
 import { getClipPlaybackUrl } from "../../../lib/clipMediaUrl";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import {
@@ -359,10 +361,17 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
     };
   }, [session, role]);
 
-  const iceServers = useMemo(
-    () => parseIceServersFromSession(session),
-    [session]
-  );
+  const { data: joinReadinessForIce } = useQuery({
+    queryKey: queryKeys.sessions.joinReadiness(lessonId),
+    queryFn: () => fetchSessionJoinReadiness(lessonId),
+    staleTime: 60_000,
+  });
+
+  const iceServers = useMemo(() => {
+    const fromReadiness = (joinReadinessForIce?.iceServers ?? []) as import("../types").IceServer[];
+    if (fromReadiness.length > 0) return fromReadiness;
+    return parseIceServersFromSession(session);
+  }, [joinReadinessForIce, session]);
 
   useEffect(() => {
     peerNameRef.current = peer?.fullname ?? peer?.fullName ?? undefined;
@@ -607,6 +616,25 @@ function MeetingSurface({
     const id = setTimeout(() => setTimerBufferElapsed(true), 5000);
     return () => clearTimeout(id);
   }, [partnerInSession]);
+
+  /** Re-announce join + refresh presence when partner/video is slow to connect. */
+  useEffect(() => {
+    if (bothJoined && remoteStream) return;
+    const delayMs = partnerInSession ? 5000 : 9000;
+    const timer = setTimeout(() => {
+      recoverConnection();
+      socket?.emit("LESSON_STATE_REQUEST", { sessionId: lessonId });
+    }, delayMs);
+    return () => clearTimeout(timer);
+  }, [
+    bothJoined,
+    remoteStream,
+    partnerInSession,
+    recoverConnection,
+    socket,
+    lessonId,
+    status,
+  ]);
 
   const bothUsersForTimer =
     presence.trainerConnected != null && presence.traineeConnected != null
@@ -1576,9 +1604,24 @@ function MeetingSurface({
   );
 
   const continueAfterRecap = useCallback(async () => {
-    // Trainer path: recap → game plan → ratings → handoff
-    setGamePlanOpen(true);
-  }, []);
+    /** Only open the PDF game-plan editor when the trainer captured screenshots during the lesson. */
+    try {
+      const res = await fetchSessionReport({
+        sessions: lessonId,
+        trainer: myId,
+        trainee: peerId,
+      });
+      const data = res?.data ?? res;
+      const items = parseReportScreenshotItems(data?.reportData);
+      if (items.length > 0) {
+        setGamePlanOpen(true);
+        return;
+      }
+    } catch {
+      /* fall through to ratings */
+    }
+    setRatingsOpen(true);
+  }, [lessonId, myId, peerId]);
 
   /**
    * Safety valve: if the trainer skips/dismisses the game plan without the
@@ -2195,6 +2238,7 @@ function MeetingSurface({
                           <ClipPlaybackControls
                             variant="inline"
                             size="default"
+                            onLightBackground
                             isPlaying={clipSync.isClipPlaying(
                               clipSync.selectedClips[0]
                                 ? clipIdOf(clipSync.selectedClips[0])

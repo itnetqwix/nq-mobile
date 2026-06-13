@@ -27,14 +27,14 @@ const OPTIONS: {
   {
     id: "friends",
     icon: "people-outline",
-    title: "Netqwix friends",
-    subtitle: "Share with people you know on Netqwix",
+    title: "NetQwix friends",
+    subtitle: "Share with people you know on NetQwix",
   },
   {
     id: "email",
     icon: "mail-outline",
     title: "Invite by email",
-    subtitle: "Send to someone who is not on Netqwix yet",
+    subtitle: "Send to someone who is not on NetQwix yet",
   },
 ];
 

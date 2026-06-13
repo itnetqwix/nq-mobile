@@ -94,7 +94,8 @@ export function UnlockedDualClipStage({
                 <View style={styles.controlsDock}>
                   <ClipPlaybackControls
                     variant="inline"
-                    size="compact"
+                    size="default"
+                    onLightBackground
                     isPlaying={isPlayingByPane[paneIndex]}
                     onTogglePlay={() => onTogglePlay(paneIndex)}
                     progressSeconds={progressSecondsByPane[paneIndex]}

@@ -12,11 +12,16 @@ import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -133,142 +138,158 @@ export function RatingsModal({
       animationType="fade"
       onRequestClose={mandatorySubmit && !submitted ? undefined : onClose}
     >
-      <View style={[styles.backdrop, { backgroundColor: c.overlay }]}>
-        <View style={[styles.card, { backgroundColor: c.surfaceElevated }]}>
-          {!submitted ? (
-            <>
-              <Pressable
-                onPress={() => {
-                  if (mandatorySubmit) return;
-                  onSkip?.();
-                  onClose();
-                }}
-                style={styles.modalCloseBtn}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="Close"
-                disabled={mandatorySubmit}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={[styles.backdrop, { backgroundColor: c.overlay }]}>
+            <Pressable
+              style={[styles.card, { backgroundColor: c.surfaceElevated }]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                bounces={false}
               >
-                <Ionicons
-                  name="close"
-                  size={22}
-                  color={mandatorySubmit ? "transparent" : c.textMuted}
-                />
-              </Pressable>
-              <Text style={styles.title}>
-                {t("postSessionRating.modalTitle", { defaultValue: "How was your session?" })}
-              </Text>
-              <Text style={styles.subtitle}>
-                {t("postSessionRating.modalSub", {
-                  defaultValue: "Your feedback helps us improve every lesson.",
-                })}
-              </Text>
+                {!submitted ? (
+                  <>
+                    <Pressable
+                      onPress={() => {
+                        if (mandatorySubmit) return;
+                        onSkip?.();
+                        onClose();
+                      }}
+                      style={styles.modalCloseBtn}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel="Close"
+                      disabled={mandatorySubmit}
+                    >
+                      <Ionicons
+                        name="close"
+                        size={22}
+                        color={mandatorySubmit ? "transparent" : c.textMuted}
+                      />
+                    </Pressable>
+                    <Text style={styles.title}>
+                      {t("postSessionRating.modalTitle", { defaultValue: "How was your session?" })}
+                    </Text>
+                    <Text style={styles.subtitle}>
+                      {t("postSessionRating.modalSub", {
+                        defaultValue: "Your feedback helps us improve every lesson.",
+                      })}
+                    </Text>
 
-              <StarsRow
-                value={session}
-                onChange={setSession}
-                label={t("postSessionRating.overall", { defaultValue: "Overall" })}
-              />
-              <StarsRow
-                value={audio}
-                onChange={setAudio}
-                label={t("postSessionRating.av", { defaultValue: "Audio / Video" })}
-              />
-              {!isTrainer && (
-                <StarsRow
-                  value={recommend}
-                  onChange={setRecommend}
-                  label={t("postSessionRating.recommend", {
-                    defaultValue: "Would you recommend?",
-                  })}
-                />
-              )}
-
-              {!isTrainer && (
-                <>
-                  {!isFromCall ? (
-                    <TextInput
-                      placeholder="Title (optional)"
-                      placeholderTextColor="#888"
-                      value={title}
-                      onChangeText={setTitle}
-                      style={styles.input}
+                    <StarsRow
+                      value={session}
+                      onChange={setSession}
+                      label={t("postSessionRating.overall", { defaultValue: "Overall" })}
                     />
-                  ) : null}
-                  <TextInput
-                    placeholder={
-                      isFromCall
-                        ? "Write a review for your coach (optional)"
-                        : "Tell us more (optional)"
-                    }
-                    placeholderTextColor="#888"
-                    value={remarks}
-                    onChangeText={setRemarks}
-                    style={[styles.input, styles.textarea]}
-                    multiline
-                    numberOfLines={isFromCall ? 3 : 4}
-                  />
-                </>
-              )}
+                    <StarsRow
+                      value={audio}
+                      onChange={setAudio}
+                      label={t("postSessionRating.av", { defaultValue: "Audio / Video" })}
+                    />
+                    {!isTrainer && (
+                      <StarsRow
+                        value={recommend}
+                        onChange={setRecommend}
+                        label={t("postSessionRating.recommend", {
+                          defaultValue: "Would you recommend?",
+                        })}
+                      />
+                    )}
 
-              <View style={styles.row}>
-                {!mandatorySubmit ? (
-                  <Pressable
-                    onPress={() => {
-                      onSkip?.();
-                      onClose();
-                    }}
-                    style={[styles.btn, styles.btnGhost]}
-                  >
-                    <Text style={styles.btnGhostText}>
-                      {t("postSessionRating.skip", { defaultValue: "Not now" })}
+                    {!isTrainer && (
+                      <>
+                        {!isFromCall ? (
+                          <TextInput
+                            placeholder="Title (optional)"
+                            placeholderTextColor="#888"
+                            value={title}
+                            onChangeText={setTitle}
+                            style={styles.input}
+                          />
+                        ) : null}
+                        <TextInput
+                          placeholder={
+                            isFromCall
+                              ? "Write a review for your coach (optional)"
+                              : "Tell us more (optional)"
+                          }
+                          placeholderTextColor="#888"
+                          value={remarks}
+                          onChangeText={setRemarks}
+                          style={[styles.input, styles.textarea]}
+                          multiline
+                          numberOfLines={isFromCall ? 3 : 4}
+                        />
+                      </>
+                    )}
+
+                    <View style={styles.row}>
+                      {!mandatorySubmit ? (
+                        <Pressable
+                          onPress={() => {
+                            onSkip?.();
+                            onClose();
+                          }}
+                          style={[styles.btn, styles.btnGhost]}
+                        >
+                          <Text style={styles.btnGhostText}>
+                            {t("postSessionRating.skip", { defaultValue: "Not now" })}
+                          </Text>
+                        </Pressable>
+                      ) : null}
+                      <Pressable
+                        onPress={() => void handleSubmit()}
+                        style={[
+                          styles.btn,
+                          styles.btnPrimary,
+                          mandatorySubmit && styles.btnPrimaryFull,
+                        ]}
+                        disabled={submitting}
+                      >
+                        {submitting ? (
+                          <ActivityIndicator color="#fff" />
+                        ) : (
+                          <Text style={styles.btnPrimaryText}>
+                            {t("postSessionRating.submit", { defaultValue: "Submit" })}
+                          </Text>
+                        )}
+                      </Pressable>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.title}>
+                      {t("postSessionRating.thanksTitle", {
+                        defaultValue: "Thank you for your feedback!",
+                      })}
                     </Text>
-                  </Pressable>
-                ) : null}
-                <Pressable
-                  onPress={() => void handleSubmit()}
-                  style={[
-                    styles.btn,
-                    styles.btnPrimary,
-                    mandatorySubmit && styles.btnPrimaryFull,
-                  ]}
-                  disabled={submitting}
-                >
-                  {submitting ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.btnPrimaryText}>
-                      {t("postSessionRating.submit", { defaultValue: "Submit" })}
-                    </Text>
-                  )}
-                </Pressable>
-              </View>
-            </>
-          ) : (
-            <>
-              <Text style={styles.title}>
-                {t("postSessionRating.thanksTitle", {
-                  defaultValue: "Thank you for your feedback!",
-                })}
-              </Text>
-              <LessonSummaryCard sessionId={bookingId} />
-              <View style={[styles.row, { marginTop: 12 }]}>
-                <Pressable
-                  onPress={() => {
-                    setSubmitted(false);
-                    onClose();
-                  }}
-                  style={[styles.btn, styles.btnPrimary]}
-                >
-                  <Text style={styles.btnPrimaryText}>
-                    {t("common.done", { defaultValue: "Done" })}
-                  </Text>
-                </Pressable>
-              </View>
-            </>
-          )}
-        </View>
-      </View>
+                    <LessonSummaryCard sessionId={bookingId} />
+                    <View style={[styles.row, { marginTop: 12 }]}>
+                      <Pressable
+                        onPress={() => {
+                          setSubmitted(false);
+                          onClose();
+                        }}
+                        style={[styles.btn, styles.btnPrimary]}
+                      >
+                        <Text style={styles.btnPrimaryText}>
+                          {t("common.done", { defaultValue: "Done" })}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </>
+                )}
+              </ScrollView>
+            </Pressable>
+          </View>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -301,6 +322,7 @@ function StarsRow({
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   backdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.6)",
@@ -311,6 +333,7 @@ const styles = StyleSheet.create({
   card: {
     width: "100%",
     maxWidth: 380,
+    maxHeight: "88%",
     backgroundColor: "#fff",
     borderRadius: 18,
     padding: 22,
@@ -329,7 +352,7 @@ const styles = StyleSheet.create({
     color: "#111",
     textAlign: "center",
   },
-  subtitle: { fontSize: 13, color: "#666", textAlign: "center" },
+  subtitle: { fontSize: 13, color: "#666", textAlign: "center", marginBottom: 4 },
   starsRow: {
     flexDirection: "row",
     justifyContent: "space-between",

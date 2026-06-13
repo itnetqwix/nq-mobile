@@ -57,6 +57,7 @@ export type SessionJoinReadiness = {
   peer_client_kind?: "native_app" | "web" | "unknown" | null;
   viewer_client_kind?: "native_app" | "web" | "unknown" | null;
   recommended_clients?: string[];
+  iceServers?: Array<{ urls: string | string[]; username?: string; credential?: string }>;
 };
 
 export async function fetchSessionJoinReadiness(

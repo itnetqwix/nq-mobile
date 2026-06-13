@@ -3,11 +3,15 @@ import { useMutation } from "@tanstack/react-query";
 import React, { useState } from "react";
 import {
   Alert,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -82,7 +86,12 @@ export function SessionRecapSheet({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={[styles.shell, { paddingTop: insets.top + 8 }]}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={[styles.shell, { paddingTop: insets.top + 8 }]}>
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.title, { color: c.text }]}>Session recap</Text>
@@ -152,7 +161,9 @@ export function SessionRecapSheet({
             </Text>
           </Pressable>
         </View>
-      </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

@@ -61,7 +61,9 @@
   },
   "submit": {
     "production": {
-      "ios": {},
+      "ios": {
+        "appleTeamId": "ARB4LD5435"
+      },
       "android": {
         "track": "internal",
         "releaseStatus": "completed",

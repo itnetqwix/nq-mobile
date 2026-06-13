@@ -48,7 +48,7 @@ export const SHELL_SURFACES: readonly ShellSurfaceMeta[] = [
     id: "clipSubmissions",
     title: "My library submissions",
     subtitle:
-      "Track the status of every clip you've submitted to the Netqwix master library.",
+      "Track the status of every clip you've submitted to the NetQwix master library.",
     webContext:
       "Mobile-only tracker. Backend: `GET /clips/library-submissions/mine`.",
     allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],

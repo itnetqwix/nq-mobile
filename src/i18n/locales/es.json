@@ -270,7 +270,14 @@
     "uploadingThumbnail": "Uploading thumbnail…",
     "preparingUpload": "Preparing upload…",
     "keepAppOpen": "Keep the app open until the upload completes.",
-    "uploadToLocker": "Upload to locker"
+    "uploadToLocker": "Subir al locker",
+    "uploadShareFriends": "Compartir con amigos",
+    "uploadShareEmail": "Enviar invitación por correo",
+    "shareEmail": "Invitación por correo",
+    "shareEmailLabel": "Correo del destinatario",
+    "shareEmailPlaceholder": "amigo@email.com",
+    "shareEmailHint": "Recibirán una invitación para ver este clip en NetQwix.",
+    "uploadEmailBody": "Tu clip se subió y se envió una invitación por correo."
   },
   "chats": {
     "archived": "Archived",

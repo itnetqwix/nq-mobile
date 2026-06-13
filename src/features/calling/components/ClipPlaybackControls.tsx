@@ -35,6 +35,8 @@ type Props = {
   onToggleExpand?: () => void;
   /** Smaller play button, track, and labels for shared dual-clip bar. */
   size?: "default" | "compact";
+  /** Higher-contrast timeline when sitting on a white clip stage. */
+  onLightBackground?: boolean;
 };
 
 /** Trainer-only clip timeline (play/pause + scrub). Trainee follows via socket. */
@@ -51,8 +53,10 @@ export function ClipPlaybackControls({
   isExpanded,
   onToggleExpand,
   size = "default",
+  onLightBackground = false,
 }: Props) {
   const compact = size === "compact";
+  const light = onLightBackground;
   const trackWidth = useRef(1);
   const max = Math.max(durationSeconds, 0.01);
   const value = Math.min(Math.max(progressSeconds, 0), max);
@@ -95,6 +99,7 @@ export function ClipPlaybackControls({
           styles.timelineCard,
           compact && styles.timelineCardCompact,
           isInline && styles.timelineCardInline,
+          light && styles.timelineCardLight,
         ]}
       >
         <Pressable
@@ -137,22 +142,29 @@ export function ClipPlaybackControls({
               disabled={disabled}
               style={StyleSheet.absoluteFill}
             />
-            <View style={[styles.track, compact && styles.trackCompact]}>
-              <View style={[styles.fill, { width: `${ratio * 100}%` }]} />
+            <View style={[styles.track, compact && styles.trackCompact, light && styles.trackLight]}>
+              <View
+                style={[
+                  styles.fill,
+                  light && styles.fillLight,
+                  { width: `${ratio * 100}%` },
+                ]}
+              />
             </View>
             <View
               style={[
                 styles.thumb,
                 compact && styles.thumbCompact,
+                light && styles.thumbLight,
                 { left: `${ratio * 100}%` },
               ]}
             />
           </View>
           <View style={styles.timeRow}>
-            <Text style={[styles.timeText, compact && styles.timeTextCompact]}>
+            <Text style={[styles.timeText, compact && styles.timeTextCompact, light && styles.timeTextLight]}>
               {formatTime(value)}
             </Text>
-            <Text style={[styles.timeMuted, compact && styles.timeTextCompact]}>
+            <Text style={[styles.timeMuted, compact && styles.timeTextCompact, light && styles.timeMutedLight]}>
               {formatTime(max)}
             </Text>
           </View>
@@ -219,6 +231,11 @@ const styles = StyleSheet.create({
     elevation: 0,
     marginHorizontal: 4,
   },
+  timelineCardLight: {
+    backgroundColor: "#f0f2f6",
+    borderColor: "rgba(0,0,0,0.12)",
+    paddingVertical: 8,
+  },
   timelineCardCompact: {
     gap: 6,
     borderRadius: 8,
@@ -260,6 +277,10 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   trackCompact: { height: 3 },
+  trackLight: {
+    height: 6,
+    backgroundColor: "rgba(0,0,8,0.16)",
+  },
   fill: {
     position: "absolute",
     left: 0,
@@ -267,6 +288,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: meetingTheme.navy,
     borderRadius: 3,
+  },
+  fillLight: {
+    backgroundColor: "#000080",
   },
   thumb: {
     position: "absolute",
@@ -292,6 +316,14 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
   },
+  thumbLight: {
+    marginTop: -8,
+    marginLeft: -8,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderColor: "#000080",
+  },
   timeRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -312,6 +344,14 @@ const styles = StyleSheet.create({
   },
   timeTextCompact: {
     fontSize: 9,
+  },
+  timeTextLight: {
+    color: "#1a1a2e",
+    fontSize: 11,
+  },
+  timeMutedLight: {
+    color: "#5c6370",
+    fontSize: 11,
   },
   expandBtn: {
     width: 36,

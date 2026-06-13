@@ -63,7 +63,7 @@ export async function presentInstantLessonIncomingCall(
         title: "Instant lesson!",
         body: `${traineeName} wants a lesson now — tap ✓ to accept or ✕ to decline.`,
         categoryIdentifier: INSTANT_LESSON_CALL_CATEGORY,
-        sound: "instant-lesson-ring.wav",
+        sound: "instant_lesson_ring.wav",
         ...(Platform.OS === "android"
           ? { channelId: "instant_lesson_calls" }
           : {}),

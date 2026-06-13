@@ -20,8 +20,8 @@ export function useMeetingChromeInsets(options?: {
   const actionReserve = ACTION_BAR_HEIGHT + 10;
   const clipReserve =
     inClipMode && !inlineClipControls ? CLIP_TIMELINE_HEIGHT + 8 : 0;
-  /** In clip mode we also reserve space for the DualVideoStrip above the action bar. */
-  const videoStripReserve = inClipMode ? DUAL_VIDEO_STRIP_HEIGHT + 8 : 0;
+  /** Corner PIPs overlay the clip stage — no extra main-pane bottom reserve. */
+  const videoStripReserve = 0;
   const pipSafeBottom = bottomChrome + actionReserve + clipReserve;
   /** Main pane bottom padding accounts for action bar + video strip in clip mode. */
   const mainPaneBottomInClip =

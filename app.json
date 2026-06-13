@@ -5,7 +5,7 @@
     "scheme": "netqwix",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/adaptive-icon.png",
     "userInterfaceStyle": "automatic",
     "jsEngine": "hermes",
     "newArchEnabled": true,
@@ -118,11 +118,11 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png",
+          "icon": "./assets/adaptive-icon.png",
           "color": "#000080",
           "defaultChannel": "default",
           "sounds": [
-            "./assets/sounds/instant-lesson-ring.wav"
+            "./assets/sounds/instant_lesson_ring.wav"
           ]
         }
       ],

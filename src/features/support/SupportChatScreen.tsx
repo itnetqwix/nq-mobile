@@ -27,12 +27,14 @@ import * as SecureStore from "expo-secure-store";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -261,17 +263,21 @@ export function SupportChatScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          keyExtractor={(m) => m.id}
-          renderItem={renderRow}
-          contentContainerStyle={[
-            styles.list,
-            { paddingTop: space.md, paddingBottom: space.lg },
-          ]}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-        />
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            keyExtractor={(m) => m.id}
+            renderItem={renderRow}
+            contentContainerStyle={[
+              styles.list,
+              { paddingTop: space.md, paddingBottom: space.lg },
+            ]}
+            keyboardDismissMode="on-drag"
+            keyboardShouldPersistTaps="handled"
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          />
+        </TouchableWithoutFeedback>
 
         <View
           style={[

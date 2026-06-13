@@ -55,6 +55,16 @@ import {
 } from "../../notifications/NotificationContext";
 import { meetingTheme } from "../meetingTheme";
 
+/** Light-surface palette — do not use `meetingTheme` here (dark-call colors are illegible on white). */
+const gamePlanTheme = {
+  navy: "#000080",
+  text: "#1a1a2e",
+  textMuted: "#5c6370",
+  border: "#d8dce3",
+  surface: "#ffffff",
+  canvas: "#f4f6f9",
+} as const;
+
 type Props = {
   visible: boolean;
   sessionId: string;
@@ -381,7 +391,7 @@ export function SessionGamePlanModal({
                 disabled={saving}
                 accessibilityLabel="Close"
               >
-                <Ionicons name="close" size={26} color={meetingTheme.textMuted} />
+                <Ionicons name="close" size={26} color={gamePlanTheme.textMuted} />
               </Pressable>
             </View>
 
@@ -394,14 +404,14 @@ export function SessionGamePlanModal({
               <TextInput
                 style={styles.input}
                 placeholder="Topic (e.g. Forehand contact point)"
-                placeholderTextColor={meetingTheme.textMuted}
+                placeholderTextColor={gamePlanTheme.textMuted}
                 value={title}
                 onChangeText={setTitle}
               />
               <TextInput
                 style={[styles.input, styles.inputMulti]}
                 placeholder="Session notes (optional)"
-                placeholderTextColor={meetingTheme.textMuted}
+                placeholderTextColor={gamePlanTheme.textMuted}
                 value={topic}
                 onChangeText={setTopic}
                 multiline
@@ -412,10 +422,10 @@ export function SessionGamePlanModal({
               </Text>
 
               {loading ? (
-                <ActivityIndicator style={{ marginVertical: 24 }} color={meetingTheme.navy} />
+                <ActivityIndicator style={{ marginVertical: 24 }} color={gamePlanTheme.navy} />
               ) : reportItems.length === 0 ? (
                 <View style={styles.emptyCard}>
-                  <Ionicons name="camera-outline" size={32} color={meetingTheme.textMuted} />
+                  <Ionicons name="camera-outline" size={32} color={gamePlanTheme.textMuted} />
                   <Text style={styles.emptyTitle}>No screenshots yet</Text>
                   <Text style={styles.emptyBody}>
                     During the lesson, open ⋮ More → Screenshot and choose which clip(s) to
@@ -434,7 +444,7 @@ export function SessionGamePlanModal({
                         <Ionicons
                           name="chevron-up"
                           size={22}
-                          color={index === 0 ? meetingTheme.textMuted : meetingTheme.navy}
+                          color={index === 0 ? gamePlanTheme.textMuted : gamePlanTheme.navy}
                         />
                       </Pressable>
                       <Pressable
@@ -447,8 +457,8 @@ export function SessionGamePlanModal({
                           size={22}
                           color={
                             index === reportItems.length - 1
-                              ? meetingTheme.textMuted
-                              : meetingTheme.navy
+                              ? gamePlanTheme.textMuted
+                              : gamePlanTheme.navy
                           }
                         />
                       </Pressable>
@@ -460,7 +470,7 @@ export function SessionGamePlanModal({
                         }}
                         hitSlop={8}
                       >
-                        <Ionicons name="crop-outline" size={22} color={meetingTheme.navy} />
+                        <Ionicons name="crop-outline" size={22} color={gamePlanTheme.navy} />
                       </Pressable>
                       <Pressable onPress={() => removeShot(index)} hitSlop={8}>
                         <Ionicons name="trash-outline" size={22} color="#c0392b" />
@@ -475,14 +485,14 @@ export function SessionGamePlanModal({
                     <TextInput
                       style={styles.input}
                       placeholder="Frame title (optional, shown in PDF)"
-                      placeholderTextColor={meetingTheme.textMuted}
+                      placeholderTextColor={gamePlanTheme.textMuted}
                       value={item.title ?? ""}
                       onChangeText={(t) => updateItemField(index, "title", t)}
                     />
                     <TextInput
                       style={[styles.input, styles.shotNotes]}
                       placeholder="Notes for this frame (shown in PDF)"
-                      placeholderTextColor={meetingTheme.textMuted}
+                      placeholderTextColor={gamePlanTheme.textMuted}
                       value={item.description ?? ""}
                       onChangeText={(t) => updateItemField(index, "description", t)}
                       multiline
@@ -577,7 +587,7 @@ export function SessionGamePlanModal({
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  root: { flex: 1, backgroundColor: "#f4f6f9" },
+  root: { flex: 1, backgroundColor: gamePlanTheme.canvas },
   header: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -587,58 +597,58 @@ const styles = StyleSheet.create({
   },
   headerText: { flex: 1 },
   closeBtn: { padding: 4 },
-  heading: { fontSize: 24, fontWeight: "800", color: meetingTheme.navy },
-  sub: { marginTop: 6, fontSize: 14, color: meetingTheme.textMuted, lineHeight: 20 },
+  heading: { fontSize: 24, fontWeight: "800", color: gamePlanTheme.text },
+  sub: { marginTop: 6, fontSize: 14, color: gamePlanTheme.textMuted, lineHeight: 20 },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 16, paddingBottom: 24 },
   sectionLabel: {
     fontSize: 12,
     fontWeight: "800",
-    color: meetingTheme.textMuted,
+    color: gamePlanTheme.textMuted,
     textTransform: "uppercase",
     letterSpacing: 0.6,
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: meetingTheme.border,
+    borderColor: gamePlanTheme.border,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: meetingTheme.text,
-    backgroundColor: "#fff",
+    color: gamePlanTheme.text,
+    backgroundColor: gamePlanTheme.surface,
     marginBottom: 10,
   },
   inputMulti: { minHeight: 88, textAlignVertical: "top" },
   emptyCard: {
-    backgroundColor: "#fff",
+    backgroundColor: gamePlanTheme.surface,
     borderRadius: 14,
     padding: 24,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: meetingTheme.border,
+    borderColor: gamePlanTheme.border,
   },
   emptyTitle: {
     marginTop: 12,
     fontSize: 16,
     fontWeight: "700",
-    color: meetingTheme.text,
+    color: gamePlanTheme.text,
   },
   emptyBody: {
     marginTop: 8,
     fontSize: 13,
-    color: meetingTheme.textMuted,
+    color: gamePlanTheme.textMuted,
     textAlign: "center",
     lineHeight: 19,
   },
   shotCard: {
-    backgroundColor: "#fff",
+    backgroundColor: gamePlanTheme.surface,
     borderRadius: 14,
     padding: 12,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: meetingTheme.border,
+    borderColor: gamePlanTheme.border,
   },
   shotImage: {
     width: "100%",
@@ -650,7 +660,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 12,
     fontWeight: "700",
-    color: meetingTheme.navy,
+    color: gamePlanTheme.navy,
   },
   shotNotes: { marginTop: 6, minHeight: 64 },
   shotToolbar: {
@@ -664,23 +674,23 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: meetingTheme.navy,
+    borderColor: gamePlanTheme.navy,
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: gamePlanTheme.surface,
   },
-  btnPreviewText: { color: meetingTheme.navy, fontWeight: "700", fontSize: 15 },
+  btnPreviewText: { color: gamePlanTheme.navy, fontWeight: "700", fontSize: 15 },
   footer: {
     paddingHorizontal: 16,
     paddingTop: 10,
     gap: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: meetingTheme.border,
-    backgroundColor: "#fff",
+    borderTopColor: gamePlanTheme.border,
+    backgroundColor: gamePlanTheme.surface,
   },
   btnPrimary: {
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: meetingTheme.navy,
+    backgroundColor: gamePlanTheme.navy,
     alignItems: "center",
   },
   btnPrimaryText: { color: "#fff", fontWeight: "700", fontSize: 15 },
@@ -688,10 +698,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: meetingTheme.border,
+    borderColor: gamePlanTheme.border,
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: gamePlanTheme.surface,
   },
-  btnSecondaryText: { color: meetingTheme.text, fontWeight: "600", fontSize: 15 },
+  btnSecondaryText: { color: gamePlanTheme.text, fontWeight: "600", fontSize: 15 },
   btnDisabled: { opacity: 0.55 },
 });

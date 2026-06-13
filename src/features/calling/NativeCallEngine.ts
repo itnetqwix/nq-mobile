@@ -28,6 +28,7 @@ import type { Socket } from "socket.io-client";
 import InCallManager from "react-native-incall-manager";
 
 import { CALL_EVENTS } from "./callEvents";
+import { LESSON_SOCKET_EVENTS } from "../../lib/sessions/sessionContract";
 import { reportOpsEvent } from "../ops/opsEventsApi";
 import { buildIceConfig } from "./iceServers";
 import {
@@ -238,6 +239,9 @@ export class NativeCallEngine {
   endCall(): void {
     if (this.disposed) return;
     try {
+      this.socket.emit(LESSON_SOCKET_EVENTS.END_EARLY_REQUEST, {
+        sessionId: this.sessionId,
+      });
       this.socket.emit(CALL_EVENTS.ON_CLOSE, {
         userInfo: this.buildUserInfo(),
       });

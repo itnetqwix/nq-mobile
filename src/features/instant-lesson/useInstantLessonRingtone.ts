@@ -5,7 +5,7 @@
 import { Audio } from "expo-av";
 import { useCallback, useEffect, useRef } from "react";
 
-const RING_SOURCE = require("../../../assets/sounds/instant-lesson-ring.wav");
+const RING_SOURCE = require("../../../assets/sounds/instant_lesson_ring.wav");
 
 export function useInstantLessonRingtone() {
   const soundRef = useRef<Audio.Sound | null>(null);

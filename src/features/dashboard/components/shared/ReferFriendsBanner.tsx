@@ -72,8 +72,8 @@ export function ReferFriendsBanner({ onPressInvite }: Props) {
     const name = String((user as any)?.fullname ?? (user as any)?.name ?? "");
     const message = t("invite.shareMessage", {
       defaultValue: name
-        ? `${name} invited you to join Netqwix! Sign up here: ${referralLink}`
-        : `Join me on Netqwix! Sign up here: ${referralLink}`,
+        ? `${name} invited you to join NetQwix! Sign up here: ${referralLink}`
+        : `Join me on NetQwix! Sign up here: ${referralLink}`,
       name,
       link: referralLink,
     });

@@ -35,6 +35,7 @@ export function TodayScheduleTimeline({ sessions, onSessionPress, onSeeAll }: Pr
             accountType={AccountType.TRAINER}
             onPress={() => onSessionPress(session)}
             isLast={i === sessions.length - 1}
+            scheduleVariant
           />
         ))}
       </View>
@@ -51,6 +52,7 @@ function useStyles() {
         borderWidth: 1,
         borderColor: palette.border,
         backgroundColor: palette.surfaceElevated,
+        gap: 0,
       },
       link: { ...typography.caption, color: palette.brandNavy, fontWeight: "700" },
     })

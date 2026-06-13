@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -15,6 +16,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { useQuery } from "@tanstack/react-query";
@@ -37,6 +39,8 @@ import { ClipUploadPrepareModal } from "./ClipUploadPrepareModal";
 const SHARE_MY_CLIPS = "My Clips";
 const SHARE_FRIENDS = "Friends";
 const SHARE_EMAIL = "Email";
+/** Backend `clipConfirmService` expects this wire value for email invites. */
+const SHARE_BACKEND_NEW_USERS = "New Users";
 
 type ShareTarget = typeof SHARE_MY_CLIPS | typeof SHARE_FRIENDS | typeof SHARE_EMAIL;
 
@@ -259,6 +263,28 @@ export function ClipUploadModal({
       (shareTarget === SHARE_FRIENDS && selectedFriendIds.length > 0) ||
       (shareTarget === SHARE_EMAIL && emailValid));
 
+  const submitAction = useMemo(() => {
+    if (shareTarget === SHARE_FRIENDS) {
+      return {
+        label: t("locker.uploadShareFriends"),
+        icon: "people" as const,
+        hint: t("locker.uploadSharedHint"),
+      };
+    }
+    if (shareTarget === SHARE_EMAIL) {
+      return {
+        label: t("locker.uploadShareEmail"),
+        icon: "mail" as const,
+        hint: t("locker.shareEmailHint"),
+      };
+    }
+    return {
+      label: t("locker.uploadToLocker"),
+      icon: "cloud-upload-outline" as const,
+      hint: t("locker.uploadLead"),
+    };
+  }, [shareTarget, t]);
+
   const submit = async () => {
     if (!videoAsset || !thumbUri || !canSubmit) return;
     let fileBytes = videoAsset.fileSize ?? 0;
@@ -316,7 +342,10 @@ export function ClipUploadModal({
           shareTarget === SHARE_FRIENDS
             ? { type: SHARE_FRIENDS, friends: selectedFriendIds }
             : shareTarget === SHARE_EMAIL
-              ? { type: SHARE_EMAIL, emails: [shareEmail.trim().toLowerCase()] }
+              ? {
+                  type: SHARE_BACKEND_NEW_USERS,
+                  emails: [shareEmail.trim().toLowerCase()],
+                }
               : { type: SHARE_MY_CLIPS },
         onVideoProgress: (percent) => {
           setUploadPhase("video");
@@ -338,9 +367,7 @@ export function ClipUploadModal({
         shareTarget === SHARE_FRIENDS
           ? t("locker.uploadSharedBody")
           : shareTarget === SHARE_EMAIL
-            ? t("locker.uploadEmailBody", {
-                defaultValue: "Your clip was uploaded and an invite was sent by email.",
-              })
+            ? t("locker.uploadEmailBody")
             : t("locker.uploadedBody")
       );
       dispatch(lockerMutated());
@@ -373,10 +400,12 @@ export function ClipUploadModal({
           </Pressable>
         </View>
 
-        <ScrollView
-          contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 100 }]}
-          keyboardShouldPersistTaps="handled"
-        >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <ScrollView
+            contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 100 }]}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+          >
           {!initialVideo && (
             <Pressable
               style={({ pressed }) => [styles.pickBtn, pressed && { opacity: 0.9 }]}
@@ -508,7 +537,7 @@ export function ClipUploadModal({
             >
               <Ionicons name="mail-outline" size={16} color={shareTarget === SHARE_EMAIL ? c.brandNavy : c.textMuted} />
               <Text style={[styles.shareTargetText, shareTarget === SHARE_EMAIL && styles.shareTargetTextOn]}>
-                {t("locker.shareEmail", { defaultValue: "Email invite" })}
+                {t("locker.shareEmail")}
               </Text>
             </Pressable>
           </View>
@@ -552,25 +581,19 @@ export function ClipUploadModal({
 
           {shareTarget === SHARE_EMAIL && (
             <View style={styles.friendPickerBox}>
-              <Text style={styles.label}>
-                {t("locker.shareEmailLabel", { defaultValue: "Recipient email" })}
-              </Text>
+              <Text style={styles.label}>{t("locker.shareEmailLabel")}</Text>
               <TextInput
                 style={styles.input}
                 value={shareEmail}
                 onChangeText={setShareEmail}
-                placeholder={t("locker.shareEmailPlaceholder", { defaultValue: "friend@email.com" })}
+                placeholder={t("locker.shareEmailPlaceholder")}
                 placeholderTextColor={c.textMuted}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
                 editable={!uploadBusy}
               />
-              <Text style={styles.muted}>
-                {t("locker.shareEmailHint", {
-                  defaultValue: "They will receive an invite to view this clip on Netqwix.",
-                })}
-              </Text>
+              <Text style={styles.muted}>{t("locker.shareEmailHint")}</Text>
             </View>
           )}
 
@@ -612,9 +635,13 @@ export function ClipUploadModal({
             </View>
           )}
           </View>
-        </ScrollView>
+          </ScrollView>
+        </TouchableWithoutFeedback>
 
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, space.md) }]}>
+          <Text style={styles.footerHint} numberOfLines={2}>
+            {submitAction.hint}
+          </Text>
           <Pressable
             style={({ pressed }) => [
               styles.submit,
@@ -627,8 +654,8 @@ export function ClipUploadModal({
               <ActivityIndicator color={c.brandTextOn} />
             ) : (
               <>
-                <Ionicons name="cloud-upload-outline" size={20} color={c.brandTextOn} />
-                <Text style={styles.submitText}>{t("locker.uploadToLocker")}</Text>
+                <Ionicons name={submitAction.icon} size={20} color={c.brandTextOn} />
+                <Text style={styles.submitText}>{submitAction.label}</Text>
               </>
             )}
           </Pressable>
@@ -733,7 +760,9 @@ function useStyles() {
         borderTopWidth: StyleSheet.hairlineWidth,
         borderTopColor: palette.border,
         backgroundColor: palette.surfaceElevated,
+        gap: space.sm,
       },
+      footerHint: { ...typography.caption, color: palette.textMuted, lineHeight: 18 },
       submit: {
         flexDirection: "row",
         alignItems: "center",

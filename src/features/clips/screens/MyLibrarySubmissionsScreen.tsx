@@ -30,7 +30,7 @@ import { getClipThumbnailUrl } from "../../../lib/clipMediaUrl";
 type FilterKey = "all" | "open" | "accepted" | "rejected";
 
 /**
- * Personal "submission queue" screen for the Netqwix master library. Hits
+ * Personal "submission queue" screen for the NetQwix master library. Hits
  * `GET /clips/library-submissions/mine` (already populated with the source
  * clip) and renders a per-row status pill so trainers/trainees can track
  * where each clip stands without re-opening the locker.
@@ -84,7 +84,7 @@ export function MyLibrarySubmissionsScreen() {
       <Text style={styles.subline}>
         {t("librarySubmissions.subtitle", {
           defaultValue:
-            "Track every clip you've submitted to the Netqwix master library.",
+            "Track every clip you've submitted to the NetQwix master library.",
         })}
       </Text>
       <View style={styles.filterRow}>
@@ -160,7 +160,7 @@ export function MyLibrarySubmissionsScreen() {
             rows.length === 0
               ? t("librarySubmissions.emptyDescription", {
                   defaultValue:
-                    "Tap the library icon on any of your clips to submit it to the Netqwix master library. You'll see its status here.",
+                    "Tap the library icon on any of your clips to submit it to the NetQwix master library. You'll see its status here.",
                 })
               : t("librarySubmissions.emptyFilteredDescription", {
                   defaultValue: "Try a different filter.",

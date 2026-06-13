@@ -3,12 +3,14 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -456,28 +458,32 @@ export default function AIAssistantScreen({ onClose }: { onClose?: () => void })
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={0}
       >
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          keyExtractor={(item) => item.id}
-          renderItem={renderMessage}
-          contentContainerStyle={styles.messageList}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-          onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
-          ListFooterComponent={
-            <>
-              {loading && (
-                <View style={[styles.typingIndicator, { backgroundColor: colors.surface }]}>
-                  <ActivityIndicator size="small" color={colors.brandAccent} />
-                  <Text style={[typography.bodySm, { color: colors.textMuted, marginLeft: 8 }]}>
-                    {t("ai.thinking", { defaultValue: "Thinking…" })}
-                  </Text>
-                </View>
-              )}
-              {renderSuggestions()}
-            </>
-          }
-        />
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            keyExtractor={(item) => item.id}
+            renderItem={renderMessage}
+            contentContainerStyle={styles.messageList}
+            keyboardDismissMode="on-drag"
+            keyboardShouldPersistTaps="handled"
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+            ListFooterComponent={
+              <>
+                {loading && (
+                  <View style={[styles.typingIndicator, { backgroundColor: colors.surface }]}>
+                    <ActivityIndicator size="small" color={colors.brandAccent} />
+                    <Text style={[typography.bodySm, { color: colors.textMuted, marginLeft: 8 }]}>
+                      {t("ai.thinking", { defaultValue: "Thinking…" })}
+                    </Text>
+                  </View>
+                )}
+                {renderSuggestions()}
+              </>
+            }
+          />
+        </TouchableWithoutFeedback>
 
         <View
           style={[

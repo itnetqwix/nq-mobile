@@ -97,7 +97,7 @@ export function LockerViewerModal({
   const nativeMode = resolvedMode === "video" ? "video" : "image";
 
   const openExternally = useCallback(async () => {
-    // For clips: open the Netqwix web URL, not the raw S3 URL
+    // For clips: open the NetQwix web URL, not the raw S3 URL
     const webUrl = clipId
       ? `https://netqwix.com/clips/${encodeURIComponent(clipId)}`
       : uri;

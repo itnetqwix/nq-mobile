@@ -7,7 +7,7 @@
     "start:go": "expo start --go",
     "start:tunnel": "expo start --dev-client --tunnel",
     "print:expo-url": "node scripts/print-expo-lan-url.js",
-    "expo": "expo start",
+    "expo:start": "expo start",
     "android": "expo run:android",
     "android:install-dev": "bash scripts/install-android-dev-client.sh",
     "android:rebuild-dev": "bash -c 'source scripts/android-dev-env.sh && cd android && ./gradlew app:assembleDebug'",

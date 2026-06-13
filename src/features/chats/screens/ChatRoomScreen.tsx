@@ -18,6 +18,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -1519,37 +1520,39 @@ export function ChatRoomScreen({
         {messagesLoading && allMessages.length === 0 ? (
           <ChatMessageListSkeleton rows={7} />
         ) : (
-          <SectionList
-            ref={sectionListRef}
-            sections={messageSections}
-            keyExtractor={flatListKeyExtractor}
-            renderItem={renderMessage}
-            renderSectionHeader={({ section: { title } }) => (
-              <ChatDaySeparator label={title} />
-            )}
-            stickySectionHeadersEnabled={false}
-            contentContainerStyle={[
-              styles.messageList,
-              allMessages.length === 0 && styles.messageListEmpty,
-            ]}
-            ListEmptyComponent={
-              <View style={styles.emptyChat}>
-                <Text style={styles.emptyChatText}>
-                  Say hello — your messages are private and secure.
-                </Text>
-              </View>
-            }
-            onScrollToIndexFailed={() => {
-              /* SectionList scroll recovery */
-            }}
-            style={styles.messageArea}
-            keyboardDismissMode="interactive"
-            keyboardShouldPersistTaps="handled"
-            removeClippedSubviews
-            windowSize={9}
-            initialNumToRender={16}
-            maxToRenderPerBatch={12}
-          />
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+            <SectionList
+              ref={sectionListRef}
+              sections={messageSections}
+              keyExtractor={flatListKeyExtractor}
+              renderItem={renderMessage}
+              renderSectionHeader={({ section: { title } }) => (
+                <ChatDaySeparator label={title} />
+              )}
+              stickySectionHeadersEnabled={false}
+              contentContainerStyle={[
+                styles.messageList,
+                allMessages.length === 0 && styles.messageListEmpty,
+              ]}
+              ListEmptyComponent={
+                <View style={styles.emptyChat}>
+                  <Text style={styles.emptyChatText}>
+                    Say hello — your messages are private and secure.
+                  </Text>
+                </View>
+              }
+              onScrollToIndexFailed={() => {
+                /* SectionList scroll recovery */
+              }}
+              style={styles.messageArea}
+              keyboardDismissMode="interactive"
+              keyboardShouldPersistTaps="handled"
+              removeClippedSubviews
+              windowSize={9}
+              initialNumToRender={16}
+              maxToRenderPerBatch={12}
+            />
+          </TouchableWithoutFeedback>
         )}
 
         <View style={styles.composer}>
