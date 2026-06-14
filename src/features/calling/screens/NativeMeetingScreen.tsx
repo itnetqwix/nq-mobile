@@ -46,6 +46,7 @@ import { useSocket } from "../../socket/SocketContext";
 import { queryKeys } from "../../../lib/queryKeys";
 import { fetchMeetingSession, fetchScheduledMeetings } from "../../home/api/homeApi";
 import { parseIceServersFromSession } from "../meetingIceServers";
+import { sanitizeIceServers } from "../iceServers";
 import { fetchSessionReport } from "../meetingReportApi";
 import { parseReportScreenshotItems } from "../reportDataUtils";
 import { getClipPlaybackUrl } from "../../../lib/clipMediaUrl";
@@ -385,8 +386,9 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
 
   const iceServers = useMemo(() => {
     const fromReadiness = (joinReadinessForIce?.iceServers ?? []) as import("../types").IceServer[];
-    if (fromReadiness.length > 0) return fromReadiness;
-    return parseIceServersFromSession(session);
+    const raw =
+      fromReadiness.length > 0 ? fromReadiness : parseIceServersFromSession(session);
+    return raw ? sanitizeIceServers(raw) : undefined;
   }, [joinReadinessForIce, session]);
 
   useEffect(() => {

@@ -153,6 +153,7 @@ export function invalidateForSocketEvent(queryClient: QueryClient, event: string
   }
 
   const sessionEvents = [
+    "LESSON_TIME_ENDED",
     "LESSON_TIMER_EXTENDED",
     "SESSION_EXTENSION_APPLIED",
     "SESSION_EXTENSION_REQUESTED",

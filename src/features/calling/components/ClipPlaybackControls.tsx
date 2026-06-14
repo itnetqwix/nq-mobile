@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useMemo, useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   LayoutChangeEvent,
   PanResponder,
@@ -17,6 +17,30 @@ function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+type ControlMetrics = {
+  trackHeight: number;
+  trackRowHeight: number;
+  thumbSize: number;
+  playBtnSize: number;
+  playIconSize: number;
+};
+
+function getControlMetrics(size: "default" | "compact", onLightBackground: boolean): ControlMetrics {
+  const compact = size === "compact";
+  const light = onLightBackground;
+  const trackHeight = compact ? 3 : light ? 6 : 4;
+  const thumbSize = compact ? 10 : light ? 16 : 14;
+  const playBtnSize = compact ? 28 : 38;
+  const trackRowHeight = Math.max(compact ? 24 : 28, thumbSize + 8);
+  return {
+    trackHeight,
+    trackRowHeight,
+    thumbSize,
+    playBtnSize,
+    playIconSize: compact ? 14 : 18,
+  };
 }
 
 type Props = {
@@ -55,15 +79,19 @@ export function ClipPlaybackControls({
   size = "default",
   onLightBackground = false,
 }: Props) {
-  const compact = size === "compact";
+  const metrics = useMemo(
+    () => getControlMetrics(size, onLightBackground),
+    [size, onLightBackground]
+  );
   const light = onLightBackground;
-  const trackWidth = useRef(1);
+  const trackWidthRef = useRef(1);
+  const [trackWidthPx, setTrackWidthPx] = useState(1);
   const max = Math.max(durationSeconds, 0.01);
   const value = Math.min(Math.max(progressSeconds, 0), max);
   const ratio = value / max;
 
   const seekFromX = (locationX: number) => {
-    const w = trackWidth.current || 1;
+    const w = trackWidthRef.current || 1;
     onSeek(Math.max(0, Math.min(max, (locationX / w) * max)));
   };
 
@@ -83,6 +111,14 @@ export function ClipPlaybackControls({
     [disabled, max, onSeek]
   );
 
+  const thumbLeft = Math.max(
+    0,
+    Math.min(
+      Math.max(trackWidthPx - metrics.thumbSize, 0),
+      ratio * trackWidthPx - metrics.thumbSize / 2
+    )
+  );
+  const playBtnMarginTop = (metrics.trackRowHeight - metrics.playBtnSize) / 2;
   const isInline = variant === "inline";
 
   return (
@@ -97,7 +133,7 @@ export function ClipPlaybackControls({
       <View
         style={[
           styles.timelineCard,
-          compact && styles.timelineCardCompact,
+          size === "compact" && styles.timelineCardCompact,
           isInline && styles.timelineCardInline,
           light && styles.timelineCardLight,
         ]}
@@ -105,7 +141,12 @@ export function ClipPlaybackControls({
         <Pressable
           style={({ pressed }) => [
             styles.playBtn,
-            compact && styles.playBtnCompact,
+            {
+              width: metrics.playBtnSize,
+              height: metrics.playBtnSize,
+              borderRadius: metrics.playBtnSize / 2,
+              marginTop: playBtnMarginTop,
+            },
             disabled && styles.btnDisabled,
             pressed && !disabled && styles.playBtnPressed,
           ]}
@@ -116,7 +157,7 @@ export function ClipPlaybackControls({
         >
           <Ionicons
             name={isPlaying ? "pause" : "play"}
-            size={compact ? 14 : 18}
+            size={metrics.playIconSize}
             color={meetingTheme.onPrimary}
             style={!isPlaying ? styles.playIconOffset : undefined}
           />
@@ -125,10 +166,12 @@ export function ClipPlaybackControls({
         <View style={styles.timelineCol}>
           <View
             onLayout={(e: LayoutChangeEvent) => {
-              trackWidth.current = e.nativeEvent.layout.width;
+              const w = e.nativeEvent.layout.width;
+              trackWidthRef.current = w;
+              setTrackWidthPx(w);
             }}
             {...panResponder.panHandlers}
-            style={[styles.trackHit, compact && styles.trackHitCompact]}
+            style={[styles.trackRow, { height: metrics.trackRowHeight }]}
             accessibilityRole="adjustable"
             accessibilityLabel="Clip timeline"
             accessibilityValue={{
@@ -142,29 +185,55 @@ export function ClipPlaybackControls({
               disabled={disabled}
               style={StyleSheet.absoluteFill}
             />
-            <View style={[styles.track, compact && styles.trackCompact, light && styles.trackLight]}>
+            <View style={styles.trackLane}>
               <View
                 style={[
-                  styles.fill,
-                  light && styles.fillLight,
-                  { width: `${ratio * 100}%` },
+                  styles.track,
+                  { height: metrics.trackHeight },
+                  light && styles.trackLight,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.fill,
+                    light && styles.fillLight,
+                    { width: `${ratio * 100}%` },
+                  ]}
+                />
+              </View>
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.thumb,
+                  {
+                    width: metrics.thumbSize,
+                    height: metrics.thumbSize,
+                    borderRadius: metrics.thumbSize / 2,
+                    left: thumbLeft,
+                    top: (metrics.trackRowHeight - metrics.thumbSize) / 2,
+                    borderColor: light ? "#000080" : meetingTheme.navy,
+                  },
                 ]}
               />
             </View>
-            <View
-              style={[
-                styles.thumb,
-                compact && styles.thumbCompact,
-                light && styles.thumbLight,
-                { left: `${ratio * 100}%` },
-              ]}
-            />
           </View>
           <View style={styles.timeRow}>
-            <Text style={[styles.timeText, compact && styles.timeTextCompact, light && styles.timeTextLight]}>
+            <Text
+              style={[
+                styles.timeText,
+                size === "compact" && styles.timeTextCompact,
+                light && styles.timeTextLight,
+              ]}
+            >
               {formatTime(value)}
             </Text>
-            <Text style={[styles.timeMuted, compact && styles.timeTextCompact, light && styles.timeMutedLight]}>
+            <Text
+              style={[
+                styles.timeMuted,
+                size === "compact" && styles.timeTextCompact,
+                light && styles.timeMutedLight,
+              ]}
+            >
               {formatTime(max)}
             </Text>
           </View>
@@ -174,7 +243,8 @@ export function ClipPlaybackControls({
           <Pressable
             style={({ pressed }) => [
               styles.expandBtn,
-              compact && styles.expandBtnCompact,
+              size === "compact" && styles.expandBtnCompact,
+              { marginTop: playBtnMarginTop },
               pressed && { opacity: 0.85 },
             ]}
             onPress={onToggleExpand}
@@ -182,7 +252,7 @@ export function ClipPlaybackControls({
           >
             <Ionicons
               name={isExpanded ? "contract-outline" : "expand-outline"}
-              size={compact ? 18 : 22}
+              size={size === "compact" ? 18 : 22}
               color={meetingTheme.text}
             />
           </Pressable>
@@ -210,7 +280,7 @@ const styles = StyleSheet.create({
   },
   timelineCard: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 10,
     backgroundColor: meetingTheme.surfaceElevated,
     borderRadius: 12,
@@ -219,7 +289,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: meetingTheme.border,
     shadowColor: "#000",
-    shadowOpacity: 0.10,
+    shadowOpacity: 0.1,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
     elevation: 3,
@@ -243,18 +313,10 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   playBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
     backgroundColor: meetingTheme.navy,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
-  },
-  playBtnCompact: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
   },
   playBtnPressed: {
     opacity: 0.88,
@@ -265,20 +327,21 @@ const styles = StyleSheet.create({
   },
   btnDisabled: { opacity: 0.4 },
   timelineCol: { flex: 1, minWidth: 0 },
-  trackHit: {
-    paddingVertical: 8,
+  trackRow: {
+    width: "100%",
     justifyContent: "center",
   },
-  trackHitCompact: { paddingVertical: 5 },
+  trackLane: {
+    width: "100%",
+    justifyContent: "center",
+  },
   track: {
-    height: 4,
+    width: "100%",
     borderRadius: 2,
     backgroundColor: "rgba(0,0,0,0.14)",
     overflow: "hidden",
   },
-  trackCompact: { height: 3 },
   trackLight: {
-    height: 6,
     backgroundColor: "rgba(0,0,8,0.16)",
   },
   fill: {
@@ -294,35 +357,13 @@ const styles = StyleSheet.create({
   },
   thumb: {
     position: "absolute",
-    top: "50%",
-    marginTop: -7,
-    marginLeft: -7,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
     backgroundColor: "#fff",
     borderWidth: 2,
-    borderColor: meetingTheme.navy,
     shadowColor: "#000",
     shadowOpacity: 0.18,
     shadowRadius: 2,
     shadowOffset: { width: 0, height: 1 },
     elevation: 2,
-  },
-  thumbCompact: {
-    marginTop: -5,
-    marginLeft: -5,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  thumbLight: {
-    marginTop: -8,
-    marginLeft: -8,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderColor: "#000080",
   },
   timeRow: {
     flexDirection: "row",
@@ -360,6 +401,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.06)",
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
   },
   expandBtnCompact: {
     width: 30,

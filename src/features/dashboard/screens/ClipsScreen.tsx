@@ -623,6 +623,7 @@ export function ClipsScreen() {
         refreshing={active.isRefetching}
         onRefresh={onRefresh}
         toolbar={toolbar}
+        applyTopSafeArea={false}
         renderSkeletonRow={() => <ClipSectionSkeleton rows={3} />}
       >
         {tab === "mine" && shareMode ? (
@@ -760,9 +761,11 @@ export function ClipsScreen() {
         sharedBy={viewer?.sharedBy}
         clipId={viewer?.clipId}
         onShareFriends={
-          viewer?.clipId && tab === "mine"
+          viewer?.clipId
             ? () => {
-                setFriendShareClipIds([viewer.clipId!]);
+                const clipId = viewer.clipId!;
+                setViewer(null);
+                setFriendShareClipIds([clipId]);
                 setShareModalVisible(true);
               }
             : undefined

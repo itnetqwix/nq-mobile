@@ -216,20 +216,22 @@ export function CallProvider({
   onPeerJoinedRef.current = onPeerJoinedCb;
   onSlotTakenOverRef.current = onSlotTakenOver;
 
+  const iceServersRef = useRef(startArgs.iceServers);
+  iceServersRef.current = startArgs.iceServers;
+
   const stableArgs = useMemo<NativeCallEngineConfig | null>(() => {
     const fromUser = fromUserRef.current;
     const toUser = toUserRef.current;
     if (!socket || !startArgs.sessionId || !fromUser?._id || !toUser?._id) {
       return null;
     }
-    const iceServers = startArgs.iceServers;
     return {
       socket,
       sessionId: startArgs.sessionId,
       fromUser,
       toUser,
       role: startArgs.role,
-      iceServers,
+      iceServers: iceServersRef.current,
       startWithCameraOff: startArgs.startWithCameraOff,
     };
   }, [
@@ -239,8 +241,14 @@ export function CallProvider({
     startArgs.toUser?._id,
     startArgs.role,
     startArgs.startWithCameraOff,
-    iceServersKey,
   ]);
+
+  useEffect(() => {
+    const servers = startArgs.iceServers;
+    const engine = engineRef.current;
+    if (!engine || !servers?.length) return;
+    engine.updateIceServers(servers);
+  }, [iceServersKey, startArgs.iceServers]);
 
   useEffect(() => {
     if (!stableArgs) return;

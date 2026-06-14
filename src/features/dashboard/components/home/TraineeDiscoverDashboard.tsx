@@ -32,9 +32,7 @@ import {
 } from "../../lib/traineeDiscoverConstants";
 import { sortTrainersForDiscover } from "../../lib/sortTrainersForDiscover";
 import { PastBookedTrainersSection } from "./PastBookedTrainersSection";
-import { ForYouTrainersSection } from "./ForYouTrainersSection";
 import { GuestSeededCoachesSection } from "./GuestSeededCoachesSection";
-import { RecentlyViewedTrainersRow } from "./RecentlyViewedTrainersRow";
 import { useRecentlyViewedTrainers } from "../../hooks/useRecentlyViewedTrainers";
 import { ContinueWhereYouLeftOffCard } from "../trainee/ContinueWhereYouLeftOffCard";
 import { TraineePendingRequestsBanner } from "../trainee/TraineePendingRequestsBanner";
@@ -151,12 +149,8 @@ export function TraineeDiscoverDashboard({
   const isTraineeAccount = accountType === AccountType.TRAINEE;
   const { isFavorite, toggleFavorite } = useFavoriteTrainers(!isGuest && isTraineeAccount);
   const userId = user?._id != null ? String(user._id) : null;
-  const { recentTrainers, track: trackRecentTrainer } = useRecentlyViewedTrainers(
+  const { track: trackRecentTrainer } = useRecentlyViewedTrainers(
     isGuest ? null : userId
-  );
-  const recentTrainerIds = useMemo(
-    () => recentTrainers.map((r) => String(r._id ?? "")).filter(Boolean),
-    [recentTrainers]
   );
   const handleViewTrainer = useCallback(
     (trainer: Record<string, unknown>) => {
@@ -352,25 +346,11 @@ export function TraineeDiscoverDashboard({
         />
       ) : null}
 
-      {!isGuest ? (
-        <ForYouTrainersSection
-          recentTrainerIds={recentTrainerIds}
-          onSelectTrainer={handleViewTrainer}
-        />
-      ) : null}
+      {!isGuest ? <PastBookedTrainersSection onSelectTrainer={handleViewTrainer} /> : null}
 
       {isGuest ? (
         <GuestSeededCoachesSection onSelectTrainer={handleViewTrainer} />
       ) : null}
-
-      {recentTrainers.length > 0 ? (
-        <RecentlyViewedTrainersRow
-          rows={recentTrainers}
-          onSelectTrainer={handleViewTrainer}
-        />
-      ) : null}
-
-      {!isGuest ? <PastBookedTrainersSection onSelectTrainer={handleViewTrainer} /> : null}
 
       {!isGuest ? <FavoriteCoachesSection onSelectTrainer={handleViewTrainer} /> : null}
 
@@ -556,43 +536,6 @@ export function TraineeDiscoverDashboard({
 
   return (
     <View style={{ flex: 1 }}>
-      <DiscoverHomeChrome
-        compactTop
-        role={AccountType.TRAINEE}
-        subline={marketplaceSubline}
-        profilePicture={profilePicture}
-        profileName={name}
-        user={user}
-        onPressProfile={onSettings}
-        walletBalanceLabel={
-          !isGuest && walletCredits
-            ? t("discoverHome.walletBalance", { amount: walletCredits, defaultValue: "{{amount}} credits" })
-            : undefined
-        }
-        onOpenWallet={!isGuest ? onOpenWallet : undefined}
-        searchValue={search}
-        onSearchChange={setSearch}
-        onOpenFilters={() => setFiltersOpen(true)}
-        activeFilterCount={activeFilterCount}
-        categoryChips={!searchActive ? categoryStripItems : undefined}
-        selectedCategoryId={selectedCategory ?? "__all__"}
-        onSelectCategory={(id) => setSelectedCategory(id)}
-        voiceState={voice.state}
-        onVoicePress={toggleVoice}
-      />
-      {search.trim().length > 0 && search.trim().length < 2 ? (
-        <Text
-          style={[
-            styles.searchHint,
-            {
-              paddingLeft: marketplacePad.paddingLeft,
-              paddingRight: marketplacePad.paddingRight,
-            },
-          ]}
-        >
-          {t("bookExpert.searchMinHint")}
-        </Text>
-      ) : null}
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={[
@@ -605,6 +548,43 @@ export function TraineeDiscoverDashboard({
         scrollEventThrottle={scrollEventThrottleProp ?? homeScroll.scrollEventThrottle}
         refreshControl={refreshControl}
       >
+        <DiscoverHomeChrome
+          compactTop
+          role={AccountType.TRAINEE}
+          subline={marketplaceSubline}
+          profilePicture={profilePicture}
+          profileName={name}
+          user={user}
+          onPressProfile={onSettings}
+          walletBalanceLabel={
+            !isGuest && walletCredits
+              ? t("discoverHome.walletBalance", { amount: walletCredits, defaultValue: "{{amount}} credits" })
+              : undefined
+          }
+          onOpenWallet={!isGuest ? onOpenWallet : undefined}
+          searchValue={search}
+          onSearchChange={setSearch}
+          onOpenFilters={() => setFiltersOpen(true)}
+          activeFilterCount={activeFilterCount}
+          categoryChips={!searchActive ? categoryStripItems : undefined}
+          selectedCategoryId={selectedCategory ?? "__all__"}
+          onSelectCategory={(id) => setSelectedCategory(id)}
+          voiceState={voice.state}
+          onVoicePress={toggleVoice}
+        />
+        {search.trim().length > 0 && search.trim().length < 2 ? (
+          <Text
+            style={[
+              styles.searchHint,
+              {
+                paddingLeft: marketplacePad.paddingLeft,
+                paddingRight: marketplacePad.paddingRight,
+              },
+            ]}
+          >
+            {t("bookExpert.searchMinHint")}
+          </Text>
+        ) : null}
         {marketplaceScrollContent}
       </ScrollView>
       <StickyBottomPromoBar guest={isGuest} onDeepLink={onDeepLink} />

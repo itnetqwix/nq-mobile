@@ -114,8 +114,8 @@ apiClient.interceptors.response.use(
           // eslint-disable-next-line no-console
           console.warn("[auth] signing out after 401", requestUrl);
         }
-        emitSessionExpired();
         emitUnauthorized();
+        emitSessionExpired();
       } else if (__DEV__ && status === 401) {
         // eslint-disable-next-line no-console
         console.warn("[auth] 401 ignored", requestUrl, {

@@ -11,6 +11,8 @@ import { useAuth } from "../auth/context/AuthContext";
 import { useInstantLesson } from "../instant-lesson/InstantLessonContext";
 import { fetchScheduledMeetings } from "../home/api/homeApi";
 import { useSocket } from "../socket/SocketContext";
+import { invalidateForSocketEvent } from "../../lib/queryInvalidation";
+import { LESSON_SOCKET_EVENTS } from "../../lib/sessions/sessionContract";
 import { queryKeys } from "../../lib/queryKeys";
 import {
   accountTypeToReconcileRole,
@@ -32,6 +34,22 @@ export function SessionLifecycleBridge() {
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastRunRef = useRef(0);
+
+  useEffect(() => {
+    if (status !== "signedIn" || !socket) return;
+
+    const onLessonEnded = (payload?: { sessionId?: string }) => {
+      invalidateForSocketEvent(queryClient, LESSON_SOCKET_EVENTS.TIME_ENDED);
+      if (payload?.sessionId) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
+      }
+    };
+
+    socket.on(LESSON_SOCKET_EVENTS.TIME_ENDED, onLessonEnded);
+    return () => {
+      socket.off(LESSON_SOCKET_EVENTS.TIME_ENDED, onLessonEnded);
+    };
+  }, [status, socket, queryClient]);
 
   useEffect(() => {
     if (status !== "signedIn" || !isConnected) return;

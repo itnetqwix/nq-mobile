@@ -380,7 +380,7 @@ export function SessionGamePlanModal({
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-          <View style={[styles.root, { paddingTop: insets.top + 8 }]}>
+          <View style={[styles.root, { paddingTop: insets.top }]}>
             <View style={styles.header}>
               <View style={styles.headerText}>
                 <Text style={styles.heading}>Game plan</Text>
@@ -604,7 +604,7 @@ const styles = StyleSheet.create({
   heading: { fontSize: 24, fontWeight: "800", color: gamePlanTheme.text },
   sub: { marginTop: 6, fontSize: 14, color: gamePlanTheme.textMuted, lineHeight: 20 },
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, paddingBottom: 24 },
+  scrollContent: { paddingHorizontal: 16, paddingBottom: 120 },
   sectionLabel: {
     fontSize: 12,
     fontWeight: "800",

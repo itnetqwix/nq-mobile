@@ -25,6 +25,7 @@ import { getS3ImageUrl } from "../../lib/imageUtils";
 import {
   canEnterLesson,
   canJoinSession,
+  canPromptEarlySessionEnd,
   formatSessionWhen,
   getJoinDisabledReason,
   getOtherParty,
@@ -52,6 +53,7 @@ import {
 } from "../../lib/sessions/sessionRatingUtils";
 import { formatRefundTransferLabel } from "../../lib/sessions/refundTransferLabel";
 import { InstantLessonSessionActions } from "../instant-lesson/components/InstantLessonSessionActions";
+import { SessionEarlyEndActions } from "./components/SessionEarlyEndActions";
 
 type Props = {
   visible: boolean;
@@ -152,6 +154,13 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
   const joinEnabled = useMemo(
     () => (viewSession && !completed && !terminal ? canEnterLesson(viewSession) : false),
     [viewSession, completed, terminal]
+  );
+  const showEarlyEnd = useMemo(
+    () =>
+      viewSession && !pending && !terminal
+        ? canPromptEarlySessionEnd(viewSession, isTrainer)
+        : false,
+    [viewSession, pending, terminal, isTrainer]
   );
   const isRejoin = useMemo(
     () =>
@@ -564,6 +573,18 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
                   disabled={!joinEnabled}
                 />
               )}
+
+              {showEarlyEnd ? (
+                <SessionEarlyEndActions
+                  session={viewSession}
+                  isTrainer={isTrainer}
+                  layout="column"
+                  onActionComplete={async () => {
+                    await invalidateSessionsCache();
+                    onSessionUpdated?.(viewSession);
+                  }}
+                />
+              ) : null}
 
               {completed && !terminal ? (
                 <>

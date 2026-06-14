@@ -41,6 +41,7 @@ import { useHapticRefresh } from "../../../lib/refresh/useHapticRefresh";
 import {
   canEnterLesson,
   canJoinSession,
+  canPromptEarlySessionEnd,
   dedupeSessionsById,
   filterSessionsForStatusTab,
   formatSessionWhen,
@@ -56,6 +57,7 @@ import {
 } from "../../../lib/sessions/sessionUtils";
 import { InstantLessonDeadlineChip } from "../../instant-lesson/components/InstantLessonDeadlineChip";
 import { InstantLessonSessionActions } from "../../instant-lesson/components/InstantLessonSessionActions";
+import { SessionEarlyEndActions } from "../components/SessionEarlyEndActions";
 import { useSessionBooking } from "../SessionBookingContext";
 import { SessionsCalendar } from "../components/SessionsCalendar";
 import type { RootStackParamList } from "../../../navigation/types";
@@ -161,6 +163,11 @@ function SessionCard({
   const { dateLabel, timeLabel } = formatSessionWhen(session);
   const joinEnabled = !terminal && canEnterLesson(session);
   const isRejoin = joinEnabled && !canJoinSession(session);
+  const showEarlyEnd =
+    activeTab === "confirmed" &&
+    !terminal &&
+    !pending &&
+    canPromptEarlySessionEnd(session, isTrainer);
   const acceptDeadlineMs = getInstantAcceptDeadlineMs(session);
   const joinDeadlineMs = getInstantJoinDeadlineMs(session);
 
@@ -242,6 +249,18 @@ function SessionCard({
       )}
 
       </Pressable>
+
+      {showEarlyEnd ? (
+        <View style={styles.earlyEndWrap}>
+          <SessionEarlyEndActions
+            session={session}
+            isTrainer={isTrainer}
+            layout="column"
+            size="md"
+            onActionComplete={onSessionActionComplete}
+          />
+        </View>
+      ) : null}
 
       <View style={styles.cardFooter}>
         {terminal ? (
@@ -616,6 +635,10 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   categoryText: { ...typography.caption, color: colors.textMuted },
+
+  earlyEndWrap: {
+    marginTop: space.sm,
+  },
 
   cardFooter: {
     marginTop: space.sm,

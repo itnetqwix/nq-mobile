@@ -372,6 +372,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  actions: { flexDirection: "row", gap: 4, alignItems: "center" },
+  actions: { flexDirection: "row", gap: 2, alignItems: "center" },
   iconBtn: { padding: 4 },
 });

@@ -1,9 +1,11 @@
 /** Matrix: P4, B8 — instant vs scheduled join windows */
 import {
   canJoinSession,
+  canPromptEarlySessionEnd,
   canRejoinLesson,
   dedupeSessionsById,
   filterSessionsForStatusTab,
+  isEarlyEndedWithinBookedWindow,
   isInstantLesson,
   isPendingBooking,
   isSessionConfirmedForJoin,
@@ -117,20 +119,53 @@ describe("sessionUtils", () => {
     expect(canRejoinLesson(endedEarly, now)).toBe(false);
   });
 
-  it("moves early-ended scheduled session off confirmed tab", () => {
+  it("keeps early-ended session on confirmed tab until booked window closes", () => {
     const now = new Date("2026-06-15T14:10:00.000Z");
     const endedScheduled = {
       is_instant: false,
       status: "confirmed",
       booked_date: "2026-06-15",
       session_start_time: "14:00",
-      session_end_time: "14:05",
+      session_end_time: "15:00",
+      start_time: "2026-06-15T14:00:00.000Z",
+      end_time: "2026-06-15T14:05:00.000Z",
+      actual_end_at: "2026-06-15T14:05:00.000Z",
+    };
+    expect(isEarlyEndedWithinBookedWindow(endedScheduled, now)).toBe(true);
+    expect(filterSessionsForStatusTab([endedScheduled], "confirmed", now)).toHaveLength(1);
+    expect(filterSessionsForStatusTab([endedScheduled], "completed", now)).toHaveLength(0);
+  });
+
+  it("moves early-ended session to completed after booked window closes", () => {
+    const now = new Date("2026-06-15T16:00:00.000Z");
+    const endedScheduled = {
+      is_instant: false,
+      status: "completed",
+      booked_date: "2026-06-15",
+      session_start_time: "14:00",
+      session_end_time: "15:00",
       start_time: "2026-06-15T14:00:00.000Z",
       end_time: "2026-06-15T14:05:00.000Z",
       actual_end_at: "2026-06-15T14:05:00.000Z",
     };
     expect(filterSessionsForStatusTab([endedScheduled], "confirmed", now)).toHaveLength(0);
     expect(filterSessionsForStatusTab([endedScheduled], "completed", now)).toHaveLength(1);
+  });
+
+  it("prompts early end during active booked window after lesson started", () => {
+    const now = new Date("2026-06-15T14:30:00.000Z");
+    const live = {
+      is_instant: false,
+      status: "confirmed",
+      booked_date: "2026-06-15",
+      session_start_time: "14:00",
+      session_end_time: "15:00",
+      start_time: "2026-06-15T14:00:00.000Z",
+      end_time: "2026-06-15T15:00:00.000Z",
+      both_joined_at: "2026-06-15T14:05:00.000Z",
+    };
+    expect(canPromptEarlySessionEnd(live, true, now)).toBe(true);
+    expect(canPromptEarlySessionEnd(live, false, now)).toBe(true);
   });
 
   it("shows scheduled booked sessions in dashboard pending for trainees and trainers", () => {

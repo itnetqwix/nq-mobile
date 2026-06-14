@@ -9,8 +9,14 @@ export type StripeConnectStatus = {
 
 export async function fetchStripeConnectStatus(): Promise<StripeConnectStatus> {
   const res = await apiClient.get(API_ROUTES.user.checkStripeVerification);
-  const data = unwrapApiData<{ message?: string }>(res);
-  const msg = String(data?.message ?? "");
+  const envelope = unwrapApiData<{
+    msg?: string;
+    message?: string;
+    result?: { message?: string };
+  }>(res);
+  const msg = String(
+    envelope?.result?.message ?? envelope?.msg ?? envelope?.message ?? ""
+  );
   return {
     complete: /completed successfully/i.test(msg) && !/not completed/i.test(msg),
     message: msg,
@@ -21,8 +27,11 @@ export async function createStripeConnectOnboardingUrl(stripeAccountId: string):
   const res = await apiClient.put(API_ROUTES.user.stripeAccountVerification, {
     stripe_account_id: stripeAccountId,
   });
-  const data = unwrapApiData<{ url?: string; result?: { url?: string } }>(res);
-  return String(data?.url ?? data?.result?.url ?? "");
+  const envelope = unwrapApiData<{
+    url?: string;
+    result?: { url?: string };
+  }>(res);
+  return String(envelope?.result?.url ?? envelope?.url ?? "");
 }
 
 export async function registerStripeAccount(stripeAccountId: string): Promise<void> {

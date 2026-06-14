@@ -1,12 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useQuery } from "@tanstack/react-query";
 import { CoachCarouselSkeleton, Skeleton } from "../../../../components/ui";
-import { fetchGuestSeededTrainers } from "../../../home/api/homeApi";
 import { getTrainerName } from "../../../bookexpert/lib/trainerUtils";
 import { trainerListItemKey } from "../../../../lib/lists/trainerListUtils";
-import { queryKeys } from "../../../../lib/queryKeys";
+import {
+  getRecentTrainers,
+  type RecentTrainerRow,
+} from "../../lib/recentlyViewedTrainers";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
 import { HomeUserAvatar } from "./HomeUserAvatar";
@@ -18,16 +19,29 @@ type Props = {
   onSelectTrainer: (trainer: Record<string, unknown>) => void;
 };
 
+/**
+ * Guest-only carousel — reads locally cached coach profiles the visitor opened
+ * while browsing. Does not call the authenticated trainee API (that endpoint
+ * is for signed-in users after guest-activity replay).
+ */
 export function GuestSeededCoachesSection({ onSelectTrainer }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const styles = useStyles();
+  const [trainers, setTrainers] = useState<RecentTrainerRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { data: trainers = [], isLoading } = useQuery({
-    queryKey: queryKeys.trainee.guestSeededTrainers,
-    queryFn: () => fetchGuestSeededTrainers(12),
-    staleTime: 300_000,
-  });
+  useEffect(() => {
+    let alive = true;
+    void getRecentTrainers(null).then((rows) => {
+      if (!alive) return;
+      setTrainers(rows);
+      setIsLoading(false);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   if (isLoading) {
     return (
@@ -53,16 +67,23 @@ export function GuestSeededCoachesSection({ onSelectTrainer }: Props) {
         contentContainerStyle={styles.strip}
       >
         {trainers.map((item, i) => {
-          const name = getTrainerName(item);
+          const name = item.name || getTrainerName(item);
+          const trainerRow: Record<string, unknown> = {
+            _id: item._id,
+            fullname: name,
+            profile_picture: item.profile_picture,
+            category: item.category,
+            hourly_rate: item.hourly_rate,
+          };
           return (
             <Pressable
               key={trainerListItemKey(item, i, "seeded-")}
               style={({ pressed }) => [styles.tile, pressed && { opacity: 0.88, transform: [{ scale: 0.97 }] }]}
-              onPress={() => onSelectTrainer(item)}
+              onPress={() => onSelectTrainer(trainerRow)}
               accessibilityRole="button"
               accessibilityLabel={t("traineeDiscover.guestSeededA11y", { name })}
             >
-              <HomeUserAvatar uri={item?.profile_picture as string} name={name} size={AVATAR_SIZE} />
+              <HomeUserAvatar uri={item.profile_picture} name={name} size={AVATAR_SIZE} />
               <Text style={styles.name} numberOfLines={2}>{name}</Text>
               <View style={styles.ctaRow}>
                 <Ionicons name="sparkles-outline" size={11} color={c.brandNavy} />

@@ -1504,7 +1504,19 @@
     "outcomeLabel": "Outcome",
     "viewBookingDetails": "View full booking details",
     "emptyCtaTrainee": "Find a trainer",
-    "emptyCtaTrainer": "Edit availability"
+    "emptyCtaTrainer": "Edit availability",
+    "earlyEndPrompt": "Has your session ended?",
+    "earlyEndTitle": "End session early?",
+    "earlyEndBody": "Confirm that your lesson has finished. The coach becomes available to book again for the rest of this time slot.",
+    "earlyEndConfirm": "Yes, session ended",
+    "earlyEndYes": "Yes, session ended",
+    "earlyEndEnding": "Ending…",
+    "earlyEndSuccessTitle": "Session ended",
+    "earlyEndSuccessTrainer": "You're available to book again for the remaining time in this slot.",
+    "earlyEndSuccessTrainee": "Thanks for confirming. Your coach is available again for the rest of this time slot.",
+    "earlyEndFailedTitle": "Could not end session",
+    "earlyEndFailed": "Could not end session.",
+    "rejoinSession": "Rejoin session"
   },
   "community": {
     "memberDefault": "Member",

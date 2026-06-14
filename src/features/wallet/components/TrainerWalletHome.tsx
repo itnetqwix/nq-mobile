@@ -30,6 +30,7 @@ export function TrainerWalletHome({ navigation }: Props) {
   const connectQuery = useQuery({
     queryKey: queryKeys.wallet.stripeConnect,
     queryFn: fetchStripeConnectStatus,
+    retry: 1,
   });
   const styles = useThemedStyles((colors) =>
     StyleSheet.create({
@@ -63,7 +64,8 @@ export function TrainerWalletHome({ navigation }: Props) {
   );
   const { isRefetching, refetch } = useWalletBalance();
   const morph = useMorphRefreshBundle(refetch, isRefetching);
-  const showConnectBanner = connectQuery.data && connectQuery.data.complete === false;
+  const showConnectBanner =
+    connectQuery.data?.complete === false || connectQuery.isError;
 
   return (
     <>

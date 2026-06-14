@@ -37,7 +37,18 @@ const AUTH_NO_SIGNOUT_PATHS = [
  * Trainee-only routes return 401 when `account_type` is not trainee (backend middleware).
  * That is not an expired session — must not clear tokens app-wide.
  */
-const TRAINEE_ONLY_SOFT_401_PATHS = ["/trainee/favorite-trainers"];
+const TRAINEE_ONLY_SOFT_401_PATHS = [
+  "/trainee/favorite-trainers",
+  "/trainee/guest-activity",
+];
+
+/**
+ * Routes that may 401 when called without a valid trainee session (guest browse,
+ * stale token) — never treat as a global session expiry.
+ */
+const GUEST_OR_OPTIONAL_AUTH_SOFT_401_PATHS = [
+  "/trainee/guest-activity/seeded-trainers",
+];
 
 export function isAuthNoSignOutPath(url: string | undefined): boolean {
   if (!url) return false;
@@ -50,7 +61,8 @@ export function isAuthNoSignOutPath(url: string | undefined): boolean {
 export function isSoft401Path(url: string | undefined): boolean {
   if (!url) return false;
   const path = url.split("?")[0] ?? url;
-  return TRAINEE_ONLY_SOFT_401_PATHS.some(
-    (p) => path === p || path.endsWith(p)
+  return (
+    TRAINEE_ONLY_SOFT_401_PATHS.some((p) => path === p || path.endsWith(p)) ||
+    GUEST_OR_OPTIONAL_AUTH_SOFT_401_PATHS.some((p) => path === p || path.endsWith(p))
   );
 }

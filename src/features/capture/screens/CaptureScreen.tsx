@@ -10,41 +10,11 @@ import {
   Text,
   View,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
 import { colors, radii, space, typography } from "../../../theme";
-
-const CAPTURED_CLIPS_KEY = "@netqwix/captured_clips";
-
-export type CapturedClip = {
-  id: string;
-  uri: string;
-  createdAt: string;
-  durationSecs?: number;
-  fileSizeBytes?: number;
-  mimeType?: string;
-};
-
-export async function getCapturedClips(): Promise<CapturedClip[]> {
-  try {
-    const raw = await AsyncStorage.getItem(CAPTURED_CLIPS_KEY);
-    return raw ? (JSON.parse(raw) as CapturedClip[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-export async function saveCapturedClip(clip: CapturedClip): Promise<void> {
-  const existing = await getCapturedClips();
-  existing.unshift(clip);
-  await AsyncStorage.setItem(CAPTURED_CLIPS_KEY, JSON.stringify(existing));
-}
-
-export async function deleteCapturedClip(id: string): Promise<void> {
-  const existing = await getCapturedClips();
-  const updated = existing.filter((c) => c.id !== id);
-  await AsyncStorage.setItem(CAPTURED_CLIPS_KEY, JSON.stringify(updated));
-}
+import { useAuth } from "../../auth/context/AuthContext";
+import { saveCapturedClip } from "../capturedClipsStorage";
+import { CaptureQuickLabelModal } from "../components/CaptureQuickLabelModal";
 
 async function resolveFileSize(uri: string, reported?: number | null): Promise<number | undefined> {
   if (typeof reported === "number" && reported > 0) return reported;
@@ -59,9 +29,53 @@ async function resolveFileSize(uri: string, reported?: number | null): Promise<n
   return undefined;
 }
 
+function defaultClipLabel(): string {
+  return `Clip ${new Date().toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
+}
+
 export function CaptureScreen() {
   const navigation = useNavigation<any>();
+  const { user } = useAuth();
+  const userId = user?._id != null ? String(user._id) : null;
   const [saving, setSaving] = useState(false);
+  const [labelModalVisible, setLabelModalVisible] = useState(false);
+  const [pendingAsset, setPendingAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [defaultLabel, setDefaultLabel] = useState(defaultClipLabel());
+
+  const saveLabeledClip = useCallback(
+    async (label: string) => {
+      if (!pendingAsset?.uri) return;
+      setSaving(true);
+      try {
+        const id = `capture_${Date.now()}`;
+        const durationSecs =
+          pendingAsset.duration != null ? Math.round(pendingAsset.duration) : undefined;
+        const fileSizeBytes = await resolveFileSize(pendingAsset.uri, pendingAsset.fileSize);
+        await saveCapturedClip(userId, {
+          id,
+          uri: pendingAsset.uri,
+          createdAt: new Date().toISOString(),
+          label,
+          durationSecs,
+          fileSizeBytes,
+          mimeType: pendingAsset.mimeType ?? "video/mp4",
+        });
+        setLabelModalVisible(false);
+        setPendingAsset(null);
+        navigation.goBack();
+      } catch {
+        Alert.alert("Error", "Could not save the clip. Please try again.");
+      } finally {
+        setSaving(false);
+      }
+    },
+    [navigation, pendingAsset, userId]
+  );
 
   const recordVideo = useCallback(async () => {
     const { status: camStatus } = await ImagePicker.requestCameraPermissionsAsync();
@@ -86,27 +100,10 @@ export function CaptureScreen() {
     const asset = result.assets[0];
     if (!asset?.uri) return;
 
-    setSaving(true);
-    try {
-      const id = `capture_${Date.now()}`;
-      const durationSecs = asset.duration != null ? Math.round(asset.duration) : undefined;
-      const fileSizeBytes = await resolveFileSize(asset.uri, asset.fileSize);
-      const mimeType = asset.mimeType ?? "video/mp4";
-      await saveCapturedClip({
-        id,
-        uri: asset.uri,
-        createdAt: new Date().toISOString(),
-        durationSecs,
-        fileSizeBytes,
-        mimeType,
-      });
-      navigation.goBack();
-    } catch {
-      Alert.alert("Error", "Could not save the clip. Please try again.");
-    } finally {
-      setSaving(false);
-    }
-  }, [navigation]);
+    setPendingAsset(asset);
+    setDefaultLabel(defaultClipLabel());
+    setLabelModalVisible(true);
+  }, []);
 
   return (
     <SafeAreaView style={styles.root}>
@@ -125,7 +122,7 @@ export function CaptureScreen() {
 
         <Text style={styles.heading}>Record a training clip</Text>
         <Text style={styles.sub}>
-          Your camera opens in video mode. Record up to 2 minutes — the clip saves to your library automatically.
+          Record up to 2 minutes, add a quick label, then keep recording more. Upload and share from your library when you are ready.
         </Text>
 
         <Pressable
@@ -135,16 +132,22 @@ export function CaptureScreen() {
           accessibilityRole="button"
           accessibilityLabel="Record video"
         >
-          {saving ? (
-            <Ionicons name="cloud-upload-outline" size={22} color="#fff" />
-          ) : (
-            <Ionicons name="videocam-outline" size={22} color="#fff" />
-          )}
-          <Text style={styles.recordBtnText}>
-            {saving ? "Saving…" : "Start recording"}
-          </Text>
+          <Ionicons name="videocam-outline" size={22} color="#fff" />
+          <Text style={styles.recordBtnText}>Start recording</Text>
         </Pressable>
       </View>
+
+      <CaptureQuickLabelModal
+        visible={labelModalVisible}
+        defaultLabel={defaultLabel}
+        busy={saving}
+        onCancel={() => {
+          if (saving) return;
+          setLabelModalVisible(false);
+          setPendingAsset(null);
+        }}
+        onSave={(label) => void saveLabeledClip(label)}
+      />
     </SafeAreaView>
   );
 }

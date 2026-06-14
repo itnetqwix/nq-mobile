@@ -46,7 +46,9 @@ export function MediaViewerChrome({
         ) : null}
       </View>
 
-      {rightSlot}
+      {rightSlot ? (
+        <View style={styles.rightSlot}>{rightSlot}</View>
+      ) : null}
       {onOpenExternal ? (
         <Pressable
           onPress={onOpenExternal}
@@ -57,9 +59,9 @@ export function MediaViewerChrome({
         >
           <Ionicons name="open-outline" size={22} color="#fff" />
         </Pressable>
-      ) : (
+      ) : !rightSlot ? (
         <View style={styles.iconSpacer} />
-      )}
+      ) : null}
     </View>
   );
 }
@@ -78,4 +80,5 @@ const styles = StyleSheet.create({
   subtitle: { ...typography.caption, color: "rgba(255,255,255,0.72)", marginTop: 2 },
   iconBtn: { padding: 4 },
   iconSpacer: { width: 30 },
+  rightSlot: { flexDirection: "row", alignItems: "center", gap: 2, marginLeft: "auto" },
 });

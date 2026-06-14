@@ -49,6 +49,7 @@ export const API_ROUTES = {
     signUp: "/user/sign-up",
     scheduledMeetings: "/user/scheduled-meetings",
     updateBookedSession: (id: string) => `/user/update-booked-session/${id}` as const,
+    sessionEndEarly: (sessionId: string) => `/user/session-end-early/${sessionId}` as const,
     shareClips: "/user/share-clips",
     inviteFriend: "/user/invite-friend",
     rating: "/user/rating",

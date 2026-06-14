@@ -1000,7 +1000,19 @@
     "cancelBookingFailed": "No se pudo cancelar la reserva.",
     "cancelling": "Cancelando…",
     "offlineTitle": "Sin conexión",
-    "offlineCancelBody": "Estás sin conexión: cancelaremos esta reserva cuando vuelvas a estar en línea."
+    "offlineCancelBody": "Estás sin conexión: cancelaremos esta reserva cuando vuelvas a estar en línea.",
+    "earlyEndPrompt": "¿Tu sesión ha terminado?",
+    "earlyEndTitle": "¿Terminar la sesión antes de tiempo?",
+    "earlyEndBody": "Confirma que la lección ha terminado. El entrenador vuelve a estar disponible para reservar el resto de este horario.",
+    "earlyEndConfirm": "Sí, la sesión terminó",
+    "earlyEndYes": "Sí, la sesión terminó",
+    "earlyEndEnding": "Finalizando…",
+    "earlyEndSuccessTitle": "Sesión finalizada",
+    "earlyEndSuccessTrainer": "Estás disponible para reservar de nuevo el tiempo restante de este horario.",
+    "earlyEndSuccessTrainee": "Gracias por confirmar. Tu entrenador está disponible de nuevo el resto de este horario.",
+    "earlyEndFailedTitle": "No se pudo finalizar la sesión",
+    "earlyEndFailed": "No se pudo finalizar la sesión.",
+    "rejoinSession": "Volver a unirse"
   },
   "community": {
     "memberDefault": "Member",

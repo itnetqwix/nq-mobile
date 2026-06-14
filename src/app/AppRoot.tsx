@@ -1,5 +1,6 @@
 import {
   createPersistedQueryClient,
+  migrateQueryPersistFromAsyncStorage,
   persister,
   PERSIST_MAX_AGE_MS,
   PersistQueryClientProvider,
@@ -57,6 +58,7 @@ import { queryKeys } from "../lib/queryKeys";
 import { StoreProvider } from "../store/StoreProvider";
 import { AppBootstrapGate } from "../components/splash";
 import { CmsLiveRefreshBridge } from "../features/content/CmsLiveRefreshBridge";
+import { hydrateHotStorageFallback } from "../lib/storage/mmkvHotStorage";
 import { setGlobalQueryClient } from "../store/queryClientRef";
 
 initMobileSentry();
@@ -83,6 +85,10 @@ export function AppRoot() {
   }, []);
 
   useEffect(() => {
+    void (async () => {
+      await hydrateHotStorageFallback();
+      await migrateQueryPersistFromAsyncStorage();
+    })();
     void hydratePendingAuthIntent();
     void hydrateLastAuthMethod();
     void bootstrapCallRejoinStore();

@@ -30,7 +30,8 @@ import InCallManager from "react-native-incall-manager";
 import { CALL_EVENTS } from "./callEvents";
 import { LESSON_SOCKET_EVENTS } from "../../lib/sessions/sessionContract";
 import { reportOpsEvent } from "../ops/opsEventsApi";
-import { buildIceConfig } from "./iceServers";
+import { buildIceConfig, DEFAULT_ICE_SERVERS, sanitizeIceServers } from "./iceServers";
+import { isWebRTCModuleLinked } from "./nativeCallAvailability";
 import {
   LESSON_NETWORK_TIER_CONFIG,
   type LessonNetworkTier,
@@ -154,6 +155,11 @@ export class NativeCallEngine {
 
   async start(): Promise<void> {
     if (this.disposed) throw new Error("Engine already disposed");
+    if (!isWebRTCModuleLinked()) {
+      throw new Error(
+        "Native video calling is unavailable in this build. Reinstall the NetQwix app from TestFlight or the store."
+      );
+    }
     this.setStatus("preparing");
 
     try {
@@ -381,9 +387,25 @@ export class NativeCallEngine {
 
   private buildPeerConnection() {
     const config = buildIceConfig(this.iceServers);
-    const pc = new RTCPeerConnection({
-      iceServers: config.iceServers as any,
-    });
+    let pc: RTCPeerConnection;
+    try {
+      pc = new RTCPeerConnection({
+        iceServers: config.iceServers as any,
+      });
+    } catch (err) {
+      log("PeerConnection init failed — retrying with STUN-only defaults", err);
+      const fallback = sanitizeIceServers(DEFAULT_ICE_SERVERS);
+      this.iceServers = fallback;
+      try {
+        pc = new RTCPeerConnection({
+          iceServers: fallback as any,
+        });
+      } catch (retryErr) {
+        const message =
+          retryErr instanceof Error ? retryErr.message : "Failed to initialize PeerConnection.";
+        throw new Error(`${message} Check that you are on a production/dev build with WebRTC enabled.`);
+      }
+    }
     this.pc = pc;
 
     this.localStream?.getTracks().forEach((track: MediaStreamTrack) => {

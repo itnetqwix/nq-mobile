@@ -53,10 +53,9 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
 
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_API_DEBOUNCE_MS);
-  const [browseFilters, setBrowseFilters] = useTrainerBrowseFiltersStore((s) => [
-    s.filters,
-    s.setFilters,
-  ]);
+  const browseFilters = useTrainerBrowseFiltersStore((s) => s.filters);
+  const setBrowseFilters = useTrainerBrowseFiltersStore((s) => s.setFilters);
+  const patchBrowseFilters = useTrainerBrowseFiltersStore((s) => s.patchFilters);
 
   const seededInterestsRef = useRef(false);
   useEffect(() => {
@@ -66,11 +65,8 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
       return;
     }
     seededInterestsRef.current = true;
-    setBrowseFilters({
-      ...browseFilters,
-      selectedCategories: [...traineeInterests],
-    });
-  }, [browseFilters, setBrowseFilters, traineeInterests]);
+    patchBrowseFilters({ selectedCategories: [...traineeInterests] });
+  }, [browseFilters.selectedCategories.length, patchBrowseFilters, traineeInterests]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [profileTrainer, setProfileTrainer] = useState<Record<string, unknown> | null>(null);
   const [wizardTrainer, setWizardTrainer] = useState<Record<string, unknown> | null>(null);

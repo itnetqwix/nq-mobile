@@ -117,6 +117,22 @@ export async function updateBookedSessionStatus(
   return data?.result ?? data;
 }
 
+export type EndSessionEarlyResponse = {
+  session?: {
+    status?: string;
+    actual_end_at?: string;
+    end_time?: string;
+    early_end_trainer_ack_at?: string | null;
+    early_end_trainee_ack_at?: string | null;
+  };
+};
+
+/** POST /user/session-end-early/:sessionId — mark live session ended before booked window ends. */
+export async function endSessionEarly(sessionId: string): Promise<EndSessionEarlyResponse> {
+  const { data } = await apiClient.post(API_ROUTES.user.sessionEndEarly(sessionId));
+  return (data?.data ?? data?.result ?? data) as EndSessionEarlyResponse;
+}
+
 export type SessionDetailResponse = {
   session: Record<string, unknown>;
   trainer: Record<string, unknown> | null;

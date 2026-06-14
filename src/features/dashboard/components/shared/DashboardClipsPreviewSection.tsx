@@ -1,9 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { ClipTileSkeleton, ImageWithSkeleton } from "../../../../components/ui";
-import { getClipThumbnailUrl } from "../../../../lib/clipMediaUrl";
+import { getClipPlaybackUrl, getClipThumbnailUrl } from "../../../../lib/clipMediaUrl";
 import { flattenNestedClipsForPicker } from "../../../../lib/lists/clipListUtils";
 import { queryKeys } from "../../../../lib/queryKeys";
 import { postMyClipsGrouped } from "../../../home/api/homeApi";
@@ -11,6 +11,7 @@ import type { NestedCategoryGroup } from "../../../clips/api/clipsApi";
 import { radii, space, typography, useThemedStyles } from "../../../../theme";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
 import { DashboardSection } from "./DashboardSection";
+import { LockerViewerModal } from "../locker/LockerViewerModal";
 
 const PREVIEW_COUNT = 9;
 const COLS = 3;
@@ -25,6 +26,11 @@ export function DashboardClipsPreviewSection({ onViewMore }: Props) {
   const { width: screenWidth } = useWindowDimensions();
   const cellWidth = Math.floor((screenWidth - space.md * 2 - space.sm * 2) / COLS);
   const thumbHeight = Math.round(cellWidth * 0.62);
+  const [viewer, setViewer] = useState<{
+    uri: string;
+    title: string;
+    clipId?: string;
+  } | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: queryKeys.locker.myClips,
@@ -41,6 +47,19 @@ export function DashboardClipsPreviewSection({ onViewMore }: Props) {
     const groups = (data ?? []) as NestedCategoryGroup[];
     return flattenNestedClipsForPicker(groups).length;
   }, [data]);
+
+  const openClip = (clip: Record<string, unknown>, title: string) => {
+    const uri = getClipPlaybackUrl(clip);
+    if (!uri) {
+      onViewMore();
+      return;
+    }
+    setViewer({
+      uri,
+      title,
+      clipId: clip._id != null ? String(clip._id) : undefined,
+    });
+  };
 
   if (isLoading) {
     return (
@@ -83,6 +102,7 @@ export function DashboardClipsPreviewSection({ onViewMore }: Props) {
   const showViewMore = totalCount > PREVIEW_COUNT;
 
   return (
+    <>
     <DashboardSection
       embedded
       title={t("dashboardHome.myClips", { defaultValue: "My clips" })}
@@ -105,7 +125,7 @@ export function DashboardClipsPreviewSection({ onViewMore }: Props) {
             <Pressable
               key={`${clip._id}-${index}`}
               style={({ pressed }) => [styles.cell, { width: cellWidth }, pressed && { opacity: 0.88 }]}
-              onPress={onViewMore}
+              onPress={() => openClip(clip as Record<string, unknown>, title)}
               accessibilityRole="button"
               accessibilityLabel={title}
             >
@@ -148,6 +168,16 @@ export function DashboardClipsPreviewSection({ onViewMore }: Props) {
         </Pressable>
       ) : null}
     </DashboardSection>
+
+    <LockerViewerModal
+      visible={!!viewer}
+      onClose={() => setViewer(null)}
+      uri={viewer?.uri ?? ""}
+      title={viewer?.title}
+      mode="video"
+      clipId={viewer?.clipId}
+    />
+    </>
   );
 }
 

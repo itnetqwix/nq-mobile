@@ -1,5 +1,4 @@
 import * as FileSystem from "expo-file-system/legacy";
-import * as MediaLibrary from "expo-media-library";
 import { Alert, Platform } from "react-native";
 
 function extensionFromUrl(url: string): string {
@@ -7,6 +6,24 @@ function extensionFromUrl(url: string): string {
   const ext = path.split(".").pop()?.toLowerCase();
   if (ext && ["mp4", "mov", "mpeg", "webm", "m4v"].includes(ext)) return ext;
   return "mp4";
+}
+
+type MediaLibraryModule = typeof import("expo-media-library");
+
+function loadMediaLibrary(): MediaLibraryModule | null {
+  try {
+    // Lazy require — native ExpoMediaLibrary may be absent on stale dev clients.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require("expo-media-library") as MediaLibraryModule;
+  } catch (error) {
+    if (__DEV__) {
+      console.warn(
+        "[downloadVideoToLibrary] expo-media-library unavailable. Rebuild the dev client.",
+        error
+      );
+    }
+    return null;
+  }
 }
 
 /**
@@ -21,6 +38,14 @@ export async function downloadVideoToLibrary(params: {
   const { uri, title, onSuccess, onError } = params;
   if (!uri?.trim()) {
     onError?.("No video URL to download.");
+    return false;
+  }
+
+  const MediaLibrary = loadMediaLibrary();
+  if (!MediaLibrary) {
+    onError?.(
+      "Saving to your photo library requires a newer app build. Reinstall the latest NetQwix dev client."
+    );
     return false;
   }
 

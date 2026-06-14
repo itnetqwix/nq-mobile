@@ -27,6 +27,8 @@ type Props = {
   skeletonRows?: number;
   /** Override the per-row skeleton — defaults to `ClipCardSkeleton`. */
   renderSkeletonRow?: SkeletonGroupProps["renderRow"];
+  /** When false, skip top safe-area padding (parent stack header already applies insets). */
+  applyTopSafeArea?: boolean;
 };
 
 export function LockerListShell({
@@ -41,17 +43,18 @@ export function LockerListShell({
   contentStyle,
   skeletonRows = 3,
   renderSkeletonRow,
+  applyTopSafeArea = true,
 }: Props) {
   const c = useThemeColors();
   const insets = useSafeAreaInsets();
   const morph = useMorphRefreshBundle(onRefresh, refreshing);
   const bottomPad = useFloatingTabBarBottomInset(space.md);
-  const topPad = Math.max(insets.top, space.sm);
+  const topPad = applyTopSafeArea ? Math.max(insets.top, space.sm) : 0;
   const styles = useThemedStyles((palette) =>
     StyleSheet.create({
       root: { flex: 1, backgroundColor: palette.background },
       toolbar: {
-        paddingTop: space.xs,
+        paddingTop: 0,
         paddingHorizontal: space.md,
         paddingBottom: space.sm,
         borderBottomWidth: StyleSheet.hairlineWidth,

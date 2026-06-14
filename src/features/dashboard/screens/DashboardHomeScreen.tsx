@@ -648,9 +648,12 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
           onOpenPendingRequests={() => openFeature("upcoming-sessions")}
           onOpenFriends={() => openFeature("friends")}
           onOpenClips={() => openShell("clips")}
-          onQuickBook={() =>
-            (navigation as { navigate: (name: string) => void }).navigate("BookNow")
-          }
+          onQuickBook={() => {
+            const tabNav = navigation.getParent();
+            if (tabNav) {
+              tabNav.navigate("BookNow" as never);
+            }
+          }}
           contentContainerStyle={[gutter, styles.content]}
           onScroll={onHomeScroll}
           scrollEventThrottle={morphHome.scrollEventThrottle}

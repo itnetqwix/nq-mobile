@@ -155,6 +155,7 @@ export function GamePlansScreen() {
         onRetry={() => void reportsQ.refetch()}
         refreshing={reportsQ.isRefetching}
         onRefresh={onRefresh}
+        applyTopSafeArea={false}
         renderSkeletonRow={() => <GamePlanCardSkeleton />}
       >
         {reportSections.length === 0 ? (
@@ -217,11 +218,11 @@ export function GamePlansScreen() {
                         accessibilityLabel={title}
                       >
                         {/* Hero area */}
-                        <View style={[styles.heroWrap, { width: cardWidth - space.md * 2 }]}>
+                        <View style={styles.heroWrap}>
                           {uri ? (
                             <ImageWithSkeleton
                               uri={uri}
-                              width={cardWidth - space.md * 2}
+                              width={cardWidth}
                               height={160}
                               borderRadius={radii.md}
                               resizeMode="cover"

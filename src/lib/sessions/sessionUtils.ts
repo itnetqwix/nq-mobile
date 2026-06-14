@@ -126,6 +126,68 @@ export function getSessionEnd(session: any): Date | null {
   return parseYmdHm(session?.booked_date, session?.session_end_time);
 }
 
+/** Original booked window end (ignores early-end truncation of `end_time`). */
+export function getBookedWindowEnd(session: any): Date | null {
+  const start = getSessionStart(session);
+  const slotStart = parseYmdHm(session?.booked_date, session?.session_start_time);
+  const slotEnd = parseYmdHm(session?.booked_date, session?.session_end_time);
+  if (start && slotStart && slotEnd) {
+    let durationMs = slotEnd.getTime() - slotStart.getTime();
+    if (durationMs < 0) durationMs += 24 * 60 * 60 * 1000;
+    return new Date(start.getTime() + durationMs);
+  }
+  if (session?.end_time && !session?.actual_end_at) {
+    const d = new Date(session.end_time);
+    if (Number.isFinite(d.getTime())) return d;
+  }
+  return slotEnd ?? null;
+}
+
+export function hasViewerAckedEarlyEnd(session: any, isTrainer: boolean): boolean {
+  const raw = isTrainer
+    ? session?.early_end_trainer_ack_at
+    : session?.early_end_trainee_ack_at;
+  return !!raw;
+}
+
+/** Show "session ended?" actions in the Confirmed tab during an active booked window. */
+export function canPromptEarlySessionEnd(
+  session: any,
+  isTrainer: boolean,
+  now = new Date()
+): boolean {
+  const status = normalizeSessionStatus(session?.status);
+  if (status === "cancelled") return false;
+  if (isPendingBooking(session)) return false;
+  if (!isSessionConfirmedForJoin(session)) return false;
+
+  const bookedEnd = getBookedWindowEnd(session);
+  if (!bookedEnd) return false;
+  const nowMs = now.getTime();
+  if (nowMs >= bookedEnd.getTime() + LATE_JOIN_MS) return false;
+
+  const start = getSessionStart(session);
+  if (!start) return false;
+  const sessionStarted =
+    !!session?.both_joined_at ||
+    !!session?.first_joined_at ||
+    nowMs >= start.getTime() - EARLY_JOIN_MS;
+  if (!sessionStarted) return false;
+
+  if (session?.actual_end_at) {
+    return !hasViewerAckedEarlyEnd(session, isTrainer);
+  }
+
+  return nowMs < bookedEnd.getTime();
+}
+
+export function isEarlyEndedWithinBookedWindow(session: any, now = new Date()): boolean {
+  if (!session?.actual_end_at) return false;
+  const bookedEnd = getBookedWindowEnd(session);
+  if (!bookedEnd) return false;
+  return now.getTime() <= bookedEnd.getTime() + LATE_JOIN_MS;
+}
+
 /** True when the lesson has ended (early hang-up, completed phase, or past window). */
 export function isLessonEffectivelyEnded(session: any, now = new Date()): boolean {
   if (session?.actual_end_at) return true;
@@ -572,11 +634,17 @@ export function filterSessionsForStatusTab(
     }
 
     if (tab === "completed") {
+      if (isEarlyEndedWithinBookedWindow(session, now)) return false;
       return (
         status === "completed" ||
         phase === "completed" ||
         isLessonEffectivelyEnded(session, now)
       );
+    }
+
+    if (isEarlyEndedWithinBookedWindow(session, now)) {
+      if (tab === "confirmed") return true;
+      return false;
     }
 
     if (isLessonEffectivelyEnded(session, now)) return false;

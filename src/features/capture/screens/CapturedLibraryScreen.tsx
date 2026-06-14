@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useAuth } from "../../auth/context/AuthContext";
 import { LockerViewerModal } from "../../dashboard/components/locker/LockerViewerModal";
 import { ClipUploadModal } from "../../dashboard/components/locker/ClipUploadModal";
 import {
@@ -20,7 +21,7 @@ import {
   getCapturedClips,
   deleteCapturedClip,
   type CapturedClip,
-} from "./CaptureScreen";
+} from "../capturedClipsStorage";
 import { floatingTabBarBottomInset } from "../../../navigation/FloatingTabBar";
 import { FLASHLIST_PERF_DEFAULTS } from "../../../lib/lists/flatListPerf";
 import { colors, radii, space, typography } from "../../../theme";
@@ -32,6 +33,8 @@ const SHARE_EMAIL = "Email";
 export function CapturedLibraryScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const { user } = useAuth();
+  const userId = user?._id != null ? String(user._id) : null;
   const [clips, setClips] = useState<CapturedClip[]>([]);
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -44,13 +47,13 @@ export function CapturedLibraryScreen() {
   >(SHARE_MY_CLIPS);
 
   const load = useCallback(async () => {
-    const c = await getCapturedClips();
+    const c = await getCapturedClips(userId);
     setClips(c);
     setViewerClip((prev) => {
       if (prev && c.some((clip) => clip.id === prev.id)) return prev;
       return null;
     });
-  }, []);
+  }, [userId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -94,7 +97,7 @@ export function CapturedLibraryScreen() {
           style: "destructive",
           onPress: async () => {
             for (const id of ids) {
-              await deleteCapturedClip(id);
+              await deleteCapturedClip(userId, id);
             }
             if (viewerClip && ids.includes(viewerClip.id)) setViewerClip(null);
             exitSelectMode();
@@ -177,12 +180,13 @@ export function CapturedLibraryScreen() {
         </View>
         <View style={styles.clipMeta}>
           <Text style={styles.clipDate} numberOfLines={1}>
-            {new Date(item.createdAt).toLocaleDateString(undefined, {
-              month: "short",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
+            {item.label?.trim() ||
+              new Date(item.createdAt).toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
           </Text>
           {item.durationSecs ? (
             <Text style={styles.clipDur}>{formatDuration(item.durationSecs)}</Text>
@@ -290,12 +294,12 @@ export function CapturedLibraryScreen() {
         visible={!!viewerClip && !selectMode}
         onClose={() => setViewerClip(null)}
         uri={viewerClip?.uri ?? ""}
-        title="Captured clip"
+        title={viewerClip?.label?.trim() || "Captured clip"}
         mode="video"
         onDeleteClip={
           viewerClip
             ? async () => {
-                await deleteCapturedClip(viewerClip.id);
+                await deleteCapturedClip(userId, viewerClip.id);
                 setViewerClip(null);
                 void load();
                 Alert.alert("Deleted", "Clip removed from your device.");
@@ -331,9 +335,10 @@ export function CapturedLibraryScreen() {
             ? {
                 uri: uploadClip.uri,
                 durationSecs: uploadClip.durationSecs,
-                fileName: `capture_${uploadClip.id}.mp4`,
+                fileName: `${(uploadClip.label ?? "capture").replace(/[^\w.-]+/g, "_")}_${uploadClip.id}.mp4`,
                 fileSizeBytes: uploadClip.fileSizeBytes,
                 mimeType: uploadClip.mimeType ?? "video/mp4",
+                title: uploadClip.label,
               }
             : null
         }

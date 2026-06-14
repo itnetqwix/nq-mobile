@@ -38,7 +38,6 @@ import { apiClient } from "../../../../api/client";
 import { API_ROUTES } from "../../../../config/apiRoutes";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
-import { ClipUploadPrepareModal } from "./ClipUploadPrepareModal";
 
 const SHARE_MY_CLIPS = "My Clips";
 const SHARE_FRIENDS = "Friends";
@@ -54,6 +53,7 @@ export type ClipUploadInitialVideo = {
   fileName?: string;
   fileSizeBytes?: number;
   mimeType?: string;
+  title?: string;
 };
 
 type Props = {
@@ -100,7 +100,6 @@ export function ClipUploadModal({
   const [shareTarget, setShareTarget] = useState<ShareTarget>(defaultShareTarget);
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
   const [shareEmail, setShareEmail] = useState("");
-  const [prepareVisible, setPrepareVisible] = useState(false);
   const [initializingVideo, setInitializingVideo] = useState(false);
 
   const { data: taxonomy, isLoading: catLoading } = useQuery({
@@ -136,7 +135,6 @@ export function ClipUploadModal({
       setShareTarget(defaultShareTarget);
       setSelectedFriendIds([]);
       setShareEmail("");
-      setPrepareVisible(false);
       setInitializingVideo(false);
     }
   }, [visible, defaultShareTarget]);
@@ -160,7 +158,7 @@ export function ClipUploadModal({
       };
       setVideoAsset(asset);
       const base = (asset.fileName ?? "clip").replace(/\.[^/.]+$/, "");
-      setTitle(base || t("locker.clipDefault"));
+      setTitle(initialVideo.title?.trim() || base || t("locker.clipDefault"));
       setThumbUri(null);
       setThumbBusy(true);
       try {
@@ -175,7 +173,6 @@ export function ClipUploadModal({
         });
         if (cancelled) return;
         setThumbUri(uri);
-        setPrepareVisible(true);
       } catch (e) {
         if (cancelled) return;
         Alert.alert(
@@ -196,7 +193,7 @@ export function ClipUploadModal({
     return () => {
       cancelled = true;
     };
-  }, [visible, initialVideo?.uri, initialVideo?.durationSecs, initialVideo?.fileName, initialVideo?.fileSizeBytes, initialVideo?.mimeType, t]);
+  }, [visible, initialVideo?.uri, initialVideo?.durationSecs, initialVideo?.fileName, initialVideo?.fileSizeBytes, initialVideo?.mimeType, initialVideo?.title, t]);
 
   const lockShareTarget = !!initialVideo;
 
@@ -241,7 +238,6 @@ export function ClipUploadModal({
         quality: 0.85,
       });
       setThumbUri(uri);
-      setPrepareVisible(true);
     } catch (e) {
       Alert.alert(
         t("locker.previewErrorTitle"),
@@ -709,20 +705,6 @@ export function ClipUploadModal({
           </Pressable>
         </View>
       </KeyboardAvoidingView>
-
-      <ClipUploadPrepareModal
-        visible={prepareVisible && visible}
-        video={videoAsset}
-        thumbUri={thumbUri}
-        thumbBusy={thumbBusy}
-        onClose={() => setPrepareVisible(false)}
-        onReplaceVideo={() => {
-          setPrepareVisible(false);
-          void pickVideo();
-        }}
-        onThumbChange={setThumbUri}
-        onConfirm={() => setPrepareVisible(false)}
-      />
     </Modal>
   );
 }

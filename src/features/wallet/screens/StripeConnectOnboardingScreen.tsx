@@ -28,12 +28,18 @@ export function StripeConnectOnboardingScreen({ navigation }: Props) {
   const stripeAccountId = String(
     (user as Record<string, unknown>)?.stripe_account_id ?? ""
   );
+  const kycComplete = Boolean((user as Record<string, unknown>)?.is_kyc_completed);
 
   const statusQuery = useQuery({
     queryKey: queryKeys.wallet.stripeConnect,
     queryFn: fetchStripeConnectStatus,
     enabled: Boolean(stripeAccountId),
   });
+
+  const complete = stripeAccountId
+    ? statusQuery.data?.complete ?? kycComplete
+    : false;
+  const statusLoading = Boolean(stripeAccountId) && statusQuery.isLoading;
 
   const styles = useThemedStyles((palette) =>
     StyleSheet.create({
@@ -88,8 +94,6 @@ export function StripeConnectOnboardingScreen({ navigation }: Props) {
     await statusQuery.refetch();
   }, [refreshUser, statusQuery]);
 
-  const complete = statusQuery.data?.complete;
-
   return (
     <ScreenContainer scroll dismissKeyboardOnTap padding="lg" background={c.background} contentStyle={styles.scroll}>
       <View style={styles.hero}>
@@ -112,16 +116,27 @@ export function StripeConnectOnboardingScreen({ navigation }: Props) {
           color={complete ? c.success : c.warning}
         />
         <Text style={styles.statusText}>
-          {complete
-            ? t("wallet.stripeConnectComplete", { defaultValue: "Payout account verified." })
-            : t("wallet.stripeConnectIncomplete", {
-                defaultValue: "Onboarding incomplete — add bank details in Stripe.",
-              })}
+          {!stripeAccountId
+            ? t("wallet.stripeConnectMissingAccount", {
+                defaultValue:
+                  "Your payout account is still being created. Pull to refresh or try again shortly.",
+              })
+            : statusLoading
+              ? t("common.loading", { defaultValue: "Loading…" })
+              : complete
+                ? t("wallet.stripeConnectComplete", { defaultValue: "Payout account verified." })
+                : t("wallet.stripeConnectIncomplete", {
+                    defaultValue: "Onboarding incomplete — add bank details in Stripe.",
+                  })}
         </Text>
       </View>
 
       <Card>
-        <Button onPress={() => void openOnboarding()} loading={busy} disabled={busy}>
+        <Button
+          onPress={() => void openOnboarding()}
+          loading={busy || statusLoading}
+          disabled={busy || statusLoading || !stripeAccountId}
+        >
           {complete
             ? t("wallet.stripeConnectUpdate", { defaultValue: "Update payout details" })
             : t("wallet.stripeConnectStart", { defaultValue: "Continue in Stripe" })}
