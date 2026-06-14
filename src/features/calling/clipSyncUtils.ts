@@ -83,7 +83,7 @@ export function playableBookingClips(
   session: Record<string, any> | null | undefined,
   readinessClips?: JoinReadinessClipLike[] | null
 ): ClipRecord[] {
-  return mergeSessionClips(session, readinessClips).filter(hasPlayableClipUrl);
+  return mergeSessionClips(session, readinessClips).filter(isPlayableVideoClip);
 }
 
 /** True when booking rows only carry clip ids — need a fresh scheduled-meetings fetch. */

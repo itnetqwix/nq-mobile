@@ -100,9 +100,15 @@ export function NativeMediaSurface({
     if (readyOnce.current) return;
     readyOnce.current = true;
     if (mode === "image") setImageLoading(false);
-    else setVideoInitialLoading(false);
+    else {
+      setVideoInitialLoading(false);
+      if (isActive) {
+        setUserPaused(false);
+        void videoRef.current?.playAsync().catch(() => undefined);
+      }
+    }
     onReady?.();
-  }, [mode, onReady]);
+  }, [mode, onReady, isActive]);
 
   const onPlaybackStatus = useCallback(
     (status: AVPlaybackStatus) => {

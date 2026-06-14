@@ -202,6 +202,7 @@ export function ClipsScreen() {
   const [shareMode, setShareMode] = useState(false);
   const [selectedClipIds, setSelectedClipIds] = useState<Record<string, boolean>>({});
   const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [friendShareClipIds, setFriendShareClipIds] = useState<string[]>([]);
   const [librarySheetClip, setLibrarySheetClip] = useState<LockerClip | null>(null);
   const [viewer, setViewer] = useState<{
     uri: string;
@@ -758,38 +759,62 @@ export function ClipsScreen() {
         mode={viewer?.mode ?? "video"}
         sharedBy={viewer?.sharedBy}
         clipId={viewer?.clipId}
+        onShareFriends={
+          viewer?.clipId && tab === "mine"
+            ? () => {
+                setFriendShareClipIds([viewer.clipId!]);
+                setShareModalVisible(true);
+              }
+            : undefined
+        }
+        shareFriendsAccessibilityLabel={t("locker.shareToFriends", {
+          defaultValue: "Share with NetQwix friends",
+        })}
         onShareExternal={
           viewer
-            ? () =>
-                void shareClipExternally({
-                  title: viewer.title,
-                  clipId: viewer.clipId,
-                  playbackUrl: viewer.uri,
-                  t,
-                })
+            ? () => {
+                Alert.alert(
+                  t("locker.shareExternalTitle", { defaultValue: "Share link" }),
+                  t("locker.shareExternalBody", {
+                    defaultValue: "Share this clip outside NetQwix?",
+                  }),
+                  [
+                    { text: t("common.cancel"), style: "cancel" },
+                    {
+                      text: t("locker.shareTabLink", { defaultValue: "Share link" }),
+                      onPress: () => {
+                        void shareClipExternally({
+                          title: viewer.title,
+                          clipId: viewer.clipId,
+                          playbackUrl: viewer.uri,
+                          t,
+                        });
+                      },
+                    },
+                  ]
+                );
+              }
             : undefined
         }
         shareAccessibilityLabel={t("locker.shareExternal")}
         onDeleteClip={
           viewer?.clipId && tab === "mine" && !viewer.canRemove
-            ? () => {
+            ? async () => {
                 const cId = viewer.clipId!;
-                Alert.alert("Delete Clip", "Delete this clip? This cannot be undone.", [
-                  { text: "Cancel", style: "cancel" },
-                  {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: async () => {
-                      try {
-                        await deleteLockerClip(cId);
-                        void queryClient.invalidateQueries({ queryKey: queryKeys.locker.myClips });
-                        setViewer(null);
-                      } catch {
-                        Alert.alert("Error", "Could not delete the clip. Please try again.");
-                      }
-                    },
-                  },
-                ]);
+                try {
+                  await deleteLockerClip(cId);
+                  void queryClient.invalidateQueries({ queryKey: queryKeys.locker.myClips });
+                  setViewer(null);
+                  Alert.alert(
+                    t("locker.deletedTitle", { defaultValue: "Deleted" }),
+                    t("locker.deletedBody", { defaultValue: "Clip removed from your locker." })
+                  );
+                } catch {
+                  Alert.alert(
+                    t("common.error"),
+                    t("locker.deleteFailed", { defaultValue: "Could not delete the clip." })
+                  );
+                }
               }
             : undefined
         }
@@ -814,10 +839,14 @@ export function ClipsScreen() {
 
       <ClipShareFriendsModal
         visible={shareModalVisible}
-        clipIds={selectedIds}
-        onClose={() => setShareModalVisible(false)}
+        clipIds={friendShareClipIds.length > 0 ? friendShareClipIds : selectedIds}
+        onClose={() => {
+          setShareModalVisible(false);
+          setFriendShareClipIds([]);
+        }}
         onSent={() => {
           exitShareMode();
+          setFriendShareClipIds([]);
           void queryClient.invalidateQueries({ queryKey: queryKeys.locker.sharedClips });
         }}
       />

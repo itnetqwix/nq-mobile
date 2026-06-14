@@ -37,6 +37,7 @@ import { GuestSeededCoachesSection } from "./GuestSeededCoachesSection";
 import { RecentlyViewedTrainersRow } from "./RecentlyViewedTrainersRow";
 import { useRecentlyViewedTrainers } from "../../hooks/useRecentlyViewedTrainers";
 import { ContinueWhereYouLeftOffCard } from "../trainee/ContinueWhereYouLeftOffCard";
+import { TraineePendingRequestsBanner } from "../trainee/TraineePendingRequestsBanner";
 import { CategoryEmptySuggestions } from "../trainee/CategoryEmptySuggestions";
 import { FavoriteCoachesSection } from "../trainee/FavoriteCoachesSection";
 import { useDashboardSessions } from "../../hooks/useDashboardSessions";
@@ -50,6 +51,7 @@ import {
   type TrainerBrowseFilters,
 } from "../../../bookexpert/lib/trainerBrowseConstants";
 import { trainerHasOpenSlots } from "../../../bookexpert/lib/trainerUtils";
+import { trainerListItemKey } from "../../../../lib/lists/trainerListUtils";
 import { resolveTraineeTimeZone } from "../../../../lib/user/resolveTraineeTimeZone";
 import { queryKeys } from "../../../../lib/queryKeys";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
@@ -63,8 +65,10 @@ import { HomeHeroCarousel } from "../../../home/components/HomeHeroCarousel";
 import { HomeOffersCarousel } from "../../../home/components/HomeOffersCarousel";
 import { StickyBottomPromoBar } from "../../../home/components/StickyBottomPromoBar";
 import { DiscoverHomeChrome } from "../../../home/layout/DiscoverHomeChrome";
+import { TraineeQuickChipsRow } from "../../../home/components/TraineeQuickChipsRow";
 import { MiniFriendsSection } from "../shared/MiniFriendsSection";
 import { DashboardClipsPreviewSection } from "../shared/DashboardClipsPreviewSection";
+import { TipsForYouSection } from "../shared/TipsForYouSection";
 import { useHomeScrollHandler } from "../../../home/hooks/useHomeScrollHandler";
 import { useSearchVoice } from "../../../home/hooks/useSearchVoice";
 import type { HomeCategoryChip } from "../../../home/components/HomeCategoryChipsRow";
@@ -88,8 +92,10 @@ type Props = {
   onToggleFavoriteGuest?: (t: Record<string, unknown>) => void;
   onOpenWallet?: () => void;
   onOpenSession?: (session: Record<string, unknown>) => void;
+  onOpenPendingRequests?: () => void;
   onOpenFriends?: () => void;
   onOpenClips?: () => void;
+  onQuickBook?: () => void;
   leadingContent?: React.ReactNode;
   footer?: React.ReactNode;
   contentContainerStyle?: StyleProp<ViewStyle>;
@@ -113,8 +119,10 @@ export function TraineeDiscoverDashboard({
   onToggleFavoriteGuest,
   onOpenWallet,
   onOpenSession,
+  onOpenPendingRequests,
   onOpenFriends,
   onOpenClips,
+  onQuickBook,
   leadingContent,
   footer,
   contentContainerStyle,
@@ -138,7 +146,7 @@ export function TraineeDiscoverDashboard({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(TRAINEE_COACH_PREVIEW_COUNT);
 
-  const { nextSession } = useDashboardSessions(isGuest ? null : accountType);
+  const { nextSession, pendingSessions } = useDashboardSessions(isGuest ? null : accountType);
   const { data: walletBalance } = useWalletBalance(!isGuest);
   const isTraineeAccount = accountType === AccountType.TRAINEE;
   const { isFavorite, toggleFavorite } = useFavoriteTrainers(!isGuest && isTraineeAccount);
@@ -281,26 +289,28 @@ export function TraineeDiscoverDashboard({
       ? `${mergedRows.length}+`
       : String(mergedRows.length);
 
-  const roleLabel = isGuest
-    ? t("guest.exploringAsGuest")
-    : accountType === AccountType.TRAINEE
-      ? t("traineeDiscover.roleTrainee")
-      : accountType || t("menu.member");
-
   const marketplaceSubline = isGuest ? t("guest.exploringAsGuest") : undefined;
 
   const listTitle = searchActive
     ? t("traineeDiscover.resultsFor", { query: trimmed })
     : selectedCategory
       ? t("traineeDiscover.coachesIn", { category: selectedCategory })
-      : interests.length > 0
-        ? t("traineeDiscover.coachesForYou")
-        : t("traineeDiscover.allCoaches");
+      : isGuest
+        ? t("traineeDiscover.guestBrowseAll", { defaultValue: "Browse coaches" })
+        : interests.length > 0
+          ? t("traineeDiscover.coachesForYou")
+          : t("traineeDiscover.allCoaches");
 
   const walletCredits =
     walletBalance?.balances?.available != null
-      ? `$${(walletBalance.balances.available).toFixed(0)}`
-      : "—";
+      ? `$${walletBalance.balances.available.toFixed(2)}`
+      : undefined;
+
+  const handleQuickInstant = useCallback(() => {
+    setBrowseFilters((prev) => ({ ...prev, onlineOnly: true }));
+    setSelectedCategory(null);
+    setSearch("");
+  }, []);
 
   const altCategories = useMemo(() => {
     if (!selectedCategory) return [];
@@ -328,10 +338,35 @@ export function TraineeDiscoverDashboard({
         onDismiss={() => setFiltersOpen(false)}
       />
 
+      {!isGuest && pendingSessions.length > 0 && onOpenPendingRequests ? (
+        <TraineePendingRequestsBanner
+          count={pendingSessions.length}
+          onPress={onOpenPendingRequests}
+        />
+      ) : null}
+
       {!isGuest && nextSession ? (
         <ContinueWhereYouLeftOffCard
           session={nextSession}
           onOpenSession={onOpenSession ? () => onOpenSession(nextSession) : undefined}
+        />
+      ) : null}
+
+      {!isGuest ? (
+        <ForYouTrainersSection
+          recentTrainerIds={recentTrainerIds}
+          onSelectTrainer={handleViewTrainer}
+        />
+      ) : null}
+
+      {isGuest ? (
+        <GuestSeededCoachesSection onSelectTrainer={handleViewTrainer} />
+      ) : null}
+
+      {recentTrainers.length > 0 ? (
+        <RecentlyViewedTrainersRow
+          rows={recentTrainers}
+          onSelectTrainer={handleViewTrainer}
         />
       ) : null}
 
@@ -347,6 +382,8 @@ export function TraineeDiscoverDashboard({
         <DashboardClipsPreviewSection onViewMore={onOpenClips} />
       ) : null}
 
+      {!isGuest ? <TipsForYouSection onDeepLink={onDeepLink} /> : null}
+
       <View style={styles.listHeaderRow}>
         <View style={{ flex: 1 }}>
           <Text style={styles.listTitle}>{listTitle}</Text>
@@ -358,9 +395,15 @@ export function TraineeDiscoverDashboard({
               })}
             </Text>
           )}
+          {isGuest && !searchActive && !selectedCategory ? (
+            <Text style={styles.listHint}>{t("traineeDiscover.guestBrowseHint")}</Text>
+          ) : null}
         </View>
+      </View>
+
+      <View style={styles.filterChipRow}>
         <Pressable
-          style={[styles.liveFilter, browseFilters.onlineOnly && styles.liveFilterOn]}
+          style={[styles.filterChip, browseFilters.onlineOnly && styles.filterChipOn]}
           onPress={() =>
             setBrowseFilters((f) => ({ ...f, onlineOnly: !f.onlineOnly }))
           }
@@ -370,13 +413,41 @@ export function TraineeDiscoverDashboard({
           />
           <Text
             style={[
-              styles.liveFilterText,
-              browseFilters.onlineOnly && styles.liveFilterTextOn,
+              styles.filterChipText,
+              browseFilters.onlineOnly && styles.filterChipTextOn,
             ]}
           >
             {t("traineeDiscover.liveOnly")}
           </Text>
         </Pressable>
+        <Pressable
+          style={[styles.filterChip, browseFilters.hasOpenSlots && styles.filterChipOn]}
+          onPress={() =>
+            setBrowseFilters((f) => ({ ...f, hasOpenSlots: !f.hasOpenSlots }))
+          }
+        >
+          <Ionicons
+            name="calendar-outline"
+            size={14}
+            color={browseFilters.hasOpenSlots ? themeColors.brandNavy : themeColors.textMuted}
+          />
+          <Text
+            style={[
+              styles.filterChipText,
+              browseFilters.hasOpenSlots && styles.filterChipTextOn,
+            ]}
+          >
+            {t("traineeDiscover.hasOpenSlots")}
+          </Text>
+        </Pressable>
+        {activeFilterCount > 0 ? (
+          <Pressable style={styles.filterChip} onPress={() => setFiltersOpen(true)}>
+            <Ionicons name="options-outline" size={14} color={themeColors.brandNavy} />
+            <Text style={[styles.filterChipText, styles.filterChipTextOn]}>
+              {t("traineeDiscover.filters")} ({activeFilterCount})
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
 
       {isLoading ? (
@@ -396,7 +467,17 @@ export function TraineeDiscoverDashboard({
           <View style={styles.empty}>
             <Ionicons name="people-outline" size={40} color={themeColors.textMuted} />
             <Text style={styles.emptyTitle}>{t("traineeDiscover.emptyTitle")}</Text>
-            <Text style={styles.emptySub}>{t("traineeDiscover.emptySub")}</Text>
+            <Text style={styles.emptySub}>
+              {isGuest ? t("traineeDiscover.guestEmptySub") : t("traineeDiscover.emptySub")}
+            </Text>
+            {isGuest ? (
+              <Pressable
+                style={({ pressed }) => [styles.guestEmptyBtn, pressed && { opacity: 0.88 }]}
+                onPress={onSettings}
+              >
+                <Text style={styles.guestEmptyBtnText}>{t("auth.signIn")}</Text>
+              </Pressable>
+            ) : null}
           </View>
         )
       ) : (
@@ -454,6 +535,13 @@ export function TraineeDiscoverDashboard({
 
   const marketplaceScrollContent = (
     <>
+      {!isGuest && onQuickBook ? (
+        <TraineeQuickChipsRow
+          onInstant={handleQuickInstant}
+          onBookNow={onQuickBook}
+          onClips={() => onOpenClips?.()}
+        />
+      ) : null}
       {leadingContent}
       <HomeHeroCarousel
         guest={isGuest}
@@ -476,6 +564,12 @@ export function TraineeDiscoverDashboard({
         profileName={name}
         user={user}
         onPressProfile={onSettings}
+        walletBalanceLabel={
+          !isGuest && walletCredits
+            ? t("discoverHome.walletBalance", { amount: walletCredits, defaultValue: "{{amount}} credits" })
+            : undefined
+        }
+        onOpenWallet={!isGuest ? onOpenWallet : undefined}
         searchValue={search}
         onSearchChange={setSearch}
         onOpenFilters={() => setFiltersOpen(true)}
@@ -522,7 +616,8 @@ function useStyles() {
   const c = useThemeColors();
   return useThemedStyles((palette) =>
     StyleSheet.create({
-      root: { gap: space.md, paddingTop: space.xs },
+      root: { gap: space.lg, paddingTop: space.sm },
+      sectionBlock: { gap: space.sm },
       footerWrap: { marginTop: space.md },
       walletCard: {
         flexDirection: "row",
@@ -584,8 +679,37 @@ function useStyles() {
         marginTop: space.xs,
         gap: space.sm,
       },
-      listTitle: { ...typography.titleSm, color: palette.text, fontWeight: "700" },
+      listTitle: { ...typography.titleSm, color: palette.text, fontWeight: "800" },
       listMeta: { ...typography.caption, color: palette.textMuted, marginTop: space.xxs },
+      listHint: {
+        ...typography.caption,
+        color: palette.textSecondary,
+        marginTop: space.xxs,
+        lineHeight: 18,
+      },
+      filterChipRow: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: space.xs,
+        marginTop: space.xs,
+      },
+      filterChip: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: radii.pill,
+        borderWidth: 1,
+        borderColor: palette.border,
+        backgroundColor: palette.surfaceElevated,
+      },
+      filterChipOn: {
+        borderColor: palette.brandNavy,
+        backgroundColor: palette.brandSubtle,
+      },
+      filterChipText: { ...typography.caption, color: palette.textMuted, fontWeight: "600" },
+      filterChipTextOn: { color: palette.brandNavy, fontWeight: "700" },
       showMoreBtn: {
         flexDirection: "row",
         alignItems: "center",
@@ -598,21 +722,6 @@ function useStyles() {
         backgroundColor: palette.surfaceElevated,
       },
       showMoreText: { ...typography.label, color: palette.brandNavy, fontWeight: "700" },
-      liveFilter: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: space.xs,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: radii.pill,
-        borderWidth: 1,
-        borderColor: palette.border,
-        backgroundColor: palette.surfaceElevated,
-      },
-      liveFilterOn: {
-        borderColor: palette.success,
-        backgroundColor: `${palette.success}14`,
-      },
       liveFilterDot: {
         width: 8,
         height: 8,
@@ -620,17 +729,24 @@ function useStyles() {
         backgroundColor: palette.textMuted,
       },
       liveFilterDotOn: { backgroundColor: palette.success },
-      liveFilterText: { ...typography.caption, color: palette.textMuted, fontWeight: "600" },
-      liveFilterTextOn: { color: palette.success },
       loading: { gap: space.sm, marginTop: space.sm },
-      trainerList: { gap: space.sm, marginTop: space.sm },
+      trainerList: { gap: space.md, marginTop: space.sm },
       empty: {
         alignItems: "center",
         paddingVertical: space.xl,
         gap: space.sm,
+        paddingHorizontal: space.md,
       },
-      emptyTitle: { ...typography.titleSm, color: palette.text },
-      emptySub: { ...typography.bodySm, color: palette.textMuted, textAlign: "center" },
+      emptyTitle: { ...typography.titleSm, color: palette.text, fontWeight: "700" },
+      emptySub: { ...typography.bodySm, color: palette.textMuted, textAlign: "center", lineHeight: 20 },
+      guestEmptyBtn: {
+        marginTop: space.sm,
+        paddingHorizontal: space.lg,
+        paddingVertical: 12,
+        borderRadius: radii.pill,
+        backgroundColor: palette.brandNavy,
+      },
+      guestEmptyBtnText: { color: palette.brandTextOn, fontWeight: "700", fontSize: 15 },
     })
   );
 }

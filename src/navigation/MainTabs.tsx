@@ -4,7 +4,10 @@ import React from "react";
 import { ChatsScreen } from "../features/chats/screens/ChatsScreen";
 import { GuestTabGateScreen } from "../features/auth/screens/GuestTabGateScreen";
 import { useGuestMode } from "../features/auth/hooks/useGuestMode";
+import { useAuth } from "../features/auth/context/AuthContext";
+import { AccountType } from "../constants/accountType";
 import { ScheduleScreen } from "../features/schedule/screens/ScheduleScreen";
+import { BookExpertScreen } from "../features/bookexpert/screens/BookExpertScreen";
 import { useThemeColors } from "../theme";
 import { AppScreenHeader } from "./AppScreenHeader";
 import { FloatingTabBar } from "./FloatingTabBar";
@@ -32,6 +35,8 @@ function tabHeaderOptions(title: string) {
 export function MainTabs() {
   const c = useThemeColors();
   const isGuest = useGuestMode();
+  const { accountType } = useAuth();
+  const showBookNowTab = accountType !== AccountType.TRAINER;
 
   return (
     <TabBarScrollProvider>
@@ -117,6 +122,25 @@ export function MainTabs() {
           </TabSwipeShell>
         )}
       </Tab.Screen>
+
+      {showBookNowTab ? (
+        <Tab.Screen
+          name="BookNow"
+          options={{
+            ...tabHeaderOptions(i18n.t("tabs.bookNow", { defaultValue: "Book now" })),
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="calendar-outline" color={color} size={size} />
+            ),
+            tabBarLabel: i18n.t("tabs.bookNow", { defaultValue: "Book now" }),
+          }}
+        >
+          {() => (
+            <TabSwipeShell tabIndex={3}>
+              <BookExpertScreen />
+            </TabSwipeShell>
+          )}
+        </Tab.Screen>
+      ) : null}
 
       <Tab.Screen
         name="Capture"

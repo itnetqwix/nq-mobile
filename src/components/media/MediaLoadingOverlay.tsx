@@ -32,7 +32,12 @@ export function MediaLoadingOverlay({
   if (variant === "minimal") {
     return (
       <View style={[styles.overlayMinimal, style]} pointerEvents="none">
-        <ActivityIndicator size="small" color="#94a3b8" />
+        <ActivityIndicator size="small" color="#e2e8f0" />
+        {message ? (
+          <Text style={styles.minimalLabel} numberOfLines={1}>
+            {message}
+          </Text>
+        ) : null}
       </View>
     );
   }
@@ -87,7 +92,13 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.92)",
+    backgroundColor: "rgba(0,0,0,0.42)",
+    gap: 8,
+  },
+  minimalLabel: {
+    color: "rgba(255,255,255,0.88)",
+    fontSize: 12,
+    fontWeight: "600",
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,

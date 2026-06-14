@@ -5,7 +5,7 @@ import { queryKeys } from "../../../lib/queryKeys";
 import {
   isSessionInProgress,
   isSessionToday,
-  shouldShowInDashboardRequests,
+  shouldShowInDashboardPending,
   shouldShowInDashboardUpcoming,
 } from "../../../lib/sessions/sessionUtils";
 import { dedupeRowsById } from "../../../lib/lists/trainerListUtils";
@@ -36,11 +36,8 @@ export function useDashboardSessions(accountType: string | null) {
   );
 
   const pendingSessions = useMemo(
-    () =>
-      isTrainer
-        ? sessions.filter((s: Record<string, unknown>) => shouldShowInDashboardRequests(s))
-        : [],
-    [sessions, isTrainer]
+    () => sessions.filter((s: Record<string, unknown>) => shouldShowInDashboardPending(s)),
+    [sessions]
   );
 
   const upcomingConfirmed = useMemo(

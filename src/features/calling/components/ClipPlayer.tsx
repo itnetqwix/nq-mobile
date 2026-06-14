@@ -3,10 +3,11 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, LayoutChangeEvent, StyleSheet, View } from "react-native";
+import { ActivityIndicator, LayoutChangeEvent, Pressable, StyleSheet, Text, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 import { ResizeMode, Video, type AVPlaybackStatus } from "expo-av";
+import { Ionicons } from "@expo/vector-icons";
 import { clampPanForFrame, type PanPoint } from "../clipZoomPanUtils";
 
 export type ClipPlayerHandle = {
@@ -66,6 +67,8 @@ export function ClipPlayer({
 }: Props) {
   const videoRef = React.useRef<Video>(null);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [playbackError, setPlaybackError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const loadedRef = useRef(false);
   const readyNotifiedRef = useRef(false);
   const pendingPlayRef = useRef(isPlaying);
@@ -98,11 +101,12 @@ export function ClipPlayer({
 
   useEffect(() => {
     setInitialLoading(true);
+    setPlaybackError(false);
     loadedRef.current = false;
     readyNotifiedRef.current = false;
     pendingPlayRef.current = isPlayingRef.current;
     pendingSeekMsRef.current = seekTargetMs ?? null;
-  }, [uri, seekTargetMs]);
+  }, [uri, seekTargetMs, retryKey]);
 
   const applyPlayState = useCallback(async (playing: boolean) => {
     const player = videoRef.current;
@@ -261,6 +265,27 @@ export function ClipPlayer({
     [pinchGesture, panGesture]
   );
 
+  const handleRetry = useCallback(() => {
+    setPlaybackError(false);
+    setInitialLoading(true);
+    setRetryKey((k) => k + 1);
+  }, []);
+
+  if (playbackError) {
+    return (
+      <View style={styles.wrap}>
+        <View style={styles.errorOverlay}>
+          <Ionicons name="alert-circle-outline" size={28} color="#64748b" />
+          <Text style={styles.errorTitle}>Clip unavailable</Text>
+          <Text style={styles.errorBody}>This clip could not be loaded. Check your connection and try again.</Text>
+          <Pressable onPress={handleRetry} style={styles.retryBtn} accessibilityRole="button">
+            <Text style={styles.retryText}>Retry</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <GestureDetector gesture={clipGestures}>
       <View style={styles.wrap} onLayout={onLayout}>
@@ -282,6 +307,7 @@ export function ClipPlayer({
             ]}
           >
             <Video
+              key={`${uri}-${retryKey}`}
               ref={videoRef}
               source={{ uri }}
               style={styles.player}
@@ -326,6 +352,8 @@ export function ClipPlayer({
                 }
               }}
               onError={(e) => {
+                setInitialLoading(false);
+                setPlaybackError(true);
                 if (__DEV__) {
                   console.warn("[ClipPlayer] playback failed", { uri, error: e });
                 }
@@ -365,5 +393,37 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.92)",
+  },
+  errorOverlay: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    gap: 8,
+    backgroundColor: "#f8fafc",
+  },
+  errorTitle: {
+    color: "#334155",
+    fontSize: 14,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  errorBody: {
+    color: "#64748b",
+    fontSize: 12,
+    textAlign: "center",
+    lineHeight: 17,
+  },
+  retryBtn: {
+    marginTop: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: "#1e3a5f",
+  },
+  retryText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "700",
   },
 });

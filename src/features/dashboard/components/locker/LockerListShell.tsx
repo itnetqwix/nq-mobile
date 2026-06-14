@@ -7,6 +7,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ClipCardSkeleton, EmptyState, MorphRefreshHeader, SkeletonGroup, type SkeletonGroupProps } from "../../../../components/ui";
 import { getApiErrorMessage } from "../../../../lib/http/getApiErrorMessage";
 import { useMorphRefreshBundle } from "../../../../lib/refresh/useMorphRefreshBundle";
@@ -42,24 +43,34 @@ export function LockerListShell({
   renderSkeletonRow,
 }: Props) {
   const c = useThemeColors();
+  const insets = useSafeAreaInsets();
   const morph = useMorphRefreshBundle(onRefresh, refreshing);
   const bottomPad = useFloatingTabBarBottomInset(space.md);
+  const topPad = Math.max(insets.top, space.sm);
   const styles = useThemedStyles((palette) =>
     StyleSheet.create({
       root: { flex: 1, backgroundColor: palette.background },
       toolbar: {
+        paddingTop: space.xs,
         paddingHorizontal: space.md,
         paddingBottom: space.sm,
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: palette.border,
+        backgroundColor: palette.surface,
       },
       scroll: { flex: 1 },
       content: {
-        padding: space.md,
+        paddingHorizontal: space.md,
+        paddingTop: space.md,
         gap: space.md,
         flexGrow: 1,
       },
-      skeletonWrap: { flex: 1, padding: space.md, gap: space.md },
+      skeletonWrap: {
+        flex: 1,
+        paddingHorizontal: space.md,
+        paddingTop: space.md,
+        gap: space.md,
+      },
       errorBox: {
         flex: 1,
         padding: space.lg,
@@ -72,7 +83,7 @@ export function LockerListShell({
 
   if (loading) {
     return (
-      <View style={styles.root}>
+      <View style={[styles.root, { paddingTop: topPad }]}>
         {toolbar ? <View style={styles.toolbar}>{toolbar}</View> : null}
         <View style={styles.skeletonWrap}>
           <SkeletonGroup
@@ -87,7 +98,7 @@ export function LockerListShell({
 
   if (isError) {
     return (
-      <View style={styles.root}>
+      <View style={[styles.root, { paddingTop: topPad }]}>
         {toolbar ? <View style={styles.toolbar}>{toolbar}</View> : null}
         <View style={styles.errorBox}>
           <EmptyState
@@ -103,7 +114,7 @@ export function LockerListShell({
   }
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { paddingTop: topPad }]}>
       {toolbar ? <View style={styles.toolbar}>{toolbar}</View> : null}
       <MorphRefreshHeader {...morph.headerProps} />
       <ScrollView

@@ -1,7 +1,8 @@
 import * as VideoThumbnails from "expo-video-thumbnails";
 
-/** Per-clip frame grab; parallel for dual-clip keeps total near one round-trip. */
-const THUMBNAIL_TIMEOUT_MS = 1_400;
+/** Per-clip frame grab; parallel for dual-clip. Slower CDN needs more time on cellular. */
+const THUMBNAIL_TIMEOUT_MS = 4_500;
+const THUMBNAIL_RETRY_TIMEOUT_MS = 6_500;
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
   return Promise.race([
@@ -15,21 +16,26 @@ export async function captureClipFrameUri(
   videoUri: string,
   progressSeconds: number
 ): Promise<string | null> {
-  try {
-    const ms = Math.max(0, Math.floor(progressSeconds * 1000));
-    const result = await withTimeout(
-      VideoThumbnails.getThumbnailAsync(videoUri, {
-        time: ms,
-        quality: 0.82,
-      }),
-      THUMBNAIL_TIMEOUT_MS
-    );
-    if (!result) return null;
-    return result.uri ?? null;
-  } catch (e) {
-    if (__DEV__) console.warn("[screenshot] thumbnail failed", e);
-    return null;
-  }
+  const ms = Math.max(0, Math.floor(progressSeconds * 1000));
+  const attempt = async (timeoutMs: number) => {
+    try {
+      const result = await withTimeout(
+        VideoThumbnails.getThumbnailAsync(videoUri, {
+          time: ms,
+          quality: 0.82,
+        }),
+        timeoutMs
+      );
+      return result?.uri ?? null;
+    } catch (e) {
+      if (__DEV__) console.warn("[screenshot] thumbnail failed", e);
+      return null;
+    }
+  };
+
+  const first = await attempt(THUMBNAIL_TIMEOUT_MS);
+  if (first) return first;
+  return attempt(THUMBNAIL_RETRY_TIMEOUT_MS);
 }
 
 export async function captureClipFrames(

@@ -159,7 +159,11 @@ export function NetQwixVideoControls({
                   ]}
                 />
               ) : null}
-              {isBuffering ? <View style={styles.bufferPulse} /> : null}
+              {isBuffering ? (
+                <View style={styles.bufferWrap}>
+                  <View style={styles.bufferDot} />
+                </View>
+              ) : null}
             </View>
           </Pressable>
         </View>
@@ -183,10 +187,10 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     flexDirection: "row",
-    alignItems: "flex-end",
+    alignItems: "center",
     paddingHorizontal: 12,
-    paddingBottom: 14,
-    paddingTop: 32,
+    paddingBottom: 12,
+    paddingTop: 24,
     gap: 10,
   },
   overlayBarLarge: {
@@ -223,7 +227,6 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.22)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 2,
   },
   playBtnLarge: {
     width: 52,
@@ -233,8 +236,8 @@ const styles = StyleSheet.create({
   playBtnPressed: { opacity: 0.88, transform: [{ scale: 0.96 }] },
   playIconOffset: { marginLeft: 2 },
   disabled: { opacity: 0.45 },
-  trackCol: { flex: 1, gap: 6, paddingBottom: 4 },
-  trackHit: { paddingVertical: 10 },
+  trackCol: { flex: 1, gap: 4, justifyContent: "center" },
+  trackHit: { paddingVertical: 8 },
   trackHitLarge: { paddingVertical: 12 },
   trackPress: { width: "100%" },
   track: {
@@ -276,11 +279,20 @@ const styles = StyleSheet.create({
     marginLeft: -8,
     top: -5,
   },
-  bufferPulse: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(255,255,255,0.3)",
-    borderRadius: 3,
-    opacity: 0.65,
+  bufferWrap: {
+    position: "absolute",
+    right: 0,
+    top: -2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "rgba(255,255,255,0.85)",
+    opacity: 0.9,
+  },
+  bufferDot: {
+    flex: 1,
+    borderRadius: 4,
+    backgroundColor: "#fff",
   },
   times: {
     flexDirection: "row",

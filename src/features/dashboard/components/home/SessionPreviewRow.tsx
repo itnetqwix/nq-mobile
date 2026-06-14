@@ -19,6 +19,7 @@ import { InstantLessonSessionActions } from "../../../instant-lesson/components/
 import { navigationRef } from "../../../../navigation/navigationRef";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
 import { HomeUserAvatar } from "./HomeUserAvatar";
+import { useAppTranslation } from "../../../../i18n/useAppTranslation";
 
 type Props = {
   session: Record<string, unknown>;
@@ -50,6 +51,7 @@ export function SessionPreviewRow({
   isLast,
   scheduleVariant = false,
 }: Props) {
+  const { t } = useAppTranslation();
   const c = useThemeColors();
   const styles = useThemedStyles((palette) =>
     StyleSheet.create({
@@ -110,7 +112,7 @@ export function SessionPreviewRow({
   const joinBlock = !pending ? (
     <View style={styles.actions}>
       <Button
-        label={isRejoin ? "Rejoin session" : "Join session"}
+        label={isRejoin ? t("sessionPreview.rejoinSession") : t("sessionPreview.joinSession")}
         leftIcon="videocam-outline"
         size="sm"
         fullWidth={scheduleVariant}
@@ -123,11 +125,21 @@ export function SessionPreviewRow({
       />
       {!joinEnabled ? (
         <Text style={{ ...typography.caption, color: c.textMuted }}>
-          {getJoinDisabledReason(session) || "Join opens later"}
+          {getJoinDisabledReason(session) || t("sessionPreview.joinOpensLater")}
         </Text>
       ) : null}
     </View>
   ) : null;
+
+  const pendingLabel = pending
+    ? instant
+      ? isTrainer
+        ? t("sessionPreview.needsConfirmation")
+        : t("sessionPreview.waitingForCoach")
+      : isTrainer
+        ? t("sessionPreview.needsConfirmation")
+        : t("sessionPreview.requestSent")
+    : status;
 
   const content = (
     <>
@@ -146,20 +158,20 @@ export function SessionPreviewRow({
             {!!timeLabel && <Text style={styles.meta}>{timeLabel}</Text>}
           </View>
           <Pill
-            label={pending ? "Needs confirmation" : status}
+            label={pendingLabel}
             tone={pending ? "warning" : getStatusTone(status)}
             style={{ marginTop: 6, alignSelf: "flex-start" }}
           />
           {instant && acceptDeadlineMs && pending ? (
             <InstantLessonDeadlineChip
               deadlineMs={acceptDeadlineMs}
-              label={isTrainer ? "Respond within" : "Coach has"}
+              label={isTrainer ? t("sessionPreview.respondWithin") : t("sessionPreview.coachHas")}
             />
           ) : null}
           {instant && joinDeadlineMs && !pending ? (
             <InstantLessonDeadlineChip
               deadlineMs={joinDeadlineMs}
-              label="Join within"
+              label={t("sessionPreview.joinWithin")}
             />
           ) : null}
           {isTrainer && pending && instant ? (

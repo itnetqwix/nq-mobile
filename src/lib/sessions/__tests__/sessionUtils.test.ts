@@ -4,11 +4,11 @@ import {
   canRejoinLesson,
   dedupeSessionsById,
   filterSessionsForStatusTab,
-  filterSessionsForStatusTab,
   isInstantLesson,
   isPendingBooking,
   isSessionConfirmedForJoin,
   isSessionInProgress,
+  shouldShowInDashboardPending,
   shouldShowInDashboardRequests,
 } from "../sessionUtils";
 
@@ -131,5 +131,19 @@ describe("sessionUtils", () => {
     };
     expect(filterSessionsForStatusTab([endedScheduled], "confirmed", now)).toHaveLength(0);
     expect(filterSessionsForStatusTab([endedScheduled], "completed", now)).toHaveLength(1);
+  });
+
+  it("shows scheduled booked sessions in dashboard pending for trainees and trainers", () => {
+    const scheduledPending = {
+      is_instant: false,
+      status: "booked",
+      booked_date: "2026-06-20",
+      session_start_time: "14:00",
+      session_end_time: "15:00",
+      time_zone: "America/New_York",
+    };
+    expect(isPendingBooking(scheduledPending)).toBe(true);
+    expect(shouldShowInDashboardPending(scheduledPending)).toBe(true);
+    expect(shouldShowInDashboardRequests(scheduledPending)).toBe(true);
   });
 });

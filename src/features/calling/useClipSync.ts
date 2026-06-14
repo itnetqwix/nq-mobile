@@ -23,6 +23,7 @@ import {
   clipIdOf,
   clipsFromSelectPayload,
   normalizeClipsFromSocket,
+  isPlayableVideoClip,
   primaryClipFromList,
   resolveClipPlayback,
   type ClipRecord,
@@ -761,14 +762,15 @@ export function useClipSync({
   );
 
   const preloadBookingClips = useCallback(
-    (clips: ClipRecord[], options?: { force?: boolean }) => {
+    (clips: ClipRecord[], options?: { force?: boolean; emitSocket?: boolean }) => {
       if (bookingPreloadedRef.current && !options?.force) return;
-      const playable = clips.filter((c) => resolveClipPlayback(c).url).slice(0, 2);
+      const playable = clips.filter((c) => isPlayableVideoClip(c) && resolveClipPlayback(c).url).slice(0, 2);
       if (playable.length === 0) return;
       bookingPreloadedRef.current = true;
-      emitSelectClips(playable, { emitSocket: true });
+      const shouldEmit = options?.emitSocket ?? isTrainer;
+      emitSelectClips(playable, { emitSocket: shouldEmit });
     },
-    [emitSelectClips]
+    [emitSelectClips, isTrainer]
   );
 
   /** Trainee mid-lesson share — persist is handled by the screen; this broadcasts. */

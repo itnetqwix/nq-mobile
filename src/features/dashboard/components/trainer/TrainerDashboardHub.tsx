@@ -142,13 +142,13 @@ function TrainerDashboardHubInner({
 
       <MiniFriendsSection onPressAll={() => onOpenSurface("friends" as any)} />
 
+      <DashboardClipsPreviewSection onViewMore={onOpenClips} />
+
       <PerformanceTipsCard
         pendingCount={pendingSessions.length}
         showAsOnline={showAsOnline}
         scheduleSlots={scheduleSlots}
       />
-
-      <DashboardClipsPreviewSection onViewMore={onOpenClips} />
 
       <ReferFriendsBanner onPressInvite={() => onOpenSurface("invite" as any)} />
 

@@ -8,7 +8,7 @@ import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
 import { useMarketplaceScrollPadding } from "../../home/layout/marketplaceLayout";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import type { HomeStackParamList } from "../../../navigation/types";
-import { space, typography, useThemeColors } from "../../../theme";
+import { space, typography, useThemeColors, radii } from "../../../theme";
 import { useRequireAuth } from "../../auth/hooks/useRequireAuth";
 import { TrainerProfileModal } from "../../bookexpert/components/TrainerProfileModal";
 import { TraineeDiscoverDashboard } from "../components/home/TraineeDiscoverDashboard";
@@ -138,9 +138,9 @@ const styles = StyleSheet.create({
   headerBtn: { paddingHorizontal: space.sm, paddingVertical: space.xs },
   headerBtnText: { fontWeight: "700", fontSize: 16 },
   banner: {
-    marginBottom: space.sm,
-    padding: space.sm,
-    borderRadius: 12,
+    marginBottom: space.md,
+    padding: space.md,
+    borderRadius: radii.lg,
     borderWidth: 1,
   },
   bannerBody: {

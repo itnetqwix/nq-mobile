@@ -40,7 +40,7 @@
           "remote-notification"
         ],
         "NSPhotoLibraryUsageDescription": "NetQwix accesses your photo library to upload training clips to your locker.",
-        "NSPhotoLibraryAddUsageDescription": "NetQwix saves session screenshots to your photo library.",
+        "NSPhotoLibraryAddUsageDescription": "NetQwix saves downloaded training clips and session screenshots to your photo library.",
         "ITSAppUsesNonExemptEncryption": false
       },
       "bitcode": false,
@@ -136,7 +136,15 @@
       ],
       "expo-web-browser",
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "NetQwix saves downloaded clips to your photo library.",
+          "savePhotosPermission": "NetQwix saves downloaded clips to your photo library.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ]
     ],
     "extra": {
       "eas": {

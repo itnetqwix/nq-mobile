@@ -278,11 +278,16 @@ export function isInstantExpiredForLists(session: any, now = new Date()): boolea
   return isInstantAcceptExpired(session, now) || isInstantJoinExpired(session, now);
 }
 
-/** Trainer dashboard “Session requests” — pending rows still actionable. */
-export function shouldShowInDashboardRequests(session: any, now = new Date()): boolean {
+/** Dashboard “pending booking” — trainer must respond or trainee awaits coach. */
+export function shouldShowInDashboardPending(session: any, now = new Date()): boolean {
   if (!isPendingBooking(session)) return false;
   if (isInstantLesson(session) && isInstantAcceptExpired(session, now)) return false;
   return true;
+}
+
+/** Trainer dashboard “Session requests” — pending rows still actionable. */
+export function shouldShowInDashboardRequests(session: any, now = new Date()): boolean {
+  return shouldShowInDashboardPending(session, now);
 }
 
 /** Trainer/trainee dashboard “Upcoming” preview (non-active, non-pending). */

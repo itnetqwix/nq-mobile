@@ -1,9 +1,6 @@
 import React, { useMemo } from "react";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
-import {
-  HomeCategoryChipsRow,
-  type HomeCategoryChip,
-} from "./HomeCategoryChipsRow";
+import { HomeQuickActionsRow, type HomeQuickAction } from "./HomeQuickActionsRow";
 
 type Props = {
   onSchedule: () => void;
@@ -11,52 +8,36 @@ type Props = {
   onClips: () => void;
 };
 
-/** Trainer home quick actions — Schedule (→ Availability) · Sessions (→ My Sessions) · Clips */
+/** Trainer home quick actions — Availability · Sessions · Clips */
 export function TrainerQuickChipsRow({ onSchedule, onSessions, onClips }: Props) {
   const { t } = useAppTranslation();
 
-  const items = useMemo<HomeCategoryChip[]>(
+  const actions = useMemo<HomeQuickAction[]>(
     () => [
       {
         id: "schedule",
-        label: t("trainerDashboard.quickAvailability", { defaultValue: "Availability" }),
+        label: t("discoverHome.quickAvailability", { defaultValue: "Availability" }),
+        subtitle: t("discoverHome.quickAvailabilitySub", { defaultValue: "Open slots" }),
         icon: "calendar-outline",
+        onPress: onSchedule,
       },
       {
         id: "sessions",
-        label: t("trainerDashboard.quickMySessions", { defaultValue: "My Sessions" }),
+        label: t("discoverHome.quickMySessions", { defaultValue: "Sessions" }),
+        subtitle: t("discoverHome.quickMySessionsSub", { defaultValue: "Upcoming" }),
         icon: "time-outline",
+        onPress: onSessions,
       },
       {
         id: "clips",
-        label: t("trainerDashboard.quickClips", { defaultValue: "Clips" }),
+        label: t("discoverHome.quickClips", { defaultValue: "Clips" }),
+        subtitle: t("discoverHome.quickClipsSubTrainer", { defaultValue: "Trainee media" }),
         icon: "film-outline",
+        onPress: onClips,
       },
     ],
-    [t]
+    [onClips, onSchedule, onSessions, t]
   );
 
-  const handleSelect = (id: string | null) => {
-    if (!id) return;
-    switch (id) {
-      case "schedule":
-        onSchedule();
-        break;
-      case "sessions":
-        onSessions();
-        break;
-      case "clips":
-        onClips();
-        break;
-    }
-  };
-
-  return (
-    <HomeCategoryChipsRow
-      items={items}
-      selectedId={null}
-      onSelect={handleSelect}
-      showTabUnderline={false}
-    />
-  );
+  return <HomeQuickActionsRow actions={actions} compact />;
 }

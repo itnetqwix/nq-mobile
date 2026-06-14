@@ -9,6 +9,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,8 +19,8 @@ import {
   MediaViewerChrome,
   NativeMediaSurface,
 } from "../../../../components/media";
-import { useMediaViewport } from "../../../../components/media/useMediaViewport";
 import { isLikelyAudio, isLikelyPdf } from "../../../../lib/clipMediaUrl";
+import { downloadVideoToLibrary } from "../../../../lib/media/downloadVideoToLibrary";
 import { LockerAudioPlayer } from "./LockerAudioPlayer";
 import { colors, space } from "../../../../theme";
 
@@ -33,24 +34,21 @@ type Props = {
   mode: LockerViewerMode;
   sharedBy?: string;
   clipId?: string;
-  /** When set, shows delete-clip control (own clips). */
   onDeleteClip?: () => void;
   deleteBusy?: boolean;
   deleteAccessibilityLabel?: string;
-  /** When set, shows remove-from-locker control (shared clips). */
   onRemoveFromLocker?: () => void;
   removeBusy?: boolean;
   removeAccessibilityLabel?: string;
   onShareExternal?: () => void;
   shareAccessibilityLabel?: string;
+  onShareFriends?: () => void;
+  shareFriendsAccessibilityLabel?: string;
 };
 
 function buildPdfEmbedUrl(url: string): string {
   return `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(url)}`;
 }
-
-const HEADER_BLOCK = 72;
-const FOOTER_BLOCK = 36;
 
 export function LockerViewerModal({
   visible,
@@ -68,15 +66,15 @@ export function LockerViewerModal({
   removeAccessibilityLabel = "Remove from locker",
   onShareExternal,
   shareAccessibilityLabel = "Share",
+  onShareFriends,
+  shareFriendsAccessibilityLabel = "Share with friends",
 }: Props) {
   const insets = useSafeAreaInsets();
-  const { width, height: mediaHeight } = useMediaViewport({
-    headerHeight: HEADER_BLOCK + insets.top,
-    footerHeight: FOOTER_BLOCK + insets.bottom,
-  });
-
+  const { width: screenWidth } = useWindowDimensions();
+  const [mediaHeight, setMediaHeight] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -97,7 +95,6 @@ export function LockerViewerModal({
   const nativeMode = resolvedMode === "video" ? "video" : "image";
 
   const openExternally = useCallback(async () => {
-    // For clips: open the NetQwix web URL, not the raw S3 URL
     const webUrl = clipId
       ? `https://netqwix.com/clips/${encodeURIComponent(clipId)}`
       : uri;
@@ -113,18 +110,63 @@ export function LockerViewerModal({
     }
   }, [uri, clipId]);
 
-  const downloadVideo = useCallback(async () => {
-    try {
-      const can = await Linking.canOpenURL(uri);
-      if (!can) {
-        Alert.alert("Download", "Cannot access the file URL.");
-        return;
-      }
-      await Linking.openURL(uri);
-    } catch {
-      Alert.alert("Download failed", "Could not start the download.");
-    }
-  }, [uri]);
+  const confirmDownload = useCallback(() => {
+    Alert.alert(
+      "Save to library",
+      "Download this video to your device photo library?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Download",
+          onPress: () => {
+            setDownloading(true);
+            void downloadVideoToLibrary({
+              uri,
+              title,
+              onSuccess: () => {
+                Alert.alert("Saved", "The video was saved to your photo library.");
+              },
+              onError: (message) => {
+                Alert.alert("Download failed", message);
+              },
+            }).finally(() => setDownloading(false));
+          },
+        },
+      ]
+    );
+  }, [uri, title]);
+
+  const confirmDelete = useCallback(() => {
+    if (!onDeleteClip) return;
+    Alert.alert("Delete clip", "Delete this clip? This cannot be undone.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: onDeleteClip },
+    ]);
+  }, [onDeleteClip]);
+
+  const confirmRemove = useCallback(() => {
+    if (!onRemoveFromLocker) return;
+    Alert.alert(
+      "Remove from locker",
+      "Remove this shared clip from your locker?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Remove", style: "destructive", onPress: onRemoveFromLocker },
+      ]
+    );
+  }, [onRemoveFromLocker]);
+
+  const confirmShareFriends = useCallback(() => {
+    if (!onShareFriends) return;
+    Alert.alert(
+      "Share with friends",
+      "Send this clip to NetQwix friends?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Continue", onPress: onShareFriends },
+      ]
+    );
+  }, [onShareFriends]);
 
   if (!visible || !uri) return null;
 
@@ -143,18 +185,34 @@ export function LockerViewerModal({
           title={title ?? "Preview"}
           subtitle={subtitle}
           onClose={onClose}
-          onOpenExternal={openExternally}
+          onOpenExternal={resolvedMode === "pdf" ? openExternally : undefined}
           rightSlot={
-            <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+            <View style={styles.actions}>
               {resolvedMode === "video" ? (
                 <Pressable
-                  onPress={downloadVideo}
+                  onPress={confirmDownload}
                   style={styles.iconBtn}
                   hitSlop={10}
+                  disabled={downloading}
                   accessibilityRole="button"
                   accessibilityLabel="Download video"
                 >
-                  <Ionicons name="download-outline" size={22} color="#fff" />
+                  {downloading ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Ionicons name="download-outline" size={22} color="#fff" />
+                  )}
+                </Pressable>
+              ) : null}
+              {onShareFriends ? (
+                <Pressable
+                  onPress={confirmShareFriends}
+                  style={styles.iconBtn}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel={shareFriendsAccessibilityLabel}
+                >
+                  <Ionicons name="people-outline" size={22} color="#fff" />
                 </Pressable>
               ) : null}
               {onShareExternal ? (
@@ -170,7 +228,7 @@ export function LockerViewerModal({
               ) : null}
               {onDeleteClip ? (
                 <Pressable
-                  onPress={onDeleteClip}
+                  onPress={confirmDelete}
                   style={styles.iconBtn}
                   hitSlop={10}
                   disabled={deleteBusy}
@@ -186,7 +244,7 @@ export function LockerViewerModal({
               ) : null}
               {onRemoveFromLocker ? (
                 <Pressable
-                  onPress={onRemoveFromLocker}
+                  onPress={confirmRemove}
                   style={styles.iconBtn}
                   hitSlop={10}
                   disabled={removeBusy}
@@ -204,84 +262,77 @@ export function LockerViewerModal({
           }
         />
 
-        {error ? (
-          <View style={[styles.center, { width, height: mediaHeight }]}>
-            <Ionicons name="alert-circle-outline" size={44} color={colors.danger} />
-            <Text style={styles.errTitle}>Couldn&apos;t load preview</Text>
-            <Text style={styles.errBody}>
-              Try opening in your browser or check your connection.
-            </Text>
-            <Pressable onPress={openExternally} style={styles.primaryBtn}>
-              <Ionicons name="open-outline" size={18} color="#fff" />
-              <Text style={styles.primaryBtnText}>Open in browser</Text>
-            </Pressable>
-          </View>
-        ) : resolvedMode === "audio" ? (
-          <View style={{ width, justifyContent: "center", minHeight: mediaHeight * 0.4 }}>
-            <LockerAudioPlayer uri={uri} title={title} />
-          </View>
-        ) : resolvedMode === "pdf" ? (
-          <View style={{ width, height: mediaHeight }}>
-            <WebView
-              source={{ uri: buildPdfEmbedUrl(uri) }}
-              style={styles.fill}
-              onLoadStart={() => {
-                setLoading(true);
-                setError(false);
-              }}
-              onLoadEnd={() => setLoading(false)}
+        <View
+          style={styles.mediaHost}
+          onLayout={(e) => setMediaHeight(e.nativeEvent.layout.height)}
+        >
+          {error ? (
+            <View style={styles.center}>
+              <Ionicons name="alert-circle-outline" size={44} color={colors.danger} />
+              <Text style={styles.errTitle}>Couldn&apos;t load preview</Text>
+              <Text style={styles.errBody}>
+                Try opening in your browser or check your connection.
+              </Text>
+              <Pressable onPress={openExternally} style={styles.primaryBtn}>
+                <Ionicons name="open-outline" size={18} color="#fff" />
+                <Text style={styles.primaryBtnText}>Open in browser</Text>
+              </Pressable>
+            </View>
+          ) : resolvedMode === "audio" ? (
+            <View style={styles.audioWrap}>
+              <LockerAudioPlayer uri={uri} title={title} />
+            </View>
+          ) : resolvedMode === "pdf" ? (
+            <View style={styles.fill}>
+              <WebView
+                source={{ uri: buildPdfEmbedUrl(uri) }}
+                style={styles.fill}
+                onLoadStart={() => {
+                  setLoading(true);
+                  setError(false);
+                }}
+                onLoadEnd={() => setLoading(false)}
+                onError={() => {
+                  setLoading(false);
+                  setError(true);
+                }}
+                onHttpError={() => {
+                  setLoading(false);
+                  setError(true);
+                }}
+                allowsInlineMediaPlayback
+                mediaPlaybackRequiresUserAction={false}
+                originWhitelist={["*"]}
+                javaScriptEnabled
+                domStorageEnabled
+              />
+            </View>
+          ) : mediaHeight > 0 ? (
+            <NativeMediaSurface
+              uri={uri}
+              mode={nativeMode}
+              width={screenWidth}
+              height={mediaHeight}
+              isActive={visible}
+              loadingMode="parent"
+              loadingOverlayVariant="minimal"
+              onLoadingChange={setLoading}
+              useNativeVideoControls={false}
+              showCustomControls={nativeMode === "video"}
+              onReady={() => setLoading(false)}
               onError={() => {
                 setLoading(false);
                 setError(true);
               }}
-              onHttpError={() => {
-                setLoading(false);
-                setError(true);
-              }}
-              allowsInlineMediaPlayback
-              mediaPlaybackRequiresUserAction={false}
-              originWhitelist={["*"]}
-              javaScriptEnabled
-              domStorageEnabled
             />
-          </View>
-        ) : (
-          <NativeMediaSurface
-            uri={uri}
-            mode={nativeMode}
-            width={width}
-            height={mediaHeight}
-            isActive={visible}
-            loadingMode="parent"
-            loadingOverlayVariant="minimal"
-            onLoadingChange={setLoading}
-            useNativeVideoControls={false}
-            showCustomControls={nativeMode === "video"}
-            onReady={() => setLoading(false)}
-            onError={() => {
-              setLoading(false);
-              setError(true);
-            }}
-          />
-        )}
+          ) : null}
 
-        {loading && !error && resolvedMode !== "audio" ? (
-          <MediaLoadingOverlay
-            message={resolvedMode === "video" ? "Loading video" : "Loading preview"}
-            variant={resolvedMode === "video" ? "minimal" : "branded"}
-          />
-        ) : null}
-
-        <View style={[styles.footer, { paddingBottom: insets.bottom + 8 }]}>
-          <Text style={styles.footerText}>
-            {resolvedMode === 'audio'
-              ? 'Audio recording • Use headphones for best quality'
-              : resolvedMode === 'video'
-                ? 'Tap to play/pause • Scrub with controls • ⬇ to download'
-                : resolvedMode === 'pdf'
-                  ? 'PDF preview • Tap ↗ to open in browser'
-                  : 'Tap ↗ to open full resolution in browser'}
-          </Text>
+          {loading && !error && resolvedMode !== "audio" ? (
+            <MediaLoadingOverlay
+              message={resolvedMode === "video" ? "Loading video…" : "Loading preview"}
+              variant={resolvedMode === "video" ? "minimal" : "branded"}
+            />
+          ) : null}
         </View>
       </View>
     </Modal>
@@ -291,7 +342,18 @@ export function LockerViewerModal({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#000" },
   fill: { flex: 1, backgroundColor: "#000" },
+  mediaHost: {
+    flex: 1,
+    justifyContent: "center",
+    backgroundColor: "#000",
+  },
+  audioWrap: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: space.lg,
+  },
   center: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: space.lg,
@@ -310,28 +372,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  actions: { flexDirection: "row", gap: 4, alignItems: "center" },
   iconBtn: { padding: 4 },
-  removeFooterBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    alignSelf: "center",
-    marginBottom: space.sm,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: colors.danger,
-  },
-  removeFooterText: { color: "#fff", fontWeight: "700", fontSize: 14 },
-  footer: {
-    paddingHorizontal: space.md,
-    paddingTop: space.xs,
-    backgroundColor: "rgba(0,0,0,0.85)",
-  },
-  footerText: {
-    color: "rgba(255,255,255,0.65)",
-    fontSize: 12,
-    textAlign: "center",
-  },
 });

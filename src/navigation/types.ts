@@ -89,6 +89,7 @@ export type MainTabParamList = {
         open?: ChatTabOpenPayload;
       }
     | undefined;
+  BookNow: undefined;
   Capture: undefined;
 };
 

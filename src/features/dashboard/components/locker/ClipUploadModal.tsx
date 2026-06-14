@@ -48,6 +48,8 @@ export type ClipUploadInitialVideo = {
   uri: string;
   durationSecs?: number;
   fileName?: string;
+  fileSizeBytes?: number;
+  mimeType?: string;
 };
 
 type Props = {
@@ -144,7 +146,8 @@ export function ClipUploadModal({
         height: 0,
         duration: initialVideo.durationSecs,
         fileName: initialVideo.fileName ?? `capture_${Date.now()}.mp4`,
-        mimeType: "video/mp4",
+        mimeType: initialVideo.mimeType ?? "video/mp4",
+        fileSize: initialVideo.fileSizeBytes,
         assetId: null,
         type: "video",
       };
@@ -186,7 +189,9 @@ export function ClipUploadModal({
     return () => {
       cancelled = true;
     };
-  }, [visible, initialVideo?.uri, initialVideo?.durationSecs, initialVideo?.fileName, t]);
+  }, [visible, initialVideo?.uri, initialVideo?.durationSecs, initialVideo?.fileName, initialVideo?.fileSizeBytes, initialVideo?.mimeType, t]);
+
+  const lockShareTarget = !!initialVideo;
 
   useEffect(() => {
     if (!visible || !isTrainer || !profileCategory || !taxonomy) return;
@@ -311,14 +316,16 @@ export function ClipUploadModal({
     }
 
     try {
-      const storage = await fetchStorageInfo();
-      if (storage.usedBytes + fileBytes > storage.quotaBytes) {
-        Alert.alert(
-          t("locker.storageFullTitle"),
-          t("locker.storageFullBody"),
-          [{ text: t("common.ok") }]
-        );
-        return;
+      if (shareTarget === SHARE_MY_CLIPS) {
+        const storage = await fetchStorageInfo();
+        if (storage.usedBytes + fileBytes > storage.quotaBytes) {
+          Alert.alert(
+            t("locker.storageFullTitle"),
+            t("locker.storageFullBody"),
+            [{ text: t("common.ok") }]
+          );
+          return;
+        }
       }
     } catch {
       /* proceed if storage endpoint unavailable */
@@ -509,6 +516,7 @@ export function ClipUploadModal({
           )}
 
           <Text style={styles.label}>{t("locker.shareTo")}</Text>
+          {!lockShareTarget ? (
           <View style={styles.shareTargetRow}>
             <Pressable
               style={[styles.shareTargetBtn, shareTarget === SHARE_MY_CLIPS && styles.shareTargetBtnOn]}
@@ -541,6 +549,7 @@ export function ClipUploadModal({
               </Text>
             </Pressable>
           </View>
+          ) : null}
 
           {shareTarget === SHARE_FRIENDS && (
             <View style={styles.friendPickerBox}>

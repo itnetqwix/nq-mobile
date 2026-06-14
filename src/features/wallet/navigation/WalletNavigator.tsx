@@ -8,6 +8,7 @@ import { WalletSecurityScreen } from "../screens/WalletSecurityScreen";
 import { SavedPaymentMethodsScreen } from "../screens/SavedPaymentMethodsScreen";
 import { AutoTopUpScreen } from "../screens/AutoTopUpScreen";
 import { StripeConnectOnboardingScreen } from "../screens/StripeConnectOnboardingScreen";
+import { PointsActivityScreen } from "../../points/screens/PointsActivityScreen";
 
 export type WalletStackParamList = {
   WalletHome: undefined;

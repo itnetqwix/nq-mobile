@@ -48,6 +48,7 @@ import type { PricingQuote } from "../payments/pricingTypes";
 import { fetchSmartSchedule } from "../ai/smartScheduleApi";
 import { resolveTraineeTimeZone } from "../../lib/user/resolveTraineeTimeZone";
 import { postReferralPreviewCheckout } from "../referral/api/referralApi";
+import { useAppTranslation } from "../../i18n/useAppTranslation";
 import {
   promoDisplayLabel,
   promoSponsorFromResult,
@@ -64,8 +65,9 @@ type Args = {
 
 export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooked }: Args) {
   const { user } = useAuth();
+  const { t } = useAppTranslation();
   const queryClient = useQueryClient();
-  const { emitNotification } = useNotifications();
+  const { emitNotification, pushLocalToast } = useNotifications();
 
   const [step, setStep] = useState<ScheduledWizardStep>("datetime");
   const [selectedDate, setSelectedDate] = useState(() =>
@@ -520,6 +522,12 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.upcoming });
+      pushLocalToast({
+        title: t("scheduledBooking.requestSentTitle"),
+        description: t("scheduledBooking.requestSentBody"),
+        persistInInbox: true,
+        type: NOTIFICATION_TYPES.TRANSCATIONAL,
+      });
       const startJs = selectedStart?.toJSDate();
       const endJs = sessionEnd?.toJSDate();
       const cleanup = () => {
@@ -528,16 +536,16 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
         resetWizard();
       };
       Alert.alert(
-        "Session requested",
-        "Your session request was sent. Your coach must confirm before it is scheduled.",
+        t("scheduledBooking.requestSentTitle"),
+        t("scheduledBooking.requestSentBody"),
         [
           {
-            text: "Done",
+            text: t("scheduledBooking.done"),
             style: "cancel",
             onPress: cleanup,
           },
           {
-            text: "Add to Calendar",
+            text: t("scheduledBooking.addToCalendar"),
             onPress: async () => {
               if (startJs) {
                 await addEventToCalendar({
@@ -545,8 +553,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
                   startsAt: startJs,
                   endsAt: endJs,
                   durationMinutes,
-                  description:
-                    "Your scheduled NetQwix session. Open the NetQwix app a few minutes before the start time to join.",
+                  description: t("scheduledBooking.calendarDescription"),
                   timeZone: traineeTz,
                 });
               }

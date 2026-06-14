@@ -54,6 +54,7 @@ import {
   SessionListSection,
   TraineeDiscoverDashboard,
 } from "../components/home";
+import { TraineePendingRequestsBanner } from "../components/trainee/TraineePendingRequestsBanner";
 import { TrainerDashboardHub } from "../components/trainer/TrainerDashboardHub";
 import AIFloatingButton from "../../ai/AIFloatingButton";
 import AIAssistantScreen from "../../ai/AIAssistantScreen";
@@ -62,7 +63,7 @@ import {
   getOtherParty,
   isSessionInProgress,
   normalizeSessionStatus,
-  shouldShowInDashboardRequests,
+  shouldShowInDashboardPending,
   shouldShowInDashboardUpcoming,
 } from "../../../lib/sessions/sessionUtils";
 import { PostLessonConcernBanner } from "../../sessions/components/PostLessonConcernBanner";
@@ -585,11 +586,8 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
     [sessions]
   );
   const pendingSessions = useMemo(
-    () =>
-      isTrainer
-        ? sessions.filter((s: any) => shouldShowInDashboardRequests(s))
-        : [],
-    [sessions, isTrainer, sessionListTick]
+    () => sessions.filter((s: any) => shouldShowInDashboardPending(s)),
+    [sessions, sessionListTick]
   );
   const upcomingConfirmed = useMemo(
     () => sessions.filter((s: any) => shouldShowInDashboardUpcoming(s)),
@@ -647,8 +645,12 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
           onScheduleBook={setScheduleTrainer}
           onOpenWallet={() => openShell("wallet")}
           onOpenSession={openSession}
+          onOpenPendingRequests={() => openFeature("upcoming-sessions")}
           onOpenFriends={() => openFeature("friends")}
           onOpenClips={() => openShell("clips")}
+          onQuickBook={() =>
+            (navigation as { navigate: (name: string) => void }).navigate("BookNow")
+          }
           contentContainerStyle={[gutter, styles.content]}
           onScroll={onHomeScroll}
           scrollEventThrottle={morphHome.scrollEventThrottle}
@@ -695,6 +697,29 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
                     getOtherParty(recentCompletedForConcern, isTrainer)?.fullname ||
                     getOtherParty(recentCompletedForConcern, isTrainer)?.fullName
                   }
+                />
+              ) : null}
+
+              {!isTrainer && pendingSessions.length > 0 ? (
+                <TraineePendingRequestsBanner
+                  count={pendingSessions.length}
+                  onPress={() => openFeature("upcoming-sessions")}
+                />
+              ) : null}
+
+              {!isTrainer && (loadingSessions || pendingSessions.length > 0) ? (
+                <SessionListSection
+                  title={t("dashboardHome.pendingSessionRequests")}
+                  subtitle={t("dashboardHome.pendingSessionRequestsSub")}
+                  sessions={pendingSessions}
+                  accountType={accountType}
+                  loading={loadingSessions}
+                  maxPreview={3}
+                  count={pendingSessions.length}
+                  seeAllLabel={t("dashboardHome.reviewPendingRequests", { count: pendingSessions.length })}
+                  onSeeAll={() => openFeature("upcoming-sessions")}
+                  onSessionPress={openSession}
+                  testID="home-pending-session-requests"
                 />
               ) : null}
 
@@ -754,13 +779,6 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
           onPressProfile={() => openShell("editProfile")}
           onPressReviews={() => openShell("trainerReviews")}
           showSearch={false}
-          bottomSlot={
-            <TrainerQuickChipsRow
-              onSchedule={() => openFeature("availability")}
-              onSessions={() => openFeature("upcoming-sessions")}
-              onClips={() => openShell("clips")}
-            />
-          }
         />
         <MorphRefreshHeader {...morphHome.headerProps} />
         <ScrollView
@@ -786,6 +804,11 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
             <TrainerHomeSkeleton />
           ) : (
             <>
+              <TrainerQuickChipsRow
+                onSchedule={() => openShell("trainerSchedule")}
+                onSessions={() => openFeature("upcoming-sessions")}
+                onClips={() => openShell("clips")}
+              />
               <HomeHeroCarousel contentWidth={marketplaceContentWidth} />
               <HomeOffersCarousel />
             </>
@@ -807,7 +830,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
             onRejectFriend={handleReject}
             onSettings={() => openShell("settings")}
             onAvailabilityToggle={handleAvailabilityToggle}
-            onOpenSchedule={() => openFeature("schedule")}
+            onOpenSchedule={() => openShell("trainerSchedule")}
             onOpenSessions={() => openFeature("upcoming-sessions")}
             onOpenClips={() => openShell("clips")}
             onOpenSurface={openShell}

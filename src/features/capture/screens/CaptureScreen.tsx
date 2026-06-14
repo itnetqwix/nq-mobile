@@ -1,4 +1,5 @@
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system/legacy";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useState } from "react";
 import {
@@ -20,6 +21,8 @@ export type CapturedClip = {
   uri: string;
   createdAt: string;
   durationSecs?: number;
+  fileSizeBytes?: number;
+  mimeType?: string;
 };
 
 export async function getCapturedClips(): Promise<CapturedClip[]> {
@@ -43,12 +46,24 @@ export async function deleteCapturedClip(id: string): Promise<void> {
   await AsyncStorage.setItem(CAPTURED_CLIPS_KEY, JSON.stringify(updated));
 }
 
+async function resolveFileSize(uri: string, reported?: number | null): Promise<number | undefined> {
+  if (typeof reported === "number" && reported > 0) return reported;
+  try {
+    const info = await FileSystem.getInfoAsync(uri, { size: true });
+    if (info.exists && "size" in info && typeof info.size === "number" && info.size > 0) {
+      return info.size;
+    }
+  } catch {
+    /* size unknown */
+  }
+  return undefined;
+}
+
 export function CaptureScreen() {
   const navigation = useNavigation<any>();
   const [saving, setSaving] = useState(false);
 
   const recordVideo = useCallback(async () => {
-    // Request camera + mic permissions via expo-image-picker
     const { status: camStatus } = await ImagePicker.requestCameraPermissionsAsync();
     if (camStatus !== "granted") {
       Alert.alert(
@@ -59,7 +74,6 @@ export function CaptureScreen() {
       return;
     }
 
-    // Launch native camera in video mode (max 2 minutes)
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ["videos"],
       videoMaxDuration: 120,
@@ -76,19 +90,17 @@ export function CaptureScreen() {
     try {
       const id = `capture_${Date.now()}`;
       const durationSecs = asset.duration != null ? Math.round(asset.duration) : undefined;
+      const fileSizeBytes = await resolveFileSize(asset.uri, asset.fileSize);
+      const mimeType = asset.mimeType ?? "video/mp4";
       await saveCapturedClip({
         id,
         uri: asset.uri,
         createdAt: new Date().toISOString(),
         durationSecs,
+        fileSizeBytes,
+        mimeType,
       });
-      Alert.alert("Saved!", "Clip saved to your Captured Library.", [
-        {
-          text: "View Library",
-          onPress: () => navigation.navigate("CapturedLibrary"),
-        },
-        { text: "Record Another" },
-      ]);
+      navigation.goBack();
     } catch {
       Alert.alert("Error", "Could not save the clip. Please try again.");
     } finally {
@@ -102,14 +114,8 @@ export function CaptureScreen() {
         <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.brandNavy} />
         </Pressable>
-        <Text style={styles.title}>Capture</Text>
-        <Pressable
-          style={styles.libraryBtn}
-          onPress={() => navigation.navigate("CapturedLibrary")}
-        >
-          <Ionicons name="film-outline" size={20} color={colors.brandNavy} />
-          <Text style={styles.libraryBtnText}>Library</Text>
-        </Pressable>
+        <Text style={styles.title}>Record clip</Text>
+        <View style={styles.topSpacer} />
       </View>
 
       <View style={styles.body}>
@@ -117,9 +123,9 @@ export function CaptureScreen() {
           <Ionicons name="videocam" size={56} color={colors.brandNavy} />
         </View>
 
-        <Text style={styles.heading}>Record a Training Clip</Text>
+        <Text style={styles.heading}>Record a training clip</Text>
         <Text style={styles.sub}>
-          Your device camera opens in video mode. Record up to 2 minutes and the clip is saved to your Captured Library.
+          Your camera opens in video mode. Record up to 2 minutes — the clip saves to your library automatically.
         </Text>
 
         <Pressable
@@ -135,16 +141,8 @@ export function CaptureScreen() {
             <Ionicons name="videocam-outline" size={22} color="#fff" />
           )}
           <Text style={styles.recordBtnText}>
-            {saving ? "Saving…" : "Start Recording"}
+            {saving ? "Saving…" : "Start recording"}
           </Text>
-        </Pressable>
-
-        <Pressable
-          style={styles.libraryLink}
-          onPress={() => navigation.navigate("CapturedLibrary")}
-        >
-          <Text style={styles.libraryLinkText}>View Captured Library</Text>
-          <Ionicons name="chevron-forward" size={16} color={colors.brandNavy} />
         </Pressable>
       </View>
     </SafeAreaView>
@@ -162,18 +160,8 @@ const styles = StyleSheet.create({
     borderBottomColor: "#e5e7eb",
   },
   backBtn: { padding: 4 },
-  title: { flex: 1, ...typography.subtitle, marginLeft: space.sm },
-  libraryBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.brandNavy,
-  },
-  libraryBtnText: { fontSize: 13, fontWeight: "600", color: colors.brandNavy },
+  topSpacer: { width: 32 },
+  title: { flex: 1, ...typography.subtitle, marginLeft: space.sm, textAlign: "center" },
   body: {
     flex: 1,
     alignItems: "center",
@@ -220,16 +208,5 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "700",
     fontSize: 16,
-  },
-  libraryLink: {
-    marginTop: space.sm,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-  },
-  libraryLinkText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.brandNavy,
   },
 });

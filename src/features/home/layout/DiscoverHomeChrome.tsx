@@ -7,7 +7,7 @@ import { AccountType, type AccountTypeValue } from "../../../constants/accountTy
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
 import { useCompactA11yGuard } from "../../../lib/layout";
-import { space, useScaledTypography, useThemeColors } from "../../../theme";
+import { radii, space, useScaledTypography, useThemeColors, useThemedStyles } from "../../../theme";
 import { fetchMyTrainerStats } from "../../home/api/homeApi";
 import { HomeUserAvatar } from "../../dashboard/components/home/HomeUserAvatar";
 import {
@@ -19,7 +19,6 @@ import type { VoiceInputState } from "../../ai/useVoiceInput";
 import { useMarketplaceTopPadding } from "./marketplaceLayout";
 import { PublicSocialLinksRow } from "../../../components/social/PublicSocialLinksRow";
 import { hasPublicSocialLinks, getSocialLinksFromUser } from "../../../lib/social/socialLinks";
-
 const PROFILE_AVATAR_SIZE = 80;
 
 type Props = {
@@ -39,26 +38,49 @@ type Props = {
   categoryChips?: HomeCategoryChip[];
   selectedCategoryId?: string | null;
   onSelectCategory?: (id: string | null) => void;
-  /** When true, stack header is shown — avoid double safe-area padding. */
   compactTop?: boolean;
   showSearch?: boolean;
   trailing?: React.ReactNode;
-  bottomSlot?: React.ReactNode;
+  walletBalanceLabel?: string;
+  onOpenWallet?: () => void;
   voiceState?: VoiceInputState;
   onVoicePress?: () => void;
 };
 
-function readHourlyRate(user: Record<string, unknown> | null | undefined): string | null {
+function formatHourlyRate(user: Record<string, unknown> | null | undefined): string | null {
   if (!user) return null;
   const extra = user.extraInfo;
+  let raw: unknown = user.hourly_rate;
   if (extra && typeof extra === "object") {
     const rate = (extra as Record<string, unknown>).hourly_rate;
-    if (rate != null && rate !== "") return String(rate);
+    if (rate != null && rate !== "") raw = rate;
   }
-  const top = user.hourly_rate;
-  if (top != null && top !== "") return String(top);
-  return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2);
 }
+
+function RoleBadge({ label }: { label: string }) {
+  const c = useThemeColors();
+  const text = useScaledTypography();
+  return (
+    <View style={[badgeStyles.chip, { backgroundColor: c.brandSubtle, borderColor: c.border }]}>
+      <Text style={[badgeStyles.text, text.caption, { color: c.brandNavy }]}>{label}</Text>
+    </View>
+  );
+}
+
+const badgeStyles = StyleSheet.create({
+  chip: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    marginBottom: 6,
+  },
+  text: { fontWeight: "700", fontSize: 11, letterSpacing: 0.2 },
+});
 
 function TrainerProfileMeta({
   user,
@@ -70,7 +92,8 @@ function TrainerProfileMeta({
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const text = useScaledTypography();
-  const hourly = readHourlyRate(user);
+  const styles = useMetaStyles();
+  const hourly = formatHourlyRate(user);
 
   const q = useQuery({
     queryKey: queryKeys.trainer.myStats,
@@ -84,95 +107,161 @@ function TrainerProfileMeta({
 
   if (q.isLoading) {
     return (
-      <View style={metaStyles.row}>
-        <Skeleton width={120} height={14} radius={6} />
+      <View style={styles.row}>
+        <Skeleton width={140} height={36} radius={radii.pill} />
+        <Skeleton width={72} height={36} radius={radii.pill} />
       </View>
     );
   }
 
-  const pillBg = c.surfaceElevated;
-  const pillBorder = c.border;
+  const ratingBody = (
+    <>
+      <Ionicons name="star" size={15} color={c.warning} />
+      <Text style={[styles.ratingValue, text.caption, { color: c.text }]}>
+        {hasRating ? avg!.toFixed(1) : "—"}
+      </Text>
+      <Text style={[styles.ratingMeta, text.caption, { color: c.textMuted }]} numberOfLines={1}>
+        {count > 0
+          ? t("traineeDiscover.reviewCount", { count })
+          : t("trainerDashboard.noReviewsYet")}
+      </Text>
+      {onPressReviews ? (
+        <Ionicons name="chevron-forward" size={14} color={c.textMuted} />
+      ) : null}
+    </>
+  );
 
   return (
-    <View style={metaStyles.row}>
+    <View style={styles.row}>
       {onPressReviews ? (
         <Pressable
           onPress={onPressReviews}
-          style={({ pressed }) => [
-            metaStyles.pill,
-            { backgroundColor: pillBg, borderColor: pillBorder },
-            pressed && { opacity: 0.85 },
-          ]}
+          style={({ pressed }) => [styles.pill, styles.ratingPill, pressed && { opacity: 0.88 }]}
           accessibilityRole="button"
-          accessibilityLabel={t("trainerDashboard.openReviewsA11y", {
-            defaultValue: "Your rating and reviews",
-          })}
+          accessibilityLabel={
+            hasRating
+              ? t("trainerDashboard.openReviewsA11y", {
+                  rating: avg!.toFixed(1),
+                  count,
+                })
+              : t("trainerDashboard.noReviewsYet")
+          }
         >
-          <Ionicons name="star" size={14} color={c.warning} />
-          <Text style={[metaStyles.chipText, text.caption, { color: c.text }]}>
-            {hasRating ? avg!.toFixed(1) : "—"}
-          </Text>
-          <Text style={[metaStyles.chipMuted, text.caption, { color: c.textMuted }]}>
-            {count > 0
-              ? `(${count})`
-              : t("trainerDashboard.noReviewsYet", { defaultValue: "No reviews" })}
-          </Text>
+          {ratingBody}
         </Pressable>
       ) : (
-        <View style={[metaStyles.pill, { backgroundColor: pillBg, borderColor: pillBorder }]}>
-          <Ionicons name="star" size={14} color={c.warning} />
-          <Text style={[metaStyles.chipText, text.caption, { color: c.text }]}>
-            {hasRating ? avg!.toFixed(1) : "—"}
-          </Text>
-          {count > 0 ? (
-            <Text style={[metaStyles.chipMuted, text.caption, { color: c.textMuted }]}>
-              ({count})
-            </Text>
-          ) : null}
-        </View>
+        <View style={[styles.pill, styles.ratingPill]}>{ratingBody}</View>
       )}
       {hourly ? (
-        <View style={[metaStyles.pill, { backgroundColor: c.brandSubtle, borderColor: pillBorder }]}>
-          <Text style={[metaStyles.rate, text.caption, { color: c.brandNavy }]}>
-            ${hourly}
-            <Text style={{ color: c.textMuted, fontWeight: "600" }}>/hr</Text>
+        <View style={[styles.pill, styles.ratePill, { borderColor: c.border }]}>
+          <Ionicons name="cash-outline" size={14} color={c.brandNavy} />
+          <Text style={[styles.rateValue, text.caption, { color: c.brandNavy }]}>
+            {t("discoverHome.sessionRate", { rate: hourly, defaultValue: "${{rate}}/hr" })}
           </Text>
         </View>
+      ) : (
+        <View style={[styles.pill, styles.ratePillMuted, { borderColor: c.border }]}>
+          <Text style={[styles.rateHint, text.caption, { color: c.textMuted }]}>
+            {t("discoverHome.setHourlyRate", { defaultValue: "Set your hourly rate" })}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function TraineeProfileMeta({
+  subline,
+  walletBalanceLabel,
+  onOpenWallet,
+}: {
+  subline?: string;
+  walletBalanceLabel?: string;
+  onOpenWallet?: () => void;
+}) {
+  const { t } = useAppTranslation();
+  const c = useThemeColors();
+  const text = useScaledTypography();
+  const styles = useMetaStyles();
+
+  return (
+    <View style={styles.row}>
+      {subline ? (
+        <View style={[styles.pill, styles.sublinePill, { borderColor: c.border }]}>
+          <Text style={[styles.sublineText, text.caption, { color: c.textSecondary }]} numberOfLines={1}>
+            {subline}
+          </Text>
+        </View>
+      ) : null}
+      {walletBalanceLabel && onOpenWallet ? (
+        <Pressable
+          onPress={onOpenWallet}
+          style={({ pressed }) => [styles.pill, styles.walletPill, pressed && { opacity: 0.88 }]}
+          accessibilityRole="button"
+          accessibilityLabel={t("traineeDiscover.walletA11y")}
+        >
+          <Ionicons name="wallet-outline" size={14} color={c.brandNavy} />
+          <Text style={[styles.walletValue, text.caption, { color: c.text }]} numberOfLines={1}>
+            {walletBalanceLabel}
+          </Text>
+          <Ionicons name="chevron-forward" size={14} color={c.textMuted} />
+        </Pressable>
       ) : null}
     </View>
   );
 }
 
-const metaStyles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 6,
-  },
-  pill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  chipText: {
-    fontWeight: "800",
-  },
-  chipMuted: {
-    fontWeight: "500",
-  },
-  rate: {
-    fontWeight: "800",
-  },
-});
+function useMetaStyles() {
+  return useThemedStyles((palette) =>
+    StyleSheet.create({
+      row: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        alignItems: "center",
+        gap: space.xs,
+        marginTop: 4,
+      },
+      pill: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 5,
+        paddingHorizontal: 10,
+        paddingVertical: 7,
+        borderRadius: radii.pill,
+        borderWidth: 1,
+        maxWidth: "100%",
+      },
+      ratingPill: {
+        backgroundColor: palette.surfaceMuted,
+        borderColor: palette.borderSubtle,
+        flexShrink: 1,
+      },
+      ratePill: {
+        backgroundColor: palette.brandSubtle,
+      },
+      ratePillMuted: {
+        backgroundColor: palette.surfaceElevated,
+      },
+      rateValue: { fontWeight: "800" },
+      rateHint: { fontWeight: "600" },
+      ratingValue: { fontWeight: "800" },
+      ratingMeta: { fontWeight: "500", flexShrink: 1 },
+      sublinePill: {
+        backgroundColor: palette.surfaceElevated,
+        flexShrink: 1,
+      },
+      sublineText: { fontWeight: "600" },
+      walletPill: {
+        backgroundColor: palette.surfaceElevated,
+        borderColor: palette.border,
+      },
+      walletValue: { fontWeight: "700", flexShrink: 1 },
+    })
+  );
+}
 
 /**
- * Fixed marketplace header: profile band + search + category chips.
+ * Fixed marketplace header: profile band + search + category chips (quick actions scroll with feed).
  */
 export function DiscoverHomeChrome({
   subline,
@@ -192,7 +281,8 @@ export function DiscoverHomeChrome({
   compactTop = false,
   showSearch = true,
   trailing,
-  bottomSlot,
+  walletBalanceLabel,
+  onOpenWallet,
   voiceState,
   onVoicePress,
 }: Props) {
@@ -202,12 +292,13 @@ export function DiscoverHomeChrome({
   const { t } = useAppTranslation();
   const topPadding = useMarketplaceTopPadding(compactTop);
 
-  const isTrainer =
-    role === AccountType.TRAINER || role === "trainer";
-  const isTrainee =
-    role === AccountType.TRAINEE || role === "trainee" || !isTrainer;
+  const isTrainer = role === AccountType.TRAINER || role === "trainer";
+  const isTrainee = role === AccountType.TRAINEE || role === "trainee" || !isTrainer;
 
   const displayName = profileName?.trim() || t("dashboardHome.userDefault", { defaultValue: "Member" });
+  const roleLabel = isTrainer
+    ? t("trainerDashboard.roleTrainer")
+    : t("traineeDiscover.roleTrainee");
 
   const avatar = onPressProfile ? (
     <Pressable
@@ -234,27 +325,28 @@ export function DiscoverHomeChrome({
       <View style={styles.topRow}>
         {avatar}
         <View style={styles.profileCol}>
-          <Text
-            style={[styles.name, text.titleMd, { color: c.text }]}
-            numberOfLines={1}
-          >
-            {displayName}
-          </Text>
+          <View style={styles.nameRow}>
+            <Text style={[styles.name, text.titleMd, { color: c.text }]} numberOfLines={1}>
+              {displayName}
+            </Text>
+            {trailing}
+          </View>
+          <RoleBadge label={roleLabel} />
           {isTrainer ? (
             <TrainerProfileMeta user={user} onPressReviews={onPressReviews} />
-          ) : isTrainee && subline ? (
-            <Text
-              style={[styles.subline, text.caption, { color: c.textSecondary }]}
-              numberOfLines={1}
-            >
-              {subline}
-            </Text>
-          ) : null}
+          ) : (
+            <TraineeProfileMeta
+              subline={subline}
+              walletBalanceLabel={walletBalanceLabel}
+              onOpenWallet={onOpenWallet}
+            />
+          )}
           {user && hasPublicSocialLinks(getSocialLinksFromUser(user)) ? (
-            <PublicSocialLinksRow user={user} size="sm" />
+            <View style={styles.socialRow}>
+              <PublicSocialLinksRow user={user} size="sm" />
+            </View>
           ) : null}
         </View>
-        {trailing}
       </View>
 
       {showSearch ? (
@@ -268,8 +360,6 @@ export function DiscoverHomeChrome({
           onVoicePress={onVoicePress}
         />
       ) : null}
-
-      {bottomSlot}
 
       {categoryChips && categoryChips.length > 0 && onSelectCategory ? (
         <HomeCategoryChipsRow
@@ -292,21 +382,30 @@ const styles = StyleSheet.create({
   },
   topRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     paddingHorizontal: space.md,
-    paddingBottom: space.md,
+    paddingBottom: space.sm,
     gap: space.md,
   },
   profileCol: {
     flex: 1,
     minWidth: 0,
     justifyContent: "center",
+    paddingTop: space.xxs,
+  },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.xs,
+    minWidth: 0,
   },
   name: {
+    flex: 1,
+    minWidth: 0,
     fontWeight: "800",
     letterSpacing: -0.3,
   },
-  subline: {
-    marginTop: space.xxs,
+  socialRow: {
+    marginTop: space.xs,
   },
 });

@@ -12,21 +12,23 @@ import { meetingTheme } from "../meetingTheme";
 type Props = {
   uri: string | null;
   label?: string;
-  onPress: () => void;
+  isPlaying?: boolean;
+  onPress?: () => void;
   bottomOffset: number;
 };
 
-export function ClipMiniPip({ uri, label = "Clips", onPress, bottomOffset }: Props) {
+export function ClipMiniPip({ uri, label = "Clips", isPlaying = false, onPress, bottomOffset }: Props) {
   return (
     <Pressable
       style={[styles.wrap, { bottom: bottomOffset }]}
       onPress={onPress}
+      disabled={!onPress}
       accessibilityRole="button"
       accessibilityLabel="Return to clips"
     >
       <View style={styles.box}>
         {uri ? (
-          <ClipPlayer uri={uri} isPlaying={false} />
+          <ClipPlayer uri={uri} isPlaying={isPlaying} />
         ) : (
           <View style={styles.fallback}>
             <Ionicons name="film-outline" size={28} color={meetingTheme.textMuted} />

@@ -43,9 +43,11 @@
     "faq": "FAQ"
   },
   "tabs": {
-    "home": "damdam",
+    "home": "Home",
     "sessions": "Sessions",
-    "chats": "Chats"
+    "chats": "Chats",
+    "bookNow": "Book now",
+    "capture": "Capture"
   },
   "auth": {
     "signIn": "Sign in",
@@ -977,6 +979,26 @@
     "emptyRequestsCta": "Discover people you may know",
     "emptySentCta": "Find someone to add"
   },
+  "discoverHome": {
+    "sessionRate": "${{rate}}/hr",
+    "setHourlyRate": "Set your hourly rate",
+    "walletBalance": "{{amount}} available",
+    "traineeInstantLink": "Book an instant lesson",
+    "traineeInstantSub": "See coaches who are live right now",
+    "trainerInstantLink": "Instant lessons",
+    "trainerInstantSub": "Manage availability & go live",
+    "quickInstant": "Instant",
+    "quickInstantSub": "Live coaches",
+    "quickBookNow": "Book now",
+    "quickBookNowSub": "All coaches",
+    "quickClips": "Clips",
+    "quickClipsSub": "Your library",
+    "quickClipsSubTrainer": "Trainee media",
+    "quickAvailability": "Availability",
+    "quickAvailabilitySub": "Open slots",
+    "quickMySessions": "Sessions",
+    "quickMySessionsSub": "Upcoming"
+  },
   "dashboardHome": {
     "greeting": "Hello, {{name}}",
     "walletA11y": "Wallet",
@@ -1008,7 +1030,13 @@
     "profilePhoto": "Profile photo",
     "viewCoachA11y": "View coach {{name}}",
     "acceptRequestA11y": "Accept friend request from {{name}}",
-    "rejectRequestA11y": "Reject friend request from {{name}}"
+    "rejectRequestA11y": "Reject friend request from {{name}}",
+    "pendingSessionRequests": "Requests awaiting confirmation",
+    "pendingSessionRequestsBanner": "{{count}} session request pending",
+    "pendingSessionRequestsBanner_plural": "{{count}} session requests pending",
+    "pendingSessionRequestsSub": "Your coach must confirm before you can join",
+    "reviewPendingRequests": "View all {{count}} requests",
+    "pendingRequestA11y": "{{count}} session requests waiting for coach confirmation"
   },
   "trainerProfile": {
     "certificatesTitle": "Certificates",
@@ -1116,6 +1144,9 @@
     "coachesIn": "{{category}} coaches",
     "coachesForYou": "Coaches for your sports",
     "allCoaches": "All coaches",
+    "guestBrowseAll": "Browse coaches",
+    "guestBrowseHint": "Sign in to book sessions, save favorites, and message coaches.",
+    "guestEmptySub": "Try another sport or search by name. Sign in when you're ready to book.",
     "emptyTitle": "No coaches found",
     "emptySub": "Try another sport, turn off Live now, or search by a different name.",
     "showMore": "Show more coaches",
@@ -1211,6 +1242,24 @@
     "reviewsSheetSubtitle": "{{rating}} average · {{count}} reviews from trainees",
     "reviewsEmpty": "When trainees rate a session, their stars and written feedback show up here.",
     "reviewStarsOnly": "Rated the session — no written comment."
+  },
+  "sessionPreview": {
+    "needsConfirmation": "Needs confirmation",
+    "requestSent": "Request sent",
+    "waitingForCoach": "Waiting for coach",
+    "joinSession": "Join session",
+    "rejoinSession": "Rejoin session",
+    "joinOpensLater": "Join opens later",
+    "respondWithin": "Respond within",
+    "coachHas": "Coach has",
+    "joinWithin": "Join within"
+  },
+  "scheduledBooking": {
+    "requestSentTitle": "Session requested",
+    "requestSentBody": "Your session request was sent. Your coach must confirm before it is scheduled.",
+    "done": "Done",
+    "addToCalendar": "Add to Calendar",
+    "calendarDescription": "Your scheduled NetQwix session. Open the NetQwix app a few minutes before the start time to join."
   },
   "notifications": {
     "justNow": "just now",

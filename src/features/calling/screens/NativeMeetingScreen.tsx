@@ -78,8 +78,10 @@ import {
 import { UserBox } from "../components/UserBox";
 import {
   DraggableVideoPip,
+  defaultPipPosition,
   PIP_HEIGHT,
   PIP_WIDTH,
+  type PipEdge,
 } from "../components/DraggableVideoPip";
 import { useVideoPipLayout } from "../useVideoPipLayout";
 import { useMeetingLayout } from "../useMeetingLayout";
@@ -93,6 +95,11 @@ import { useAdaptiveLessonNetwork } from "../hooks/useAdaptiveLessonNetwork";
 import { useLessonNetworkOutagePause } from "../hooks/useLessonNetworkOutagePause";
 import { LESSON_NETWORK_TIER_CONFIG } from "../lessonNetworkTier";
 import { streamOffHintForTile } from "../meetingStreamLabels";
+import {
+  defaultLocalPipLayout,
+  resolveTilePosition,
+  resolveTileSize,
+} from "../meetingTileUtils";
 import { useNetworkOnline } from "../../../lib/networkStatusStore";
 import { useInCallPermissions } from "../hooks/useInCallPermissions";
 import { ReconnectFailedOverlay } from "../components/ReconnectFailedOverlay";
@@ -928,7 +935,8 @@ function MeetingSurface({
     pipReservedBottom: chrome.pipSafeBottom,
   });
 
-  const { applyRemoteTiles } = pipLayout;
+  const { applyRemoteTiles, hideTile, restoreTile, updatePosition, isTileHidden } =
+    pipLayout;
   const pipPositionPatch = useCallback(
     (pos: { x: number; y: number }, size?: { w: number; h: number }) => {
       if (!meetingBounds) {
@@ -1202,9 +1210,9 @@ function MeetingSurface({
     if (!session) return;
     const bookingClips = playableBookingClips(session, joinReadiness?.clips);
     if (bookingClips.length > 0) {
-      preloadBookingClips(bookingClips);
+      preloadBookingClips(bookingClips, { emitSocket: isTrainer });
     }
-  }, [session, session?.trainee_clips, joinReadiness?.clips, preloadBookingClips]);
+  }, [session, session?.trainee_clips, joinReadiness?.clips, preloadBookingClips, isTrainer]);
 
   useEffect(() => {
     if (!bothUsersForTimer) {
@@ -1389,7 +1397,14 @@ function MeetingSurface({
   const lockedDualClip = dualClip && clipSync.lockMode;
   const clipFocusIndex = lockedDualClip ? null : clipSync.clipFocusIndex;
 
-  const lockedProgress = Math.max(clipProgresses[0], clipProgresses[1]);
+  const lockedProgress = useMemo(() => {
+    const [p0, p1] = clipProgresses;
+    const [d0, d1] = clipDurations;
+    if (d0 > 0.5 && d1 > 0.5 && Math.abs(d0 - d1) > 0.5) {
+      return Math.min(p0, p1);
+    }
+    return Math.max(p0, p1);
+  }, [clipProgresses, clipDurations]);
   const lockedDuration = Math.max(clipDurations[0], clipDurations[1]);
 
   const activePaneIndex = useMemo((): 0 | 1 => {
@@ -1398,6 +1413,12 @@ function MeetingSurface({
     );
     return idx === 1 ? 1 : 0;
   }, [clipSync.activeClipId, clipSync.selectedClips]);
+
+  /** Pane whose intrinsic size drives annotation UV mapping (focused or active clip). */
+  const annotationSourcePane = useMemo((): 0 | 1 => {
+    if (clipFocusIndex === 0 || clipFocusIndex === 1) return clipFocusIndex;
+    return activePaneIndex;
+  }, [clipFocusIndex, activePaneIndex]);
 
   const unlockedTimelineProgress = clipProgresses[activePaneIndex];
   const unlockedTimelineDuration = clipDurations[activePaneIndex];
@@ -1425,7 +1446,9 @@ function MeetingSurface({
         : null;
     const seekNonce = clipSync.seekHint?.receivedAt ?? null;
     return {
-      isPlaying: clipSync.isClipPlaying(clipId),
+      isPlaying: clipSync.lockMode
+        ? clipSync.isPlaying && !clipEndedRef.current[paneIndex]
+        : clipSync.isClipPlaying(clipId),
       seekTargetMs: seekForPane,
       seekNonce,
       zoom: zoomPan?.zoom,
@@ -1445,7 +1468,7 @@ function MeetingSurface({
         ? (w: number, h: number) => clipSync.registerClipFrameSize(String(clipId), w, h)
         : undefined,
       onNaturalSize:
-        paneIndex === 0
+        paneIndex === annotationSourcePane
           ? (w: number, h: number) => {
               if (w > 0 && h > 0) setClipNaturalSize({ width: w, height: h });
             }
@@ -1751,6 +1774,13 @@ function MeetingSurface({
 
   const inClipMode = hasClipStage;
   const inLiveFocus = meetingLayout.focusedStreamId != null;
+  const wasInLiveFocusRef = useRef(false);
+  useEffect(() => {
+    if (inLiveFocus && !wasInLiveFocusRef.current && clipSync.isPlaying) {
+      clipSync.togglePlay(false);
+    }
+    wasInLiveFocusRef.current = inLiveFocus;
+  }, [inLiveFocus, clipSync]);
   useEffect(() => {
     setClipNaturalSize(null);
   }, [activeClipUri, clipSync.activeClipId]);
@@ -1774,6 +1804,100 @@ function MeetingSurface({
     chrome.insets.top,
   ]);
 
+  const defaultLiveLocalPipFallback = useMemo(() => {
+    if (!meetingBounds) return { x: 0, y: 0 };
+    return defaultPipPosition(
+      "local",
+      meetingBounds,
+      chrome.insets.top,
+      chrome.pipSafeBottom
+    );
+  }, [meetingBounds, chrome.insets.top, chrome.pipSafeBottom]);
+
+  const defaultLiveLocalPipPosition = useMemo(
+    () =>
+      resolveTilePosition(
+        meetingLayout.tiles.local,
+        meetingBounds,
+        defaultLiveLocalPipFallback
+      ),
+    [meetingLayout.tiles.local, meetingBounds, defaultLiveLocalPipFallback]
+  );
+
+  const defaultLiveLocalPipSize = useMemo(
+    () =>
+      resolveTileSize(meetingLayout.tiles.local, meetingBounds, {
+        w: PIP_WIDTH,
+        h: PIP_HEIGHT,
+      }),
+    [meetingLayout.tiles.local, meetingBounds]
+  );
+
+  useEffect(() => {
+    if (!isTrainer || !meetingBounds || inLiveFocus || inClipMode) return;
+    const tile = meetingLayout.tiles.local;
+    if (tile.nx != null && tile.ny != null) return;
+    const seeded = defaultLocalPipLayout(
+      meetingBounds,
+      chrome.insets.top,
+      chrome.pipSafeBottom
+    );
+    meetingLayout.updateTile("local", {
+      ...pipPositionPatch(seeded.position, seeded.size),
+      hidden: false,
+      hiddenEdge: tile.hiddenEdge ?? seeded.hiddenEdge,
+    });
+  }, [
+    isTrainer,
+    meetingBounds,
+    inLiveFocus,
+    inClipMode,
+    meetingLayout.tiles.local.nx,
+    meetingLayout.tiles.local.ny,
+    meetingLayout.tiles.local.hiddenEdge,
+    meetingLayout.updateTile,
+    pipPositionPatch,
+    chrome.insets.top,
+    chrome.pipSafeBottom,
+  ]);
+
+  const handleDefaultLivePipMove = useCallback(
+    (pos: { x: number; y: number }) => {
+      if (!isTrainer) return;
+      meetingLayout.updateTile(
+        "local",
+        pipPositionPatch(pos, defaultLiveLocalPipSize)
+      );
+      updatePosition("local", pos);
+    },
+    [
+      defaultLiveLocalPipSize,
+      isTrainer,
+      meetingLayout,
+      pipPositionPatch,
+      updatePosition,
+    ]
+  );
+
+  const handleDefaultLivePipHide = useCallback(
+    (edge: PipEdge, lastPos: { x: number; y: number }) => {
+      if (!isTrainer) return;
+      meetingLayout.updateTile("local", {
+        ...pipPositionPatch(lastPos, defaultLiveLocalPipSize),
+        hidden: true,
+        hiddenEdge: edge,
+      });
+      hideTile("local", edge, lastPos);
+    },
+    [defaultLiveLocalPipSize, hideTile, isTrainer, meetingLayout, pipPositionPatch]
+  );
+
+  const handleDefaultLivePipRestore = useCallback(() => {
+    if (!isTrainer) return;
+    meetingLayout.updateTile("local", { hidden: false });
+    restoreTile("local");
+  }, [isTrainer, meetingLayout, restoreTile]);
+
   const handleAnnotationToggle = useCallback(() => {
     if (annotationToolbarOpen) {
       setAnnotationToolbarOpen(false);
@@ -1791,6 +1915,18 @@ function MeetingSurface({
     setAnnotationToolbarOpen(true);
     drawingSync.setTrainerDrawingEnabled(true);
   }, [annotationArmed, annotationToolbarOpen, drawingSync]);
+
+  const handleAnnotationToolbarDrawingToggle = useCallback(() => {
+    if (annotationArmed) {
+      setAnnotationArmed(false);
+      setAnnotationToolbarOpen(false);
+      drawingSync.setTrainerDrawingEnabled(false);
+      setDrawingOverlayKey((k) => k + 1);
+      return;
+    }
+    setAnnotationArmed(true);
+    drawingSync.setTrainerDrawingEnabled(true);
+  }, [annotationArmed, drawingSync]);
 
   const canDraw = isTrainer && annotationArmed;
   const bigVideoActive =
@@ -2295,12 +2431,28 @@ function MeetingSurface({
               remoteStream={remoteStream}
               localStreamOff={!cameraEnabled || !localStream}
               remoteStreamOff={!remoteStream || remoteCameraOff}
+              localStreamOffHint={localStreamOffHint}
               localLabel="You"
               remoteLabel={peerDisplayName}
+              bounds={meetingBounds}
+              safeTop={chrome.insets.top}
+              pipReservedBottom={chrome.pipSafeBottom}
+              localPipPosition={defaultLiveLocalPipPosition}
+              localPipSize={defaultLiveLocalPipSize}
+              localPipHidden={
+                meetingLayout.tiles.local.hidden || isTileHidden("local")
+              }
+              localPipHiddenEdge={meetingLayout.tiles.local.hiddenEdge ?? "right"}
+              onLocalPipPositionChange={handleDefaultLivePipMove}
+              onLocalPipHide={handleDefaultLivePipHide}
+              onLocalPipRestore={handleDefaultLivePipRestore}
+              pipDragDisabled={!isTrainer}
               onSelectLocal={
                 isTrainer ? () => meetingLayout.focusStream(myId) : undefined
               }
-              onSelectRemote={() => meetingLayout.focusStream(peerId)}
+              onSelectRemote={
+                isTrainer ? () => meetingLayout.focusStream(peerId) : undefined
+              }
             />
           </View>
         )}
@@ -2417,8 +2569,11 @@ function MeetingSurface({
             <ClipMiniPip
               uri={activeClipUri}
               label="Clips"
+              isPlaying={clipSync.isPlaying}
               bottomOffset={chrome.pipSafeBottom}
-              onPress={() => meetingLayout.clearFocus()}
+              onPress={() => {
+                if (isTrainer) meetingLayout.clearFocus();
+              }}
             />
           ) : null}
         </>
@@ -2442,7 +2597,7 @@ function MeetingSurface({
           peerDisplayName={peerDisplayName}
           bottomOffset={chrome.bottomChrome + 4}
           onTapLocal={isTrainer ? () => meetingLayout.focusStream(myId) : undefined}
-          onTapRemote={() => meetingLayout.focusStream(peerId)}
+          onTapRemote={isTrainer ? () => meetingLayout.focusStream(peerId) : undefined}
         />
       ) : null}
 
@@ -2619,7 +2774,7 @@ function MeetingSurface({
           onToolChange={setAnnotationTool}
           onColorChange={setAnnotationColor}
           drawingEnabled={annotationArmed}
-          onToggleDrawing={() => setAnnotationToolbarOpen(false)}
+          onToggleDrawing={handleAnnotationToolbarDrawingToggle}
           onClear={() => {
             drawingSync.clearCanvas();
             setDrawingOverlayKey((k) => k + 1);
