@@ -49,6 +49,7 @@
     "@react-navigation/native": "^7.2.4",
     "@react-navigation/native-stack": "^7.14.14",
     "@reduxjs/toolkit": "^2.12.0",
+    "@shopify/flash-list": "^2.3.2",
     "@shopify/react-native-skia": "2.2.12",
     "@stripe/stripe-react-native": "^0.65.1",
     "@tanstack/query-async-storage-persister": "^5.100.11",
@@ -90,6 +91,7 @@
     "react-native-callkeep": "^4.3.16",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-incall-manager": "^4.2.1",
+    "react-native-mmkv": "^4.3.1",
     "react-native-pager-view": "6.9.1",
     "react-native-permissions": "^5.5.1",
     "react-native-reanimated": "~4.1.1",
@@ -102,7 +104,8 @@
     "react-redux": "^9.3.0",
     "socket.io-client": "^4.8.3",
     "tweetnacl": "^1.0.3",
-    "tweetnacl-util": "^0.15.1"
+    "tweetnacl-util": "^0.15.1",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@expo/ngrok": "^4.1.0",

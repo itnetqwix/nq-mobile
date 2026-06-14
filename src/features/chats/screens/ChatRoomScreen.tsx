@@ -1,13 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import * as ImagePicker from "expo-image-picker";
+import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActionSheetIOS,
   ActivityIndicator,
   Alert,
   Animated,
-  SectionList,
   Image,
   Keyboard,
   KeyboardAvoidingView,
@@ -22,6 +22,10 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  CHAT_MESSAGE_ROW_ESTIMATED_HEIGHT,
+  FLASHLIST_PERF_DEFAULTS,
+} from "../../../lib/lists/flatListPerf";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChatMessageListSkeleton } from "../../../components/ui";
 import { apiClient } from "../../../api/client";
@@ -29,8 +33,12 @@ import { API_ROUTES } from "../../../config/apiRoutes";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { queryKeys } from "../../../lib/queryKeys";
+import {
+  readCachedChatMessages,
+  writeCachedChatMessages,
+} from "../lib/chatHistoryCache";
+import { isNetworkOnline } from "../../../lib/networkStatusStore";
 import { useDebouncedValue, SEARCH_LOCAL_DEBOUNCE_MS } from "../../../lib/timing";
-import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { useAuth } from "../../auth/context/AuthContext";
 import { useSocket } from "../../socket/SocketContext";
 import { useOnlinePresence } from "../../socket/useOnlinePresence";
@@ -45,7 +53,7 @@ import { ChatDaySeparator } from "../components/ChatDaySeparator";
 import { deleteChatMessage, editChatMessage, fetchGroupMembers } from "../api/chatActionsApi";
 import { GroupMembersSheet } from "../components/GroupMembersSheet";
 import {
-  findMessageSectionLocation,
+  findMessageFlatRowIndex,
   formatChatDayLabel,
   groupMessagesByDayAsc,
   sortMessagesAsc,
@@ -94,6 +102,10 @@ type Message = {
   replyToMessageId?: string | null;
   editedAt?: string | null;
 };
+
+type ChatListRow =
+  | { rowType: "day"; key: string; title: string }
+  | { rowType: "message"; key: string; message: Message };
 
 const EMOJI_LIST = [
   "😀","😂","🥰","😍","😎","🤩","😢","😡","👍","👎",
@@ -585,7 +597,7 @@ export function ChatRoomScreen({
   const { socket } = useSocket();
   const { isOnline: isUserOnline } = useOnlinePresence();
   const queryClient = useQueryClient();
-  const sectionListRef = useRef<SectionList<Message>>(null);
+  const flashListRef = useRef<FlashListRef<ChatListRow>>(null);
   const [text, setText] = useState("");
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -723,15 +735,25 @@ export function ChatRoomScreen({
   const { data: serverMessages = [], isLoading: messagesLoading } = useQuery<Message[]>({
     queryKey: queryKeys.chats.messages(conversationId),
     queryFn: async () => {
-      const res = await apiClient.get(API_ROUTES.chat.messages(conversationId), {
-        params: { page: 1, limit: 200 },
-      });
-      const body = (res as any)?.data ?? res;
-      return body?.data ?? body?.result ?? [];
+      try {
+        const res = await apiClient.get(API_ROUTES.chat.messages(conversationId), {
+          params: { page: 1, limit: 200 },
+        });
+        const body = (res as any)?.data ?? res;
+        const rows = body?.data ?? body?.result ?? [];
+        await writeCachedChatMessages(conversationId, rows);
+        return rows;
+      } catch (err) {
+        if (!isNetworkOnline()) {
+          const cached = await readCachedChatMessages(conversationId);
+          if (cached) return cached as Message[];
+        }
+        throw err;
+      }
     },
     enabled: !!conversationId,
     staleTime: 10_000,
-    refetchInterval: 15_000,
+    refetchInterval: isNetworkOnline() ? 15_000 : false,
   });
 
   const allMessages = useMemo(() => {
@@ -775,25 +797,26 @@ export function ChatRoomScreen({
     [displayMessages]
   );
 
-  const scrollToLatestMessage = useCallback((animated: boolean) => {
-    const list = sectionListRef.current;
-    if (!list || messageSections.length === 0) return;
-
-    for (let sectionIndex = messageSections.length - 1; sectionIndex >= 0; sectionIndex--) {
-      const items = messageSections[sectionIndex]?.data;
-      if (!items?.length) continue;
-      try {
-        list.scrollToLocation({
-          sectionIndex,
-          itemIndex: items.length - 1,
-          animated,
-        });
-      } catch {
-        /* SectionList not laid out yet */
+  const chatListRows = useMemo((): ChatListRow[] => {
+    const rows: ChatListRow[] = [];
+    for (const section of messageSections) {
+      rows.push({ rowType: "day", key: `day-${section.title}`, title: section.title });
+      for (const message of section.data) {
+        rows.push({ rowType: "message", key: message._id, message });
       }
-      return;
     }
+    return rows;
   }, [messageSections]);
+
+  const scrollToLatestMessage = useCallback((animated: boolean) => {
+    const list = flashListRef.current;
+    if (!list || chatListRows.length === 0) return;
+    try {
+      list.scrollToEnd({ animated });
+    } catch {
+      /* FlashList not laid out yet */
+    }
+  }, [chatListRows.length]);
 
   useEffect(() => {
     if (allMessages.length === 0) return;
@@ -1306,15 +1329,14 @@ export function ChatRoomScreen({
 
   const jumpToMessage = useCallback(
     (messageId: string) => {
-      const loc = findMessageSectionLocation(messageSections, messageId);
-      if (!loc) return;
+      const rowIndex = findMessageFlatRowIndex(messageSections, messageId);
+      if (rowIndex == null) return;
       setShowProfile(false);
       setHighlightedMessageId(messageId);
       requestAnimationFrame(() => {
         try {
-          sectionListRef.current?.scrollToLocation({
-            sectionIndex: loc.sectionIndex,
-            itemIndex: loc.itemIndex,
+          flashListRef.current?.scrollToIndex({
+            index: rowIndex,
             animated: true,
             viewPosition: 0.5,
           });
@@ -1474,6 +1496,16 @@ export function ChatRoomScreen({
     ]
   );
 
+  const renderChatRow = useCallback(
+    ({ item }: { item: ChatListRow }) => {
+      if (item.rowType === "day") {
+        return <ChatDaySeparator label={item.title} />;
+      }
+      return renderMessage({ item: item.message });
+    },
+    [renderMessage]
+  );
+
   const partnerName = partner?.fullname ?? "Chat";
   const partnerAvatar = getS3ImageUrl(partner?.profile_picture);
   const showPolicyBanner = !isGroup && !!(chatPolicy && !chatPolicy.hasPaidSession);
@@ -1592,15 +1624,16 @@ export function ChatRoomScreen({
           <ChatMessageListSkeleton rows={7} />
         ) : (
           <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-            <SectionList
-              ref={sectionListRef}
-              sections={messageSections}
-              keyExtractor={flatListKeyExtractor}
-              renderItem={renderMessage}
-              renderSectionHeader={({ section: { title } }) => (
-                <ChatDaySeparator label={title} />
-              )}
-              stickySectionHeadersEnabled={false}
+            <FlashList
+              ref={flashListRef}
+              data={chatListRows}
+              keyExtractor={(item) => item.key}
+              renderItem={renderChatRow}
+              getItemType={(item) => item.rowType}
+              maintainVisibleContentPosition={{
+                startRenderingFromBottom: true,
+                autoscrollToBottomThreshold: 0.2,
+              }}
               contentContainerStyle={[
                 styles.messageList,
                 allMessages.length === 0 && styles.messageListEmpty,
@@ -1613,15 +1646,12 @@ export function ChatRoomScreen({
                 </View>
               }
               onScrollToIndexFailed={() => {
-                /* SectionList scroll recovery */
+                /* FlashList scroll recovery */
               }}
               style={styles.messageArea}
               keyboardDismissMode="interactive"
               keyboardShouldPersistTaps="handled"
-              removeClippedSubviews
-              windowSize={9}
-              initialNumToRender={16}
-              maxToRenderPerBatch={12}
+              {...FLASHLIST_PERF_DEFAULTS}
             />
           </TouchableWithoutFeedback>
         )}

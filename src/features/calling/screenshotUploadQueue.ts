@@ -7,6 +7,11 @@ import * as FileSystem from "expo-file-system/legacy";
 
 import { putFileToPresignedUrl } from "../../lib/presignedPut";
 import {
+  mmkvHotStorage,
+  readJsonFromMmkv,
+  writeJsonToMmkv,
+} from "../../lib/storage/mmkvHotStorage";
+import {
   extractPresignedFilename,
   extractPresignedPutUrl,
 } from "../../lib/http/extractPresignedUrl";
@@ -25,11 +30,23 @@ export type PendingScreenshotUpload = {
   attempts: number;
 };
 
+async function migrateLegacyQueue(): Promise<void> {
+  if (mmkvHotStorage.getString(STORAGE_KEY)) return;
+  try {
+    const legacy = await AsyncStorage.getItem(STORAGE_KEY);
+    if (legacy) {
+      mmkvHotStorage.set(STORAGE_KEY, legacy);
+      await AsyncStorage.removeItem(STORAGE_KEY);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 async function readQueue(): Promise<PendingScreenshotUpload[]> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as PendingScreenshotUpload[];
+    await migrateLegacyQueue();
+    const parsed = await readJsonFromMmkv<PendingScreenshotUpload[]>(STORAGE_KEY, []);
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
@@ -37,7 +54,7 @@ async function readQueue(): Promise<PendingScreenshotUpload[]> {
 }
 
 async function writeQueue(items: PendingScreenshotUpload[]) {
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  await writeJsonToMmkv(STORAGE_KEY, items);
 }
 
 export async function enqueueScreenshotUpload(

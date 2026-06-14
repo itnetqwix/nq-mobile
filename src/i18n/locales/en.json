@@ -325,6 +325,10 @@
       "one_time": "One month"
     }
   },
+  "capture": {
+    "uploadQueuedTitle": "Upload queued",
+    "uploadQueuedBody": "You're offline or the connection dropped. We'll upload this clip when you're back online."
+  },
   "locker": {
     "myClips": "My clips",
     "sharedClips": "Shared clips",
@@ -1483,8 +1487,20 @@
       "noShow": "Session missed",
       "trainerCancelled": "Cancelled by coach",
       "traineeCancelled": "Cancelled by trainee",
+      "traineeCancelledScheduled": "Cancelled by trainee before confirmation",
       "cancelled": "Cancelled"
     },
+    "cancelBookingTitle": "Cancel this booking?",
+    "cancelBookingBody": "Your coach has not confirmed yet. Cancelling now releases the escrow hold and starts a full refund to your original payment method. Refunds usually appear within 5–10 business days.",
+    "cancelBookingCta": "Cancel booking",
+    "cancelBookingPolicy": "You can cancel while your coach has not confirmed. A full refund is issued automatically.",
+    "cancelBookingSuccessTitle": "Booking cancelled",
+    "cancelBookingSuccessBody": "Your refund has been initiated. You can track it in Wallet → Activity.",
+    "cancelBookingFailedTitle": "Cancel failed",
+    "cancelBookingFailed": "Could not cancel booking.",
+    "cancelling": "Cancelling…",
+    "offlineTitle": "Offline",
+    "offlineCancelBody": "You're offline — we'll cancel this booking when you're back online.",
     "outcomeLabel": "Outcome",
     "viewBookingDetails": "View full booking details",
     "emptyCtaTrainee": "Find a trainer",

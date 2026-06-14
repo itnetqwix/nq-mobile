@@ -47,6 +47,7 @@ import {
   toReportDataPayload,
 } from "../reportDataUtils";
 import { buildGamePlanPdfHtml } from "../gamePlanPdfHtml";
+import { shouldUseServerGamePlanPdfStitch } from "../gamePlanPdfStrategy";
 import { isPdfPrintAvailable, printHtmlToPdfFile } from "../pdfPrint";
 import { sendChatTextMessage } from "../../chats/lib/sendChatText";
 import {
@@ -256,12 +257,13 @@ export function SessionGamePlanModal({
       return;
     }
     setSaving(true);
-    setSaveStep("pdf");
     try {
       let pdfAttached = false;
       const payloadItems = toReportDataPayload(reportItems);
+      const useServerPdfStitch = shouldUseServerGamePlanPdfStitch(payloadItems);
 
-      if (payloadItems.length > 0) {
+      if (payloadItems.length > 0 && !useServerPdfStitch) {
+        setSaveStep("pdf");
         if (!isPdfPrintAvailable()) {
           Alert.alert(
             "Rebuild required for PDF",
@@ -344,9 +346,11 @@ export function SessionGamePlanModal({
           ? "Your trainee received a chat message and can open Game plans in their locker."
           : pdfAttached
             ? "PDF and screenshots are in your locker under Game plans."
-            : payloadItems.length > 0
-              ? "Screenshots are in your locker under Game plans."
-              : "Plan saved. Add screenshots during your next lesson for a richer PDF."
+            : useServerPdfStitch && payloadItems.length > 0
+              ? "Screenshots saved. PDF is being generated on the server and will appear in locker shortly."
+              : payloadItems.length > 0
+                ? "Screenshots are in your locker under Game plans."
+                : "Plan saved. Add screenshots during your next lesson for a richer PDF."
       );
       onSaved?.();
       onClose();

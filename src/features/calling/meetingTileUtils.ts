@@ -4,6 +4,9 @@ import type { TileLayout } from "./useMeetingLayout";
 const PIP_WIDTH = 88;
 const PIP_HEIGHT = 124;
 
+/** Roomier tiles during clip review (both cameras visible over the stage). */
+export const CLIP_MODE_PIP = { w: 108, h: 132 };
+
 export function resolveTilePosition(
   tile: TileLayout,
   bounds: { width: number; height: number } | null,
@@ -42,5 +45,37 @@ export function defaultLocalPipLayout(
     position: { x: bounds.width - PIP_WIDTH - 16, y },
     size: { w: PIP_WIDTH, h: PIP_HEIGHT },
     hiddenEdge: "right",
+  };
+}
+
+export function defaultClipModeLocalPipLayout(
+  bounds: { width: number; height: number },
+  safeTop: number,
+  pipReservedBottom: number
+): { position: { x: number; y: number }; size: { w: number; h: number }; hiddenEdge: PipEdge } {
+  const y = Math.max(
+    safeTop + 8,
+    bounds.height - pipReservedBottom - CLIP_MODE_PIP.h
+  );
+  return {
+    position: { x: bounds.width - CLIP_MODE_PIP.w - 14, y },
+    size: { ...CLIP_MODE_PIP },
+    hiddenEdge: "right",
+  };
+}
+
+export function defaultClipModeRemotePipLayout(
+  bounds: { width: number; height: number },
+  safeTop: number,
+  pipReservedBottom: number
+): { position: { x: number; y: number }; size: { w: number; h: number }; hiddenEdge: PipEdge } {
+  const y = Math.max(
+    safeTop + 8,
+    bounds.height - pipReservedBottom - CLIP_MODE_PIP.h
+  );
+  return {
+    position: { x: 14, y },
+    size: { ...CLIP_MODE_PIP },
+    hiddenEdge: "left",
   };
 }

@@ -40,6 +40,35 @@ export function patchSessionInQueryCaches(
   );
 }
 
+/** Insert or merge a session row so dashboards update before refetch (schedule book). */
+export function upsertSessionInQueryCaches(
+  queryClient: QueryClient,
+  session: Record<string, unknown>
+): void {
+  const lessonId = String(session._id ?? session.id ?? "");
+  if (!lessonId) return;
+  queryClient.setQueriesData(
+    {
+      predicate: (query) =>
+        query.queryKey[0] === queryKeys.sessions.all[0] ||
+        query.queryKey[0] === queryKeys.scheduledMeetings[0],
+    },
+    (old: unknown) => {
+      if (!Array.isArray(old)) return [session];
+      const idx = old.findIndex(
+        (row: Record<string, unknown>) =>
+          String(row._id ?? row.id ?? "") === lessonId
+      );
+      if (idx >= 0) {
+        const next = [...old];
+        next[idx] = { ...next[idx], ...session };
+        return next;
+      }
+      return [session, ...old];
+    }
+  );
+}
+
 export function invalidateWallet(queryClient: QueryClient): void {
   void queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all });
 }

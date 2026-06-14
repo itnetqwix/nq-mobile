@@ -31,6 +31,7 @@ import {
   requestDataExport,
   type DataExportStatus,
 } from "../api/privacyApi";
+import { saveAndShareDataExportBundle } from "../lib/saveDataExportBundle";
 
 const EXPORT_KEY = ["settings", "dataExport"] as const;
 
@@ -73,8 +74,31 @@ export function DataExportScreen() {
 
   const requestMut = useMutation({
     mutationFn: () => requestDataExport("all"),
-    onSuccess: () => {
+    onSuccess: async (result) => {
       void qc.invalidateQueries({ queryKey: EXPORT_KEY });
+      if (result.bundle) {
+        try {
+          await saveAndShareDataExportBundle(result.bundle);
+          Alert.alert(
+            t("dataExport.readyTitle", { defaultValue: "Export ready" }),
+            (result as { partial?: boolean }).partial
+              ? t("dataExport.readyPartialBody", {
+                  defaultValue:
+                    "Your export was saved, but some older records were omitted because of size limits. Contact support if you need a full archive.",
+                })
+              : t("dataExport.readyBody", {
+                  defaultValue:
+                    "Your data export was saved. Use the share sheet to copy it to Files, email, or another app.",
+                })
+          );
+        } catch (e) {
+          Alert.alert(
+            t("dataExport.errorTitle", { defaultValue: "Couldn't request export" }),
+            getApiErrorMessage(e, t("common.error"))
+          );
+        }
+        return;
+      }
       Alert.alert(
         t("dataExport.requestedTitle", { defaultValue: "Export queued" }),
         t("dataExport.requestedBody", {
@@ -91,14 +115,15 @@ export function DataExportScreen() {
   });
 
   const status: DataExportStatus = q.data ?? { state: "idle" };
-  const canRequest = status.state === "idle" || status.state === "failed" || status.state === "ready";
+  const canRequest =
+    status.state === "idle" || status.state === "failed" || status.state === "ready";
 
   const handleRequest = useCallback(() => {
     Alert.alert(
       t("dataExport.confirmTitle", { defaultValue: "Request a data export?" }),
       t("dataExport.confirmBody", {
         defaultValue:
-          "We'll bundle your profile, bookings, chat messages, clips metadata, and wallet activity into a ZIP archive and email you a download link.",
+          "We'll bundle your profile, bookings, chat messages, and wallet activity into a JSON file you can save or share from this device.",
       }),
       [
         { text: t("common.cancel"), style: "cancel" },

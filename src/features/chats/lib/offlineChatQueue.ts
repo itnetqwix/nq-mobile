@@ -3,7 +3,7 @@
  *
  * When the device is offline (or any /chat-send call fails with a
  * network-level error), the outgoing message is pushed onto a
- * AsyncStorage-backed queue. We flush whenever:
+ * MMKV-backed queue. We flush whenever:
  *
  *   • the network store reports `online === true`, or
  *   • a manual `flushOfflineChatQueue()` is invoked (e.g. on app start
@@ -15,6 +15,11 @@
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  mmkvHotStorage,
+  readJsonFromMmkv,
+  writeJsonToMmkv,
+} from "../../../lib/storage/mmkvHotStorage";
 import { useEffect, useSyncExternalStore } from "react";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
@@ -101,17 +106,30 @@ function countForConversationSnapshot(
 
 async function persist() {
   try {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(queue));
+    await writeJsonToMmkv(STORAGE_KEY, queue);
   } catch {
-    /* AsyncStorage failures are fatal-ish but non-blocking. */
+    /* storage failures are non-blocking */
+  }
+}
+
+async function migrateLegacyQueue(): Promise<void> {
+  if (mmkvHotStorage.getString(STORAGE_KEY)) return;
+  try {
+    const legacy = await AsyncStorage.getItem(STORAGE_KEY);
+    if (legacy) {
+      mmkvHotStorage.set(STORAGE_KEY, legacy);
+      await AsyncStorage.removeItem(STORAGE_KEY);
+    }
+  } catch {
+    /* ignore migration errors */
   }
 }
 
 export async function hydrateOfflineChatQueue(): Promise<void> {
   if (hydrated) return;
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (raw) queue = JSON.parse(raw) as QueuedChatMessage[];
+    await migrateLegacyQueue();
+    queue = await readJsonFromMmkv<QueuedChatMessage[]>(STORAGE_KEY, []);
   } catch {
     queue = [];
   } finally {

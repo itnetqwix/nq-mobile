@@ -1,5 +1,30 @@
 /** Matrix: C6 — offline screenshot queue */
+jest.mock("../../../lib/storage/mmkvHotStorage", () => {
+  const store = new Map<string, string>();
+  return {
+    mmkvHotStorage: {
+      getString: (key: string) => store.get(key),
+      set: (key: string, value: string) => {
+        store.set(key, value);
+      },
+      delete: (key: string) => {
+        store.delete(key);
+      },
+      __clear: () => store.clear(),
+    },
+    readJsonFromMmkv: async <T,>(key: string, fallback: T): Promise<T> => {
+      const raw = store.get(key);
+      if (!raw) return fallback;
+      return JSON.parse(raw) as T;
+    },
+    writeJsonToMmkv: async (key: string, value: unknown) => {
+      store.set(key, JSON.stringify(value));
+    },
+  };
+});
+
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { mmkvHotStorage } from "../../../lib/storage/mmkvHotStorage";
 import {
   enqueueScreenshotUpload,
   flushScreenshotUploadQueue,
@@ -27,6 +52,7 @@ import { requestScreenshotUpload } from "../meetingReportApi";
 describe("screenshotUploadQueue", () => {
   beforeEach(async () => {
     await AsyncStorage.clear();
+    (mmkvHotStorage as { __clear?: () => void }).__clear?.();
     jest.clearAllMocks();
   });
 

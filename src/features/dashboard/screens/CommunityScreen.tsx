@@ -1,9 +1,9 @@
 import React, { useCallback, useMemo, useState } from "react";
+import { FlashList } from "@shopify/flash-list";
 import { useDebouncedValue, SEARCH_API_DEBOUNCE_MS } from "../../../lib/timing";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Pressable,
   StyleSheet,
   Text,
@@ -15,8 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EmptyState, ImageWithSkeleton, MorphRefreshScrollSurface, Pill, Skeleton } from "../../../components/ui";
 import {
-  FLATLIST_PERF_DEFAULTS,
-  communityRowGetItemLayout,
+  FLASHLIST_PERF_DEFAULTS,
 } from "../../../lib/lists/flatListPerf";
 import { colors, radii, space, typography } from "../../../theme";
 import { queryKeys } from "../../../lib/queryKeys";
@@ -394,7 +393,7 @@ export function CommunityScreen() {
         tintColor={colors.brandNavy}
       >
         {({ refreshControl, onScroll, scrollEventThrottle }) => (
-      <FlatList
+      <FlashList
         data={filteredMembers}
         keyExtractor={flatListKeyExtractor}
         renderItem={({ item }) => (
@@ -411,8 +410,7 @@ export function CommunityScreen() {
         refreshControl={refreshControl}
         onScroll={onScroll}
         scrollEventThrottle={scrollEventThrottle}
-        {...FLATLIST_PERF_DEFAULTS}
-        getItemLayout={communityRowGetItemLayout}
+        {...FLASHLIST_PERF_DEFAULTS}
         ListHeaderComponent={
           <View style={styles.headerCard}>
             <Ionicons name="globe-outline" size={28} color={colors.brandNavy} />

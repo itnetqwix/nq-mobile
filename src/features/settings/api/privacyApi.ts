@@ -99,12 +99,30 @@ export type DataExportStatus = {
   expires_at?: string;
   download_url?: string;
   error?: string;
+  counts?: {
+    bookings?: number;
+    messages?: number;
+    transactions?: number;
+  };
 };
 
-export async function requestDataExport(scope: "all" | "messages" | "bookings" = "all"): Promise<DataExportStatus> {
+export type DataExportBundle = {
+  profile?: Record<string, unknown>;
+  bookings?: unknown[];
+  messages?: unknown[];
+  transactions?: unknown[];
+};
+
+export type DataExportResult = DataExportStatus & {
+  bundle?: DataExportBundle;
+};
+
+export async function requestDataExport(
+  scope: "all" | "messages" | "bookings" = "all"
+): Promise<DataExportResult> {
   const res = await apiClient.post(API_ROUTES.user.requestDataExport, { scope });
-  const body = (res.data as { data?: DataExportStatus } | undefined)?.data;
-  return body ?? { state: "queued", requested_at: new Date().toISOString() };
+  const body = (res.data as { data?: DataExportResult } | undefined)?.data;
+  return body ?? { state: "ready", requested_at: new Date().toISOString() };
 }
 
 export async function fetchDataExportStatus(): Promise<DataExportStatus> {

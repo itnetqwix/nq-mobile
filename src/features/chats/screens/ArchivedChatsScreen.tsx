@@ -1,3 +1,4 @@
+import { FlashList } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -5,7 +6,6 @@ import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Pressable,
   StyleSheet,
   Text,
@@ -14,8 +14,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { EmptyState, MorphRefreshScrollSurface, Skeleton } from "../../../components/ui";
 import {
-  FLATLIST_PERF_DEFAULTS,
-  chatListGetItemLayout,
+  FLASHLIST_PERF_DEFAULTS,
 } from "../../../lib/lists/flatListPerf";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { queryKeys } from "../../../lib/queryKeys";
@@ -118,15 +117,14 @@ export function ArchivedChatsScreen() {
           tintColor={c.brandAccent}
         >
           {({ refreshControl, onScroll, scrollEventThrottle }) => (
-        <FlatList
+        <FlashList
           data={q.data ?? []}
           keyExtractor={flatListKeyExtractor}
           contentContainerStyle={{ paddingBottom: bottomPad }}
           refreshControl={refreshControl}
           onScroll={onScroll}
           scrollEventThrottle={scrollEventThrottle}
-          {...FLATLIST_PERF_DEFAULTS}
-          getItemLayout={chatListGetItemLayout}
+          {...FLASHLIST_PERF_DEFAULTS}
           ListEmptyComponent={
             q.isLoading ? (
               <Skeleton height={64} style={{ margin: space.md }} />

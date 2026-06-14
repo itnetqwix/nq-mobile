@@ -22,6 +22,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMeetingAnnotationStore } from "../../../stores/meetingAnnotationStore";
 import {
   ActivityIndicator,
   Alert,
@@ -96,6 +97,9 @@ import { useLessonNetworkOutagePause } from "../hooks/useLessonNetworkOutagePaus
 import { LESSON_NETWORK_TIER_CONFIG } from "../lessonNetworkTier";
 import { streamOffHintForTile } from "../meetingStreamLabels";
 import {
+  CLIP_MODE_PIP,
+  defaultClipModeLocalPipLayout,
+  defaultClipModeRemotePipLayout,
   defaultLocalPipLayout,
   resolveTilePosition,
   resolveTileSize,
@@ -135,7 +139,6 @@ import { ClipPlaybackControls } from "../components/ClipPlaybackControls";
 import { DrawingOverlay } from "../components/DrawingOverlay";
 import {
   MeetingAnnotationToolbar,
-  type AnnotationTool,
 } from "../components/MeetingAnnotationToolbar";
 import { SessionGamePlanModal } from "../components/SessionGamePlanModal";
 import { SessionScreenshotSheet } from "../components/SessionScreenshotSheet";
@@ -546,8 +549,6 @@ function MeetingSurface({
   );
   const [activeClipUri, setActiveClipUri] = useState<string | null>(null);
   const { width: winW, height: winH } = useWindowDimensions();
-  const [localPipSize, setLocalPipSize] = useState({ w: PIP_WIDTH, h: PIP_HEIGHT });
-  const [remotePipSize, setRemotePipSize] = useState({ w: PIP_WIDTH, h: PIP_HEIGHT });
   const {
     localStream,
     remoteStream,
@@ -969,35 +970,7 @@ function MeetingSurface({
     remoteTilesSnapshotRef.current = snap;
 
     applyRemoteTiles(meetingLayout.tiles);
-    const trainerLocal = meetingLayout.tiles.local;
-    const trainerRemote = meetingLayout.tiles.remote;
-    const remoteW =
-      trainerLocal.nw != null && meetingBounds
-        ? trainerLocal.nw * meetingBounds.width
-        : trainerLocal.w;
-    const remoteH =
-      trainerLocal.nh != null && meetingBounds
-        ? trainerLocal.nh * meetingBounds.height
-        : trainerLocal.h;
-    const localW =
-      trainerRemote.nw != null && meetingBounds
-        ? trainerRemote.nw * meetingBounds.width
-        : trainerRemote.w;
-    const localH =
-      trainerRemote.nh != null && meetingBounds
-        ? trainerRemote.nh * meetingBounds.height
-        : trainerRemote.h;
-    if (remoteW > 0 && remoteH > 0) {
-      setRemotePipSize((prev) =>
-        prev.w === remoteW && prev.h === remoteH ? prev : { w: remoteW, h: remoteH }
-      );
-    }
-    if (localW > 0 && localH > 0) {
-      setLocalPipSize((prev) =>
-        prev.w === localW && prev.h === localH ? prev : { w: localW, h: localH }
-      );
-    }
-  }, [isTrainer, meetingLayout.tiles, applyRemoteTiles, meetingBounds]);
+  }, [isTrainer, meetingLayout.tiles, applyRemoteTiles]);
 
   const burnInHostRef = useRef<AnnotationBurnInHostHandle>(null);
   const liveCaptureRef = useRef<View>(null);
@@ -1181,10 +1154,17 @@ function MeetingSurface({
     width: number;
     height: number;
   } | null>(null);
-  const [annotationTool, setAnnotationTool] = useState<AnnotationTool>("freehand");
-  const [annotationColor, setAnnotationColor] = useState("#ff3b30");
-  const [annotationArmed, setAnnotationArmed] = useState(false);
-  const [annotationToolbarOpen, setAnnotationToolbarOpen] = useState(false);
+  const annotationTool = useMeetingAnnotationStore((s) => s.tool);
+  const annotationColor = useMeetingAnnotationStore((s) => s.color);
+  const annotationArmed = useMeetingAnnotationStore((s) => s.armed);
+  const annotationToolbarOpen = useMeetingAnnotationStore((s) => s.toolbarOpen);
+  const setAnnotationTool = useMeetingAnnotationStore((s) => s.setTool);
+  const setAnnotationColor = useMeetingAnnotationStore((s) => s.setColor);
+  const setAnnotationArmed = useMeetingAnnotationStore((s) => s.setArmed);
+  const setAnnotationToolbarOpen = useMeetingAnnotationStore((s) => s.setToolbarOpen);
+  const resetMeetingAnnotation = useMeetingAnnotationStore((s) => s.reset);
+
+  useEffect(() => () => resetMeetingAnnotation(), [resetMeetingAnnotation]);
   const [networkBannerDismissed, setNetworkBannerDismissed] = useState(false);
   const [agendaBannerDismissed, setAgendaBannerDismissed] = useState(false);
   const [statusBannerDismissed, setStatusBannerDismissed] = useState(false);
@@ -1898,6 +1878,143 @@ function MeetingSurface({
     restoreTile("local");
   }, [isTrainer, meetingLayout, restoreTile]);
 
+  const clipModeLocalPipFallback = useMemo(() => {
+    if (!meetingBounds) return { x: 0, y: 0 };
+    return defaultClipModeLocalPipLayout(
+      meetingBounds,
+      chrome.insets.top,
+      chrome.pipSafeBottom
+    ).position;
+  }, [meetingBounds, chrome.insets.top, chrome.pipSafeBottom]);
+
+  const clipModeRemotePipFallback = useMemo(() => {
+    if (!meetingBounds) return { x: 0, y: 0 };
+    return defaultClipModeRemotePipLayout(
+      meetingBounds,
+      chrome.insets.top,
+      chrome.pipSafeBottom
+    ).position;
+  }, [meetingBounds, chrome.insets.top, chrome.pipSafeBottom]);
+
+  const clipModeLocalPipPosition = useMemo(
+    () =>
+      resolveTilePosition(
+        meetingLayout.tiles.local,
+        meetingBounds,
+        clipModeLocalPipFallback
+      ),
+    [meetingLayout.tiles.local, meetingBounds, clipModeLocalPipFallback]
+  );
+
+  const clipModeRemotePipPosition = useMemo(
+    () =>
+      resolveTilePosition(
+        meetingLayout.tiles.remote,
+        meetingBounds,
+        clipModeRemotePipFallback
+      ),
+    [meetingLayout.tiles.remote, meetingBounds, clipModeRemotePipFallback]
+  );
+
+  const clipModeLocalPipSize = useMemo(
+    () =>
+      resolveTileSize(meetingLayout.tiles.local, meetingBounds, CLIP_MODE_PIP),
+    [meetingLayout.tiles.local, meetingBounds]
+  );
+
+  const clipModeRemotePipSize = useMemo(
+    () =>
+      resolveTileSize(meetingLayout.tiles.remote, meetingBounds, CLIP_MODE_PIP),
+    [meetingLayout.tiles.remote, meetingBounds]
+  );
+
+  useEffect(() => {
+    if (!isTrainer || !meetingBounds || !inClipMode || inLiveFocus) return;
+    const localTile = meetingLayout.tiles.local;
+    const remoteTile = meetingLayout.tiles.remote;
+    if (localTile.nx == null || localTile.ny == null) {
+      const seeded = defaultClipModeLocalPipLayout(
+        meetingBounds,
+        chrome.insets.top,
+        chrome.pipSafeBottom
+      );
+      meetingLayout.updateTile("local", {
+        ...pipPositionPatch(seeded.position, seeded.size),
+        hidden: localTile.hidden ?? false,
+        hiddenEdge: localTile.hiddenEdge ?? seeded.hiddenEdge,
+      });
+    }
+    if (remoteTile.nx == null || remoteTile.ny == null) {
+      const seeded = defaultClipModeRemotePipLayout(
+        meetingBounds,
+        chrome.insets.top,
+        chrome.pipSafeBottom
+      );
+      meetingLayout.updateTile("remote", {
+        ...pipPositionPatch(seeded.position, seeded.size),
+        hidden: remoteTile.hidden ?? false,
+        hiddenEdge: remoteTile.hiddenEdge ?? seeded.hiddenEdge,
+      });
+    }
+  }, [
+    isTrainer,
+    meetingBounds,
+    inClipMode,
+    inLiveFocus,
+    meetingLayout.tiles.local.nx,
+    meetingLayout.tiles.local.ny,
+    meetingLayout.tiles.remote.nx,
+    meetingLayout.tiles.remote.ny,
+    meetingLayout.tiles.local.hidden,
+    meetingLayout.tiles.local.hiddenEdge,
+    meetingLayout.tiles.remote.hidden,
+    meetingLayout.tiles.remote.hiddenEdge,
+    meetingLayout.updateTile,
+    pipPositionPatch,
+    chrome.insets.top,
+    chrome.pipSafeBottom,
+  ]);
+
+  const handleClipModePipMove = useCallback(
+    (tile: "local" | "remote", pos: { x: number; y: number }) => {
+      if (!isTrainer) return;
+      const size = tile === "local" ? clipModeLocalPipSize : clipModeRemotePipSize;
+      meetingLayout.updateTile(tile, pipPositionPatch(pos, size));
+      updatePosition(tile, pos);
+    },
+    [
+      clipModeLocalPipSize,
+      clipModeRemotePipSize,
+      isTrainer,
+      meetingLayout,
+      pipPositionPatch,
+      updatePosition,
+    ]
+  );
+
+  const handleClipModePipHide = useCallback(
+    (tile: "local" | "remote", edge: PipEdge, lastPos: { x: number; y: number }) => {
+      if (!isTrainer) return;
+      const size = tile === "local" ? clipModeLocalPipSize : clipModeRemotePipSize;
+      meetingLayout.updateTile(tile, {
+        ...pipPositionPatch(lastPos, size),
+        hidden: true,
+        hiddenEdge: edge,
+      });
+      hideTile(tile, edge, lastPos);
+    },
+    [clipModeLocalPipSize, clipModeRemotePipSize, hideTile, isTrainer, meetingLayout, pipPositionPatch]
+  );
+
+  const handleClipModePipRestore = useCallback(
+    (tile: "local" | "remote") => {
+      if (!isTrainer) return;
+      meetingLayout.updateTile(tile, { hidden: false });
+      restoreTile(tile);
+    },
+    [isTrainer, meetingLayout, restoreTile]
+  );
+
   const handleAnnotationToggle = useCallback(() => {
     if (annotationToolbarOpen) {
       setAnnotationToolbarOpen(false);
@@ -2594,8 +2711,33 @@ function MeetingSurface({
           remoteStream={remoteStream}
           localStreamOff={!cameraEnabled || !localStream || networkHideLocalPip}
           remoteStreamOff={!remoteStream || remoteCameraOff}
+          localStreamOffHint={localStreamOffHint}
+          remoteStreamOffHint={remoteStreamOffHint}
           peerDisplayName={peerDisplayName}
-          bottomOffset={chrome.bottomChrome + 4}
+          bounds={meetingBounds}
+          safeTop={chrome.insets.top}
+          pipReservedBottom={chrome.pipSafeBottom}
+          pipDragDisabled={!isTrainer}
+          localPip={{
+            position: clipModeLocalPipPosition,
+            size: clipModeLocalPipSize,
+            hidden:
+              meetingLayout.tiles.local.hidden || isTileHidden("local"),
+            hiddenEdge: meetingLayout.tiles.local.hiddenEdge ?? "right",
+            onPositionChange: (pos) => handleClipModePipMove("local", pos),
+            onHide: (edge, last) => handleClipModePipHide("local", edge, last),
+            onRestore: () => handleClipModePipRestore("local"),
+          }}
+          remotePip={{
+            position: clipModeRemotePipPosition,
+            size: clipModeRemotePipSize,
+            hidden:
+              meetingLayout.tiles.remote.hidden || isTileHidden("remote"),
+            hiddenEdge: meetingLayout.tiles.remote.hiddenEdge ?? "left",
+            onPositionChange: (pos) => handleClipModePipMove("remote", pos),
+            onHide: (edge, last) => handleClipModePipHide("remote", edge, last),
+            onRestore: () => handleClipModePipRestore("remote"),
+          }}
           onTapLocal={isTrainer ? () => meetingLayout.focusStream(myId) : undefined}
           onTapRemote={isTrainer ? () => meetingLayout.focusStream(peerId) : undefined}
         />

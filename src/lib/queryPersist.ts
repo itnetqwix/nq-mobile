@@ -1,13 +1,31 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { QueryClient } from "@tanstack/react-query";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { mmkvAsyncStorageAdapter, mmkvHotStorage } from "./storage/mmkvHotStorage";
+
+const PERSIST_KEY = "nq-react-query";
+
+async function migrateQueryPersistFromAsyncStorage(): Promise<void> {
+  if (mmkvHotStorage.getString(PERSIST_KEY)) return;
+  try {
+    const legacy = await AsyncStorage.getItem(PERSIST_KEY);
+    if (legacy) {
+      mmkvHotStorage.set(PERSIST_KEY, legacy);
+      await AsyncStorage.removeItem(PERSIST_KEY);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+void migrateQueryPersistFromAsyncStorage();
 
 const PERSIST_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 const persister = createAsyncStoragePersister({
-  storage: AsyncStorage,
-  key: "nq-react-query",
+  storage: mmkvAsyncStorageAdapter,
+  key: PERSIST_KEY,
 });
 
 export function createPersistedQueryClient(): QueryClient {

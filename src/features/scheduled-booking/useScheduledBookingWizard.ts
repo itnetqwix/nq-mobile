@@ -18,6 +18,7 @@ import {
   type ScheduledWizardStep,
 } from "./constants";
 import { queryKeys } from "../../lib/queryKeys";
+import { upsertSessionInQueryCaches } from "../../lib/queryInvalidation";
 import { confirmProceedToPaymentIfWalletShort } from "../../lib/booking/bookingWalletGuard";
 import { getApiErrorMessage } from "../../lib/http/getApiErrorMessage";
 import { chargeTotalDollars } from "../payments/pricingTypes";
@@ -519,9 +520,21 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
         type: NOTIFICATION_TYPES.TRANSCATIONAL,
         bookingInfo: bookingInfo ?? { trainer_id: tid },
       });
+
+      return { bookingInfo, lessonId };
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.upcoming });
+    onSuccess: (result) => {
+      const bookingInfo = result?.bookingInfo;
+      const lessonId = result?.lessonId;
+      if (lessonId && bookingInfo && typeof bookingInfo === "object") {
+        upsertSessionInQueryCaches(queryClient, {
+          ...(bookingInfo as Record<string, unknown>),
+          _id: lessonId,
+          status: (bookingInfo as Record<string, unknown>).status ?? "booked",
+        });
+      } else {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.upcoming });
+      }
       pushLocalToast({
         title: t("scheduledBooking.requestSentTitle"),
         description: t("scheduledBooking.requestSentBody"),

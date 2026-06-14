@@ -17,6 +17,7 @@ import { AuthProvider } from "../features/auth/context/AuthContext";
 import { hydrateLastAuthMethod } from "../features/auth/lib/lastAuthMethod";
 import { hydratePendingAuthIntent } from "../features/auth/lib/pendingAuthIntent";
 import { hydrateCompareTrainersStore } from "../features/bookexpert/lib/compareTrainersStore";
+import { startNetInfoListener } from "../lib/network/netInfoBootstrap";
 import { bootstrapCallRejoinStore } from "../features/calling/callRejoinStore";
 import {
   SystemGateProvider,
@@ -41,6 +42,9 @@ import {
   hydrateOfflineChatQueue,
   useOfflineChatQueueFlusher,
 } from "../features/chats/lib/offlineChatQueue";
+import { useOfflineActionQueueFlusher } from "../lib/offline/offlineActionQueue";
+import "../features/sessions/offlineBookingActionQueue";
+import "../features/capture/captureUploadQueue";
 import { useOfflineChatMutationsFlusher } from "../features/chats/lib/offlineChatMutations";
 import { warmLoaderTipsCache } from "../components/brand/loaderTips/loaderTipsService";
 import { ThemeProvider } from "../theme/ThemeContext";
@@ -63,6 +67,7 @@ function SystemStateHooks() {
   useUpdateRequiredGate(true);
   useOfflineChatQueueFlusher();
   useOfflineChatMutationsFlusher();
+  useOfflineActionQueueFlusher();
   return null;
 }
 
@@ -75,8 +80,10 @@ export function AppRoot() {
   }, [queryClient]);
 
   useEffect(() => {
-    warmLoaderTipsCache();
+    return startNetInfoListener();
   }, []);
+
+  useEffect(() => {
 
   useEffect(() => {
     void hydratePendingAuthIntent();

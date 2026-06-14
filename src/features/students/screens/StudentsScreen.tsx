@@ -1,8 +1,8 @@
 import React, { useCallback, useMemo, useState } from "react";
+import { FlashList } from "@shopify/flash-list";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Pressable,
   StyleSheet,
   Text,
@@ -16,8 +16,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EmptyState, ImageWithSkeleton, MorphRefreshScrollSurface, Skeleton } from "../../../components/ui";
 import {
-  FLATLIST_PERF_DEFAULTS,
-  studentRowGetItemLayout,
+  FLASHLIST_PERF_DEFAULTS,
 } from "../../../lib/lists/flatListPerf";
 import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
@@ -290,7 +289,7 @@ export function StudentsScreen() {
     <>
       <MorphRefreshScrollSurface onRefresh={refetch} externalRefreshing={isRefetching} tintColor={colors.brandNavy}>
         {({ refreshControl, onScroll, scrollEventThrottle }) => (
-      <FlatList
+      <FlashList
         data={students}
         keyExtractor={flatListKeyExtractor}
         renderItem={({ item }) => {
@@ -316,8 +315,7 @@ export function StudentsScreen() {
         refreshControl={refreshControl}
         onScroll={onScroll}
         scrollEventThrottle={scrollEventThrottle}
-        {...FLATLIST_PERF_DEFAULTS}
-        getItemLayout={studentRowGetItemLayout}
+        {...FLASHLIST_PERF_DEFAULTS}
         ListEmptyComponent={
           <EmptyState
             icon="people-outline"

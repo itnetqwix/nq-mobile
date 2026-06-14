@@ -6,7 +6,9 @@ export const REFUND_REASON_I18N_KEYS: Record<string, string> = {
   no_show: "sessions.outcome.noShow",
   scheduled_trainer_no_show: "sessions.outcome.noShow",
   trainer_cancelled: "sessions.outcome.trainerCancelled",
+  trainer_cancelled_scheduled: "sessions.outcome.trainerCancelled",
   trainee_cancelled: "sessions.outcome.traineeCancelled",
+  trainee_cancelled_scheduled: "sessions.outcome.traineeCancelledScheduled",
 };
 
 export function getRefundReasonI18nKey(reason?: string | null): string | null {

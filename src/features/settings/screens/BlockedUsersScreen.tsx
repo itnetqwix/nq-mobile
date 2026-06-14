@@ -13,7 +13,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback } from "react";
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlashList } from "@shopify/flash-list";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import {
   Avatar,
@@ -28,8 +29,7 @@ import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { queryKeys } from "../../../lib/queryKeys";
 import {
-  blockedUserRowGetItemLayout,
-  FLATLIST_PERF_DEFAULTS,
+  FLASHLIST_PERF_DEFAULTS,
 } from "../../../lib/lists/flatListPerf";
 import { space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import {
@@ -199,12 +199,11 @@ export function BlockedUsersScreen() {
         />
       ) : (
         <Card variant="outlined" padding={0}>
-          <FlatList
+          <FlashList
             data={q.data ?? []}
             keyExtractor={(u) => u._id}
             renderItem={renderItem}
-            getItemLayout={blockedUserRowGetItemLayout}
-            {...FLATLIST_PERF_DEFAULTS}
+            {...FLASHLIST_PERF_DEFAULTS}
             ItemSeparatorComponent={() => (
               <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: c.border, marginLeft: 64 }} />
             )}

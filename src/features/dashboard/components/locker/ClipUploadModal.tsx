@@ -30,6 +30,10 @@ import { useAppDispatch } from "../../../../store/hooks";
 import { MAX_CLIP_FILE_BYTES, formatStorageMb } from "../../../../lib/storageLimits";
 import { queryKeys } from "../../../../lib/queryKeys";
 import { getApiErrorMessage } from "../../../../lib/http/getApiErrorMessage";
+import {
+  enqueueCaptureClipUpload,
+  isNetworkRequestError,
+} from "../../../capture/captureUploadQueue";
 import { apiClient } from "../../../../api/client";
 import { API_ROUTES } from "../../../../config/apiRoutes";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
@@ -58,6 +62,8 @@ type Props = {
   onUploaded: () => void;
   initialVideo?: ClipUploadInitialVideo | null;
   defaultShareTarget?: ShareTarget;
+  /** When uploading from Capture library, delete local draft after success. */
+  captureClipId?: string | null;
 };
 
 export function ClipUploadModal({
@@ -66,6 +72,7 @@ export function ClipUploadModal({
   onUploaded,
   initialVideo = null,
   defaultShareTarget = SHARE_MY_CLIPS,
+  captureClipId = null,
 }: Props) {
   const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
@@ -381,7 +388,39 @@ export function ClipUploadModal({
       onUploaded();
       onClose();
     } catch (e) {
-      Alert.alert(t("locker.uploadFailedTitle"), getApiErrorMessage(e));
+      if (isNetworkRequestError(e) && videoAsset && thumbUri) {
+        const shareOptions =
+          shareTarget === SHARE_FRIENDS
+            ? { type: SHARE_FRIENDS as const, friends: selectedFriendIds }
+            : shareTarget === SHARE_EMAIL
+              ? {
+                  type: SHARE_BACKEND_NEW_USERS as const,
+                  emails: [shareEmail.trim().toLowerCase()],
+                }
+              : { type: SHARE_MY_CLIPS as const };
+        await enqueueCaptureClipUpload({
+          videoUri: videoAsset.uri,
+          videoMime,
+          videoSizeBytes: fileBytes > 0 ? fileBytes : 1,
+          thumbUri,
+          title: title.trim(),
+          category: selectedCategory?.name ?? profileCategory,
+          category_id: categoryId,
+          subcategory_id: subcategoryId,
+          shareOptions,
+          captureClipId: captureClipId ?? undefined,
+        });
+        Alert.alert(
+          t("capture.uploadQueuedTitle", { defaultValue: "Upload queued" }),
+          t("capture.uploadQueuedBody", {
+            defaultValue:
+              "You're offline or the connection dropped. We'll upload this clip when you're back online.",
+          })
+        );
+        onClose();
+      } else {
+        Alert.alert(t("locker.uploadFailedTitle"), getApiErrorMessage(e));
+      }
     } finally {
       setUploadBusy(false);
       setUploadPhase("idle");

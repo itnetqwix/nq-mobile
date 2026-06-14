@@ -129,3 +129,20 @@ if (__DEV__) {
 }
 
 export { isLocalDevApiHost };
+
+function readEnvBool(raw: string | undefined, defaultValue: boolean): boolean {
+  if (raw == null || raw.trim() === "") return defaultValue;
+  const v = raw.trim().toLowerCase();
+  if (v === "1" || v === "true" || v === "yes" || v === "on") return true;
+  if (v === "0" || v === "false" || v === "no" || v === "off") return false;
+  return defaultValue;
+}
+
+/**
+ * Server-side game-plan PDF stitch (Phase 3 backend).
+ * Set `EXPO_PUBLIC_SERVER_GAME_PLAN_PDF=false` to fall back to client expo-print upload.
+ */
+export const SERVER_GAME_PLAN_PDF_ENABLED = readEnvBool(
+  process.env.EXPO_PUBLIC_SERVER_GAME_PLAN_PDF,
+  true
+);

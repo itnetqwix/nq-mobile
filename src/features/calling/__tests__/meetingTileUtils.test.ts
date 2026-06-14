@@ -1,4 +1,6 @@
 import {
+  defaultClipModeLocalPipLayout,
+  defaultClipModeRemotePipLayout,
   resolveTilePosition,
   resolveTileSize,
 } from "../meetingTileUtils";
@@ -54,5 +56,14 @@ describe("meetingTileUtils", () => {
       w: 88,
       h: 124,
     });
+  });
+
+  it("seeds clip-mode corners for local and remote tiles", () => {
+    const bounds = { width: 400, height: 800 };
+    const local = defaultClipModeLocalPipLayout(bounds, 44, 120);
+    const remote = defaultClipModeRemotePipLayout(bounds, 44, 120);
+    expect(local.position.x).toBeGreaterThan(remote.position.x);
+    expect(local.size.w).toBe(108);
+    expect(remote.hiddenEdge).toBe("left");
   });
 });

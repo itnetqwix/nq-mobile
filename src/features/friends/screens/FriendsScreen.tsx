@@ -1,9 +1,9 @@
 import React, { useCallback, useRef, useState } from "react";
+import { FlashList } from "@shopify/flash-list";
 import {
   ActionSheetIOS,
   ActivityIndicator,
   Alert,
-  FlatList,
   Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -21,8 +21,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Button, EmptyState, MorphRefreshScrollSurface, Skeleton } from "../../../components/ui";
 import { useWindowMetrics } from "../../../lib/layout";
 import {
-  FLATLIST_PERF_DEFAULTS,
-  friendRowGetItemLayout,
+  FLASHLIST_PERF_DEFAULTS,
 } from "../../../lib/lists/flatListPerf";
 import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
@@ -442,7 +441,7 @@ export function FriendsScreen() {
     return (
       <MorphRefreshScrollSurface onRefresh={refetch} externalRefreshing={isRefetching} tintColor={colors.brandNavy}>
         {({ refreshControl, onScroll, scrollEventThrottle }) => (
-      <FlatList
+      <FlashList
         data={data}
         keyExtractor={flatListKeyExtractor}
         renderItem={({ item }) =>
@@ -473,8 +472,7 @@ export function FriendsScreen() {
         refreshControl={refreshControl}
         onScroll={onScroll}
         scrollEventThrottle={scrollEventThrottle}
-        {...FLATLIST_PERF_DEFAULTS}
-        getItemLayout={friendRowGetItemLayout}
+        {...FLASHLIST_PERF_DEFAULTS}
         ListEmptyComponent={
           <EmptyState
             icon={

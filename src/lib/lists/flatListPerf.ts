@@ -9,8 +9,19 @@ export const FLATLIST_PERF_DEFAULTS = {
   removeClippedSubviews: true,
 } as const satisfies Partial<FlatListProps<unknown>>;
 
+/** FlashList defaults — pairs with `estimatedItemSize` per screen. */
+export const FLASHLIST_PERF_DEFAULTS = {
+  drawDistance: 250,
+} as const;
+
+/** Chat message bubble row (variable height — average for FlashList). */
+export const CHAT_MESSAGE_ROW_ESTIMATED_HEIGHT = 80;
+
+/** Day separator header in chat threads. */
+export const CHAT_DAY_HEADER_HEIGHT = 36;
+
 /** Chat list row — avatar 48 + vertical padding ~16 each side. */
-export const CHAT_LIST_ROW_HEIGHT = 80;
+export const CHAT_LIST_ROW_HEIGHT = CHAT_MESSAGE_ROW_ESTIMATED_HEIGHT;
 
 export function chatListGetItemLayout(_data: unknown, index: number) {
   return {
@@ -63,6 +74,9 @@ export function friendRowGetItemLayout(_data: unknown, index: number) {
     index,
   };
 }
+
+/** Upcoming / scheduled session card row. */
+export const SESSION_CARD_ROW_HEIGHT = 120;
 
 /** Trainer students roster row. */
 export const STUDENT_ROW_HEIGHT = 76;

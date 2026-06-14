@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
+import { FlashList } from "@shopify/flash-list";
 import {
-  FlatList,
   Pressable,
   StyleSheet,
   Text,
@@ -17,8 +17,7 @@ import {
   SkeletonGroup,
 } from "../../../components/ui";
 import {
-  FLATLIST_PERF_DEFAULTS,
-  instantBookingRowGetItemLayout,
+  FLASHLIST_PERF_DEFAULTS,
 } from "../../../lib/lists/flatListPerf";
 import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
@@ -123,7 +122,7 @@ export function InstantBookingScreen() {
           tintColor={c.brandNavy}
         >
           {({ refreshControl, onScroll, scrollEventThrottle }) => (
-        <FlatList
+        <FlashList
           data={onlineTrainers}
           keyExtractor={flatListKeyExtractor}
           renderItem={({ item }) => {
@@ -155,8 +154,7 @@ export function InstantBookingScreen() {
           refreshControl={refreshControl}
           onScroll={onScroll}
           scrollEventThrottle={scrollEventThrottle}
-          {...FLATLIST_PERF_DEFAULTS}
-          getItemLayout={instantBookingRowGetItemLayout}
+          {...FLASHLIST_PERF_DEFAULTS}
           ListHeaderComponent={
             <View style={styles.listHeader}>
               <Ionicons name="people" size={18} color={c.brandNavy} />

@@ -1,9 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
+import { FlashList } from "@shopify/flash-list";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   Alert,
-  FlatList,
   Modal,
   Pressable,
   ScrollView,
@@ -25,8 +25,7 @@ import {
   SkeletonGroup,
 } from "../../../components/ui";
 import {
-  FLATLIST_PERF_DEFAULTS,
-  promoRowGetItemLayout,
+  FLASHLIST_PERF_DEFAULTS,
 } from "../../../lib/lists/flatListPerf";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { queryKeys } from "../../../lib/queryKeys";
@@ -248,7 +247,7 @@ export function TrainerPromoCodesScreen() {
               <SkeletonGroup count={3} gap={space.sm} renderRow={() => <PromoRowSkeleton />} />
             </ScrollView>
           ) : (
-            <FlatList
+            <FlashList
               data={rows}
               keyExtractor={(row) => row._id}
               renderItem={renderPromoRow}
@@ -258,8 +257,7 @@ export function TrainerPromoCodesScreen() {
               refreshControl={refreshControl}
               onScroll={onScroll}
               scrollEventThrottle={scrollEventThrottle}
-              getItemLayout={promoRowGetItemLayout}
-              {...FLATLIST_PERF_DEFAULTS}
+              {...FLASHLIST_PERF_DEFAULTS}
             />
           )
         }

@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { FlashList } from "@shopify/flash-list";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDebouncedValue, SEARCH_API_DEBOUNCE_MS } from "../../../lib/timing";
 import {
-  FlatList,
   Pressable,
   StyleSheet,
   Text,
@@ -14,8 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { EmptyState, MorphRefreshScrollSurface, SkeletonGroup, TrainerBrowseCardSkeleton } from "../../../components/ui";
 import {
-  FLATLIST_PERF_DEFAULTS,
-  trainerBrowseRowGetItemLayout,
+  FLASHLIST_PERF_DEFAULTS,
 } from "../../../lib/lists/flatListPerf";
 import { type AppColors, radii, space, typography, useThemeColors } from "../../../theme";
 import { fetchOnlineUsers, fetchTrainersWithSlots } from "../../home/api/homeApi";
@@ -27,10 +26,9 @@ import { TrainerBrowseFiltersSheet } from "../components/TrainerBrowseFiltersShe
 import { TrainerProfileModal } from "../components/TrainerProfileModal";
 import {
   countActiveFilters,
-  DEFAULT_BROWSE_FILTERS,
   filtersToApiParams,
-  type TrainerBrowseFilters,
 } from "../lib/trainerBrowseConstants";
+import { useTrainerBrowseFiltersStore } from "../../../stores/trainerBrowseFiltersStore";
 import { TrainerBrowseCard } from "../components/TrainerBrowseCard";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
@@ -55,10 +53,24 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
 
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_API_DEBOUNCE_MS);
-  const [browseFilters, setBrowseFilters] = useState<TrainerBrowseFilters>(() => ({
-    ...DEFAULT_BROWSE_FILTERS,
-    selectedCategories: traineeInterests.length ? [...traineeInterests] : [],
-  }));
+  const [browseFilters, setBrowseFilters] = useTrainerBrowseFiltersStore((s) => [
+    s.filters,
+    s.setFilters,
+  ]);
+
+  const seededInterestsRef = useRef(false);
+  useEffect(() => {
+    if (seededInterestsRef.current || traineeInterests.length === 0) return;
+    if (browseFilters.selectedCategories.length > 0) {
+      seededInterestsRef.current = true;
+      return;
+    }
+    seededInterestsRef.current = true;
+    setBrowseFilters({
+      ...browseFilters,
+      selectedCategories: [...traineeInterests],
+    });
+  }, [browseFilters, setBrowseFilters, traineeInterests]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [profileTrainer, setProfileTrainer] = useState<Record<string, unknown> | null>(null);
   const [wizardTrainer, setWizardTrainer] = useState<Record<string, unknown> | null>(null);
@@ -241,7 +253,7 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
           tintColor={themeColors.brandNavy}
         >
           {({ refreshControl, onScroll, scrollEventThrottle }) => (
-        <FlatList
+        <FlashList
           data={mergedRows}
           keyExtractor={flatListKeyExtractor}
           renderItem={({ item }) => (
@@ -271,8 +283,7 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
           refreshControl={refreshControl}
           onScroll={onScroll}
           scrollEventThrottle={scrollEventThrottle}
-          {...FLATLIST_PERF_DEFAULTS}
-          getItemLayout={trainerBrowseRowGetItemLayout}
+          {...FLASHLIST_PERF_DEFAULTS}
           ListHeaderComponent={
             <View style={styles.listBanner}>
               <Ionicons name="people-outline" size={16} color={themeColors.brandNavy} />

@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useMemo, useState } from "react";
+import { FlashList } from "@shopify/flash-list";
 import {
   Alert,
-  FlatList,
   Pressable,
   StyleSheet,
   Text,
@@ -22,6 +22,7 @@ import {
   type CapturedClip,
 } from "./CaptureScreen";
 import { floatingTabBarBottomInset } from "../../../navigation/FloatingTabBar";
+import { FLASHLIST_PERF_DEFAULTS } from "../../../lib/lists/flatListPerf";
 import { colors, radii, space, typography } from "../../../theme";
 
 const SHARE_MY_CLIPS = "My Clips";
@@ -265,12 +266,13 @@ export function CapturedLibraryScreen() {
       ) : (
         <>
           <Text style={styles.listHeading}>Your recordings ({clips.length})</Text>
-          <FlatList
+          <FlashList
             data={clips}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
             contentContainerStyle={[styles.list, { paddingBottom: fabBottom + 72 }]}
             showsVerticalScrollIndicator={false}
+            {...FLASHLIST_PERF_DEFAULTS}
           />
         </>
       )}
@@ -336,6 +338,7 @@ export function CapturedLibraryScreen() {
             : null
         }
         defaultShareTarget={uploadShareTarget}
+        captureClipId={uploadClip?.id ?? null}
       />
     </View>
   );

@@ -19,8 +19,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback } from "react";
+import { FlashList } from "@shopify/flash-list";
 import { useTranslation } from "react-i18next";
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import {
   EmptyState,
   MorphRefreshScrollSurface,
@@ -29,8 +30,7 @@ import {
   SkeletonGroup,
 } from "../../../components/ui";
 import {
-  FLATLIST_PERF_DEFAULTS,
-  paymentMethodGetItemLayout,
+  FLASHLIST_PERF_DEFAULTS,
 } from "../../../lib/lists/flatListPerf";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { queryKeys } from "../../../lib/queryKeys";
@@ -263,15 +263,14 @@ export function SavedPaymentMethodsScreen() {
     <View style={styles.root}>
       <MorphRefreshScrollSurface onRefresh={refetch} externalRefreshing={isRefetching}>
         {({ refreshControl, onScroll, scrollEventThrottle }) => (
-      <FlatList
+      <FlashList
         data={sorted}
         keyExtractor={(m) => m.id}
         contentContainerStyle={styles.list}
         refreshControl={refreshControl}
         onScroll={onScroll}
         scrollEventThrottle={scrollEventThrottle}
-        {...FLATLIST_PERF_DEFAULTS}
-        getItemLayout={paymentMethodGetItemLayout}
+        {...FLASHLIST_PERF_DEFAULTS}
         renderItem={({ item }) => (
           <PaymentRow method={item} onMakeDefault={handleMakeDefault} onRemove={handleRemove} />
         )}

@@ -979,7 +979,28 @@
     "emptyTab": "No {{tab}} sessions",
     "emptyUpcomingDescription": "Your booked sessions will appear here.",
     "emptyDateHint": "Tap a different date or 'All' to see all sessions.",
-    "emptyTabDescription": "No {{tab}} sessions found."
+    "emptyTabDescription": "No {{tab}} sessions found.",
+    "outcome": {
+      "acceptExpired": "Solicitud expirada",
+      "joinExpired": "Ventana de unión perdida",
+      "declined": "Rechazada",
+      "noShow": "Sesión perdida",
+      "trainerCancelled": "Cancelada por el entrenador",
+      "traineeCancelled": "Cancelada por el alumno",
+      "traineeCancelledScheduled": "Cancelada por el alumno antes de la confirmación",
+      "cancelled": "Cancelada"
+    },
+    "cancelBookingTitle": "¿Cancelar esta reserva?",
+    "cancelBookingBody": "Tu entrenador aún no ha confirmado. Al cancelar ahora se libera el depósito en garantía y se inicia un reembolso completo a tu método de pago original. Los reembolsos suelen aparecer en 5–10 días hábiles.",
+    "cancelBookingCta": "Cancelar reserva",
+    "cancelBookingPolicy": "Puedes cancelar mientras tu entrenador no haya confirmado. Se emite un reembolso completo automáticamente.",
+    "cancelBookingSuccessTitle": "Reserva cancelada",
+    "cancelBookingSuccessBody": "Tu reembolso se ha iniciado. Puedes seguirlo en Billetera → Actividad.",
+    "cancelBookingFailedTitle": "Error al cancelar",
+    "cancelBookingFailed": "No se pudo cancelar la reserva.",
+    "cancelling": "Cancelando…",
+    "offlineTitle": "Sin conexión",
+    "offlineCancelBody": "Estás sin conexión: cancelaremos esta reserva cuando vuelvas a estar en línea."
   },
   "community": {
     "memberDefault": "Member",

@@ -1,10 +1,8 @@
 /**
  * Lightweight network-online store.
  *
- * We don't ship NetInfo as a dependency — instead the store reacts to
- * Axios interceptor signals (`reportNetworkOk` / `reportNetworkError`)
- * and to a low-rate health ping that runs while we believe the network
- * is offline.
+ * NetInfo drives instant offline detection; axios interceptors still
+ * refine state when requests fail or succeed on a flaky connection.
  *
  * The store is `useSyncExternalStore`-friendly via `useNetworkOnline`.
  */

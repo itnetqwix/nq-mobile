@@ -1,83 +1,29 @@
 /**
- * Corner live-camera PIPs during clip review — remote + local tiles float above
- * the action bar (not a full-width bottom strip).
+ * Synced live-camera PIPs during clip review — trainer drag emits
+ * MEETING_TILE_LAYOUT (normalized nx/ny) so iOS ↔ Android stay aligned.
  */
 
 import React, { useCallback, useState } from "react";
-import {
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type StyleProp,
-  type ViewStyle,
-} from "react-native";
-import { RTCView, type MediaStream } from "react-native-webrtc";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import type { MediaStream } from "react-native-webrtc";
 
 import type { CallParticipant } from "../types";
-import { meetingTheme } from "../meetingTheme";
-import { getS3ImageUrl } from "../../../lib/imageUtils";
+import {
+  DraggableVideoPip,
+  type PipEdge,
+} from "./DraggableVideoPip";
+import { CLIP_MODE_PIP } from "../meetingTileUtils";
 
-const TILE_W = 108;
-const TILE_H = 132;
-
-type TileProps = {
-  user: CallParticipant | null;
-  stream: MediaStream | null;
-  isStreamOff?: boolean;
-  muted?: boolean;
-  label: string;
-  style?: StyleProp<ViewStyle>;
+type SyncedPip = {
+  position: { x: number; y: number };
+  size?: { w: number; h: number };
+  hidden?: boolean;
+  hiddenEdge?: PipEdge;
+  onPositionChange?: (pos: { x: number; y: number }) => void;
+  onHide?: (edge: PipEdge, lastPosition: { x: number; y: number }) => void;
+  onRestore?: () => void;
 };
-
-function VideoTile({ user, stream, isStreamOff, muted = false, label, style }: TileProps) {
-  const streamId = (stream as { toURL?: () => string } | null)?.toURL?.() ?? null;
-  const videoCount = stream?.getVideoTracks?.()?.length ?? 0;
-  const rtcKey = streamId ? `${streamId}-v${videoCount}` : "no-stream";
-  const avatarUri = getS3ImageUrl(user?.profile_picture ?? null);
-  const displayName = user?.fullname ?? user?.fullName ?? label;
-
-  return (
-    <View style={[styles.tile, style]}>
-      {!isStreamOff && streamId ? (
-        <RTCView
-          key={rtcKey}
-          streamURL={streamId}
-          objectFit="cover"
-          mirror={false}
-          style={StyleSheet.absoluteFill}
-        />
-      ) : (
-        <View style={styles.avatarWrap}>
-          {avatarUri ? (
-            <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
-          ) : (
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarInitial}>
-                {(displayName?.[0] ?? "?").toUpperCase()}
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
-      <View style={styles.nameBadge}>
-        {isStreamOff ? (
-          <Ionicons
-            name="videocam-off"
-            size={10}
-            color="rgba(255,255,255,0.75)"
-            style={{ marginRight: 3 }}
-          />
-        ) : null}
-        <Text style={styles.nameText} numberOfLines={1}>
-          {label}
-        </Text>
-      </View>
-    </View>
-  );
-}
 
 type Props = {
   localUser: CallParticipant | null;
@@ -86,8 +32,15 @@ type Props = {
   remoteStream: MediaStream | null;
   localStreamOff?: boolean;
   remoteStreamOff?: boolean;
+  localStreamOffHint?: string;
+  remoteStreamOffHint?: string;
   peerDisplayName: string;
-  bottomOffset?: number;
+  bounds: { width: number; height: number } | null;
+  safeTop: number;
+  pipReservedBottom: number;
+  localPip: SyncedPip;
+  remotePip: SyncedPip;
+  pipDragDisabled?: boolean;
   onTapLocal?: () => void;
   onTapRemote?: () => void;
 };
@@ -99,18 +52,31 @@ export function DualVideoStrip({
   remoteStream,
   localStreamOff,
   remoteStreamOff,
+  localStreamOffHint,
+  remoteStreamOffHint,
   peerDisplayName,
-  bottomOffset = 80,
+  bounds,
+  safeTop,
+  pipReservedBottom,
+  localPip,
+  remotePip,
+  pipDragDisabled = false,
   onTapLocal,
   onTapRemote,
 }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const toggleCollapse = useCallback(() => setCollapsed((v) => !v), []);
 
+  const remoteLabel = peerDisplayName.split(" ")[0] ?? "Partner";
+  const localW = localPip.size?.w ?? CLIP_MODE_PIP.w;
+  const localH = localPip.size?.h ?? CLIP_MODE_PIP.h;
+  const remoteW = remotePip.size?.w ?? CLIP_MODE_PIP.w;
+  const remoteH = remotePip.size?.h ?? CLIP_MODE_PIP.h;
+
   if (collapsed) {
     return (
       <Pressable
-        style={[styles.collapsedPill, { bottom: bottomOffset + 8 }]}
+        style={[styles.collapsedPill, { bottom: pipReservedBottom + 8 }]}
         onPress={toggleCollapse}
         accessibilityLabel="Show live cameras"
       >
@@ -120,41 +86,63 @@ export function DualVideoStrip({
     );
   }
 
-  const remoteLabel = peerDisplayName.split(" ")[0] ?? "Partner";
+  if (!bounds) return null;
 
   return (
-    <View style={[styles.overlay, { bottom: bottomOffset + 6 }]} pointerEvents="box-none">
-      <Pressable
-        style={[styles.tile, styles.tileLeft]}
-        onPress={onTapLocal}
-        accessibilityLabel="Your camera"
-        disabled={!onTapLocal}
-      >
-        <VideoTile
-          user={localUser}
-          stream={localStream}
-          isStreamOff={localStreamOff}
-          muted
-          label="You"
-        />
-      </Pressable>
+    <View style={styles.overlay} pointerEvents="box-none">
+      <DraggableVideoPip
+        tileId="remote"
+        user={remoteUser}
+        stream={remoteStream}
+        isStreamOff={remoteStreamOff}
+        streamOffHint={remoteStreamOffHint}
+        fallbackLabel={remoteLabel}
+        bounds={bounds}
+        safeTop={safeTop}
+        pipReservedBottom={pipReservedBottom}
+        position={remotePip.position}
+        isHidden={!!remotePip.hidden}
+        hiddenEdge={remotePip.hiddenEdge ?? "left"}
+        tabLabel={remoteLabel}
+        width={remoteW}
+        height={remoteH}
+        disabled={pipDragDisabled}
+        focusOnTap={!!onTapRemote}
+        onFocus={onTapRemote}
+        onPositionChange={(pos) => remotePip.onPositionChange?.(pos)}
+        onHide={(edge, last) => remotePip.onHide?.(edge, last)}
+        onRestore={() => remotePip.onRestore?.()}
+        zIndex={46}
+      />
+
+      <DraggableVideoPip
+        tileId="local"
+        user={localUser}
+        stream={localStream}
+        isStreamOff={localStreamOff}
+        streamOffHint={localStreamOffHint}
+        muted
+        fallbackLabel="You"
+        bounds={bounds}
+        safeTop={safeTop}
+        pipReservedBottom={pipReservedBottom}
+        position={localPip.position}
+        isHidden={!!localPip.hidden}
+        hiddenEdge={localPip.hiddenEdge ?? "right"}
+        tabLabel="You"
+        width={localW}
+        height={localH}
+        disabled={pipDragDisabled}
+        focusOnTap={!!onTapLocal}
+        onFocus={onTapLocal}
+        onPositionChange={(pos) => localPip.onPositionChange?.(pos)}
+        onHide={(edge, last) => localPip.onHide?.(edge, last)}
+        onRestore={() => localPip.onRestore?.()}
+        zIndex={47}
+      />
 
       <Pressable
-        style={[styles.tile, styles.tileRight]}
-        onPress={onTapRemote}
-        accessibilityLabel={peerDisplayName}
-        disabled={!onTapRemote}
-      >
-        <VideoTile
-          user={remoteUser}
-          stream={remoteStream}
-          isStreamOff={remoteStreamOff}
-          label={remoteLabel}
-        />
-      </Pressable>
-
-      <Pressable
-        style={styles.collapseBtn}
+        style={[styles.collapseBtn, { bottom: pipReservedBottom + CLIP_MODE_PIP.h + 10 }]}
         onPress={toggleCollapse}
         hitSlop={8}
         accessibilityLabel="Hide cameras"
@@ -167,82 +155,15 @@ export function DualVideoStrip({
 
 const styles = StyleSheet.create({
   overlay: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    height: TILE_H + 8,
+    ...StyleSheet.absoluteFillObject,
     zIndex: 25,
     pointerEvents: "box-none",
-  },
-  tile: {
-    position: "absolute",
-    width: TILE_W,
-    height: TILE_H,
-    borderRadius: 14,
-    overflow: "hidden",
-    backgroundColor: meetingTheme.videoPlaceholder,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.28)",
-    shadowColor: "#000",
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 6,
-  },
-  tileLeft: {
-    left: 14,
-    bottom: 0,
-  },
-  tileRight: {
-    right: 14,
-    bottom: 0,
-  },
-  avatarWrap: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: meetingTheme.surface,
-  },
-  avatarImage: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-  },
-  avatarCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#000080",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarInitial: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  nameBadge: {
-    position: "absolute",
-    bottom: 6,
-    left: 8,
-    right: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.62)",
-    borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-  },
-  nameText: {
-    color: "#fff",
-    fontSize: 11,
-    fontWeight: "700",
-    flex: 1,
   },
   collapseBtn: {
     position: "absolute",
     alignSelf: "center",
-    bottom: TILE_H + 2,
+    left: "50%",
+    marginLeft: -14,
     width: 28,
     height: 28,
     borderRadius: 14,
@@ -251,6 +172,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.18)",
+    zIndex: 56,
   },
   collapsedPill: {
     position: "absolute",

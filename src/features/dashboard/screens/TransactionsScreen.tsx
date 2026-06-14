@@ -1,11 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
+import { FlashList } from "@shopify/flash-list";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import React, { useCallback, useMemo, useState } from "react";
-import {
   ActivityIndicator,
-  FlatList,
   Modal,
   Pressable,
   ScrollView,
@@ -23,8 +22,7 @@ import {
   TransactionRowSkeleton,
 } from "../../../components/ui";
 import {
-  FLATLIST_PERF_DEFAULTS,
-  transactionRowGetItemLayout,
+  FLASHLIST_PERF_DEFAULTS,
 } from "../../../lib/lists/flatListPerf";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { AccountType } from "../../../constants/accountType";
@@ -396,7 +394,7 @@ export function TransactionsScreen() {
       tintColor={c.iconPrimary}
     >
       {({ refreshControl, onScroll, scrollEventThrottle }) => (
-    <FlatList
+    <FlashList
       data={rows}
       keyExtractor={flatListKeyExtractor}
       renderItem={({ item }) => (
@@ -410,8 +408,7 @@ export function TransactionsScreen() {
       refreshControl={refreshControl}
       onScroll={onScroll}
       scrollEventThrottle={scrollEventThrottle}
-      {...FLATLIST_PERF_DEFAULTS}
-      getItemLayout={transactionRowGetItemLayout}
+      {...FLASHLIST_PERF_DEFAULTS}
       ListHeaderComponent={
         <>
           <View style={styles.listHeader}>

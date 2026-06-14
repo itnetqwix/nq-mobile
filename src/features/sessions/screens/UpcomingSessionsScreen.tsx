@@ -1,4 +1,5 @@
 import * as SecureStore from "expo-secure-store";
+import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -59,6 +60,8 @@ import { useSessionBooking } from "../SessionBookingContext";
 import { SessionsCalendar } from "../components/SessionsCalendar";
 import type { RootStackParamList } from "../../../navigation/types";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import { FLASHLIST_PERF_DEFAULTS } from "../../../lib/lists/flatListPerf";
+import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 
 const CALENDAR_COLLAPSED_KEY = "nq.sessions-calendar-collapsed";
 
@@ -312,9 +315,9 @@ export function UpcomingSessionsScreen() {
   const outerNavigation = useNavigation<NativeStackNavigationProp<any>>();
   const [activeTab, setActiveTab] = useState<StatusTab>("upcoming");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  /** Inner list ScrollView ref — reset to top on tab change so an old offset
+  /** Inner list ref — reset to top on tab change so an old offset
    *  from a long list doesn't show as a tall blank area on a short list. */
-  const listScrollRef = useRef<ScrollView | null>(null);
+  const listScrollRef = useRef<FlashListRef<any> | null>(null);
   const [monthAnchor, setMonthAnchor] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -394,6 +397,73 @@ export function UpcomingSessionsScreen() {
     return dates;
   }, [rawSessions, activeTab]);
 
+  const listBottomPad = floatingTabBarBottomInset(insets.bottom) + space.md;
+
+  const renderSessionRow = useCallback(
+    ({ item }: { item: any }) => (
+      <SessionCard
+        session={item}
+        accountType={accountType}
+        activeTab={activeTab}
+        onSessionActionComplete={() => {
+          void refetch();
+        }}
+      />
+    ),
+    [accountType, activeTab, refetch]
+  );
+
+  const sessionsEmpty = useMemo(
+    () => (
+      <EmptyState
+        icon="calendar-outline"
+        title={
+          selectedDate
+            ? t("sessions.emptyOnDate", { date: selectedDate })
+            : t("sessions.emptyTab", { tab: t(TAB_LABEL_KEYS[activeTab]) })
+        }
+        description={
+          selectedDate
+            ? t("sessions.emptyDateHint")
+            : activeTab === "upcoming"
+              ? t("sessions.emptyUpcomingDescription")
+              : activeTab === "cancelled"
+                ? t("sessions.emptyCancelledDescription")
+                : t("sessions.emptyTabDescription", { tab: t(TAB_LABEL_KEYS[activeTab]) })
+        }
+        actionLabel={
+          activeTab === "upcoming"
+            ? isTrainerOuter
+              ? t("sessions.emptyCtaTrainer", { defaultValue: "Edit availability" })
+              : t("sessions.emptyCtaTrainee", { defaultValue: "Find a trainer" })
+            : undefined
+        }
+        onAction={
+          activeTab === "upcoming"
+            ? () => {
+                try {
+                  if (isTrainerOuter) {
+                    outerNavigation.navigate("Home", {
+                      screen: "ShellSurface",
+                      params: { surfaceId: "trainerSchedule" },
+                    });
+                  } else {
+                    outerNavigation.navigate("Home", {
+                      screen: "DashboardFeature",
+                      params: { featureId: "book-lesson" },
+                    });
+                  }
+                } catch {
+                  /* Older navigators — best effort. */
+                }
+              }
+            : undefined
+        }
+      />
+    ),
+    [activeTab, isTrainerOuter, outerNavigation, selectedDate, t]
+  );
+
   return (
     <View style={styles.flex}>
       <MorphRefreshHeader
@@ -413,7 +483,7 @@ export function UpcomingSessionsScreen() {
             onPress={() => {
               setActiveTab(tab.key);
               setSelectedDate(null);
-              listScrollRef.current?.scrollTo({ y: 0, animated: false });
+              listScrollRef.current?.scrollToOffset({ offset: 0, animated: false });
             }}
           >
             <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
@@ -446,13 +516,16 @@ export function UpcomingSessionsScreen() {
           style={styles.list}
         />
       ) : (
-        <ScrollView
+        <FlashList
           ref={listScrollRef}
+          data={sessions}
+          keyExtractor={flatListKeyExtractor}
+          renderItem={renderSessionRow}
           onScroll={onSessionsScroll}
           scrollEventThrottle={16}
           contentContainerStyle={[
             styles.list,
-            { flexGrow: 1, paddingBottom: floatingTabBarBottomInset(insets.bottom) + space.md },
+            { flexGrow: 1, paddingBottom: listBottomPad },
           ]}
           refreshControl={
             <RefreshControl
@@ -461,67 +534,9 @@ export function UpcomingSessionsScreen() {
               tintColor={colors.brand}
             />
           }
-        >
-          {sessions.length === 0 ? (
-            <EmptyState
-              icon="calendar-outline"
-              title={
-                selectedDate
-                  ? t("sessions.emptyOnDate", { date: selectedDate })
-                  : t("sessions.emptyTab", { tab: t(TAB_LABEL_KEYS[activeTab]) })
-              }
-              description={
-                selectedDate
-                  ? t("sessions.emptyDateHint")
-                  : activeTab === "upcoming"
-                    ? t("sessions.emptyUpcomingDescription")
-                    : activeTab === "cancelled"
-                      ? t("sessions.emptyCancelledDescription")
-                      : t("sessions.emptyTabDescription", { tab: t(TAB_LABEL_KEYS[activeTab]) })
-              }
-              actionLabel={
-                activeTab === "upcoming"
-                  ? isTrainerOuter
-                    ? t("sessions.emptyCtaTrainer", { defaultValue: "Edit availability" })
-                    : t("sessions.emptyCtaTrainee", { defaultValue: "Find a trainer" })
-                  : undefined
-              }
-              onAction={
-                activeTab === "upcoming"
-                  ? () => {
-                      try {
-                        if (isTrainerOuter) {
-                          outerNavigation.navigate("Home", {
-                            screen: "ShellSurface",
-                            params: { surfaceId: "trainerSchedule" },
-                          });
-                        } else {
-                          outerNavigation.navigate("Home", {
-                            screen: "DashboardFeature",
-                            params: { featureId: "book-lesson" },
-                          });
-                        }
-                      } catch {
-                        /* Older navigators — best effort. */
-                      }
-                    }
-                  : undefined
-              }
-            />
-          ) : (
-            sessions.map((session: any, idx: number) => (
-              <SessionCard
-                key={`sess-${session?._id ?? "row"}-${idx}`}
-                session={session}
-                accountType={accountType}
-                activeTab={activeTab}
-                onSessionActionComplete={() => {
-                  void refetch();
-                }}
-              />
-            ))
-          )}
-        </ScrollView>
+          ListEmptyComponent={sessionsEmpty}
+          {...FLASHLIST_PERF_DEFAULTS}
+        />
       )}
     </View>
   );

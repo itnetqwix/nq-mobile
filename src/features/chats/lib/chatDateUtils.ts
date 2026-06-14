@@ -68,3 +68,18 @@ export function findMessageSectionLocation<T extends ChatMessageLike>(
   }
   return null;
 }
+
+/** Flat FlashList index for a message id (day headers count as rows). */
+export function findMessageFlatRowIndex<T extends ChatMessageLike>(
+  sections: ChatDaySection<T>[],
+  messageId: string
+): number | null {
+  let index = 0;
+  for (const section of sections) {
+    index += 1;
+    const itemIdx = section.data.findIndex((m) => m._id === messageId);
+    if (itemIdx >= 0) return index + itemIdx;
+    index += section.data.length;
+  }
+  return null;
+}

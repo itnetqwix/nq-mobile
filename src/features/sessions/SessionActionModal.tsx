@@ -16,6 +16,10 @@ import { AccountType } from "../../constants/accountType";
 import { useAuth } from "../auth/context/AuthContext";
 import { fetchSessionDetail, updateBookedSessionStatus } from "../home/api/homeApi";
 import { invalidateSessions, patchSessionInQueryCaches } from "../../lib/queryInvalidation";
+import {
+  enqueueOfflineSessionStatusUpdate,
+  isNetworkRequestError,
+} from "./offlineBookingActionQueue";
 import { queryKeys } from "../../lib/queryKeys";
 import { getS3ImageUrl } from "../../lib/imageUtils";
 import {
@@ -61,7 +65,7 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
   const { user, accountType } = useAuth();
   const { emitNotification } = useNotifications();
   const queryClient = useQueryClient();
-  const [busy, setBusy] = useState<"confirm" | "decline" | null>(null);
+  const [busy, setBusy] = useState<"confirm" | "decline" | "cancel" | null>(null);
   const [localSession, setLocalSession] = useState<any | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [ratingsOpen, setRatingsOpen] = useState(false);
@@ -191,12 +195,13 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
   const handleConfirm = useCallback(async () => {
     if (!sessionId) return;
     setBusy("confirm");
+    const priorStatus = viewSession?.status;
+    const optimistic = { ...viewSession, status: "confirmed" };
+    setLocalSession(optimistic);
+    patchSessionInQueryCaches(queryClient, sessionId, { status: "confirmed" });
     try {
       await updateBookedSessionStatus(sessionId, "confirmed");
-      const confirmed = { ...viewSession, status: "confirmed" };
-      setLocalSession(confirmed);
-      patchSessionInQueryCaches(queryClient, sessionId, { status: "confirmed" });
-      onSessionUpdated?.(confirmed);
+      onSessionUpdated?.(optimistic);
       const traineeId = String(viewSession?.trainee_info?._id ?? "");
       if (traineeId) {
         emitNotification({
@@ -215,8 +220,20 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
         [{ text: "OK" }]
       );
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Could not confirm session.";
-      Alert.alert("Confirm failed", msg);
+      if (priorStatus) {
+        setLocalSession(viewSession);
+        patchSessionInQueryCaches(queryClient, sessionId, { status: priorStatus });
+      }
+      if (isNetworkRequestError(e)) {
+        await enqueueOfflineSessionStatusUpdate(sessionId, "confirmed");
+        Alert.alert(
+          "Offline",
+          "You're offline — we'll confirm this session when you're back online."
+        );
+      } else {
+        const msg = e instanceof Error ? e.message : "Could not confirm session.";
+        Alert.alert("Confirm failed", msg);
+      }
     } finally {
       setBusy(null);
     }
@@ -234,6 +251,8 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
           style: "destructive",
           onPress: async () => {
             setBusy("decline");
+            const priorStatus = viewSession?.status;
+            patchSessionInQueryCaches(queryClient, sessionId, { status: "canceled" });
             try {
               await updateBookedSessionStatus(sessionId, "canceled");
               const traineeId = String(viewSession?.trainee_info?._id ?? "");
@@ -250,8 +269,19 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
               await invalidateSessionsCache();
               onClose();
             } catch (e: unknown) {
-              const msg = e instanceof Error ? e.message : "Could not decline session.";
-              Alert.alert("Decline failed", msg);
+              if (priorStatus) {
+                patchSessionInQueryCaches(queryClient, sessionId, { status: priorStatus });
+              }
+              if (isNetworkRequestError(e)) {
+                await enqueueOfflineSessionStatusUpdate(sessionId, "canceled");
+                Alert.alert(
+                  "Offline",
+                  "You're offline — we'll send the decline when you're back online."
+                );
+              } else {
+                const msg = e instanceof Error ? e.message : "Could not decline session.";
+                Alert.alert("Decline failed", msg);
+              }
             } finally {
               setBusy(null);
             }
@@ -260,6 +290,84 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
       ]
     );
   }, [sessionId, viewSession, user, emitNotification, invalidateSessionsCache, onClose]);
+
+  const handleTraineeCancel = useCallback(() => {
+    if (!sessionId) return;
+    Alert.alert(
+      t("sessions.cancelBookingTitle", { defaultValue: "Cancel this booking?" }),
+      t("sessions.cancelBookingBody", {
+        defaultValue:
+          "Your coach has not confirmed yet. Cancelling now releases the escrow hold and starts a full refund to your original payment method. Refunds usually appear within 5–10 business days.",
+      }),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("sessions.cancelBookingCta", { defaultValue: "Cancel booking" }),
+          style: "destructive",
+          onPress: async () => {
+            setBusy("cancel");
+            const priorStatus = viewSession?.status;
+            patchSessionInQueryCaches(queryClient, sessionId, { status: "canceled" });
+            try {
+              await updateBookedSessionStatus(sessionId, "canceled");
+              const trainerId = String(viewSession?.trainer_info?._id ?? viewSession?.trainer_id ?? "");
+              if (trainerId) {
+                emitNotification({
+                  title: NOTIFICATION_TITLES.sessionCancellation,
+                  description: "A trainee cancelled their pending session request.",
+                  senderId: String(user?._id ?? ""),
+                  receiverId: trainerId,
+                  type: NOTIFICATION_TYPES.TRANSCATIONAL,
+                  bookingInfo: viewSession,
+                });
+              }
+              await invalidateSessionsCache();
+              Alert.alert(
+                t("sessions.cancelBookingSuccessTitle", { defaultValue: "Booking cancelled" }),
+                t("sessions.cancelBookingSuccessBody", {
+                  defaultValue: "Your refund has been initiated. You can track it in Wallet → Activity.",
+                }),
+                [{ text: t("common.ok", { defaultValue: "OK" }), onPress: onClose }]
+              );
+            } catch (e: unknown) {
+              if (priorStatus) {
+                patchSessionInQueryCaches(queryClient, sessionId, { status: priorStatus });
+              }
+              if (isNetworkRequestError(e)) {
+                await enqueueOfflineSessionStatusUpdate(sessionId, "canceled");
+                Alert.alert(
+                  t("sessions.offlineTitle", { defaultValue: "Offline" }),
+                  t("sessions.offlineCancelBody", {
+                    defaultValue: "You're offline — we'll cancel this booking when you're back online.",
+                  })
+                );
+              } else {
+                const msg =
+                  e instanceof Error
+                    ? e.message
+                    : t("sessions.cancelBookingFailed", { defaultValue: "Could not cancel booking." });
+                Alert.alert(
+                  t("sessions.cancelBookingFailedTitle", { defaultValue: "Cancel failed" }),
+                  msg
+                );
+              }
+            } finally {
+              setBusy(null);
+            }
+          },
+        },
+      ]
+    );
+  }, [
+    sessionId,
+    viewSession,
+    user,
+    emitNotification,
+    invalidateSessionsCache,
+    onClose,
+    queryClient,
+    t,
+  ]);
 
   const handleJoin = useCallback(() => {
     if (!sessionId || !joinEnabled) return;
@@ -478,11 +586,44 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
                 </>
               ) : null}
 
-              {pending && !isTrainer && !terminal ? (
+              {pending && !isTrainer && !instant && !terminal ? (
+                <>
+                  <View style={styles.waitingBox}>
+                    <ActivityIndicator color={colors.brandNavy} />
+                    <Text style={styles.waitingText}>
+                      {t("sessionPreview.waitingForCoach", {
+                        defaultValue: "Waiting for your coach to confirm this session…",
+                      })}
+                    </Text>
+                  </View>
+                  <Text style={styles.hint}>
+                    {t("sessions.cancelBookingPolicy", {
+                      defaultValue:
+                        "You can cancel while your coach has not confirmed. A full refund is issued automatically.",
+                    })}
+                  </Text>
+                  <Button
+                    label={
+                      busy === "cancel"
+                        ? t("sessions.cancelling", { defaultValue: "Cancelling…" })
+                        : t("sessions.cancelBookingCta", { defaultValue: "Cancel booking" })
+                    }
+                    variant="danger"
+                    leftIcon="close-circle-outline"
+                    onPress={handleTraineeCancel}
+                    disabled={!!busy}
+                    loading={busy === "cancel"}
+                  />
+                </>
+              ) : null}
+
+              {pending && !isTrainer && instant && !terminal ? (
                 <View style={styles.waitingBox}>
                   <ActivityIndicator color={colors.brandNavy} />
                   <Text style={styles.waitingText}>
-                    Waiting for your coach to confirm this session…
+                    {t("sessionPreview.waitingForCoach", {
+                      defaultValue: "Waiting for your coach to confirm this session…",
+                    })}
                   </Text>
                 </View>
               ) : null}

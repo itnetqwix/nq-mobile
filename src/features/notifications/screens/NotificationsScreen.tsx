@@ -2,10 +2,10 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
+import { FlashList } from "@shopify/flash-list";
 import React, { useCallback } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   Pressable,
   StyleSheet,
   Text,
@@ -13,8 +13,7 @@ import {
 } from "react-native";
 import { NotificationRowSkeleton, EmptyState, MorphRefreshScrollSurface, SkeletonGroup } from "../../../components/ui";
 import {
-  FLATLIST_PERF_DEFAULTS,
-  notificationRowGetItemLayout,
+  FLASHLIST_PERF_DEFAULTS,
 } from "../../../lib/lists/flatListPerf";
 import type { RootStackParamList } from "../../../navigation/types";
 import {
@@ -179,7 +178,7 @@ export function NotificationsScreen() {
   return (
     <MorphRefreshScrollSurface onRefresh={refetch} externalRefreshing={isRefetching} tintColor={c.iconPrimary}>
       {({ refreshControl, onScroll, scrollEventThrottle }) => (
-        <FlatList
+        <FlashList
           data={notifications}
           keyExtractor={flatListKeyExtractor}
           renderItem={({ item }) => (
@@ -192,8 +191,7 @@ export function NotificationsScreen() {
           refreshControl={refreshControl}
           onScroll={onScroll}
           scrollEventThrottle={scrollEventThrottle}
-          {...FLATLIST_PERF_DEFAULTS}
-          getItemLayout={notificationRowGetItemLayout}
+          {...FLASHLIST_PERF_DEFAULTS}
           ListEmptyComponent={<EmptyState preset="no_notifications" />}
         />
       )}

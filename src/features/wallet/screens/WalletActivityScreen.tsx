@@ -4,10 +4,10 @@ import { queryKeys } from "../../../lib/queryKeys";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import React from "react";
+import { FlashList } from "@shopify/flash-list";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
-  FlatList,
   Pressable,
   StyleSheet,
   Text,
@@ -15,8 +15,7 @@ import {
 } from "react-native";
 import { EmptyState, MorphRefreshScrollSurface, SkeletonGroup, TransactionRowSkeleton } from "../../../components/ui";
 import {
-  FLATLIST_PERF_DEFAULTS,
-  walletLedgerRowGetItemLayout,
+  FLASHLIST_PERF_DEFAULTS,
 } from "../../../lib/lists/flatListPerf";
 import { space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import type { MenuStackParamList } from "../../../navigation/types";
@@ -92,15 +91,14 @@ export function WalletActivityScreen() {
   return (
     <MorphRefreshScrollSurface onRefresh={refetch} externalRefreshing={isRefetching} tintColor={c.iconPrimary}>
       {({ refreshControl, onScroll, scrollEventThrottle }) => (
-    <FlatList
+    <FlashList
       data={rows}
       keyExtractor={(item, i) => item?.entry_id ?? String(i)}
       contentContainerStyle={styles.list}
       refreshControl={refreshControl}
       onScroll={onScroll}
       scrollEventThrottle={scrollEventThrottle}
-      {...FLATLIST_PERF_DEFAULTS}
-      getItemLayout={walletLedgerRowGetItemLayout}
+      {...FLASHLIST_PERF_DEFAULTS}
       onEndReached={() => {
         if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
       }}

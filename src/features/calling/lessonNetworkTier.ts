@@ -30,7 +30,7 @@ export const LESSON_NETWORK_TIER_CONFIG: Record<
     videoHeight: 1280,
     maxFps: 24,
     clipProgressEmitMs: 2500,
-    drawingEmitMinMs: 0,
+    drawingEmitMinMs: 16,
     hideLocalPipInClipMode: false,
     iceRecoveryMs: 28_000,
   },

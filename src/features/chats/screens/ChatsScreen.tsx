@@ -1,9 +1,9 @@
 import * as ImagePicker from "expo-image-picker";
 import React, { useCallback, useMemo, useState } from "react";
+import { FlashList } from "@shopify/flash-list";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Image,
   Modal,
   Pressable,
@@ -25,8 +25,7 @@ import {
   SkeletonGroup,
 } from "../../../components/ui";
 import {
-  FLATLIST_PERF_DEFAULTS,
-  chatListGetItemLayout,
+  FLASHLIST_PERF_DEFAULTS,
 } from "../../../lib/lists/flatListPerf";
 import { useCombinedScroll } from "../../../lib/refresh/useCombinedScroll";
 import { useMorphRefresh } from "../../../lib/refresh/useMorphRefresh";
@@ -704,13 +703,12 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
           <SkeletonGroup count={5} renderRow={() => <ChatRowSkeleton />} />
         </View>
       ) : (
-        <FlatList<any>
+        <FlashList<any>
           data={filtered as any[]}
           keyExtractor={(item, index) => flatListKeyExtractor(item, index)}
           onScroll={onListScroll}
           scrollEventThrottle={16}
-          {...FLATLIST_PERF_DEFAULTS}
-          getItemLayout={chatListGetItemLayout}
+          {...FLASHLIST_PERF_DEFAULTS}
           renderItem={({ item }) => {
             const partner = getPartner(item);
             const lastMsg = item.lastMessage ?? item.last_message ?? "";
@@ -984,7 +982,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
               ))}
             </View>
           ) : (
-            <FlatList
+            <FlashList
               data={friendsList}
               keyExtractor={flatListKeyExtractor}
               renderItem={({ item }) => {
@@ -1038,9 +1036,10 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
             <Text style={styles.modalTitle}>{t("chats.selectedMembers")}</Text>
             <View style={{ width: 24 }} />
           </View>
-          <FlatList
+          <FlashList
             data={selectedMemberList}
             keyExtractor={flatListKeyExtractor}
+            {...FLASHLIST_PERF_DEFAULTS}
             renderItem={({ item }) => (
               <View style={styles.friendRow}>
                 <Avatar uri={item.profile_picture} name={item.fullname} size={44} />
