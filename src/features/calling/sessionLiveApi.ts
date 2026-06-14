@@ -58,6 +58,19 @@ export type SessionJoinReadiness = {
   viewer_client_kind?: "native_app" | "web" | "unknown" | null;
   recommended_clients?: string[];
   iceServers?: Array<{ urls: string | string[]; username?: string; credential?: string }>;
+  departure?: {
+    sessionId: string;
+    active: boolean;
+    initiatedByRole: "trainer" | "trainee" | null;
+    initiatedByUserId: string | null;
+    initiatedAt: string | null;
+    pendingForUserId: string | null;
+    stayedActiveAt: string | null;
+    rejoinDeadlineAt: string | null;
+    concernRaisedAt: string | null;
+    canRaiseConcern: boolean;
+    bookedEndAt: string | null;
+  } | null;
 };
 
 export async function fetchSessionJoinReadiness(

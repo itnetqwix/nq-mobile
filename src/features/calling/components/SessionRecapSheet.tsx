@@ -3,18 +3,14 @@ import { useMutation } from "@tanstack/react-query";
 import React, { useState } from "react";
 import {
   Alert,
-  Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
-  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { KeyboardFormModal } from "../../../components/ui/KeyboardFormModal";
 import { sendSessionRecap } from "../../dashboard/api/trainerNotesApi";
 import { haptics } from "../../../lib/haptics";
 import { radii, space, typography, useThemedStyles, useThemeColors } from "../../../theme";
@@ -28,12 +24,6 @@ type Props = {
   traineeName?: string;
 };
 
-/**
- * Trainer-only post-session recap. Three short fields — summary, drills
- * we covered, homework — get composed into one chat message that lands
- * in the trainer↔trainee thread. Doubles as a memory aid for the trainee
- * the next day and a paper trail of homework for the trainer.
- */
 export function SessionRecapSheet({
   visible,
   onClose,
@@ -67,10 +57,7 @@ export function SessionRecapSheet({
       onClose();
     },
     onError: (err: any) => {
-      Alert.alert(
-        "Recap could not send",
-        err?.message ?? "Try again in a moment."
-      );
+      Alert.alert("Recap could not send", err?.message ?? "Try again in a moment.");
     },
   });
 
@@ -80,24 +67,45 @@ export function SessionRecapSheet({
     homework.trim().length > 0;
 
   return (
-    <Modal
+    <KeyboardFormModal
       visible={visible}
-      animationType="slide"
+      onClose={onClose}
       presentationStyle="pageSheet"
-      onRequestClose={onClose}
+      contentContainerStyle={{ paddingTop: insets.top + 8 }}
+      footer={
+        <View style={styles.actions}>
+          <Pressable onPress={onClose} style={[styles.skipBtn, { borderColor: c.border }]}>
+            <Text style={[styles.skipText, { color: c.text }]}>Skip</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => mutation.mutate()}
+            disabled={!hasContent || mutation.isPending}
+            style={[
+              styles.sendBtn,
+              { backgroundColor: hasContent ? c.brandNavy : c.surfaceMuted },
+            ]}
+            accessibilityRole="button"
+          >
+            <Ionicons
+              name="paper-plane"
+              size={16}
+              color={hasContent ? c.brandTextOn : c.textMuted}
+            />
+            <Text
+              style={[styles.sendText, { color: hasContent ? c.brandTextOn : c.textMuted }]}
+            >
+              {mutation.isPending ? "Sending…" : "Send recap"}
+            </Text>
+          </Pressable>
+        </View>
+      }
     >
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-          <View style={[styles.shell, { paddingTop: insets.top + 8 }]}>
+      <View style={[styles.shell, { backgroundColor: c.surface }]}>
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.title, { color: c.text }]}>Session recap</Text>
             <Text style={[styles.sub, { color: c.textMuted }]}>
-              Drops as a chat message{" "}
-              {traineeName ? `to ${traineeName}` : "to your trainee"}.
+              Drops as a chat message {traineeName ? `to ${traineeName}` : "to your trainee"}.
             </Text>
           </View>
           <Pressable onPress={onClose} hitSlop={8}>
@@ -127,44 +135,8 @@ export function SessionRecapSheet({
           value={homework}
           onChange={setHomework}
         />
-
-        <View style={[styles.actions, { paddingBottom: insets.bottom + 12 }]}>
-          <Pressable
-            onPress={onClose}
-            style={[styles.skipBtn, { borderColor: c.border }]}
-          >
-            <Text style={[styles.skipText, { color: c.text }]}>Skip</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => mutation.mutate()}
-            disabled={!hasContent || mutation.isPending}
-            style={[
-              styles.sendBtn,
-              {
-                backgroundColor: hasContent ? c.brandNavy : c.surfaceMuted,
-              },
-            ]}
-            accessibilityRole="button"
-          >
-            <Ionicons
-              name="paper-plane"
-              size={16}
-              color={hasContent ? c.brandTextOn : c.textMuted}
-            />
-            <Text
-              style={[
-                styles.sendText,
-                { color: hasContent ? c.brandTextOn : c.textMuted },
-              ]}
-            >
-              {mutation.isPending ? "Sending…" : "Send recap"}
-            </Text>
-          </Pressable>
-        </View>
-          </View>
-        </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
-    </Modal>
+      </View>
+    </KeyboardFormModal>
   );
 }
 
@@ -208,12 +180,7 @@ function FieldBlock({
 function useStyles() {
   return useThemedStyles((palette) =>
     StyleSheet.create({
-      shell: {
-        flex: 1,
-        backgroundColor: palette.surface,
-        padding: space.md,
-        gap: space.sm,
-      },
+      shell: { gap: space.sm },
       headerRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
       title: { ...typography.titleMd, fontWeight: "800" },
       sub: { ...typography.bodySm, marginTop: 2 },
@@ -235,7 +202,7 @@ function useStyles() {
         minHeight: 56,
         textAlignVertical: "top",
       },
-      actions: { flexDirection: "row", gap: 8, marginTop: "auto" },
+      actions: { flexDirection: "row", gap: 8 },
       skipBtn: {
         paddingHorizontal: 16,
         paddingVertical: 12,

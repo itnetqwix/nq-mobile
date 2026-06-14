@@ -28,7 +28,6 @@ import type { Socket } from "socket.io-client";
 import InCallManager from "react-native-incall-manager";
 
 import { CALL_EVENTS } from "./callEvents";
-import { LESSON_SOCKET_EVENTS } from "../../lib/sessions/sessionContract";
 import { reportOpsEvent } from "../ops/opsEventsApi";
 import { buildIceConfig, DEFAULT_ICE_SERVERS, sanitizeIceServers } from "./iceServers";
 import { isWebRTCModuleLinked } from "./nativeCallAvailability";
@@ -245,9 +244,6 @@ export class NativeCallEngine {
   endCall(): void {
     if (this.disposed) return;
     try {
-      this.socket.emit(LESSON_SOCKET_EVENTS.END_EARLY_REQUEST, {
-        sessionId: this.sessionId,
-      });
       this.socket.emit(CALL_EVENTS.ON_CLOSE, {
         userInfo: this.buildUserInfo(),
       });
@@ -632,9 +628,8 @@ export class NativeCallEngine {
     };
 
     const onClose = () => {
-      /** Remote peer tapped End — tear down for both sides. */
+      /** Remote peer tapped End — tear down media; partner decides via departure flow. */
       this.events.onPeerLeft?.();
-      this.events.onClose?.();
       this.dispose();
     };
 

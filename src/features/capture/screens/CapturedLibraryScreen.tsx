@@ -10,9 +10,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useAuth } from "../../auth/context/AuthContext";
 import { LockerViewerModal } from "../../dashboard/components/locker/LockerViewerModal";
-import { ClipUploadModal } from "../../dashboard/components/locker/ClipUploadModal";
 import {
   CapturedShareSheet,
   type CapturedShareTarget,
@@ -23,16 +23,14 @@ import {
   type CapturedClip,
 } from "../capturedClipsStorage";
 import { floatingTabBarBottomInset } from "../../../navigation/FloatingTabBar";
+import type { CaptureStackParamList } from "../../../navigation/CaptureNavigator";
 import { FLASHLIST_PERF_DEFAULTS } from "../../../lib/lists/flatListPerf";
+import { haptics } from "../../../lib/haptics";
 import { colors, radii, space, typography } from "../../../theme";
-
-const SHARE_MY_CLIPS = "My Clips";
-const SHARE_FRIENDS = "Friends";
-const SHARE_EMAIL = "Email";
 
 export function CapturedLibraryScreen() {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<CaptureStackParamList>>();
   const { user } = useAuth();
   const userId = user?._id != null ? String(user._id) : null;
   const [clips, setClips] = useState<CapturedClip[]>([]);
@@ -40,11 +38,6 @@ export function CapturedLibraryScreen() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [viewerClip, setViewerClip] = useState<CapturedClip | null>(null);
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
-  const [uploadVisible, setUploadVisible] = useState(false);
-  const [uploadClip, setUploadClip] = useState<CapturedClip | null>(null);
-  const [uploadShareTarget, setUploadShareTarget] = useState<
-    typeof SHARE_MY_CLIPS | typeof SHARE_FRIENDS | typeof SHARE_EMAIL
-  >(SHARE_MY_CLIPS);
 
   const load = useCallback(async () => {
     const c = await getCapturedClips(userId);
@@ -63,7 +56,10 @@ export function CapturedLibraryScreen() {
 
   const canGoBack = navigation.canGoBack();
   const fabBottom = floatingTabBarBottomInset(insets.bottom) + 8;
-  const startRecording = () => navigation.navigate("CaptureCamera");
+  const startRecording = () => {
+    haptics.tap();
+    navigation.navigate("CaptureCamera");
+  };
 
   const selectedClips = useMemo(
     () => clips.filter((c) => selected.has(c.id)),
@@ -71,6 +67,7 @@ export function CapturedLibraryScreen() {
   );
 
   const toggleSelect = (id: string) => {
+    haptics.select();
     setSelected((s) => {
       const next = new Set(s);
       next.has(id) ? next.delete(id) : next.add(id);
@@ -79,12 +76,14 @@ export function CapturedLibraryScreen() {
   };
 
   const exitSelectMode = () => {
+    haptics.tap();
     setSelectMode(false);
     setSelected(new Set());
   };
 
   const confirmDelete = (ids: string[]) => {
     if (ids.length === 0) return;
+    haptics.warning();
     Alert.alert(
       "Delete clips",
       ids.length === 1
@@ -102,6 +101,7 @@ export function CapturedLibraryScreen() {
             if (viewerClip && ids.includes(viewerClip.id)) setViewerClip(null);
             exitSelectMode();
             void load();
+            haptics.success();
             Alert.alert("Deleted", ids.length === 1 ? "Clip removed." : `${ids.length} clips removed.`);
           },
         },
@@ -109,37 +109,38 @@ export function CapturedLibraryScreen() {
     );
   };
 
-  const pickClipForShare = (): CapturedClip | null => {
-    if (selectMode && selectedClips.length > 0) {
-      if (selectedClips.length > 1) {
-        Alert.alert(
-          "One at a time",
-          "Select a single clip to upload or share. You can repeat for additional clips."
-        );
-        return null;
-      }
-      return selectedClips[0] ?? null;
+  const pickClipsForShare = (): CapturedClip[] => {
+    if (selectMode && selectedClips.length > 0) return selectedClips;
+    if (viewerClip) return [viewerClip];
+    return [];
+  };
+
+  const navigateToUpload = (target: CapturedShareTarget, clipList: CapturedClip[]) => {
+    if (clipList.length === 0) {
+      Alert.alert("Select a clip", "Tap a clip to preview, or use multi-select.");
+      return;
     }
-    return viewerClip;
+    haptics.tap();
+    navigation.navigate("CapturedClipUpload", {
+      clips: clipList,
+      shareTarget: target,
+      showPrepareStep: clipList.length === 1,
+    });
+    setShareSheetVisible(false);
+    exitSelectMode();
   };
 
   const openShareTarget = (target: CapturedShareTarget) => {
-    const clip = pickClipForShare();
-    if (!clip) {
-      if (!selectMode && !viewerClip) {
-        Alert.alert("Select a clip", "Tap a clip to preview, or use multi-select.");
-      }
-      return;
-    }
-    const map: Record<CapturedShareTarget, typeof SHARE_MY_CLIPS | typeof SHARE_FRIENDS | typeof SHARE_EMAIL> = {
-      "my-clips": SHARE_MY_CLIPS,
-      friends: SHARE_FRIENDS,
-      email: SHARE_EMAIL,
-    };
-    setUploadClip(clip);
-    setUploadShareTarget(map[target]);
-    setUploadVisible(true);
-    setShareSheetVisible(false);
+    navigateToUpload(target, pickClipsForShare());
+  };
+
+  const openUploadForClip = (clip: CapturedClip) => {
+    haptics.tap();
+    navigation.navigate("CapturedClipUpload", {
+      clips: [clip],
+      shareTarget: "my-clips",
+      showPrepareStep: true,
+    });
   };
 
   const formatDuration = (secs?: number) => {
@@ -159,9 +160,11 @@ export function CapturedLibraryScreen() {
             toggleSelect(item.id);
             return;
           }
+          haptics.tap();
           setViewerClip(item);
         }}
         onLongPress={() => {
+          haptics.impact();
           if (!selectMode) setSelectMode(true);
           toggleSelect(item.id);
         }}
@@ -193,7 +196,13 @@ export function CapturedLibraryScreen() {
           ) : null}
         </View>
         {!selectMode ? (
-          <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+          <Pressable
+            hitSlop={10}
+            onPress={() => openUploadForClip(item)}
+            accessibilityLabel="Upload clip"
+          >
+            <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+          </Pressable>
         ) : null}
       </Pressable>
     );
@@ -203,7 +212,13 @@ export function CapturedLibraryScreen() {
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         {canGoBack ? (
-          <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Pressable
+            style={styles.backBtn}
+            onPress={() => {
+              haptics.tap();
+              navigation.goBack();
+            }}
+          >
             <Ionicons name="arrow-back" size={24} color={colors.brandNavy} />
           </Pressable>
         ) : (
@@ -217,7 +232,10 @@ export function CapturedLibraryScreen() {
         ) : (
           <Pressable
             style={styles.headerAction}
-            onPress={() => setSelectMode(true)}
+            onPress={() => {
+              haptics.tap();
+              setSelectMode(true);
+            }}
             disabled={clips.length === 0}
           >
             <Ionicons name="checkbox-outline" size={22} color={colors.brandNavy} />
@@ -302,13 +320,17 @@ export function CapturedLibraryScreen() {
                 await deleteCapturedClip(userId, viewerClip.id);
                 setViewerClip(null);
                 void load();
+                haptics.success();
                 Alert.alert("Deleted", "Clip removed from your device.");
               }
             : undefined
         }
         onShareExternal={
           viewerClip
-            ? () => setShareSheetVisible(true)
+            ? () => {
+                haptics.tap();
+                setShareSheetVisible(true);
+              }
             : undefined
         }
         shareAccessibilityLabel="Share captured clip"
@@ -318,32 +340,6 @@ export function CapturedLibraryScreen() {
         visible={shareSheetVisible}
         onClose={() => setShareSheetVisible(false)}
         onSelect={openShareTarget}
-      />
-
-      <ClipUploadModal
-        visible={uploadVisible}
-        onClose={() => {
-          setUploadVisible(false);
-          setUploadClip(null);
-        }}
-        onUploaded={() => {
-          void load();
-          exitSelectMode();
-        }}
-        initialVideo={
-          uploadClip
-            ? {
-                uri: uploadClip.uri,
-                durationSecs: uploadClip.durationSecs,
-                fileName: `${(uploadClip.label ?? "capture").replace(/[^\w.-]+/g, "_")}_${uploadClip.id}.mp4`,
-                fileSizeBytes: uploadClip.fileSizeBytes,
-                mimeType: uploadClip.mimeType ?? "video/mp4",
-                title: uploadClip.label,
-              }
-            : null
-        }
-        defaultShareTarget={uploadShareTarget}
-        captureClipId={uploadClip?.id ?? null}
       />
     </View>
   );

@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
 import {
   Alert,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
@@ -11,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { KeyboardFormModal } from "../../../components/ui/KeyboardFormModal";
 import {
   sendTraineeNudge,
   type NudgeTemplate,
@@ -47,14 +47,6 @@ const TEMPLATES: { id: NudgeTemplate; icon: keyof typeof Ionicons.glyphMap; titl
   },
 ];
 
-/**
- * "Bring-back" sheet. Pick a templated message or type a one-off
- * variant and send it as a regular chat message to the trainee. Behind
- * the scenes this hits `POST /trainer/trainee-nudge`, which:
- *   - rate-limits to 1 message per (trainer, trainee) per 24h
- *   - posts via the standard chat service (so it shows up in the room)
- *   - also fires a push notification
- */
 export function TrainerNudgePickerSheet({
   visible,
   onClose,
@@ -89,18 +81,29 @@ export function TrainerNudgePickerSheet({
   });
 
   return (
-    <Modal
+    <KeyboardFormModal
       visible={visible}
-      animationType="slide"
+      onClose={onClose}
       presentationStyle="pageSheet"
-      onRequestClose={onClose}
+      contentContainerStyle={{ paddingTop: insets.top + 8, paddingHorizontal: space.md }}
+      footer={
+        <Pressable
+          onPress={() => mutation.mutate()}
+          disabled={mutation.isPending}
+          style={[styles.sendBtn, { backgroundColor: c.brandNavy }]}
+          accessibilityRole="button"
+        >
+          <Ionicons name="paper-plane" size={16} color={c.brandTextOn} />
+          <Text style={[styles.sendText, { color: c.brandTextOn }]}>
+            {mutation.isPending ? t("trainerNudge.sending") : t("trainerNudge.sendBtn")}
+          </Text>
+        </Pressable>
+      }
     >
-      <View style={[styles.shell, { paddingTop: insets.top + 8 }]}>
+      <View style={[styles.shell, { backgroundColor: c.surface }]}>
         <View style={styles.row}>
           <View style={{ flex: 1 }}>
-            <Text style={[typography.titleMd, { color: c.text }]}>
-              {t("trainerNudge.title")}
-            </Text>
+            <Text style={[typography.titleMd, { color: c.text }]}>{t("trainerNudge.title")}</Text>
             <Text style={[styles.sub, { color: c.textMuted }]}>
               {t("trainerNudge.subtitle", { name: traineeName ?? "this trainee" })}
             </Text>
@@ -131,9 +134,7 @@ export function TrainerNudgePickerSheet({
                 <View
                   style={[
                     styles.tplIcon,
-                    {
-                      backgroundColor: active ? c.brandNavy : c.surfaceMuted,
-                    },
+                    { backgroundColor: active ? c.brandNavy : c.surfaceMuted },
                   ]}
                 >
                   <Ionicons
@@ -143,12 +144,8 @@ export function TrainerNudgePickerSheet({
                   />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.tplTitle, { color: c.text }]}>
-                    {t(tpl.titleKey)}
-                  </Text>
-                  <Text style={[styles.tplSub, { color: c.textMuted }]}>
-                    {t(tpl.subKey)}
-                  </Text>
+                  <Text style={[styles.tplTitle, { color: c.text }]}>{t(tpl.titleKey)}</Text>
+                  <Text style={[styles.tplSub, { color: c.textMuted }]}>{t(tpl.subKey)}</Text>
                 </View>
                 {active ? (
                   <Ionicons name="checkmark-circle" size={20} color={c.brandNavy} />
@@ -180,31 +177,15 @@ export function TrainerNudgePickerSheet({
             {custom.length}/1500
           </Text>
         </View>
-
-        <View style={[styles.actions, { paddingBottom: insets.bottom + 12 }]}>
-          <Pressable
-            onPress={() => mutation.mutate()}
-            disabled={mutation.isPending}
-            style={[styles.sendBtn, { backgroundColor: c.brandNavy }]}
-            accessibilityRole="button"
-          >
-            <Ionicons name="paper-plane" size={16} color={c.brandTextOn} />
-            <Text style={[styles.sendText, { color: c.brandTextOn }]}>
-              {mutation.isPending
-                ? t("trainerNudge.sending")
-                : t("trainerNudge.sendBtn")}
-            </Text>
-          </Pressable>
-        </View>
       </View>
-    </Modal>
+    </KeyboardFormModal>
   );
 }
 
 function useStyles() {
   return useThemedStyles((palette) =>
     StyleSheet.create({
-      shell: { flex: 1, backgroundColor: palette.surface, padding: space.md, gap: space.md },
+      shell: { gap: space.md },
       row: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
       sub: { ...typography.bodySm, marginTop: 2 },
       list: { gap: 8 },
@@ -239,7 +220,6 @@ function useStyles() {
       },
       editorInput: { ...typography.bodyMd, textAlignVertical: "top", minHeight: 80 },
       charCount: { fontSize: 10, fontWeight: "600", textAlign: "right" },
-      actions: { marginTop: "auto" },
       sendBtn: {
         flexDirection: "row",
         alignItems: "center",

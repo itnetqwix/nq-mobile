@@ -327,7 +327,21 @@
   },
   "capture": {
     "uploadQueuedTitle": "Upload queued",
-    "uploadQueuedBody": "You're offline or the connection dropped. We'll upload this clip when you're back online."
+    "uploadQueuedBody": "You're offline or the connection dropped. We'll upload this clip when you're back online.",
+    "uploadTitleLibrary": "Upload to My Clips",
+    "uploadTitleFriends": "Share with friends",
+    "uploadTitleEmail": "Share by email",
+    "uploadSubtitleLibrary": "Add title, sport, and subcategory to save in your locker.",
+    "uploadSubtitleFriends": "Choose sport, subcategory, and friends for your clip(s).",
+    "uploadSubtitleEmail": "Invite new users by email — add multiple addresses separated by commas.",
+    "batchCount": "{{count}} clips",
+    "batchUploadedTitle": "Upload complete",
+    "batchUploadedBody": "{{count}} clip(s) uploaded successfully.",
+    "clipTitles": "Titles for each clip",
+    "editVideo": "Edit video & thumbnail",
+    "shareEmailsPlaceholder": "email1@example.com, email2@example.com",
+    "emailsParsed": "{{count}} valid email(s)",
+    "uploadingBatch": "Uploading {{index}} of {{total}}: {{title}}"
   },
   "locker": {
     "myClips": "My clips",

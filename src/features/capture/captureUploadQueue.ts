@@ -5,7 +5,7 @@ import {
   type OfflineActionResult,
 } from "../../lib/offline/offlineActionQueue";
 import { uploadLockerClip } from "../home/api/homeApi";
-import { deleteCapturedClip } from "../capture/screens/CaptureScreen";
+import { deleteCapturedClip } from "./capturedClipsStorage";
 import { lockerMutated } from "../../store/actions/cacheInvalidation";
 import { store } from "../../store";
 
@@ -25,6 +25,7 @@ export type CaptureClipUploadPayload = {
     | { type: "Friends"; friends: string[] }
     | { type: "New Users"; emails: string[] };
   captureClipId?: string;
+  userId?: string | null;
 };
 
 function isCaptureUploadPayload(
@@ -60,7 +61,7 @@ async function executeCaptureClipUpload(
     shareOptions: p.shareOptions,
   });
   if (p.captureClipId) {
-    await deleteCapturedClip(p.captureClipId).catch(() => {});
+    await deleteCapturedClip(p.userId ?? null, p.captureClipId).catch(() => {});
   }
   store.dispatch(lockerMutated());
   return "done";

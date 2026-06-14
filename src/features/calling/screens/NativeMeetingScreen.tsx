@@ -120,7 +120,6 @@ import { ActionButtons } from "../components/ActionButtons";
 import { TimeRemaining } from "../components/TimeRemaining";
 import { MeetingPeerJoinedToast } from "../components/MeetingPeerJoinedToast";
 import { MeetingCoachChip } from "../components/MeetingCoachChip";
-import { resolveMeetingStatusBanner } from "../meetingUx";
 import { ConnectionQualityPill } from "../components/ConnectionQualityPill";
 import { NetworkLessonBanner } from "../components/NetworkLessonBanner";
 import {
@@ -188,6 +187,13 @@ import {
 } from "../sessionLiveApi";
 import { DualLiveStage } from "../components/DualLiveStage";
 import { useSessionPresence } from "../useSessionPresence";
+import { useSessionDeparture } from "../useSessionDeparture";
+import { SessionDepartureModal } from "../components/SessionDepartureModal";
+import { SessionRejoinBlockedModal } from "../components/SessionRejoinBlockedModal";
+import { ExtensionWaitingForCoachModal } from "../components/ExtensionWaitingForCoachModal";
+import { useLiveLessonUxState } from "../useLiveLessonUxState";
+import { initiateSessionDeparture } from "../../home/api/homeApi";
+import { reportOpsEvent } from "../../ops/opsEventsApi";
 import { meetingTheme } from "../meetingTheme";
 import { useSessionExtensionFlow } from "../useSessionExtensionFlow";
 import { SessionExtensionModal } from "../components/SessionExtensionModal";
@@ -467,15 +473,10 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
       onPeerLeft={() => {
         pushLocalToast({
           title: NOTIFICATION_TITLES.peerLeftCall,
-          description: `${peerDisplayName} ended the lesson.`,
+          description: `${peerDisplayName} ended the call. You'll be asked whether to end the session.`,
           type: NOTIFICATION_TYPES.TRANSCATIONAL,
           persistInInbox: true,
         });
-        // Guard: peer (trainer) explicitly ended — don't let handleCallEnded
-        // navigate home; MeetingSurface will open the post-call flow.
-        peerEndedCallRef.current = true;
-        setPeerEndedCall(true);
-        beginPostCallFlow();
       }}
       onSlotTakenOver={() => {
         setSlotTakenOverOpen(true);
@@ -762,41 +763,6 @@ function MeetingSurface({
   const timeWarningVisible = activeWarning != null && !extensionUiBlocking;
 
   const networkOnline = useNetworkOnline();
-
-  const timerStatusHint = useMemo(() => {
-    if (
-      lessonTimer.status === "paused" &&
-      (lessonTimer.pauseReason === "extension_pending" ||
-        lessonTimer.pauseReason === "extension_accepted")
-    ) {
-      return "Paused — extension in progress";
-    }
-    if (presence.partnerLeftKind === "trainer" && lessonTimer.status === "paused") {
-      return "Paused — coach disconnected";
-    }
-    if (
-      presence.partnerLeftKind === "trainee" &&
-      lessonTimer.status === "running"
-    ) {
-      return "Trainee disconnected — timer running";
-    }
-    if (presence.partnerReconnecting) {
-      return "Partner reconnecting…";
-    }
-    if (lessonTimer.status === "paused" && lessonTimer.pauseReason === "network_outage") {
-      return "Paused — connection outage";
-    }
-    if (!networkOnline && lessonTimer.status === "running") {
-      return "Weak connection — lesson continues";
-    }
-    return null;
-  }, [
-    presence.partnerLeftKind,
-    presence.partnerReconnecting,
-    lessonTimer.status,
-    lessonTimer.pauseReason,
-    networkOnline,
-  ]);
 
   const networkAdaptive = useAdaptiveLessonNetwork({
     enabled: partnerInSession && bothJoined,
@@ -1680,41 +1646,65 @@ function MeetingSurface({
     setRecapSheetOpen(true);
   }, [isTrainer, lessonId, onPostCallFlowStart, openHandoff, refreshSessionsAfterLessonEnd]);
 
-  /**
-   * When `peerEndedCall` flips to true (peer explicitly pressed "End call"):
-   *
-   * TRAINEE path: trainer ended → open post-call flow immediately, before
-   * the server LESSON_TIMER_ENDED event arrives, and dismiss any in-flight
-   * extension UI so the two sheets don't compete.
-   *
-   * TRAINER path: trainee ended → the server will send LESSON_TIME_ENDED
-   * which triggers openPostCallFlow via the timer-ended useEffect. As a
-   * safety net, if that event is slow (network lag / server delay), open
-   * the trainer's post-call flow after a 4-second fallback.
-   */
-  useEffect(() => {
-    if (!peerEndedCall) return;
-    if (!isTrainer) {
-      // Dismiss any in-flight extension modal before opening post-call flow
+  const departure = useSessionDeparture({
+    socket,
+    sessionId: lessonId,
+    myUserId: myId,
+    isTrainer,
+    onPartnerAcceptedEnd: () => {
       setTraineeExtendOpen(false);
       extensionResetRef.current?.();
       void openPostCallFlow();
-      return;
-    }
-    // Trainer: trainee ended — wait for LESSON_TIME_ENDED, but open after 4s
-    // if the server event is delayed.
-    const fallbackTimer = setTimeout(() => {
-      void openPostCallFlow();
-    }, 4000);
-    return () => clearTimeout(fallbackTimer);
-  // openPostCallFlow is stable (useCallback); peerEndedCall only goes true→true once
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [peerEndedCall]);
+    },
+    onStayedActive: () => {
+      reportOpsEvent({
+        event_type: "SESSION_DEPARTURE_STAYED",
+        category: "call",
+        session_id: lessonId,
+        title: "Partner stayed after departure",
+      });
+      pushLocalToast({
+        title: "Session still active",
+        description: isTrainer
+          ? "Timer paused. Rejoin from your dashboard if your schedule allows."
+          : "Timer paused. Waiting for your coach to rejoin…",
+        type: NOTIFICATION_TYPES.TRANSCATIONAL,
+      });
+    },
+  });
 
-  /** Show ratings after the call ends — `endCall()` will pop us back, so we
-   *  open the post-call modal FIRST (which flips the parent guard) and only
-   *  then tear down the WebRTC engine. The screen stays mounted until the
-   *  user dismisses ratings, at which point we navigate home. */
+  const [rejoinBlockedDismissed, setRejoinBlockedDismissed] = useState(false);
+
+  const liveLessonUx = useLiveLessonUxState({
+    cameraRevoked: inCallPerms.cameraRevoked,
+    partnerReconnecting: presence.partnerReconnecting,
+    partnerInSession,
+    hasRemoteStream: !!remoteStream,
+    partnerDisconnected,
+    peerDisplayName,
+    isTrainer,
+    presence,
+    bothJoined,
+    networkOnline,
+    lessonTimer: {
+      status: lessonTimer.status,
+      pauseReason: lessonTimer.pauseReason,
+      remainingSeconds: lessonTimer.remainingSeconds ?? 0,
+    },
+    extensionPhase: extensionFlow.state.phase,
+    departurePrompt: departure.prompt,
+    departureWaitingAfterDecline: departure.waitingAfterDecline,
+    departureRejoinSecondsLeft: departure.rejoinSecondsLeft,
+    socketReconnectFailed: reconnectFailed,
+    joinBlockReason: joinReadiness?.join_block_reason,
+    joinCode: joinReadiness?.join_code,
+  });
+
+  const meetingStatusBanner = liveLessonUx.statusBanner;
+  const timerStatusHint = liveLessonUx.timerHint;
+
+  /** Show ratings after the call ends — initiator leaves via departure API;
+   *  partner decides via SessionDepartureModal before post-call flow opens. */
   const confirmExit = useCallback(() => {
     Alert.alert(
       "End session?",
@@ -1725,13 +1715,25 @@ function MeetingSurface({
           text: "End",
           style: "destructive",
           onPress: () => {
-            void openPostCallFlow();
-            setTimeout(() => endCall(), 0);
+            void (async () => {
+              try {
+                await initiateSessionDeparture(lessonId);
+                reportOpsEvent({
+                  event_type: "SESSION_DEPARTURE_INITIATED",
+                  category: "call",
+                  session_id: lessonId,
+                  title: "User initiated session departure",
+                });
+              } catch {
+                /* ON_CLOSE still initiates departure on the server */
+              }
+              setTimeout(() => endCall(), 0);
+            })();
           },
         },
       ]
     );
-  }, [endCall, openPostCallFlow]);
+  }, [endCall, lessonId]);
 
   const pipBounds = meetingBounds ?? { width: winW, height: winH };
 
@@ -2312,49 +2314,6 @@ function MeetingSurface({
     void endCall();
     onExit();
   }, [endCall, onExit]);
-
-  const meetingStatusBanner = useMemo(
-    () =>
-      resolveMeetingStatusBanner({
-        cameraRevoked: inCallPerms.cameraRevoked,
-        partnerReconnecting: presence.partnerReconnecting,
-        partnerInSession,
-        hasRemoteStream: !!remoteStream,
-        partnerDisconnected,
-        peerDisplayName,
-        isTrainer,
-        trainerConnected: presence.trainerConnected,
-        traineeConnected: presence.traineeConnected,
-        bothJoined,
-        presenceMessage: partnerInSession ? presence.presenceMessage : null,
-        presenceVariant: presence.presenceVariant,
-        extensionPausedHint:
-          lessonTimer.status === "paused" &&
-          (lessonTimer.pauseReason === "extension_pending" ||
-            lessonTimer.pauseReason === "extension_accepted")
-            ? "Paused — extension in progress"
-            : null,
-        networkOffline: !networkOnline && partnerInSession,
-      }),
-    [
-      inCallPerms.cameraRevoked,
-      presence.partnerReconnecting,
-      partnerInSession,
-      remoteStream,
-      partnerDisconnected,
-      peerDisplayName,
-      isTrainer,
-      presence.trainerConnected,
-      presence.traineeConnected,
-      bothJoined,
-      presence.presenceMessage,
-      presence.presenceVariant,
-      lessonTimer.status,
-      lessonTimer.pauseReason,
-      networkOnline,
-      partnerInSession,
-    ]
-  );
 
   useEffect(() => {
     setStatusBannerDismissed(false);
@@ -3176,6 +3135,84 @@ function MeetingSurface({
         />
       ) : null}
 
+      <SessionDepartureModal
+        visible={!!departure.prompt}
+        prompt={departure.prompt}
+        isTrainer={isTrainer}
+        responding={departure.responding}
+        onStay={() => {
+          reportOpsEvent({
+            event_type: "SESSION_DEPARTURE_STAYED",
+            category: "call",
+            session_id: lessonId,
+            title: "Partner chose to stay",
+          });
+          void departure.respond(false);
+        }}
+        onEndSession={() => {
+          reportOpsEvent({
+            event_type: "SESSION_DEPARTURE_ENDED",
+            category: "call",
+            session_id: lessonId,
+            title: "Partner chose to end session",
+          });
+          void departure.respond(true);
+        }}
+      />
+
+      <SessionRejoinBlockedModal
+        visible={
+          liveLessonUx.activeModal === "rejoin_blocked" && !rejoinBlockedDismissed
+        }
+        reason={liveLessonUx.rejoinBlockedReason ?? "You cannot rejoin this session."}
+        onDismiss={() => {
+          setRejoinBlockedDismissed(true);
+          reportOpsEvent({
+            event_type: "REJOIN_BLOCKED",
+            category: "call",
+            session_id: lessonId,
+            title: "Rejoin blocked by schedule conflict",
+          });
+        }}
+      />
+
+      <ExtensionWaitingForCoachModal
+        visible={liveLessonUx.showExtensionWaitingCoach}
+        onDismiss={() => setTraineeExtendOpen(false)}
+        onCancelRequest={() => {
+          void extensionFlow.cancelRequest();
+          setTraineeExtendOpen(false);
+        }}
+      />
+
+      {departure.waitingAfterDecline ? (
+        <View style={styles.departureWaitBanner} pointerEvents="box-none">
+          <Text style={styles.departureWaitTitle}>
+            {isTrainer ? "Trainee chose to stay" : "Waiting for coach to rejoin"}
+          </Text>
+          {departure.rejoinSecondsLeft != null ? (
+            <Text style={styles.departureWaitBody}>
+              Rejoin window: {Math.floor(departure.rejoinSecondsLeft / 60)}:
+              {String(departure.rejoinSecondsLeft % 60).padStart(2, "0")}
+            </Text>
+          ) : null}
+          {departure.showConcernButton ? (
+            <Pressable
+              style={styles.departureConcernBtn}
+              onPress={() => void departure.raiseConcern()}
+              disabled={departure.raisingConcern}
+            >
+              <Text style={styles.departureConcernBtnText}>
+                {departure.raisingConcern ? "Submitting…" : "Report concern to support"}
+              </Text>
+            </Pressable>
+          ) : null}
+          {departure.status?.concernRaisedAt ? (
+            <Text style={styles.departureWaitBody}>Concern submitted to support.</Text>
+          ) : null}
+        </View>
+      ) : null}
+
       <SessionTimeWarningModal
         visible={timeWarningVisible}
         kind={activeWarning ?? "five"}
@@ -3544,6 +3581,40 @@ const styles = StyleSheet.create({
   },
   recordNoticeBtnText: {
     color: meetingTheme.onPrimary,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  departureWaitBanner: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 120,
+    backgroundColor: "rgba(28,28,30,0.94)",
+    borderRadius: 12,
+    padding: 14,
+    zIndex: 40,
+  },
+  departureWaitTitle: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  departureWaitBody: {
+    color: "#aeaeb2",
+    fontSize: 13,
+    marginTop: 6,
+    lineHeight: 18,
+  },
+  departureConcernBtn: {
+    marginTop: 10,
+    alignSelf: "flex-start",
+    backgroundColor: "#ff3b30",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  departureConcernBtnText: {
+    color: "#fff",
     fontSize: 13,
     fontWeight: "700",
   },

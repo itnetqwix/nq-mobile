@@ -133,6 +133,64 @@ export async function endSessionEarly(sessionId: string): Promise<EndSessionEarl
   return (data?.data ?? data?.result ?? data) as EndSessionEarlyResponse;
 }
 
+export type SessionDepartureStatus = {
+  sessionId: string;
+  active: boolean;
+  initiatedByRole: "trainer" | "trainee" | null;
+  initiatedByUserId: string | null;
+  initiatedAt: string | null;
+  pendingForUserId: string | null;
+  stayedActiveAt: string | null;
+  rejoinDeadlineAt: string | null;
+  concernRaisedAt: string | null;
+  canRaiseConcern: boolean;
+  bookedEndAt: string | null;
+};
+
+export type SessionDepartureResponse = {
+  departure?: SessionDepartureStatus;
+  ended?: boolean;
+  submitted?: boolean;
+};
+
+/** POST /user/session-departure/:sessionId — initiate asymmetric end-call departure. */
+export async function initiateSessionDeparture(
+  sessionId: string
+): Promise<SessionDepartureResponse> {
+  const { data } = await apiClient.post(API_ROUTES.user.sessionDeparture(sessionId));
+  return (data?.data ?? data?.result ?? data) as SessionDepartureResponse;
+}
+
+/** POST /user/session-departure-response/:sessionId */
+export async function respondSessionDeparture(
+  sessionId: string,
+  acceptEnd: boolean
+): Promise<SessionDepartureResponse> {
+  const { data } = await apiClient.post(API_ROUTES.user.sessionDepartureResponse(sessionId), {
+    acceptEnd,
+  });
+  return (data?.data ?? data?.result ?? data) as SessionDepartureResponse;
+}
+
+/** POST /user/session-departure-concern/:sessionId */
+export async function raiseSessionDepartureConcern(
+  sessionId: string,
+  description?: string
+): Promise<SessionDepartureResponse> {
+  const { data } = await apiClient.post(API_ROUTES.user.sessionDepartureConcern(sessionId), {
+    description,
+  });
+  return (data?.data ?? data?.result ?? data) as SessionDepartureResponse;
+}
+
+/** GET /user/session-departure-status/:sessionId */
+export async function fetchSessionDepartureStatus(
+  sessionId: string
+): Promise<SessionDepartureResponse> {
+  const { data } = await apiClient.get(API_ROUTES.user.sessionDepartureStatus(sessionId));
+  return (data?.data ?? data?.result ?? data) as SessionDepartureResponse;
+}
+
 export type SessionDetailResponse = {
   session: Record<string, unknown>;
   trainer: Record<string, unknown> | null;

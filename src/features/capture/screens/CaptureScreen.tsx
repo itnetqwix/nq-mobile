@@ -1,9 +1,11 @@
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
+import * as VideoThumbnails from "expo-video-thumbnails";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useState } from "react";
 import {
   Alert,
+  Platform,
   Pressable,
   SafeAreaView,
   StyleSheet,
@@ -15,6 +17,11 @@ import { colors, radii, space, typography } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
 import { saveCapturedClip } from "../capturedClipsStorage";
 import { CaptureQuickLabelModal } from "../components/CaptureQuickLabelModal";
+import {
+  ClipUploadPrepareModal,
+  type PreparedClipUpload,
+} from "../../dashboard/components/locker/ClipUploadPrepareModal";
+import { haptics } from "../../../lib/haptics";
 
 async function resolveFileSize(uri: string, reported?: number | null): Promise<number | undefined> {
   if (typeof reported === "number" && reported > 0) return reported;
@@ -44,6 +51,9 @@ export function CaptureScreen() {
   const userId = user?._id != null ? String(user._id) : null;
   const [saving, setSaving] = useState(false);
   const [labelModalVisible, setLabelModalVisible] = useState(false);
+  const [prepareVisible, setPrepareVisible] = useState(false);
+  const [thumbUri, setThumbUri] = useState<string | null>(null);
+  const [thumbBusy, setThumbBusy] = useState(false);
   const [pendingAsset, setPendingAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [defaultLabel, setDefaultLabel] = useState(defaultClipLabel());
 
@@ -66,7 +76,10 @@ export function CaptureScreen() {
           mimeType: pendingAsset.mimeType ?? "video/mp4",
         });
         setLabelModalVisible(false);
+        setPrepareVisible(false);
         setPendingAsset(null);
+        setThumbUri(null);
+        haptics.success();
         navigation.goBack();
       } catch {
         Alert.alert("Error", "Could not save the clip. Please try again.");
@@ -78,8 +91,10 @@ export function CaptureScreen() {
   );
 
   const recordVideo = useCallback(async () => {
+    haptics.tap();
     const { status: camStatus } = await ImagePicker.requestCameraPermissionsAsync();
     if (camStatus !== "granted") {
+      haptics.error();
       Alert.alert(
         "Camera Access Required",
         "Please grant camera access in Settings to record clips.",
@@ -91,7 +106,7 @@ export function CaptureScreen() {
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ["videos"],
       videoMaxDuration: 120,
-      allowsEditing: false,
+      allowsEditing: Platform.OS === "ios",
       quality: 1,
     });
 
@@ -100,15 +115,31 @@ export function CaptureScreen() {
     const asset = result.assets[0];
     if (!asset?.uri) return;
 
+    haptics.success();
     setPendingAsset(asset);
     setDefaultLabel(defaultClipLabel());
-    setLabelModalVisible(true);
+    setThumbUri(null);
+    setThumbBusy(true);
+    try {
+      const durationSec = asset.duration ?? 2;
+      const timeMs = Math.min(60_000, Math.max(250, Math.floor((durationSec / 2) * 1000)));
+      const { uri } = await VideoThumbnails.getThumbnailAsync(asset.uri, {
+        time: timeMs,
+        quality: 0.85,
+      });
+      setThumbUri(uri);
+    } catch {
+      /* thumbnail optional */
+    } finally {
+      setThumbBusy(false);
+    }
+    setPrepareVisible(true);
   }, []);
 
   return (
     <SafeAreaView style={styles.root}>
       <View style={styles.topBar}>
-        <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <Pressable style={styles.backBtn} onPress={() => { haptics.tap(); navigation.goBack(); }}>
           <Ionicons name="arrow-back" size={24} color={colors.brandNavy} />
         </Pressable>
         <Text style={styles.title}>Record clip</Text>
@@ -145,8 +176,29 @@ export function CaptureScreen() {
           if (saving) return;
           setLabelModalVisible(false);
           setPendingAsset(null);
+          setThumbUri(null);
         }}
         onSave={(label) => void saveLabeledClip(label)}
+      />
+
+      <ClipUploadPrepareModal
+        visible={prepareVisible && !!pendingAsset}
+        video={pendingAsset}
+        thumbUri={thumbUri}
+        thumbBusy={thumbBusy}
+        onClose={() => {
+          setPrepareVisible(false);
+          setPendingAsset(null);
+          setThumbUri(null);
+        }}
+        onReplaceVideo={recordVideo}
+        onThumbChange={setThumbUri}
+        onConfirm={({ video }: PreparedClipUpload) => {
+          setPendingAsset(video);
+          setPrepareVisible(false);
+          setLabelModalVisible(true);
+          haptics.success();
+        }}
       />
     </SafeAreaView>
   );

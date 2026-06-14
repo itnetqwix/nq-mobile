@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
-  Modal,
   Pressable,
   StyleSheet,
   Text,
@@ -9,6 +8,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { KeyboardFormModal } from "../../../components/ui/KeyboardFormModal";
 import { colors, radii, space, typography } from "../../../theme";
 
 type Props = {
@@ -19,7 +19,7 @@ type Props = {
   onSave: (label: string) => void;
 };
 
-/** Lightweight label step after recording — no upload/categorize yet. */
+/** Lightweight label step after recording — keyboard-safe page sheet. */
 export function CaptureQuickLabelModal({
   visible,
   defaultLabel,
@@ -34,58 +34,57 @@ export function CaptureQuickLabelModal({
     if (visible) setLabel(defaultLabel);
   }, [visible, defaultLabel]);
 
+  const handleSave = () => onSave(label.trim() || defaultLabel);
+
   return (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={onCancel}>
-      <Pressable style={styles.backdrop} onPress={busy ? undefined : onCancel}>
-        <Pressable style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, space.md) }]} onPress={() => {}}>
-          <Text style={styles.title}>Name this clip</Text>
-          <Text style={styles.sub}>Add a quick label, then record more or upload later from your library.</Text>
-          <TextInput
-            style={styles.input}
-            value={label}
-            onChangeText={setLabel}
-            placeholder="Clip label"
-            placeholderTextColor="#9ca3af"
-            autoFocus
-            editable={!busy}
-            returnKeyType="done"
-            onSubmitEditing={() => onSave(label.trim() || defaultLabel)}
-          />
-          <View style={styles.actions}>
-            <Pressable style={styles.secondaryBtn} onPress={onCancel} disabled={busy}>
-              <Text style={styles.secondaryText}>Discard</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.primaryBtn, busy && { opacity: 0.6 }]}
-              onPress={() => onSave(label.trim() || defaultLabel)}
-              disabled={busy}
-            >
-              <Ionicons name="checkmark" size={18} color="#fff" />
-              <Text style={styles.primaryText}>{busy ? "Saving…" : "Save clip"}</Text>
-            </Pressable>
-          </View>
-        </Pressable>
-      </Pressable>
-    </Modal>
+    <KeyboardFormModal
+      visible={visible}
+      onClose={busy ? () => {} : onCancel}
+      presentationStyle="pageSheet"
+      scrollBottomPadding={insets.bottom + 24}
+      footer={
+        <View style={styles.actions}>
+          <Pressable style={styles.secondaryBtn} onPress={onCancel} disabled={busy}>
+            <Text style={styles.secondaryText}>Discard</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.primaryBtn, busy && { opacity: 0.6 }]}
+            onPress={handleSave}
+            disabled={busy}
+          >
+            <Ionicons name="checkmark" size={18} color="#fff" />
+            <Text style={styles.primaryText}>{busy ? "Saving…" : "Save clip"}</Text>
+          </Pressable>
+        </View>
+      }
+    >
+      <Text style={styles.title}>Name this clip</Text>
+      <Text style={styles.sub}>
+        Add a quick label, then record more or upload later from your library.
+      </Text>
+      <TextInput
+        style={styles.input}
+        value={label}
+        onChangeText={setLabel}
+        placeholder="Clip label"
+        placeholderTextColor="#9ca3af"
+        autoFocus
+        editable={!busy}
+        returnKeyType="done"
+        onSubmitEditing={handleSave}
+      />
+    </KeyboardFormModal>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    justifyContent: "flex-end",
-  },
-  sheet: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: radii.lg,
-    borderTopRightRadius: radii.lg,
-    paddingHorizontal: space.lg,
-    paddingTop: space.lg,
-    gap: space.sm,
-  },
   title: { ...typography.titleSm, color: "#111827", fontWeight: "800" },
-  sub: { ...typography.bodySm, color: "#6b7280", lineHeight: 20, marginBottom: space.xs },
+  sub: {
+    ...typography.bodySm,
+    color: "#6b7280",
+    lineHeight: 20,
+    marginBottom: space.sm,
+  },
   input: {
     borderWidth: 1,
     borderColor: "#e5e7eb",
@@ -95,8 +94,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#111827",
     backgroundColor: "#f9fafb",
+    minHeight: 48,
   },
-  actions: { flexDirection: "row", gap: space.sm, marginTop: space.md },
+  actions: { flexDirection: "row", gap: space.sm },
   secondaryBtn: {
     flex: 1,
     paddingVertical: 14,

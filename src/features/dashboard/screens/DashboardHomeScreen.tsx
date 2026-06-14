@@ -69,6 +69,7 @@ import {
 import { PostLessonConcernBanner } from "../../sessions/components/PostLessonConcernBanner";
 import { ProfilePhotoRequiredBanner } from "../components/shared/ProfilePhotoRequiredBanner";
 import { ReferFriendsBanner } from "../components/shared/ReferFriendsBanner";
+import { CallRejoinBanner } from "../../calling/components/CallRejoinBanner";
 import { TrainerProfileModal } from "../../bookexpert/components/TrainerProfileModal";
 import { InstantLessonBookingWizardModal } from "../../instant-lesson/booking-wizard";
 import { ScheduledBookingWizardModal } from "../../scheduled-booking/ScheduledBookingWizardModal";
@@ -666,6 +667,8 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
           }
           footer={
             <>
+              <CallRejoinBanner />
+
               {!hasProfilePhoto && (
                 <ProfilePhotoRequiredBanner onAddPhoto={openEditProfile} />
               )}

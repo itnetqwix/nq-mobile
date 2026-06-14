@@ -13,7 +13,8 @@ import { allowWebMeetingFallback, shouldUseNativeMeeting } from "../featureFlag"
 import { NativeCallRequiredScreen } from "./NativeCallRequiredScreen";
 import { PrecallLobbyScreen } from "./PrecallLobbyScreen";
 import { setLastInterruptedSession } from "../callRejoinStore";
-import { fetchLessonCallSlotStatus } from "../api/lessonCallSlotApi";
+import { fetchSessionJoinReadiness } from "../sessionLiveApi";
+import { SessionRejoinBlockedModal } from "../components/SessionRejoinBlockedModal";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Meeting">;
 
@@ -58,22 +59,41 @@ export function MeetingRouter(props: Props) {
   const [joined, setJoined] = useState(false);
   const [rejoinChecking, setRejoinChecking] = useState(skipLobby);
   const [rejoinError, setRejoinError] = useState<string | null>(null);
+  const [rejoinBlockedReason, setRejoinBlockedReason] = useState<string | null>(null);
 
   useEffect(() => {
     setUseNative(shouldUseNativeMeeting());
   }, []);
 
-  const runRejoinSlotCheck = () => {
+  const runRejoinPreflight = () => {
     if (!lessonId) return;
     setRejoinChecking(true);
     setRejoinError(null);
-    void fetchLessonCallSlotStatus(lessonId)
-      .then((slot) => {
-        if (slot.canJoin || slot.canTakeOver) {
-          setJoined(true);
-        } else {
-          props.navigation.goBack();
+    setRejoinBlockedReason(null);
+    void fetchSessionJoinReadiness(lessonId)
+      .then((readiness) => {
+        if (!readiness) {
+          setRejoinError("Could not load session status. Try again.");
+          return;
         }
+        if (readiness.can_join === false) {
+          if (readiness.join_code === "departure_rejoin_blocked") {
+            setRejoinBlockedReason(
+              readiness.join_block_reason ??
+                "You have another session during this time and cannot rejoin."
+            );
+            return;
+          }
+          setRejoinError(
+            readiness.join_block_reason ?? "This session is not ready to join."
+          );
+          return;
+        }
+        if (readiness.call_slot?.canJoin === false && !readiness.call_slot?.canTakeOver) {
+          props.navigation.goBack();
+          return;
+        }
+        setJoined(true);
       })
       .catch(() => {
         setRejoinError(
@@ -87,7 +107,7 @@ export function MeetingRouter(props: Props) {
 
   useEffect(() => {
     if (!skipLobby || !lessonId) return;
-    runRejoinSlotCheck();
+    runRejoinPreflight();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lessonId, skipLobby]);
 
@@ -95,11 +115,24 @@ export function MeetingRouter(props: Props) {
     return <LoaderFallback />;
   }
 
+  if (skipLobby && rejoinBlockedReason) {
+    return (
+      <>
+        <LoaderFallback />
+        <SessionRejoinBlockedModal
+          visible
+          reason={rejoinBlockedReason}
+          onDismiss={() => props.navigation.goBack()}
+        />
+      </>
+    );
+  }
+
   if (skipLobby && rejoinError) {
     return (
       <View style={styles.fallback}>
         <Text style={styles.errorText}>{rejoinError}</Text>
-        <Pressable style={styles.retryBtn} onPress={runRejoinSlotCheck}>
+        <Pressable style={styles.retryBtn} onPress={runRejoinPreflight}>
           <Text style={styles.retryText}>Retry</Text>
         </Pressable>
         <Pressable

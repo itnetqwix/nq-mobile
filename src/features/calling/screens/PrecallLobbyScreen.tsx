@@ -288,8 +288,11 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
   };
 
   const serverJoinBlocked = readiness?.can_join === false;
-  const serverJoinMessage =
-    readiness?.join_block_reason ?? readiness?.join_policy?.block_reason ?? null;
+  const departureRejoinBlocked = readiness?.join_code === "departure_rejoin_blocked";
+  const serverJoinMessage = departureRejoinBlocked
+    ? readiness?.join_block_reason ??
+      "You have another session during this time and cannot rejoin this lesson."
+    : readiness?.join_block_reason ?? readiness?.join_policy?.block_reason ?? null;
 
   const joinGateBlocked =
     serverJoinBlocked || (callSlotBlocked && !callSlotCanTakeOver);

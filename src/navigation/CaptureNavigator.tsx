@@ -2,10 +2,18 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React from "react";
 import { CaptureScreen } from "../features/capture/screens/CaptureScreen";
 import { CapturedLibraryScreen } from "../features/capture/screens/CapturedLibraryScreen";
+import { CapturedClipUploadScreen } from "../features/capture/screens/CapturedClipUploadScreen";
+import type { CaptureShareTarget } from "../features/capture/clipUploadShareTarget";
+import type { CapturedClip } from "../features/capture/capturedClipsStorage";
 
-type CaptureStackParamList = {
+export type CaptureStackParamList = {
   CapturedLibrary: undefined;
   CaptureCamera: undefined;
+  CapturedClipUpload: {
+    clips: CapturedClip[];
+    shareTarget?: CaptureShareTarget;
+    showPrepareStep?: boolean;
+  };
 };
 
 const Stack = createNativeStackNavigator<CaptureStackParamList>();
@@ -19,6 +27,7 @@ export function CaptureNavigator() {
     >
       <Stack.Screen name="CapturedLibrary" component={CapturedLibraryScreen} />
       <Stack.Screen name="CaptureCamera" component={CaptureScreen} />
+      <Stack.Screen name="CapturedClipUpload" component={CapturedClipUploadScreen} />
     </Stack.Navigator>
   );
 }

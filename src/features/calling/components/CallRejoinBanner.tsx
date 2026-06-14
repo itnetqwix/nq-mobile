@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useState } from "react";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { navigationRef } from "../../../navigation/navigationRef";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { haptics } from "../../../lib/haptics";
@@ -9,30 +9,56 @@ import {
   setLastInterruptedSession,
   useLastInterruptedSession,
 } from "../callRejoinStore";
+import { fetchSessionJoinReadiness } from "../sessionLiveApi";
+import { SessionRejoinBlockedModal } from "./SessionRejoinBlockedModal";
 
 /**
  * Slim banner that appears at the top of the dashboard when the most
- * recent meeting ended unexpectedly. Tapping it deep-links back into
- * the same lesson with `skipLobby: true` so the user re-enters the call
- * instantly. Dismissable so people aren't haunted by an old drop.
+ * recent meeting ended unexpectedly. Preflight checks join readiness
+ * (departure rejoin blocks, call slot) before navigating back in.
  */
 export function CallRejoinBanner() {
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const styles = useStyles();
   const last = useLastInterruptedSession();
+  const [checking, setChecking] = useState(false);
+  const [blockedReason, setBlockedReason] = useState<string | null>(null);
 
   if (!last) return null;
 
-  const handleRejoin = () => {
+  const handleRejoin = async () => {
+    if (checking) return;
     haptics.tap();
-    if (navigationRef.isReady()) {
-      navigationRef.navigate("Meeting", {
-        lessonId: last.lessonId,
-        skipLobby: true,
-      });
+    setChecking(true);
+    try {
+      const readiness = await fetchSessionJoinReadiness(last.lessonId);
+      if (!readiness || readiness.can_join === false) {
+        if (readiness?.join_code === "departure_rejoin_blocked") {
+          setBlockedReason(
+            readiness.join_block_reason ??
+              "You have another session during this time and cannot rejoin."
+          );
+          return;
+        }
+        Alert.alert(
+          "Cannot rejoin",
+          readiness?.join_block_reason ?? "This session is no longer available to join."
+        );
+        return;
+      }
+      if (navigationRef.isReady()) {
+        navigationRef.navigate("Meeting", {
+          lessonId: last.lessonId,
+          skipLobby: true,
+        });
+      }
+      setLastInterruptedSession(null);
+    } catch {
+      Alert.alert("Could not rejoin", "Check your connection and try again.");
+    } finally {
+      setChecking(false);
     }
-    setLastInterruptedSession(null);
   };
 
   const handleDismiss = () => {
@@ -40,38 +66,44 @@ export function CallRejoinBanner() {
   };
 
   return (
-    <Pressable
-      onPress={handleRejoin}
-      style={[styles.banner, { borderColor: c.warning, backgroundColor: `${c.warning}1a` }]}
-      accessibilityRole="button"
-      accessibilityLabel={t("callRejoin.rejoinBtn")}
-    >
-      <View style={[styles.iconWrap, { backgroundColor: c.warning }]}>
-        <Ionicons name="reload" size={14} color={c.brandTextOn} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={[styles.title, { color: c.text }]}>
-          {t("callRejoin.bannerTitle")}
-        </Text>
-        <Text style={[styles.body, { color: c.textMuted }]}>
-          {t("callRejoin.bannerBody", {
-            name: last.partnerName ?? "the session",
-          })}
-        </Text>
-      </View>
-      <View style={[styles.rejoinPill, { backgroundColor: c.warning }]}>
-        <Text style={[styles.rejoinText, { color: c.brandTextOn }]}>
-          {t("callRejoin.rejoinBtn")}
-        </Text>
-      </View>
+    <>
       <Pressable
-        onPress={handleDismiss}
-        hitSlop={6}
-        accessibilityLabel={t("callRejoin.dismiss")}
+        onPress={handleRejoin}
+        style={[styles.banner, { borderColor: c.warning, backgroundColor: `${c.warning}1a` }]}
+        accessibilityRole="button"
+        accessibilityLabel={t("callRejoin.rejoinBtn")}
       >
-        <Ionicons name="close" size={16} color={c.textMuted} />
+        <View style={[styles.iconWrap, { backgroundColor: c.warning }]}>
+          <Ionicons name="reload" size={14} color={c.brandTextOn} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.title, { color: c.text }]}>
+            {t("callRejoin.bannerTitle")}
+          </Text>
+          <Text style={[styles.body, { color: c.textMuted }]}>
+            {checking
+              ? "Checking session…"
+              : t("callRejoin.bannerBody", {
+                  name: last.partnerName ?? "the session",
+                })}
+          </Text>
+        </View>
+        <View style={[styles.rejoinPill, { backgroundColor: c.warning }]}>
+          <Text style={[styles.rejoinText, { color: c.brandTextOn }]}>
+            {t("callRejoin.rejoinBtn")}
+          </Text>
+        </View>
+        <Pressable onPress={handleDismiss} hitSlop={6} accessibilityLabel={t("callRejoin.dismiss")}>
+          <Ionicons name="close" size={16} color={c.textMuted} />
+        </Pressable>
       </Pressable>
-    </Pressable>
+
+      <SessionRejoinBlockedModal
+        visible={!!blockedReason}
+        reason={blockedReason ?? ""}
+        onDismiss={() => setBlockedReason(null)}
+      />
+    </>
   );
 }
 

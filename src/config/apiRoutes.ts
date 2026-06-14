@@ -50,6 +50,13 @@ export const API_ROUTES = {
     scheduledMeetings: "/user/scheduled-meetings",
     updateBookedSession: (id: string) => `/user/update-booked-session/${id}` as const,
     sessionEndEarly: (sessionId: string) => `/user/session-end-early/${sessionId}` as const,
+    sessionDeparture: (sessionId: string) => `/user/session-departure/${sessionId}` as const,
+    sessionDepartureResponse: (sessionId: string) =>
+      `/user/session-departure-response/${sessionId}` as const,
+    sessionDepartureConcern: (sessionId: string) =>
+      `/user/session-departure-concern/${sessionId}` as const,
+    sessionDepartureStatus: (sessionId: string) =>
+      `/user/session-departure-status/${sessionId}` as const,
     shareClips: "/user/share-clips",
     inviteFriend: "/user/invite-friend",
     rating: "/user/rating",

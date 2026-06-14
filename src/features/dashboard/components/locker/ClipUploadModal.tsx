@@ -38,14 +38,27 @@ import { apiClient } from "../../../../api/client";
 import { API_ROUTES } from "../../../../config/apiRoutes";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
+import { haptics } from "../../../../lib/haptics";
+import {
+  SHARE_BACKEND_NEW_USERS,
+  SHARE_EMAIL,
+  SHARE_FRIENDS,
+  SHARE_MY_CLIPS,
+  shareTargetTitleKey,
+  shareTargetSubtitleKey,
+  type ClipShareTargetWire,
+} from "../../../capture/clipUploadShareTarget";
+import {
+  uploadCapturedClipsBatch,
+  parseShareEmails,
+  type BatchUploadProgress,
+} from "../../../capture/uploadCapturedClipsBatch";
+import {
+  ClipUploadPrepareModal,
+  type PreparedClipUpload,
+} from "./ClipUploadPrepareModal";
 
-const SHARE_MY_CLIPS = "My Clips";
-const SHARE_FRIENDS = "Friends";
-const SHARE_EMAIL = "Email";
-/** Backend `clipConfirmService` expects this wire value for email invites. */
-const SHARE_BACKEND_NEW_USERS = "New Users";
-
-type ShareTarget = typeof SHARE_MY_CLIPS | typeof SHARE_FRIENDS | typeof SHARE_EMAIL;
+type ShareTarget = ClipShareTargetWire;
 
 export type ClipUploadInitialVideo = {
   uri: string;
@@ -54,6 +67,7 @@ export type ClipUploadInitialVideo = {
   fileSizeBytes?: number;
   mimeType?: string;
   title?: string;
+  captureClipId?: string;
 };
 
 type Props = {
@@ -61,9 +75,16 @@ type Props = {
   onClose: () => void;
   onUploaded: () => void;
   initialVideo?: ClipUploadInitialVideo | null;
+  /** Batch upload from captured library multi-select. */
+  initialVideos?: ClipUploadInitialVideo[];
   defaultShareTarget?: ShareTarget;
   /** When uploading from Capture library, delete local draft after success. */
   captureClipId?: string | null;
+  /** Full-screen page (navigator) instead of modal sheet. */
+  renderAsScreen?: boolean;
+  onBack?: () => void;
+  /** Open trim/thumbnail prepare step before details. */
+  showPrepareStep?: boolean;
 };
 
 export function ClipUploadModal({
@@ -71,8 +92,12 @@ export function ClipUploadModal({
   onClose,
   onUploaded,
   initialVideo = null,
+  initialVideos = [],
   defaultShareTarget = SHARE_MY_CLIPS,
   captureClipId = null,
+  renderAsScreen = false,
+  onBack,
+  showPrepareStep = false,
 }: Props) {
   const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
@@ -101,6 +126,43 @@ export function ClipUploadModal({
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
   const [shareEmail, setShareEmail] = useState("");
   const [initializingVideo, setInitializingVideo] = useState(false);
+  const [activeBatchIndex, setActiveBatchIndex] = useState(0);
+  const [batchTitles, setBatchTitles] = useState<Record<string, string>>({});
+  const [batchThumbs, setBatchThumbs] = useState<Record<string, string>>({});
+  const [prepareOpen, setPrepareOpen] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<BatchUploadProgress | null>(null);
+
+  const batchVideos = useMemo(() => {
+    if (initialVideos.length > 0) return initialVideos;
+    if (initialVideo?.uri) return [initialVideo];
+    return [];
+  }, [initialVideo, initialVideos]);
+
+  const isBatch = batchVideos.length > 1;
+  const activeBatchVideo = batchVideos[activeBatchIndex] ?? null;
+
+  const shareTargetKey = useMemo(() => {
+    if (shareTarget === SHARE_FRIENDS) return "friends" as const;
+    if (shareTarget === SHARE_EMAIL) return "email" as const;
+    return "my-clips" as const;
+  }, [shareTarget]);
+
+  const headerTitle = t(shareTargetTitleKey(shareTargetKey), {
+    defaultValue:
+      shareTarget === SHARE_FRIENDS
+        ? "Share with friends"
+        : shareTarget === SHARE_EMAIL
+          ? "Share by email"
+          : "Upload to My Clips",
+  });
+  const headerSub = t(shareTargetSubtitleKey(shareTargetKey), {
+    defaultValue:
+      shareTarget === SHARE_FRIENDS
+        ? "Choose sport, subcategory, and friends for your clip(s)."
+        : shareTarget === SHARE_EMAIL
+          ? "Invite new users by email — add multiple addresses separated by commas."
+          : "Add title, sport, and subcategory to save in your locker.",
+  });
 
   const { data: taxonomy, isLoading: catLoading } = useQuery({
     queryKey: queryKeys.clips.taxonomy,
@@ -136,11 +198,68 @@ export function ClipUploadModal({
       setSelectedFriendIds([]);
       setShareEmail("");
       setInitializingVideo(false);
+      setActiveBatchIndex(0);
+      setBatchTitles({});
+      setBatchThumbs({});
+      setPrepareOpen(false);
+      setBatchProgress(null);
     }
   }, [visible, defaultShareTarget]);
 
   useEffect(() => {
-    if (!visible || !initialVideo?.uri) return;
+    if (!visible || initialVideos.length === 0) return;
+    let cancelled = false;
+
+    const loadBatch = async () => {
+      setInitializingVideo(true);
+      const titles: Record<string, string> = {};
+      const thumbs: Record<string, string> = {};
+
+      for (const v of batchVideos) {
+        const base = (v.fileName ?? "clip").replace(/\.[^/.]+$/, "");
+        titles[v.uri] = v.title?.trim() || base || t("locker.clipDefault");
+        try {
+          const durationSec = v.durationSecs ?? 2;
+          const timeMs = Math.min(60_000, Math.max(250, Math.floor((durationSec / 2) * 1000)));
+          const { uri } = await VideoThumbnails.getThumbnailAsync(v.uri, {
+            time: timeMs,
+            quality: 0.85,
+          });
+          thumbs[v.uri] = uri;
+        } catch {
+          /* thumb optional per clip */
+        }
+      }
+
+      if (cancelled) return;
+      setBatchTitles(titles);
+      setBatchThumbs(thumbs);
+      setActiveBatchIndex(0);
+      const first = batchVideos[0]!;
+      setVideoAsset({
+        uri: first.uri,
+        width: 0,
+        height: 0,
+        duration: first.durationSecs,
+        fileName: first.fileName ?? `capture_${Date.now()}.mp4`,
+        mimeType: first.mimeType ?? "video/mp4",
+        fileSize: first.fileSizeBytes,
+        assetId: null,
+        type: "video",
+      });
+      setTitle(titles[first.uri] ?? t("locker.clipDefault"));
+      setThumbUri(thumbs[first.uri] ?? null);
+      setInitializingVideo(false);
+    };
+
+    void loadBatch();
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, initialVideos.length, batchVideos, t]);
+
+  useEffect(() => {
+    if (!visible || !initialVideo?.uri || initialVideos.length > 0) return;
     let cancelled = false;
 
     const loadCapturedVideo = async () => {
@@ -185,6 +304,7 @@ export function ClipUploadModal({
         if (!cancelled) {
           setThumbBusy(false);
           setInitializingVideo(false);
+          if (showPrepareStep) setPrepareOpen(true);
         }
       }
     };
@@ -193,9 +313,9 @@ export function ClipUploadModal({
     return () => {
       cancelled = true;
     };
-  }, [visible, initialVideo?.uri, initialVideo?.durationSecs, initialVideo?.fileName, initialVideo?.fileSizeBytes, initialVideo?.mimeType, initialVideo?.title, t]);
+  }, [visible, initialVideo?.uri, initialVideo?.durationSecs, initialVideo?.fileName, initialVideo?.fileSizeBytes, initialVideo?.mimeType, initialVideo?.title, showPrepareStep, t]);
 
-  const lockShareTarget = !!initialVideo;
+  const lockShareTarget = !!initialVideo || initialVideos.length > 0;
 
   useEffect(() => {
     if (!visible || !isTrainer || !profileCategory || !taxonomy) return;
@@ -251,17 +371,26 @@ export function ClipUploadModal({
   };
 
   const toggleFriend = (friendId: string) => {
+    haptics.select();
     setSelectedFriendIds((prev) =>
       prev.includes(friendId) ? prev.filter((id) => id !== friendId) : [...prev, friendId]
     );
   };
 
-  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shareEmail.trim());
+  const parsedEmails = useMemo(() => parseShareEmails(shareEmail), [shareEmail]);
+  const emailValid = parsedEmails.length > 0;
+
+  const batchReady =
+    !isBatch ||
+    batchVideos.every(
+      (v) =>
+        (batchTitles[v.uri]?.trim().length ?? 0) > 0 && !!batchThumbs[v.uri]
+    );
 
   const canSubmit =
-    !!videoAsset &&
-    !!thumbUri &&
-    title.trim().length > 0 &&
+    batchVideos.length > 0 &&
+    (isBatch ? batchReady : !!videoAsset && !!thumbUri) &&
+    (isBatch || title.trim().length > 0) &&
     categoryId.length > 0 &&
     subcategoryId.length > 0 &&
     !thumbBusy &&
@@ -294,7 +423,93 @@ export function ClipUploadModal({
   }, [shareTarget, t]);
 
   const submit = async () => {
-    if (!videoAsset || !thumbUri || !canSubmit) return;
+    if (!canSubmit) return;
+    haptics.tap();
+
+    const shareOptions =
+      shareTarget === SHARE_FRIENDS
+        ? { type: SHARE_FRIENDS, friends: selectedFriendIds }
+        : shareTarget === SHARE_EMAIL
+          ? { type: SHARE_BACKEND_NEW_USERS, emails: parsedEmails }
+          : { type: SHARE_MY_CLIPS };
+
+    if (isBatch) {
+      setUploadBusy(true);
+      setBatchProgress(null);
+      try {
+        let totalBytes = 0;
+        for (const v of batchVideos) {
+          totalBytes += v.fileSizeBytes ?? 0;
+        }
+        if (shareTarget === SHARE_MY_CLIPS && totalBytes > 0) {
+          try {
+            const storage = await fetchStorageInfo();
+            if (storage.usedBytes + totalBytes > storage.quotaBytes) {
+              Alert.alert(
+                t("locker.storageFullTitle"),
+                t("locker.storageFullBody"),
+                [{ text: t("common.ok") }]
+              );
+              return;
+            }
+          } catch {
+            /* proceed */
+          }
+        }
+
+        const items = batchVideos.map((v) => ({
+          clip: {
+            id: v.captureClipId ?? v.uri,
+            uri: v.uri,
+            createdAt: new Date().toISOString(),
+            label: batchTitles[v.uri],
+            durationSecs: v.durationSecs,
+            fileSizeBytes: v.fileSizeBytes,
+            mimeType: v.mimeType,
+          },
+          videoUri: v.uri,
+          thumbUri: batchThumbs[v.uri]!,
+          title: batchTitles[v.uri] ?? t("locker.clipDefault"),
+          captureClipId: v.captureClipId,
+        }));
+
+        const { clipIds } = await uploadCapturedClipsBatch({
+          items,
+          videoMime,
+          category: selectedCategory?.name ?? profileCategory,
+          category_id: categoryId,
+          subcategory_id: subcategoryId,
+          shareOptions,
+          userId: user?._id != null ? String(user._id) : null,
+          onProgress: setBatchProgress,
+        });
+
+        for (const id of clipIds) {
+          apiClient.post(API_ROUTES.ai.tagClip(String(id))).catch(() => {});
+        }
+
+        haptics.success();
+        Alert.alert(
+          t("capture.batchUploadedTitle", { defaultValue: "Upload complete" }),
+          t("capture.batchUploadedBody", {
+            defaultValue: "{{count}} clip(s) uploaded successfully.",
+            count: batchVideos.length,
+          })
+        );
+        dispatch(lockerMutated());
+        onUploaded();
+        onClose();
+      } catch (e) {
+        haptics.error();
+        Alert.alert(t("locker.uploadFailedTitle"), getApiErrorMessage(e));
+      } finally {
+        setUploadBusy(false);
+        setBatchProgress(null);
+      }
+      return;
+    }
+
+    if (!videoAsset || !thumbUri) return;
     let fileBytes = videoAsset.fileSize ?? 0;
     if (fileBytes <= 0) {
       try {
@@ -348,15 +563,7 @@ export function ClipUploadModal({
         category: selectedCategory?.name ?? profileCategory,
         category_id: categoryId,
         subcategory_id: subcategoryId,
-        shareOptions:
-          shareTarget === SHARE_FRIENDS
-            ? { type: SHARE_FRIENDS, friends: selectedFriendIds }
-            : shareTarget === SHARE_EMAIL
-              ? {
-                  type: SHARE_BACKEND_NEW_USERS,
-                  emails: [shareEmail.trim().toLowerCase()],
-                }
-              : { type: SHARE_MY_CLIPS },
+        shareOptions,
         onVideoProgress: (percent) => {
           setUploadPhase("video");
           setVideoProgress(percent);
@@ -372,6 +579,7 @@ export function ClipUploadModal({
         apiClient.post(API_ROUTES.ai.tagClip(String(clipId))).catch(() => {});
       }
 
+      haptics.success();
       Alert.alert(
         t("locker.uploadedTitle"),
         shareTarget === SHARE_FRIENDS
@@ -391,7 +599,7 @@ export function ClipUploadModal({
             : shareTarget === SHARE_EMAIL
               ? {
                   type: SHARE_BACKEND_NEW_USERS as const,
-                  emails: [shareEmail.trim().toLowerCase()],
+                  emails: parsedEmails,
                 }
               : { type: SHARE_MY_CLIPS as const };
         await enqueueCaptureClipUpload({
@@ -405,6 +613,7 @@ export function ClipUploadModal({
           subcategory_id: subcategoryId,
           shareOptions,
           captureClipId: captureClipId ?? undefined,
+          userId: user?._id != null ? String(user._id) : null,
         });
         Alert.alert(
           t("capture.uploadQueuedTitle", { defaultValue: "Upload queued" }),
@@ -425,33 +634,54 @@ export function ClipUploadModal({
 
   const showCategoryPicker = !isTrainer || !profileCategory;
 
-  return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+  const handleClose = () => {
+    haptics.tap();
+    if (onBack) onBack();
+    else onClose();
+  };
+
+  const shell = (
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={insets.top + 8}
       >
         <View style={[styles.header, { paddingTop: Math.max(insets.top, space.md) }]}>
+          {renderAsScreen ? (
+            <Pressable onPress={handleClose} hitSlop={12} disabled={uploadBusy} style={styles.backIcon}>
+              <Ionicons name="arrow-back" size={24} color={c.text} />
+            </Pressable>
+          ) : null}
           <View style={styles.headerText}>
-            <Text style={styles.headerTitle}>{t("locker.uploadTitle")}</Text>
-            <Text style={styles.headerSub}>{t("locker.uploadLead")}</Text>
+            <Text style={styles.headerTitle}>{headerTitle}</Text>
+            <Text style={styles.headerSub}>{headerSub}</Text>
+            {isBatch ? (
+              <Text style={styles.headerBatch}>
+                {t("capture.batchCount", {
+                  defaultValue: "{{count}} clips",
+                  count: batchVideos.length,
+                })}
+              </Text>
+            ) : null}
           </View>
-          <Pressable onPress={onClose} hitSlop={12} disabled={uploadBusy}>
-            <Ionicons name="close" size={26} color={c.text} />
+          <Pressable onPress={handleClose} hitSlop={12} disabled={uploadBusy}>
+            <Ionicons name={renderAsScreen ? "close" : "close"} size={26} color={c.text} />
           </Pressable>
         </View>
 
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
           <ScrollView
-            contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 100 }]}
+            contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 120 }]}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
           >
-          {!initialVideo && (
+          {!initialVideo && initialVideos.length === 0 && (
             <Pressable
               style={({ pressed }) => [styles.pickBtn, pressed && { opacity: 0.9 }]}
-              onPress={pickVideo}
+              onPress={() => {
+                haptics.tap();
+                void pickVideo();
+              }}
               disabled={thumbBusy || uploadBusy || initializingVideo}
             >
               <Ionicons name="folder-open-outline" size={22} color={c.brandNavy} />
@@ -461,6 +691,22 @@ export function ClipUploadModal({
             </Pressable>
           )}
 
+          {(initialVideo || initialVideos.length > 0) && !isBatch ? (
+            <Pressable
+              style={styles.editVideoBtn}
+              onPress={() => {
+                haptics.select();
+                setPrepareOpen(true);
+              }}
+              disabled={uploadBusy || !videoAsset}
+            >
+              <Ionicons name="cut-outline" size={18} color={c.brandNavy} />
+              <Text style={styles.editVideoBtnText}>
+                {t("capture.editVideo", { defaultValue: "Edit video & thumbnail" })}
+              </Text>
+            </Pressable>
+          ) : null}
+
           {(thumbBusy || initializingVideo) && (
             <View style={styles.rowCenter}>
               <ActivityIndicator color={c.brandNavy} />
@@ -468,7 +714,7 @@ export function ClipUploadModal({
             </View>
           )}
 
-          {!!thumbUri && (
+          {!!thumbUri && !isBatch && (
             <View style={styles.previewBox}>
               <Image source={{ uri: thumbUri }} style={styles.previewImg} resizeMode="cover" />
               <Text style={styles.fileMeta} numberOfLines={1}>
@@ -478,6 +724,29 @@ export function ClipUploadModal({
           )}
 
           <View style={styles.formCard}>
+          {isBatch ? (
+            <>
+              <Text style={styles.label}>
+                {t("capture.clipTitles", { defaultValue: "Titles for each clip" })}
+              </Text>
+              {batchVideos.map((v, idx) => (
+                <View key={v.uri} style={styles.batchRow}>
+                  <Text style={styles.batchIndex}>{idx + 1}</Text>
+                  <TextInput
+                    style={[styles.input, styles.batchInput]}
+                    value={batchTitles[v.uri] ?? ""}
+                    onChangeText={(text) =>
+                      setBatchTitles((prev) => ({ ...prev, [v.uri]: text }))
+                    }
+                    placeholder={t("locker.titlePlaceholder")}
+                    placeholderTextColor={c.textMuted}
+                    editable={!uploadBusy}
+                  />
+                </View>
+              ))}
+            </>
+          ) : (
+            <>
           <Text style={styles.label}>{t("locker.titleLabel")}</Text>
           <TextInput
             style={styles.input}
@@ -487,6 +756,8 @@ export function ClipUploadModal({
             placeholderTextColor={c.textMuted}
             editable={!uploadBusy}
           />
+            </>
+          )}
 
           {isTrainer && !!profileCategory && (
             <View style={styles.categoryReadonly}>
@@ -627,21 +898,45 @@ export function ClipUploadModal({
             <View style={styles.friendPickerBox}>
               <Text style={styles.label}>{t("locker.shareEmailLabel")}</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, styles.emailInput]}
                 value={shareEmail}
                 onChangeText={setShareEmail}
-                placeholder={t("locker.shareEmailPlaceholder")}
+                placeholder={t("capture.shareEmailsPlaceholder", {
+                  defaultValue: "email1@example.com, email2@example.com",
+                })}
                 placeholderTextColor={c.textMuted}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
+                multiline
                 editable={!uploadBusy}
               />
+              {parsedEmails.length > 0 ? (
+                <Text style={styles.muted}>
+                  {t("capture.emailsParsed", {
+                    defaultValue: "{{count}} valid email(s)",
+                    count: parsedEmails.length,
+                  })}
+                </Text>
+              ) : null}
               <Text style={styles.muted}>{t("locker.shareEmailHint")}</Text>
             </View>
           )}
 
-          {uploadBusy && (
+          {uploadBusy && batchProgress ? (
+            <View style={styles.progressBlock}>
+              <Text style={styles.progressLabel}>
+                {t("capture.uploadingBatch", {
+                  defaultValue: "Uploading {{index}} of {{total}}: {{title}}",
+                  index: batchProgress.index,
+                  total: batchProgress.total,
+                  title: batchProgress.clipTitle,
+                })}
+              </Text>
+            </View>
+          ) : null}
+
+          {uploadBusy && !batchProgress && (
             <View style={styles.progressBlock}>
               <View style={styles.progressRow}>
                 <Text style={styles.progressLabel}>
@@ -705,7 +1000,59 @@ export function ClipUploadModal({
           </Pressable>
         </View>
       </KeyboardAvoidingView>
-    </Modal>
+  );
+
+  return (
+    <>
+      {renderAsScreen ? (
+        visible ? <View style={styles.flex}>{shell}</View> : null
+      ) : (
+        <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
+          {shell}
+        </Modal>
+      )}
+
+      <ClipUploadPrepareModal
+        visible={prepareOpen && !!videoAsset}
+        video={videoAsset}
+        thumbUri={thumbUri}
+        thumbBusy={thumbBusy}
+        onClose={() => setPrepareOpen(false)}
+        onReplaceVideo={async () => {
+          const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (!perm.granted) return;
+          const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ["videos"],
+            allowsEditing: Platform.OS === "ios",
+            videoMaxDuration: 300,
+            quality: 1,
+          });
+          if (result.canceled || !result.assets?.[0]) return;
+          const asset = result.assets[0];
+          setVideoAsset(asset);
+          setThumbUri(null);
+          setThumbBusy(true);
+          try {
+            const durationSec = asset.duration ?? 2;
+            const timeMs = Math.min(60_000, Math.max(250, Math.floor((durationSec / 2) * 1000)));
+            const { uri } = await VideoThumbnails.getThumbnailAsync(asset.uri, {
+              time: timeMs,
+              quality: 0.85,
+            });
+            setThumbUri(uri);
+          } finally {
+            setThumbBusy(false);
+          }
+        }}
+        onThumbChange={setThumbUri}
+        onConfirm={({ video, thumbUri: nextThumb }: PreparedClipUpload) => {
+          setVideoAsset(video);
+          setThumbUri(nextThumb);
+          setPrepareOpen(false);
+          haptics.success();
+        }}
+      />
+    </>
   );
 }
 
@@ -724,8 +1071,10 @@ function useStyles() {
         backgroundColor: palette.surfaceElevated,
       },
       headerText: { flex: 1, minWidth: 0 },
+      backIcon: { padding: 4 },
       headerTitle: { ...typography.titleSm, color: palette.text, fontWeight: "700" },
       headerSub: { ...typography.caption, color: palette.textMuted, marginTop: 2, lineHeight: 18 },
+      headerBatch: { ...typography.caption, color: palette.brandNavy, marginTop: 4, fontWeight: "700" },
       body: { padding: space.lg, gap: space.md },
       formCard: {
         backgroundColor: palette.surfaceElevated,
@@ -850,6 +1199,27 @@ function useStyles() {
       shareTargetTextOn: { color: palette.brandNavy },
       friendPickerBox: { gap: space.sm },
       friendChips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+      editVideoBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        paddingVertical: 12,
+        borderRadius: radii.md,
+        borderWidth: 1,
+        borderColor: palette.border,
+        backgroundColor: palette.surfaceElevated,
+      },
+      editVideoBtnText: { ...typography.bodySm, fontWeight: "700", color: palette.brandNavy },
+      batchRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
+      batchIndex: {
+        width: 24,
+        textAlign: "center",
+        fontWeight: "700",
+        color: palette.textMuted,
+      },
+      batchInput: { flex: 1 },
+      emailInput: { minHeight: 72, textAlignVertical: "top" },
     })
   );
 }

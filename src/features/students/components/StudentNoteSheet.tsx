@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
@@ -12,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { KeyboardFormModal } from "../../../components/ui/KeyboardFormModal";
 import {
   deleteTraineeNote,
   fetchTraineeNote,
@@ -64,8 +64,35 @@ export function StudentNoteSheet({ visible, traineeId, traineeName, onClose }: P
   });
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={[styles.root, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 16 }]}>
+    <KeyboardFormModal
+      visible={visible}
+      onClose={onClose}
+      presentationStyle="pageSheet"
+      contentContainerStyle={{ paddingTop: insets.top + 12 }}
+      footer={
+        <View style={styles.actions}>
+          {note?.text ? (
+            <Pressable
+              onPress={() => deleteMutation.mutate()}
+              disabled={deleteMutation.isPending}
+              style={styles.danger}
+            >
+              <Text style={styles.dangerText}>{t("common.delete")}</Text>
+            </Pressable>
+          ) : (
+            <View style={{ flex: 1 }} />
+          )}
+          <Pressable
+            onPress={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending || !draft.trim()}
+            style={[styles.save, { backgroundColor: c.brandNavy, opacity: draft.trim() ? 1 : 0.5 }]}
+          >
+            <Text style={styles.saveText}>{t("common.save")}</Text>
+          </Pressable>
+        </View>
+      }
+    >
+      <View style={[styles.root, { backgroundColor: c.surface }]}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: c.text }]}>
             {t("trainees.noteTitle", { name: traineeName, defaultValue: "Note — {{name}}" })}
@@ -92,38 +119,17 @@ export function StudentNoteSheet({ visible, traineeId, traineeName, onClose }: P
             textAlignVertical="top"
           />
         )}
-        <View style={styles.actions}>
-          {note?.text ? (
-            <Pressable
-              onPress={() => deleteMutation.mutate()}
-              disabled={deleteMutation.isPending}
-              style={styles.danger}
-            >
-              <Text style={styles.dangerText}>{t("common.delete")}</Text>
-            </Pressable>
-          ) : (
-            <View style={{ flex: 1 }} />
-          )}
-          <Pressable
-            onPress={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending || !draft.trim()}
-            style={[styles.save, { backgroundColor: c.brandNavy, opacity: draft.trim() ? 1 : 0.5 }]}
-          >
-            <Text style={styles.saveText}>{t("common.save")}</Text>
-          </Pressable>
-        </View>
       </View>
-    </Modal>
+    </KeyboardFormModal>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, paddingHorizontal: space.lg, backgroundColor: "#fff" },
+  root: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   title: { ...typography.titleSm, flex: 1, marginRight: space.sm },
   hint: { ...typography.caption, marginTop: space.sm, lineHeight: 18 },
   input: {
-    flex: 1,
     marginTop: space.md,
     borderWidth: 1,
     borderRadius: radii.md,
@@ -131,7 +137,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     minHeight: 160,
   },
-  actions: { flexDirection: "row", alignItems: "center", gap: space.md, marginTop: space.md },
+  actions: { flexDirection: "row", alignItems: "center", gap: space.md },
   danger: { paddingVertical: 12, paddingHorizontal: space.sm },
   dangerText: { color: "#c62828", fontWeight: "600" },
   save: { paddingVertical: 12, paddingHorizontal: space.xl, borderRadius: radii.sm },

@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { haptics } from "../../../lib/haptics";
 import { colors, radii, space, typography } from "../../../theme";
 
 export type CapturedShareTarget = "my-clips" | "friends" | "email";
@@ -57,6 +58,7 @@ export function CapturedShareSheet({ visible, onClose, onSelect }: Props) {
               key={opt.id}
               style={({ pressed }) => [styles.row, pressed && { opacity: 0.85 }]}
               onPress={() => {
+                haptics.select();
                 onSelect(opt.id);
                 onClose();
               }}
