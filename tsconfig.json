@@ -29,6 +29,7 @@
     "ios",
     "android",
     "babel.config.js",
-    "metro.config.js"
+    "metro.config.js",
+    "netqwix_frontend_v2"
   ]
 }

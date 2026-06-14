@@ -46,7 +46,6 @@ import { useOfflineActionQueueFlusher } from "../lib/offline/offlineActionQueue"
 import "../features/sessions/offlineBookingActionQueue";
 import "../features/capture/captureUploadQueue";
 import { useOfflineChatMutationsFlusher } from "../features/chats/lib/offlineChatMutations";
-import { warmLoaderTipsCache } from "../components/brand/loaderTips/loaderTipsService";
 import { ThemeProvider } from "../theme/ThemeContext";
 import { ThemedNavigationContainer } from "./ThemedNavigationContainer";
 import { CoachMarkOverlay, CoachMarkProvider } from "../features/onboarding";
@@ -82,8 +81,6 @@ export function AppRoot() {
   useEffect(() => {
     return startNetInfoListener();
   }, []);
-
-  useEffect(() => {
 
   useEffect(() => {
     void hydratePendingAuthIntent();

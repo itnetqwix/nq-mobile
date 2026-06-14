@@ -43,6 +43,8 @@ export const queryKeys = {
         ? (["groupMembers", groupId, search] as const)
         : (["groupMembers", groupId] as const),
     groupInvites: ["groupInvites"] as const,
+    globalSearch: (q: string) => ["chat", "globalSearch", q] as const,
+    pinned: (conversationId: string) => ["chat", "pinned", conversationId] as const,
   },
   presence: {
     onlineUsers: ["onlineUsers"] as const,
