@@ -118,6 +118,56 @@ export function canvasPointToNormalizedCanvas(
   };
 }
 
+export type ContentInsets = { top?: number; bottom?: number; left?: number; right?: number };
+
+export type ClipAnnotationLayout =
+  | { mode: "single" }
+  | { mode: "dual-locked" }
+  | { mode: "dual-unlocked"; paneIndex: 0 | 1 };
+
+export function resolveAnnotationFrame(
+  target: { width: number; height: number },
+  insets?: ContentInsets
+): { width: number; height: number; offsetX: number; offsetY: number } {
+  const top = insets?.top ?? 0;
+  const left = insets?.left ?? 0;
+  const right = insets?.right ?? 0;
+  const bottom = insets?.bottom ?? 0;
+  return {
+    width: Math.max(1, target.width - left - right),
+    height: Math.max(1, target.height - top - bottom),
+    offsetX: left,
+    offsetY: top,
+  };
+}
+
+/** Map clip stage layout to the video sub-rect inside the full overlay. */
+export function resolveClipContentInsets(
+  canvas: { width: number; height: number },
+  layout: ClipAnnotationLayout
+): ContentInsets {
+  const timelineH = 56;
+  const compactTimelineH = 42;
+  const dualPaneControlsH = 46;
+  if (layout.mode === "single") {
+    return { bottom: timelineH, left: 0, right: 0, top: 0 };
+  }
+  if (layout.mode === "dual-locked") {
+    return { bottom: compactTimelineH + 6, left: 0, right: 0, top: 0 };
+  }
+  const paneH = canvas.height / 2;
+  const videoH = Math.max(1, paneH - dualPaneControlsH);
+  if (layout.paneIndex === 0) {
+    return { top: 0, bottom: canvas.height - videoH, left: 0, right: 0 };
+  }
+  return {
+    top: paneH,
+    bottom: canvas.height - (paneH + videoH),
+    left: 0,
+    right: 0,
+  };
+}
+
 export function normalizedCanvasToPoint(
   u: number,
   v: number,

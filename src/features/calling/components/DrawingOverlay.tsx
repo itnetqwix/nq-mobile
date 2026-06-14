@@ -23,7 +23,8 @@ import {
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 
-import type { AnnotationFitMode, ContentAspect } from "../annotationCoords";
+import type { AnnotationFitMode, ClipAnnotationLayout, ContentAspect } from "../annotationCoords";
+import { resolveClipContentInsets } from "../annotationCoords";
 import { projectStrokeToCanvas, strokeForSyncEmit } from "../annotationRenderUtils";
 import type { AnnotationShapeKind, RemoteStroke, StrokePoint } from "../useDrawingSync";
 import type { AnnotationTool } from "./MeetingAnnotationToolbar";
@@ -41,6 +42,8 @@ type Props = {
   /** Clip or live video intrinsic size — enables cross-device content UV sync. */
   contentAspect?: ContentAspect | null;
   contentFit?: AnnotationFitMode;
+  /** Restrict UV mapping to the visible clip video sub-rect (excludes controls dock). */
+  clipAnnotationLayout?: ClipAnnotationLayout | null;
   annotationTargetUserId?: string | null;
   onStrokeComplete?: (
     stroke: RemoteStroke,
@@ -186,6 +189,7 @@ export function DrawingOverlay({
   remoteStrokes = [],
   contentAspect = null,
   contentFit = "contain",
+  clipAnnotationLayout = null,
   annotationTargetUserId = null,
   onStrokeComplete,
 }: Props) {
@@ -210,15 +214,23 @@ export function DrawingOverlay({
 
   const contentAspectRef = useRef(contentAspect);
   contentAspectRef.current = contentAspect;
+  const clipAnnotationLayoutRef = useRef(clipAnnotationLayout);
+  clipAnnotationLayoutRef.current = clipAnnotationLayout;
+  const contentInsetsRef = useRef({ top: 0, bottom: 0, left: 0, right: 0 });
 
   const emitStroke = useCallback(
     (stroke: RemoteStroke) => {
       try {
         const canvasSize = canvasSizeRef.current;
+        const contentInsets = clipAnnotationLayoutRef.current
+          ? resolveClipContentInsets(canvasSize, clipAnnotationLayoutRef.current)
+          : undefined;
+        contentInsetsRef.current = contentInsets ?? { top: 0, bottom: 0, left: 0, right: 0 };
         const synced = strokeForSyncEmit(stroke, canvasSize, {
           contentAspect: contentAspectRef.current,
           contentFit,
           targetUserId: annotationTargetUserId,
+          contentInsets,
         });
         onStrokeComplete?.(synced, canvasSize);
       } catch {
@@ -229,8 +241,18 @@ export function DrawingOverlay({
   );
 
   const projectForDisplay = useCallback(
-    (stroke: RemoteStroke) =>
-      projectStrokeToCanvas(stroke, canvasSize, contentAspect, contentFit),
+    (stroke: RemoteStroke) => {
+      const insets = clipAnnotationLayoutRef.current
+        ? resolveClipContentInsets(canvasSize, clipAnnotationLayoutRef.current)
+        : contentInsetsRef.current;
+      return projectStrokeToCanvas(
+        stroke,
+        canvasSize,
+        stroke.contentAspect ?? contentAspect,
+        stroke.contentFit ?? contentFit,
+        insets
+      );
+    },
     [canvasSize, contentAspect, contentFit]
   );
 
@@ -409,6 +431,12 @@ export function DrawingOverlay({
               const size = { width, height };
               canvasSizeRef.current = size;
               setCanvasSize(size);
+              if (clipAnnotationLayoutRef.current) {
+                contentInsetsRef.current = resolveClipContentInsets(
+                  size,
+                  clipAnnotationLayoutRef.current
+                );
+              }
             }
           }}
         >

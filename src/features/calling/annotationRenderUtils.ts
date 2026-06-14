@@ -8,8 +8,10 @@ import {
   canvasPointToContentUV,
   canvasPointToNormalizedCanvas,
   contentUVToCanvasPoint,
+  resolveAnnotationFrame,
   type AnnotationFitMode,
   type ContentAspect,
+  type ContentInsets,
 } from "./annotationCoords";
 import type { RemoteStroke, StrokePoint } from "./useDrawingSync";
 
@@ -127,19 +129,32 @@ export function projectStrokeToCanvas(
   stroke: RemoteStroke,
   target: { width: number; height: number },
   aspect?: ContentAspect | null,
-  fit: AnnotationFitMode = "contain"
+  fit: AnnotationFitMode = "contain",
+  contentInsets?: ContentInsets
 ): RemoteStroke {
+  const frame = resolveAnnotationFrame(target, contentInsets);
+  const renderAspect = stroke.contentAspect ?? aspect;
+  const renderFit = stroke.contentFit ?? fit;
   if (
     stroke.coordSpace === "contentUv" &&
-    aspect &&
-    aspect.width > 0 &&
-    aspect.height > 0 &&
-    target.width > 0 &&
-    target.height > 0
+    renderAspect &&
+    renderAspect.width > 0 &&
+    renderAspect.height > 0 &&
+    frame.width > 0 &&
+    frame.height > 0
   ) {
     const mapPt = (u: number, v: number) => {
-      const pt = contentUVToCanvasPoint(u, v, target.width, target.height, aspect, fit);
-      return pt ?? { x: u * target.width, y: v * target.height };
+      const pt = contentUVToCanvasPoint(
+        u,
+        v,
+        frame.width,
+        frame.height,
+        renderAspect,
+        renderFit
+      );
+      return pt
+        ? { x: pt.x + frame.offsetX, y: pt.y + frame.offsetY }
+        : { x: u * frame.width + frame.offsetX, y: v * frame.height + frame.offsetY };
     };
     const bounds = stroke.shapeBounds;
     return {
@@ -155,24 +170,59 @@ export function projectStrokeToCanvas(
         : undefined,
     };
   }
-  if (stroke.coordSpace === "normalizedCanvas" && target.width > 0 && target.height > 0) {
+  if (stroke.coordSpace === "normalizedCanvas" && frame.width > 0 && frame.height > 0) {
     return {
       ...stroke,
       points: stroke.points.map((p) => ({
-        x: p.x * target.width,
-        y: p.y * target.height,
+        x: p.x * frame.width + frame.offsetX,
+        y: p.y * frame.height + frame.offsetY,
       })),
       shapeBounds: stroke.shapeBounds
         ? {
-            x0: stroke.shapeBounds.x0 * target.width,
-            y0: stroke.shapeBounds.y0 * target.height,
-            x1: stroke.shapeBounds.x1 * target.width,
-            y1: stroke.shapeBounds.y1 * target.height,
+            x0: stroke.shapeBounds.x0 * frame.width + frame.offsetX,
+            y0: stroke.shapeBounds.y0 * frame.height + frame.offsetY,
+            x1: stroke.shapeBounds.x1 * frame.width + frame.offsetX,
+            y1: stroke.shapeBounds.y1 * frame.height + frame.offsetY,
           }
         : undefined,
     };
   }
-  return scaleStrokeForCanvas(stroke, target);
+  const scaled = scaleStrokeForCanvas(stroke, { width: frame.width, height: frame.height });
+  return {
+    ...scaled,
+    points: scaled.points.map((p) => ({
+      x: p.x + frame.offsetX,
+      y: p.y + frame.offsetY,
+    })),
+    shapeBounds: scaled.shapeBounds
+      ? {
+          x0: scaled.shapeBounds.x0 + frame.offsetX,
+          y0: scaled.shapeBounds.y0 + frame.offsetY,
+          x1: scaled.shapeBounds.x1 + frame.offsetX,
+          y1: scaled.shapeBounds.y1 + frame.offsetY,
+        }
+      : undefined,
+  };
+}
+
+function unoffsetStrokePoints(
+  stroke: RemoteStroke,
+  offsetX: number,
+  offsetY: number
+): RemoteStroke {
+  if (!offsetX && !offsetY) return stroke;
+  return {
+    ...stroke,
+    points: stroke.points.map((p) => ({ x: p.x - offsetX, y: p.y - offsetY })),
+    shapeBounds: stroke.shapeBounds
+      ? {
+          x0: stroke.shapeBounds.x0 - offsetX,
+          y0: stroke.shapeBounds.y0 - offsetY,
+          x1: stroke.shapeBounds.x1 - offsetX,
+          y1: stroke.shapeBounds.y1 - offsetY,
+        }
+      : undefined,
+  };
 }
 
 /** Build socket payload stroke with cross-device-safe coordinates. */
@@ -183,27 +233,30 @@ export function strokeForSyncEmit(
     contentAspect?: ContentAspect | null;
     contentFit?: AnnotationFitMode;
     targetUserId?: string | null;
+    contentInsets?: ContentInsets;
   }
 ): RemoteStroke {
+  const frame = resolveAnnotationFrame(canvasSize, options?.contentInsets);
+  const localStroke = unoffsetStrokePoints(stroke, frame.offsetX, frame.offsetY);
   const aspect = options?.contentAspect;
   const fit = options?.contentFit ?? "contain";
   const targetUserId = options?.targetUserId ?? null;
   if (aspect && aspect.width > 0 && aspect.height > 0) {
     const toUv = (x: number, y: number) => {
       const uv =
-        canvasPointToContentUV(x, y, canvasSize.width, canvasSize.height, aspect, fit) ??
-        canvasPointToNormalizedCanvas(x, y, canvasSize.width, canvasSize.height);
+        canvasPointToContentUV(x, y, frame.width, frame.height, aspect, fit) ??
+        canvasPointToNormalizedCanvas(x, y, frame.width, frame.height);
       return { x: uv.u, y: uv.v };
     };
-    const bounds = stroke.shapeBounds;
+    const bounds = localStroke.shapeBounds;
     return {
-      ...stroke,
+      ...localStroke,
       coordSpace: "contentUv",
       contentAspect: aspect,
       contentFit: fit,
       targetUserId,
-      sourceCanvasSize: canvasSize,
-      points: stroke.points.map((p) => toUv(p.x, p.y)),
+      sourceCanvasSize: { width: frame.width, height: frame.height },
+      points: localStroke.points.map((p) => toUv(p.x, p.y)),
       shapeBounds: bounds
         ? {
             x0: toUv(bounds.x0, bounds.y0).x,
@@ -215,13 +268,13 @@ export function strokeForSyncEmit(
     };
   }
   const toUv = (x: number, y: number) =>
-    canvasPointToNormalizedCanvas(x, y, canvasSize.width, canvasSize.height);
-  const bounds = stroke.shapeBounds;
+    canvasPointToNormalizedCanvas(x, y, frame.width, frame.height);
+  const bounds = localStroke.shapeBounds;
   return {
-    ...stroke,
+    ...localStroke,
     coordSpace: "normalizedCanvas",
-    sourceCanvasSize: canvasSize,
-    points: stroke.points.map((p) => {
+    sourceCanvasSize: { width: frame.width, height: frame.height },
+    points: localStroke.points.map((p) => {
       const uv = toUv(p.x, p.y);
       return { x: uv.u, y: uv.v };
     }),

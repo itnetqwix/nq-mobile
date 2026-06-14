@@ -36,6 +36,8 @@ export type MeetingLayoutPayload = {
   tiles: Record<PipTileId, TileLayout>;
   /** Secondary live stream PIP while one participant is focused on stage. */
   focusPip?: TileLayout;
+  /** Trainer toggles clip-mode camera strip visibility for both parties. */
+  cameraStripCollapsed?: boolean;
   userInfo?: ClipUserInfo;
   sessionId?: string;
 };
@@ -74,6 +76,7 @@ export function useMeetingLayout({
     w: 100,
     h: 140,
   });
+  const [cameraStripCollapsed, setCameraStripCollapsed] = useState(true);
   const emitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const userInfo: ClipUserInfo = { from_user: myId, to_user: peerId };
@@ -90,6 +93,9 @@ export function useMeetingLayout({
     }
     if (payload.focusPip) {
       setFocusPip((prev) => ({ ...prev, ...payload.focusPip }));
+    }
+    if (typeof payload.cameraStripCollapsed === "boolean") {
+      setCameraStripCollapsed(payload.cameraStripCollapsed);
     }
   }, []);
 
@@ -149,13 +155,17 @@ export function useMeetingLayout({
             patch.focusedStreamId !== undefined ? patch.focusedStreamId : focusedStreamId,
           tiles: patch.tiles ?? tiles,
           focusPip: patch.focusPip ?? focusPip,
+          cameraStripCollapsed:
+            patch.cameraStripCollapsed !== undefined
+              ? patch.cameraStripCollapsed
+              : cameraStripCollapsed,
           userInfo,
           sessionId,
         };
         socket.emit(CLIP_EVENTS.MEETING_TILE_LAYOUT, payload);
       }, 180);
     },
-    [focusPip, focusedStreamId, isTrainer, sessionId, socket, tiles, userInfo]
+    [cameraStripCollapsed, focusPip, focusedStreamId, isTrainer, sessionId, socket, tiles, userInfo]
   );
 
   const updateFocusPip = useCallback(
@@ -207,6 +217,16 @@ export function useMeetingLayout({
   const stageMode =
     focusedStreamId != null ? ("liveFocus" as const) : ("default" as const);
 
+  const setCameraStripCollapsedSync = useCallback(
+    (collapsed: boolean) => {
+      setCameraStripCollapsed(collapsed);
+      if (isTrainer) {
+        emitLayout({ cameraStripCollapsed: collapsed });
+      }
+    },
+    [emitLayout, isTrainer]
+  );
+
   /** Re-broadcast layout after trainer socket reconnect so trainee PIP stays aligned. */
   const replayLayoutState = useCallback(() => {
     if (!isTrainer || !socket?.connected) return;
@@ -214,6 +234,7 @@ export function useMeetingLayout({
       focusedStreamId,
       tiles,
       focusPip,
+      cameraStripCollapsed,
       userInfo,
       sessionId,
     };
@@ -226,13 +247,15 @@ export function useMeetingLayout({
         sessionId,
       });
     }
-  }, [focusPip, focusedStreamId, isTrainer, sessionId, socket, tiles, userInfo]);
+  }, [cameraStripCollapsed, focusPip, focusedStreamId, isTrainer, sessionId, socket, tiles, userInfo]);
 
   return {
     focusedStreamId,
     stageMode,
     tiles,
     focusPip,
+    cameraStripCollapsed,
+    setCameraStripCollapsed: setCameraStripCollapsedSync,
     focusStream,
     clearFocus: () => focusStream(null),
     updateTile,

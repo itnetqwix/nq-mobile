@@ -3,7 +3,7 @@
  * MEETING_TILE_LAYOUT (normalized nx/ny) so iOS ↔ Android stay aligned.
  */
 
-import React, { useCallback, useState } from "react";
+import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { MediaStream } from "react-native-webrtc";
@@ -38,6 +38,13 @@ type Props = {
   bounds: { width: number; height: number } | null;
   safeTop: number;
   pipReservedBottom: number;
+  /** When collapsed, dock the pill on the action bar row (below clip timeline). */
+  collapsedBottom?: number;
+  /** Trainer-controlled; synced to trainee via MEETING_TILE_LAYOUT. */
+  collapsed: boolean;
+  onCollapsedChange: (collapsed: boolean) => void;
+  /** Hide chevron collapse control on trainee devices. */
+  showCollapseControl?: boolean;
   localPip: SyncedPip;
   remotePip: SyncedPip;
   pipDragDisabled?: boolean;
@@ -58,26 +65,29 @@ export function DualVideoStrip({
   bounds,
   safeTop,
   pipReservedBottom,
+  collapsedBottom,
+  collapsed,
+  onCollapsedChange,
+  showCollapseControl = false,
   localPip,
   remotePip,
   pipDragDisabled = false,
   onTapLocal,
   onTapRemote,
 }: Props) {
-  const [collapsed, setCollapsed] = useState(false);
-  const toggleCollapse = useCallback(() => setCollapsed((v) => !v), []);
-
   const remoteLabel = peerDisplayName.split(" ")[0] ?? "Partner";
   const localW = localPip.size?.w ?? CLIP_MODE_PIP.w;
   const localH = localPip.size?.h ?? CLIP_MODE_PIP.h;
   const remoteW = remotePip.size?.w ?? CLIP_MODE_PIP.w;
   const remoteH = remotePip.size?.h ?? CLIP_MODE_PIP.h;
+  const dockBottom = collapsedBottom ?? pipReservedBottom + 8;
 
   if (collapsed) {
+    if (!showCollapseControl) return null;
     return (
       <Pressable
-        style={[styles.collapsedPill, { bottom: pipReservedBottom + 8 }]}
-        onPress={toggleCollapse}
+        style={[styles.collapsedPill, { bottom: dockBottom }]}
+        onPress={() => onCollapsedChange(false)}
         accessibilityLabel="Show live cameras"
       >
         <Ionicons name="videocam-outline" size={14} color="#fff" />
@@ -141,14 +151,16 @@ export function DualVideoStrip({
         zIndex={47}
       />
 
-      <Pressable
-        style={[styles.collapseBtn, { bottom: pipReservedBottom + CLIP_MODE_PIP.h + 10 }]}
-        onPress={toggleCollapse}
-        hitSlop={8}
-        accessibilityLabel="Hide cameras"
-      >
-        <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.85)" />
-      </Pressable>
+      {showCollapseControl ? (
+        <Pressable
+          style={[styles.collapseBtn, { bottom: dockBottom }]}
+          onPress={() => onCollapsedChange(true)}
+          hitSlop={8}
+          accessibilityLabel="Hide cameras"
+        >
+          <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.85)" />
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -161,9 +173,7 @@ const styles = StyleSheet.create({
   },
   collapseBtn: {
     position: "absolute",
-    alignSelf: "center",
-    left: "50%",
-    marginLeft: -14,
+    left: 14,
     width: 28,
     height: 28,
     borderRadius: 14,

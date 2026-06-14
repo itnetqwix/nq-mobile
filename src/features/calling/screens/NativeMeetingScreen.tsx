@@ -134,6 +134,7 @@ import {
 import { ClipPickerModal } from "../components/ClipPickerModal";
 import { LockedDualClipStage } from "../components/LockedDualClipStage";
 import { UnlockedDualClipStage } from "../components/UnlockedDualClipStage";
+import type { ClipAnnotationLayout } from "../annotationCoords";
 import { ClipPlayer, type ZoomPanEmitMode } from "../components/ClipPlayer";
 import { ClipZoomControls } from "../components/ClipZoomControls";
 import { ClipPlaybackControls } from "../components/ClipPlaybackControls";
@@ -852,7 +853,7 @@ function MeetingSurface({
   const dualClipEarly = clipPaneUrisEarly.length >= 2;
   const chrome = useMeetingChromeInsets({
     inClipMode: hasClipStage,
-    inlineClipControls: hasClipStage && !dualClipEarly,
+    inlineClipControls: hasClipStage,
   });
 
   const meetingLayout = useMeetingLayout({
@@ -1153,6 +1154,14 @@ function MeetingSurface({
   const [clipProgresses, setClipProgresses] = useState<[number, number]>([0, 0]);
   const [drawingOverlayKey, setDrawingOverlayKey] = useState(0);
   const [clipNaturalSize, setClipNaturalSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+  const [localVideoAspect, setLocalVideoAspect] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+  const [remoteVideoAspect, setRemoteVideoAspect] = useState<{
     width: number;
     height: number;
   } | null>(null);
@@ -2098,8 +2107,53 @@ function MeetingSurface({
     if (hasClipStage && clipNaturalSize && clipNaturalSize.width > 0) {
       return clipNaturalSize;
     }
-    return { width: 16, height: 9 };
-  }, [clipNaturalSize, hasClipStage]);
+    if (inLiveFocus) {
+      const aspect = focusedIsLocal ? localVideoAspect : remoteVideoAspect;
+      if (aspect && aspect.width > 0 && aspect.height > 0) return aspect;
+    }
+    if (isTrainer && remoteVideoAspect) return remoteVideoAspect;
+    if (!isTrainer && localVideoAspect) return localVideoAspect;
+    return remoteVideoAspect ?? localVideoAspect ?? { width: 16, height: 9 };
+  }, [
+    clipNaturalSize,
+    focusedIsLocal,
+    hasClipStage,
+    inLiveFocus,
+    isTrainer,
+    localVideoAspect,
+    remoteVideoAspect,
+  ]);
+
+  const annotationClipLayout = useMemo((): ClipAnnotationLayout | null => {
+    if (!hasClipStage) return null;
+    if (!dualClip) return { mode: "single" };
+    if (lockedDualClip) return { mode: "dual-locked" };
+    return { mode: "dual-unlocked", paneIndex: annotationSourcePane };
+  }, [annotationSourcePane, dualClip, hasClipStage, lockedDualClip]);
+
+  useEffect(() => {
+    const track = localStream?.getVideoTracks?.()?.[0];
+    if (!track) {
+      setLocalVideoAspect(null);
+      return;
+    }
+    const settings = track.getSettings?.() as { width?: number; height?: number } | undefined;
+    if (settings?.width && settings?.height) {
+      setLocalVideoAspect({ width: settings.width, height: settings.height });
+    }
+  }, [localStream]);
+
+  useEffect(() => {
+    const track = remoteStream?.getVideoTracks?.()?.[0];
+    if (!track) {
+      setRemoteVideoAspect(null);
+      return;
+    }
+    const settings = track.getSettings?.() as { width?: number; height?: number } | undefined;
+    if (settings?.width && settings?.height) {
+      setRemoteVideoAspect({ width: settings.width, height: settings.height });
+    }
+  }, [remoteStream]);
 
   const annotationContentFit = hasClipStage ? ("contain" as const) : ("cover" as const);
 
@@ -2584,6 +2638,7 @@ function MeetingSurface({
           remoteStrokes={drawingSync.remoteStrokes}
           contentAspect={annotationContentAspect}
           contentFit={annotationContentFit}
+          clipAnnotationLayout={annotationClipLayout}
           annotationTargetUserId={annotationTargetUserId}
           onStrokeComplete={emitAnnotationStroke}
         />
@@ -2719,6 +2774,10 @@ function MeetingSurface({
           bounds={meetingBounds}
           safeTop={chrome.insets.top}
           pipReservedBottom={chrome.pipSafeBottom}
+          collapsedBottom={chrome.cameraStripCollapsedBottom}
+          collapsed={meetingLayout.cameraStripCollapsed}
+          onCollapsedChange={meetingLayout.setCameraStripCollapsed}
+          showCollapseControl={isTrainer}
           pipDragDisabled={!isTrainer}
           localPip={{
             position: clipModeLocalPipPosition,

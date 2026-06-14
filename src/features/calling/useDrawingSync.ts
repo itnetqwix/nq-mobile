@@ -114,6 +114,7 @@ function parseIncomingStrokePayload(
           coordSpace: "contentUv",
           targetUserId: obj.targetUserId != null ? String(obj.targetUserId) : null,
           sourceCanvasSize: canvasSize,
+          ...readStrokeAspectMeta(obj),
         };
       }
       const cw = canvasSize?.width ?? 1;
@@ -177,6 +178,7 @@ function parseIncomingStrokePayload(
           coordSpace: "contentUv",
           targetUserId: obj.targetUserId != null ? String(obj.targetUserId) : null,
           sourceCanvasSize: canvasSize,
+          ...readStrokeAspectMeta(obj),
         };
       }
       const shapeName = String(obj.shape ?? "rect").toLowerCase();
@@ -209,6 +211,19 @@ function parseIncomingStrokePayload(
   return null;
 }
 
+function readStrokeAspectMeta(
+  obj: Record<string, unknown>
+): Pick<RemoteStroke, "contentAspect" | "contentFit"> {
+  const raw = obj.contentAspect as { width?: number; height?: number } | undefined;
+  if (raw && Number(raw.width) > 0 && Number(raw.height) > 0) {
+    return {
+      contentAspect: { width: Number(raw.width), height: Number(raw.height) },
+      contentFit: obj.contentFit === "cover" ? "cover" : "contain",
+    };
+  }
+  return {};
+}
+
 function serializeStrokeForSocket(stroke: RemoteStroke): string {
   const useContentUv = stroke.coordSpace === "contentUv";
   if (
@@ -231,6 +246,8 @@ function serializeStrokeForSocket(stroke: RemoteStroke): string {
         kind: "shape",
         coordSpace: "videoUv",
         targetUserId: stroke.targetUserId ?? undefined,
+        contentAspect: stroke.contentAspect,
+        contentFit: stroke.contentFit,
         shape: webShape,
         start: { u: b.x0, v: b.y0 },
         end: { u: b.x1, v: b.y1 },
@@ -251,6 +268,8 @@ function serializeStrokeForSocket(stroke: RemoteStroke): string {
       kind: "freehand",
       coordSpace: "videoUv",
       targetUserId: stroke.targetUserId ?? undefined,
+      contentAspect: stroke.contentAspect,
+      contentFit: stroke.contentFit,
       points: stroke.points.map((p) => ({ u: p.x, v: p.y })),
       color: stroke.color,
       width: stroke.width,

@@ -18,21 +18,26 @@ export function useMeetingChromeInsets(options?: {
   const inlineClipControls = options?.inlineClipControls ?? false;
   const bottomChrome = insets.bottom + 8;
   const actionReserve = ACTION_BAR_HEIGHT + 10;
-  const clipReserve =
-    inClipMode && !inlineClipControls ? CLIP_TIMELINE_HEIGHT + 8 : 0;
+  /** Reserve timeline height for floating PIPs even when controls are inline in the clip frame. */
+  const clipTimelineReserve = inClipMode ? CLIP_TIMELINE_HEIGHT + 8 : 0;
+  const floatingClipReserve = inClipMode && !inlineClipControls ? clipTimelineReserve : 0;
   /** Corner PIPs overlay the clip stage — no extra main-pane bottom reserve. */
   const videoStripReserve = 0;
-  const pipSafeBottom = bottomChrome + actionReserve + clipReserve;
+  const pipSafeBottom =
+    bottomChrome + actionReserve + (inlineClipControls ? 0 : clipTimelineReserve);
+  /** Collapsed "Show cameras" sits on the action bar row, below inline clip controls. */
+  const cameraStripCollapsedBottom = bottomChrome + 6;
   /** Main pane bottom padding accounts for action bar + video strip in clip mode. */
   const mainPaneBottomInClip =
-    bottomChrome + actionReserve + clipReserve + videoStripReserve;
+    bottomChrome + actionReserve + floatingClipReserve + videoStripReserve;
 
   return {
     insets,
     topChrome: insets.top + 6,
     bottomChrome,
-    clipControlsBottom: bottomChrome + actionReserve + 6,
+    clipControlsBottom: bottomChrome + actionReserve + floatingClipReserve + 6,
     pipSafeBottom,
+    cameraStripCollapsedBottom,
     mainPaneTop: insets.top + TOP_CHROME_HEIGHT,
     mainPaneBottom: inClipMode ? mainPaneBottomInClip : pipSafeBottom,
   };
