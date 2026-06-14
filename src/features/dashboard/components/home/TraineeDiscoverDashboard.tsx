@@ -25,7 +25,7 @@ import {
 } from "../../../home/api/homeApi";
 import { useOnlinePresence } from "../../../socket/useOnlinePresence";
 import { getTrainerCategories } from "../../../bookexpert/lib/trainerUtils";
-import { trainerListItemKey } from "../../../../lib/lists/trainerListUtils";
+import { useDebouncedValue, SEARCH_API_DEBOUNCE_MS } from "../../../../lib/timing";
 import {
   TRAINEE_COACH_PAGE_SIZE,
   TRAINEE_COACH_PREVIEW_COUNT,
@@ -132,7 +132,7 @@ export function TraineeDiscoverDashboard({
   const styles = useStyles();
   const [search, setSearch] = useState("");
   const { voice, toggle: toggleVoice } = useSearchVoice(setSearch);
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_API_DEBOUNCE_MS);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [browseFilters, setBrowseFilters] = useState<TrainerBrowseFilters>(DEFAULT_BROWSE_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -159,11 +159,6 @@ export function TraineeDiscoverDashboard({
   );
   const apiFilterParams = useMemo(() => filtersToApiParams(browseFilters), [browseFilters]);
   const activeFilterCount = countActiveFilters(browseFilters);
-
-  useEffect(() => {
-    const id = setTimeout(() => setDebouncedSearch(search.trim()), 350);
-    return () => clearTimeout(id);
-  }, [search]);
 
   const trimmed = debouncedSearch;
   const searchActive = trimmed.length >= 2 && !/^\d+$/.test(trimmed);

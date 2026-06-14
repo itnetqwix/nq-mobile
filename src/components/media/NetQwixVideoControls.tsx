@@ -1,5 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useMemo, useRef } from "react";
+import { VIDEO_SEEK_THROTTLE_MS } from "../../lib/timing/constants";
+import { throttle } from "../../lib/timing/debounce";
 import {
   PanResponder,
   Pressable,
@@ -46,6 +48,17 @@ export function NetQwixVideoControls({
   style,
 }: Props) {
   const trackW = useRef(1);
+  const onSeekRef = useRef(onSeek);
+  onSeekRef.current = onSeek;
+
+  const throttledSeek = useMemo(
+    () =>
+      throttle((seconds: number) => {
+        onSeekRef.current?.(seconds);
+      }, VIDEO_SEEK_THROTTLE_MS),
+    []
+  );
+
   const large = size === "large";
   const docked = variant === "dock";
   const max = Math.max(durationSeconds, 0.01);
@@ -54,17 +67,23 @@ export function NetQwixVideoControls({
   const canSeek = !!onSeek && durationSeconds > 0 && !disabled;
 
   const seekFromX = useCallback(
-    (locationX: number) => {
+    (locationX: number, immediate = false) => {
       if (!canSeek) return;
       const next = (locationX / trackW.current) * max;
-      onSeek?.(Math.max(0, Math.min(max, next)));
+      const clamped = Math.max(0, Math.min(max, next));
+      if (immediate) {
+        throttledSeek.cancel();
+        onSeekRef.current?.(clamped);
+      } else {
+        throttledSeek(clamped);
+      }
     },
-    [canSeek, max, onSeek]
+    [canSeek, max, throttledSeek]
   );
 
   const seekFromEvent = useCallback(
-    (e: GestureResponderEvent) => {
-      seekFromX(e.nativeEvent.locationX);
+    (e: GestureResponderEvent, immediate = false) => {
+      seekFromX(e.nativeEvent.locationX, immediate);
     },
     [seekFromX]
   );
@@ -76,7 +95,7 @@ export function NetQwixVideoControls({
         onMoveShouldSetPanResponder: () => canSeek,
         onPanResponderGrant: (evt) => seekFromX(evt.nativeEvent.locationX),
         onPanResponderMove: (evt) => seekFromX(evt.nativeEvent.locationX),
-        onPanResponderRelease: (evt) => seekFromX(evt.nativeEvent.locationX),
+        onPanResponderRelease: (evt) => seekFromX(evt.nativeEvent.locationX, true),
       }),
     [canSeek, seekFromX]
   );

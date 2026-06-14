@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
+import { useDebouncedValue, SEARCH_API_DEBOUNCE_MS } from "../../../lib/timing";
 import {
   ActivityIndicator,
   Alert,
@@ -170,6 +171,7 @@ export function CommunityScreen() {
   const { emitNotification } = useNotifications();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const trimmedSearch = useDebouncedValue(search.trim(), SEARCH_API_DEBOUNCE_MS);
   const [actionBusy, setActionBusy] = useState(false);
   const [messageBusy, setMessageBusy] = useState(false);
   const [activeChat, setActiveChat] = useState<{
@@ -189,7 +191,6 @@ export function CommunityScreen() {
     [gutter, insets.bottom]
   );
 
-  const trimmedSearch = search.trim();
   const { data: members = [], isLoading, isRefetching, refetch } = useQuery({
     queryKey: queryKeys.presence.community(trimmedSearch),
     queryFn: () => fetchCommunityUsers(trimmedSearch || undefined),

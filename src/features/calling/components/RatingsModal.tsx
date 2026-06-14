@@ -30,6 +30,7 @@ import { AccountType } from "../../../constants/accountType";
 import { postRating } from "../postSessionApi";
 import LessonSummaryCard from "../../ai/LessonSummaryCard";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import { useSubmitGuard } from "../../../lib/timing";
 import { useThemeColors } from "../../../theme";
 
 type Props = {
@@ -63,7 +64,7 @@ export function RatingsModal({
   const [recommend, setRecommend] = useState(0);
   const [title, setTitle] = useState("");
   const [remarks, setRemarks] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const { submitting, guard: guardSubmit } = useSubmitGuard();
 
   const isTrainer = accountType === AccountType.TRAINER;
   /** Trainee must submit after an in-call lesson before leaving (home banner allows skip). */
@@ -78,57 +79,56 @@ export function RatingsModal({
   };
 
   const handleSubmit = async () => {
-    if (session === 0 || audio === 0) {
-      Alert.alert(
-        t("postSessionRating.alertStarsTitle", { defaultValue: "Please rate" }),
-        t("postSessionRating.alertStarsBody", {
-          defaultValue: "Choose stars for session and audio/video.",
-        })
-      );
-      return;
-    }
-    if (!isTrainer && recommend === 0) {
-      Alert.alert(
-        t("postSessionRating.alertStarsTitle", { defaultValue: "Please rate" }),
-        t("postSessionRating.alertRecommend", {
-          defaultValue: "Tell us whether you'd recommend your coach.",
-        })
-      );
-      return;
-    }
-    if (!isFromCall && (!title.trim() || !remarks.trim())) {
-      Alert.alert(
-        t("postSessionRating.alertDetailsTitle", { defaultValue: "Add details" }),
-        t("postSessionRating.alertDetailsBody", {
-          defaultValue: "Please include a title and short remark.",
-        })
-      );
-      return;
-    }
-    try {
-      setSubmitting(true);
-      await postRating({
-        booking_id: bookingId,
-        sessionRating: session,
-        audioVideoRating: audio,
-        recommendRating: isTrainer ? null : recommend,
-        title: title.trim() || undefined,
-        remarksInfo: remarks.trim() || undefined,
-        accountType: accountType ?? undefined,
-      });
-      reset();
-      setSubmitted(true);
-      onSubmitted?.();
-    } catch (err: any) {
-      Alert.alert(
-        t("postSessionRating.submitFailedTitle", { defaultValue: "Could not submit" }),
-        err?.response?.data?.message ??
-          err?.message ??
-          t("postSessionRating.submitFailedBody", { defaultValue: "Please try again." })
-      );
-    } finally {
-      setSubmitting(false);
-    }
+    await guardSubmit(async () => {
+      if (session === 0 || audio === 0) {
+        Alert.alert(
+          t("postSessionRating.alertStarsTitle", { defaultValue: "Please rate" }),
+          t("postSessionRating.alertStarsBody", {
+            defaultValue: "Choose stars for session and audio/video.",
+          })
+        );
+        return;
+      }
+      if (!isTrainer && recommend === 0) {
+        Alert.alert(
+          t("postSessionRating.alertStarsTitle", { defaultValue: "Please rate" }),
+          t("postSessionRating.alertRecommend", {
+            defaultValue: "Tell us whether you'd recommend your coach.",
+          })
+        );
+        return;
+      }
+      if (!isFromCall && (!title.trim() || !remarks.trim())) {
+        Alert.alert(
+          t("postSessionRating.alertDetailsTitle", { defaultValue: "Add details" }),
+          t("postSessionRating.alertDetailsBody", {
+            defaultValue: "Please include a title and short remark.",
+          })
+        );
+        return;
+      }
+      try {
+        await postRating({
+          booking_id: bookingId,
+          sessionRating: session,
+          audioVideoRating: audio,
+          recommendRating: isTrainer ? null : recommend,
+          title: title.trim() || undefined,
+          remarksInfo: remarks.trim() || undefined,
+          accountType: accountType ?? undefined,
+        });
+        reset();
+        setSubmitted(true);
+        onSubmitted?.();
+      } catch (err: any) {
+        Alert.alert(
+          t("postSessionRating.submitFailedTitle", { defaultValue: "Could not submit" }),
+          err?.response?.data?.message ??
+            err?.message ??
+            t("postSessionRating.submitFailedBody", { defaultValue: "Please try again." })
+        );
+      }
+    });
   };
 
   return (

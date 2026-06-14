@@ -29,6 +29,7 @@ import { API_ROUTES } from "../../../config/apiRoutes";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { queryKeys } from "../../../lib/queryKeys";
+import { useDebouncedValue, SEARCH_LOCAL_DEBOUNCE_MS } from "../../../lib/timing";
 import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { useAuth } from "../../auth/context/AuthContext";
 import { useSocket } from "../../socket/SocketContext";
@@ -599,6 +600,7 @@ export function ChatRoomScreen({
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const didInitialScrollRef = useRef(false);
   const [profileSearch, setProfileSearch] = useState("");
+  const debouncedProfileSearch = useDebouncedValue(profileSearch, SEARCH_LOCAL_DEBOUNCE_MS);
   const [profileTab, setProfileTab] = useState<"info" | "media" | "search">("info");
   const [partnerTyping, setPartnerTyping] = useState(false);
   const [partnerOnline, setPartnerOnline] = useState(false);
@@ -1482,12 +1484,12 @@ export function ChatRoomScreen({
   const sharedMedia = chatMediaItems;
 
   const searchHits = useMemo(() => {
-    const q = profileSearch.trim();
+    const q = debouncedProfileSearch.trim();
     if (!q) return [];
     return displayMessages
       .filter((m) => messageMatchesQuery(m, q))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [displayMessages, profileSearch]);
+  }, [displayMessages, debouncedProfileSearch]);
 
   const searchSections = useMemo(
     () => groupMessagesByDay(searchHits),

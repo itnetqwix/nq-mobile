@@ -32,6 +32,7 @@ import { useCombinedScroll } from "../../../lib/refresh/useCombinedScroll";
 import { useMorphRefresh } from "../../../lib/refresh/useMorphRefresh";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { queryKeys } from "../../../lib/queryKeys";
+import { useDebouncedValue, SEARCH_LOCAL_DEBOUNCE_MS } from "../../../lib/timing";
 import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
@@ -355,6 +356,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
   const queryClient = useQueryClient();
   const currentUserId = String((user as any)?._id ?? (user as any)?.id ?? "");
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, SEARCH_LOCAL_DEBOUNCE_MS);
   const [activeChat, setActiveChat] = useState<{
     conversationId: string;
     partner: ChatPartner & { isGroup?: boolean };
@@ -374,6 +376,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
 
   const [showNewChat, setShowNewChat] = useState(false);
   const [friendSearch, setFriendSearch] = useState("");
+  const debouncedFriendSearch = useDebouncedValue(friendSearch, SEARCH_LOCAL_DEBOUNCE_MS);
   const [creatingChat, setCreatingChat] = useState(false);
   const [showGroupCreate, setShowGroupCreate] = useState(false);
   const [groupName, setGroupName] = useState("");
@@ -455,13 +458,13 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
   }, []);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return conversations;
-    const q = search.toLowerCase();
+    if (!debouncedSearch.trim()) return conversations;
+    const q = debouncedSearch.toLowerCase();
     return conversations.filter((c: any) => {
       const p = getPartner(c);
       return (p.fullname ?? "").toLowerCase().includes(q);
     });
-  }, [conversations, search, getPartner]);
+  }, [conversations, debouncedSearch, getPartner]);
 
   const friendsList = useMemo(() => {
     const items: ChatPartner[] = [];
@@ -492,10 +495,10 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
         });
       }
     }
-    if (!friendSearch.trim()) return items;
-    const q = friendSearch.toLowerCase();
+    if (!debouncedFriendSearch.trim()) return items;
+    const q = debouncedFriendSearch.toLowerCase();
     return items.filter((fp) => (fp.fullname ?? "").toLowerCase().includes(q));
-  }, [friends, currentUserId, friendSearch, t]);
+  }, [friends, currentUserId, debouncedFriendSearch, t]);
 
   const selectedMemberList = useMemo(
     () => friendsList.filter((f) => selectedGroupMembers.has(f._id)),

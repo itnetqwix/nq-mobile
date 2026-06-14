@@ -1,6 +1,6 @@
-import { apiClient } from "../../../api/client";
-import { API_ROUTES } from "../../../config/apiRoutes";
-import { unwrapApiData } from "../../../lib/http/unwrapApiData";
+import { apiClient } from "../../api/client";
+import { API_ROUTES } from "../../config/apiRoutes";
+import { unwrapApiData } from "../../lib/http/unwrapApiData";
 
 export type StripeConnectStatus = {
   complete?: boolean;

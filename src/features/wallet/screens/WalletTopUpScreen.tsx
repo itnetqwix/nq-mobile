@@ -26,6 +26,7 @@ import { useWalletBalance } from "../hooks/useWalletBalance";
 import type { WalletStackParamList } from "../navigation/WalletNavigator";
 import { useShellHeaderTitle } from "../../../navigation/useShellHeaderTitle";
 import { queryKeys } from "../../../lib/queryKeys";
+import { useSubmitGuard } from "../../../lib/timing";
 import { fetchWalletConfig } from "../walletApi";
 import { STRIPE_APPLE_MERCHANT_IDENTIFIER } from "../../../config/env";
 
@@ -56,7 +57,8 @@ export function WalletTopUpScreen({ navigation, route }: Props) {
   });
 
   const { phase, runTopUp, runNativePayTopUp, nativePaySupported } = useWalletTopUpFlow();
-  const busy = phase === "presenting" || phase === "confirming";
+  const { submitting: submitGuardBusy, guard: guardSubmit } = useSubmitGuard();
+  const busy = phase === "presenting" || phase === "confirming" || submitGuardBusy;
 
   const styles = useThemedStyles((palette) =>
     StyleSheet.create({
@@ -176,37 +178,39 @@ export function WalletTopUpScreen({ navigation, route }: Props) {
   };
 
   const handleSubmit = async () => {
-    const dollars = parseFloat(amount);
-    const err = validateAmount(dollars);
-    if (err) {
-      setAmountError(err);
-      return;
-    }
-    setAmountError(undefined);
+    await guardSubmit(async () => {
+      const dollars = parseFloat(amount);
+      const err = validateAmount(dollars);
+      if (err) {
+        setAmountError(err);
+        return;
+      }
+      setAmountError(undefined);
 
-    const result = await runTopUp(dollars);
-    if (result.ok) {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all });
-      await refetchBalance();
-      Alert.alert(
-        t("wallet.fundsAdded"),
-        t("wallet.fundsAddedBody", { amount: result.amountDollars.toFixed(2) }),
-        [{ text: t("common.done"), onPress: () => navigation.goBack() }]
-      );
-      return;
-    }
+      const result = await runTopUp(dollars);
+      if (result.ok) {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all });
+        await refetchBalance();
+        Alert.alert(
+          t("wallet.fundsAdded"),
+          t("wallet.fundsAddedBody", { amount: result.amountDollars.toFixed(2) }),
+          [{ text: t("common.done"), onPress: () => navigation.goBack() }]
+        );
+        return;
+      }
 
-    if (result.code === "canceled") return;
+      if (result.code === "canceled") return;
 
-    if (result.code === "timeout") {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all });
-      Alert.alert(t("wallet.processingPayment"), result.message, [
-        { text: t("systemActions.ok"), onPress: () => navigation.goBack() },
-      ]);
-      return;
-    }
+      if (result.code === "timeout") {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all });
+        Alert.alert(t("wallet.processingPayment"), result.message, [
+          { text: t("systemActions.ok"), onPress: () => navigation.goBack() },
+        ]);
+        return;
+      }
 
-    Alert.alert(t("wallet.topUpFailed"), result.message);
+      Alert.alert(t("wallet.topUpFailed"), result.message);
+    });
   };
 
   const shortfallHint = useMemo(() => {

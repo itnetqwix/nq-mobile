@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React from "react";
+import { useDebouncedValue, SEARCH_LOCAL_DEBOUNCE_MS } from "../../../lib/timing";
 import {
   ActivityIndicator,
   FlatList,
@@ -41,11 +42,7 @@ export function GlobalMessageSearchResults({
 }: Props) {
   const c = useThemeColors();
   const styles = useChatOverlayStyles();
-  const [debounced, setDebounced] = useState(query);
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(query.trim()), 220);
-    return () => clearTimeout(t);
-  }, [query]);
+  const debounced = useDebouncedValue(query.trim(), SEARCH_LOCAL_DEBOUNCE_MS);
 
   const enabled = debounced.length >= 2;
 

@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EmptyState } from "../../../components/ui";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { queryKeys } from "../../../lib/queryKeys";
+import { useDebouncedValue, SEARCH_API_DEBOUNCE_MS, SEARCH_LOCAL_DEBOUNCE_MS } from "../../../lib/timing";
 import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { fetchFriends } from "../../home/api/homeApi";
@@ -64,14 +65,16 @@ export function GroupMembersSheet({
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_API_DEBOUNCE_MS);
   const [showInvite, setShowInvite] = useState(false);
   const [inviteSearch, setInviteSearch] = useState("");
+  const debouncedInviteSearch = useDebouncedValue(inviteSearch, SEARCH_LOCAL_DEBOUNCE_MS);
   const [selectedInvitees, setSelectedInvitees] = useState<Set<string>>(new Set());
   const [inviting, setInviting] = useState(false);
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: queryKeys.chats.groupMembers(conversationId, search),
-    queryFn: () => fetchGroupMembers(conversationId, search),
+    queryKey: queryKeys.chats.groupMembers(conversationId, debouncedSearch),
+    queryFn: () => fetchGroupMembers(conversationId, debouncedSearch),
     enabled: visible && !!conversationId,
   });
 
@@ -145,10 +148,10 @@ export function GroupMembersSheet({
         profile_picture: other.profile_picture,
       });
     }
-    if (!inviteSearch.trim()) return items;
-    const q = inviteSearch.toLowerCase();
+    if (!debouncedInviteSearch.trim()) return items;
+    const q = debouncedInviteSearch.toLowerCase();
     return items.filter((x) => (x.fullname ?? "").toLowerCase().includes(q));
-  }, [friends, currentUserId, memberIds, inviteSearch]);
+  }, [friends, currentUserId, memberIds, debouncedInviteSearch]);
 
   const runInvite = useCallback(async () => {
     if (selectedInvitees.size < 1) return;

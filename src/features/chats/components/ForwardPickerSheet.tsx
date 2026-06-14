@@ -15,6 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { queryKeys } from "../../../lib/queryKeys";
+import { useDebouncedValue, SEARCH_LOCAL_DEBOUNCE_MS } from "../../../lib/timing";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { haptics } from "../../../lib/haptics";
 import { useThemeColors } from "../../../theme";
@@ -57,6 +58,7 @@ export function ForwardPickerSheet({
   const styles = useChatOverlayStyles();
   const [selected, setSelected] = useState<Record<string, true>>({});
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, SEARCH_LOCAL_DEBOUNCE_MS);
   const [submitting, setSubmitting] = useState(false);
 
   const { data: conversations = [], isLoading } = useQuery<Conversation[]>({
@@ -71,7 +73,7 @@ export function ForwardPickerSheet({
   });
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = debouncedSearch.trim().toLowerCase();
     return conversations
       .filter((c) => !excludeConversationId || c._id !== excludeConversationId)
       .map((c) => {
@@ -83,7 +85,7 @@ export function ForwardPickerSheet({
         return { ...c, _title: title, _avatar: avatar };
       })
       .filter((c: any) => (q ? (c._title || "").toLowerCase().includes(q) : true));
-  }, [conversations, search, currentUserId, excludeConversationId]);
+  }, [conversations, debouncedSearch, currentUserId, excludeConversationId]);
 
   const toggleSelect = (id: string) => {
     haptics.select();

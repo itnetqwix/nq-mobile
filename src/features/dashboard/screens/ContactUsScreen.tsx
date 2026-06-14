@@ -17,6 +17,7 @@ import { radii, space, typography, useThemeColors, useThemedStyles } from "../..
 import { useAuth } from "../../auth/context/AuthContext";
 import { postWriteUs } from "../../home/api/homeApi";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
+import { useSubmitGuard } from "../../../lib/timing";
 import type { MenuStackParamList } from "../../../navigation/types";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
@@ -43,30 +44,29 @@ export function ContactUsScreen() {
   const [phone, setPhone] = useState(presetPhone);
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { submitting: loading, guard: guardSubmit } = useSubmitGuard();
 
   const handleSubmit = async () => {
-    if (!subject.trim() || !description.trim()) {
-      Alert.alert(t("support.requiredTitle"), t("support.requiredBody"));
-      return;
-    }
-    setLoading(true);
-    try {
-      await postWriteUs({
-        name: name.trim() || presetName,
-        email: (email.trim() || presetEmail).toLowerCase(),
-        phone_number: phone.trim() || presetPhone,
-        subject: subject.trim(),
-        description: description.trim(),
-      });
-      Alert.alert(t("support.sentTitle"), t("support.sentBody"));
-      setSubject("");
-      setDescription("");
-    } catch (e) {
-      Alert.alert(t("common.error"), getApiErrorMessage(e, t("support.sendFailed")));
-    } finally {
-      setLoading(false);
-    }
+    await guardSubmit(async () => {
+      if (!subject.trim() || !description.trim()) {
+        Alert.alert(t("support.requiredTitle"), t("support.requiredBody"));
+        return;
+      }
+      try {
+        await postWriteUs({
+          name: name.trim() || presetName,
+          email: (email.trim() || presetEmail).toLowerCase(),
+          phone_number: phone.trim() || presetPhone,
+          subject: subject.trim(),
+          description: description.trim(),
+        });
+        Alert.alert(t("support.sentTitle"), t("support.sentBody"));
+        setSubject("");
+        setDescription("");
+      } catch (e) {
+        Alert.alert(t("common.error"), getApiErrorMessage(e, t("support.sendFailed")));
+      }
+    });
   };
 
   return (

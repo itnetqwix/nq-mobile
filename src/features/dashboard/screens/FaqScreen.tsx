@@ -22,6 +22,7 @@ import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { fetchCmsFaq } from "../../content/api/cmsApi";
 import { queryKeys } from "../../../lib/queryKeys";
 import { FAQ_SECTIONS, type FaqItem, type FaqSection } from "../content/faqContent";
+import { useDebouncedValue, SEARCH_LOCAL_DEBOUNCE_MS } from "../../../lib/timing";
 import { fuzzySearch } from "../../../lib/search/fuzzyMatch";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -40,6 +41,7 @@ export function FaqScreen() {
   const [question, setQuestion] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [query, setQuery] = useState("");
+  const debouncedQuery = useDebouncedValue(query, SEARCH_LOCAL_DEBOUNCE_MS);
 
   const { data: cmsFaq } = useQuery({
     queryKey: queryKeys.content.faq,
@@ -66,7 +68,7 @@ export function FaqScreen() {
    * When the query is empty we fall back to the original section grouping.
    */
   const filteredSections: FaqSection[] = useMemo(() => {
-    const q = query.trim();
+    const q = debouncedQuery.trim();
     if (!q) return faqSections;
     const haystack: { item: FaqItem & { __section: string }; fields: string[] }[] = [];
     for (const section of faqSections) {
@@ -84,7 +86,7 @@ export function FaqScreen() {
       (bySection[__section] ??= []).push(rest);
     }
     return Object.entries(bySection).map(([title, items]) => ({ title, items }));
-  }, [query, faqSections]);
+  }, [debouncedQuery, faqSections]);
 
   const presetName = (user?.fullname as string) ?? (user?.fullName as string) ?? "";
   const presetEmail = (user?.email as string) ?? "";

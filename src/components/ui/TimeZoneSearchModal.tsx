@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { IANA_TIME_ZONES } from "../../lib/timeZones";
+import { useDebouncedValue, SEARCH_LOCAL_DEBOUNCE_MS } from "../../lib/timing";
 import { radii, space, typography } from "../../theme";
 import { useThemeColors } from "../../theme";
 
@@ -26,6 +27,7 @@ export function TimeZoneSearchModal({ visible, selectedId, onClose, onConfirm }:
   const { t } = useTranslation();
   const c = useThemeColors();
   const [query, setQuery] = useState("");
+  const debouncedQuery = useDebouncedValue(query, SEARCH_LOCAL_DEBOUNCE_MS);
   const [draft, setDraft] = useState(selectedId);
 
   useEffect(() => {
@@ -36,10 +38,10 @@ export function TimeZoneSearchModal({ visible, selectedId, onClose, onConfirm }:
   }, [visible, selectedId]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = debouncedQuery.trim().toLowerCase();
     if (!q) return IANA_TIME_ZONES as string[];
     return (IANA_TIME_ZONES as string[]).filter((z) => z.toLowerCase().includes(q));
-  }, [query]);
+  }, [debouncedQuery]);
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useDebouncedValue, SEARCH_API_DEBOUNCE_MS } from "../../../lib/timing";
 import {
   FlatList,
   Pressable,
@@ -53,7 +54,7 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
   const traineeInterests = useMemo(() => getTraineeInterests(user), [user]);
 
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_API_DEBOUNCE_MS);
   const [browseFilters, setBrowseFilters] = useState<TrainerBrowseFilters>(() => ({
     ...DEFAULT_BROWSE_FILTERS,
     selectedCategories: traineeInterests.length ? [...traineeInterests] : [],
@@ -63,11 +64,6 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
   const [wizardTrainer, setWizardTrainer] = useState<Record<string, unknown> | null>(null);
   const [scheduleTrainer, setScheduleTrainer] = useState<Record<string, unknown> | null>(null);
   const navigation = useNavigation<NativeStackNavigationProp<MenuStackParamList>>();
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search.trim()), 350);
-    return () => clearTimeout(t);
-  }, [search]);
 
   const trimmed = debouncedSearch;
   const searchActive = trimmed.length >= 2 && !/^\d+$/.test(trimmed);
