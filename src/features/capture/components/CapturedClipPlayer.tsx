@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { NetQwixVideoControls } from "../../../components/media/NetQwixVideoControls";
 import { colors, radii, space, typography } from "../../../theme";
 import type { CapturedClip } from "../screens/CaptureScreen";
 
@@ -17,24 +18,17 @@ type Props = {
   onShare: () => void;
 };
 
-function formatTime(ms: number) {
-  const totalSec = Math.floor(ms / 1000);
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
-}
-
 export function CapturedClipPlayer({ clip, onDelete, onShare }: Props) {
   const videoRef = useRef<Video>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [positionMs, setPositionMs] = useState(0);
-  const [durationMs, setDurationMs] = useState(0);
+  const [positionSec, setPositionSec] = useState(0);
+  const [durationSec, setDurationSec] = useState(0);
 
   useEffect(() => {
     setIsPlaying(false);
-    setPositionMs(0);
-    setDurationMs(0);
+    setPositionSec(0);
+    setDurationSec(0);
     void videoRef.current?.stopAsync();
   }, [clip?.id]);
 
@@ -45,11 +39,14 @@ export function CapturedClipPlayer({ clip, onDelete, onShare }: Props) {
     }
     setIsLoading(false);
     setIsPlaying(status.isPlaying);
-    setPositionMs(status.positionMillis);
-    setDurationMs(status.durationMillis ?? 0);
+    setPositionSec(status.positionMillis / 1000);
+    if (typeof status.durationMillis === "number" && status.durationMillis > 0) {
+      setDurationSec(status.durationMillis / 1000);
+    }
     if (status.didJustFinish) {
       void videoRef.current?.setPositionAsync(0);
       setIsPlaying(false);
+      setPositionSec(0);
     }
   }, []);
 
@@ -64,16 +61,27 @@ export function CapturedClipPlayer({ clip, onDelete, onShare }: Props) {
     }
   }, [clip]);
 
+  const seekTo = useCallback((seconds: number) => {
+    videoRef.current
+      ?.setPositionAsync(Math.max(0, seconds * 1000))
+      .catch(() => undefined);
+    setPositionSec(seconds);
+  }, []);
+
   if (!clip) {
     return (
       <View style={styles.emptyPlayer}>
-        <Ionicons name="film-outline" size={40} color="#6b7280" />
-        <Text style={styles.emptyText}>Select a clip to preview</Text>
+        <View style={styles.emptyIconWrap}>
+          <Ionicons name="film-outline" size={36} color={colors.brandNavy} />
+        </View>
+        <Text style={styles.emptyTitle}>No clip selected</Text>
+        <Text style={styles.emptyText}>Tap a clip below to preview it here</Text>
       </View>
     );
   }
 
-  const progress = durationMs > 0 ? positionMs / durationMs : 0;
+  const displayDuration =
+    durationSec > 0 ? durationSec : clip.durationSecs ?? 0;
 
   return (
     <View style={styles.shell}>
@@ -89,39 +97,41 @@ export function CapturedClipPlayer({ clip, onDelete, onShare }: Props) {
           onPlaybackStatusUpdate={onPlaybackStatusUpdate}
         />
 
-        <Pressable style={styles.tapOverlay} onPress={togglePlay}>
-          {isLoading ? (
-            <ActivityIndicator size="large" color="#fff" />
-          ) : !isPlaying ? (
-            <View style={styles.playBtn}>
-              <Ionicons name="play" size={32} color="#fff" style={{ marginLeft: 4 }} />
-            </View>
-          ) : null}
-        </Pressable>
-
-        {isPlaying && (
-          <Pressable style={styles.pauseHit} onPress={togglePlay}>
-            <View style={styles.pauseBtn}>
-              <Ionicons name="pause" size={22} color="#fff" />
-            </View>
+        {(isLoading || !isPlaying) && (
+          <Pressable style={styles.centerTap} onPress={togglePlay}>
+            {isLoading ? (
+              <ActivityIndicator size="large" color="#fff" />
+            ) : (
+              <View style={styles.centerPlay}>
+                <Ionicons
+                  name="play"
+                  size={34}
+                  color="#fff"
+                  style={styles.centerPlayIcon}
+                />
+              </View>
+            )}
           </Pressable>
         )}
       </View>
 
-      <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${Math.min(100, progress * 100)}%` }]} />
-      </View>
-      <View style={styles.timeRow}>
-        <Text style={styles.timeText}>{formatTime(positionMs)}</Text>
-        <Text style={styles.timeText}>
-          {durationMs > 0 ? formatTime(durationMs) : clip.durationSecs ? formatTime(clip.durationSecs * 1000) : "0:00"}
-        </Text>
-      </View>
+      <NetQwixVideoControls
+        variant="dock"
+        size="large"
+        isPlaying={isPlaying}
+        progressSeconds={positionSec}
+        durationSeconds={displayDuration}
+        isBuffering={isLoading}
+        onTogglePlay={() => void togglePlay()}
+        onSeek={seekTo}
+      />
 
       <View style={styles.metaRow}>
         <View style={styles.meta}>
+          <Text style={styles.metaLabel}>Captured</Text>
           <Text style={styles.metaDate}>
             {new Date(clip.createdAt).toLocaleDateString(undefined, {
+              weekday: "short",
               month: "short",
               day: "numeric",
               hour: "2-digit",
@@ -130,12 +140,20 @@ export function CapturedClipPlayer({ clip, onDelete, onShare }: Props) {
           </Text>
         </View>
         <View style={styles.toolbar}>
-          <Pressable style={styles.toolBtn} onPress={onShare} accessibilityLabel="Share clip">
+          <Pressable
+            style={({ pressed }) => [styles.toolBtn, pressed && styles.toolBtnPressed]}
+            onPress={onShare}
+            accessibilityLabel="Share clip"
+          >
             <Ionicons name="share-social-outline" size={20} color={colors.brandNavy} />
             <Text style={styles.toolLabel}>Share</Text>
           </Pressable>
           <Pressable
-            style={[styles.toolBtn, styles.toolBtnDanger]}
+            style={({ pressed }) => [
+              styles.toolBtn,
+              styles.toolBtnDanger,
+              pressed && styles.toolBtnPressed,
+            ]}
             onPress={onDelete}
             accessibilityLabel="Delete clip"
           >
@@ -154,95 +172,87 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     overflow: "hidden",
     marginHorizontal: space.md,
-    marginBottom: space.md,
+    marginBottom: space.sm,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
   },
   emptyPlayer: {
     aspectRatio: 16 / 9,
     marginHorizontal: space.md,
     marginBottom: space.md,
     borderRadius: radii.lg,
-    backgroundColor: "#f3f4f6",
+    backgroundColor: "#f8fafc",
     alignItems: "center",
     justifyContent: "center",
     gap: space.sm,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: "#e2e8f0",
+    paddingHorizontal: space.lg,
   },
-  emptyText: { ...typography.bodySm, color: "#6b7280" },
+  emptyIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#eff6ff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyTitle: { ...typography.bodyMd, fontWeight: "700", color: "#0f172a" },
+  emptyText: { ...typography.bodySm, color: "#64748b", textAlign: "center" },
   videoWrap: {
     aspectRatio: 16 / 9,
     backgroundColor: "#000",
     position: "relative",
   },
   video: { width: "100%", height: "100%" },
-  tapOverlay: {
+  centerTap: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.18)",
   },
-  playBtn: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "rgba(0,0,0,0.55)",
+  centerPlay: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "rgba(0,0,128,0.75)",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.85)",
+    borderColor: "rgba(255,255,255,0.9)",
   },
-  pauseHit: {
-    position: "absolute",
-    right: space.sm,
-    bottom: space.sm,
-  },
-  pauseBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  progressTrack: {
-    height: 3,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    marginHorizontal: space.md,
-    marginTop: space.sm,
-    borderRadius: 2,
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: colors.brandAccent,
-  },
-  timeRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: space.md,
-    paddingTop: 4,
-  },
-  timeText: { fontSize: 11, color: "rgba(255,255,255,0.7)", fontVariant: ["tabular-nums"] },
+  centerPlayIcon: { marginLeft: 4 },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: space.md,
-    paddingVertical: space.sm,
+    paddingVertical: space.md,
     gap: space.sm,
+    backgroundColor: "#1e293b",
   },
   meta: { flex: 1 },
-  metaDate: { fontSize: 13, fontWeight: "600", color: "#e2e8f0" },
+  metaLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.5)",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginBottom: 2,
+  },
+  metaDate: { fontSize: 14, fontWeight: "600", color: "#f1f5f9" },
   toolbar: { flexDirection: "row", alignItems: "center", gap: 8 },
   toolBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
     borderRadius: radii.pill,
     backgroundColor: "#fff",
   },
   toolBtnDanger: { backgroundColor: "#fef2f2" },
-  toolLabel: { fontSize: 12, fontWeight: "700", color: colors.brandNavy },
+  toolBtnPressed: { opacity: 0.88 },
+  toolLabel: { fontSize: 13, fontWeight: "700", color: colors.brandNavy },
   toolLabelDanger: { color: "#ef4444" },
 });

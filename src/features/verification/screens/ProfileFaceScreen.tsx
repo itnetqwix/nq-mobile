@@ -208,7 +208,7 @@ export function ProfileFaceScreen({ onDone }: Props) {
   }
 
   return (
-    <ScreenContainer scroll applyTopInset padding="lg" background={c.background}>
+    <ScreenContainer scroll dismissKeyboardOnTap applyTopInset padding="lg" background={c.background}>
       <AuthEscapeLink variant="signout" />
 
       <VerificationProgressHeader

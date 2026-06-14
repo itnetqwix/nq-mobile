@@ -48,7 +48,7 @@ export function WorkExperienceSetupScreen({ initial, onNext, onSkip }: Props) {
   };
 
   return (
-    <ScreenContainer scroll applyTopInset padding="lg" background={c.background}>
+    <ScreenContainer scroll dismissKeyboardOnTap applyTopInset padding="lg" background={c.background}>
       <Text style={[typography.titleMd, { color: c.text }]}>
         {t("trainerProfile.workTitle")}
       </Text>

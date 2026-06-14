@@ -57,6 +57,11 @@ import {
 } from "../lib/chatSearchUtils";
 import { useChatE2E } from "../hooks/useChatE2E";
 import { isEncryptedChatContent } from "../crypto/chatEncryption";
+import { postChatMessage, uploadAndSendChatMedia } from "../lib/chatSendHelper";
+import {
+  flushOfflineChatQueue,
+  subscribeOfflineChatQueueEvents,
+} from "../lib/offlineChatQueue";
 
 type Props = {
   conversationId: string;
@@ -134,24 +139,6 @@ function formatLastSeen(dateStr?: string | null): string {
   } catch {
     return "";
   }
-}
-
-async function getPresignedUploadUrl(fileName: string, fileType: string) {
-  const res = await apiClient.post(API_ROUTES.chat.mediaUploadUrl, { fileName, fileType });
-  const body = (res as any)?.data ?? res;
-  if (!body?.uploadUrl) throw new Error(body?.message ?? "Failed to get upload URL");
-  return { uploadUrl: body.uploadUrl as string, mediaUrl: body.mediaUrl as string };
-}
-
-async function uploadToS3(uploadUrl: string, fileUri: string, contentType: string) {
-  const response = await fetch(fileUri);
-  const blob = await response.blob();
-  const res = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: { "Content-Type": contentType },
-    body: blob,
-  });
-  if (!res.ok) throw new Error(`Upload failed with status ${res.status}`);
 }
 
 function delay(ms: number) {
@@ -873,6 +860,16 @@ export function ChatRoomScreen({
       if (msg?.conversationId === conversationId) {
         setLocalMessages((prev) => {
           if (prev.some((m) => m._id === msg._id)) return prev;
+          if (
+            msg?.clientMessageId &&
+            prev.some((m) => m._id === msg.clientMessageId)
+          ) {
+            return prev.map((m) =>
+              m._id === msg.clientMessageId
+                ? { ...msg, status: msg.status ?? "sent", pending: false }
+                : m
+            );
+          }
           return [...prev, msg];
         });
         queryClient.invalidateQueries({ queryKey: ["chatMessages", conversationId] });
@@ -892,6 +889,29 @@ export function ChatRoomScreen({
       socket.emit("LEAVE_CHAT", { conversationId });
     };
   }, [socket, conversationId, queryClient, currentUserId]);
+
+  useEffect(() => {
+    void flushOfflineChatQueue();
+    const unsub = subscribeOfflineChatQueueEvents((event) => {
+      if (event.type !== "sent") return;
+      const msg = event.message as Message;
+      if (msg.conversationId && msg.conversationId !== conversationId) return;
+      setLocalMessages((prev) => {
+        const hasServer = prev.some((m) => m._id === msg._id);
+        if (hasServer) return prev;
+        const replaced = prev.map((m) =>
+          m._id === event.clientId
+            ? { ...msg, status: "sent" as const, pending: false }
+            : m
+        );
+        if (replaced.some((m) => m._id === msg._id)) return replaced;
+        return [...replaced.filter((m) => m._id !== event.clientId), { ...msg, status: "sent", pending: false }];
+      });
+      queryClient.invalidateQueries({ queryKey: ["chatMessages", conversationId] });
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    });
+    return unsub;
+  }, [conversationId, queryClient]);
 
   useEffect(() => {
     setLocalMessages((prev) => {
@@ -927,37 +947,62 @@ export function ChatRoomScreen({
     };
     setLocalMessages((prev) => [...prev, tempMsg]);
     try {
-      const res = await apiClient.post(API_ROUTES.chat.send, {
-        ...(isGroup ? {} : { receiverId: partner._id }),
+      const result = await postChatMessage({
+        clientMessageId: tempId,
+        conversationId,
+        receiverId: isGroup ? undefined : partner._id,
         content,
         type: "text",
-        conversationId,
-        ...(replyId ? { replyToMessageId: replyId } : {}),
+        replyToMessageId: replyId,
       });
-      const data = (res as any)?.data?.data ?? (res as any)?.data;
-      if (data?.message) {
+      if (!result.ok) {
+        setLocalMessages((prev) => prev.filter((m) => m._id !== tempId));
+        if (result.status === 429) {
+          setRateLimited(true);
+          setChatPolicy((p) =>
+            p
+              ? {
+                  ...p,
+                  remainingToday: Number(result.policy?.remainingToday ?? 0),
+                }
+              : p
+          );
+          Alert.alert("Limit Reached", result.error ?? "Message limit reached.");
+        } else {
+          Alert.alert("Send failed", result.error ?? "Could not send message.");
+        }
+        return;
+      }
+      if (result.queued) {
         setLocalMessages((prev) =>
           prev.map((m) =>
-            m._id === tempId
-              ? { ...data.message, _id: data.message._id, status: "sent" as const, pending: false }
-              : m
+            m._id === tempId ? { ...m, status: "sending" as const, pending: true } : m
           )
         );
+        Alert.alert(
+          "Queued",
+          "You're offline. This message will send when you're back online."
+        );
+        return;
       }
-      if (socket) socket.emit("CHAT_MESSAGE", { ...data?.message, conversationId });
+      setLocalMessages((prev) =>
+        prev.map((m) =>
+          m._id === tempId
+            ? {
+                ...(result.message as Message),
+                _id: String((result.message as Message)._id),
+                status: "sent" as const,
+                pending: false,
+              }
+            : m
+        )
+      );
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
       if (chatPolicy && !chatPolicy.hasPaidSession) {
-        setChatPolicy((p) => p ? { ...p, remainingToday: Math.max(0, p.remainingToday - 1) } : p);
+        setChatPolicy((p) => (p ? { ...p, remainingToday: Math.max(0, p.remainingToday - 1) } : p));
       }
-    } catch (e: any) {
+    } catch {
       setLocalMessages((prev) => prev.filter((m) => m._id !== tempId));
-      const status = e?.response?.status;
-      if (status === 429) {
-        setRateLimited(true);
-        const msg = e?.response?.data?.data?.error ?? e?.response?.data?.error ?? "Message limit reached.";
-        setChatPolicy((p) => p ? { ...p, remainingToday: 0 } : p);
-        Alert.alert("Limit Reached", msg);
-      }
     } finally {
       setIsSendingMessage(false);
     }
@@ -995,35 +1040,59 @@ export function ChatRoomScreen({
         createdAt: new Date().toISOString(),
       }]);
       try {
-        const { uploadUrl, mediaUrl } = await getPresignedUploadUrl(fileName, mimeType);
-        await uploadToS3(uploadUrl, fileUri, mimeType);
-        const res = await apiClient.post(API_ROUTES.chat.send, {
-          ...(isGroup ? {} : { receiverId: partner._id }),
+        const result = await uploadAndSendChatMedia({
+          clientMessageId: tempId,
+          conversationId,
+          receiverId: isGroup ? undefined : partner._id,
           content: label,
           type,
-          mediaUrl,
-          conversationId,
+          fileUri,
+          fileName,
+          mimeType,
         });
-        const data = (res as any)?.data?.data ?? (res as any)?.data;
-        if (data?.message) {
+        if (!result.ok) {
+          setLocalMessages((prev) => prev.filter((m) => m._id !== tempId));
+          if (result.status === 429) {
+            setRateLimited(true);
+            Alert.alert("Limit Reached", result.error ?? "Message limit reached.");
+          } else {
+            Alert.alert("Upload failed", result.error ?? "Could not send media.");
+          }
+          return;
+        }
+        if (result.queued) {
+          Alert.alert(
+            "Queued",
+            "You're offline. This message will send when you're back online."
+          );
+          return;
+        }
+        if (result.message) {
           setLocalMessages((prev) =>
             prev.map((m) =>
               m._id === tempId
-                ? { ...data.message, _id: data.message._id, status: "sent" as const, pending: false }
+                ? {
+                    ...(result.message as Message),
+                    _id: String((result.message as Message)._id),
+                    status: "sent" as const,
+                    pending: false,
+                  }
                 : m
             )
           );
         }
-        if (socket) socket.emit("CHAT_MESSAGE", { ...data?.message, conversationId });
         queryClient.invalidateQueries({ queryKey: ["conversations"] });
+        if (chatPolicy && !chatPolicy.hasPaidSession) {
+          setChatPolicy((p) => (p ? { ...p, remainingToday: Math.max(0, p.remainingToday - 1) } : p));
+        }
       } catch (e: any) {
         setLocalMessages((prev) => prev.filter((m) => m._id !== tempId));
-        Alert.alert("Upload failed", e?.response?.data?.message ?? e?.message ?? "Could not send media.");
+        Alert.alert("Upload failed", e?.message ?? "Could not send media.");
       } finally {
         setUploading(false);
       }
     },
-    [partner, isGroup, currentUserId, socket, conversationId, queryClient]
+    [partner, isGroup, currentUserId, conversationId, queryClient, chatPolicy]
   );
 
   // ─── Pick/capture media ─────────────────────────────────────────────────────

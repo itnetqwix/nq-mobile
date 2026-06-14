@@ -2,6 +2,7 @@ import React from "react";
 import { Modal, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, space } from "../../../theme";
+import { navigateToWalletTopUp } from "../../../navigation/navigationRef";
 import type { InstantLessonBookingWizardModalProps } from "./types";
 import { useInstantLessonBookingWizard } from "./useInstantLessonBookingWizard";
 import { WizardHeader } from "./WizardHeader";
@@ -9,6 +10,7 @@ import { WizardTitleBlock } from "./WizardTitleBlock";
 import { WizardStepClips } from "./steps/WizardStepClips";
 import { WizardStepConfirm } from "./steps/WizardStepConfirm";
 import { WizardStepDuration } from "./steps/WizardStepDuration";
+import { WizardStepPayment } from "./steps/WizardStepPayment";
 
 /**
  * Trainee instant-lesson booking: multi-step flow (duration → clips → confirm).
@@ -61,6 +63,25 @@ export function InstantLessonBookingWizardModal({ visible, trainer, onDismiss }:
               onToggleClip={w.toggleClip}
               onSkip={w.goNext}
               onNext={w.goNext}
+            />
+          )}
+
+          {w.step === "payment" && (
+            <WizardStepPayment
+              trainer={trainer as Record<string, unknown>}
+              durationMinutes={w.durationMinutes}
+              expectedPrice={w.expectedPrice}
+              promoResult={w.promoResult}
+              couponCode={w.couponCode}
+              userStripeId={w.userStripeId}
+              bookingType="instant"
+              payableAmount={w.payableAmount}
+              promoDiscountAmount={w.promoDiscountAmount}
+              promoSponsorType={w.promoSponsorType}
+              promoLabel={w.promoLabel}
+              onPaymentComplete={w.handlePaymentComplete}
+              onNext={() => w.goNext()}
+              onAddFunds={(shortfall) => navigateToWalletTopUp(shortfall)}
             />
           )}
 

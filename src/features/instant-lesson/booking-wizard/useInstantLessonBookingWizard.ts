@@ -14,7 +14,6 @@ import { parseInstantBookingMeta } from "./parseInstantBookingLessonId";
 import type { WizardStep, WizardTrainer } from "./types";
 import { idempotencyHeaders, newIdempotencyKey } from "../../../lib/idempotency";
 import { queryKeys } from "../../../lib/queryKeys";
-import { confirmProceedToPaymentIfWalletShort } from "../../../lib/booking/bookingWalletGuard";
 import { navigateToWalletTopUp } from "../../../navigation/navigationRef";
 import { fetchWalletBalance } from "../../wallet/walletApi";
 import { fetchInstantLessonEligibility } from "../../home/api/homeApi";
@@ -342,20 +341,16 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
   const goNext = useCallback(() => {
     const i = wizardStepIndex(step);
     if (step === "duration" && !validateCoupon()) return;
-    // When going from clips → confirm, check wallet balance if payment is required.
-    if (step === "clips" && requiresPayment && payableAmount > 0) {
-      void (async () => {
-        const quoteTotal =
-          chargeTotalDollars(pricingQuote ?? durationPreviewQuote) ?? payableAmount;
-        const ok = await confirmProceedToPaymentIfWalletShort(quoteTotal, (shortfall) => {
-          navigateToWalletTopUp(shortfall);
-        });
-        if (ok) setStep("confirm");
-      })();
+    if (step === "clips") {
+      if (requiresPayment && payableAmount > 0) {
+        setStep("payment");
+        return;
+      }
+      setStep("confirm");
       return;
     }
     if (i < WIZARD_STEPS.length - 1) setStep(WIZARD_STEPS[i + 1]!);
-  }, [step, validateCoupon, requiresPayment, payableAmount, pricingQuote, durationPreviewQuote]);
+  }, [step, validateCoupon, requiresPayment, payableAmount]);
 
   const goBack = useCallback(() => {
     const i = wizardStepIndex(step);
@@ -375,12 +370,16 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
         duration: durationMinutes,
         charging_price: expectedPrice,
       };
-      // Payment step is skipped — always pay via wallet (backend deducts balance).
-      if (requiresPayment) {
-        bookingPayload.payment_method = "wallet";
-        if (pinSessionToken) bookingPayload.pin_session_token = pinSessionToken;
+      if (requiresPayment && chargingPrice > 0) {
+        if (paymentMethod === "wallet") {
+          bookingPayload.payment_method = "wallet";
+          if (pinSessionToken) bookingPayload.pin_session_token = pinSessionToken;
+        } else if (paymentIntentId) {
+          bookingPayload.payment_intent_id = paymentIntentId;
+        } else {
+          throw new Error("Complete payment before sending your request.");
+        }
       }
-      if (paymentIntentId) bookingPayload.payment_intent_id = paymentIntentId;
       if (couponCode.trim()) bookingPayload.coupon_code = couponCode.trim();
       if (quoteId) bookingPayload.quote_id = quoteId;
       const res = await apiClient.post(API_ROUTES.trainee.bookInstantMeeting, bookingPayload, {
@@ -420,6 +419,16 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
 
   const handleSendRequest = useCallback(() => {
     if (!validateCoupon()) return;
+    if (requiresPayment && payableAmount > 0 && chargingPrice > 0) {
+      const paid = paymentMethod === "wallet" || !!paymentIntentId;
+      if (!paid) {
+        Alert.alert(
+          "Payment required",
+          "Go back and pay with your wallet or card before sending the request."
+        );
+        return;
+      }
+    }
     if (eligibilityQuery.data && !eligibilityQuery.data.eligible) {
       Alert.alert(
         "Cannot book now",
@@ -432,6 +441,11 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     validateCoupon,
     submitMutation,
     eligibilityQuery.data,
+    requiresPayment,
+    payableAmount,
+    chargingPrice,
+    paymentMethod,
+    paymentIntentId,
   ]);
 
   const stepNum = wizardStepIndex(step) + 1;

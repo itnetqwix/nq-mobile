@@ -332,6 +332,12 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
   }, [goHome, lessonId]);
   const beginPostCallFlow = useCallback(() => {
     postCallActiveRef.current = true;
+    try {
+      const { setLastInterruptedSession } = require("../callRejoinStore");
+      setLastInterruptedSession(null);
+    } catch {
+      /* noop */
+    }
   }, []);
 
   const role: SessionRole =
@@ -795,6 +801,14 @@ function MeetingSurface({
     LESSON_NETWORK_TIER_CONFIG[networkAdaptive.mode];
 
   const queryClient = useQueryClient();
+
+  const refreshSessionsAfterLessonEnd = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.lookup(lessonId) });
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.sessions.joinReadiness(lessonId),
+    });
+  }, [queryClient, lessonId]);
 
   const clipSync = useClipSync({
     socket,
@@ -1636,6 +1650,7 @@ function MeetingSurface({
   const openPostCallFlow = useCallback(async () => {
     if (postCallFlowStartedRef.current) return;
     postCallFlowStartedRef.current = true;
+    refreshSessionsAfterLessonEnd();
     onPostCallFlowStart();
     if (!isTrainer) {
       const already = await hasShownSessionRating(lessonId);
@@ -1649,7 +1664,7 @@ function MeetingSurface({
      * post-call flow via `continueAfterRecap`.
      */
     setRecapSheetOpen(true);
-  }, [isTrainer, lessonId, onPostCallFlowStart, openHandoff]);
+  }, [isTrainer, lessonId, onPostCallFlowStart, openHandoff, refreshSessionsAfterLessonEnd]);
 
   /**
    * When `peerEndedCall` flips to true (peer explicitly pressed "End call"):

@@ -205,11 +205,13 @@ export function CapturedLibraryScreen() {
         </View>
       ) : (
         <>
-          <CapturedClipPlayer
-            clip={activeClip}
-            onDelete={() => activeClip && confirmDelete([activeClip.id])}
-            onShare={() => setShareSheetVisible(true)}
-          />
+          <View style={styles.playerSection}>
+            <CapturedClipPlayer
+              clip={activeClip}
+              onDelete={() => activeClip && confirmDelete([activeClip.id])}
+              onShare={() => setShareSheetVisible(true)}
+            />
+          </View>
 
           <Text style={styles.listHeading}>All clips ({clips.length})</Text>
           <FlatList
@@ -248,7 +250,15 @@ export function CapturedLibraryScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#fff" },
+  root: { flex: 1, backgroundColor: "#f8fafc" },
+  playerSection: {
+    paddingTop: space.sm,
+    backgroundColor: "#0f172a",
+    borderBottomLeftRadius: radii.lg,
+    borderBottomRightRadius: radii.lg,
+    marginBottom: space.md,
+    overflow: "hidden",
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -294,17 +304,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: space.sm,
-    paddingVertical: 10,
+    paddingVertical: 11,
     paddingHorizontal: space.sm,
     borderRadius: radii.md,
-    marginBottom: 6,
-    backgroundColor: "#f9fafb",
+    marginBottom: 8,
+    backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: "#e2e8f0",
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
   },
   clipRowActive: {
     borderColor: colors.brandNavy,
     backgroundColor: "#eff6ff",
+    borderWidth: 1.5,
   },
   check: {
     width: 22,

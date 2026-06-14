@@ -24,6 +24,7 @@ export const queryKeys = {
     ledger: ["wallet", "ledger"] as const,
     config: ["wallet", "config"] as const,
     earnings: ["wallet", "earnings"] as const,
+    stripeConnect: ["wallet", "stripeConnect"] as const,
   },
   friends: {
     all: ["friends"] as const,

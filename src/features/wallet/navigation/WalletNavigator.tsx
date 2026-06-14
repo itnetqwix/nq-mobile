@@ -7,7 +7,7 @@ import { WalletActivityScreen } from "../screens/WalletActivityScreen";
 import { WalletSecurityScreen } from "../screens/WalletSecurityScreen";
 import { SavedPaymentMethodsScreen } from "../screens/SavedPaymentMethodsScreen";
 import { AutoTopUpScreen } from "../screens/AutoTopUpScreen";
-import { PointsActivityScreen } from "../../points/screens/PointsActivityScreen";
+import { StripeConnectOnboardingScreen } from "../screens/StripeConnectOnboardingScreen";
 
 export type WalletStackParamList = {
   WalletHome: undefined;
@@ -17,6 +17,7 @@ export type WalletStackParamList = {
   WalletPaymentMethods: undefined;
   WalletAutoTopUp: undefined;
   PointsActivity: undefined;
+  StripeConnect: undefined;
 };
 
 const Stack = createNativeStackNavigator<WalletStackParamList>();
@@ -50,6 +51,7 @@ export function WalletNavigator({
       <Stack.Screen name="WalletPaymentMethods" component={SavedPaymentMethodsScreen} />
       <Stack.Screen name="WalletAutoTopUp" component={AutoTopUpScreen} />
       <Stack.Screen name="PointsActivity" component={PointsActivityScreen} />
+      <Stack.Screen name="StripeConnect" component={StripeConnectOnboardingScreen} />
     </Stack.Navigator>
   );
 }

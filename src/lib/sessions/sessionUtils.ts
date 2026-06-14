@@ -131,8 +131,13 @@ export function isLessonEffectivelyEnded(session: any, now = new Date()): boolea
   if (session?.actual_end_at) return true;
   const phase = String(session?.instant_phase ?? "").toLowerCase();
   if (phase === INSTANT_PHASE.COMPLETED || phase === "completed") return true;
-  const end = getSessionEnd(session);
-  if (end && now.getTime() > end.getTime() + LATE_JOIN_MS) return true;
+  /** Use server `end_time` only — not display `session_end_time` strings (TZ skew). */
+  if (session?.end_time) {
+    const end = new Date(session.end_time);
+    if (Number.isFinite(end.getTime()) && now.getTime() > end.getTime() + LATE_JOIN_MS) {
+      return true;
+    }
+  }
   return false;
 }
 
@@ -562,8 +567,14 @@ export function filterSessionsForStatusTab(
     }
 
     if (tab === "completed") {
-      return status === "completed" || phase === "completed";
+      return (
+        status === "completed" ||
+        phase === "completed" ||
+        isLessonEffectivelyEnded(session, now)
+      );
     }
+
+    if (isLessonEffectivelyEnded(session, now)) return false;
 
     if (status === "cancelled" || status === "completed" || phase === "cancelled" || phase === "completed") {
       return false;
@@ -572,8 +583,13 @@ export function filterSessionsForStatusTab(
     if (isInstantExpiredForLists(session, now)) return false;
 
     if (tab === "confirmed") {
-      if (status === "confirmed") return true;
-      if (isInstantLesson(session) && isSessionConfirmedForJoin(session) && !isPendingBooking(session)) {
+      if (status === "confirmed" && !isLessonEffectivelyEnded(session, now)) return true;
+      if (
+        isInstantLesson(session) &&
+        isSessionConfirmedForJoin(session) &&
+        !isPendingBooking(session) &&
+        !isLessonEffectivelyEnded(session, now)
+      ) {
         return true;
       }
       return false;

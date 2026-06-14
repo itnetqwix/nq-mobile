@@ -44,6 +44,11 @@ import {
 import type { AuthScreenProps } from "../../../navigation/types";
 import { useReferralSignupParams } from "../../referral/hooks/useReferralSignupParams";
 import { fetchReferralResolve } from "../../referral/api/referralApi";
+import {
+  clearSignupDraft,
+  loadSignupDraft,
+  saveSignupDraft,
+} from "../lib/signupDraftStorage";
 
 const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 
@@ -101,6 +106,40 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
       setEmailVerified(true);
     }
   }, [route.params?.prefillEmail, isSsoSignup]);
+
+  useEffect(() => {
+    if (isSsoSignup) return;
+    void loadSignupDraft().then((draft) => {
+      if (!draft?.updatedAt) return;
+      const ageMs = Date.now() - new Date(draft.updatedAt).getTime();
+      if (ageMs > 7 * 24 * 60 * 60 * 1000) {
+        void clearSignupDraft();
+        return;
+      }
+      if (draft.step) setStep(draft.step as SignUpStep);
+      if (draft.fullname) setFullname(draft.fullname);
+      if (draft.email) setEmail(draft.email);
+      if (draft.mobile) setMobile(draft.mobile);
+      if (draft.accountType) setAccountType(draft.accountType);
+      if (draft.category !== undefined) setCategory(draft.category);
+      if (draft.emailVerified) setEmailVerified(true);
+      if (draft.phoneVerified) setPhoneVerified(true);
+    });
+  }, [isSsoSignup]);
+
+  useEffect(() => {
+    if (isSsoSignup) return;
+    void saveSignupDraft({
+      step,
+      fullname,
+      email,
+      mobile,
+      accountType,
+      category,
+      emailVerified,
+      phoneVerified,
+    });
+  }, [step, fullname, email, mobile, accountType, category, emailVerified, phoneVerified, isSsoSignup]);
 
   const isTrainerAccount = accountType === AccountType.TRAINER;
 
@@ -169,6 +208,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
       } else if (loginPassword) {
         await signInAfterSignup(payload, loginPassword);
       }
+      await clearSignupDraft();
     } catch (err) {
       Alert.alert(t("auth.signUpFailed"), getApiErrorMessage(err));
       return;
@@ -288,6 +328,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
     <AuthModalChrome>
       <ScreenContainer
         scroll
+        dismissKeyboardOnTap
         applyTopInset={false}
         applyBottomInset={false}
         padding="lg"

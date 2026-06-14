@@ -76,7 +76,7 @@ export function VerifyContactScreen({ onDone }: Props) {
     (typeof user?.mobile_no === "string" ? user.mobile_no : "your phone");
 
   return (
-    <ScreenContainer scroll applyTopInset padding="lg" background={c.background}>
+    <ScreenContainer scroll dismissKeyboardOnTap applyTopInset padding="lg" background={c.background}>
       <AuthEscapeLink variant="signout" />
       <View style={styles.brand}>
         <NetqwixLogo variant="wordmark" fullWidth maxWidth={400} height={120} />

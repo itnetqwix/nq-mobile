@@ -13,6 +13,7 @@ import { fetchPointsBalance } from "../../points/api/pointsApi";
 import { useWalletBalance } from "../hooks/useWalletBalance";
 import type { WalletStackParamList } from "../navigation/WalletNavigator";
 import { TrainerEarningsPanel } from "./TrainerEarningsPanel";
+import { fetchStripeConnectStatus } from "../stripeConnectApi";
 
 type Props = {
   navigation: NativeStackNavigationProp<WalletStackParamList, "WalletHome">;
@@ -26,9 +27,25 @@ export function TrainerWalletHome({ navigation }: Props) {
     queryKey: queryKeys.points.balance,
     queryFn: fetchPointsBalance,
   });
+  const connectQuery = useQuery({
+    queryKey: queryKeys.wallet.stripeConnect,
+    queryFn: fetchStripeConnectStatus,
+  });
   const styles = useThemedStyles((colors) =>
     StyleSheet.create({
       scroll: { padding: space.md },
+      connectBanner: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: space.sm,
+        padding: space.md,
+        marginBottom: space.sm,
+        backgroundColor: colors.warningSubtle,
+        borderRadius: radii.md,
+        borderWidth: 1,
+        borderColor: colors.warning,
+      },
+      connectBannerText: { ...typography.bodySm, color: colors.text, flex: 1 },
       menuRow: {
         flexDirection: "row",
         alignItems: "center",
@@ -46,6 +63,7 @@ export function TrainerWalletHome({ navigation }: Props) {
   );
   const { isRefetching, refetch } = useWalletBalance();
   const morph = useMorphRefreshBundle(refetch, isRefetching);
+  const showConnectBanner = connectQuery.data && connectQuery.data.complete === false;
 
   return (
     <>
@@ -62,6 +80,20 @@ export function TrainerWalletHome({ navigation }: Props) {
           />
         }
       >
+      {showConnectBanner ? (
+        <Pressable
+          style={({ pressed }) => [styles.connectBanner, pressed && { opacity: 0.85 }]}
+          onPress={() => navigation.navigate("StripeConnect")}
+        >
+          <Ionicons name="alert-circle-outline" size={22} color={c.warning} />
+          <Text style={styles.connectBannerText}>
+            {t("wallet.stripeConnectIncomplete", {
+              defaultValue: "Complete payout setup to receive earnings.",
+            })}
+          </Text>
+          <Ionicons name="chevron-forward" size={18} color={c.textMuted} />
+        </Pressable>
+      ) : null}
       <TrainerEarningsPanel />
 
       <Pressable
@@ -77,6 +109,22 @@ export function TrainerWalletHome({ navigation }: Props) {
               block: pointsQuery.data?.redeemBlockPoints ?? 100,
               dollars: pointsQuery.data?.walletCreditPerBlock ?? 5,
             })}
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={c.textMuted} />
+      </Pressable>
+
+      <Pressable
+        style={({ pressed }) => [styles.menuRow, pressed && { opacity: 0.85 }]}
+        onPress={() => navigation.navigate("StripeConnect")}
+      >
+        <Ionicons name="business-outline" size={22} color={c.iconPrimary} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.menuLabel}>
+            {t("wallet.stripeConnectTitle", { defaultValue: "Payout setup" })}
+          </Text>
+          <Text style={styles.menuSub}>
+            {t("wallet.stripeConnectMenuSub", { defaultValue: "Stripe Connect bank onboarding" })}
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={20} color={c.textMuted} />

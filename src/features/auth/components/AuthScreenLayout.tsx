@@ -39,6 +39,7 @@ export function AuthScreenLayout({ title, subtitle, children, footer, style }: P
   return (
     <ScreenContainer
       scroll
+      dismissKeyboardOnTap
       applyTopInset={false}
       applyBottomInset={false}
       padding="lg"

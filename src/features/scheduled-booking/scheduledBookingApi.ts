@@ -1,5 +1,6 @@
 import { apiClient } from "../../api/client";
 import { API_ROUTES } from "../../config/apiRoutes";
+import { idempotencyHeaders, stableIdempotencyKey } from "../../lib/idempotency";
 import { unwrapApiData } from "../../lib/http/unwrapApiData";
 
 export type CheckSlotResponse = {
@@ -55,8 +56,22 @@ export type BookSessionPayload = {
   quote_id?: string;
 };
 
-export async function bookScheduledSession(payload: BookSessionPayload): Promise<unknown> {
-  const res = await apiClient.post(API_ROUTES.trainee.bookSession, payload);
+export async function bookScheduledSession(
+  payload: BookSessionPayload,
+  idempotencyKey?: string
+): Promise<unknown> {
+  const key =
+    idempotencyKey ??
+    stableIdempotencyKey(
+      "book-scheduled",
+      payload.trainer_id,
+      payload.booked_date,
+      payload.session_start_time,
+      payload.session_end_time
+    );
+  const res = await apiClient.post(API_ROUTES.trainee.bookSession, payload, {
+    headers: idempotencyHeaders(key),
+  });
   const body = (res as { data?: unknown })?.data ?? res;
   return (body as { result?: unknown })?.result ?? body;
 }

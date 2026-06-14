@@ -4,6 +4,7 @@ import {
   canRejoinLesson,
   dedupeSessionsById,
   filterSessionsForStatusTab,
+  filterSessionsForStatusTab,
   isInstantLesson,
   isPendingBooking,
   isSessionConfirmedForJoin,
@@ -114,5 +115,21 @@ describe("sessionUtils", () => {
     };
     expect(isSessionInProgress(endedEarly, now)).toBe(false);
     expect(canRejoinLesson(endedEarly, now)).toBe(false);
+  });
+
+  it("moves early-ended scheduled session off confirmed tab", () => {
+    const now = new Date("2026-06-15T14:10:00.000Z");
+    const endedScheduled = {
+      is_instant: false,
+      status: "confirmed",
+      booked_date: "2026-06-15",
+      session_start_time: "14:00",
+      session_end_time: "14:05",
+      start_time: "2026-06-15T14:00:00.000Z",
+      end_time: "2026-06-15T14:05:00.000Z",
+      actual_end_at: "2026-06-15T14:05:00.000Z",
+    };
+    expect(filterSessionsForStatusTab([endedScheduled], "confirmed", now)).toHaveLength(0);
+    expect(filterSessionsForStatusTab([endedScheduled], "completed", now)).toHaveLength(1);
   });
 });
