@@ -34,6 +34,7 @@ import { queryKeys } from "../../../lib/queryKeys";
 import { useDebouncedValue, SEARCH_LOCAL_DEBOUNCE_MS } from "../../../lib/timing";
 import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
+import { haptics } from "../../../lib/haptics";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
 import { useOnlinePresence } from "../../socket/useOnlinePresence";
@@ -673,6 +674,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
                 <Pressable
                   style={styles.inviteDecline}
                   onPress={() => {
+                    haptics.tap();
                     void respondGroupInvite(convId, false).then(() => {
                       void refetchGroupInvites();
                       void refetch();
@@ -684,6 +686,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
                 <Pressable
                   style={styles.inviteBtn}
                   onPress={() => {
+                    haptics.success();
                     void respondGroupInvite(convId, true).then(() => {
                       void refetchGroupInvites();
                       void refetch();
@@ -726,7 +729,8 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
             return (
               <Pressable
                 style={({ pressed }) => [styles.row, pressed && { opacity: 0.8 }]}
-                onPress={() =>
+                onPress={() => {
+                  haptics.tap();
                   setActiveChat({
                     conversationId: String(item._id ?? item.id ?? ""),
                     isGroup,
@@ -739,8 +743,8 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
                       profile_picture: partner.profile_picture,
                       isGroup,
                     },
-                  })
-                }
+                  });
+                }}
                 onLongPress={() => {
                   Alert.alert(partner.fullname ?? t("chats.chat"), undefined, [
                     {
@@ -839,7 +843,10 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
           { bottom: tabBarPad },
           pressed && { transform: [{ scale: 0.92 }] },
         ]}
-        onPress={() => setShowNewChat(true)}
+        onPress={() => {
+          haptics.press();
+          setShowNewChat(true);
+        }}
       >
         <Ionicons name="create-outline" size={24} color={c.brandTextOn} />
       </Pressable>

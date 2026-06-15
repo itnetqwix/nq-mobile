@@ -38,8 +38,8 @@ export function SocketQueryInvalidationBridge() {
     if (!socket) return;
 
     const handlers = ALL_INVALIDATION_EVENTS.map((eventName) => {
-      const handler = () => {
-        dispatch(socketCacheEvent({ event: eventName }));
+      const handler = (payload?: unknown) => {
+        dispatch(socketCacheEvent({ event: eventName, payload }));
       };
       socket.on(eventName, handler);
       return { eventName, handler };

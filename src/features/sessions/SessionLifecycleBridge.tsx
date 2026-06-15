@@ -11,7 +11,7 @@ import { useAuth } from "../auth/context/AuthContext";
 import { useInstantLesson } from "../instant-lesson/InstantLessonContext";
 import { fetchScheduledMeetings } from "../home/api/homeApi";
 import { useSocket } from "../socket/SocketContext";
-import { invalidateForSocketEvent } from "../../lib/queryInvalidation";
+import { invalidateForSocketEvent, invalidateSessions } from "../../lib/queryInvalidation";
 import { LESSON_SOCKET_EVENTS } from "../../lib/sessions/sessionContract";
 import { queryKeys } from "../../lib/queryKeys";
 import {
@@ -20,6 +20,7 @@ import {
 } from "../../lib/sessions/reconcileCrossPlatformSessions";
 
 const RECONCILE_DEBOUNCE_MS = 800;
+const SESSIONS_FETCH_COOLDOWN_MS = 30_000;
 
 export function SessionLifecycleBridge() {
   const { status, accountType, user } = useAuth();
@@ -34,6 +35,16 @@ export function SessionLifecycleBridge() {
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastRunRef = useRef(0);
+  const lastSessionsFetchRef = useRef(0);
+  const trainerIncomingRef = useRef(trainerIncoming);
+  const traineeBookingRef = useRef(traineeBooking);
+  const focusTrainerRef = useRef(focusTrainerRequestFromSession);
+  const restoreTraineeRef = useRef(restoreTraineeFlowFromSession);
+
+  trainerIncomingRef.current = trainerIncoming;
+  traineeBookingRef.current = traineeBooking;
+  focusTrainerRef.current = focusTrainerRequestFromSession;
+  restoreTraineeRef.current = restoreTraineeFlowFromSession;
 
   useEffect(() => {
     if (status !== "signedIn" || !socket) return;
@@ -41,7 +52,7 @@ export function SessionLifecycleBridge() {
     const onLessonEnded = (payload?: { sessionId?: string }) => {
       invalidateForSocketEvent(queryClient, LESSON_SOCKET_EVENTS.TIME_ENDED);
       if (payload?.sessionId) {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
+        invalidateSessions(queryClient);
       }
     };
 
@@ -64,38 +75,65 @@ export function SessionLifecycleBridge() {
       lastRunRef.current = now;
 
       void (async () => {
-        await queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
+        const skipFetch = now - lastSessionsFetchRef.current < SESSIONS_FETCH_COOLDOWN_MS;
 
         let rows: Record<string, unknown>[] = [];
-        try {
-          const [upcoming, confirmed] = await Promise.all([
-            fetchScheduledMeetings("upcoming"),
-            fetchScheduledMeetings("confirmed"),
-          ]);
-          const seen = new Set<string>();
-          for (const r of [...upcoming, ...confirmed]) {
-            const id = String(r._id ?? r.id ?? "");
-            if (!id || seen.has(id)) continue;
-            seen.add(id);
-            rows.push(r as Record<string, unknown>);
+        if (skipFetch) {
+          const cachedUpcoming = queryClient.getQueryData<any[]>(queryKeys.sessions.upcoming);
+          const cachedConfirmed = queryClient.getQueryData<any[]>(
+            queryKeys.sessions.list("confirmed")
+          );
+          if (Array.isArray(cachedUpcoming) || Array.isArray(cachedConfirmed)) {
+            const seen = new Set<string>();
+            for (const r of [...(cachedUpcoming ?? []), ...(cachedConfirmed ?? [])]) {
+              const id = String(r._id ?? r.id ?? "");
+              if (!id || seen.has(id)) continue;
+              seen.add(id);
+              rows.push(r as Record<string, unknown>);
+            }
           }
-        } catch {
-          return;
+        }
+
+        if (rows.length === 0) {
+          try {
+            const [upcoming, confirmed] = await Promise.all([
+              queryClient.fetchQuery({
+                queryKey: queryKeys.sessions.upcoming,
+                queryFn: () => fetchScheduledMeetings("upcoming"),
+                staleTime: SESSIONS_FETCH_COOLDOWN_MS,
+              }),
+              queryClient.fetchQuery({
+                queryKey: queryKeys.sessions.list("confirmed"),
+                queryFn: () => fetchScheduledMeetings("confirmed"),
+                staleTime: SESSIONS_FETCH_COOLDOWN_MS,
+              }),
+            ]);
+            lastSessionsFetchRef.current = Date.now();
+            const seen = new Set<string>();
+            for (const r of [...upcoming, ...confirmed]) {
+              const id = String(r._id ?? r.id ?? "");
+              if (!id || seen.has(id)) continue;
+              seen.add(id);
+              rows.push(r as Record<string, unknown>);
+            }
+          } catch {
+            return;
+          }
         }
 
         const picked = reconcileInstantLessonRows(rows, role, userId);
 
         if (role === "trainer") {
-          if (!trainerIncoming && picked.trainerIncomingSession) {
-            focusTrainerRequestFromSession(picked.trainerIncomingSession);
-          } else if (!trainerIncoming && picked.trainerAcceptedSession) {
-            focusTrainerRequestFromSession(picked.trainerAcceptedSession);
+          if (!trainerIncomingRef.current && picked.trainerIncomingSession) {
+            focusTrainerRef.current(picked.trainerIncomingSession);
+          } else if (!trainerIncomingRef.current && picked.trainerAcceptedSession) {
+            focusTrainerRef.current(picked.trainerAcceptedSession);
           }
         } else {
-          if (!traineeBooking && picked.traineeWaitingSession) {
-            restoreTraineeFlowFromSession(picked.traineeWaitingSession, "waiting");
-          } else if (!traineeBooking && picked.traineeAcceptedSession) {
-            restoreTraineeFlowFromSession(picked.traineeAcceptedSession, "accepted");
+          if (!traineeBookingRef.current && picked.traineeWaitingSession) {
+            restoreTraineeRef.current(picked.traineeWaitingSession, "waiting");
+          } else if (!traineeBookingRef.current && picked.traineeAcceptedSession) {
+            restoreTraineeRef.current(picked.traineeAcceptedSession, "accepted");
           }
         }
       })();
@@ -117,17 +155,7 @@ export function SessionLifecycleBridge() {
       sub.remove();
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [
-    status,
-    isConnected,
-    accountType,
-    user,
-    queryClient,
-    trainerIncoming,
-    traineeBooking,
-    focusTrainerRequestFromSession,
-    restoreTraineeFlowFromSession,
-  ]);
+  }, [status, isConnected, accountType, user, queryClient]);
 
   return null;
 }

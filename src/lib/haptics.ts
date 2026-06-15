@@ -1,5 +1,6 @@
 import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
+import { writeHapticsEnabledToStorage } from "./hapticsPreference";
 
 /**
  * Centralized haptic feedback for the app.
@@ -27,8 +28,14 @@ import { Platform } from "react-native";
 
 let enabled = true;
 
-/** Globally turn haptics on/off — call from a Settings screen if needed. */
+/** Globally turn haptics on/off (persisted). */
 export function setHapticsEnabled(value: boolean) {
+  enabled = !!value;
+  writeHapticsEnabledToStorage(enabled);
+}
+
+/** Apply stored preference after MMKV hydration — call once on app startup. */
+export function applyHapticsPreference(value: boolean) {
   enabled = !!value;
 }
 
@@ -75,3 +82,5 @@ export const haptics = {
     fire(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error));
   },
 };
+
+export type HapticKind = keyof typeof haptics | "none";

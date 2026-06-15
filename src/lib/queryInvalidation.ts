@@ -1,16 +1,67 @@
-import type { QueryClient } from "@tanstack/react-query";
+import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import { AccountType } from "../constants/accountType";
 import { store } from "../store/store";
 import { queryKeys } from "./queryKeys";
 
 /** Coalesce bursty `userStatus` / `onlineUser` socket broadcasts into one refetch wave. */
-const PRESENCE_INVALIDATION_DEBOUNCE_MS = 8_000;
+const PRESENCE_INVALIDATION_DEBOUNCE_MS = 30_000;
+const SOCKET_RECONNECT_FRESH_MS = 30_000;
+/** Batch invalidations so one socket burst → one refetch wave, not N parallel refetches. */
+const INVALIDATION_COALESCE_MS = 2_000;
+
 let presenceInvalidateTimer: ReturnType<typeof setTimeout> | null = null;
 let presenceInvalidateClient: QueryClient | null = null;
+let lastPresenceOnlineHash: string | null = null;
 
+let coalesceClient: QueryClient | null = null;
+let coalesceTimer: ReturnType<typeof setTimeout> | null = null;
+const coalesceKeys = new Map<string, QueryKey>();
+
+function queryKeyId(key: QueryKey): string {
+  return JSON.stringify(key);
+}
+
+function queryRecentlyFetched(
+  queryClient: QueryClient,
+  queryKey: readonly unknown[]
+): boolean {
+  const query = queryClient.getQueryCache().find({ queryKey });
+  if (!query?.state.dataUpdatedAt) return false;
+  return Date.now() - query.state.dataUpdatedAt < SOCKET_RECONNECT_FRESH_MS;
+}
+
+/** Schedule invalidation; duplicates within the coalesce window merge into one flush. */
+function scheduleInvalidate(queryClient: QueryClient, queryKey: QueryKey): void {
+  coalesceClient = queryClient;
+  coalesceKeys.set(queryKeyId(queryKey), queryKey);
+  if (coalesceTimer) return;
+  coalesceTimer = setTimeout(() => {
+    coalesceTimer = null;
+    const client = coalesceClient;
+    const keys = [...coalesceKeys.values()];
+    coalesceKeys.clear();
+    coalesceClient = null;
+    if (!client) return;
+    for (const key of keys) {
+      void client.invalidateQueries({ queryKey: key });
+    }
+  }, INVALIDATION_COALESCE_MS);
+}
+
+function invalidateQueryIfStale(
+  queryClient: QueryClient,
+  queryKey: readonly unknown[]
+): void {
+  if (!queryRecentlyFetched(queryClient, queryKey)) {
+    scheduleInvalidate(queryClient, queryKey as QueryKey);
+  }
+}
+
+/** Session list tabs only — never `sessions.all` (that prefix refetches every cached lesson row). */
 export function invalidateSessions(queryClient: QueryClient): void {
-  void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
-  void queryClient.invalidateQueries({ queryKey: queryKeys.scheduledMeetings });
+  scheduleInvalidate(queryClient, queryKeys.sessions.upcoming);
+  scheduleInvalidate(queryClient, queryKeys.sessions.list("confirmed"));
+  scheduleInvalidate(queryClient, queryKeys.scheduledMeetings);
 }
 
 /** Optimistically merge session fields into every cached session list (instant accept / confirm). */
@@ -70,40 +121,34 @@ export function upsertSessionInQueryCaches(
 }
 
 export function invalidateWallet(queryClient: QueryClient): void {
-  void queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all });
+  scheduleInvalidate(queryClient, queryKeys.wallet.balance);
+  scheduleInvalidate(queryClient, queryKeys.wallet.earnings);
 }
 
 export function invalidateFriends(queryClient: QueryClient): void {
-  void queryClient.invalidateQueries({ queryKey: queryKeys.friends.all });
-  void queryClient.invalidateQueries({ queryKey: queryKeys.friends.requests });
-  void queryClient.invalidateQueries({ queryKey: queryKeys.friends.sentRequests });
+  scheduleInvalidate(queryClient, queryKeys.friends.requests);
 }
 
 export function invalidateChats(queryClient: QueryClient): void {
-  void queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
-  void queryClient.invalidateQueries({ queryKey: queryKeys.chats.groupInvites });
+  scheduleInvalidate(queryClient, queryKeys.chats.conversations);
 }
 
 export function invalidatePresence(queryClient: QueryClient): void {
-  void queryClient.invalidateQueries({ queryKey: queryKeys.presence.onlineUsers });
-  void queryClient.invalidateQueries({ queryKey: queryKeys.presence.bookExpertOnline });
-  void queryClient.invalidateQueries({ queryKey: queryKeys.presence.communityAll });
-  void queryClient.invalidateQueries({ queryKey: queryKeys.presence.recentTrainees });
-  void queryClient.invalidateQueries({ queryKey: queryKeys.presence.recentTrainers });
+  scheduleInvalidate(queryClient, queryKeys.presence.onlineUsers);
+  scheduleInvalidate(queryClient, queryKeys.presence.bookExpertOnline);
 }
 
 export function invalidateTrainerSchedule(queryClient: QueryClient): void {
-  void queryClient.invalidateQueries({ queryKey: queryKeys.trainer.schedule });
-  void queryClient.invalidateQueries({ queryKey: queryKeys.trainer.availabilityAll });
+  scheduleInvalidate(queryClient, queryKeys.trainer.schedule);
 }
 
 export function invalidateLocker(queryClient: QueryClient): void {
-  void queryClient.invalidateQueries({ queryKey: queryKeys.locker.all });
-  void queryClient.invalidateQueries({ queryKey: queryKeys.instant.lessonClipsAll });
+  scheduleInvalidate(queryClient, queryKeys.locker.myClips);
+  scheduleInvalidate(queryClient, queryKeys.locker.sharedClips);
 }
 
 export function invalidateNotifications(queryClient: QueryClient): void {
-  void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
+  scheduleInvalidate(queryClient, queryKeys.notifications.all);
 }
 
 /** After booking / timer / extension socket events. */
@@ -125,26 +170,51 @@ export function invalidateOnWalletSocketEvent(queryClient: QueryClient): void {
 
 /**
  * Presence-only refresh (online lists, recent trainees/trainers).
- * Debounced — socket broadcasts fire on every connect/heartbeat cluster;
- * invalidating friend-requests here caused thousands of REST calls in dev.
+ * Debounced — socket broadcasts fire on every connect/heartbeat cluster.
  */
-export function invalidateOnPresenceSocketEvent(queryClient: QueryClient): void {
+export function invalidateOnPresenceSocketEvent(
+  queryClient: QueryClient,
+  payload?: { user?: Record<string, unknown> }
+): void {
+  const onlineHash = payload?.user
+    ? Object.keys(payload.user).sort().join(",")
+    : null;
+  if (onlineHash && onlineHash === lastPresenceOnlineHash) {
+    return;
+  }
+  if (onlineHash) lastPresenceOnlineHash = onlineHash;
+
   presenceInvalidateClient = queryClient;
   if (presenceInvalidateTimer) clearTimeout(presenceInvalidateTimer);
   presenceInvalidateTimer = setTimeout(() => {
     presenceInvalidateTimer = null;
     const client = presenceInvalidateClient;
     presenceInvalidateClient = null;
-    if (client) invalidatePresence(client);
+    if (!client) return;
+
+    const accountType = store.getState().auth.accountType;
+    if (accountType === AccountType.TRAINEE) {
+      invalidateQueryIfStale(client, queryKeys.presence.bookExpertOnline);
+      return;
+    }
+    if (accountType === AccountType.TRAINER) {
+      invalidateQueryIfStale(client, queryKeys.presence.recentTrainees);
+      return;
+    }
+    invalidateQueryIfStale(client, queryKeys.presence.onlineUsers);
   }, PRESENCE_INVALIDATION_DEBOUNCE_MS);
 }
 
 /** Banners, tips, legal, blogs, FAQ — after `CMS_UPDATED` socket broadcast. */
 export function invalidateContent(queryClient: QueryClient): void {
-  void queryClient.invalidateQueries({ queryKey: ["content"] });
+  scheduleInvalidate(queryClient, queryKeys.content.all);
 }
 
-export function invalidateForSocketEvent(queryClient: QueryClient, event: string): void {
+export function invalidateForSocketEvent(
+  queryClient: QueryClient,
+  event: string,
+  payload?: unknown
+): void {
   if (typeof event !== "string" || !event) return;
 
   if (event === "CMS_UPDATED") {
@@ -177,32 +247,52 @@ export function invalidateForSocketEvent(queryClient: QueryClient, event: string
     invalidateOnWalletSocketEvent(queryClient);
   }
   if (presenceEvents.includes(event)) {
-    invalidateOnPresenceSocketEvent(queryClient);
+    invalidateOnPresenceSocketEvent(
+      queryClient,
+      payload as { user?: Record<string, unknown> } | undefined
+    );
   }
   if (event.includes("friend")) {
-    void queryClient.invalidateQueries({ queryKey: queryKeys.friends.requests });
+    scheduleInvalidate(queryClient, queryKeys.friends.requests);
   }
   if (event === "receive" || event === "notification") {
     invalidateNotifications(queryClient);
   }
 }
 
-/** Full refresh after socket reconnect (not debounced — reconnects are rare). */
+/** Refresh after socket reconnect — skip queries fetched within the last 30s. */
 export function invalidateOnSocketReconnect(queryClient: QueryClient): void {
   if (presenceInvalidateTimer) {
     clearTimeout(presenceInvalidateTimer);
     presenceInvalidateTimer = null;
     presenceInvalidateClient = null;
   }
-  invalidateSessions(queryClient);
-  invalidatePresence(queryClient);
-  invalidateChats(queryClient);
+
+  invalidateQueryIfStale(queryClient, queryKeys.sessions.upcoming);
+
   const accountType = store.getState().auth.accountType;
   if (accountType === AccountType.TRAINEE) {
-    void queryClient.invalidateQueries({ queryKey: queryKeys.trainee.favorites });
+    invalidateQueryIfStale(queryClient, queryKeys.presence.bookExpertOnline);
+    invalidateQueryIfStale(queryClient, queryKeys.trainee.favorites);
   }
   if (accountType === AccountType.TRAINER) {
-    void queryClient.invalidateQueries({ queryKey: queryKeys.wallet.earnings });
-    void queryClient.invalidateQueries({ queryKey: queryKeys.trainer.slots });
+    invalidateQueryIfStale(queryClient, queryKeys.presence.recentTrainees);
+    invalidateQueryIfStale(queryClient, queryKeys.wallet.earnings);
+    invalidateQueryIfStale(queryClient, queryKeys.trainer.slots);
   }
+
+  invalidateQueryIfStale(queryClient, queryKeys.chats.conversations);
+}
+
+/** Test helper — flush pending coalesced invalidations immediately. */
+export function flushScheduledInvalidationsForTests(queryClient: QueryClient): void {
+  if (coalesceTimer) {
+    clearTimeout(coalesceTimer);
+    coalesceTimer = null;
+  }
+  for (const key of coalesceKeys.values()) {
+    void queryClient.invalidateQueries({ queryKey: key });
+  }
+  coalesceKeys.clear();
+  coalesceClient = null;
 }

@@ -74,9 +74,12 @@ export type SessionJoinReadiness = {
 };
 
 export async function fetchSessionJoinReadiness(
-  sessionId: string
+  sessionId: string,
+  options?: { refreshIce?: boolean }
 ): Promise<SessionJoinReadiness | null> {
-  const { data } = await apiClient.get(API_ROUTES.user.sessionJoinReadiness(sessionId));
+  const { data } = await apiClient.get(API_ROUTES.user.sessionJoinReadiness(sessionId), {
+    params: options?.refreshIce ? { refreshIce: "1" } : undefined,
+  });
   const inner =
     (data as { data?: SessionJoinReadiness })?.data ??
     (data as { result?: SessionJoinReadiness })?.result ??

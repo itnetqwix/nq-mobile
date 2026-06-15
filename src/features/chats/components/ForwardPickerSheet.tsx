@@ -101,6 +101,7 @@ export function ForwardPickerSheet({
 
   const handleForward = async () => {
     if (!selectedIds.length || submitting) return;
+    haptics.press();
     setSubmitting(true);
     try {
       await forwardChatMessage(

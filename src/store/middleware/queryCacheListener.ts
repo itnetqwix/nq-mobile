@@ -23,6 +23,9 @@ import {
 
 export const queryCacheListener = createListenerMiddleware();
 
+/** Skip reconnect refresh on the first socket connect — home queries already mount-fetch. */
+let hadSocketConnectionBefore = false;
+
 function qc() {
   return getGlobalQueryClient();
 }
@@ -32,7 +35,7 @@ queryCacheListener.startListening({
   effect: ({ payload }) => {
     const client = qc();
     if (!client || !payload?.event) return;
-    invalidateForSocketEvent(client, payload.event);
+    invalidateForSocketEvent(client, payload.event, payload.payload);
   },
 });
 
@@ -62,6 +65,7 @@ queryCacheListener.startListening({
 queryCacheListener.startListening({
   matcher: isAnyOf(userSignedOut, signOutThunk.fulfilled, clearSessionLocalThunk.fulfilled),
   effect: () => {
+    hadSocketConnectionBefore = false;
     /** signOutThunk already calls clear(); listener is a safety net for other sign-out paths. */
     qc()?.clear();
   },
@@ -71,6 +75,10 @@ queryCacheListener.startListening({
   actionCreator: setSocketConnected,
   effect: (action) => {
     if (!action.payload) return;
+    if (!hadSocketConnectionBefore) {
+      hadSocketConnectionBefore = true;
+      return;
+    }
     const client = qc();
     if (!client) return;
     invalidateOnSocketReconnect(client);

@@ -35,6 +35,7 @@ import { WebRoutes } from "../../../constants/webRoutes";
 import type { MenuStackParamList, ShellSurfaceRouteId } from "../../../navigation/types";
 import { space, typography, useThemeColors } from "../../../theme";
 import { useTheme, type ThemeMode } from "../../../theme/ThemeContext";
+import { areHapticsEnabled, haptics, setHapticsEnabled } from "../../../lib/haptics";
 import { revokeAllAuthSessions } from "../../auth/api/authSessionsApi";
 import { useAuth } from "../../auth/context/AuthContext";
 import {
@@ -215,6 +216,7 @@ export function SettingsScreen() {
   const [visibilityBusy, setVisibilityBusy] = useState<keyof ProfileVisibility | null>(null);
   const [settingsSearch, setSettingsSearch] = useState("");
   const debouncedSettingsSearch = useDebouncedValue(settingsSearch, 280);
+  const [hapticsOn, setHapticsOn] = useState(areHapticsEnabled());
 
   useEffect(() => {
     void isAppUnlockEnabled().then(setAppUnlockOn);
@@ -775,10 +777,31 @@ export function SettingsScreen() {
                 )
               }
               onPress={() => setThemeMode(id as ThemeMode)}
+              haptic="select"
               hideChevron
             />
           </React.Fragment>
         ))}
+        <Divider />
+        <ListRow
+          icon="phone-portrait-outline"
+          title={t("settings.hapticFeedback")}
+          subtitle={t("settings.hapticFeedbackSubtitle")}
+          haptic="none"
+          rightAdornment={
+            <Switch
+              value={hapticsOn}
+              onValueChange={(v) => {
+                setHapticsOn(v);
+                setHapticsEnabled(v);
+                if (v) haptics.tap();
+              }}
+              trackColor={{ false: c.neutral200, true: c.brandAccentSubtle }}
+              thumbColor={hapticsOn ? c.brandAccent : c.neutral100}
+              accessibilityLabel={t("settings.hapticFeedback")}
+            />
+          }
+        />
       </Card>
 
       <SectionHeader label={t("settings.storage")} />

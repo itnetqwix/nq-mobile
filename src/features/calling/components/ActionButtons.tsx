@@ -6,6 +6,7 @@ import React from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
+import { haptics, type HapticKind } from "../../../lib/haptics";
 import { useCall } from "../CallContext";
 import { meetingTheme } from "../meetingTheme";
 import { ACTION_BAR_HEIGHT } from "../useMeetingChromeInsets";
@@ -60,6 +61,7 @@ export function ActionButtons({
           onPress={toggleMute}
           accessibilityLabel={micEnabled ? "Mute microphone" : "Unmute microphone"}
           danger={!micEnabled}
+          haptic="select"
         >
           <Ionicons
             name={micEnabled ? "mic" : "mic-off"}
@@ -72,6 +74,7 @@ export function ActionButtons({
           onPress={toggleCamera}
           accessibilityLabel={cameraEnabled ? "Turn camera off" : "Turn camera on"}
           danger={!cameraEnabled}
+          haptic="select"
         >
           <Ionicons
             name={cameraEnabled ? "videocam" : "videocam-off"}
@@ -80,7 +83,7 @@ export function ActionButtons({
           />
         </RoundButton>
 
-        <RoundButton onPress={switchCamera} accessibilityLabel="Switch camera">
+        <RoundButton onPress={switchCamera} accessibilityLabel="Switch camera" haptic="select">
           <Ionicons name="camera-reverse-outline" size={ICON} color={meetingTheme.text} />
         </RoundButton>
 
@@ -88,6 +91,7 @@ export function ActionButtons({
           <RoundButton
             onPress={onToggleAudioRoute}
             accessibilityLabel={`Audio route ${audioRouteLabel ?? "Auto"}`}
+            haptic="tap"
           >
             <Ionicons name="volume-high-outline" size={ICON} color={meetingTheme.text} />
           </RoundButton>
@@ -98,6 +102,7 @@ export function ActionButtons({
             onPress={onToggleBigVideo}
             accessibilityLabel={bigVideoActive ? "Exit expanded view" : "Expand video"}
             active={bigVideoActive}
+            haptic="select"
           >
             <Ionicons
               name={bigVideoActive ? "contract-outline" : "expand-outline"}
@@ -108,7 +113,7 @@ export function ActionButtons({
         ) : null}
 
         {isTrainer && inClipMode && onExitClipMode ? (
-          <RoundButton onPress={onExitClipMode} accessibilityLabel="Close clips">
+          <RoundButton onPress={onExitClipMode} accessibilityLabel="Close clips" haptic="tap">
             <Ionicons name="close" size={ICON} color={meetingTheme.text} />
           </RoundButton>
         ) : null}
@@ -119,6 +124,7 @@ export function ActionButtons({
             accessibilityLabel={
               isTrainer ? "Open clip library" : "Share clips with coach"
             }
+            haptic="tap"
           >
             <MaterialCommunityIcons
               name="play-box-multiple-outline"
@@ -133,6 +139,7 @@ export function ActionButtons({
             onPress={onToggleDrawing}
             accessibilityLabel="Annotate on screen"
             active={annotationArmed}
+            haptic="impact"
           >
             <MaterialCommunityIcons
               name="gesture"
@@ -147,6 +154,7 @@ export function ActionButtons({
             onPress={onScreenshot}
             accessibilityLabel="Screenshot"
             disabled={screenshotCapturing}
+            haptic="tap"
           >
             <Ionicons
               name="camera-outline"
@@ -156,7 +164,7 @@ export function ActionButtons({
           </RoundButton>
         ) : null}
 
-        <RoundButton onPress={hangUp} accessibilityLabel="End call" danger large>
+        <RoundButton onPress={hangUp} accessibilityLabel="End call" danger large haptic="warning">
           <MaterialCommunityIcons name="phone-hangup" size={ICON + 2} color="#fff" />
         </RoundButton>
       </View>
@@ -171,6 +179,8 @@ function RoundButton({
   danger,
   large,
   active,
+  disabled,
+  haptic = "tap",
 }: {
   children: React.ReactNode;
   onPress: () => void;
@@ -178,10 +188,20 @@ function RoundButton({
   danger?: boolean;
   large?: boolean;
   active?: boolean;
+  disabled?: boolean;
+  haptic?: HapticKind;
 }) {
+  const handlePress = () => {
+    if (!disabled && haptic !== "none") {
+      haptics[haptic]();
+    }
+    onPress();
+  };
+
   return (
     <Pressable
-      onPress={onPress}
+      onPress={handlePress}
+      disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       style={({ pressed }) => [
@@ -189,7 +209,8 @@ function RoundButton({
         large && styles.btnLarge,
         danger ? styles.btnDanger : styles.btnDefault,
         active && styles.btnActive,
-        pressed && { opacity: 0.82 },
+        disabled && styles.btnDisabled,
+        pressed && !disabled && { opacity: 0.82 },
       ]}
     >
       {children}
@@ -245,5 +266,8 @@ const styles = StyleSheet.create({
   btnActive: {
     backgroundColor: meetingTheme.text,
     borderColor: meetingTheme.text,
+  },
+  btnDisabled: {
+    opacity: 0.45,
   },
 });

@@ -1,7 +1,9 @@
 import { createAction } from "@reduxjs/toolkit";
 
 /** Dispatched when the server pushes a socket event that may stale React Query caches. */
-export const socketCacheEvent = createAction<{ event: string }>("cacheInvalidation/socketEvent");
+export const socketCacheEvent = createAction<{ event: string; payload?: unknown }>(
+  "cacheInvalidation/socketEvent"
+);
 
 /** User completed sign-in or token refresh with profile loaded. */
 export const userSignedIn = createAction("cacheInvalidation/userSignedIn");

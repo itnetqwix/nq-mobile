@@ -49,7 +49,7 @@ export function createPersistedQueryClient(): QueryClient {
         staleTime: 60_000,
         gcTime: PERSIST_MAX_AGE_MS,
         refetchOnWindowFocus: false,
-        refetchOnReconnect: true,
+        refetchOnReconnect: false,
         refetchOnMount: false,
       },
     },

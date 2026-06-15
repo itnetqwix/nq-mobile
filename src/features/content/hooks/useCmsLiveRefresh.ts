@@ -19,7 +19,7 @@ export function useCmsLiveRefresh(enabled = true) {
     enabled,
     staleTime: 30_000,
     refetchInterval: POLL_MS,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {

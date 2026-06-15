@@ -32,6 +32,7 @@ import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
+import { haptics } from "../../../lib/haptics";
 import { queryKeys } from "../../../lib/queryKeys";
 import {
   readCachedChatMessages,
@@ -983,6 +984,7 @@ export function ChatRoomScreen({
       if (!result.ok) {
         setLocalMessages((prev) => prev.filter((m) => m._id !== tempId));
         if (result.status === 429) {
+          haptics.warning();
           setRateLimited(true);
           setChatPolicy((p) =>
             p
@@ -994,11 +996,13 @@ export function ChatRoomScreen({
           );
           Alert.alert("Limit Reached", result.error ?? "Message limit reached.");
         } else {
+          haptics.error();
           Alert.alert("Send failed", result.error ?? "Could not send message.");
         }
         return;
       }
       if (result.queued) {
+        haptics.warning();
         setLocalMessages((prev) =>
           prev.map((m) =>
             m._id === tempId ? { ...m, status: "sending" as const, pending: true } : m
@@ -1027,6 +1031,7 @@ export function ChatRoomScreen({
         setChatPolicy((p) => (p ? { ...p, remainingToday: Math.max(0, p.remainingToday - 1) } : p));
       }
     } catch {
+      haptics.error();
       setLocalMessages((prev) => prev.filter((m) => m._id !== tempId));
     } finally {
       setIsSendingMessage(false);
@@ -1696,7 +1701,14 @@ export function ChatRoomScreen({
               <Pressable onPress={cancelRecording} hitSlop={10} style={styles.recordCancel}>
                 <Ionicons name="trash-outline" size={22} color={themeColors.danger} />
               </Pressable>
-              <Pressable onPress={finishRecording} hitSlop={10} style={styles.recordSend}>
+              <Pressable
+                onPress={() => {
+                  haptics.press();
+                  void finishRecording();
+                }}
+                hitSlop={10}
+                style={styles.recordSend}
+              >
                 <Ionicons name="send" size={20} color={themeColors.brandTextOn} />
               </Pressable>
             </View>
@@ -1709,11 +1721,19 @@ export function ChatRoomScreen({
                 </View>
               ) : (
                 <>
-                  <Pressable onPress={() => setShowAttach(true)} hitSlop={8} style={styles.iconBtn}>
+                  <Pressable
+                    onPress={() => {
+                      haptics.tap();
+                      setShowAttach(true);
+                    }}
+                    hitSlop={8}
+                    style={styles.iconBtn}
+                  >
                     <Ionicons name="add-circle-outline" size={26} color={themeColors.brandNavy} />
                   </Pressable>
                   <Pressable
                     onPress={() => {
+                      haptics.select();
                       if (showEmoji) {
                         setShowEmoji(false);
                       } else {
@@ -1741,7 +1761,14 @@ export function ChatRoomScreen({
                     onFocus={() => setShowEmoji(false)}
                   />
                   {text.trim() ? (
-                    <Pressable style={styles.sendBtn} onPress={sendMessage} disabled={isSendingMessage}>
+                    <Pressable
+                      style={styles.sendBtn}
+                      onPress={() => {
+                        haptics.press();
+                        void sendMessage();
+                      }}
+                      disabled={isSendingMessage}
+                    >
                       {isSendingMessage ? (
                         <ActivityIndicator size={16} color={themeColors.brandTextOn} />
                       ) : (
@@ -1749,7 +1776,13 @@ export function ChatRoomScreen({
                       )}
                     </Pressable>
                   ) : (
-                    <Pressable style={styles.iconBtn} onPress={startRecording}>
+                    <Pressable
+                      style={styles.iconBtn}
+                      onPress={() => {
+                        haptics.tap();
+                        void startRecording();
+                      }}
+                    >
                       <Ionicons name="mic-outline" size={26} color={themeColors.brandNavy} />
                     </Pressable>
                   )}

@@ -130,6 +130,8 @@ export class NativeCallEngine {
   private disposed = false;
   private offerInFlight = false;
   private lastHandledJoinPeerId: string | null = null;
+  private lastHandledJoinGeneration = 0;
+  private joinGeneration = 0;
   private networkTier: LessonNetworkTier = "normal";
   private startWithCameraOff = false;
   private iceDisconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -517,10 +519,23 @@ export class NativeCallEngine {
         ui.peerId != null && String(ui.peerId).trim() !== ""
           ? String(ui.peerId).trim()
           : null;
-      if (joinPeerId && joinPeerId === this.lastHandledJoinPeerId) {
+      const joinGen =
+        typeof ui.joinGeneration === "number" && Number.isFinite(ui.joinGeneration)
+          ? ui.joinGeneration
+          : 0;
+      const isReconnectHandshake =
+        this.status === "reconnecting" ||
+        !this.remoteJoined ||
+        joinGen > this.lastHandledJoinGeneration;
+      if (
+        joinPeerId &&
+        joinPeerId === this.lastHandledJoinPeerId &&
+        !isReconnectHandshake
+      ) {
         return;
       }
       if (joinPeerId) this.lastHandledJoinPeerId = joinPeerId;
+      if (joinGen > 0) this.lastHandledJoinGeneration = joinGen;
 
       log("ON_CALL_JOIN received from peer", ui);
       const wasReconnecting = this.status === "reconnecting";
@@ -747,9 +762,18 @@ export class NativeCallEngine {
     this.remoteStream = null;
     this.remoteTrackIds.clear();
     this.pendingRemoteIce = [];
+    this.lastHandledJoinPeerId = null;
     this.events.onRemoteStream?.(null);
     this.setStatus("reconnecting");
     this.events.onPeerDisconnected?.();
+  }
+
+  private rotatePeerIdentity(): void {
+    this.joinGeneration += 1;
+    this.peerId = `${this.fromUser._id}_${this.sessionId}_${Date.now()}_${Math.random()
+      .toString(36)
+      .substring(2, 9)}`;
+    this.lastHandledJoinPeerId = null;
   }
 
   /** Re-announce presence on socket (re)connect without tearing down WebRTC. */
@@ -757,6 +781,7 @@ export class NativeCallEngine {
     if (this.disposed) return;
     const st = this.status;
     if (st === "idle" || st === "ended" || st === "preparing") return;
+    this.rotatePeerIdentity();
     this.emitJoin();
   }
 
@@ -777,7 +802,7 @@ export class NativeCallEngine {
     this.remoteTrackIds.clear();
     this.pendingRemoteIce = [];
     this.offerInFlight = false;
-    this.lastHandledJoinPeerId = null;
+    this.rotatePeerIdentity();
     this.bothJoinedFired = false;
     this.remoteJoined = false;
     if (this.localStream) {
@@ -857,6 +882,7 @@ export class NativeCallEngine {
       to_user: this.toUser._id,
       sessionId: this.sessionId,
       peerId: this.peerId,
+      joinGeneration: this.joinGeneration,
       /** Web skips PeerJS `peer.call` and uses ON_OFFER/ON_ANSWER when set. */
       signalingMode: "socket-webrtc" as const,
     };

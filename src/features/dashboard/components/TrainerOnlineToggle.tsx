@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -13,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { colors, radii, space, typography } from "../../../theme";
+import { haptics } from "../../../lib/haptics";
 
 const ONLINE = {
   bg: "#E8F5E9",
@@ -85,14 +85,12 @@ export function TrainerOnlineToggle({ value, onToggle, embedded }: Props) {
       setSyncing(true);
 
       try {
-        await Haptics.impactAsync(
-          next ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light
-        );
+        haptics.impact();
         await onToggle(next);
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        haptics.success();
       } catch (e: unknown) {
         setDisplayOnline(previous);
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        haptics.error();
         const message = e instanceof Error ? e.message : "Could not update online status.";
         Alert.alert("Online status", message);
       } finally {

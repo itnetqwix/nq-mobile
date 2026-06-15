@@ -381,7 +381,6 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
 
   const { data: cmsHome, isLoading: cmsHomeLoading } = useCmsHome(false, {
     enabled: isTrainer,
-    refetchOnMount: "always",
   });
   const showTrainerHomeSkeleton = isTrainer && cmsHomeLoading && !cmsHome;
 

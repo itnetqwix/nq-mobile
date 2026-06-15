@@ -3,8 +3,17 @@
  */
 
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  LayoutChangeEvent,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+
+import { haptics } from "../../../lib/haptics";
 
 export type AnnotationTool =
   | "freehand"
@@ -35,6 +44,7 @@ type Props = {
   onUndo?: () => void;
   canUndo?: boolean;
   bottomOffset?: number;
+  onLayoutHeight?: (height: number) => void;
 };
 
 const TOOLS: {
@@ -61,12 +71,30 @@ export function MeetingAnnotationToolbar({
   onUndo,
   canUndo = false,
   bottomOffset = 160,
+  onLayoutHeight,
 }: Props) {
+  const handleLayout = (e: LayoutChangeEvent) => {
+    const h = e.nativeEvent.layout.height;
+    if (h > 0) onLayoutHeight?.(h);
+  };
+
   return (
-    <View style={[styles.wrap, { bottom: bottomOffset }]} pointerEvents="box-none">
-      <View style={styles.row}>
+    <View
+      style={[styles.wrap, { bottom: bottomOffset }]}
+      pointerEvents="box-none"
+      onLayout={handleLayout}
+    >
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        style={styles.scroll}
+      >
         <Pressable
-          onPress={onToggleDrawing}
+          onPress={() => {
+            haptics.impact();
+            onToggleDrawing();
+          }}
           style={[styles.chip, drawingEnabled && styles.chipActive]}
           accessibilityLabel={drawingEnabled ? "Turn drawing off" : "Turn drawing on"}
         >
@@ -83,7 +111,10 @@ export function MeetingAnnotationToolbar({
             {TOOLS.map((t) => (
               <Pressable
                 key={t.id}
-                onPress={() => onToolChange(t.id)}
+                onPress={() => {
+                  haptics.select();
+                  onToolChange(t.id);
+                }}
                 style={[styles.toolBtn, tool === t.id && styles.toolBtnActive]}
                 accessibilityLabel={t.id}
               >
@@ -95,24 +126,29 @@ export function MeetingAnnotationToolbar({
               </Pressable>
             ))}
 
-            <View style={styles.colorRow}>
-              {STROKE_COLORS.map((c) => (
-                <Pressable
-                  key={c}
-                  onPress={() => onColorChange(c)}
-                  style={[
-                    styles.colorSwatch,
-                    { backgroundColor: c },
-                    strokeColor === c && styles.colorSwatchActive,
-                  ]}
-                  accessibilityLabel={`Color ${c}`}
-                />
-              ))}
-            </View>
+            {STROKE_COLORS.map((c) => (
+              <Pressable
+                key={c}
+                onPress={() => {
+                  haptics.select();
+                  onColorChange(c);
+                }}
+                style={[
+                  styles.colorSwatch,
+                  { backgroundColor: c },
+                  strokeColor === c && styles.colorSwatchActive,
+                ]}
+                accessibilityLabel={`Color ${c}`}
+              />
+            ))}
 
             {onUndo ? (
               <Pressable
-                onPress={onUndo}
+                onPress={() => {
+                  if (!canUndo) return;
+                  haptics.tap();
+                  onUndo();
+                }}
                 disabled={!canUndo}
                 style={[styles.toolBtn, !canUndo && styles.toolBtnDisabled]}
                 accessibilityLabel="Undo last stroke"
@@ -121,12 +157,19 @@ export function MeetingAnnotationToolbar({
               </Pressable>
             ) : null}
 
-            <Pressable onPress={onClear} style={styles.toolBtn} accessibilityLabel="Clear">
+            <Pressable
+              onPress={() => {
+                haptics.warning();
+                onClear();
+              }}
+              style={styles.toolBtn}
+              accessibilityLabel="Clear"
+            >
               <Ionicons name="trash-outline" size={20} color="#fff" />
             </Pressable>
           </>
         ) : null}
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -139,17 +182,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     zIndex: 28,
   },
-  row: {
+  scroll: {
+    maxWidth: "96%",
+    borderRadius: 14,
+    backgroundColor: "rgba(0,0,0,0.65)",
+  },
+  scrollContent: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
     alignItems: "center",
     gap: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 14,
-    backgroundColor: "rgba(0,0,0,0.65)",
-    maxWidth: "96%",
   },
   chip: {
     flexDirection: "row",
@@ -177,12 +220,6 @@ const styles = StyleSheet.create({
   },
   toolBtnDisabled: {
     opacity: 0.45,
-  },
-  colorRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 4,
   },
   colorSwatch: {
     width: 22,

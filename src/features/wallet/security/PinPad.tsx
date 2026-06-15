@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
+import { haptics } from "../../../lib/haptics";
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"] as const;
 
@@ -42,10 +42,10 @@ export function PinPad({ value, onChange, maxLength = 6, disabled }: Props) {
     })
   );
 
-  const press = async (key: string) => {
+  const press = (key: string) => {
     if (disabled) return;
     if (key === "") return;
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.press();
     if (key === "del") {
       onChange(value.slice(0, -1));
       return;

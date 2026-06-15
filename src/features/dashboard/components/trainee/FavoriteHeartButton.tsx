@@ -1,8 +1,8 @@
+import { Ionicons } from "@expo/vector-icons";
 import React, { useRef, useState } from "react";
 import { Animated, Pressable, StyleSheet, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import { useThemeColors, useThemedStyles } from "../../../../theme";
+import { haptics } from "../../../../lib/haptics";
 
 const BURST_COUNT = 6;
 
@@ -84,9 +84,7 @@ export function FavoriteHeartButton({
   };
 
   const handlePress = () => {
-    void Haptics.impactAsync(
-      active ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium
-    );
+    haptics.press();
     bump();
     if (!active) runBurst();
     onPress();

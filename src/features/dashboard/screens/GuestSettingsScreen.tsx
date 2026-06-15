@@ -3,7 +3,7 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Constants from "expo-constants";
 import React, { useCallback, useState } from "react";
-import { Alert, Linking, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Linking, Modal, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import {
   Button,
@@ -19,6 +19,7 @@ import { applyRtlLocale } from "../../../i18n/applyRtlLocale";
 import { languageLabelForCode, normalizeAppLocale } from "../../../i18n/languages";
 import { persistAppLocale } from "../../../i18n/localeStorage";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import { areHapticsEnabled, haptics, setHapticsEnabled } from "../../../lib/haptics";
 import type { MenuStackParamList } from "../../../navigation/types";
 import { space, typography, useThemeColors } from "../../../theme";
 import { useTheme, type ThemeMode } from "../../../theme/ThemeContext";
@@ -40,6 +41,7 @@ export function GuestSettingsScreen() {
   const [localeDraft, setLocaleDraft] = useState(() => normalizeAppLocale(i18n.language));
   const [langOpen, setLangOpen] = useState(false);
   const [replayIntroOpen, setReplayIntroOpen] = useState(false);
+  const [hapticsOn, setHapticsOn] = useState(areHapticsEnabled());
 
   const openDashboard = useCallback(
     (featureId: "contact-us" | "about-us" | "faq") => {
@@ -116,6 +118,7 @@ export function GuestSettingsScreen() {
             <ListRow
               icon={icon}
               title={label}
+              haptic="select"
               rightAdornment={
                 themeMode === id ? (
                   <Ionicons name="checkmark-circle" size={22} color={c.brandAccent} />
@@ -128,6 +131,26 @@ export function GuestSettingsScreen() {
             />
           </React.Fragment>
         ))}
+        <Divider />
+        <ListRow
+          icon="phone-portrait-outline"
+          title={t("settings.hapticFeedback")}
+          subtitle={t("settings.hapticFeedbackSubtitle")}
+          haptic="none"
+          rightAdornment={
+            <Switch
+              value={hapticsOn}
+              onValueChange={(v) => {
+                setHapticsOn(v);
+                setHapticsEnabled(v);
+                if (v) haptics.tap();
+              }}
+              trackColor={{ false: c.neutral200, true: c.brandAccentSubtle }}
+              thumbColor={hapticsOn ? c.brandAccent : c.neutral100}
+              accessibilityLabel={t("settings.hapticFeedback")}
+            />
+          }
+        />
       </Card>
 
       <SectionHeader label={t("settings.regionalTitle")} />

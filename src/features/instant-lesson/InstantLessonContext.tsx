@@ -6,9 +6,10 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import { Alert, AppState, Vibration } from "react-native";
+import { Alert, AppState } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import { invalidateSessions, patchSessionInQueryCaches } from "../../lib/queryInvalidation";
+import { haptics } from "../../lib/haptics";
 import { useSocket } from "../socket/SocketContext";
 import { useAuth } from "../auth/context/AuthContext";
 import {
@@ -49,8 +50,6 @@ import {
   selectTraineeBooking,
   selectDismissedInstantLessonIds,
 } from "../../store/selectors";
-
-const ACCEPT_HAPTIC_PATTERN: number[] = [0, 40, 80, 40];
 
 type InstantLessonContextValue = {
   trainerIncoming: TrainerIncoming | null;
@@ -236,6 +235,7 @@ export function InstantLessonProvider({
         duration: payload.duration,
         lessonType: payload.lessonType,
       });
+      haptics.heavy();
       scheduleExpiry(payload.expiresAt, () => {
         void dismissInstantLessonIncomingCall(payload.lessonId);
         void endInstantLessonCall(payload.lessonId);
@@ -298,11 +298,7 @@ export function InstantLessonProvider({
       }
       setTraineeBooking((prev) => {
         if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
-        try {
-          Vibration.vibrate(ACCEPT_HAPTIC_PATTERN);
-        } catch {
-          /** ignore */
-        }
+        haptics.success();
         return {
           ...prev,
           step: "accepted" as const,
@@ -494,11 +490,7 @@ export function InstantLessonProvider({
           const joinMs = response.joinDeadlineAt
             ? new Date(response.joinDeadlineAt).getTime()
             : Date.now() + INSTANT_JOIN_AFTER_ACCEPT_MS;
-          try {
-            Vibration.vibrate(ACCEPT_HAPTIC_PATTERN);
-          } catch {
-            /** ignore */
-          }
+          haptics.success();
           onOk?.(joinMs);
         }
       );

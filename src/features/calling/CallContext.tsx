@@ -33,6 +33,8 @@ import type { LessonNetworkTier } from "./lessonNetworkTier";
 import type { CallEngineStatus, CallParticipant, IceServer, SessionRole } from "./types";
 import { isBenignWebRtcSignalingError } from "./webrtcSignalingErrors";
 
+const RECOVER_CONNECTION_COOLDOWN_MS = 4_000;
+
 export type CameraOffReason = "user" | "network" | null;
 
 type StartArgs = {
@@ -174,6 +176,8 @@ export function CallProvider({
   const { socket } = useSocket();
   const engineRef = useRef<NativeCallEngine | null>(null);
   const partnerDisconnectedRef = useRef(false);
+  const lastRecoverAtRef = useRef(0);
+  const recoverInFlightRef = useRef(false);
 
   const [status, setStatus] = useState<CallEngineStatus>("idle");
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -353,20 +357,56 @@ export function CallProvider({
     };
   }, [stableArgs]);
 
+  const recoverConnection = useCallback(() => {
+    const engine = engineRef.current;
+    if (!engine) return;
+    const st = engine.getStatus();
+    if (st === "idle" || st === "ended" || st === "preparing") return;
+
+    const now = Date.now();
+    if (now - lastRecoverAtRef.current < RECOVER_CONNECTION_COOLDOWN_MS) return;
+    if (recoverInFlightRef.current) return;
+
+    lastRecoverAtRef.current = now;
+    recoverInFlightRef.current = true;
+
+    void (async () => {
+      try {
+        const sessionId = startArgs.sessionId;
+        if (sessionId) {
+          try {
+            const readiness = await fetchSessionJoinReadiness(sessionId, {
+              refreshIce: true,
+            });
+            if (readiness?.iceServers?.length) {
+              engine.updateIceServers(readiness.iceServers as IceServer[]);
+            }
+          } catch {
+            /* keep existing ICE */
+          }
+        }
+
+        const currentSt = engine.getStatus();
+        if (currentSt === "idle" || currentSt === "ended" || currentSt === "preparing") {
+          return;
+        }
+        if (currentSt === "reconnecting" || partnerDisconnectedRef.current) {
+          engine.reconnectPeer();
+        } else {
+          engine.rejoinSignal();
+        }
+      } finally {
+        recoverInFlightRef.current = false;
+      }
+    })();
+  }, [startArgs.sessionId]);
+
   /** Re-announce call presence when the socket reconnects mid-lesson (web parity). */
   useEffect(() => {
     if (!socket) return;
 
     const recoverCallOnSocket = () => {
-      const engine = engineRef.current;
-      if (!engine) return;
-      const st = engine.getStatus();
-      if (st === "idle" || st === "ended" || st === "preparing") return;
-      if (st === "reconnecting" || partnerDisconnectedRef.current) {
-        engine.reconnectPeer();
-      } else {
-        engine.rejoinSignal();
-      }
+      recoverConnection();
       if (socket.connected && startArgs.sessionId) {
         socket.emit("LESSON_STATE_REQUEST", { sessionId: startArgs.sessionId });
       }
@@ -377,7 +417,7 @@ export function CallProvider({
       socket.off("connect", recoverCallOnSocket);
       socket.off("reconnect", recoverCallOnSocket);
     };
-  }, [socket, startArgs.sessionId]);
+  }, [socket, startArgs.sessionId, recoverConnection]);
 
   const toggleMute = useCallback(() => {
     const engine = engineRef.current;
@@ -435,33 +475,6 @@ export function CallProvider({
   const reconnectPeer = useCallback(() => {
     engineRef.current?.reconnectPeer();
   }, []);
-
-  const recoverConnection = useCallback(() => {
-    const engine = engineRef.current;
-    if (!engine) return;
-    const st = engine.getStatus();
-    if (st === "idle" || st === "ended" || st === "preparing") return;
-
-    void (async () => {
-      const sessionId = startArgs.sessionId;
-      if (sessionId) {
-        try {
-          const readiness = await fetchSessionJoinReadiness(sessionId);
-          if (readiness?.iceServers?.length) {
-            engine.updateIceServers(readiness.iceServers as IceServer[]);
-          }
-        } catch {
-          /* keep existing ICE */
-        }
-      }
-
-      if (st === "reconnecting" || partnerDisconnectedRef.current) {
-        engine.reconnectPeer();
-      } else {
-        engine.rejoinSignal();
-      }
-    })();
-  }, [startArgs.sessionId]);
 
   const getNetworkStats = useCallback(async () => {
     return (

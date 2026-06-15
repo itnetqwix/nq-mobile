@@ -50,6 +50,8 @@ type Props = {
   pipDragDisabled?: boolean;
   onTapLocal?: () => void;
   onTapRemote?: () => void;
+  /** Lower during annotation so toolbar stays on top. */
+  pipZIndex?: number;
 };
 
 export function DualVideoStrip({
@@ -74,6 +76,7 @@ export function DualVideoStrip({
   pipDragDisabled = false,
   onTapLocal,
   onTapRemote,
+  pipZIndex = 46,
 }: Props) {
   const remoteLabel = peerDisplayName.split(" ")[0] ?? "Partner";
   const localW = localPip.size?.w ?? CLIP_MODE_PIP.w;
@@ -122,7 +125,7 @@ export function DualVideoStrip({
         onPositionChange={(pos) => remotePip.onPositionChange?.(pos)}
         onHide={(edge, last) => remotePip.onHide?.(edge, last)}
         onRestore={() => remotePip.onRestore?.()}
-        zIndex={46}
+        zIndex={pipZIndex}
       />
 
       <DraggableVideoPip
@@ -148,7 +151,7 @@ export function DualVideoStrip({
         onPositionChange={(pos) => localPip.onPositionChange?.(pos)}
         onHide={(edge, last) => localPip.onHide?.(edge, last)}
         onRestore={() => localPip.onRestore?.()}
-        zIndex={47}
+        zIndex={pipZIndex + 1}
       />
 
       {showCollapseControl ? (

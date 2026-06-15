@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -28,6 +29,7 @@ import {
   SkeletonGroup,
 } from "../../../components/ui";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
+import { useHapticRefresh } from "../../../lib/refresh/useHapticRefresh";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { type AppColors, radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
@@ -245,6 +247,9 @@ export function ReportIssueScreen() {
     queryFn: fetchMyRaiseConcerns,
     staleTime: 60_000,
   });
+  const { refreshing: reportsRefreshing, onRefresh: onRefreshReports } = useHapticRefresh(() =>
+    refetchReports()
+  );
 
   const sessions = useMemo(() => {
     const merged = [
@@ -357,7 +362,11 @@ export function ReportIssueScreen() {
           <ScrollView
             contentContainerStyle={styles.list}
             refreshControl={
-              <RefreshControl refreshing={false} onRefresh={() => refetchReports()} tintColor={c.iconPrimary} />
+              <RefreshControl
+                refreshing={reportsRefreshing}
+                onRefresh={onRefreshReports}
+                tintColor={c.iconPrimary}
+              />
             }
           >
             {pastReports.length === 0 ? (

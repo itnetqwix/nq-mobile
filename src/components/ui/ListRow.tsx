@@ -6,6 +6,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { haptics, type HapticKind } from "../../lib/haptics";
 import { layout, radii, space, typography, useThemeColors, useThemedStyles } from "../../theme";
 
 export type ListRowProps = {
@@ -21,6 +22,8 @@ export type ListRowProps = {
   /** Hide the trailing chevron even when `onPress` is set. */
   hideChevron?: boolean;
   accessibilityLabel?: string;
+  /** Haptic on row tap. Defaults to `tap` when `onPress` is set; pass `none` to opt out. */
+  haptic?: HapticKind | "none";
 };
 
 export function ListRow({
@@ -33,6 +36,7 @@ export function ListRow({
   destructive,
   hideChevron,
   accessibilityLabel,
+  haptic = "tap",
 }: ListRowProps) {
   const c = useThemeColors();
   const styles = useThemedStyles((colors) =>
@@ -95,9 +99,13 @@ export function ListRow({
   );
 
   if (onPress) {
+    const handlePress = () => {
+      if (haptic !== "none") haptics[haptic]();
+      onPress();
+    };
     return (
       <Pressable
-        onPress={onPress}
+        onPress={handlePress}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel ?? title}
         style={({ pressed }) => [styles.row, pressed && { backgroundColor: c.surface }]}

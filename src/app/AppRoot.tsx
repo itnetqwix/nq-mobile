@@ -59,6 +59,8 @@ import { StoreProvider } from "../store/StoreProvider";
 import { AppBootstrapGate } from "../components/splash";
 import { CmsLiveRefreshBridge } from "../features/content/CmsLiveRefreshBridge";
 import { hydrateHotStorageFallback } from "../lib/storage/mmkvHotStorage";
+import { applyHapticsPreference } from "../lib/haptics";
+import { hydrateHapticsPreference } from "../lib/hapticsPreference";
 import { setGlobalQueryClient } from "../store/queryClientRef";
 
 initMobileSentry();
@@ -88,6 +90,7 @@ export function AppRoot() {
     void (async () => {
       await hydrateHotStorageFallback();
       await migrateQueryPersistFromAsyncStorage();
+      await hydrateHapticsPreference(applyHapticsPreference);
     })();
     void hydratePendingAuthIntent();
     void hydrateLastAuthMethod();

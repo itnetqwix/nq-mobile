@@ -235,6 +235,8 @@
     "themeDark": "Dark mode",
     "themeAccessibility": "Theme: {{label}}{{selected}}",
     "themeSelectedSuffix": " (selected)",
+    "hapticFeedback": "Haptic feedback",
+    "hapticFeedbackSubtitle": "Light taps and vibrations for buttons and actions",
     "appUnlockTitle": "{{label}} app unlock",
     "appUnlockSubtitle": "Require biometrics when opening NetQwix",
     "activeSessions": "Active sessions",

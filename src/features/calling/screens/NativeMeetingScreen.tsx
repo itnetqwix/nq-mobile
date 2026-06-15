@@ -35,7 +35,11 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useMeetingChromeInsets } from "../useMeetingChromeInsets";
+import {
+  ACTION_BAR_HEIGHT,
+  ANNOTATION_TOOLBAR_HEIGHT,
+  useMeetingChromeInsets,
+} from "../useMeetingChromeInsets";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
@@ -44,6 +48,7 @@ import { AccountType } from "../../../constants/accountType";
 import { useAuth } from "../../auth/context/AuthContext";
 import { useSocket } from "../../socket/SocketContext";
 import { queryKeys } from "../../../lib/queryKeys";
+import { invalidateSessions } from "../../../lib/queryInvalidation";
 import { fetchMeetingSession, fetchScheduledMeetings } from "../../home/api/homeApi";
 import { parseIceServersFromSession } from "../meetingIceServers";
 import { sanitizeIceServers } from "../iceServers";
@@ -780,7 +785,7 @@ function MeetingSurface({
   const queryClient = useQueryClient();
 
   const refreshSessionsAfterLessonEnd = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
+    invalidateSessions(queryClient);
     void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.lookup(lessonId) });
     void queryClient.invalidateQueries({
       queryKey: queryKeys.sessions.joinReadiness(lessonId),
@@ -813,6 +818,21 @@ function MeetingSurface({
         .filter((u): u is string => !!u),
     [clipSync.selectedClips]
   );
+  const annotationTool = useMeetingAnnotationStore((s) => s.tool);
+  const annotationColor = useMeetingAnnotationStore((s) => s.color);
+  const annotationArmed = useMeetingAnnotationStore((s) => s.armed);
+  const annotationToolbarOpen = useMeetingAnnotationStore((s) => s.toolbarOpen);
+  const setAnnotationTool = useMeetingAnnotationStore((s) => s.setTool);
+  const setAnnotationColor = useMeetingAnnotationStore((s) => s.setColor);
+  const setAnnotationArmed = useMeetingAnnotationStore((s) => s.setArmed);
+  const setAnnotationToolbarOpen = useMeetingAnnotationStore((s) => s.setToolbarOpen);
+  const resetMeetingAnnotation = useMeetingAnnotationStore((s) => s.reset);
+
+  const [measuredActionBarHeight, setMeasuredActionBarHeight] =
+    useState(ACTION_BAR_HEIGHT);
+  const [measuredAnnotationToolbarHeight, setMeasuredAnnotationToolbarHeight] =
+    useState(ANNOTATION_TOOLBAR_HEIGHT);
+
   const hasClipStage =
     clipPaneUrisEarly.length > 0 &&
     (clipSync.selectedClips.length > 0 || Boolean(clipSync.activeClipId));
@@ -820,6 +840,9 @@ function MeetingSurface({
   const chrome = useMeetingChromeInsets({
     inClipMode: hasClipStage,
     inlineClipControls: hasClipStage,
+    annotationToolbarOpen: isTrainer && annotationToolbarOpen,
+    annotationToolbarHeight: measuredAnnotationToolbarHeight,
+    actionBarHeight: measuredActionBarHeight,
   });
 
   const meetingLayout = useMeetingLayout({
@@ -1131,17 +1154,13 @@ function MeetingSurface({
     width: number;
     height: number;
   } | null>(null);
-  const annotationTool = useMeetingAnnotationStore((s) => s.tool);
-  const annotationColor = useMeetingAnnotationStore((s) => s.color);
-  const annotationArmed = useMeetingAnnotationStore((s) => s.armed);
-  const annotationToolbarOpen = useMeetingAnnotationStore((s) => s.toolbarOpen);
-  const setAnnotationTool = useMeetingAnnotationStore((s) => s.setTool);
-  const setAnnotationColor = useMeetingAnnotationStore((s) => s.setColor);
-  const setAnnotationArmed = useMeetingAnnotationStore((s) => s.setArmed);
-  const setAnnotationToolbarOpen = useMeetingAnnotationStore((s) => s.setToolbarOpen);
-  const resetMeetingAnnotation = useMeetingAnnotationStore((s) => s.reset);
-
   useEffect(() => () => resetMeetingAnnotation(), [resetMeetingAnnotation]);
+
+  /** Collapse camera strip while drawing so PIPs do not cover the clip stage. */
+  useEffect(() => {
+    if (!isTrainer || !annotationArmed) return;
+    meetingLayout.setCameraStripCollapsed(true);
+  }, [isTrainer, annotationArmed, meetingLayout.setCameraStripCollapsed]);
   const [networkBannerDismissed, setNetworkBannerDismissed] = useState(false);
   const [agendaBannerDismissed, setAgendaBannerDismissed] = useState(false);
   const [statusBannerDismissed, setStatusBannerDismissed] = useState(false);
@@ -2697,6 +2716,7 @@ function MeetingSurface({
                 );
               }
             }}
+            zIndex={annotationArmed ? 20 : 45}
           />
           {inClipMode && activeClipUri ? (
             <ClipMiniPip
@@ -2760,6 +2780,7 @@ function MeetingSurface({
           }}
           onTapLocal={isTrainer ? () => meetingLayout.focusStream(myId) : undefined}
           onTapRemote={isTrainer ? () => meetingLayout.focusStream(peerId) : undefined}
+          pipZIndex={annotationArmed ? 20 : 46}
         />
       ) : null}
 
@@ -2947,20 +2968,21 @@ function MeetingSurface({
             }
           }}
           canUndo={drawingSync.canUndo}
-          bottomOffset={chrome.bottomChrome + 96}
+          bottomOffset={chrome.annotationToolbarBottom}
+          onLayoutHeight={setMeasuredAnnotationToolbarHeight}
         />
       ) : null}
 
-      {isTrainer ? (
+      {isTrainer && !annotationToolbarOpen ? (
         <MeetingLiveNotesPanel
           notes={lessonLive.visibleNotes}
           elapsedSeconds={elapsedLessonSeconds}
           onAddNote={(text, shared) =>
             lessonLive.addLiveNote(text, elapsedLessonSeconds, shared)
           }
-          bottomOffset={chrome.bottomChrome + 88}
+          bottomOffset={chrome.bottomChrome + chrome.actionReserve + 4}
         />
-      ) : (
+      ) : isTrainer ? null : (
         <MeetingTraineeNotesPanel
           notes={lessonLive.visibleNotes}
           topOffset={chrome.insets.top + 100 + stackedBannerExtra}
@@ -2971,6 +2993,12 @@ function MeetingSurface({
       <View
         pointerEvents={reconnectFailed ? "none" : "auto"}
         style={{ opacity: reconnectFailed ? 0.35 : 1 }}
+        onLayout={(e) => {
+          const h = e.nativeEvent.layout.height;
+          if (h > 0 && Math.abs(h - measuredActionBarHeight) > 2) {
+            setMeasuredActionBarHeight(h);
+          }
+        }}
       >
       <ActionButtons
         isTrainer={isTrainer}

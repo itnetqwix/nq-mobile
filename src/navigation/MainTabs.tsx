@@ -11,6 +11,7 @@ import { BookExpertScreen } from "../features/bookexpert/screens/BookExpertScree
 import { useThemeColors } from "../theme";
 import { AppScreenHeader } from "./AppScreenHeader";
 import { FloatingTabBar } from "./FloatingTabBar";
+import { HapticTabBarButton } from "./HapticTabBarButton";
 import { TabBarScrollProvider } from "./TabBarScrollContext";
 import { HomeNavigator } from "./HomeNavigator";
 import { CaptureNavigator } from "./CaptureNavigator";
@@ -55,6 +56,7 @@ export function MainTabs() {
         },
         tabBarHideOnKeyboard: true,
         animation: "shift",
+        tabBarButton: (props) => <HapticTabBarButton {...props} />,
       }}
     >
       <Tab.Screen

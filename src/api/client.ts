@@ -8,6 +8,7 @@ import { getAccessToken, getSessionId } from "../features/auth/session/tokenStor
 import { getClientSessionHeaders } from "../features/auth/session/clientSessionHeaders";
 import { expoFetchForAxios } from "./expoFetchForAxios";
 import { logHttpErrorDebug, logHttpRequestDebug, logHttpResponseDebug } from "./httpDebug";
+import { recordApiCall } from "../lib/apiCallTelemetry";
 import { refreshAccessToken } from "./authRefresh";
 import {
   bearerFromAuthHeader,
@@ -68,6 +69,11 @@ apiClient.interceptors.request.use(async (config) => {
   }
   Object.assign(config.headers, getClientSessionHeaders());
   logHttpRequestDebug(config);
+  if (__DEV__) {
+    const method = (config.method ?? "get").toUpperCase();
+    const url = `${config.baseURL ?? ""}${config.url ?? ""}`;
+    recordApiCall(method, url);
+  }
   return config;
 });
 

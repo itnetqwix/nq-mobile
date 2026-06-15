@@ -24,11 +24,6 @@ import {
   patchNotificationsMarkRead,
 } from "../home/api/homeApi";
 import { queryKeys } from "../../lib/queryKeys";
-import {
-  invalidateOnBookingSocketEvent,
-  invalidateOnSessionSocketEvent,
-  invalidateOnWalletSocketEvent,
-} from "../../lib/socketInvalidate";
 import { useSocket } from "../socket/SocketContext";
 import { emitInstantLessonPhase } from "../instant-lesson/instantLessonBridge";
 import { navigationRef } from "../../navigation/navigationRef";
@@ -307,33 +302,16 @@ export function NotificationProvider({
         kind === "instant_lesson_request" ||
         titleLower.includes("instant lesson request")
       ) {
-        invalidateOnSessionSocketEvent(queryClient);
+        /* session cache refresh handled by SocketQueryInvalidationBridge */
       } else if (
         kind === "instant_lesson_declined" ||
         kind === "instant_lesson_join_expired" ||
         kind === "instant_lesson_accept_expired"
       ) {
-        invalidateOnSessionSocketEvent(queryClient);
-        invalidateOnWalletSocketEvent(queryClient);
+        /* wallet/session refresh handled by SocketQueryInvalidationBridge */
       }
 
-      /**
-       * Side-effects driven by the notification *title* — same approach as web
-       * `NavHomePage`: re-fetch the bookings list when a booking-related notification
-       * arrives, so the upcoming/confirmed tabs auto-refresh.
-       */
       const t = payload.title?.toLowerCase() ?? "";
-      if (
-        t.includes("booking") ||
-        t.includes("session") ||
-        t.includes("confirm") ||
-        t.includes("instant") ||
-        t.includes("refund") ||
-        t.includes("lesson")
-      ) {
-        invalidateOnBookingSocketEvent(queryClient);
-        invalidateOnWalletSocketEvent(queryClient);
-      }
       if (t.includes("friend")) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.friends.all });
         void queryClient.invalidateQueries({ queryKey: queryKeys.friends.requests });
@@ -342,37 +320,18 @@ export function NotificationProvider({
 
     socket.on(SOCKET_EVENT_RECEIVE, onReceive);
 
-    const onBookingCreated = (data: {
-      bookingId?: string;
-      trainerId?: string;
-      traineeId?: string;
-      type?: string;
-    }) => {
-      invalidateOnBookingSocketEvent(queryClient);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.upcoming });
-    };
-    const onBookingStatusUpdated = () => {
-      invalidateOnBookingSocketEvent(queryClient);
-    };
-
     const onInstantPhase = (data: {
       lessonId?: string;
       phase?: string;
       refundReason?: string;
     }) => {
       emitInstantLessonPhase(data);
-      invalidateOnBookingSocketEvent(queryClient);
-      invalidateOnWalletSocketEvent(queryClient);
     };
 
-    socket.on("BOOKING_CREATED", onBookingCreated);
-    socket.on("BOOKING_STATUS_UPDATED", onBookingStatusUpdated);
     socket.on("INSTANT_LESSON_PHASE", onInstantPhase);
 
     return () => {
       socket.off(SOCKET_EVENT_RECEIVE, onReceive);
-      socket.off("BOOKING_CREATED", onBookingCreated);
-      socket.off("BOOKING_STATUS_UPDATED", onBookingStatusUpdated);
       socket.off("INSTANT_LESSON_PHASE", onInstantPhase);
     };
   }, [socket, queryClient, pushToQueue, dispatch, accountType]);

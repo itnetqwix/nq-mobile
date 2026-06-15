@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import React from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { APP_LANGUAGES } from "../../i18n/languages";
+import { haptics } from "../../lib/haptics";
 import { radii, space, typography } from "../../theme";
 import { useThemeColors } from "../../theme";
 
@@ -35,6 +36,7 @@ export function LanguagePickerModal({ visible, selectedCode, onClose, onSelect }
               <Pressable
                 key={lang.code}
                 onPress={() => {
+                  haptics.select();
                   onSelect(lang.code);
                   onClose();
                 }}
@@ -56,7 +58,10 @@ export function LanguagePickerModal({ visible, selectedCode, onClose, onSelect }
             );
           })}
           <Pressable
-            onPress={onClose}
+            onPress={() => {
+              haptics.tap();
+              onClose();
+            }}
             style={[styles.closeBtn, { marginTop: space.sm, backgroundColor: c.surfaceMuted }]}
           >
             <Text style={[typography.bodyMd, { fontWeight: "700", color: c.textSecondary }]}>
