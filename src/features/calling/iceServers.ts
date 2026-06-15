@@ -39,14 +39,18 @@ export function sanitizeIceServers(servers: IceServer[] | undefined): IceServer[
     }
 
     const urlList = Array.isArray(urls) ? urls : [urls];
-    const needsAuth = urlList.some((u) => /^turns?:/i.test(String(u)));
-    if (needsAuth && (!entry.username || !entry.credential)) continue;
+    for (const rawUrl of urlList) {
+      const url = String(rawUrl).trim();
+      if (!url) continue;
+      const needsAuth = /^turns?:/i.test(url);
+      if (needsAuth && (!entry.username || !entry.credential)) continue;
 
-    cleaned.push({
-      urls,
-      ...(entry.username ? { username: entry.username } : {}),
-      ...(entry.credential ? { credential: entry.credential } : {}),
-    });
+      cleaned.push({
+        urls: url,
+        ...(entry.username ? { username: entry.username } : {}),
+        ...(entry.credential ? { credential: entry.credential } : {}),
+      });
+    }
   }
 
   return cleaned.length > 0 ? cleaned : DEFAULT_ICE_SERVERS;

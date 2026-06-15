@@ -126,6 +126,7 @@ export class NativeCallEngine {
   private bothJoinedFired = false;
   private remoteJoined = false;
   private pendingRemoteIce: RTCIceCandidateInit[] = [];
+  private pendingRemoteOffer: RTCSessionDescriptionInit | null = null;
   private socketBindings: Array<() => void> = [];
   private disposed = false;
   private offerInFlight = false;
@@ -165,12 +166,19 @@ export class NativeCallEngine {
 
     try {
       this.attachAudioRouting();
+      if (this.socketBindings.length === 0) {
+        this.attachSocketHandlers();
+      }
       await this.acquireLocalStream(this.networkTier);
       if (this.startWithCameraOff) {
         this.setCameraEnabled(false);
       }
       this.buildPeerConnection();
-      this.attachSocketHandlers();
+      if (this.pendingRemoteOffer) {
+        const offer = this.pendingRemoteOffer;
+        this.pendingRemoteOffer = null;
+        void this.applyRemoteOffer(offer);
+      }
       this.emitJoin();
       this.setStatus("joining");
     } catch (err) {
@@ -548,6 +556,7 @@ export class NativeCallEngine {
         }
         this.pc = null;
         this.pendingRemoteIce = [];
+        this.pendingRemoteOffer = null;
         this.offerInFlight = false;
         this.buildPeerConnection();
         this.setStatus("connecting");
@@ -575,26 +584,13 @@ export class NativeCallEngine {
     const onOffer = async (payload: any) => {
       const offer: RTCSessionDescriptionInit | undefined =
         payload?.offer ?? (payload?.type ? payload : undefined);
-      if (!offer || !this.pc) return;
-      const pc = this.pc;
-      if (pc.signalingState === "have-local-offer") {
+      if (!offer) return;
+      if (!this.pc) {
+        this.pendingRemoteOffer = offer;
+        log("buffering remote offer until PeerConnection is ready");
         return;
       }
-      if (pc.remoteDescription) return;
-      try {
-        await pc.setRemoteDescription(
-          new RTCSessionDescription(offer as any)
-        );
-        await this.drainPendingIce();
-        const answer = await this.pc.createAnswer();
-        await this.pc.setLocalDescription(answer);
-        socket.emit(CALL_EVENTS.ON_ANSWER, {
-          answer,
-          userInfo: this.buildUserInfo(),
-        });
-      } catch (err) {
-        this.events.onError?.(err as Error);
-      }
+      await this.applyRemoteOffer(offer);
     };
 
     const onAnswer = async (payload: any) => {
@@ -762,6 +758,7 @@ export class NativeCallEngine {
     this.remoteStream = null;
     this.remoteTrackIds.clear();
     this.pendingRemoteIce = [];
+    this.pendingRemoteOffer = null;
     this.lastHandledJoinPeerId = null;
     this.events.onRemoteStream?.(null);
     this.setStatus("reconnecting");
@@ -801,6 +798,7 @@ export class NativeCallEngine {
     this.pc = null;
     this.remoteTrackIds.clear();
     this.pendingRemoteIce = [];
+    this.pendingRemoteOffer = null;
     this.offerInFlight = false;
     this.rotatePeerIdentity();
     this.bothJoinedFired = false;
@@ -808,6 +806,11 @@ export class NativeCallEngine {
     if (this.localStream) {
       this.buildPeerConnection();
       void this.applyVideoAdaptation(this.networkTier);
+      if (this.pendingRemoteOffer) {
+        const offer = this.pendingRemoteOffer;
+        this.pendingRemoteOffer = null;
+        void this.applyRemoteOffer(offer);
+      }
       this.emitJoin();
       this.setStatus("reconnecting");
     }
@@ -823,6 +826,25 @@ export class NativeCallEngine {
       } catch (err) {
         log("drain ICE failed", err);
       }
+    }
+  }
+
+  private async applyRemoteOffer(offer: RTCSessionDescriptionInit) {
+    if (!this.pc || this.disposed) return;
+    const pc = this.pc;
+    if (pc.signalingState === "have-local-offer") return;
+    if (pc.remoteDescription) return;
+    try {
+      await pc.setRemoteDescription(new RTCSessionDescription(offer as any));
+      await this.drainPendingIce();
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      this.socket.emit(CALL_EVENTS.ON_ANSWER, {
+        answer,
+        userInfo: this.buildUserInfo(),
+      });
+    } catch (err) {
+      this.events.onError?.(err as Error);
     }
   }
 

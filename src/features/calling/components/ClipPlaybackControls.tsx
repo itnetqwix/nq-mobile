@@ -27,19 +27,18 @@ type ControlMetrics = {
   playIconSize: number;
 };
 
-function getControlMetrics(size: "default" | "compact", onLightBackground: boolean): ControlMetrics {
+function getControlMetrics(size: "default" | "compact", _onLightBackground: boolean): ControlMetrics {
   const compact = size === "compact";
-  const light = onLightBackground;
-  const trackHeight = compact ? 3 : light ? 6 : 4;
-  const thumbSize = compact ? 10 : light ? 16 : 14;
-  const playBtnSize = compact ? 28 : 38;
-  const trackRowHeight = Math.max(compact ? 24 : 28, thumbSize + 8);
+  const trackHeight = compact ? 2 : 3;
+  const thumbSize = compact ? 8 : 10;
+  const playBtnSize = compact ? 22 : 28;
+  const trackRowHeight = thumbSize + 4;
   return {
     trackHeight,
     trackRowHeight,
     thumbSize,
     playBtnSize,
-    playIconSize: compact ? 14 : 18,
+    playIconSize: compact ? 11 : 14,
   };
 }
 
@@ -118,7 +117,7 @@ export function ClipPlaybackControls({
       ratio * trackWidthPx - metrics.thumbSize / 2
     )
   );
-  const playBtnMarginTop = (metrics.trackRowHeight - metrics.playBtnSize) / 2;
+  const thumbBorder = 1.5;
   const isInline = variant === "inline";
 
   return (
@@ -145,7 +144,6 @@ export function ClipPlaybackControls({
               width: metrics.playBtnSize,
               height: metrics.playBtnSize,
               borderRadius: metrics.playBtnSize / 2,
-              marginTop: playBtnMarginTop,
             },
             disabled && styles.btnDisabled,
             pressed && !disabled && styles.playBtnPressed,
@@ -180,26 +178,28 @@ export function ClipPlaybackControls({
               now: Math.round(value),
             }}
           >
-            <Pressable
-              onPress={seekFromEvent}
-              disabled={disabled}
-              style={StyleSheet.absoluteFill}
-            />
-            <View style={styles.trackLane}>
-              <View
-                style={[
-                  styles.track,
-                  { height: metrics.trackHeight },
-                  light && styles.trackLight,
-                ]}
-              >
+            <View style={[styles.trackLane, { height: metrics.trackRowHeight }]}>
+              <Pressable
+                onPress={seekFromEvent}
+                disabled={disabled}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={styles.trackCenter}>
                 <View
                   style={[
-                    styles.fill,
-                    light && styles.fillLight,
-                    { width: `${ratio * 100}%` },
+                    styles.track,
+                    { height: metrics.trackHeight },
+                    light && styles.trackLight,
                   ]}
-                />
+                >
+                  <View
+                    style={[
+                      styles.fill,
+                      light && styles.fillLight,
+                      { width: `${ratio * 100}%` },
+                    ]}
+                  />
+                </View>
               </View>
               <View
                 pointerEvents="none"
@@ -209,8 +209,10 @@ export function ClipPlaybackControls({
                     width: metrics.thumbSize,
                     height: metrics.thumbSize,
                     borderRadius: metrics.thumbSize / 2,
+                    borderWidth: thumbBorder,
                     left: thumbLeft,
-                    top: (metrics.trackRowHeight - metrics.thumbSize) / 2,
+                    top: metrics.trackRowHeight / 2,
+                    marginTop: -(metrics.thumbSize / 2 + thumbBorder),
                     borderColor: light ? "#000080" : meetingTheme.navy,
                   },
                 ]}
@@ -244,7 +246,6 @@ export function ClipPlaybackControls({
             style={({ pressed }) => [
               styles.expandBtn,
               size === "compact" && styles.expandBtnCompact,
-              { marginTop: playBtnMarginTop },
               pressed && { opacity: 0.85 },
             ]}
             onPress={onToggleExpand}
@@ -280,19 +281,19 @@ const styles = StyleSheet.create({
   },
   timelineCard: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
+    alignItems: "center",
+    gap: 8,
     backgroundColor: meetingTheme.surfaceElevated,
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderWidth: 1,
     borderColor: meetingTheme.border,
     shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
   },
   timelineCardInline: {
     backgroundColor: "rgba(240,242,246,0.98)",
@@ -304,13 +305,13 @@ const styles = StyleSheet.create({
   timelineCardLight: {
     backgroundColor: "#f0f2f6",
     borderColor: "rgba(0,0,0,0.12)",
-    paddingVertical: 8,
+    paddingVertical: 4,
   },
   timelineCardCompact: {
-    gap: 6,
+    gap: 5,
     borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 3,
   },
   playBtn: {
     backgroundColor: meetingTheme.navy,
@@ -329,10 +330,13 @@ const styles = StyleSheet.create({
   timelineCol: { flex: 1, minWidth: 0 },
   trackRow: {
     width: "100%",
-    justifyContent: "center",
   },
   trackLane: {
     width: "100%",
+    position: "relative",
+  },
+  trackCenter: {
+    ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
   },
   track: {
@@ -358,54 +362,53 @@ const styles = StyleSheet.create({
   thumb: {
     position: "absolute",
     backgroundColor: "#fff",
-    borderWidth: 2,
     shadowColor: "#000",
-    shadowOpacity: 0.18,
-    shadowRadius: 2,
+    shadowOpacity: 0.15,
+    shadowRadius: 1.5,
     shadowOffset: { width: 0, height: 1 },
     elevation: 2,
   },
   timeRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 3,
+    marginTop: 2,
     paddingHorizontal: 1,
   },
   timeText: {
     color: meetingTheme.text,
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "700",
     fontVariant: ["tabular-nums"],
   },
   timeMuted: {
     color: meetingTheme.textMuted,
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "600",
     fontVariant: ["tabular-nums"],
   },
   timeTextCompact: {
-    fontSize: 9,
+    fontSize: 8,
   },
   timeTextLight: {
     color: "#1a1a2e",
-    fontSize: 11,
+    fontSize: 9,
   },
   timeMutedLight: {
     color: "#5c6370",
-    fontSize: 11,
+    fontSize: 9,
   },
   expandBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: "rgba(0,0,0,0.06)",
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
   expandBtnCompact: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
   },
 });

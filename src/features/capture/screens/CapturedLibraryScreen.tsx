@@ -14,19 +14,36 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useAuth } from "../../auth/context/AuthContext";
 import { LockerViewerModal } from "../../dashboard/components/locker/LockerViewerModal";
 import {
+  ClipUploadPrepareModal,
+  type PreparedClipUpload,
+} from "../../dashboard/components/locker/ClipUploadPrepareModal";
+import {
   CapturedShareSheet,
   type CapturedShareTarget,
 } from "../components/CapturedShareSheet";
+import { CaptureQuickLabelModal } from "../components/CaptureQuickLabelModal";
+import { useInlineClipRecording } from "../useInlineClipRecording";
 import {
   getCapturedClips,
   deleteCapturedClip,
+  saveCapturedClip,
   type CapturedClip,
 } from "../capturedClipsStorage";
+import type * as ImagePicker from "expo-image-picker";
 import { floatingTabBarBottomInset } from "../../../navigation/FloatingTabBar";
 import type { CaptureStackParamList } from "../../../navigation/CaptureNavigator";
 import { FLASHLIST_PERF_DEFAULTS } from "../../../lib/lists/flatListPerf";
 import { haptics } from "../../../lib/haptics";
 import { colors, radii, space, typography } from "../../../theme";
+
+function defaultClipLabel(): string {
+  return `Clip ${new Date().toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
+}
 
 export function CapturedLibraryScreen() {
   const insets = useSafeAreaInsets();
@@ -38,6 +55,13 @@ export function CapturedLibraryScreen() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [viewerClip, setViewerClip] = useState<CapturedClip | null>(null);
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
+  const [prepareVisible, setPrepareVisible] = useState(false);
+  const [labelModalVisible, setLabelModalVisible] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [thumbUri, setThumbUri] = useState<string | null>(null);
+  const [thumbBusy, setThumbBusy] = useState(false);
+  const [pendingAsset, setPendingAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [defaultLabel, setDefaultLabel] = useState(defaultClipLabel());
 
   const load = useCallback(async () => {
     const c = await getCapturedClips(userId);
@@ -56,10 +80,53 @@ export function CapturedLibraryScreen() {
 
   const canGoBack = navigation.canGoBack();
   const fabBottom = floatingTabBarBottomInset(insets.bottom) + 8;
-  const startRecording = () => {
-    haptics.tap();
-    navigation.navigate("CaptureCamera");
-  };
+
+  const onInlineCaptured = useCallback(
+    (capture: { asset: ImagePicker.ImagePickerAsset; thumbUri: string | null }) => {
+      setPendingAsset(capture.asset);
+      setThumbUri(capture.thumbUri);
+      setThumbBusy(false);
+      setDefaultLabel(defaultClipLabel());
+      setPrepareVisible(true);
+    },
+    []
+  );
+
+  const { startRecording, busy: recordingBusy } = useInlineClipRecording({
+    onCaptured: onInlineCaptured,
+  });
+
+  const saveLabeledClip = useCallback(
+    async (label: string) => {
+      if (!pendingAsset?.uri) return;
+      setSaving(true);
+      try {
+        const id = `capture_${Date.now()}`;
+        const durationSecs =
+          pendingAsset.duration != null ? Math.round(pendingAsset.duration) : undefined;
+        await saveCapturedClip(userId, {
+          id,
+          uri: pendingAsset.uri,
+          createdAt: new Date().toISOString(),
+          label,
+          durationSecs,
+          fileSizeBytes: pendingAsset.fileSize,
+          mimeType: pendingAsset.mimeType ?? "video/mp4",
+        });
+        setLabelModalVisible(false);
+        setPrepareVisible(false);
+        setPendingAsset(null);
+        setThumbUri(null);
+        haptics.success();
+        void load();
+      } catch {
+        Alert.alert("Error", "Could not save the clip. Please try again.");
+      } finally {
+        setSaving(false);
+      }
+    },
+    [load, pendingAsset, userId]
+  );
 
   const selectedClips = useMemo(
     () => clips.filter((c) => selected.has(c.id)),
@@ -174,13 +241,30 @@ export function CapturedLibraryScreen() {
             {isSelected && <Ionicons name="checkmark" size={12} color="#fff" />}
           </View>
         ) : (
-          <View style={styles.playBadge}>
-            <Ionicons name="play" size={14} color="#fff" />
-          </View>
+          <Pressable
+            style={styles.recordIconBtn}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              void startRecording();
+            }}
+            disabled={recordingBusy}
+            accessibilityRole="button"
+            accessibilityLabel="Record new clip"
+          >
+            <Ionicons name="videocam" size={18} color={colors.brandNavy} />
+          </Pressable>
         )}
-        <View style={styles.thumb}>
-          <Ionicons name="videocam" size={20} color="#94a3b8" />
-        </View>
+        <Pressable
+          style={styles.thumb}
+          onPress={() => {
+            if (selectMode) return;
+            haptics.tap();
+            setViewerClip(item);
+          }}
+          disabled={selectMode}
+        >
+          <Ionicons name="play" size={16} color="#fff" />
+        </Pressable>
         <View style={styles.clipMeta}>
           <Text style={styles.clipDate} numberOfLines={1}>
             {item.label?.trim() ||
@@ -281,9 +365,19 @@ export function CapturedLibraryScreen() {
 
       {clips.length === 0 ? (
         <View style={styles.empty}>
-          <Ionicons name="videocam-outline" size={48} color="#9ca3af" />
+          <Pressable
+            style={styles.emptyRecordBtn}
+            onPress={() => void startRecording()}
+            disabled={recordingBusy}
+            accessibilityRole="button"
+            accessibilityLabel="Record your first clip"
+          >
+            <Ionicons name="videocam-outline" size={32} color={colors.brandNavy} />
+          </Pressable>
           <Text style={styles.emptyTitle}>No captured clips yet</Text>
-          <Text style={styles.emptySub}>Tap the camera button below to record your first clip.</Text>
+          <Text style={styles.emptySub}>
+            Tap the camera on the left or the record button below to capture your first clip.
+          </Text>
         </View>
       ) : (
         <>
@@ -300,13 +394,47 @@ export function CapturedLibraryScreen() {
       )}
 
       <Pressable
-        style={[styles.fab, { bottom: fabBottom }]}
-        onPress={startRecording}
+        style={[styles.fab, { bottom: fabBottom, left: space.lg }]}
+        onPress={() => void startRecording()}
+        disabled={recordingBusy}
         accessibilityRole="button"
         accessibilityLabel="Record new clip"
       >
         <Ionicons name="videocam" size={28} color="#fff" />
       </Pressable>
+
+      <ClipUploadPrepareModal
+        visible={prepareVisible && !!pendingAsset}
+        video={pendingAsset}
+        thumbUri={thumbUri}
+        thumbBusy={thumbBusy}
+        onClose={() => {
+          setPrepareVisible(false);
+          setPendingAsset(null);
+          setThumbUri(null);
+        }}
+        onReplaceVideo={() => void startRecording()}
+        onThumbChange={setThumbUri}
+        onConfirm={({ video }: PreparedClipUpload) => {
+          setPendingAsset(video);
+          setPrepareVisible(false);
+          setLabelModalVisible(true);
+          haptics.success();
+        }}
+      />
+
+      <CaptureQuickLabelModal
+        visible={labelModalVisible}
+        defaultLabel={defaultLabel}
+        busy={saving}
+        onCancel={() => {
+          if (saving) return;
+          setLabelModalVisible(false);
+          setPendingAsset(null);
+          setThumbUri(null);
+        }}
+        onSave={(label) => void saveLabeledClip(label)}
+      />
 
       <LockerViewerModal
         visible={!!viewerClip && !selectMode}
@@ -424,11 +552,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   checkOn: { backgroundColor: colors.brandNavy, borderColor: colors.brandNavy },
-  playBadge: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.brandNavy,
+  recordIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#eff6ff",
+    borderWidth: 1,
+    borderColor: "#bfdbfe",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -445,16 +575,25 @@ const styles = StyleSheet.create({
   clipDur: { fontSize: 12, color: "#6b7280", marginTop: 2 },
   empty: {
     flex: 1,
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "center",
     gap: space.md,
     padding: space.xl,
+  },
+  emptyRecordBtn: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#eff6ff",
+    borderWidth: 2,
+    borderColor: "#bfdbfe",
+    alignItems: "center",
+    justifyContent: "center",
   },
   emptyTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
   emptySub: { fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20 },
   fab: {
     position: "absolute",
-    alignSelf: "center",
     width: 64,
     height: 64,
     borderRadius: 32,

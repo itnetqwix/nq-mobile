@@ -641,22 +641,28 @@ function MeetingSurface({
   }, [partnerInSession]);
 
   /** Re-announce join + refresh presence when partner/video is slow to connect. */
+  const bothJoinedRef = useRef(bothJoined);
+  const remoteStreamRef = useRef(remoteStream);
+  const statusRef = useRef(status);
+  const lastMediaRecoverAtRef = useRef(0);
+  bothJoinedRef.current = bothJoined;
+  remoteStreamRef.current = remoteStream;
+  statusRef.current = status;
+
   useEffect(() => {
-    if (bothJoined && remoteStream) return;
-    const delayMs = partnerInSession ? 5000 : 9000;
+    const delayMs = 20_000;
     const timer = setTimeout(() => {
+      if (bothJoinedRef.current && remoteStreamRef.current) return;
+      const st = statusRef.current;
+      if (st === "failed" || st === "ended" || st === "idle" || st === "preparing") return;
+      const now = Date.now();
+      if (now - lastMediaRecoverAtRef.current < 25_000) return;
+      lastMediaRecoverAtRef.current = now;
       recoverConnection();
       socket?.emit("LESSON_STATE_REQUEST", { sessionId: lessonId });
     }, delayMs);
     return () => clearTimeout(timer);
-  }, [
-    bothJoined,
-    remoteStream,
-    partnerInSession,
-    recoverConnection,
-    socket,
-    lessonId,
-  ]);
+  }, [lessonId, partnerInSession, recoverConnection, socket]);
 
   const bothUsersForTimer =
     presence.trainerConnected != null && presence.traineeConnected != null

@@ -690,13 +690,13 @@
     "semantic_hash": ""
   },
   "src/features/calling/CallContext.tsx": {
-    "mtime": 1781498437.5949256,
-    "ast_hash": "e9a146dbc254940729961f20247d58fc",
+    "mtime": 1781505997.685721,
+    "ast_hash": "bd0a0834fd8b5e6faa1859e372345fe5",
     "semantic_hash": ""
   },
   "src/features/calling/NativeCallEngine.ts": {
-    "mtime": 1781498437.572529,
-    "ast_hash": "456fc28e061ae4550086dcf80a1a36bf",
+    "mtime": 1781506019.85328,
+    "ast_hash": "5da15a7e23872e08fc725c91d6538a0b",
     "semantic_hash": ""
   },
   "src/features/calling/__tests__/reportDataUtils.test.ts": {
@@ -1100,8 +1100,8 @@
     "semantic_hash": "b5981c471e18fbfc2952fda39dbae679"
   },
   "src/features/calling/iceServers.ts": {
-    "mtime": 1781444249.2627244,
-    "ast_hash": "07e97dec9d4ff8b1cd700929e2a9b296",
+    "mtime": 1781505944.962409,
+    "ast_hash": "b3685b66914abeb4ddc3b05b67b0b6b9",
     "semantic_hash": ""
   },
   "src/features/calling/instantLessonRecordingCapture.ts": {
@@ -1195,8 +1195,8 @@
     "semantic_hash": "806f6c977ce3955f42cdad76e91901c3"
   },
   "src/features/calling/screens/NativeMeetingScreen.tsx": {
-    "mtime": 1781498437.5000453,
-    "ast_hash": "b8d43616ad2ab8dc6a7a1d87f30b0f3c",
+    "mtime": 1781506001.2544205,
+    "ast_hash": "2a6d81cae08e9b4f73fdd71110bbaa57",
     "semantic_hash": ""
   },
   "src/features/calling/screens/PrecallLobbyScreen.tsx": {
@@ -8410,8 +8410,8 @@
     "semantic_hash": ""
   },
   "src/features/capture/screens/CapturedLibraryScreen.tsx": {
-    "mtime": 1781461981.1219618,
-    "ast_hash": "3cad51e2a35f79d1c2ab03f68d355cc6",
+    "mtime": 1781505979.2782807,
+    "ast_hash": "04ee087d8ec06dd97bc3859f7217ba29",
     "semantic_hash": ""
   },
   "src/features/dashboard/components/shared/MiniFriendsSection.tsx": {
@@ -8777,6 +8777,11 @@
   "src/navigation/HapticTabBarButton.tsx": {
     "mtime": 1781498664.4792895,
     "ast_hash": "8a255e603d49f46789e91fd6e82eda84",
+    "semantic_hash": ""
+  },
+  "src/features/capture/useInlineClipRecording.ts": {
+    "mtime": 1781505937.2818027,
+    "ast_hash": "f4f57b88a53f8d3e6bb9f49f1142931a",
     "semantic_hash": ""
   }
 }
