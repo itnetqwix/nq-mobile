@@ -39,7 +39,7 @@ export type ShellSurfaceMeta = {
 export const SHELL_SURFACES: readonly ShellSurfaceMeta[] = [
   {
     id: "clips",
-    title: "Clips",
+    title: "Videos",
     subtitle: "Locker videos grouped by category (and trainee clips for trainers).",
     webContext: "Left sidebar → My Uploads → My clips / Enthusiasts (`FileSection`).",
     allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
@@ -51,7 +51,7 @@ export const SHELL_SURFACES: readonly ShellSurfaceMeta[] = [
       "Track the status of every clip you've submitted to the NetQwix master library.",
     webContext:
       "Mobile-only tracker. Backend: `GET /clips/library-submissions/mine`.",
-    allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],
+    allowedRoles: [AccountType.TRAINER],
   },
   {
     id: "gamePlans",

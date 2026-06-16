@@ -236,6 +236,8 @@
   "locker": {
     "myClips": "My clips",
     "sharedClips": "Shared clips",
+    "sharedWithYou": "Shared with you",
+    "myUploadsSection": "My uploads",
     "sharedBy": "Shared by {{name}}",
     "noClips": "No clips yet",
     "noClipsDescription": "Upload a clip here or add videos from the web locker — they appear by category.",

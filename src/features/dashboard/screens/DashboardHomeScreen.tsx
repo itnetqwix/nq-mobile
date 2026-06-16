@@ -784,6 +784,8 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
           onPressProfile={() => openShell("editProfile")}
           onPressReviews={() => openShell("trainerReviews")}
           showSearch={false}
+          showAsOnline={showAsOnline}
+          onAvailabilityToggle={handleAvailabilityToggle}
         />
         <MorphRefreshHeader {...morphHome.headerProps} />
         <ScrollView

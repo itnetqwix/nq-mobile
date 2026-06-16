@@ -39,9 +39,11 @@ type Props = {
   onToggle: (next: boolean) => Promise<void>;
   /** Flush inside a parent card (no outer margin / radius). */
   embedded?: boolean;
+  /** Small header row: dot + label + switch (~40px). */
+  compact?: boolean;
 };
 
-export function TrainerOnlineToggle({ value, onToggle, embedded }: Props) {
+export function TrainerOnlineToggle({ value, onToggle, embedded, compact }: Props) {
   const [displayOnline, setDisplayOnline] = useState(value);
   const [syncing, setSyncing] = useState(false);
   const pulse = useRef(new Animated.Value(1)).current;
@@ -129,6 +131,43 @@ export function TrainerOnlineToggle({ value, onToggle, embedded }: Props) {
     inputRange: [0, 1],
     outputRange: [OFFLINE.dot, ONLINE.dot],
   });
+
+  if (compact) {
+    return (
+      <View
+        style={styles.compactRow}
+        accessibilityRole="switch"
+        accessibilityState={{ checked: displayOnline, busy: syncing }}
+        accessibilityLabel={
+          displayOnline ? "You are shown as online" : "You are shown as offline"
+        }
+      >
+        <Animated.View style={[styles.compactDot, { backgroundColor: dotColor }]} />
+        <Pressable
+          style={styles.compactLabelWrap}
+          onPress={() => handleChange(!displayOnline)}
+          disabled={syncing}
+        >
+          <Text style={styles.compactLabel} numberOfLines={1}>
+            {displayOnline ? "Online" : "Offline"}
+          </Text>
+        </Pressable>
+        {syncing ? (
+          <ActivityIndicator size="small" color={displayOnline ? ONLINE.dot : OFFLINE.dot} />
+        ) : (
+          <Switch
+            value={displayOnline}
+            onValueChange={handleChange}
+            disabled={syncing}
+            trackColor={{ false: OFFLINE.switchTrack, true: ONLINE.switchTrack }}
+            thumbColor="#fff"
+            ios_backgroundColor={displayOnline ? ONLINE.switchTrack : OFFLINE.switchTrack}
+            style={styles.compactSwitch}
+          />
+        )}
+      </View>
+    );
+  }
 
   return (
     <Animated.View
@@ -292,5 +331,30 @@ const styles = StyleSheet.create({
   switch: {
     transform: Platform.OS === "ios" ? [{ scaleX: 0.92 }, { scaleY: 0.92 }] : [],
     margin: Platform.OS === "ios" ? -2 : 0,
+  },
+  compactRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    minHeight: 40,
+    paddingHorizontal: 2,
+  },
+  compactDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  compactLabelWrap: {
+    flexShrink: 1,
+    marginRight: 2,
+  },
+  compactLabel: {
+    ...typography.caption,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  compactSwitch: {
+    transform: Platform.OS === "ios" ? [{ scaleX: 0.82 }, { scaleY: 0.82 }] : [],
+    marginLeft: "auto" as const,
   },
 });

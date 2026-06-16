@@ -28,7 +28,7 @@ import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { lockerMutated } from "../../../store/actions/cacheInvalidation";
 import { useAppDispatch } from "../../../store/hooks";
 import { LockerListShell } from "../components/locker/LockerListShell";
-import { LockerViewerModal, type LockerViewerMode } from "../components/locker/LockerViewerModal";
+import { LockerViewerModal, type LockerViewerMode, type LockerViewerPlaylistItem } from "../components/locker/LockerViewerModal";
 import { ClipUploadModal } from "../components/locker/ClipUploadModal";
 import { LibrarySubmissionSheet } from "../../clips/components/LibrarySubmissionSheet";
 import { ClipShareFriendsModal } from "../../clips/components/ClipShareFriendsModal";
@@ -37,8 +37,44 @@ import { queryKeys } from "../../../lib/queryKeys";
 import { dedupeClipsById } from "../../../lib/lists/clipListUtils";
 import { ClipShareInboxBanner } from "../../clips/components/ClipShareInboxBanner";
 import { shareClipExternally } from "../../clips/lib/shareClipExternally";
+import { SharedClipInfoSheet } from "../../clips/components/SharedClipInfoSheet";
+import { useAuth } from "../../auth/context/AuthContext";
+import { AccountType } from "../../../constants/accountType";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { HomeStackParamList } from "../../../navigation/types";
 
-type ClipTab = "mine" | "shared" | "library";
+type ClipTab = "mine" | "library";
+
+function isSharedClip(clip: Record<string, unknown>): boolean {
+  return !!(clip.shared_from_user_id ?? (clip as any).sharedFromUserId);
+}
+
+function flattenNestedGroups(groups: NestedCategoryGroup[]): LockerClip[] {
+  return groups.flatMap((group) =>
+    group.subcategories.flatMap((sub) => dedupeClipsById(sub.clips))
+  );
+}
+
+function clipToPlaylistItem(
+  clip: Record<string, unknown>,
+  t: (key: string, opts?: Record<string, unknown>) => string
+): LockerViewerPlaylistItem | null {
+  const uri = getClipPlaybackUrl(clip);
+  if (!uri) return null;
+  const sharer = clip.sharer as Record<string, unknown> | undefined;
+  const sharerName = sharer?.fullname ?? sharer?.fullName ?? clip.shared_by_name ?? null;
+  const clipId = String(clip._id ?? "");
+  const isSharedCopy = isSharedClip(clip);
+  return {
+    uri,
+    title: String(clip?.title ?? clip?.file_name ?? t("locker.clipDefault")),
+    mode: "video",
+    sharedBy: sharerName ? String(sharerName) : undefined,
+    clipId: clipId || undefined,
+    canRemove: isSharedCopy && !!clipId,
+  };
+}
 
 function CategorySection({
   title,
@@ -193,9 +229,12 @@ function libraryStatusChip(status: string, t: (k: string) => string): string | n
 
 export function ClipsScreen() {
   const { t } = useAppTranslation();
+  const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
   const queryClient = useQueryClient();
   const dispatch = useAppDispatch();
   const c = useThemeColors();
+  const { accountType } = useAuth();
+  const isTrainer = accountType === AccountType.TRAINER;
   const [removingClipId, setRemovingClipId] = useState<string | null>(null);
   const [tab, setTab] = useState<ClipTab>("mine");
   const [uploadVisible, setUploadVisible] = useState(false);
@@ -204,6 +243,8 @@ export function ClipsScreen() {
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [friendShareClipIds, setFriendShareClipIds] = useState<string[]>([]);
   const [librarySheetClip, setLibrarySheetClip] = useState<LockerClip | null>(null);
+  const [sharedInfoClip, setSharedInfoClip] = useState<LockerClip | null>(null);
+  const [viewerIndex, setViewerIndex] = useState(0);
   const [viewer, setViewer] = useState<{
     uri: string;
     title: string;
@@ -318,6 +359,19 @@ export function ClipsScreen() {
         alignItems: "center",
         justifyContent: "center",
       },
+      sectionHeading: {
+        ...typography.titleSm,
+        color: palette.text,
+        fontWeight: "700",
+        marginTop: space.sm,
+        marginBottom: space.xs,
+        paddingHorizontal: space.xs,
+      },
+      rowActions: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+      },
     })
   );
 
@@ -349,7 +403,7 @@ export function ClipsScreen() {
   const sharedQ = useQuery({
     queryKey: queryKeys.locker.sharedClips,
     queryFn: () => postSharedClipsGrouped(),
-    enabled: tab === "shared",
+    enabled: tab === "mine",
     staleTime: 30_000,
   });
 
@@ -360,7 +414,17 @@ export function ClipsScreen() {
     staleTime: 30_000,
   });
 
-  const active = tab === "mine" ? myQ : tab === "shared" ? sharedQ : libraryQ;
+  const active =
+    tab === "library"
+      ? libraryQ
+      : {
+          ...myQ,
+          isLoading: myQ.isLoading || sharedQ.isLoading,
+          isError: myQ.isError || sharedQ.isError,
+          error: myQ.error ?? sharedQ.error,
+          isRefetching: myQ.isRefetching || sharedQ.isRefetching,
+          refetch: () => Promise.all([myQ.refetch(), sharedQ.refetch()]),
+        };
 
   const onRefresh = useCallback(() => {
     void myQ.refetch();
@@ -409,9 +473,9 @@ export function ClipsScreen() {
     const sharerName =
       sharer?.fullname ?? sharer?.fullName ?? clip.shared_by_name ?? null;
     const clipId = String(clip._id ?? "");
-    const isSharedCopy =
-      tab === "shared" ||
-      !!(clip.shared_from_user_id ?? (clip as any).sharedFromUserId);
+    const isSharedCopy = isSharedClip(clip);
+    const idx = tabPlaylist.findIndex((row) => String(row._id ?? "") === clipId);
+    setViewerIndex(idx >= 0 ? idx : 0);
     setViewer({
       uri,
       title: String(clip?.title ?? clip?.file_name ?? t("locker.clipDefault")),
@@ -440,14 +504,6 @@ export function ClipsScreen() {
             </Text>
           </Pressable>
           <Pressable
-            style={[styles.segBtn, tab === "shared" && styles.segBtnOn]}
-            onPress={() => setTab("shared")}
-          >
-            <Text style={[styles.segLabel, tab === "shared" && styles.segLabelOn]}>
-              {t("locker.sharedClips")}
-            </Text>
-          </Pressable>
-          <Pressable
             style={[styles.segBtn, tab === "library" && styles.segBtnOn]}
             onPress={() => setTab("library")}
           >
@@ -458,6 +514,20 @@ export function ClipsScreen() {
         </ScrollView>
         {tab === "mine" ? (
           <>
+            {isTrainer ? (
+              <Pressable
+                style={({ pressed }) => [styles.shareModeBtn, pressed && { opacity: 0.88 }]}
+                onPress={() =>
+                  navigation.navigate("ShellSurface", { surfaceId: "clipSubmissions" })
+                }
+                accessibilityRole="button"
+                accessibilityLabel={t("locker.librarySubmissionsA11y", {
+                  defaultValue: "My library submissions",
+                })}
+              >
+                <Ionicons name="document-text-outline" size={20} color={c.brandNavy} />
+              </Pressable>
+            ) : null}
             <Pressable
               style={({ pressed }) => [styles.shareModeBtn, pressed && { opacity: 0.88 }]}
               onPress={() => {
@@ -485,38 +555,43 @@ export function ClipsScreen() {
         ) : null}
       </View>
     ),
-    [tab, styles, c, t, shareMode, exitShareMode]
+    [tab, styles, c, t, shareMode, exitShareMode, isTrainer, navigation]
   );
 
   const renderClipRow = (
     clip: LockerClip,
     key: string,
-    opts?: { showSharer?: boolean; showLibraryActions?: boolean; showRemoveAction?: boolean }
+    opts?: { showLibraryActions?: boolean; showRemoveAction?: boolean }
   ) => {
+    const isSharedCopy = isSharedClip(clip as Record<string, unknown>);
     const thumb = getClipThumbnailUrl(clip);
     const sub = clip.librarySubmission;
     const statusText = sub?.status ? libraryStatusChip(sub.status, t) : null;
     const canRequestLibrary =
       opts?.showLibraryActions &&
+      isTrainer &&
+      !isSharedCopy &&
       (!sub || sub.status === "rejected") &&
       sub?.status !== "accepted";
+    const showSharedInfo = tab === "mine" && isSharedCopy;
 
     const clipId = String(clip._id ?? "");
-    const isSelected = shareMode && tab === "mine" && !!selectedClipIds[clipId];
+    const canSelectInShareMode = shareMode && tab === "mine" && !!clipId && !isSharedCopy;
+    const isSelected = canSelectInShareMode && !!selectedClipIds[clipId];
 
     return (
       <Pressable
         key={key}
         style={styles.clipCard}
         onPress={() => {
-          if (shareMode && tab === "mine" && clipId) {
+          if (canSelectInShareMode) {
             toggleClipSelect(clipId);
             return;
           }
           openClip(clip);
         }}
         onLongPress={
-          tab === "mine" && clipId
+          tab === "mine" && clipId && !isSharedCopy
             ? () => {
                 if (!shareMode) setShareMode(true);
                 toggleClipSelect(clipId);
@@ -524,7 +599,7 @@ export function ClipsScreen() {
             : undefined
         }
       >
-        {shareMode && tab === "mine" && clipId ? (
+        {canSelectInShareMode ? (
           <View style={[styles.selectMark, isSelected && styles.selectMarkOn]}>
             {isSelected ? (
               <Ionicons name="checkmark" size={14} color={c.brandNavy} />
@@ -551,60 +626,71 @@ export function ClipsScreen() {
           <Text style={styles.clipTitle} numberOfLines={2}>
             {String(clip.title ?? clip.file_name ?? t("locker.clipDefault"))}
           </Text>
-          {opts?.showSharer ? (
-            <Text style={styles.clipDate} numberOfLines={1}>
-              {t("locker.sharedBy", {
-                name: String(
-                  (clip.sharer as any)?.fullname ??
-                    (clip.sharer as any)?.fullName ??
-                    t("locker.friendDefault")
-                ),
-              })}
-            </Text>
-          ) : null}
           {statusText ? (
             <View style={styles.libChip}>
               <Text style={styles.libChipText}>{statusText}</Text>
             </View>
           ) : null}
-          {clip.createdAt || clip.shared_at ? (
+          {!isSharedCopy && clip.createdAt ? (
             <Text style={styles.clipDate}>
-              {new Date(String(clip.shared_at ?? clip.createdAt)).toLocaleDateString()}
+              {new Date(String(clip.createdAt)).toLocaleDateString()}
             </Text>
           ) : null}
         </View>
-        {opts?.showRemoveAction && clipId ? (
-          <Pressable
-            style={styles.libAction}
-            onPress={(e) => {
-              e.stopPropagation?.();
-              confirmRemoveSharedClip(clip);
-            }}
-            hitSlop={8}
-            disabled={removingClipId === clipId}
-            accessibilityRole="button"
-            accessibilityLabel={t("locker.removeSharedClip")}
-          >
-            {removingClipId === clipId ? (
-              <ActivityIndicator size="small" color={c.brandNavy} />
-            ) : (
-              <Ionicons name="trash-outline" size={20} color={c.danger} />
-            )}
-          </Pressable>
-        ) : canRequestLibrary ? (
-          <Pressable
-            style={styles.libAction}
-            onPress={(e) => {
-              e.stopPropagation?.();
-              setLibrarySheetClip(clip);
-            }}
-            hitSlop={8}
-          >
-            <Ionicons name="library-outline" size={20} color={c.brandNavy} />
-          </Pressable>
-        ) : (
-          <Ionicons name="chevron-forward" size={18} color={c.textMuted} />
-        )}
+        <View style={styles.rowActions}>
+          {showSharedInfo ? (
+            <Pressable
+              style={styles.libAction}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                setSharedInfoClip(clip);
+              }}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t("locker.sharedClipInfoA11y", {
+                defaultValue: "Shared clip info",
+              })}
+            >
+              <Ionicons
+                name="information-circle-outline"
+                size={20}
+                color={c.brandNavy}
+              />
+            </Pressable>
+          ) : null}
+          {opts?.showRemoveAction && clipId ? (
+            <Pressable
+              style={styles.libAction}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                confirmRemoveSharedClip(clip);
+              }}
+              hitSlop={8}
+              disabled={removingClipId === clipId}
+              accessibilityRole="button"
+              accessibilityLabel={t("locker.removeSharedClip")}
+            >
+              {removingClipId === clipId ? (
+                <ActivityIndicator size="small" color={c.brandNavy} />
+              ) : (
+                <Ionicons name="trash-outline" size={20} color={c.danger} />
+              )}
+            </Pressable>
+          ) : canRequestLibrary ? (
+            <Pressable
+              style={styles.libAction}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                setLibrarySheetClip(clip);
+              }}
+              hitSlop={8}
+            >
+              <Ionicons name="library-outline" size={20} color={c.brandNavy} />
+            </Pressable>
+          ) : !showSharedInfo ? (
+            <Ionicons name="chevron-forward" size={18} color={c.textMuted} />
+          ) : null}
+        </View>
       </Pressable>
     );
   };
@@ -612,6 +698,27 @@ export function ClipsScreen() {
   const myGroups = (myQ.data ?? []) as NestedCategoryGroup[];
   const sharedGroups = (sharedQ.data ?? []) as SharedClipsGroup[];
   const libraryGroups = (libraryQ.data ?? []) as NestedCategoryGroup[];
+
+  const sharedClipsFlat = useMemo(() => {
+    const all = sharedGroups.flatMap((grp) => dedupeClipsById(grp.clips));
+    return dedupeClipsById(all);
+  }, [sharedGroups]);
+
+  const tabPlaylist = useMemo(() => {
+    if (tab === "mine") {
+      return [...sharedClipsFlat, ...flattenNestedGroups(myGroups)];
+    }
+    if (tab === "library") return flattenNestedGroups(libraryGroups);
+    return [];
+  }, [tab, myGroups, libraryGroups, sharedClipsFlat]);
+
+  const viewerPlaylist = useMemo(
+    () =>
+      tabPlaylist
+        .map((clip) => clipToPlaylistItem(clip as Record<string, unknown>, t))
+        .filter((item): item is LockerViewerPlaylistItem => item != null),
+    [tabPlaylist, t]
+  );
 
   return (
     <>
@@ -677,7 +784,40 @@ export function ClipsScreen() {
 
         {tab === "mine" && (
           <>
-            {myGroups.length === 0 ? (
+            <ClipShareInboxBanner
+              onAccepted={() => {
+                void sharedQ.refetch();
+              }}
+            />
+
+            {sharedClipsFlat.length > 0 ? (
+              <CategorySection
+                title={t("locker.sharedWithYou")}
+                count={sharedClipsFlat.length}
+                defaultOpen
+              >
+                {sharedClipsFlat.map((clip, i) =>
+                  renderClipRow(clip, `shared-flat-${String(clip._id ?? i)}`, {
+                    showRemoveAction: true,
+                  })
+                )}
+              </CategorySection>
+            ) : null}
+
+            {myGroups.length > 0 ? (
+              <>
+                {sharedClipsFlat.length > 0 ? (
+                  <Text style={styles.sectionHeading}>{t("locker.myUploadsSection")}</Text>
+                ) : null}
+                <NestedTaxonomySections
+                  groups={myGroups}
+                  uncategorizedLabel={t("locker.uncategorized")}
+                  renderClipRow={(clip, key) =>
+                    renderClipRow(clip, key, { showLibraryActions: isTrainer })
+                  }
+                />
+              </>
+            ) : sharedClipsFlat.length === 0 ? (
               <EmptyState
                 icon="film-outline"
                 title={t("locker.noClips")}
@@ -685,51 +825,7 @@ export function ClipsScreen() {
                 actionLabel={t("locker.uploadClip")}
                 onAction={() => setUploadVisible(true)}
               />
-            ) : (
-              <NestedTaxonomySections
-                groups={myGroups}
-                uncategorizedLabel={t("locker.uncategorized")}
-                renderClipRow={(clip, key) =>
-                  renderClipRow(clip, key, { showLibraryActions: true })
-                }
-              />
-            )}
-          </>
-        )}
-
-        {tab === "shared" && (
-          <>
-            <ClipShareInboxBanner
-              onAccepted={() => {
-                void sharedQ.refetch();
-              }}
-            />
-            {sharedGroups.length === 0 ? (
-              <EmptyState
-                icon="share-social-outline"
-                title={t("locker.noShared")}
-                description={t("locker.noSharedDescription")}
-              />
-            ) : (
-              sharedGroups.map((grp, i) => {
-                const clips = dedupeClipsById(grp.clips);
-                return (
-                  <CategorySection
-                    key={`shared-${grp.sharerId ?? i}`}
-                    title={grp.sharerName || t("locker.friendDefault")}
-                    count={clips.length}
-                    defaultOpen={i === 0}
-                  >
-                    {clips.map((clip, ci) =>
-                      renderClipRow(clip, `shared-${i}-${String(clip._id ?? ci)}`, {
-                        showSharer: true,
-                        showRemoveAction: true,
-                      })
-                    )}
-                  </CategorySection>
-                );
-              })
-            )}
+            ) : null}
           </>
         )}
 
@@ -760,8 +856,11 @@ export function ClipsScreen() {
         mode={viewer?.mode ?? "video"}
         sharedBy={viewer?.sharedBy}
         clipId={viewer?.clipId}
+        playlist={viewerPlaylist}
+        initialIndex={viewerIndex}
+        onIndexChange={setViewerIndex}
         onShareFriends={
-          viewer?.clipId
+          viewer?.clipId && !viewer.canRemove
             ? () => {
                 const clipId = viewer.clipId!;
                 setViewer(null);
@@ -861,6 +960,12 @@ export function ClipsScreen() {
         onSubmitted={() => {
           void queryClient.invalidateQueries({ queryKey: queryKeys.locker.myClips });
         }}
+      />
+
+      <SharedClipInfoSheet
+        visible={!!sharedInfoClip}
+        clip={sharedInfoClip}
+        onClose={() => setSharedInfoClip(null)}
       />
     </>
   );

@@ -33,6 +33,19 @@ import {
   isValidSocialUrl,
 } from "../../../lib/social/socialLinks";
 
+const HOURLY_RATE_MIN = 10;
+const HOURLY_RATE_MAX = 999;
+
+function resolveHourlyRateFromUser(user: Record<string, unknown> | null | undefined): string {
+  if (!user) return "";
+  const extra = user.extraInfo as Record<string, unknown> | undefined;
+  const fromExtra = extra?.hourly_rate;
+  const fromRoot = user.hourly_rate;
+  const raw = fromExtra ?? fromRoot;
+  if (raw == null || raw === "") return "";
+  return String(raw);
+}
+
 export function EditProfileScreen() {
   const { t } = useAppTranslation();
   const c = useThemeColors();
@@ -165,7 +178,7 @@ export function EditProfileScreen() {
       fullname: (user?.fullname as string) || (user?.fullName as string) || "",
       bio: (user?.bio as string) || "",
       mobile_no: (user?.mobile_no as string) || "",
-      hourly_rate: ((user as any)?.extraInfo?.hourly_rate as string) || "",
+      hourly_rate: resolveHourlyRateFromUser(user as Record<string, unknown> | null),
     }),
     [user]
   );
@@ -254,8 +267,28 @@ export function EditProfileScreen() {
           },
         },
       };
-      if (isTrainer && hourlyRate) {
-        profile.hourly_rate = hourlyRate.trim();
+      if (isTrainer) {
+        const trimmed = hourlyRate.trim();
+        if (trimmed) {
+          const parsed = Number(trimmed);
+          if (!Number.isFinite(parsed) || parsed < HOURLY_RATE_MIN || parsed > HOURLY_RATE_MAX) {
+            Alert.alert(
+              t("profile.saveFailedTitle"),
+              t("profile.hourlyRateRange", {
+                defaultValue: `Hourly rate must be between $${HOURLY_RATE_MIN} and $${HOURLY_RATE_MAX}.`,
+                min: HOURLY_RATE_MIN,
+                max: HOURLY_RATE_MAX,
+              })
+            );
+            setBusy(false);
+            return;
+          }
+          profile.extraInfo = {
+            ...profile.extraInfo,
+            hourly_rate: parsed,
+          };
+          profile.hourly_rate = String(parsed);
+        }
       }
       await putProfile(isTrainer ? "Trainer" : "Trainee", profile);
       if (mobile.trim() && mobile.trim() !== initial.mobile_no) {

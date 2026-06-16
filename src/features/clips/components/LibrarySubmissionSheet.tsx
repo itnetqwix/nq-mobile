@@ -72,7 +72,10 @@ export function LibrarySubmissionSheet({ visible, clip, onClose, onSubmitted }: 
   const subcategories = selectedCategory?.subcategories ?? [];
 
   const submission = clip?.librarySubmission;
-  const canRequest = !submission || submission.status === "rejected";
+  const canRequest =
+    isTrainer &&
+    (!submission || submission.status === "rejected") &&
+    submission?.status !== "accepted";
 
   const clipTitle = String(clip?.title ?? clip?.file_name ?? t("locker.clipDefault"));
 

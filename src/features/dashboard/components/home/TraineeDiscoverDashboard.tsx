@@ -31,7 +31,7 @@ import {
   TRAINEE_COACH_PREVIEW_COUNT,
 } from "../../lib/traineeDiscoverConstants";
 import { sortTrainersForDiscover } from "../../lib/sortTrainersForDiscover";
-import { PastBookedTrainersSection } from "./PastBookedTrainersSection";
+import { RecentExpertsSection } from "./RecentExpertsSection";
 import { GuestSeededCoachesSection } from "./GuestSeededCoachesSection";
 import { useRecentlyViewedTrainers } from "../../hooks/useRecentlyViewedTrainers";
 import { ContinueWhereYouLeftOffCard } from "../trainee/ContinueWhereYouLeftOffCard";
@@ -346,7 +346,7 @@ export function TraineeDiscoverDashboard({
         />
       ) : null}
 
-      {!isGuest ? <PastBookedTrainersSection onSelectTrainer={handleViewTrainer} /> : null}
+      {!isGuest ? <RecentExpertsSection onSelectTrainer={handleViewTrainer} /> : null}
 
       {isGuest ? (
         <GuestSeededCoachesSection onSelectTrainer={handleViewTrainer} />

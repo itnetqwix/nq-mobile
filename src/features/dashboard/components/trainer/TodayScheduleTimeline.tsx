@@ -10,21 +10,52 @@ type Props = {
   sessions: Record<string, unknown>[];
   onSessionPress: (session: Record<string, unknown>) => void;
   onSeeAll: () => void;
+  onOpenSchedule?: () => void;
+  scheduleHint?: string;
 };
 
-export function TodayScheduleTimeline({ sessions, onSessionPress, onSeeAll }: Props) {
+export function TodayScheduleTimeline({
+  sessions,
+  onSessionPress,
+  onSeeAll,
+  onOpenSchedule,
+  scheduleHint,
+}: Props) {
   const { t } = useAppTranslation();
   const styles = useStyles();
-  if (!sessions.length) return null;
+
+  const scheduleAction =
+    onOpenSchedule != null ? (
+      <Pressable onPress={onOpenSchedule} hitSlop={8}>
+        <Text style={styles.link}>{t("trainerDashboard.openSchedule")}</Text>
+      </Pressable>
+    ) : null;
+
+  if (!sessions.length) {
+    if (!onOpenSchedule) return null;
+    return (
+      <DashboardSection embedded title={t("trainerDashboard.todaySchedule")} action={scheduleAction}>
+        {scheduleHint ? (
+          <Pressable onPress={onOpenSchedule} style={styles.scheduleHintRow}>
+            <Text style={styles.scheduleHint} numberOfLines={2}>
+              {scheduleHint}
+            </Text>
+          </Pressable>
+        ) : null}
+      </DashboardSection>
+    );
+  }
 
   return (
     <DashboardSection
       embedded
       title={t("trainerDashboard.todaySchedule")}
       action={
-        <Pressable onPress={onSeeAll} hitSlop={8}>
-          <Text style={styles.link}>{t("trainerDashboard.seeAllSessions")}</Text>
-        </Pressable>
+        scheduleAction ?? (
+          <Pressable onPress={onSeeAll} hitSlop={8}>
+            <Text style={styles.link}>{t("trainerDashboard.seeAllSessions")}</Text>
+          </Pressable>
+        )
       }
     >
       <View style={styles.list}>
@@ -55,6 +86,14 @@ function useStyles() {
         gap: 0,
       },
       link: { ...typography.caption, color: palette.brandNavy, fontWeight: "700" },
+      scheduleHintRow: {
+        paddingVertical: space.sm,
+        paddingHorizontal: space.md,
+      },
+      scheduleHint: {
+        ...typography.caption,
+        color: palette.textSecondary,
+      },
     })
   );
 }

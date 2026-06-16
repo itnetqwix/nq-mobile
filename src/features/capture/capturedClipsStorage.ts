@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as VideoThumbnails from "expo-video-thumbnails";
 
 export type CapturedClip = {
   id: string;
@@ -8,6 +9,7 @@ export type CapturedClip = {
   durationSecs?: number;
   fileSizeBytes?: number;
   mimeType?: string;
+  thumbUri?: string;
 };
 
 const LEGACY_KEY = "@netqwix/captured_clips";
@@ -16,6 +18,13 @@ const PREFIX = "nq.capturedClips.";
 function storageKey(userId: string | null | undefined): string {
   if (!userId) return `${PREFIX}guest`;
   return `${PREFIX}user.${userId}`;
+}
+
+async function persistClips(
+  userId: string | null | undefined,
+  clips: CapturedClip[]
+): Promise<void> {
+  await AsyncStorage.setItem(storageKey(userId), JSON.stringify(clips));
 }
 
 export async function getCapturedClips(
@@ -43,7 +52,19 @@ export async function saveCapturedClip(
 ): Promise<void> {
   const existing = await getCapturedClips(userId);
   existing.unshift(clip);
-  await AsyncStorage.setItem(storageKey(userId), JSON.stringify(existing));
+  await persistClips(userId, existing);
+}
+
+export async function updateCapturedClip(
+  userId: string | null | undefined,
+  id: string,
+  patch: Partial<Omit<CapturedClip, "id">>
+): Promise<void> {
+  const existing = await getCapturedClips(userId);
+  const idx = existing.findIndex((c) => c.id === id);
+  if (idx < 0) return;
+  existing[idx] = { ...existing[idx]!, ...patch };
+  await persistClips(userId, existing);
 }
 
 export async function deleteCapturedClip(
@@ -52,5 +73,40 @@ export async function deleteCapturedClip(
 ): Promise<void> {
   const existing = await getCapturedClips(userId);
   const updated = existing.filter((c) => c.id !== id);
-  await AsyncStorage.setItem(storageKey(userId), JSON.stringify(updated));
+  await persistClips(userId, updated);
+}
+
+async function generateThumbUri(clip: CapturedClip): Promise<string | null> {
+  try {
+    const durationSec = clip.durationSecs ?? 2;
+    const timeMs = Math.min(60_000, Math.max(250, Math.floor((durationSec / 2) * 1000)));
+    const { uri } = await VideoThumbnails.getThumbnailAsync(clip.uri, {
+      time: timeMs,
+      quality: 0.85,
+    });
+    return uri;
+  } catch {
+    return null;
+  }
+}
+
+/** Backfill missing thumbnails for legacy clips (runs once per missing row). */
+export async function backfillCapturedClipThumbnails(
+  userId: string | null | undefined
+): Promise<CapturedClip[]> {
+  const clips = await getCapturedClips(userId);
+  let changed = false;
+  const next = [...clips];
+
+  for (let i = 0; i < next.length; i++) {
+    const clip = next[i]!;
+    if (clip.thumbUri) continue;
+    const thumbUri = await generateThumbUri(clip);
+    if (!thumbUri) continue;
+    next[i] = { ...clip, thumbUri };
+    changed = true;
+  }
+
+  if (changed) await persistClips(userId, next);
+  return next;
 }

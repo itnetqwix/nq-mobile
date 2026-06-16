@@ -1,6 +1,5 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "../../../../lib/queryKeys";
 import { fetchTrainerSlots } from "../../../home/api/homeApi";
@@ -69,7 +68,6 @@ function TrainerDashboardHubInner({
   marketplaceHeader = false,
 }: Props) {
   const { t } = useAppTranslation();
-  const c = useThemeColors();
   const theme = useThemedStyles((palette) => createTrainerDashboardStyles(palette));
   const { pendingSessions, todayTimeline } = useDashboardSessions(accountType);
 
@@ -97,35 +95,27 @@ function TrainerDashboardHubInner({
               <Text style={theme.role}>{t("trainerDashboard.roleTrainer")}</Text>
               <TrainerGreetingRating onPress={() => onOpenReviews?.()} />
             </View>
-            <Ionicons name="chevron-forward" size={20} color={c.textMuted} />
+            <TrainerOnlineToggle
+              compact
+              value={showAsOnline}
+              onToggle={onAvailabilityToggle}
+            />
           </Pressable>
         </View>
       ) : null}
 
       <PendingRequestsBanner count={pendingSessions.length} onPress={onOpenSessions} />
 
-      <View style={theme.card}>
-        <TrainerOnlineToggle
-          embedded
-          value={showAsOnline}
-          onToggle={onAvailabilityToggle}
-        />
-        <View style={theme.divider} />
-        <Pressable style={theme.scheduleRow} onPress={onOpenSchedule}>
-          <Ionicons name="calendar-outline" size={18} color={c.brandNavy} />
-          <Text style={theme.scheduleText}>
-            {nextSlot
-              ? t("trainerDashboard.nextSlot", { when: nextSlot })
-              : t("trainerDashboard.noSlots")}
-          </Text>
-          <Text style={theme.sectionLink}>{t("trainerDashboard.openSchedule")}</Text>
-        </Pressable>
-      </View>
-
       <TodayScheduleTimeline
         sessions={todayTimeline}
         onSessionPress={onSessionPress}
         onSeeAll={onOpenSessions}
+        onOpenSchedule={onOpenSchedule}
+        scheduleHint={
+          nextSlot
+            ? t("trainerDashboard.nextSlot", { when: nextSlot })
+            : t("trainerDashboard.noSlots")
+        }
       />
 
       {loadingFriendRequests ? (

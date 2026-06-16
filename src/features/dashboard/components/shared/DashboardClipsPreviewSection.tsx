@@ -11,7 +11,7 @@ import type { NestedCategoryGroup } from "../../../clips/api/clipsApi";
 import { radii, space, typography, useThemedStyles } from "../../../../theme";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
 import { DashboardSection } from "./DashboardSection";
-import { LockerViewerModal } from "../locker/LockerViewerModal";
+import { LockerViewerModal, type LockerViewerPlaylistItem } from "../locker/LockerViewerModal";
 
 const PREVIEW_COUNT = 9;
 const COLS = 3;
@@ -26,6 +26,7 @@ export function DashboardClipsPreviewSection({ onViewMore }: Props) {
   const { width: screenWidth } = useWindowDimensions();
   const cellWidth = Math.floor((screenWidth - space.md * 2 - space.sm * 2) / COLS);
   const thumbHeight = Math.round(cellWidth * 0.62);
+  const [viewerIndex, setViewerIndex] = useState(0);
   const [viewer, setViewer] = useState<{
     uri: string;
     title: string;
@@ -38,15 +39,31 @@ export function DashboardClipsPreviewSection({ onViewMore }: Props) {
     staleTime: 120_000,
   });
 
-  const clips = useMemo(() => {
+  const allClips = useMemo(() => {
     const groups = (data ?? []) as NestedCategoryGroup[];
-    return flattenNestedClipsForPicker(groups).slice(0, PREVIEW_COUNT);
+    return flattenNestedClipsForPicker(groups);
   }, [data]);
 
-  const totalCount = useMemo(() => {
-    const groups = (data ?? []) as NestedCategoryGroup[];
-    return flattenNestedClipsForPicker(groups).length;
-  }, [data]);
+  const clips = useMemo(() => allClips.slice(0, PREVIEW_COUNT), [allClips]);
+
+  const totalCount = allClips.length;
+
+  const previewPlaylist = useMemo<LockerViewerPlaylistItem[]>(
+    () =>
+      allClips
+        .map((clip) => {
+          const uri = getClipPlaybackUrl(clip);
+          if (!uri) return null;
+          return {
+            uri,
+            title: String(clip.title ?? clip.file_name ?? t("locker.clipDefault")),
+            clipId: clip._id != null ? String(clip._id) : undefined,
+            mode: "video" as const,
+          };
+        })
+        .filter((item): item is LockerViewerPlaylistItem => item != null),
+    [allClips, t]
+  );
 
   const openClip = (clip: Record<string, unknown>, title: string) => {
     const uri = getClipPlaybackUrl(clip);
@@ -54,10 +71,13 @@ export function DashboardClipsPreviewSection({ onViewMore }: Props) {
       onViewMore();
       return;
     }
+    const clipId = clip._id != null ? String(clip._id) : "";
+    const idx = allClips.findIndex((row) => String(row._id ?? "") === clipId);
+    setViewerIndex(idx >= 0 ? idx : 0);
     setViewer({
       uri,
       title,
-      clipId: clip._id != null ? String(clip._id) : undefined,
+      clipId: clipId || undefined,
     });
   };
 
@@ -176,6 +196,9 @@ export function DashboardClipsPreviewSection({ onViewMore }: Props) {
       title={viewer?.title}
       mode="video"
       clipId={viewer?.clipId}
+      playlist={previewPlaylist}
+      initialIndex={viewerIndex}
+      onIndexChange={setViewerIndex}
     />
     </>
   );

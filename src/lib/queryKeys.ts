@@ -95,6 +95,7 @@ export const queryKeys = {
   },
   clips: {
     taxonomy: ["clips", "taxonomy"] as const,
+    mySubmissions: ["clips", "mySubmissions"] as const,
   },
   storage: {
     all: ["storage"] as const,

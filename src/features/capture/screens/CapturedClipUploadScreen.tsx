@@ -20,13 +20,14 @@ function toInitialVideo(clip: CapturedClip): ClipUploadInitialVideo {
     mimeType: clip.mimeType ?? "video/mp4",
     title: clip.label,
     captureClipId: clip.id,
+    thumbUri: clip.thumbUri,
   };
 }
 
 export function CapturedClipUploadScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<CaptureStackParamList>>();
   const route = useRoute<UploadRoute>();
-  const { clips, shareTarget = "my-clips", showPrepareStep = true } = route.params;
+  const { clips, shareTarget = "my-clips", showPrepareStep = true, friendIds } = route.params;
 
   const initialVideos = useMemo(() => clips.map(toInitialVideo), [clips]);
   const initialVideo = initialVideos.length === 1 ? initialVideos[0]! : null;
@@ -36,11 +37,12 @@ export function CapturedClipUploadScreen() {
     <ClipUploadModal
       visible
       renderAsScreen
-      showPrepareStep={showPrepareStep && initialVideos.length === 1}
+      showPrepareStep={showPrepareStep && initialVideos.length === 1 && !initialVideo?.thumbUri}
       initialVideo={initialVideo}
       initialVideos={initialVideos.length > 1 ? initialVideos : []}
       defaultShareTarget={wireTarget}
       captureClipId={initialVideo?.captureClipId ?? null}
+      initialSelectedFriendIds={friendIds}
       onBack={() => navigation.goBack()}
       onClose={() => navigation.goBack()}
       onUploaded={() => navigation.goBack()}

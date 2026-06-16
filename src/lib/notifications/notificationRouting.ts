@@ -87,7 +87,7 @@ export function buildNotificationRoute(item: {
   if (title.includes("friend")) {
     return { kind: "feature", featureId: "friends" };
   }
-  if (title.includes("clip")) {
+  if (title.includes("clip") || title.includes("video")) {
     return { kind: "shell", surfaceId: "clips" };
   }
   if (title.includes("plan")) {

@@ -37,6 +37,7 @@ import {
 import { apiClient } from "../../../../api/client";
 import { API_ROUTES } from "../../../../config/apiRoutes";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
+import { floatingTabBarBottomInset } from "../../../../navigation/FloatingTabBar";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
 import { haptics } from "../../../../lib/haptics";
 import {
@@ -68,6 +69,7 @@ export type ClipUploadInitialVideo = {
   mimeType?: string;
   title?: string;
   captureClipId?: string;
+  thumbUri?: string;
 };
 
 type Props = {
@@ -80,6 +82,8 @@ type Props = {
   defaultShareTarget?: ShareTarget;
   /** When uploading from Capture library, delete local draft after success. */
   captureClipId?: string | null;
+  /** Pre-select friends when share target is Friends. */
+  initialSelectedFriendIds?: string[];
   /** Full-screen page (navigator) instead of modal sheet. */
   renderAsScreen?: boolean;
   onBack?: () => void;
@@ -95,6 +99,7 @@ export function ClipUploadModal({
   initialVideos = [],
   defaultShareTarget = SHARE_MY_CLIPS,
   captureClipId = null,
+  initialSelectedFriendIds,
   renderAsScreen = false,
   onBack,
   showPrepareStep = false,
@@ -131,6 +136,8 @@ export function ClipUploadModal({
   const [batchThumbs, setBatchThumbs] = useState<Record<string, string>>({});
   const [prepareOpen, setPrepareOpen] = useState(false);
   const [batchProgress, setBatchProgress] = useState<BatchUploadProgress | null>(null);
+  const [categoryAccordionOpen, setCategoryAccordionOpen] = useState(true);
+  const [subcategoryAccordionOpen, setSubcategoryAccordionOpen] = useState(false);
 
   const batchVideos = useMemo(() => {
     if (initialVideos.length > 0) return initialVideos;
@@ -203,8 +210,17 @@ export function ClipUploadModal({
       setBatchThumbs({});
       setPrepareOpen(false);
       setBatchProgress(null);
+      setCategoryAccordionOpen(true);
+      setSubcategoryAccordionOpen(false);
     }
   }, [visible, defaultShareTarget]);
+
+  useEffect(() => {
+    if (!visible) return;
+    if (shareTarget !== SHARE_FRIENDS) return;
+    if (!initialSelectedFriendIds?.length) return;
+    setSelectedFriendIds(initialSelectedFriendIds);
+  }, [visible, shareTarget, initialSelectedFriendIds]);
 
   useEffect(() => {
     if (!visible || initialVideos.length === 0) return;
@@ -278,6 +294,12 @@ export function ClipUploadModal({
       setVideoAsset(asset);
       const base = (asset.fileName ?? "clip").replace(/\.[^/.]+$/, "");
       setTitle(initialVideo.title?.trim() || base || t("locker.clipDefault"));
+      if (initialVideo.thumbUri) {
+        setThumbUri(initialVideo.thumbUri);
+        setThumbBusy(false);
+        setInitializingVideo(false);
+        return;
+      }
       setThumbUri(null);
       setThumbBusy(true);
       try {
@@ -313,7 +335,7 @@ export function ClipUploadModal({
     return () => {
       cancelled = true;
     };
-  }, [visible, initialVideo?.uri, initialVideo?.durationSecs, initialVideo?.fileName, initialVideo?.fileSizeBytes, initialVideo?.mimeType, initialVideo?.title, showPrepareStep, t]);
+  }, [visible, initialVideo?.uri, initialVideo?.durationSecs, initialVideo?.fileName, initialVideo?.fileSizeBytes, initialVideo?.mimeType, initialVideo?.title, initialVideo?.thumbUri, showPrepareStep, t]);
 
   const lockShareTarget = !!initialVideo || initialVideos.length > 0;
 
@@ -632,7 +654,7 @@ export function ClipUploadModal({
     }
   };
 
-  const showCategoryPicker = !isTrainer || !profileCategory;
+  const showCategoryPicker = !isTrainer || !profileCategory || !categoryId;
 
   const handleClose = () => {
     haptics.tap();
@@ -715,11 +737,29 @@ export function ClipUploadModal({
           )}
 
           {!!thumbUri && !isBatch && (
-            <View style={styles.previewBox}>
-              <Image source={{ uri: thumbUri }} style={styles.previewImg} resizeMode="cover" />
-              <Text style={styles.fileMeta} numberOfLines={1}>
-                {videoAsset?.fileName ?? "Video"} · {videoMime}
-              </Text>
+            <View style={styles.previewRow}>
+              <Image source={{ uri: thumbUri }} style={styles.previewThumb} resizeMode="cover" />
+              <View style={styles.previewMeta}>
+                <Text style={styles.fileMeta} numberOfLines={1}>
+                  {videoAsset?.fileName ?? "Video"}
+                </Text>
+                <Text style={styles.muted} numberOfLines={1}>
+                  {videoMime}
+                </Text>
+                <Pressable
+                  style={styles.thumbPickBtn}
+                  onPress={() => {
+                    haptics.select();
+                    setPrepareOpen(true);
+                  }}
+                  disabled={uploadBusy || !videoAsset}
+                >
+                  <Ionicons name="image-outline" size={14} color={c.brandNavy} />
+                  <Text style={styles.thumbPickText}>
+                    {t("capture.changeThumbnail", { defaultValue: "Change thumbnail" })}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           )}
 
@@ -759,7 +799,7 @@ export function ClipUploadModal({
             </>
           )}
 
-          {isTrainer && !!profileCategory && (
+          {isTrainer && !!profileCategory && categoryId && (
             <View style={styles.categoryReadonly}>
               <Text style={styles.label}>{t("locker.sportFromProfile")}</Text>
               <Text style={styles.profileCat}>{profileCategory}</Text>
@@ -768,58 +808,95 @@ export function ClipUploadModal({
 
           {showCategoryPicker && (
             <>
-              <Text style={styles.label}>{t("locker.sportCategory")}</Text>
-              {catLoading ? (
-                <ActivityIndicator color={c.brandNavy} style={{ marginVertical: space.sm }} />
-              ) : (
-                <View style={styles.chips}>
-                  {categories.map((cat) => {
-                    const on = categoryId === cat.id;
-                    return (
-                      <Pressable
-                        key={cat.id}
-                        style={[styles.chip, on && styles.chipOn]}
-                        onPress={() => {
-                          setCategoryId(cat.id);
-                          setSubcategoryId("");
-                        }}
-                        disabled={uploadBusy}
-                      >
-                        <Text style={[styles.chipText, on && styles.chipTextOn]} numberOfLines={1}>
-                          {cat.name}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              )}
+              <Pressable
+                style={styles.accordionHeader}
+                onPress={() => setCategoryAccordionOpen((v) => !v)}
+                disabled={uploadBusy}
+              >
+                <Text style={styles.label}>{t("locker.sportCategory")}</Text>
+                <Ionicons
+                  name={categoryAccordionOpen ? "chevron-up" : "chevron-down"}
+                  size={18}
+                  color={c.textMuted}
+                />
+              </Pressable>
+              {categoryAccordionOpen ? (
+                catLoading ? (
+                  <ActivityIndicator color={c.brandNavy} style={{ marginVertical: space.sm }} />
+                ) : (
+                  <View style={styles.chips}>
+                    {categories.map((cat) => {
+                      const on = categoryId === cat.id;
+                      return (
+                        <Pressable
+                          key={cat.id}
+                          style={[styles.chip, on && styles.chipOn]}
+                          onPress={() => {
+                            setCategoryId(cat.id);
+                            setSubcategoryId("");
+                            setCategoryAccordionOpen(false);
+                            setSubcategoryAccordionOpen(true);
+                          }}
+                          disabled={uploadBusy}
+                        >
+                          <Text style={[styles.chipText, on && styles.chipTextOn]} numberOfLines={1}>
+                            {cat.name}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                )
+              ) : selectedCategory ? (
+                <Text style={styles.accordionValue}>{selectedCategory.name}</Text>
+              ) : null}
             </>
           )}
 
-          <Text style={styles.label}>{t("locker.subcategory")}</Text>
-          {catLoading ? (
-            <ActivityIndicator color={c.brandNavy} style={{ marginVertical: space.sm }} />
-          ) : subcategories.length === 0 ? (
-            <Text style={styles.muted}>{t("locker.selectCategoryFirst")}</Text>
-          ) : (
-            <View style={styles.chips}>
-              {subcategories.map((s) => {
-                const on = subcategoryId === s.id;
-                return (
-                  <Pressable
-                    key={s.id}
-                    style={[styles.chip, on && styles.chipOn]}
-                    onPress={() => setSubcategoryId(s.id)}
-                    disabled={uploadBusy}
-                  >
-                    <Text style={[styles.chipText, on && styles.chipTextOn]} numberOfLines={1}>
-                      {s.name}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          )}
+          <Pressable
+            style={styles.accordionHeader}
+            onPress={() => setSubcategoryAccordionOpen((v) => !v)}
+            disabled={uploadBusy || subcategories.length === 0}
+          >
+            <Text style={styles.label}>{t("locker.subcategory")}</Text>
+            <Ionicons
+              name={subcategoryAccordionOpen ? "chevron-up" : "chevron-down"}
+              size={18}
+              color={c.textMuted}
+            />
+          </Pressable>
+          {subcategoryAccordionOpen ? (
+            catLoading ? (
+              <ActivityIndicator color={c.brandNavy} style={{ marginVertical: space.sm }} />
+            ) : subcategories.length === 0 ? (
+              <Text style={styles.muted}>{t("locker.selectCategoryFirst")}</Text>
+            ) : (
+              <View style={styles.chips}>
+                {subcategories.map((s) => {
+                  const on = subcategoryId === s.id;
+                  return (
+                    <Pressable
+                      key={s.id}
+                      style={[styles.chip, on && styles.chipOn]}
+                      onPress={() => {
+                        setSubcategoryId(s.id);
+                        setSubcategoryAccordionOpen(false);
+                      }}
+                      disabled={uploadBusy}
+                    >
+                      <Text style={[styles.chipText, on && styles.chipTextOn]} numberOfLines={1}>
+                        {s.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )
+          ) : subcategoryId ? (
+            <Text style={styles.accordionValue}>
+              {subcategories.find((s) => s.id === subcategoryId)?.name ?? ""}
+            </Text>
+          ) : null}
 
           <Text style={styles.label}>{t("locker.shareTo")}</Text>
           {!lockShareTarget ? (
@@ -977,7 +1054,16 @@ export function ClipUploadModal({
           </ScrollView>
         </TouchableWithoutFeedback>
 
-        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, space.md) }]}>
+        <View
+          style={[
+            styles.footer,
+            {
+              paddingBottom: renderAsScreen
+                ? floatingTabBarBottomInset(insets.bottom) + space.sm
+                : Math.max(insets.bottom, space.md),
+            },
+          ]}
+        >
           <Text style={styles.footerHint} numberOfLines={2}>
             {submitAction.hint}
           </Text>
@@ -1100,6 +1186,37 @@ function useStyles() {
       rowCenter: { flexDirection: "row", alignItems: "center", gap: space.sm },
       muted: { ...typography.caption, color: palette.textMuted },
       previewBox: { alignItems: "center", gap: space.sm },
+      previewRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: space.md,
+        padding: space.sm,
+        borderRadius: radii.md,
+        borderWidth: 1,
+        borderColor: palette.border,
+        backgroundColor: palette.surfaceMuted,
+      },
+      previewThumb: {
+        width: 88,
+        height: 56,
+        borderRadius: radii.sm,
+        backgroundColor: palette.surfaceElevated,
+      },
+      previewMeta: { flex: 1, gap: 2, minWidth: 0 },
+      thumbPickBtn: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
+      thumbPickText: { ...typography.caption, color: palette.brandNavy, fontWeight: "600" },
+      accordionHeader: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingVertical: 4,
+      },
+      accordionValue: {
+        ...typography.bodySm,
+        color: palette.textSecondary,
+        marginBottom: space.xs,
+        fontWeight: "600",
+      },
       previewImg: {
         width: "100%",
         height: 180,

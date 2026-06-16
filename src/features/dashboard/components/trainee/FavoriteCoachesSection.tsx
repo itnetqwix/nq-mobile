@@ -43,6 +43,7 @@ export function FavoriteCoachesSection({ onSelectTrainer }: Props) {
       >
         {favorites.map((item, i) => {
           const name = getTrainerName(item);
+          const online = item.is_online === true;
           return (
             <DashboardPersonTile
               key={trainerListItemKey(item, i, "fav-")}
@@ -50,6 +51,7 @@ export function FavoriteCoachesSection({ onSelectTrainer }: Props) {
               avatar={item.profile_picture as string | undefined}
               onPress={() => onSelectTrainer(item)}
               useHomeAvatar
+              onlineStatus={online ? "online" : undefined}
               badge={
                 <View style={[styles.heartBadge, { backgroundColor: c.surfaceElevated }]}>
                   <Ionicons name="heart" size={8} color="#E57373" />

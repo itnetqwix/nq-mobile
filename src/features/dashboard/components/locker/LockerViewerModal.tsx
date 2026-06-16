@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,6 +12,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import PagerView from "react-native-pager-view";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import {
@@ -26,6 +27,15 @@ import { colors, space } from "../../../../theme";
 
 export type LockerViewerMode = "video" | "pdf" | "image" | "audio";
 
+export type LockerViewerPlaylistItem = {
+  uri: string;
+  title?: string;
+  clipId?: string;
+  sharedBy?: string;
+  canRemove?: boolean;
+  mode?: LockerViewerMode;
+};
+
 type Props = {
   visible: boolean;
   onClose: () => void;
@@ -34,6 +44,9 @@ type Props = {
   mode: LockerViewerMode;
   sharedBy?: string;
   clipId?: string;
+  playlist?: LockerViewerPlaylistItem[];
+  initialIndex?: number;
+  onIndexChange?: (index: number) => void;
   onDeleteClip?: () => void;
   deleteBusy?: boolean;
   deleteAccessibilityLabel?: string;
@@ -58,6 +71,9 @@ export function LockerViewerModal({
   mode,
   sharedBy,
   clipId,
+  playlist,
+  initialIndex = 0,
+  onIndexChange,
   onDeleteClip,
   deleteBusy,
   deleteAccessibilityLabel = "Delete clip",
@@ -71,33 +87,68 @@ export function LockerViewerModal({
 }: Props) {
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
+  const pagerRef = useRef<PagerView>(null);
   const [mediaHeight, setMediaHeight] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(initialIndex);
+
+  const items = useMemo<LockerViewerPlaylistItem[]>(() => {
+    if (playlist?.length) return playlist;
+    if (!uri) return [];
+    return [{ uri, title, clipId, sharedBy, mode }];
+  }, [playlist, uri, title, clipId, sharedBy, mode]);
+
+  const current = items[activeIndex] ?? items[0];
+  const currentUri = current?.uri ?? uri;
+  const currentTitle = current?.title ?? title;
+  const currentMode = current?.mode ?? mode;
+  const currentSharedBy = current?.sharedBy ?? sharedBy;
+  const currentClipId = current?.clipId ?? clipId;
+  const canSwipe = items.length > 1 && currentMode === "video";
 
   useEffect(() => {
     if (visible) {
+      const next = Math.min(Math.max(0, initialIndex), Math.max(0, items.length - 1));
+      setActiveIndex(next);
+      pagerRef.current?.setPageWithoutAnimation?.(next);
       setError(false);
-      setLoading(mode !== "audio" && !isLikelyAudio(uri));
+      setLoading(currentMode !== "audio" && !isLikelyAudio(currentUri));
     }
-  }, [visible, uri, mode]);
+  }, [visible, initialIndex, items.length, currentUri, currentMode]);
+
+  useEffect(() => {
+    if (!visible) return;
+    setError(false);
+    setLoading(currentMode !== "audio" && !isLikelyAudio(currentUri));
+  }, [activeIndex, visible, currentUri, currentMode]);
+
+  const goToIndex = useCallback(
+    (next: number) => {
+      const clamped = Math.min(Math.max(0, next), items.length - 1);
+      setActiveIndex(clamped);
+      onIndexChange?.(clamped);
+      pagerRef.current?.setPage(clamped);
+    },
+    [items.length, onIndexChange]
+  );
 
   const resolvedMode: LockerViewerMode = useMemo(() => {
-    if (mode === "audio" || isLikelyAudio(uri)) return "audio";
-    if (mode === "pdf") return "pdf";
-    if (mode === "image" && isLikelyPdf(uri)) return "pdf";
-    if (mode === "video") return "video";
-    if (isLikelyPdf(uri)) return "pdf";
-    return mode;
-  }, [mode, uri]);
+    if (currentMode === "audio" || isLikelyAudio(currentUri)) return "audio";
+    if (currentMode === "pdf") return "pdf";
+    if (currentMode === "image" && isLikelyPdf(currentUri)) return "pdf";
+    if (currentMode === "video") return "video";
+    if (isLikelyPdf(currentUri)) return "pdf";
+    return currentMode;
+  }, [currentMode, currentUri]);
 
   const nativeMode = resolvedMode === "video" ? "video" : "image";
 
   const openExternally = useCallback(async () => {
-    const webUrl = clipId
-      ? `https://netqwix.com/clips/${encodeURIComponent(clipId)}`
-      : uri;
+    const webUrl = currentClipId
+      ? `https://netqwix.com/clips/${encodeURIComponent(currentClipId)}`
+      : currentUri;
     try {
       const can = await Linking.canOpenURL(webUrl);
       if (!can) {
@@ -108,7 +159,7 @@ export function LockerViewerModal({
     } catch {
       Alert.alert("Failed to open", "Could not launch the system browser for this file.");
     }
-  }, [uri, clipId]);
+  }, [currentUri, currentClipId]);
 
   const confirmDownload = useCallback(() => {
     Alert.alert(
@@ -121,8 +172,8 @@ export function LockerViewerModal({
           onPress: () => {
             setDownloading(true);
             void downloadVideoToLibrary({
-              uri,
-              title,
+              uri: currentUri,
+              title: currentTitle,
               onSuccess: () => {
                 Alert.alert("Saved", "The video was saved to your photo library.");
               },
@@ -134,7 +185,7 @@ export function LockerViewerModal({
         },
       ]
     );
-  }, [uri, title]);
+  }, [currentUri, currentTitle]);
 
   const confirmDelete = useCallback(() => {
     if (!onDeleteClip) return;
@@ -168,9 +219,11 @@ export function LockerViewerModal({
     );
   }, [onShareFriends]);
 
-  if (!visible || !uri) return null;
+  if (!visible || !currentUri) return null;
 
-  const subtitle = sharedBy ? `Shared by ${sharedBy}` : undefined;
+  const subtitle = currentSharedBy ? `Shared by ${currentSharedBy}` : undefined;
+  const positionLabel =
+    canSwipe ? `${activeIndex + 1} / ${items.length}` : undefined;
 
   return (
     <Modal
@@ -182,8 +235,8 @@ export function LockerViewerModal({
       <StatusBar barStyle="light-content" />
       <View style={[styles.root, { paddingTop: insets.top }]}>
         <MediaViewerChrome
-          title={title ?? "Preview"}
-          subtitle={subtitle}
+          title={currentTitle ?? "Preview"}
+          subtitle={positionLabel ? `${positionLabel}${subtitle ? ` · ${subtitle}` : ""}` : subtitle}
           onClose={onClose}
           onOpenExternal={resolvedMode === "pdf" ? openExternally : undefined}
           rightSlot={
@@ -280,12 +333,12 @@ export function LockerViewerModal({
             </View>
           ) : resolvedMode === "audio" ? (
             <View style={styles.audioWrap}>
-              <LockerAudioPlayer uri={uri} title={title} />
+              <LockerAudioPlayer uri={currentUri} title={currentTitle} />
             </View>
           ) : resolvedMode === "pdf" ? (
             <View style={styles.fill}>
               <WebView
-                source={{ uri: buildPdfEmbedUrl(uri) }}
+                source={{ uri: buildPdfEmbedUrl(currentUri) }}
                 style={styles.fill}
                 onLoadStart={() => {
                   setLoading(true);
@@ -307,9 +360,46 @@ export function LockerViewerModal({
                 domStorageEnabled
               />
             </View>
+          ) : canSwipe && mediaHeight > 0 ? (
+            <PagerView
+              ref={pagerRef}
+              style={styles.fill}
+              initialPage={activeIndex}
+              onPageSelected={(e) => {
+                const next = e.nativeEvent.position;
+                setActiveIndex(next);
+                onIndexChange?.(next);
+              }}
+            >
+              {items.map((item, pageIndex) => (
+                <View key={`${item.uri}-${pageIndex}`} style={styles.fill}>
+                  <NativeMediaSurface
+                    uri={item.uri}
+                    mode="video"
+                    width={screenWidth}
+                    height={mediaHeight}
+                    isActive={visible && activeIndex === pageIndex}
+                    loadingMode="parent"
+                    loadingOverlayVariant="minimal"
+                    onLoadingChange={pageIndex === activeIndex ? setLoading : undefined}
+                    useNativeVideoControls={false}
+                    showCustomControls
+                    onReady={() => {
+                      if (pageIndex === activeIndex) setLoading(false);
+                    }}
+                    onError={() => {
+                      if (pageIndex === activeIndex) {
+                        setLoading(false);
+                        setError(true);
+                      }
+                    }}
+                  />
+                </View>
+              ))}
+            </PagerView>
           ) : mediaHeight > 0 ? (
             <NativeMediaSurface
-              uri={uri}
+              uri={currentUri}
               mode={nativeMode}
               width={screenWidth}
               height={mediaHeight}
@@ -325,6 +415,31 @@ export function LockerViewerModal({
                 setError(true);
               }}
             />
+          ) : null}
+
+          {canSwipe ? (
+            <>
+              {activeIndex > 0 ? (
+                <Pressable
+                  style={[styles.navBtn, styles.navBtnLeft]}
+                  onPress={() => goToIndex(activeIndex - 1)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Previous video"
+                >
+                  <Ionicons name="chevron-back" size={28} color="#fff" />
+                </Pressable>
+              ) : null}
+              {activeIndex < items.length - 1 ? (
+                <Pressable
+                  style={[styles.navBtn, styles.navBtnRight]}
+                  onPress={() => goToIndex(activeIndex + 1)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Next video"
+                >
+                  <Ionicons name="chevron-forward" size={28} color="#fff" />
+                </Pressable>
+              ) : null}
+            </>
           ) : null}
 
           {loading && !error && resolvedMode !== "audio" ? (
@@ -374,4 +489,16 @@ const styles = StyleSheet.create({
   primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
   actions: { flexDirection: "row", gap: 2, alignItems: "center" },
   iconBtn: { padding: 4 },
+  navBtn: {
+    position: "absolute",
+    top: "45%",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  navBtnLeft: { left: space.sm },
+  navBtnRight: { right: space.sm },
 });

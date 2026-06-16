@@ -3,6 +3,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import { FlashList } from "@shopify/flash-list";
 import {
   Alert,
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -14,10 +15,6 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useAuth } from "../../auth/context/AuthContext";
 import { LockerViewerModal } from "../../dashboard/components/locker/LockerViewerModal";
 import {
-  ClipUploadPrepareModal,
-  type PreparedClipUpload,
-} from "../../dashboard/components/locker/ClipUploadPrepareModal";
-import {
   CapturedShareSheet,
   type CapturedShareTarget,
 } from "../components/CapturedShareSheet";
@@ -27,6 +24,7 @@ import {
   getCapturedClips,
   deleteCapturedClip,
   saveCapturedClip,
+  backfillCapturedClipThumbnails,
   type CapturedClip,
 } from "../capturedClipsStorage";
 import type * as ImagePicker from "expo-image-picker";
@@ -54,17 +52,16 @@ export function CapturedLibraryScreen() {
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [viewerClip, setViewerClip] = useState<CapturedClip | null>(null);
+  const [viewerIndex, setViewerIndex] = useState(0);
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
-  const [prepareVisible, setPrepareVisible] = useState(false);
   const [labelModalVisible, setLabelModalVisible] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [thumbUri, setThumbUri] = useState<string | null>(null);
-  const [thumbBusy, setThumbBusy] = useState(false);
+  const [pendingThumbUri, setPendingThumbUri] = useState<string | null>(null);
   const [pendingAsset, setPendingAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [defaultLabel, setDefaultLabel] = useState(defaultClipLabel());
 
   const load = useCallback(async () => {
-    const c = await getCapturedClips(userId);
+    const c = await backfillCapturedClipThumbnails(userId);
     setClips(c);
     setViewerClip((prev) => {
       if (prev && c.some((clip) => clip.id === prev.id)) return prev;
@@ -84,10 +81,9 @@ export function CapturedLibraryScreen() {
   const onInlineCaptured = useCallback(
     (capture: { asset: ImagePicker.ImagePickerAsset; thumbUri: string | null }) => {
       setPendingAsset(capture.asset);
-      setThumbUri(capture.thumbUri);
-      setThumbBusy(false);
+      setPendingThumbUri(capture.thumbUri);
       setDefaultLabel(defaultClipLabel());
-      setPrepareVisible(true);
+      setLabelModalVisible(true);
     },
     []
   );
@@ -112,11 +108,11 @@ export function CapturedLibraryScreen() {
           durationSecs,
           fileSizeBytes: pendingAsset.fileSize,
           mimeType: pendingAsset.mimeType ?? "video/mp4",
+          thumbUri: pendingThumbUri ?? undefined,
         });
         setLabelModalVisible(false);
-        setPrepareVisible(false);
         setPendingAsset(null);
-        setThumbUri(null);
+        setPendingThumbUri(null);
         haptics.success();
         void load();
       } catch {
@@ -125,13 +121,29 @@ export function CapturedLibraryScreen() {
         setSaving(false);
       }
     },
-    [load, pendingAsset, userId]
+    [load, pendingAsset, pendingThumbUri, userId]
   );
 
   const selectedClips = useMemo(
     () => clips.filter((c) => selected.has(c.id)),
     [clips, selected]
   );
+
+  const capturePlaylist = useMemo(
+    () =>
+      clips.map((clip) => ({
+        uri: clip.uri,
+        title: clip.label?.trim() || "Captured clip",
+        mode: "video" as const,
+      })),
+    [clips]
+  );
+
+  const openViewer = useCallback((clip: CapturedClip) => {
+    const idx = clips.findIndex((row) => row.id === clip.id);
+    setViewerIndex(idx >= 0 ? idx : 0);
+    setViewerClip(clip);
+  }, [clips]);
 
   const toggleSelect = (id: string) => {
     haptics.select();
@@ -206,7 +218,7 @@ export function CapturedLibraryScreen() {
     navigation.navigate("CapturedClipUpload", {
       clips: [clip],
       shareTarget: "my-clips",
-      showPrepareStep: true,
+      showPrepareStep: !clip.thumbUri,
     });
   };
 
@@ -228,7 +240,7 @@ export function CapturedLibraryScreen() {
             return;
           }
           haptics.tap();
-          setViewerClip(item);
+          openViewer(item);
         }}
         onLongPress={() => {
           haptics.impact();
@@ -259,11 +271,16 @@ export function CapturedLibraryScreen() {
           onPress={() => {
             if (selectMode) return;
             haptics.tap();
-            setViewerClip(item);
+            openViewer(item);
           }}
           disabled={selectMode}
         >
-          <Ionicons name="play" size={16} color="#fff" />
+          {item.thumbUri ? (
+            <Image source={{ uri: item.thumbUri }} style={styles.thumbImage} resizeMode="cover" />
+          ) : null}
+          <View style={styles.thumbPlay}>
+            <Ionicons name="play" size={16} color="#fff" />
+          </View>
         </Pressable>
         <View style={styles.clipMeta}>
           <Text style={styles.clipDate} numberOfLines={1}>
@@ -403,26 +420,6 @@ export function CapturedLibraryScreen() {
         <Ionicons name="videocam" size={28} color="#fff" />
       </Pressable>
 
-      <ClipUploadPrepareModal
-        visible={prepareVisible && !!pendingAsset}
-        video={pendingAsset}
-        thumbUri={thumbUri}
-        thumbBusy={thumbBusy}
-        onClose={() => {
-          setPrepareVisible(false);
-          setPendingAsset(null);
-          setThumbUri(null);
-        }}
-        onReplaceVideo={() => void startRecording()}
-        onThumbChange={setThumbUri}
-        onConfirm={({ video }: PreparedClipUpload) => {
-          setPendingAsset(video);
-          setPrepareVisible(false);
-          setLabelModalVisible(true);
-          haptics.success();
-        }}
-      />
-
       <CaptureQuickLabelModal
         visible={labelModalVisible}
         defaultLabel={defaultLabel}
@@ -431,7 +428,7 @@ export function CapturedLibraryScreen() {
           if (saving) return;
           setLabelModalVisible(false);
           setPendingAsset(null);
-          setThumbUri(null);
+          setPendingThumbUri(null);
         }}
         onSave={(label) => void saveLabeledClip(label)}
       />
@@ -442,6 +439,13 @@ export function CapturedLibraryScreen() {
         uri={viewerClip?.uri ?? ""}
         title={viewerClip?.label?.trim() || "Captured clip"}
         mode="video"
+        playlist={capturePlaylist}
+        initialIndex={viewerIndex}
+        onIndexChange={(idx) => {
+          setViewerIndex(idx);
+          const next = clips[idx];
+          if (next) setViewerClip(next);
+        }}
         onDeleteClip={
           viewerClip
             ? async () => {
@@ -567,8 +571,19 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: radii.sm,
     backgroundColor: "#1e293b",
+    overflow: "hidden",
+    position: "relative",
+  },
+  thumbImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: 48,
+    height: 48,
+  },
+  thumbPlay: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.25)",
   },
   clipMeta: { flex: 1 },
   clipDate: { fontSize: 14, fontWeight: "600", color: "#111827" },

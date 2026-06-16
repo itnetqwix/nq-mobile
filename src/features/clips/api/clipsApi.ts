@@ -50,6 +50,30 @@ export type SharedClipsGroup = {
   clips: LockerClip[];
 };
 
+export type LibrarySubmissionStatus =
+  | "submitted"
+  | "under_review"
+  | "accepted"
+  | "rejected";
+
+export type LibrarySubmissionRow = {
+  _id: string;
+  status: LibrarySubmissionStatus;
+  rejection_reason?: string | null;
+  reviewed_at?: string | null;
+  published_library_clip_id?: string | null;
+  createdAt?: string;
+  source_clip_id?:
+    | string
+    | {
+        _id?: string;
+        title?: string;
+        file_name?: string;
+        thumbnail?: string;
+        thumbnail_url?: string;
+      };
+};
+
 export type LibrarySubmissionPayload = {
   source_clip_id: string;
   proposed_category_id: string;
@@ -91,6 +115,12 @@ export async function createLibrarySubmission(
 ): Promise<unknown> {
   const res = await apiClient.post(API_ROUTES.clips.librarySubmissions, payload);
   return extractData(res);
+}
+
+export async function fetchMyLibrarySubmissions(): Promise<LibrarySubmissionRow[]> {
+  const res = await apiClient.get(API_ROUTES.clips.librarySubmissionsMine);
+  const data = extractData<LibrarySubmissionRow[]>(res);
+  return Array.isArray(data) ? data : [];
 }
 
 export async function reapplyAccount(): Promise<void> {

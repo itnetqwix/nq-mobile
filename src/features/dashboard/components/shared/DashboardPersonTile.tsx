@@ -15,6 +15,7 @@ type Props = {
   badge?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   useHomeAvatar?: boolean;
+  onlineStatus?: "online" | "offline";
 };
 
 /** Compact white person tile — shared by favorite coaches & friends strips. */
@@ -25,9 +26,11 @@ export function DashboardPersonTile({
   badge,
   style,
   useHomeAvatar = false,
+  onlineStatus,
 }: Props) {
   const styles = useStyles();
   const avatarUri = avatar ? getS3ImageUrl(avatar) : undefined;
+  const showOnlineRing = onlineStatus === "online";
 
   return (
     <Pressable
@@ -37,13 +40,19 @@ export function DashboardPersonTile({
       accessibilityLabel={name}
     >
       <View style={styles.content}>
-        <View style={styles.avatarWrap}>
+        <View style={[styles.avatarWrap, showOnlineRing && styles.avatarWrapOnline]}>
           {useHomeAvatar ? (
-            <HomeUserAvatar uri={avatar} name={name} size={PERSON_TILE_AVATAR} />
+            <HomeUserAvatar
+              uri={avatar}
+              name={name}
+              size={PERSON_TILE_AVATAR}
+              onlineStatus={onlineStatus}
+            />
           ) : (
             <Avatar uri={avatarUri} name={name} size="sm" />
           )}
           {badge}
+          {showOnlineRing && !useHomeAvatar ? <View style={styles.onlineDot} /> : null}
         </View>
         <Text style={styles.name} numberOfLines={2}>
           {name}
@@ -85,6 +94,23 @@ function useStyles() {
         position: "relative",
         alignItems: "center",
         justifyContent: "center",
+      },
+      avatarWrapOnline: {
+        borderWidth: 2,
+        borderColor: "#4CAF50",
+        borderRadius: PERSON_TILE_AVATAR / 2 + 4,
+        padding: 2,
+      },
+      onlineDot: {
+        position: "absolute",
+        right: 0,
+        bottom: 0,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: "#4CAF50",
+        borderWidth: 1.5,
+        borderColor: palette.surfaceElevated,
       },
       name: {
         ...typography.caption,

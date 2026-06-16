@@ -22,7 +22,7 @@ export function TrainerRecentTraineesSection({ trainees }: Props) {
       <View style={styles.header}>
         <Ionicons name="people-outline" size={16} color={c.brandNavy} />
         <Text style={styles.title}>
-          {t("dashboardHome.recentTrainees", { defaultValue: "Recent Students" })}
+          {t("dashboardHome.recentEnthusiasts", { defaultValue: "Recent Enthusiasts" })}
         </Text>
       </View>
       <ScrollView

@@ -13,6 +13,7 @@ export type CaptureStackParamList = {
     clips: CapturedClip[];
     shareTarget?: CaptureShareTarget;
     showPrepareStep?: boolean;
+    friendIds?: string[];
   };
 };
 

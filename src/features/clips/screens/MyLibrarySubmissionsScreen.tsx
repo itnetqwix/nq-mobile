@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 
 import { EmptyState, ImageWithSkeleton } from "../../../components/ui";
+import { AccountType } from "../../../constants/accountType";
 import {
   radii,
   space,
@@ -20,6 +21,7 @@ import {
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
 import { LockerListShell } from "../../dashboard/components/locker/LockerListShell";
+import { useAuth } from "../../auth/context/AuthContext";
 import {
   fetchMyLibrarySubmissions,
   type LibrarySubmissionRow,
@@ -38,8 +40,20 @@ type FilterKey = "all" | "open" | "accepted" | "rejected";
 export function MyLibrarySubmissionsScreen() {
   const { t } = useAppTranslation();
   const c = useThemeColors();
+  const { accountType } = useAuth();
+  const isTrainer = accountType === AccountType.TRAINER;
   const [filter, setFilter] = useState<FilterKey>("all");
   const styles = useStyles();
+
+  if (!isTrainer) {
+    return (
+      <EmptyState
+        icon="library-outline"
+        title={t("librarySubmissions.trainerOnlyTitle", { defaultValue: "Trainers only" })}
+        description={t("librarySubmissions.trainerOnlyBody", { defaultValue: "Only trainers can submit clips to the NetQwix Library." })}
+      />
+    );
+  }
 
   const q = useQuery({
     queryKey: queryKeys.clips.mySubmissions,

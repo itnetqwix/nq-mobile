@@ -14,7 +14,7 @@ import i18n from "i18next";
 type TerminologyKey = "trainer" | "trainerPlural" | "trainee" | "traineePlural";
 
 const FALLBACKS: Record<string, Record<TerminologyKey, string>> = {
-  en: { trainer: "Trainer", trainerPlural: "Trainers", trainee: "Trainee", traineePlural: "Trainees" },
+  en: { trainer: "Expert", trainerPlural: "Experts", trainee: "Enthusiast", traineePlural: "Enthusiasts" },
   fr: { trainer: "Coach", trainerPlural: "Coachs", trainee: "Élève", traineePlural: "Élèves" },
   es: { trainer: "Entrenador", trainerPlural: "Entrenadores", trainee: "Alumno", traineePlural: "Alumnos" },
   ar: { trainer: "مدرب", trainerPlural: "مدربون", trainee: "متدرب", traineePlural: "متدربون" },

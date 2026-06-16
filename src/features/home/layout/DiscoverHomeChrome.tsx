@@ -10,6 +10,7 @@ import { useCompactA11yGuard } from "../../../lib/layout";
 import { radii, space, useScaledTypography, useThemeColors, useThemedStyles } from "../../../theme";
 import { fetchMyTrainerStats } from "../../home/api/homeApi";
 import { HomeUserAvatar } from "../../dashboard/components/home/HomeUserAvatar";
+import { TrainerOnlineToggle } from "../../dashboard/components/TrainerOnlineToggle";
 import {
   HomeCategoryChipsRow,
   type HomeCategoryChip,
@@ -45,6 +46,8 @@ type Props = {
   onOpenWallet?: () => void;
   voiceState?: VoiceInputState;
   onVoicePress?: () => void;
+  showAsOnline?: boolean;
+  onAvailabilityToggle?: (next: boolean) => Promise<void>;
 };
 
 function formatHourlyRate(user: Record<string, unknown> | null | undefined): string | null {
@@ -85,9 +88,13 @@ const badgeStyles = StyleSheet.create({
 function TrainerProfileMeta({
   user,
   onPressReviews,
+  showAsOnline,
+  onAvailabilityToggle,
 }: {
   user?: Record<string, unknown> | null;
   onPressReviews?: () => void;
+  showAsOnline?: boolean;
+  onAvailabilityToggle?: (next: boolean) => Promise<void>;
 }) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
@@ -166,6 +173,13 @@ function TrainerProfileMeta({
           </Text>
         </View>
       )}
+      {onAvailabilityToggle != null ? (
+        <TrainerOnlineToggle
+          compact
+          value={showAsOnline ?? false}
+          onToggle={onAvailabilityToggle}
+        />
+      ) : null}
     </View>
   );
 }
@@ -285,6 +299,8 @@ export function DiscoverHomeChrome({
   onOpenWallet,
   voiceState,
   onVoicePress,
+  showAsOnline,
+  onAvailabilityToggle,
 }: Props) {
   const c = useThemeColors();
   const text = useScaledTypography();
@@ -333,7 +349,12 @@ export function DiscoverHomeChrome({
           </View>
           <RoleBadge label={roleLabel} />
           {isTrainer ? (
-            <TrainerProfileMeta user={user} onPressReviews={onPressReviews} />
+            <TrainerProfileMeta
+              user={user}
+              onPressReviews={onPressReviews}
+              showAsOnline={showAsOnline}
+              onAvailabilityToggle={onAvailabilityToggle}
+            />
           ) : (
             <TraineeProfileMeta
               subline={subline}

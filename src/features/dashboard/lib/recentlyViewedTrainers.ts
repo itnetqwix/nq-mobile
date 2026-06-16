@@ -38,7 +38,11 @@ function pickSnapshot(
     profile_picture:
       (trainer.profile_picture as string | undefined) ??
       (trainer.avatar as string | undefined),
-    hourly_rate: (trainer.hourly_rate as number | undefined) ?? undefined,
+    hourly_rate:
+      (trainer.hourly_rate as number | undefined) ??
+      (typeof (trainer.extraInfo as Record<string, unknown> | undefined)?.hourly_rate === "number"
+        ? ((trainer.extraInfo as Record<string, unknown>).hourly_rate as number)
+        : undefined),
     avgRating:
       (trainer.avgRating as number | undefined) ??
       (trainer.rating as number | undefined),

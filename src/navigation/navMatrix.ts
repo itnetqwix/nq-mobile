@@ -103,7 +103,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
   },
   {
     id: "students",
-    label: "My Trainees",
+    label: "My Enthusiasts",
     icon: "school-outline",
     target: { kind: "feature", featureId: "students" },
     surfaces: ["more"],
@@ -137,7 +137,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
   },
   {
     id: "clips",
-    label: "Clips",
+    label: "Videos",
     icon: "film-outline",
     target: { kind: "shell", surfaceId: "clips" },
     surfaces: ["drawer", "more"],
@@ -150,6 +150,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
     target: { kind: "shell", surfaceId: "clipSubmissions" },
     surfaces: ["more"],
     group: "tools",
+    roles: [AccountType.TRAINER],
   },
   {
     id: "gamePlans",
@@ -246,7 +247,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
   },
   {
     id: "savedLessons",
-    label: "Saved Lessons",
+    label: "Saved Sessions",
     icon: "bookmark-outline",
     target: { kind: "shell", surfaceId: "savedLessons" },
     surfaces: ["more"],

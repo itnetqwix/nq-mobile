@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import { useQuery } from "@tanstack/react-query";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -18,12 +19,13 @@ import {
   Skeleton,
   SkeletonGroup,
 } from "../../../components/ui";
-import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
-import { fetchFriends, postMyClipsGrouped } from "../../home/api/homeApi";
-import { postClipShareRequests } from "../../clips/api/clipsShareApi";
 import { queryKeys } from "../../../lib/queryKeys";
+import { fetchFriends } from "../../home/api/homeApi";
+import { useAuth } from "../../auth/context/AuthContext";
+import type { CapturedClip } from "../../capture/capturedClipsStorage";
+import { backfillCapturedClipThumbnails } from "../../capture/capturedClipsStorage";
 
 /**
  * Flatten the locker's nested category → subcategory → clips response
@@ -57,14 +59,23 @@ function flattenClips(
 export function ShareClipsPanel() {
   const c = useThemeColors();
   const styles = useShareClipsStyles();
+  const navigation = useNavigation<any>();
+  const { user } = useAuth();
+  const userId = user?._id != null ? String(user._id) : null;
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [selectedFriends, setSelectedFriends] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
 
-  const { data: groups = [], isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ["locker", "myClips"],
-    queryFn: () => postMyClipsGrouped({}),
+  const {
+    data: clips = [] as CapturedClip[],
+    isLoading,
+    refetch,
+    isRefetching,
+  } = useQuery({
+    queryKey: ["capturedClipsForShare", userId],
+    queryFn: () => backfillCapturedClipThumbnails(userId),
     staleTime: 30_000,
+    enabled: !!userId,
   });
 
   const friendsQ = useQuery({
@@ -73,14 +84,12 @@ export function ShareClipsPanel() {
     staleTime: 60_000,
   });
 
-  const clips = useMemo(() => flattenClips(groups), [groups]);
-
   const toggle = useCallback((id: string) => {
     setSelected((s) => ({ ...s, [id]: !s[id] }));
   }, []);
 
   const selectedClips = useMemo(
-    () => clips.filter((c) => selected[String(c._id)]),
+    () => clips.filter((c) => selected[String(c.id)]),
     [clips, selected]
   );
 
@@ -109,7 +118,7 @@ export function ShareClipsPanel() {
     setSelectedFriends((s) => ({ ...s, [id]: !s[id] }));
   }, []);
 
-  const onShare = useCallback(async () => {
+  const onShare = useCallback(() => {
     if (selectedClips.length === 0) {
       Alert.alert("Select clips", "Choose at least one clip to share.");
       return;
@@ -120,23 +129,21 @@ export function ShareClipsPanel() {
     }
     setBusy(true);
     try {
-      const clipIds = selectedClips.map((c) => String(c._id));
-      const result = await postClipShareRequests({
-        clipIds,
-        friendIds: selectedFriendIds,
-      });
+      navigation.navigate("Capture" as never, {
+        screen: "CapturedClipUpload",
+        params: {
+          clips: selectedClips,
+          shareTarget: "friends",
+          showPrepareStep: selectedClips.length === 1,
+          friendIds: selectedFriendIds,
+        },
+      } as never);
       setSelected({});
       setSelectedFriends({});
-      Alert.alert(
-        "Shared",
-        result.message ?? "Clips were added to your friends' lockers."
-      );
-    } catch (e: any) {
-      Alert.alert("Share failed", getApiErrorMessage(e, "Could not share clips."));
     } finally {
       setBusy(false);
     }
-  }, [selectedClips, selectedFriendIds]);
+  }, [navigation, selectedClips, selectedFriendIds]);
 
   if (isLoading) {
     return (
@@ -160,9 +167,7 @@ export function ShareClipsPanel() {
       scrollEventThrottle={scrollEventThrottle}
     >
       <Text style={styles.intro}>
-        Share clips with friends only. Clips are added to their locker right away; they can remove them later.
-        Use <Text style={{ fontWeight: "700", color: c.brandNavy }}>Invite Friends</Text> to
-        add new people first.
+        Share your captured videos with friends only.
       </Text>
 
       <Text style={styles.label}>Friends</Text>
@@ -212,10 +217,9 @@ export function ShareClipsPanel() {
 
       <View style={styles.grid}>
         {clips.map((clip, clipIndex) => {
-          const id = String(clip._id);
+          const id = String(clip.id);
           const on = !!selected[id];
-          const thumb =
-            getS3ImageUrl(clip.thumbnail ?? clip.thumbnail_url ?? clip.poster) || "";
+          const thumb = clip.thumbUri ?? "";
           return (
             <Pressable
               key={`share-clip-${id || "row"}-${clipIndex}`}
@@ -235,13 +239,8 @@ export function ShareClipsPanel() {
                 </View>
               </View>
               <Text style={styles.tileTitle} numberOfLines={2}>
-                {clip.title ?? clip.file_name ?? "Clip"}
+                {clip.label?.trim() || "Captured clip"}
               </Text>
-              {!!clip._category && (
-                <Text style={styles.tileCat} numberOfLines={1}>
-                  {String(clip._category)}
-                </Text>
-              )}
             </Pressable>
           );
         })}
@@ -250,7 +249,7 @@ export function ShareClipsPanel() {
       {clips.length === 0 && (
         <View style={styles.empty}>
           <Ionicons name="film-outline" size={40} color={c.borderStrong} />
-          <Text style={styles.emptyText}>No clips in your locker yet.</Text>
+          <Text style={styles.emptyText}>No captured videos yet.</Text>
         </View>
       )}
 
