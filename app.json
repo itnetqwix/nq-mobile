@@ -5,7 +5,7 @@
     "scheme": "netqwix",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/adaptive-icon.png",
+    "icon": "./assets/app-icon.png",
     "userInterfaceStyle": "automatic",
     "jsEngine": "hermes",
     "newArchEnabled": true,
@@ -15,6 +15,7 @@
       "backgroundColor": "#E8F1FF"
     },
     "ios": {
+      "icon": "./assets/app-icon.png",
       "supportsTablet": true,
       "buildNumber": "1",
       "infoPlist": {
@@ -118,7 +119,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/adaptive-icon.png",
+          "icon": "./assets/app-icon.png",
           "color": "#000080",
           "defaultChannel": "default",
           "sounds": [

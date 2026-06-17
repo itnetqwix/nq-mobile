@@ -28,8 +28,17 @@ fi
 
 [[ -f app.json ]] || fail "app.json missing"
 [[ -f eas.json ]] || fail "eas.json missing"
-[[ -f assets/icon.png ]] || fail "assets/icon.png missing (required for store)"
+[[ -f assets/app-icon.png ]] || fail "assets/app-icon.png missing (1024x1024 store icon)"
 [[ -f assets/adaptive-icon.png ]] || warn "assets/adaptive-icon.png missing (Android adaptive icon)"
+if command -v sips >/dev/null; then
+  ICON_W=$(sips -g pixelWidth assets/app-icon.png 2>/dev/null | awk '/pixelWidth/{print $2}')
+  ICON_H=$(sips -g pixelHeight assets/app-icon.png 2>/dev/null | awk '/pixelHeight/{print $2}')
+  if [[ "$ICON_W" != "1024" || "$ICON_H" != "1024" ]]; then
+    warn "assets/app-icon.png should be 1024x1024 (got ${ICON_W}x${ICON_H})"
+  else
+    ok "app-icon.png is 1024x1024"
+  fi
+fi
 
 IOS_BUNDLE=$(node -pe "JSON.parse(require('fs').readFileSync('app.json','utf8')).expo.ios.bundleIdentifier")
 ANDROID_PKG=$(node -pe "JSON.parse(require('fs').readFileSync('app.json','utf8')).expo.android.package")
