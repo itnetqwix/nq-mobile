@@ -21,11 +21,14 @@ import { fetchSessionPricingQuote } from "../../payments/fetchSessionPricingQuot
 import type { PricingQuote } from "../../payments/pricingTypes";
 import { chargeTotalDollars } from "../../payments/pricingTypes";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
+import { confirmProceedToPaymentIfWalletShort } from "../../../lib/booking/bookingWalletGuard";
+import { resolvePaymentMethodHint } from "../../../lib/payments/pricingQuoteHint";
 import { postReferralPreviewCheckout } from "../../referral/api/referralApi";
 import {
   promoDisplayLabel,
   promoSponsorFromResult,
 } from "../../../lib/promo/promoDisplay";
+import { useWalletBalance } from "../../wallet/hooks/useWalletBalance";
 
 function trainerIdOf(t: WizardTrainer): string {
   if (!t) return "";
@@ -275,6 +278,25 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     return expectedPrice;
   }, [checkoutPreviewQuery.data, promoResult, expectedPrice]);
 
+  const { data: walletBalance } = useWalletBalance(visible);
+  const walletAvailable = walletBalance?.balances?.available ?? 0;
+  const durationQuotePaymentHint = useMemo(
+    () =>
+      resolvePaymentMethodHint(
+        walletAvailable,
+        chargeTotalDollars(durationPreviewQuote) ?? payableAmount
+      ),
+    [walletAvailable, durationPreviewQuote, payableAmount]
+  );
+  const confirmQuotePaymentHint = useMemo(
+    () =>
+      resolvePaymentMethodHint(
+        walletAvailable,
+        chargeTotalDollars(pricingQuote) ?? payableAmount
+      ),
+    [walletAvailable, pricingQuote, payableAmount]
+  );
+
   useEffect(() => {
     if (!visible || step !== "duration" || !tid || payableAmount <= 0) {
       setDurationPreviewQuote(null);
@@ -288,6 +310,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
       promoDiscountCents: Math.round(promoDiscountAmount * 100),
       promoSponsorType,
       user: user as Record<string, unknown>,
+      paymentMethodHint: durationQuotePaymentHint,
     })
       .then((q) => {
         if (!cancelled) setDurationPreviewQuote(q);
@@ -298,7 +321,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     return () => {
       cancelled = true;
     };
-  }, [visible, step, tid, payableAmount, expectedPrice, durationMinutes, promoDiscountAmount, promoSponsorType]);
+  }, [visible, step, tid, payableAmount, expectedPrice, durationMinutes, promoDiscountAmount, promoSponsorType, durationQuotePaymentHint, user]);
 
   useEffect(() => {
     if (!visible || step !== "confirm" || !tid || payableAmount <= 0 || pricingQuote) {
@@ -312,6 +335,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
       promoDiscountCents: Math.round(promoDiscountAmount * 100),
       promoSponsorType,
       user: user as Record<string, unknown>,
+      paymentMethodHint: confirmQuotePaymentHint,
     })
       .then((q) => {
         if (!cancelled) {
@@ -336,6 +360,8 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     durationMinutes,
     promoDiscountAmount,
     promoSponsorType,
+    confirmQuotePaymentHint,
+    user,
   ]);
 
   const goNext = useCallback(() => {
@@ -343,14 +369,20 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     if (step === "duration" && !validateCoupon()) return;
     if (step === "clips") {
       if (requiresPayment && payableAmount > 0) {
-        setStep("payment");
+        void (async () => {
+          const quoteTotal = chargeTotalDollars(durationPreviewQuote) ?? payableAmount;
+          const ok = await confirmProceedToPaymentIfWalletShort(quoteTotal, (shortfall) => {
+            navigateToWalletTopUp(shortfall);
+          });
+          if (ok) setStep("payment");
+        })();
         return;
       }
       setStep("confirm");
       return;
     }
     if (i < WIZARD_STEPS.length - 1) setStep(WIZARD_STEPS[i + 1]!);
-  }, [step, validateCoupon, requiresPayment, payableAmount]);
+  }, [step, validateCoupon, requiresPayment, payableAmount, durationPreviewQuote]);
 
   const goBack = useCallback(() => {
     const i = wizardStepIndex(step);

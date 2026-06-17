@@ -1,9 +1,9 @@
-import { Ionicons } from "@expo/vector-icons";
-import React from "react";
-import { Alert, Platform, Pressable, StyleSheet, Text } from "react-native";
+import * as AppleAuthentication from "expo-apple-authentication";
+import React, { useEffect, useState } from "react";
+import { Alert, Platform, StyleSheet, View } from "react-native";
 import { useLoader } from "../../../components/brand/LoaderProvider";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
-import { radii, space, typography, useThemeColors } from "../../../theme";
+import { space } from "../../../theme";
 import type { AuthScreenProps } from "../../../navigation/types";
 import { postAppleVerify, signInWithAppleNative } from "../api/socialAuth";
 import { setLastAuthMethod } from "../lib/lastAuthMethod";
@@ -16,12 +16,18 @@ type Props = {
 };
 
 /**
- * Apple Sign In button — iOS only. Hidden on Android/web.
- * On tap: triggers native Apple authentication, then either logs the user
- * in immediately (existing account) or navigates to SignUp (new account).
+ * Apple Sign In — iOS only, uses the native Apple button when available.
  */
 export function AppleSignInButton({ navigation, onTokens, busy, setBusy }: Props) {
-  if (Platform.OS !== "ios") return null;
+  const [available, setAvailable] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS !== "ios") return;
+    void AppleAuthentication.isAvailableAsync().then(setAvailable);
+  }, []);
+
+  if (Platform.OS !== "ios" || !available) return null;
+
   return (
     <AppleSignInButtonInner
       navigation={navigation}
@@ -33,7 +39,6 @@ export function AppleSignInButton({ navigation, onTokens, busy, setBusy }: Props
 }
 
 function AppleSignInButtonInner({ navigation, onTokens, busy, setBusy }: Props) {
-  const c = useThemeColors();
   const { showLoader, hideLoader } = useLoader();
 
   const handleApple = async () => {
@@ -64,34 +69,20 @@ function AppleSignInButtonInner({ navigation, onTokens, busy, setBusy }: Props) 
   };
 
   return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.socialBtn,
-        { borderColor: c.border, backgroundColor: c.surface, opacity: busy ? 0.5 : 1 },
-        pressed && !busy && { opacity: 0.88 },
-      ]}
-      onPress={handleApple}
-      disabled={busy}
-      accessibilityRole="button"
-      accessibilityLabel="Sign in with Apple"
-    >
-      <Ionicons name="logo-apple" size={22} color={c.text} />
-      <Text style={[styles.socialLabel, { color: c.text }]}>Apple</Text>
-    </Pressable>
+    <View style={[styles.wrap, busy && styles.disabled]} pointerEvents={busy ? "none" : "auto"}>
+      <AppleAuthentication.AppleAuthenticationButton
+        buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+        buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+        cornerRadius={12}
+        style={styles.nativeBtn}
+        onPress={handleApple}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  socialBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: space.sm,
-    paddingVertical: space.md,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    minHeight: 52,
-  },
-  socialLabel: { ...typography.label, fontWeight: "700" },
+  wrap: { flex: 1, minHeight: 52, justifyContent: "center" },
+  disabled: { opacity: 0.5 },
+  nativeBtn: { width: "100%", height: 52 },
 });

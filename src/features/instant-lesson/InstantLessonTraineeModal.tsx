@@ -126,10 +126,14 @@ export function InstantLessonTraineeModal() {
   });
 
   const handleCancel = () => {
-    Alert.alert("Cancel request", "Stop waiting and cancel this instant lesson?", [
-      { text: "Keep waiting", style: "cancel" },
-      { text: "Cancel lesson", style: "destructive", onPress: () => cancelBooking() },
-    ]);
+    Alert.alert(
+      "Cancel request",
+      "Stop waiting? Your payment hold will be released and a full refund starts automatically to your wallet or card.",
+      [
+        { text: "Keep waiting", style: "cancel" },
+        { text: "Cancel lesson", style: "destructive", onPress: () => cancelBooking() },
+      ]
+    );
   };
 
   if (!traineeBooking || !visible) return null;

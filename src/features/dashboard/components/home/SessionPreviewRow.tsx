@@ -20,6 +20,7 @@ import { navigationRef } from "../../../../navigation/navigationRef";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
 import { HomeUserAvatar } from "./HomeUserAvatar";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
+import { getSessionRefundChip } from "../../../../lib/payments/paymentStatusLabels";
 
 type Props = {
   session: Record<string, unknown>;
@@ -108,6 +109,7 @@ export function SessionPreviewRow({
   const joinEnabled = canEnterLesson(session);
   const isRejoin = joinEnabled && !canJoinSession(session);
   const lessonId = String(session._id ?? session.id ?? "");
+  const refundChip = getSessionRefundChip(session);
 
   const joinBlock = !pending ? (
     <View style={styles.actions}>
@@ -162,6 +164,13 @@ export function SessionPreviewRow({
             tone={pending ? "warning" : getStatusTone(status)}
             style={{ marginTop: 6, alignSelf: "flex-start" }}
           />
+          {refundChip ? (
+            <Pill
+              label={refundChip.label}
+              tone={refundChip.tone}
+              style={{ marginTop: 6, alignSelf: "flex-start" }}
+            />
+          ) : null}
           {instant && acceptDeadlineMs && pending ? (
             <InstantLessonDeadlineChip
               deadlineMs={acceptDeadlineMs}

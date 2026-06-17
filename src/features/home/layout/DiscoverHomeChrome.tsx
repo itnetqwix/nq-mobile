@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import React from "react";
+import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Skeleton } from "../../../components/ui";
 import { AccountType, type AccountTypeValue } from "../../../constants/accountType";
@@ -17,7 +17,7 @@ import {
 } from "../components/HomeCategoryChipsRow";
 import { HomeStickySearchBar } from "../components/HomeStickySearchBar";
 import type { VoiceInputState } from "../../ai/useVoiceInput";
-import { useMarketplaceTopPadding } from "./marketplaceLayout";
+import { useMarketplaceHorizontalPad, useMarketplaceTopPadding } from "./marketplaceLayout";
 import { PublicSocialLinksRow } from "../../../components/social/PublicSocialLinksRow";
 import { hasPublicSocialLinks, getSocialLinksFromUser } from "../../../lib/social/socialLinks";
 const PROFILE_AVATAR_SIZE = 80;
@@ -296,6 +296,20 @@ export function DiscoverHomeChrome({
   useCompactA11yGuard();
   const { t } = useAppTranslation();
   const topPadding = useMarketplaceTopPadding(compactTop);
+  // Parent scroll views apply `md` gutter — cancel it for full-bleed band, then
+  // re-apply a single consistent inner pad so we don't double-inset content.
+  const parentPad = useMarketplaceHorizontalPad("md");
+  const innerPad = useMarketplaceHorizontalPad("sm");
+
+  const bandLayout = useMemo(
+    () => ({
+      marginLeft: -parentPad.paddingLeft,
+      marginRight: -parentPad.paddingRight,
+      paddingLeft: innerPad.paddingLeft,
+      paddingRight: innerPad.paddingRight,
+    }),
+    [innerPad.paddingLeft, innerPad.paddingRight, parentPad.paddingLeft, parentPad.paddingRight]
+  );
 
   const isTrainer = role === AccountType.TRAINER || role === "trainer";
 
@@ -339,6 +353,7 @@ export function DiscoverHomeChrome({
     <View
       style={[
         styles.band,
+        bandLayout,
         {
           backgroundColor: c.homeMarketplaceBand,
           paddingTop: topPadding,
@@ -407,14 +422,24 @@ export function DiscoverHomeChrome({
       ) : null}
 
       {categoryChips && categoryChips.length > 0 && onSelectCategory ? (
-        <HomeCategoryChipsRow
-          items={categoryChips}
-          selectedId={selectedCategoryId ?? "__all__"}
-          onSelect={(id) => {
-            if (id === "__all__") onSelectCategory(null);
-            else onSelectCategory(id);
-          }}
-        />
+        <View
+          style={[
+            styles.categoryBleed,
+            {
+              marginLeft: -innerPad.paddingLeft,
+              marginRight: -innerPad.paddingRight,
+            },
+          ]}
+        >
+          <HomeCategoryChipsRow
+            items={categoryChips}
+            selectedId={selectedCategoryId ?? "__all__"}
+            onSelect={(id) => {
+              if (id === "__all__") onSelectCategory(null);
+              else onSelectCategory(id);
+            }}
+          />
+        </View>
       ) : null}
     </View>
   );
@@ -422,11 +447,15 @@ export function DiscoverHomeChrome({
 
 const styles = StyleSheet.create({
   band: {
+    alignSelf: "stretch",
+    width: "100%",
     marginBottom: space.sm,
     paddingBottom: space.xs,
   },
+  categoryBleed: {
+    marginTop: space.xxs,
+  },
   trainerCard: {
-    marginHorizontal: space.md,
     marginBottom: space.sm,
     padding: space.md,
     borderRadius: radii.lg,
@@ -472,7 +501,6 @@ const styles = StyleSheet.create({
   topRow: {
     flexDirection: "row",
     alignItems: "flex-start",
-    paddingHorizontal: space.md,
     paddingBottom: space.sm,
     gap: space.md,
   },

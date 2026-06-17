@@ -11,8 +11,12 @@ import {
   updatePayoutPreference,
 } from "../walletApi";
 import { EarningsTrendsCard } from "../components/EarningsTrendsCard";
+import { useShellHeaderTitle } from "../../../navigation/useShellHeaderTitle";
+import { useTranslation } from "react-i18next";
 
 export function TrainerEarningsScreen() {
+  const { t } = useTranslation();
+  useShellHeaderTitle(t("wallet.earningsTrends", { defaultValue: "Earnings & trends" }));
   const c = useThemeColors();
   const styles = useThemedStyles((c) => StyleSheet.create({
   root: { flex: 1, backgroundColor: c.background },

@@ -124,6 +124,7 @@ const styles = StyleSheet.create({
   },
   wrapEmbedded: {
     paddingTop: space.xs,
+    paddingHorizontal: 0,
   },
   bar: {
     flexDirection: "row",

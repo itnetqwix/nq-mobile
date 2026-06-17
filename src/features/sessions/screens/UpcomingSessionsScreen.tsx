@@ -34,7 +34,7 @@ import { useMorphRefresh } from "../../../lib/refresh/useMorphRefresh";
 import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { queryKeys } from "../../../lib/queryKeys";
-import { floatingTabBarBottomInset } from "../../../navigation/FloatingTabBar";
+import { getSessionRefundChip } from "../../../lib/payments/paymentStatusLabels";
 import { fetchScheduledMeetings } from "../../home/api/homeApi";
 import { useHomeScrollHandler } from "../../home/hooks/useHomeScrollHandler";
 import { useHapticRefresh } from "../../../lib/refresh/useHapticRefresh";
@@ -174,6 +174,8 @@ function SessionCard({
   const acceptDeadlineMs = getInstantAcceptDeadlineMs(session);
   const joinDeadlineMs = getInstantJoinDeadlineMs(session);
 
+  const refundChip = getSessionRefundChip(session);
+
   const handleJoin = () => {
     const lessonId = session._id ?? session.id;
     if (lessonId) navigation.navigate("Meeting", { lessonId: String(lessonId) });
@@ -204,6 +206,14 @@ function SessionCard({
         </View>
         <StatusBadge status={pending && !terminal ? "booked" : status} />
       </View>
+
+      {refundChip ? (
+        <Pill
+          label={refundChip.label}
+          tone={refundChip.tone}
+          style={{ marginTop: space.sm, alignSelf: "flex-start" }}
+        />
+      ) : null}
 
       {outcomeLabel ? (
         <View style={styles.outcomeRow}>
@@ -495,12 +505,7 @@ export function UpcomingSessionsScreen() {
         {...morphRefresh.headerProps}
         refreshing={morphRefresh.refreshing || isRefetching}
       />
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabs}
-        style={styles.tabsScroll}
-      >
+      <View style={styles.tabsScroll}>
         <SegmentedControl
           scrollable
           compact
@@ -516,7 +521,7 @@ export function UpcomingSessionsScreen() {
           }}
           style={styles.segmentControl}
         />
-      </ScrollView>
+      </View>
 
       <SessionsCalendar
         monthAnchor={monthAnchor}
@@ -576,8 +581,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceElevated,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
+    paddingVertical: space.xs,
   },
-  tabs: { paddingVertical: space.xs },
   segmentControl: { marginVertical: 0, marginHorizontal: 0 },
 
   list: { padding: space.md, gap: space.sm },

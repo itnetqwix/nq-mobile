@@ -51,6 +51,7 @@ import {
   getViewerRatingSummary,
   hasViewerRated,
 } from "../../lib/sessions/sessionRatingUtils";
+import { formatEscrowStatusLabel, formatRefundStatusLabel } from "../../lib/payments/paymentStatusLabels";
 import { formatRefundTransferLabel } from "../../lib/sessions/refundTransferLabel";
 import { InstantLessonSessionActions } from "../instant-lesson/components/InstantLessonSessionActions";
 import { SessionEarlyEndActions } from "./components/SessionEarlyEndActions";
@@ -122,6 +123,13 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
   const ratingSummary = getViewerRatingSummary(viewSession, isTrainer);
   const refundTransferLabel = formatRefundTransferLabel(
     viewSession?._refund?.transfer ?? viewSession?.refund_transfer
+  );
+  const escrowStatusLabel = formatEscrowStatusLabel(
+    viewSession?._escrow?.status ?? viewSession?.escrow_status
+  );
+  const refundStatusLabel = formatRefundStatusLabel(
+    viewSession?._refund?.status ?? viewSession?.refund_status,
+    refundTransferLabel
   );
   const other = getOtherParty(viewSession, isTrainer);
   const otherName = other?.fullname || other?.fullName || (isTrainer ? "Trainee" : "Coach");
@@ -476,11 +484,11 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
                 <Text style={styles.dualTz}>{dualTz}</Text>
               ) : null}
               {!!price && <DetailRow icon="card-outline" label="Price" value={price} />}
-              {viewSession?.refund_status || viewSession?._refund?.status ? (
+              {refundStatusLabel ? (
                 <DetailRow
                   icon="return-down-back-outline"
                   label="Refund status"
-                  value={String(viewSession._refund?.status ?? viewSession.refund_status)}
+                  value={refundStatusLabel}
                 />
               ) : null}
               {refundReasonLabel ? (
@@ -493,10 +501,10 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
                   value={String(viewSession.instant_phase).replace(/_/g, " ")}
                 />
               ) : null}
-              {viewSession?._escrow?.status ? (
-                <DetailRow icon="shield-outline" label="Escrow" value={String(viewSession._escrow.status)} />
+              {escrowStatusLabel ? (
+                <DetailRow icon="shield-outline" label="Payment" value={escrowStatusLabel} />
               ) : null}
-              {refundTransferLabel ? (
+              {refundTransferLabel && !refundStatusLabel?.includes(refundTransferLabel) ? (
                 <DetailRow icon="cash-outline" label="Refund" value={refundTransferLabel} />
               ) : null}
               {Array.isArray(viewSession?.extensions) && viewSession.extensions.length > 0 ? (

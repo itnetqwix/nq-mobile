@@ -380,6 +380,13 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
 
         {step === "accountType" ? (
           <Stack gap="md">
+            {!isSsoSignup ? (
+              <SocialAuthButtons
+                navigation={navigation as never}
+                onTokens={onSocialTokens}
+                mode="signup"
+              />
+            ) : null}
             <Text style={styles.sectionLabel}>{t("auth.accountTypeLabel")}</Text>
             <Text style={styles.categoryHint}>{t("auth.accountTypeStepHint")}</Text>
             <View style={styles.row}>
@@ -424,13 +431,6 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
 
         {step === "profile" ? (
           <Stack gap="md">
-            {!isSsoSignup ? (
-              <SocialAuthButtons
-                navigation={navigation as never}
-                onTokens={onSocialTokens}
-                mode="signup"
-              />
-            ) : null}
             <FormField
               label={t("auth.fullName")}
               value={fullname}

@@ -85,13 +85,15 @@ export function PlatformPayButtonRow({
   useEffect(() => {
     let mounted = true;
     (async () => {
-      if (Platform.OS === "ios" && !STRIPE_APPLE_MERCHANT_IDENTIFIER) {
+      const merchantId = appleMerchantId ?? STRIPE_APPLE_MERCHANT_IDENTIFIER;
+      if (Platform.OS === "ios" && !merchantId) {
         if (mounted) setSupported(false);
         return;
       }
       try {
         const ok = await isPlatformPaySupported({
-          googlePay: { testEnv },
+          applePay: Platform.OS === "ios" ? { merchantCountryCode: merchantCountryCode } : undefined,
+          googlePay: Platform.OS === "android" ? { testEnv } : undefined,
         });
         if (mounted) setSupported(ok);
       } catch {
@@ -101,7 +103,7 @@ export function PlatformPayButtonRow({
     return () => {
       mounted = false;
     };
-  }, [testEnv, currency]);
+  }, [appleMerchantId, merchantCountryCode, testEnv, currency]);
 
   if (!supported || !clientSecret) return null;
 

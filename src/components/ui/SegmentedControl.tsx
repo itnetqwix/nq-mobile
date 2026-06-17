@@ -96,8 +96,8 @@ const styles = StyleSheet.create({
   },
   rowCompact: {
     marginHorizontal: space.sm,
-    marginVertical: space.xs,
-    padding: 3,
+    marginVertical: 0,
+    padding: 2,
   },
   segment: {
     flex: 1,
@@ -109,9 +109,9 @@ const styles = StyleSheet.create({
   },
   segmentCompact: {
     flex: 0,
-    paddingHorizontal: space.md,
-    paddingVertical: 8,
-    minHeight: 36,
+    paddingHorizontal: space.sm,
+    paddingVertical: 6,
+    minHeight: 32,
   },
   segmentScrollable: { flex: 0, minWidth: 88 },
   segmentActive: { backgroundColor: colors.brandNavy },

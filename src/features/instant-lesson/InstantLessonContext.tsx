@@ -9,6 +9,7 @@ import React, {
 import { Alert, AppState } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import { invalidateSessions, patchSessionInQueryCaches } from "../../lib/queryInvalidation";
+import { queryKeys } from "../../lib/queryKeys";
 import { haptics } from "../../lib/haptics";
 import { useSocket } from "../socket/SocketContext";
 import { useAuth } from "../auth/context/AuthContext";
@@ -664,7 +665,22 @@ export function InstantLessonProvider({
     void (async () => {
       try {
         const { cancelInstantLesson } = await import("./cancelInstantLessonApi");
-        await cancelInstantLesson(lessonId);
+        const result = await cancelInstantLesson(lessonId);
+        invalidateSessions(queryClient);
+        void queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all });
+        if (result.refund?.refunded) {
+          Alert.alert(
+            "Lesson cancelled",
+            "Your payment hold was released. Refunds to your wallet or card usually complete within a few minutes. Check Wallet → Activity for status.",
+            [{ text: "OK" }]
+          );
+        } else if (result.refund?.error) {
+          Alert.alert(
+            "Lesson cancelled",
+            "We could not confirm the refund automatically. Check Wallet → Activity or contact support if funds do not return.",
+            [{ text: "OK" }]
+          );
+        }
       } catch {
         if (socket) {
           socket.emit(EVENTS.TRAINEE_CANCELLED, {
@@ -673,11 +689,16 @@ export function InstantLessonProvider({
             traineeId: traineeBooking.traineeId,
           });
         }
+        Alert.alert(
+          "Lesson cancelled",
+          "Your request was cancelled. If you were charged, check Wallet → Activity for refund status.",
+          [{ text: "OK" }]
+        );
       }
     })();
     clearExpiryTimer();
     setTraineeBooking(null);
-  }, [traineeBooking, socket, clearExpiryTimer]);
+  }, [traineeBooking, socket, clearExpiryTimer, queryClient]);
 
   const clearTraineeBooking = useCallback(() => {
     setTraineeBooking(null);

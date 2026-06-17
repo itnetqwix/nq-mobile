@@ -16,6 +16,7 @@ import { queryKeys } from "../../../lib/queryKeys";
 import { useFloatingTabBarBottomInset } from "../../../navigation/useFloatingTabBarBottomInset";
 import type { WalletStackParamList } from "../navigation/WalletNavigator";
 import { TrainerWalletHome } from "../components/TrainerWalletHome";
+import { WalletPaymentExplainer } from "../components/WalletPaymentExplainer";
 import { useShellHeaderTitle } from "../../../navigation/useShellHeaderTitle";
 import { useCurrencyFormatter } from "../../../lib/intl";
 
@@ -224,6 +225,8 @@ function TraineeWalletHome({ navigation }: Props) {
           </Text>
         </Pressable>
       </View>
+
+      <WalletPaymentExplainer />
 
       <View style={styles.menuSection}>
         <MenuRow

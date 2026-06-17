@@ -12,6 +12,7 @@ import { radii, space, typography, useThemeColors, useThemedStyles } from "../..
 import { fetchPointsBalance } from "../../points/api/pointsApi";
 import { useWalletBalance } from "../hooks/useWalletBalance";
 import type { WalletStackParamList } from "../navigation/WalletNavigator";
+import { TrainerPaymentExplainer } from "./TrainerPaymentExplainer";
 import { TrainerEarningsPanel } from "./TrainerEarningsPanel";
 import { fetchStripeConnectStatus } from "../stripeConnectApi";
 
@@ -147,10 +148,20 @@ export function TrainerWalletHome({ navigation }: Props) {
         </Text>
         <TrainerEarningsPanel />
 
+        <TrainerPaymentExplainer />
+
         <Text style={styles.sectionTitle}>
           {t("wallet.manageSection", { defaultValue: "Manage" })}
         </Text>
         <View style={styles.menuSection}>
+          <MenuRow
+            icon="trending-up-outline"
+            label={t("wallet.earningsTrends", { defaultValue: "Earnings & trends" })}
+            sub={t("wallet.earningsTrendsSub", {
+              defaultValue: "Withdraw, payout preference, and charts",
+            })}
+            onPress={() => navigation.navigate("TrainerEarnings")}
+          />
           <MenuRow
             icon="receipt-outline"
             label={t("nav.transactions", { defaultValue: "Transactions" })}

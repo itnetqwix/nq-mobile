@@ -157,6 +157,7 @@ export function WizardStepPayment({
         promoDiscountCents: Math.round(promoDiscountAmount * 100),
         promoSponsorType,
         user: user as Record<string, unknown>,
+        paymentMethodHint: wallet.canPayWithWallet ? "wallet_us" : "card_domestic_us",
       });
       setPricingQuote(quote);
 
@@ -217,11 +218,14 @@ export function WizardStepPayment({
     billing.state,
     user,
     trainer,
+    promoDiscountAmount,
+    promoSponsorType,
+    wallet.canPayWithWallet,
   ]);
 
   useEffect(() => {
     createIntent();
-  }, [createIntent]);
+  }, [createIntent, wallet.canPayWithWallet]);
 
   useEffect(() => {
     if (wallet.storedPinToken && !pinSessionToken) {

@@ -61,9 +61,13 @@ export const STRIPE_PUBLISHABLE_KEY =
     .replace(/\s+/g, "")
     .trim() || "";
 
-/** Optional Apple Pay merchant id (required only when Apple Pay is enabled). */
+/**
+ * Apple Pay merchant id — must match `@stripe/stripe-react-native` plugin in app.json
+ * and the merchant ID registered in Apple Developer + Stripe.
+ */
 export const STRIPE_APPLE_MERCHANT_IDENTIFIER =
-  (process.env.EXPO_PUBLIC_STRIPE_APPLE_MERCHANT_IDENTIFIER ?? "").trim() || "";
+  (process.env.EXPO_PUBLIC_STRIPE_APPLE_MERCHANT_IDENTIFIER ?? "").trim() ||
+  "merchant.com.netqwix.nqmobile";
 
 /** Same value as web `NEXT_PUBLIC_GOOGLE_CLIENT_ID` when only one Web OAuth client exists. */
 const GOOGLE_CLIENT_ID_SHARED =

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getPinSessionToken } from "../security/pinSessionStore";
 import { fetchWalletConfig } from "../walletApi";
 import { useWalletBalance } from "./useWalletBalance";
+import { computeWalletPaymentOption } from "./walletPaymentOptionLogic";
 
 export function useWalletPaymentOption(priceDollars: number, enabled = true) {
   const { data: balance, refetch: refetchBalance } = useWalletBalance(enabled);
@@ -20,22 +21,18 @@ export function useWalletPaymentOption(priceDollars: number, enabled = true) {
     enabled,
   });
 
-  const available = balance?.balances?.available ?? 0;
-  const walletPayEnabled = config?.walletPayEnabled !== false && config?.enabled !== false;
-  const shortfall = Math.max(0, priceDollars - available);
-  const canPayWithWallet = walletPayEnabled && priceDollars > 0 && available >= priceDollars;
-  const needsPin =
-    priceDollars > 0 &&
-    (config?.stepUpThresholdMinor ?? 5000) / 100 <= priceDollars &&
-    balance?.pinSet;
+  const walletPayEnabled =
+    config?.walletPayEnabled !== false && config?.enabled !== false;
+  const option = computeWalletPaymentOption({
+    priceDollars,
+    availableDollars: balance?.balances?.available ?? 0,
+    walletPayEnabled,
+    stepUpThresholdMinor: config?.stepUpThresholdMinor,
+    pinSet: balance?.pinSet,
+  });
 
   return {
-    available,
-    walletPayEnabled,
-    canPayWithWallet,
-    shortfall,
-    needsPin,
-    pinSet: balance?.pinSet,
+    ...option,
     storedPinToken,
     refetchBalance,
   };

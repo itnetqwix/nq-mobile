@@ -420,7 +420,7 @@ export function SettingsScreen() {
       rows.push({
         icon: "card-outline",
         label: t("settings.trainerProfileBilling"),
-        onPress: () => void openWeb(WebRoutes.dashboardHome),
+        onPress: () => navigation.navigate("ShellSurface", { surfaceId: "wallet" }),
       });
     }
     rows.push({

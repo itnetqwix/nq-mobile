@@ -33,7 +33,10 @@ export function useWalletTopUpFlow() {
         return;
       }
       try {
-        const ok = await isPlatformPaySupported({ googlePay: { testEnv: __DEV__ } });
+        const ok = await isPlatformPaySupported({
+          applePay: Platform.OS === "ios" ? { merchantCountryCode: "US" } : undefined,
+          googlePay: Platform.OS === "android" ? { testEnv: __DEV__ } : undefined,
+        });
         if (mounted) setNativePaySupported(ok);
       } catch {
         // not supported

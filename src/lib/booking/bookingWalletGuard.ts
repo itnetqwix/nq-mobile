@@ -1,6 +1,13 @@
 import { Alert } from "react-native";
 import { fetchWalletBalance, fetchWalletConfig } from "../../features/wallet/walletApi";
 
+function formatUsd(amount: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(Math.max(0, amount));
+}
+
 /**
  * Soft guard before the payment step: if wallet pay is enabled and balance
  * is below the lesson price, offer top-up without blocking card payment.
@@ -26,7 +33,7 @@ export async function confirmProceedToPaymentIfWalletShort(
     return await new Promise<boolean>((resolve) => {
       Alert.alert(
         "Wallet balance",
-        `You have $${available.toFixed(2)} available but this lesson is $${required.toFixed(2)}. Add funds or pay with card on the next step.`,
+        `You have ${formatUsd(available)} available but this lesson is ${formatUsd(required)}. Add funds or pay with card on the next step.`,
         [
           { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
           {

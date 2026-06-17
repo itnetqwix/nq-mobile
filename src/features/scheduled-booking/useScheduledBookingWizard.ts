@@ -20,6 +20,7 @@ import {
 import { queryKeys } from "../../lib/queryKeys";
 import { upsertSessionInQueryCaches } from "../../lib/queryInvalidation";
 import { confirmProceedToPaymentIfWalletShort } from "../../lib/booking/bookingWalletGuard";
+import { resolvePaymentMethodHint } from "../../lib/payments/pricingQuoteHint";
 import { getApiErrorMessage } from "../../lib/http/getApiErrorMessage";
 import { chargeTotalDollars } from "../payments/pricingTypes";
 import { navigateToWalletTopUp } from "../../navigation/navigationRef";
@@ -54,6 +55,7 @@ import {
   promoDisplayLabel,
   promoSponsorFromResult,
 } from "../../lib/promo/promoDisplay";
+import { useWalletBalance } from "../wallet/hooks/useWalletBalance";
 
 export type ScheduledTrainer = Record<string, unknown> | null;
 
@@ -268,6 +270,25 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     return expectedPrice;
   }, [checkoutPreviewQuery.data, promoResult, expectedPrice]);
 
+  const { data: walletBalance } = useWalletBalance(visible);
+  const walletAvailable = walletBalance?.balances?.available ?? 0;
+  const durationQuotePaymentHint = useMemo(
+    () =>
+      resolvePaymentMethodHint(
+        walletAvailable,
+        chargeTotalDollars(durationPreviewQuote) ?? payableAmount
+      ),
+    [walletAvailable, durationPreviewQuote, payableAmount]
+  );
+  const confirmQuotePaymentHint = useMemo(
+    () =>
+      resolvePaymentMethodHint(
+        walletAvailable,
+        chargeTotalDollars(pricingQuote) ?? payableAmount
+      ),
+    [walletAvailable, pricingQuote, payableAmount]
+  );
+
 
   const validateCoupon = useCallback(() => {
     if (couponCode.length > 50) {
@@ -355,6 +376,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
       promoDiscountCents: Math.round(promoDiscountAmount * 100),
       promoSponsorType,
       user: user as Record<string, unknown>,
+      paymentMethodHint: durationQuotePaymentHint,
     })
       .then((q) => {
         if (!cancelled) setDurationPreviewQuote(q);
@@ -365,7 +387,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     return () => {
       cancelled = true;
     };
-  }, [visible, step, tid, payableAmount, expectedPrice, durationMinutes, promoDiscountAmount, promoSponsorType]);
+  }, [visible, step, tid, payableAmount, expectedPrice, durationMinutes, promoDiscountAmount, promoSponsorType, durationQuotePaymentHint, user]);
 
   useEffect(() => {
     if (!visible || step !== "confirm" || !tid || payableAmount <= 0 || pricingQuote) {
@@ -379,6 +401,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
       promoDiscountCents: Math.round(promoDiscountAmount * 100),
       promoSponsorType,
       user: user as Record<string, unknown>,
+      paymentMethodHint: confirmQuotePaymentHint,
     })
       .then((q) => {
         if (!cancelled) {
@@ -403,6 +426,8 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     durationMinutes,
     promoDiscountAmount,
     promoSponsorType,
+    confirmQuotePaymentHint,
+    user,
   ]);
 
   const goNext = useCallback(() => {

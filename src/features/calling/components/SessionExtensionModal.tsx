@@ -118,6 +118,7 @@ export function SessionExtensionModal({
               sessionSubtotalCents: Math.round(q.amount * 100),
               trainerId,
               user: user as Record<string, unknown>,
+              paymentMethodHint: paymentMethod === "wallet" ? "wallet_us" : "card_domestic_us",
             });
             enriched = { ...q, pricingQuote };
           } catch {
@@ -140,7 +141,7 @@ export function SessionExtensionModal({
     return () => {
       cancelled = true;
     };
-  }, [visible, minutes, phase, fetchQuote, trainerId, user]);
+  }, [visible, minutes, phase, fetchQuote, trainerId, user, paymentMethod]);
 
   useEffect(() => {
     if (!visible) return;
@@ -158,6 +159,7 @@ export function SessionExtensionModal({
               sessionSubtotalCents: Math.round(q.amount * 100),
               trainerId,
               user: user as Record<string, unknown>,
+              paymentMethodHint: paymentMethod === "wallet" ? "wallet_us" : "card_domestic_us",
             });
             enriched = { ...q, pricingQuote };
           } catch {
@@ -170,7 +172,7 @@ export function SessionExtensionModal({
     return () => {
       cancelled = true;
     };
-  }, [visible, phase, request?.minutes, minutes, fetchQuote, trainerId, user]);
+  }, [visible, phase, request?.minutes, minutes, fetchQuote, trainerId, user, paymentMethod]);
 
   /** When the trainee dismisses while still pending/awaiting payment, surface
    *  a confirm step instead of silently abandoning a server-side row. */

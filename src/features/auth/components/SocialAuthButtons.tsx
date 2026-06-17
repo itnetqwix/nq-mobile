@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { space, typography, useThemeColors } from "../../../theme";
-import { isGoogleConfigured } from "../api/socialAuth";
+import { isGoogleConfiguredForPlatform } from "../api/socialAuth";
 import { peekLastAuthMethod } from "../lib/lastAuthMethod";
 import { GoogleSignInButton } from "./GoogleSignInButton";
 import { AppleSignInButton } from "./AppleSignInButton";
@@ -21,9 +22,15 @@ export function SocialAuthButtons({ navigation, onTokens, mode = "login" }: Prop
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const [busy, setBusy] = useState(false);
+  const [appleAvailable, setAppleAvailable] = useState(false);
 
-  const hasGoogle = isGoogleConfigured();
-  const hasApple = Platform.OS === "ios";
+  useEffect(() => {
+    if (Platform.OS !== "ios") return;
+    void AppleAuthentication.isAvailableAsync().then(setAppleAvailable);
+  }, []);
+
+  const hasGoogle = isGoogleConfiguredForPlatform();
+  const hasApple = Platform.OS === "ios" && appleAvailable;
 
   if (!hasGoogle && !hasApple) {
     return null;

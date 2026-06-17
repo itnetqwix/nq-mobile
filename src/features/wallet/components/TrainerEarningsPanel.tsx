@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { queryKeys } from "../../../lib/queryKeys";
+import { useCurrencyFormatter } from "../../../lib/intl";
 import {
   fetchTrainerEarnings,
   requestWithdraw,
@@ -37,6 +38,7 @@ export function TrainerEarningsPanel() {
 
   const queryClient = useQueryClient();
   const [withdrawAmount, setWithdrawAmount] = useState("");
+  const fmt = useCurrencyFormatter();
   const { data: earnings } = useQuery({
     queryKey: queryKeys.wallet.earnings,
     queryFn: fetchTrainerEarnings,
@@ -76,9 +78,12 @@ export function TrainerEarningsPanel() {
   return (
     <View style={styles.card}>
       <Text style={styles.label}>Available to withdraw</Text>
-      <Text style={styles.amount}>${(earnings?.balances?.available ?? 0).toFixed(2)}</Text>
+      <Text style={styles.amount}>
+        {fmt(earnings?.balances?.available ?? 0, { currency: earnings?.currency })}
+      </Text>
       <Text style={styles.sub}>
-        Pending release: ${(earnings?.balances?.pending_release ?? 0).toFixed(2)}
+        Pending release:{" "}
+        {fmt(earnings?.balances?.pending_release ?? 0, { currency: earnings?.currency })}
       </Text>
 
       <Text style={styles.section}>Payout preference</Text>

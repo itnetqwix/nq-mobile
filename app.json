@@ -135,6 +135,7 @@
           "enableGooglePay": true
         }
       ],
+      "expo-apple-authentication",
       "expo-web-browser",
       "expo-asset",
       "expo-font",

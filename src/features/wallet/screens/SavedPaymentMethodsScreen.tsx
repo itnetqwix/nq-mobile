@@ -40,6 +40,10 @@ import {
   makePaymentMethodDefault,
   type SavedPaymentMethod,
 } from "../walletApi";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { WalletStackParamList } from "../navigation/WalletNavigator";
+
+type Props = NativeStackScreenProps<WalletStackParamList, "WalletPaymentMethods">;
 
 /**
  * Card-brand → icon mapping. Ionicons doesn't ship per-brand glyphs so we
@@ -186,7 +190,7 @@ function usePaymentMethodStyles() {
   );
 }
 
-export function SavedPaymentMethodsScreen() {
+export function SavedPaymentMethodsScreen({ navigation }: Props) {
   const styles = usePaymentMethodStyles();
   const c = useThemeColors();
   const { t } = useTranslation();
@@ -274,6 +278,38 @@ export function SavedPaymentMethodsScreen() {
         renderItem={({ item }) => (
           <PaymentRow method={item} onMakeDefault={handleMakeDefault} onRemove={handleRemove} />
         )}
+        ListHeaderComponent={
+          <Pressable
+            style={({ pressed }) => [
+              {
+                flexDirection: "row",
+                alignItems: "center",
+                gap: space.sm,
+                padding: space.md,
+                marginBottom: space.sm,
+                borderRadius: radii.md,
+                borderWidth: 1,
+                borderColor: c.border,
+                backgroundColor: c.brandSubtle,
+              },
+              pressed && { opacity: 0.9 },
+            ]}
+            onPress={() => navigation.navigate("WalletTopUp")}
+          >
+            <Ionicons name="add-circle-outline" size={22} color={c.brandNavy} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ ...typography.bodyMd, fontWeight: "700", color: c.text }}>
+                {t("wallet.cards.addViaTopUp", { defaultValue: "Add a card" })}
+              </Text>
+              <Text style={{ ...typography.caption, color: c.textMuted, marginTop: 2 }}>
+                {t("wallet.cards.addViaTopUpSub", {
+                  defaultValue: "Top up your wallet — save your card during checkout",
+                })}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={c.textMuted} />
+          </Pressable>
+        }
         ListEmptyComponent={
           <EmptyState
             icon="card-outline"
