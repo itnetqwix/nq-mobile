@@ -7,13 +7,11 @@ import { useAppTranslation } from "../../../../i18n/useAppTranslation";
 import { lockerTilesForRole } from "./lockerConfig";
 import { HomeSection } from "./HomeSection";
 import { LockerTile } from "./LockerTile";
-import { RecentExpertsSection } from "./RecentExpertsSection";
 import type { LockerTileId } from "./types";
 
 type Props = {
   accountType: string | null;
   onOpenSurface: (id: UtilitySurfaceId) => void;
-  onSelectTrainer?: (trainer: Record<string, unknown>) => void;
 };
 
 const TILE_TO_SURFACE: Record<LockerTileId, UtilitySurfaceId> = {
@@ -23,7 +21,7 @@ const TILE_TO_SURFACE: Record<LockerTileId, UtilitySurfaceId> = {
   invite: "invite",
 };
 
-export function LockerHub({ accountType, onOpenSurface, onSelectTrainer }: Props) {
+export function LockerHub({ accountType, onOpenSurface }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const tiles = lockerTilesForRole(accountType);
@@ -38,13 +36,10 @@ export function LockerHub({ accountType, onOpenSurface, onSelectTrainer }: Props
         paddingBottom: space.md,
         gap: space.sm,
       },
-      recentWrap: {
-        marginBottom: space.md,
-      },
     })
   );
 
-  if (tiles.length === 0 && !onSelectTrainer) return null;
+  if (tiles.length === 0) return null;
 
   return (
     <HomeSection
@@ -55,12 +50,6 @@ export function LockerHub({ accountType, onOpenSurface, onSelectTrainer }: Props
       testID="home-locker-hub"
       bare
     >
-      {onSelectTrainer ? (
-        <View style={styles.recentWrap}>
-          <RecentExpertsSection onSelectTrainer={onSelectTrainer} />
-        </View>
-      ) : null}
-
       {tiles.length > 0 ? (
         <>
           <Text style={styles.hint}>

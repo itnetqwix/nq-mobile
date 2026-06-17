@@ -13,6 +13,7 @@ import { PerformanceTipsCard } from "./PerformanceTipsCard";
 import { FriendRequestTilesSkeleton } from "../../../../components/ui";
 import { TrainerFriendRequestsSection } from "./TrainerFriendRequestsSection";
 import { TrainerLockerSection } from "./TrainerLockerSection";
+import { TrainerRecentTraineesSection } from "./TrainerRecentTraineesSection";
 import { MiniFriendsSection } from "../shared/MiniFriendsSection";
 import { DashboardClipsPreviewSection } from "../shared/DashboardClipsPreviewSection";
 import { ReferFriendsBanner } from "../shared/ReferFriendsBanner";
@@ -117,6 +118,13 @@ function TrainerDashboardHubInner({
 
       <MiniFriendsSection onPressAll={() => onOpenSurface("friends" as any)} />
 
+      {recentTrainees.length > 0 ? (
+        <TrainerRecentTraineesSection
+          trainees={recentTrainees}
+          onSelectTrainee={onOpenStudents ? () => onOpenStudents() : undefined}
+        />
+      ) : null}
+
       <DashboardClipsPreviewSection onViewMore={onOpenClips} />
 
       <PerformanceTipsCard
@@ -127,12 +135,7 @@ function TrainerDashboardHubInner({
 
       <ReferFriendsBanner onPressInvite={() => onPressInvite?.()} />
 
-      <TrainerLockerSection
-        accountType={accountType}
-        onOpenSurface={onOpenSurface}
-        recentTrainees={recentTrainees}
-        onSelectTrainee={onOpenStudents ? () => onOpenStudents() : undefined}
-      />
+      <TrainerLockerSection accountType={accountType} onOpenSurface={onOpenSurface} />
     </View>
   );
 }

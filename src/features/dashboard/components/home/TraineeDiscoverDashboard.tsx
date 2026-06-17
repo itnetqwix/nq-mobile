@@ -37,6 +37,7 @@ import { ContinueWhereYouLeftOffCard } from "../trainee/ContinueWhereYouLeftOffC
 import { TraineePendingRequestsBanner } from "../trainee/TraineePendingRequestsBanner";
 import { CategoryEmptySuggestions } from "../trainee/CategoryEmptySuggestions";
 import { FavoriteCoachesSection } from "../trainee/FavoriteCoachesSection";
+import { RecentExpertsSection } from "./RecentExpertsSection";
 import { useDashboardSessions } from "../../hooks/useDashboardSessions";
 import { useFavoriteTrainers } from "../../hooks/useFavoriteTrainers";
 import { useWalletBalance } from "../../../wallet/hooks/useWalletBalance";
@@ -346,6 +347,8 @@ export function TraineeDiscoverDashboard({
       ) : null}
 
       {!isGuest ? <FavoriteCoachesSection onSelectTrainer={handleViewTrainer} /> : null}
+
+      {!isGuest ? <RecentExpertsSection onSelectTrainer={handleViewTrainer} /> : null}
 
       {isGuest ? (
         <GuestSeededCoachesSection onSelectTrainer={handleViewTrainer} />

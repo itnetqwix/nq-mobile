@@ -6,15 +6,12 @@ import { lockerTilesForRole } from "../home/lockerConfig";
 import { LockerTile } from "../home/LockerTile";
 import type { LockerTileId } from "../home/types";
 import { DashboardSection } from "../shared/DashboardSection";
-import { TrainerRecentTraineesSection } from "./TrainerRecentTraineesSection";
 import { space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
 
 type Props = {
   accountType: string | null;
   onOpenSurface: (id: UtilitySurfaceId) => void;
-  recentTrainees?: Record<string, unknown>[];
-  onSelectTrainee?: (trainee: Record<string, unknown>) => void;
 };
 
 const TILE_TO_SURFACE: Record<LockerTileId, UtilitySurfaceId> = {
@@ -24,17 +21,12 @@ const TILE_TO_SURFACE: Record<LockerTileId, UtilitySurfaceId> = {
   invite: "invite",
 };
 
-export function TrainerLockerSection({
-  accountType,
-  onOpenSurface,
-  recentTrainees = [],
-  onSelectTrainee,
-}: Props) {
+export function TrainerLockerSection({ accountType, onOpenSurface }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const tiles = lockerTilesForRole(accountType);
   const styles = useStyles();
-  if (!tiles.length && !recentTrainees.length) return null;
+  if (!tiles.length) return null;
 
   return (
     <DashboardSection
@@ -43,13 +35,6 @@ export function TrainerLockerSection({
       subtitle={t("trainerDashboard.lockerSubtitle")}
       testID="home-locker-hub"
     >
-      {recentTrainees.length > 0 ? (
-        <TrainerRecentTraineesSection
-          trainees={recentTrainees}
-          onSelectTrainee={onSelectTrainee}
-        />
-      ) : null}
-
       {tiles.length > 0 ? (
         <>
           <ScrollView

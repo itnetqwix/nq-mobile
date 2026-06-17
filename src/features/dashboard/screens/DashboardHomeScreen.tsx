@@ -785,11 +785,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
                 />
               )}
 
-              <LockerHub
-                accountType={accountType}
-                onOpenSurface={openShell}
-                onSelectTrainer={setProfileTrainer}
-              />
+              <LockerHub accountType={accountType} onOpenSurface={openShell} />
             </>
           }
         />
