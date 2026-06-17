@@ -8,11 +8,16 @@ import {
   canvasPointToContentUV,
   canvasPointToNormalizedCanvas,
   contentUVToCanvasPoint,
-  resolveAnnotationFrame,
+  getContentRect,
+  localVideoPointToOverlayPoint,
+  overlayPointToLocalVideoPoint,
+  resolveAnnotationMappingFrame,
   type AnnotationFitMode,
   type ContentAspect,
   type ContentInsets,
+  type ContentRect,
 } from "./annotationCoords";
+import type { PanPoint } from "./clipZoomPanUtils";
 import type { RemoteStroke, StrokePoint } from "./useDrawingSync";
 
 export function pointsToPath(points: StrokePoint[]): SkPath {
@@ -124,17 +129,30 @@ export function normalizeStrokesForTarget(
   return withSource.map((s) => scaleStrokeForCanvas(s, target));
 }
 
+export type AnnotationProjectionOptions = {
+  contentAspect?: ContentAspect | null;
+  contentFit?: AnnotationFitMode;
+  contentInsets?: ContentInsets;
+  measuredContentRect?: ContentRect | null;
+  zoomPan?: { zoom: number; pan: PanPoint } | null;
+};
+
 /** Map a stroke into overlay pixel space for rendering or burn-in. */
 export function projectStrokeToCanvas(
   stroke: RemoteStroke,
   target: { width: number; height: number },
   aspect?: ContentAspect | null,
   fit: AnnotationFitMode = "contain",
-  contentInsets?: ContentInsets
+  contentInsets?: ContentInsets,
+  options?: Omit<AnnotationProjectionOptions, "contentAspect" | "contentFit" | "contentInsets">
 ): RemoteStroke {
-  const frame = resolveAnnotationFrame(target, contentInsets);
+  const frame = resolveAnnotationMappingFrame(target, {
+    contentInsets,
+    measuredContentRect: options?.measuredContentRect,
+  });
   const renderAspect = stroke.contentAspect ?? aspect;
   const renderFit = stroke.contentFit ?? fit;
+  const zoomPan = options?.zoomPan ?? null;
   if (
     stroke.coordSpace === "contentUv" &&
     renderAspect &&
@@ -144,7 +162,7 @@ export function projectStrokeToCanvas(
     frame.height > 0
   ) {
     const mapPt = (u: number, v: number) => {
-      const pt = contentUVToCanvasPoint(
+      const local = contentUVToCanvasPoint(
         u,
         v,
         frame.width,
@@ -152,9 +170,17 @@ export function projectStrokeToCanvas(
         renderAspect,
         renderFit
       );
-      return pt
-        ? { x: pt.x + frame.offsetX, y: pt.y + frame.offsetY }
-        : { x: u * frame.width + frame.offsetX, y: v * frame.height + frame.offsetY };
+      if (!local) {
+        return { x: u * frame.width + frame.offsetX, y: v * frame.height + frame.offsetY };
+      }
+      return localVideoPointToOverlayPoint(
+        local.x,
+        local.y,
+        frame,
+        renderAspect,
+        renderFit,
+        zoomPan
+      );
     };
     const bounds = stroke.shapeBounds;
     return {
@@ -229,23 +255,35 @@ function unoffsetStrokePoints(
 export function strokeForSyncEmit(
   stroke: RemoteStroke,
   canvasSize: { width: number; height: number },
-  options?: {
-    contentAspect?: ContentAspect | null;
-    contentFit?: AnnotationFitMode;
+  options?: AnnotationProjectionOptions & {
     targetUserId?: string | null;
-    contentInsets?: ContentInsets;
   }
 ): RemoteStroke {
-  const frame = resolveAnnotationFrame(canvasSize, options?.contentInsets);
+  const frame = resolveAnnotationMappingFrame(canvasSize, {
+    contentInsets: options?.contentInsets,
+    measuredContentRect: options?.measuredContentRect,
+  });
   const localStroke = unoffsetStrokePoints(stroke, frame.offsetX, frame.offsetY);
   const aspect = options?.contentAspect;
   const fit = options?.contentFit ?? "contain";
   const targetUserId = options?.targetUserId ?? null;
+  const zoomPan = options?.zoomPan ?? null;
   if (aspect && aspect.width > 0 && aspect.height > 0) {
     const toUv = (x: number, y: number) => {
+      let lx = x;
+      let ly = y;
+      if (zoomPan && zoomPan.zoom > 1.001) {
+        const rect = getContentRect(frame.width, frame.height, aspect, fit);
+        if (rect) {
+          const cx = rect.x + rect.width / 2;
+          const cy = rect.y + rect.height / 2;
+          lx = (lx - cx - zoomPan.pan.x) / zoomPan.zoom + cx;
+          ly = (ly - cy - zoomPan.pan.y) / zoomPan.zoom + cy;
+        }
+      }
       const uv =
-        canvasPointToContentUV(x, y, frame.width, frame.height, aspect, fit) ??
-        canvasPointToNormalizedCanvas(x, y, frame.width, frame.height);
+        canvasPointToContentUV(lx, ly, frame.width, frame.height, aspect, fit) ??
+        canvasPointToNormalizedCanvas(lx, ly, frame.width, frame.height);
       return { x: uv.u, y: uv.v };
     };
     const bounds = localStroke.shapeBounds;
@@ -287,4 +325,25 @@ export function strokeForSyncEmit(
         }
       : undefined,
   };
+}
+
+export function projectStrokesForTarget(
+  strokes: RemoteStroke[],
+  sourceCanvas: { width: number; height: number },
+  target: { width: number; height: number },
+  options?: AnnotationProjectionOptions
+): RemoteStroke[] {
+  return strokes.map((stroke) =>
+    projectStrokeToCanvas(
+      stroke,
+      target,
+      options?.contentAspect ?? stroke.contentAspect,
+      options?.contentFit ?? stroke.contentFit ?? "contain",
+      options?.contentInsets,
+      {
+        measuredContentRect: options?.measuredContentRect,
+        zoomPan: options?.zoomPan,
+      }
+    )
+  );
 }

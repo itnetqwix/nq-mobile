@@ -4,6 +4,8 @@
  * trainer and trainee annotations align across screen sizes.
  */
 
+import type { PanPoint } from "./clipZoomPanUtils";
+
 export type ContentRect = { x: number; y: number; width: number; height: number };
 
 export type ContentAspect = { width: number; height: number };
@@ -121,14 +123,26 @@ export function canvasPointToNormalizedCanvas(
 export type ContentInsets = { top?: number; bottom?: number; left?: number; right?: number };
 
 export type ClipAnnotationLayout =
-  | { mode: "single" }
-  | { mode: "dual-locked" }
-  | { mode: "dual-unlocked"; paneIndex: 0 | 1 };
+  | { mode: "single"; trainerControls?: boolean }
+  | { mode: "dual-locked"; paneIndex: 0 | 1; trainerControls?: boolean }
+  | {
+      mode: "dual-unlocked";
+      paneIndex: 0 | 1;
+      trainerControls?: boolean;
+      focused?: boolean;
+    };
+
+export type AnnotationMappingFrame = {
+  width: number;
+  height: number;
+  offsetX: number;
+  offsetY: number;
+};
 
 export function resolveAnnotationFrame(
   target: { width: number; height: number },
   insets?: ContentInsets
-): { width: number; height: number; offsetX: number; offsetY: number } {
+): AnnotationMappingFrame {
   const top = insets?.top ?? 0;
   const left = insets?.left ?? 0;
   const right = insets?.right ?? 0;
@@ -141,28 +155,85 @@ export function resolveAnnotationFrame(
   };
 }
 
-/** Map clip stage layout to the video sub-rect inside the full overlay. */
+export function insetsFromMeasuredRect(
+  canvas: { width: number; height: number },
+  rect: ContentRect | null | undefined
+): ContentInsets | undefined {
+  if (!rect || rect.width <= 0 || rect.height <= 0) return undefined;
+  return {
+    top: rect.y,
+    left: rect.x,
+    bottom: Math.max(0, canvas.height - rect.y - rect.height),
+    right: Math.max(0, canvas.width - rect.x - rect.width),
+  };
+}
+
+export function resolveAnnotationMappingFrame(
+  canvas: { width: number; height: number },
+  options?: {
+    contentInsets?: ContentInsets;
+    measuredContentRect?: ContentRect | null;
+  }
+): AnnotationMappingFrame {
+  if (options?.measuredContentRect) {
+    const r = options.measuredContentRect;
+    return {
+      width: Math.max(1, r.width),
+      height: Math.max(1, r.height),
+      offsetX: r.x,
+      offsetY: r.y,
+    };
+  }
+  return resolveAnnotationFrame(canvas, options?.contentInsets);
+}
+
+/** Map clip stage layout to the video sub-rect inside the full overlay (analytic fallback). */
 export function resolveClipContentInsets(
   canvas: { width: number; height: number },
   layout: ClipAnnotationLayout
 ): ContentInsets {
-  const timelineH = 56;
-  const compactTimelineH = 42;
-  const dualPaneControlsH = 46;
+  const trainerControls = layout.trainerControls !== false;
+  const timelineH = trainerControls ? 68 : 0;
+  const compactTimelineH = trainerControls ? 52 : 0;
+  const dualPaneControlsH = trainerControls ? 58 : 0;
+  const stackGap = 4;
+
   if (layout.mode === "single") {
     return { bottom: timelineH, left: 0, right: 0, top: 0 };
   }
+
   if (layout.mode === "dual-locked") {
-    return { bottom: compactTimelineH + 6, left: 0, right: 0, top: 0 };
+    const controlsH = compactTimelineH + 6;
+    const stackH = Math.max(1, canvas.height - controlsH - stackGap);
+    const paneH = stackH / 2;
+    if (layout.paneIndex === 0) {
+      return { top: 0, bottom: canvas.height - paneH, left: 0, right: 0 };
+    }
+    return {
+      top: paneH + stackGap,
+      bottom: controlsH,
+      left: 0,
+      right: 0,
+    };
   }
-  const paneH = canvas.height / 2;
+
+  if (layout.focused) {
+    return {
+      top: 0,
+      bottom: trainerControls ? dualPaneControlsH : 0,
+      left: 0,
+      right: 0,
+    };
+  }
+
+  const paneH = (canvas.height - stackGap) / 2;
   const videoH = Math.max(1, paneH - dualPaneControlsH);
   if (layout.paneIndex === 0) {
     return { top: 0, bottom: canvas.height - videoH, left: 0, right: 0 };
   }
   return {
-    top: paneH,
-    bottom: canvas.height - (paneH + videoH),
+    top: paneH + stackGap,
+    bottom: canvas.height - (paneH + stackGap + videoH),
     left: 0,
     right: 0,
   };
@@ -176,4 +247,52 @@ export function normalizedCanvasToPoint(
 ): { x: number; y: number } {
   const uv = clampUV({ u, v }) ?? { u: 0, v: 0 };
   return { x: uv.u * frameW, y: uv.v * frameH };
+}
+
+/** Inverse zoom/pan before mapping overlay touch to content UV. */
+export function overlayPointToLocalVideoPoint(
+  x: number,
+  y: number,
+  frame: AnnotationMappingFrame,
+  aspect: ContentAspect,
+  fit: AnnotationFitMode,
+  zoomPan?: { zoom: number; pan: PanPoint } | null
+): { x: number; y: number } {
+  let lx = x - frame.offsetX;
+  let ly = y - frame.offsetY;
+  const z = zoomPan?.zoom ?? 1;
+  if (z > 1.001 && zoomPan) {
+    const rect = getContentRect(frame.width, frame.height, aspect, fit);
+    if (rect) {
+      const cx = rect.x + rect.width / 2;
+      const cy = rect.y + rect.height / 2;
+      lx = (lx - cx - zoomPan.pan.x) / z + cx;
+      ly = (ly - cy - zoomPan.pan.y) / z + cy;
+    }
+  }
+  return { x: lx, y: ly };
+}
+
+/** Apply zoom/pan when projecting content UV back to overlay pixels. */
+export function localVideoPointToOverlayPoint(
+  lx: number,
+  ly: number,
+  frame: AnnotationMappingFrame,
+  aspect: ContentAspect,
+  fit: AnnotationFitMode,
+  zoomPan?: { zoom: number; pan: PanPoint } | null
+): { x: number; y: number } {
+  const z = zoomPan?.zoom ?? 1;
+  let px = lx;
+  let py = ly;
+  if (z > 1.001 && zoomPan) {
+    const rect = getContentRect(frame.width, frame.height, aspect, fit);
+    if (rect) {
+      const cx = rect.x + rect.width / 2;
+      const cy = rect.y + rect.height / 2;
+      px = (lx - cx) * z + cx + zoomPan.pan.x;
+      py = (ly - cy) * z + cy + zoomPan.pan.y;
+    }
+  }
+  return { x: px + frame.offsetX, y: py + frame.offsetY };
 }

@@ -138,7 +138,9 @@ import {
 import { ClipPickerModal } from "../components/ClipPickerModal";
 import { LockedDualClipStage } from "../components/LockedDualClipStage";
 import { UnlockedDualClipStage } from "../components/UnlockedDualClipStage";
-import type { ClipAnnotationLayout } from "../annotationCoords";
+import type { ClipAnnotationLayout, ContentRect } from "../annotationCoords";
+import { resolveClipContentInsets } from "../annotationCoords";
+import type { AnnotationProjectionOptions } from "../annotationRenderUtils";
 import { ClipPlayer, type ZoomPanEmitMode } from "../components/ClipPlayer";
 import { ClipZoomControls } from "../components/ClipZoomControls";
 import { ClipPlaybackControls } from "../components/ClipPlaybackControls";
@@ -175,8 +177,6 @@ import { RatingsModal } from "../components/RatingsModal";
 import { MeetingJoinBanner } from "../components/MeetingJoinBanner";
 import { SessionRecapSheet } from "../components/SessionRecapSheet";
 import { MeetingAgendaBanner } from "../components/MeetingAgendaBanner";
-import { MeetingLiveNotesPanel } from "../components/MeetingLiveNotesPanel";
-import { MeetingTraineeNotesPanel } from "../components/MeetingTraineeNotesPanel";
 import { CallSlotTakenOverModal } from "../components/CallSlotTakenOverModal";
 import {
   navigateToBookTrainer,
@@ -699,13 +699,6 @@ function MeetingSurface({
     }
   }, [lessonId]);
 
-  const elapsedLessonSeconds = useMemo(() => {
-    const dur = lessonTimer.authoritativeTimer?.duration;
-    const rem = lessonTimer.remainingSeconds;
-    if (dur != null && rem != null) return Math.max(0, dur - rem);
-    return 0;
-  }, [lessonTimer.authoritativeTimer?.duration, lessonTimer.remainingSeconds]);
-
   const inCallPerms = useInCallPermissions(
     partnerInSession || bothJoined || !!peerJoined
   );
@@ -838,16 +831,19 @@ function MeetingSurface({
     useState(ACTION_BAR_HEIGHT);
   const [measuredAnnotationToolbarHeight, setMeasuredAnnotationToolbarHeight] =
     useState(ANNOTATION_TOOLBAR_HEIGHT);
+  const [lockedAnnotPane, setLockedAnnotPane] = useState<0 | 1 | null>(null);
 
   const hasClipStage =
     clipPaneUrisEarly.length > 0 &&
     (clipSync.selectedClips.length > 0 || Boolean(clipSync.activeClipId));
   const dualClipEarly = clipPaneUrisEarly.length >= 2;
+  const lockedDualClipEarly = dualClipEarly && clipSync.lockMode;
   const chrome = useMeetingChromeInsets({
     inClipMode: hasClipStage,
     inlineClipControls: hasClipStage,
     annotationToolbarOpen: isTrainer && annotationToolbarOpen,
     annotationToolbarHeight: measuredAnnotationToolbarHeight,
+    dualInlineClipControls: dualClipEarly && hasClipStage && !lockedDualClipEarly,
     actionBarHeight: measuredActionBarHeight,
   });
 
@@ -1033,12 +1029,21 @@ function MeetingSurface({
     drawingSync.replaySocketState,
   ]);
 
+  const burnInProjectionRef = useRef<AnnotationProjectionOptions>({});
+
   const applyAnnotationBurnIn = useCallback(
     async (localUri: string) => {
       const strokes = drawingSync.getCaptureStrokes();
       if (!strokes.length) return null;
       const canvasSize = drawingSync.getLastCanvasSize();
-      return burnInHostRef.current?.composite(localUri, strokes, canvasSize) ?? null;
+      return (
+        burnInHostRef.current?.composite(
+          localUri,
+          strokes,
+          canvasSize,
+          burnInProjectionRef.current
+        ) ?? null
+      );
     },
     [drawingSync]
   );
@@ -1152,6 +1157,12 @@ function MeetingSurface({
     width: number;
     height: number;
   } | null>(null);
+  const clipFrameOffsetRef = useRef({ x: 0, y: 0 });
+  const paneOffsetRef = useRef<Partial<Record<0 | 1, { x: number; y: number }>>>({});
+  const clipLocalRectRef = useRef<Partial<Record<0 | 1, ContentRect>>>({});
+  const [measuredAnnotationRect, setMeasuredAnnotationRect] = useState<ContentRect | null>(
+    null
+  );
   const [localVideoAspect, setLocalVideoAspect] = useState<{
     width: number;
     height: number;
@@ -1398,9 +1409,97 @@ function MeetingSurface({
 
   /** Pane whose intrinsic size drives annotation UV mapping (focused or active clip). */
   const annotationSourcePane = useMemo((): 0 | 1 => {
+    if (lockedDualClip && lockedAnnotPane != null) return lockedAnnotPane;
     if (clipFocusIndex === 0 || clipFocusIndex === 1) return clipFocusIndex;
     return activePaneIndex;
-  }, [clipFocusIndex, activePaneIndex]);
+  }, [activePaneIndex, clipFocusIndex, lockedAnnotPane, lockedDualClip]);
+
+  const syncMeasuredAnnotationRect = useCallback((pane: 0 | 1) => {
+    const paneOff = paneOffsetRef.current[pane];
+    const local = clipLocalRectRef.current[pane];
+    if (!local) return;
+    const baseX = clipFrameOffsetRef.current.x + (paneOff?.x ?? 0);
+    const baseY = clipFrameOffsetRef.current.y + (paneOff?.y ?? 0);
+    setMeasuredAnnotationRect({
+      x: baseX + local.x,
+      y: baseY + local.y,
+      width: local.width,
+      height: local.height,
+    });
+  }, []);
+
+  const handleAnnotationPaneLayout = useCallback(
+    (paneIndex: 0 | 1, layout: { x: number; y: number; width: number; height: number }) => {
+      paneOffsetRef.current[paneIndex] = { x: layout.x, y: layout.y };
+      if (paneIndex === annotationSourcePane) {
+        syncMeasuredAnnotationRect(paneIndex);
+      }
+    },
+    [annotationSourcePane, syncMeasuredAnnotationRect]
+  );
+
+  const clipSelectionKey = useMemo(
+    () => clipSync.selectedClips.map((c) => clipIdOf(c)).join("|"),
+    [clipSync.selectedClips]
+  );
+
+  /** Single shared clip fills the stage (trainer pick or trainee share). */
+  useEffect(() => {
+    if (!hasClipStage || clipPaneUris.length !== 1) return;
+    if (!clipSync.clipFullscreen && clipSync.clipFocusIndex == null) {
+      clipSync.toggleClipFullscreen();
+    }
+  }, [clipSelectionKey, clipPaneUris.length, hasClipStage, clipSync]);
+
+  /** Dual clips use split view — exit full-stage clip mode. */
+  useEffect(() => {
+    if (!hasClipStage || clipPaneUris.length < 2) return;
+    if (clipSync.clipFocusIndex != null) return;
+    if (clipSync.clipFullscreen) {
+      clipSync.toggleClipFullscreen();
+    }
+  }, [clipPaneUris.length, hasClipStage, clipSync]);
+
+  const autoClipFocusForAnnotationRef = useRef(false);
+  useEffect(() => {
+    if (!isTrainer || !dualClip) {
+      autoClipFocusForAnnotationRef.current = false;
+      setLockedAnnotPane(null);
+      return;
+    }
+    if (annotationToolbarOpen) {
+      if (lockedDualClip) {
+        setLockedAnnotPane((prev) => prev ?? activePaneIndex);
+        return;
+      }
+      if (clipSync.clipFocusIndex == null) {
+        autoClipFocusForAnnotationRef.current = true;
+        clipSync.setClipFocus(annotationSourcePane);
+      }
+      return;
+    }
+    setLockedAnnotPane(null);
+    if (autoClipFocusForAnnotationRef.current) {
+      autoClipFocusForAnnotationRef.current = false;
+      clipSync.setClipFocus(null);
+    }
+  }, [
+    activePaneIndex,
+    annotationSourcePane,
+    annotationToolbarOpen,
+    clipSync,
+    dualClip,
+    isTrainer,
+    lockedDualClip,
+  ]);
+
+  const lockedAnnotating =
+    isTrainer && lockedDualClip && annotationToolbarOpen && lockedAnnotPane != null;
+
+  useEffect(() => {
+    if (lockedAnnotPane == null) return;
+    syncMeasuredAnnotationRect(lockedAnnotPane);
+  }, [lockedAnnotPane, syncMeasuredAnnotationRect]);
 
   const unlockedTimelineProgress = clipProgresses[activePaneIndex];
   const unlockedTimelineDuration = clipDurations[activePaneIndex];
@@ -1455,6 +1554,12 @@ function MeetingSurface({
               if (w > 0 && h > 0) setClipNaturalSize({ width: w, height: h });
             }
           : undefined,
+      onAnnotationVideoRect: (rect: ContentRect) => {
+        clipLocalRectRef.current[paneIndex] = rect;
+        if (paneIndex === annotationSourcePane) {
+          syncMeasuredAnnotationRect(paneIndex);
+        }
+      },
       showZoomControls: isTrainer && !!clipId,
       onZoomIn: clipId
         ? () => clipSync.bumpZoom(String(clipId), 0.25)
@@ -1500,12 +1605,12 @@ function MeetingSurface({
   };
 
   const handleClipSeek = useCallback(
-    (paneIndex: 0 | 1, sec: number) => {
+    (paneIndex: 0 | 1, sec: number, commit = true) => {
       if (clipSync.lockMode && clipSync.selectedClips.length >= 2) {
         clipEndedRef.current = [false, false];
         clipProgressRefs.current = [sec, sec];
         setClipProgresses([sec, sec]);
-        clipSync.seek(sec, { forceEmit: true });
+        clipSync.seek(sec, { forceEmit: commit });
         return;
       }
       clipEndedRef.current[paneIndex] = false;
@@ -1517,14 +1622,7 @@ function MeetingSurface({
       });
       const clip = clipSync.selectedClips[paneIndex];
       const id = clip ? clipIdOf(clip) : null;
-      if (id) {
-        const { url } = resolveClipPlayback(clip);
-        if (url) {
-          setActiveClipUri(url);
-          clipSync.setActiveClip(id, url);
-        }
-      }
-      clipSync.seek(sec, { forceEmit: true, videoId: id ?? undefined });
+      clipSync.seek(sec, { forceEmit: commit, videoId: id ?? undefined });
     },
     [clipSync]
   );
@@ -2153,10 +2251,62 @@ function MeetingSurface({
 
   const annotationClipLayout = useMemo((): ClipAnnotationLayout | null => {
     if (!hasClipStage) return null;
-    if (!dualClip) return { mode: "single" };
-    if (lockedDualClip) return { mode: "dual-locked" };
-    return { mode: "dual-unlocked", paneIndex: annotationSourcePane };
-  }, [annotationSourcePane, dualClip, hasClipStage, lockedDualClip]);
+    const trainerControls = isTrainer;
+    if (!dualClip) return { mode: "single", trainerControls };
+    if (lockedDualClip) {
+      return { mode: "dual-locked", paneIndex: annotationSourcePane, trainerControls };
+    }
+    if (clipFocusIndex != null) {
+      return {
+        mode: "dual-unlocked",
+        paneIndex: clipFocusIndex,
+        trainerControls,
+        focused: true,
+      };
+    }
+    return { mode: "dual-unlocked", paneIndex: annotationSourcePane, trainerControls };
+  }, [
+    annotationSourcePane,
+    clipFocusIndex,
+    dualClip,
+    hasClipStage,
+    isTrainer,
+    lockedDualClip,
+  ]);
+
+  const annotationZoomPan = useMemo(() => {
+    if (!hasClipStage) return null;
+    const clip = clipSync.selectedClips[annotationSourcePane];
+    const clipId = clip ? clipIdOf(clip) : null;
+    if (!clipId) return null;
+    const zp = clipSync.zoomPanByVideoId[String(clipId)];
+    return zp
+      ? { zoom: zp.zoom, pan: zp.pan }
+      : { zoom: 1, pan: { x: 0, y: 0 } };
+  }, [annotationSourcePane, clipSync.selectedClips, clipSync.zoomPanByVideoId, hasClipStage]);
+
+  const annotationContentFit = hasClipStage ? ("contain" as const) : ("cover" as const);
+
+  useEffect(() => {
+    const canvasSize = drawingSync.getLastCanvasSize();
+    burnInProjectionRef.current = {
+      contentAspect: annotationContentAspect,
+      contentFit: annotationContentFit,
+      measuredContentRect: measuredAnnotationRect,
+      zoomPan: annotationZoomPan,
+      contentInsets:
+        measuredAnnotationRect == null && annotationClipLayout
+          ? resolveClipContentInsets(canvasSize, annotationClipLayout)
+          : undefined,
+    };
+  }, [
+    annotationClipLayout,
+    annotationContentAspect,
+    annotationContentFit,
+    annotationZoomPan,
+    drawingSync,
+    measuredAnnotationRect,
+  ]);
 
   useEffect(() => {
     const track = localStream?.getVideoTracks?.()?.[0];
@@ -2181,8 +2331,6 @@ function MeetingSurface({
       setRemoteVideoAspect({ width: settings.width, height: settings.height });
     }
   }, [remoteStream]);
-
-  const annotationContentFit = hasClipStage ? ("contain" as const) : ("cover" as const);
 
   const annotationTargetUserId = useMemo(() => {
     if (inLiveFocus) {
@@ -2445,7 +2593,7 @@ function MeetingSurface({
             />
           </View>
         ) : null}
-        {isTrainer && annotationArmed ? (
+        {isTrainer && annotationArmed && !annotationToolbarOpen && !hasClipStage ? (
           <View style={[styles.coachChipRow, styles.coachChipRowDraw]} pointerEvents="none">
             <MeetingCoachChip icon="brush-outline" label="Drawing on" tone="danger" />
           </View>
@@ -2477,6 +2625,11 @@ function MeetingSurface({
               styles.clipFrame,
               dualClip && styles.clipFrameDual,
             ]}
+            onLayout={(e) => {
+              const { x, y } = e.nativeEvent.layout;
+              clipFrameOffsetRef.current = { x, y };
+              syncMeasuredAnnotationRect(annotationSourcePane);
+            }}
           >
             {lockedDualClip && clipPaneUris[0] && clipPaneUris[1] ? (
               <LockedDualClipStage
@@ -2487,8 +2640,12 @@ function MeetingSurface({
                 progressSeconds={lockedProgress}
                 durationSeconds={lockedDuration}
                 onTogglePlay={handleLockedClipTogglePlay}
-                onSeek={(sec) => handleClipSeek(0, sec)}
+                onSeek={(sec, commit) => handleClipSeek(0, sec, commit)}
+                onPaneLayout={handleAnnotationPaneLayout}
                 capturing={screenshot.capturing}
+                focusPaneIndex={lockedAnnotating ? lockedAnnotPane : null}
+                hideTimeline={lockedAnnotating}
+                paneLabels={clipScreenshotLabels}
               />
             ) : dualClip && clipPaneUris[0] && clipPaneUris[1] ? (
               <UnlockedDualClipStage
@@ -2516,17 +2673,25 @@ function MeetingSurface({
                   clipDurations[1] ?? 0,
                 ]}
                 onTogglePlay={(paneIndex) => handleClipTogglePlay(paneIndex)}
-                onSeek={(paneIndex, sec) => handleClipSeek(paneIndex, sec)}
+                onSeek={(paneIndex, sec, commit) => handleClipSeek(paneIndex, sec, commit)}
                 clipFocusIndex={clipFocusIndex}
                 onToggleExpand={(paneIndex) =>
                   clipSync.setClipFocus(
                     clipFocusIndex === paneIndex ? null : paneIndex
                   )
                 }
+                onPaneLayout={handleAnnotationPaneLayout}
                 capturing={screenshot.capturing}
               />
             ) : (
-              <View style={styles.singleClip}>
+              <View
+                style={styles.singleClip}
+                onLayout={(e) => {
+                  const { x, y } = e.nativeEvent.layout;
+                  paneOffsetRef.current[0] = { x, y };
+                  syncMeasuredAnnotationRect(0);
+                }}
+              >
                 {(() => {
                   const singlePane = makeClipPlayerProps(0);
                   return (
@@ -2557,7 +2722,7 @@ function MeetingSurface({
                             onTogglePlay={handleSingleClipTogglePlay}
                             progressSeconds={clipProgresses[0]}
                             durationSeconds={clipDurations[0]}
-                            onSeek={(sec) => handleClipSeek(0, sec)}
+                            onSeek={(sec, commit) => handleClipSeek(0, sec, commit)}
                             disabled={!activeClipUri}
                           />
                         </View>
@@ -2623,6 +2788,8 @@ function MeetingSurface({
           contentAspect={annotationContentAspect}
           contentFit={annotationContentFit}
           clipAnnotationLayout={annotationClipLayout}
+          measuredContentRect={measuredAnnotationRect}
+          zoomPan={annotationZoomPan}
           annotationTargetUserId={annotationTargetUserId}
           onStrokeComplete={emitAnnotationStroke}
         />
@@ -2830,26 +2997,6 @@ function MeetingSurface({
         </View>
       ) : null}
 
-      {instantRecording.showTrainerRecordingOptIn &&
-      isTrainer &&
-      isInstant &&
-      lessonTimer.status === "waiting" ? (
-        <Pressable
-          style={[
-            styles.recordOptIn,
-            { top: chrome.insets.top + 52 },
-            instantRecording.trainerRecordingEnabled && styles.recordOptInOn,
-          ]}
-          onPress={instantRecording.toggleTrainerRecording}
-        >
-          <Text style={styles.recordOptInText}>
-            {instantRecording.trainerRecordingEnabled
-              ? "Recording on"
-              : "Record session"}
-          </Text>
-        </Pressable>
-      ) : null}
-
       {/* Connection quality pill - overlay above the timer in top-left */}
       <View
         pointerEvents="box-none"
@@ -2897,17 +3044,27 @@ function MeetingSurface({
               disabled={screenshot.capturing}
               onSelect={handleTrainerOverflow}
               items={[
-                {
-                  id: "screenshot",
-                  label: "Screenshot",
-                  icon: "camera-outline",
-                  disabled: screenshot.capturing,
-                },
-                {
-                  id: "gallery",
-                  label: "Screenshot gallery",
-                  icon: "images-outline",
-                },
+                ...(instantRecording.showTrainerRecordingOptIn && isInstant
+                  ? [
+                      {
+                        id: "record" as const,
+                        label:
+                          lessonTimer.status === "waiting"
+                            ? instantRecording.trainerRecordingEnabled
+                              ? "Recording enabled"
+                              : "Enable recording"
+                            : instantRecording.trainerRecordingLive
+                              ? "Stop recording"
+                              : instantRecording.trainerRecordingEnabled
+                                ? "Start recording"
+                                : "Enable recording",
+                        icon: "radio-button-on" as keyof typeof Ionicons.glyphMap,
+                        active:
+                          instantRecording.trainerRecordingLive ||
+                          instantRecording.trainerRecordingEnabled,
+                      },
+                    ]
+                  : []),
                 ...(clipSync.selectedClips.length === 2
                   ? [
                       {
@@ -2921,28 +3078,21 @@ function MeetingSurface({
                     ]
                   : []),
                 {
+                  id: "screenshot",
+                  label: "Take screenshot",
+                  icon: "camera-outline",
+                  disabled: screenshot.capturing,
+                },
+                {
+                  id: "gallery",
+                  label: "View captures",
+                  icon: "images-outline",
+                },
+                {
                   id: "audio",
                   label: `Audio · ${audioRoute.routeLabel}`,
                   icon: "volume-high-outline",
                 },
-                ...(instantRecording.showTrainerRecordingOptIn &&
-                isInstant &&
-                lessonTimer.status !== "waiting"
-                  ? [
-                      {
-                        id: "record" as const,
-                        label: instantRecording.trainerRecordingLive
-                          ? "Stop recording"
-                          : instantRecording.trainerRecordingEnabled
-                            ? "Start recording"
-                            : "Record session",
-                        icon: "radio-button-on" as keyof typeof Ionicons.glyphMap,
-                        active:
-                          instantRecording.trainerRecordingLive ||
-                          instantRecording.trainerRecordingEnabled,
-                      },
-                    ]
-                  : []),
               ]}
             />
           ) : !isTrainer && joinReadiness?.extension_preview?.allowed ? (
@@ -2976,24 +3126,20 @@ function MeetingSurface({
           canUndo={drawingSync.canUndo}
           bottomOffset={chrome.annotationToolbarBottom}
           onLayoutHeight={setMeasuredAnnotationToolbarHeight}
+          clipPaneSwitcher={
+            lockedDualClip && annotationToolbarOpen
+              ? {
+                  labels: clipScreenshotLabels,
+                  activeIndex: lockedAnnotPane ?? activePaneIndex,
+                  onSelect: (idx) => {
+                    setLockedAnnotPane(idx);
+                    syncMeasuredAnnotationRect(idx);
+                  },
+                }
+              : undefined
+          }
         />
       ) : null}
-
-      {isTrainer && !annotationToolbarOpen ? (
-        <MeetingLiveNotesPanel
-          notes={lessonLive.visibleNotes}
-          elapsedSeconds={elapsedLessonSeconds}
-          onAddNote={(text, shared) =>
-            lessonLive.addLiveNote(text, elapsedLessonSeconds, shared)
-          }
-          bottomOffset={chrome.bottomChrome + chrome.actionReserve + 4}
-        />
-      ) : isTrainer ? null : (
-        <MeetingTraineeNotesPanel
-          notes={lessonLive.visibleNotes}
-          topOffset={chrome.insets.top + 100 + stackedBannerExtra}
-        />
-      )}
 
       {/* Bottom chrome */}
       <View
@@ -3013,17 +3159,16 @@ function MeetingSurface({
         onToggleAudioRoute={isTrainer ? undefined : audioRoute.toggleAudioRoute}
         onEndCall={confirmExit}
         inClipMode={inClipMode}
-        onToggleBigVideo={isTrainer ? handleToggleBigVideo : undefined}
+        onToggleBigVideo={
+          isTrainer &&
+          (!inClipMode || (dualClip && (clipFocusIndex != null || clipSync.clipFullscreen)))
+            ? handleToggleBigVideo
+            : undefined
+        }
         bigVideoActive={bigVideoActive}
         onExitClipMode={isTrainer ? exitClipMode : undefined}
         annotationArmed={annotationArmed}
         onToggleDrawing={isTrainer ? handleAnnotationToggle : undefined}
-        onScreenshot={
-          isTrainer && partnerInSession
-            ? () => setScreenshotPickerOpen(true)
-            : undefined
-        }
-        screenshotCapturing={screenshot.capturing}
         onOpenClipPicker={() => setPickerOpen(true)}
       />
       </View>
@@ -3274,6 +3419,7 @@ function MeetingSurface({
         quickExtendPrice={joinReadiness?.extension_preview?.amount}
         quickExtendCurrency="$"
         onDismiss={() => setActiveWarning(null)}
+        autoDismissMs={5000}
       />
 
       <RatingsModal
@@ -3557,26 +3703,6 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontWeight: "600",
-  },
-  recordOptIn: {
-    position: "absolute",
-    right: 16,
-    zIndex: 24,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.25)",
-  },
-  recordOptInOn: {
-    backgroundColor: "rgba(229,57,53,0.85)",
-    borderColor: "rgba(229,57,53,0.9)",
-  },
-  recordOptInText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "700",
   },
   recordNotice: {
     position: "absolute",

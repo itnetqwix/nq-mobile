@@ -276,15 +276,10 @@ function serializeStrokeForSocket(stroke: RemoteStroke): string {
     });
   }
   if (stroke.coordSpace === "normalizedCanvas" && stroke.points.length > 0) {
-    const cw = stroke.sourceCanvasSize?.width ?? 1;
-    const ch = stroke.sourceCanvasSize?.height ?? 1;
     return JSON.stringify({
       kind: "freehand",
       coordSpace: "normalizedCanvas",
-      points: stroke.points.map((p) => ({
-        u: cw > 0 ? p.x / cw : 0,
-        v: ch > 0 ? p.y / ch : 0,
-      })),
+      points: stroke.points.map((p) => ({ u: p.x, v: p.y })),
       color: stroke.color,
       width: stroke.width,
     });

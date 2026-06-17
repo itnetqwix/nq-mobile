@@ -13,8 +13,9 @@ import {
 } from "@shopify/react-native-skia";
 
 import {
-  normalizeStrokesForTarget,
+  projectStrokesForTarget,
   remoteStrokePath,
+  type AnnotationProjectionOptions,
 } from "../annotationRenderUtils";
 import type { RemoteStroke } from "../useDrawingSync";
 
@@ -23,6 +24,7 @@ type Props = {
   sourceCanvasSize: { width: number; height: number };
   width: number;
   height: number;
+  projection?: AnnotationProjectionOptions;
 };
 
 export function StaticAnnotationCanvas({
@@ -30,12 +32,16 @@ export function StaticAnnotationCanvas({
   sourceCanvasSize,
   width,
   height,
+  projection,
 }: Props) {
   const target = useMemo(() => ({ width, height }), [width, height]);
 
   const scaled = useMemo(
-    () => normalizeStrokesForTarget(strokes, sourceCanvasSize, target),
-    [strokes, sourceCanvasSize, target]
+    () =>
+      projection
+        ? projectStrokesForTarget(strokes, sourceCanvasSize, target, projection)
+        : strokes,
+    [projection, sourceCanvasSize, strokes, target]
   );
 
   const paths = useMemo(

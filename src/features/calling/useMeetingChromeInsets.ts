@@ -19,6 +19,8 @@ export function useMeetingChromeInsets(options?: {
   annotationToolbarHeight?: number;
   /** Measured ActionButtons row height (trainer row may wrap). */
   actionBarHeight?: number;
+  /** Dual inline clip timelines — reserve extra space when annotation toolbar is open. */
+  dualInlineClipControls?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const inClipMode = options?.inClipMode ?? false;
@@ -27,6 +29,7 @@ export function useMeetingChromeInsets(options?: {
   const annotationToolbarOpen = options?.annotationToolbarOpen ?? false;
   const annotationToolbarHeight =
     options?.annotationToolbarHeight ?? ANNOTATION_TOOLBAR_HEIGHT;
+  const dualInlineClipControls = options?.dualInlineClipControls ?? false;
 
   const bottomChrome = insets.bottom + 8;
   const actionReserve = actionBarHeight + 10;
@@ -36,7 +39,9 @@ export function useMeetingChromeInsets(options?: {
   /** Corner PIPs overlay the clip stage — no extra main-pane bottom reserve. */
   const videoStripReserve = 0;
   const annotationReserve = annotationToolbarOpen
-    ? annotationToolbarHeight + 8
+    ? annotationToolbarHeight +
+      8 +
+      (dualInlineClipControls ? CLIP_TIMELINE_HEIGHT + 6 : 0)
     : 0;
   const bottomStackReserve = annotationReserve;
 

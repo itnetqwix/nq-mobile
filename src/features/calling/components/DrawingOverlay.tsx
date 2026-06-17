@@ -23,9 +23,15 @@ import {
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 
-import type { AnnotationFitMode, ClipAnnotationLayout, ContentAspect } from "../annotationCoords";
+import type {
+  AnnotationFitMode,
+  ClipAnnotationLayout,
+  ContentAspect,
+  ContentRect,
+} from "../annotationCoords";
 import { resolveClipContentInsets } from "../annotationCoords";
 import { projectStrokeToCanvas, strokeForSyncEmit } from "../annotationRenderUtils";
+import type { PanPoint } from "../clipZoomPanUtils";
 import type { AnnotationShapeKind, RemoteStroke, StrokePoint } from "../useDrawingSync";
 import type { AnnotationTool } from "./MeetingAnnotationToolbar";
 
@@ -44,6 +50,10 @@ type Props = {
   contentFit?: AnnotationFitMode;
   /** Restrict UV mapping to the visible clip video sub-rect (excludes controls dock). */
   clipAnnotationLayout?: ClipAnnotationLayout | null;
+  /** Measured video patch in overlay coordinates (preferred over analytic insets). */
+  measuredContentRect?: ContentRect | null;
+  /** Active clip zoom/pan for UV emit and render. */
+  zoomPan?: { zoom: number; pan: PanPoint } | null;
   annotationTargetUserId?: string | null;
   onStrokeComplete?: (
     stroke: RemoteStroke,
@@ -190,6 +200,8 @@ export function DrawingOverlay({
   contentAspect = null,
   contentFit = "contain",
   clipAnnotationLayout = null,
+  measuredContentRect = null,
+  zoomPan = null,
   annotationTargetUserId = null,
   onStrokeComplete,
 }: Props) {
@@ -216,44 +228,58 @@ export function DrawingOverlay({
   contentAspectRef.current = contentAspect;
   const clipAnnotationLayoutRef = useRef(clipAnnotationLayout);
   clipAnnotationLayoutRef.current = clipAnnotationLayout;
+  const measuredContentRectRef = useRef(measuredContentRect);
+  measuredContentRectRef.current = measuredContentRect;
+  const zoomPanRef = useRef(zoomPan);
+  zoomPanRef.current = zoomPan;
   const contentInsetsRef = useRef({ top: 0, bottom: 0, left: 0, right: 0 });
+
+  const projectionOptions = useCallback(() => {
+    const canvasSize = canvasSizeRef.current;
+    const contentInsets =
+      measuredContentRectRef.current == null && clipAnnotationLayoutRef.current
+        ? resolveClipContentInsets(canvasSize, clipAnnotationLayoutRef.current)
+        : undefined;
+    contentInsetsRef.current = contentInsets ?? { top: 0, bottom: 0, left: 0, right: 0 };
+    return {
+      contentAspect: contentAspectRef.current,
+      contentFit,
+      contentInsets,
+      measuredContentRect: measuredContentRectRef.current,
+      zoomPan: zoomPanRef.current,
+      targetUserId: annotationTargetUserId,
+    };
+  }, [annotationTargetUserId, contentFit]);
 
   const emitStroke = useCallback(
     (stroke: RemoteStroke) => {
       try {
         const canvasSize = canvasSizeRef.current;
-        const contentInsets = clipAnnotationLayoutRef.current
-          ? resolveClipContentInsets(canvasSize, clipAnnotationLayoutRef.current)
-          : undefined;
-        contentInsetsRef.current = contentInsets ?? { top: 0, bottom: 0, left: 0, right: 0 };
-        const synced = strokeForSyncEmit(stroke, canvasSize, {
-          contentAspect: contentAspectRef.current,
-          contentFit,
-          targetUserId: annotationTargetUserId,
-          contentInsets,
-        });
+        const synced = strokeForSyncEmit(stroke, canvasSize, projectionOptions());
         onStrokeComplete?.(synced, canvasSize);
       } catch {
         /* ignore */
       }
     },
-    [annotationTargetUserId, contentFit, onStrokeComplete]
+    [onStrokeComplete, projectionOptions]
   );
 
   const projectForDisplay = useCallback(
     (stroke: RemoteStroke) => {
-      const insets = clipAnnotationLayoutRef.current
-        ? resolveClipContentInsets(canvasSize, clipAnnotationLayoutRef.current)
-        : contentInsetsRef.current;
+      const opts = projectionOptions();
       return projectStrokeToCanvas(
         stroke,
         canvasSize,
         stroke.contentAspect ?? contentAspect,
         stroke.contentFit ?? contentFit,
-        insets
+        opts.contentInsets,
+        {
+          measuredContentRect: opts.measuredContentRect,
+          zoomPan: opts.zoomPan,
+        }
       );
     },
-    [canvasSize, contentAspect, contentFit]
+    [canvasSize, contentAspect, contentFit, projectionOptions]
   );
 
   const commitStroke = useCallback((stroke: Stroke) => {

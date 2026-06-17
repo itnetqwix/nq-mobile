@@ -1985,8 +1985,8 @@
     "semantic_hash": "e93a41304939ec8776d550a8232fa982"
   },
   "src/features/dashboard/screens/ClipsScreen.tsx": {
-    "mtime": 1781612287.4710345,
-    "ast_hash": "9dd8ee0b04d822e43968359eab6ded6e",
+    "mtime": 1781626583.7437346,
+    "ast_hash": "0da619dcde96c7d539fa94ca04a2ecd5",
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/CommunityScreen.tsx": {
@@ -3030,13 +3030,13 @@
     "semantic_hash": "3381c6ce4c9ec477745ed72fa83f942e"
   },
   "src/i18n/locales/en.json": {
-    "mtime": 1781610290.43502,
-    "ast_hash": "9ed4e81580cc210699e727195ec3dcba",
+    "mtime": 1781626588.4743257,
+    "ast_hash": "79bd7a24888d728ff02e773d03a29c3f",
     "semantic_hash": ""
   },
   "src/i18n/locales/es.json": {
-    "mtime": 1781498703.3898206,
-    "ast_hash": "ff69675005d10bbbea4498f7f4d8d15a",
+    "mtime": 1781626612.6204994,
+    "ast_hash": "d2744b4fef0c08c9322c2de3a66b50c9",
     "semantic_hash": ""
   },
   "src/i18n/locales/fr.json": {

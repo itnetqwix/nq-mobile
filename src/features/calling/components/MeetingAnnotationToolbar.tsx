@@ -14,6 +14,7 @@ import {
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { haptics } from "../../../lib/haptics";
+import { meetingTheme } from "../meetingTheme";
 
 export type AnnotationTool =
   | "freehand"
@@ -45,6 +46,12 @@ type Props = {
   canUndo?: boolean;
   bottomOffset?: number;
   onLayoutHeight?: (height: number) => void;
+  /** Locked dual-clip: switch which pane receives annotations. */
+  clipPaneSwitcher?: {
+    labels: [string, string];
+    activeIndex: 0 | 1;
+    onSelect: (index: 0 | 1) => void;
+  };
 };
 
 const TOOLS: {
@@ -72,6 +79,7 @@ export function MeetingAnnotationToolbar({
   canUndo = false,
   bottomOffset = 160,
   onLayoutHeight,
+  clipPaneSwitcher,
 }: Props) {
   const handleLayout = (e: LayoutChangeEvent) => {
     const h = e.nativeEvent.layout.height;
@@ -84,6 +92,31 @@ export function MeetingAnnotationToolbar({
       pointerEvents="box-none"
       onLayout={handleLayout}
     >
+      {clipPaneSwitcher ? (
+        <View style={styles.paneSwitcher}>
+          {([0, 1] as const).map((idx) => {
+            const active = clipPaneSwitcher.activeIndex === idx;
+            const label = clipPaneSwitcher.labels[idx] || `Clip ${idx + 1}`;
+            return (
+              <Pressable
+                key={idx}
+                onPress={() => {
+                  haptics.select();
+                  clipPaneSwitcher.onSelect(idx);
+                }}
+                style={[styles.paneTab, active && styles.paneTabActive]}
+                accessibilityRole="button"
+                accessibilityLabel={`Annotate ${label}`}
+                accessibilityState={{ selected: active }}
+              >
+                <Text style={[styles.paneTabText, active && styles.paneTabTextActive]}>
+                  {label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -181,6 +214,31 @@ const styles = StyleSheet.create({
     right: 12,
     alignItems: "center",
     zIndex: 28,
+    gap: 6,
+  },
+  paneSwitcher: {
+    flexDirection: "row",
+    gap: 6,
+    padding: 4,
+    borderRadius: 10,
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  paneTab: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: "rgba(255,255,255,0.1)",
+  },
+  paneTabActive: {
+    backgroundColor: meetingTheme.navy,
+  },
+  paneTabText: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  paneTabTextActive: {
+    color: "#fff",
   },
   scroll: {
     maxWidth: "96%",

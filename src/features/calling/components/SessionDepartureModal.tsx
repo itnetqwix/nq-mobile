@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import type { SessionDeparturePrompt } from "../useSessionDeparture";
 
@@ -7,6 +7,8 @@ type Props = {
   prompt: SessionDeparturePrompt | null;
   isTrainer: boolean;
   responding: boolean;
+  /** Auto-choose "Stay in session" after this many ms (default 5s). 0 disables. */
+  autoStayMs?: number;
   onStay: () => void;
   onEndSession: () => void;
 };
@@ -30,9 +32,16 @@ export function SessionDepartureModal({
   prompt,
   isTrainer,
   responding,
+  autoStayMs = 5000,
   onStay,
   onEndSession,
 }: Props) {
+  useEffect(() => {
+    if (!visible || !prompt || !autoStayMs || responding) return;
+    const id = setTimeout(() => onStay(), autoStayMs);
+    return () => clearTimeout(id);
+  }, [visible, prompt, autoStayMs, responding, onStay]);
+
   if (!prompt) return null;
 
   const who = roleLabel(prompt.departedRole, isTrainer);

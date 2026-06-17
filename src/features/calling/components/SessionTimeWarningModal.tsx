@@ -5,8 +5,8 @@
  * 5-min variant is informational; the 2-min variant exposes an "Extend
  * session" CTA that opens the trainee `SessionExtensionModal`.
  *
- * Auto-dismisses after `autoDismissMs` so the trainer/trainee can keep
- * coaching without an extra tap. Trainee-only mounted in NativeMeetingScreen.
+ * Auto-dismisses after `autoDismissMs` (default 5s) so the trainer/trainee can
+ * keep coaching without an extra tap. Trainee-only mounted in NativeMeetingScreen.
  */
 
 import { Ionicons } from "@expo/vector-icons";
@@ -23,7 +23,7 @@ type Props = {
   kind: SessionWarningKind;
   /** Trainer vs trainee copy for the 2-minute warning. */
   audience?: "trainer" | "trainee";
-  /** Hide the modal after this many ms (defaults to 12s). 0 disables. */
+  /** Hide the modal after this many ms (defaults to 5s). 0 disables. */
   autoDismissMs?: number;
   /** Only the trainee sees the "Extend" CTA — pass true to render it. */
   canExtend: boolean;
@@ -66,7 +66,7 @@ export function SessionTimeWarningModal({
   visible,
   kind,
   audience = "trainee",
-  autoDismissMs = 12000,
+  autoDismissMs = 5000,
   canExtend,
   onExtend,
   onQuickExtendTenMin,

@@ -16,7 +16,7 @@ export type GamePlanPdfMeta = {
   logoDataUrl?: string | null;
 };
 
-/** Web `reportModal.jsx` #report-pdf layout — cover page + screenshot sections. */
+/** Single-flow GAME PLAN layout — matches server stitch + web `#report-pdf`. */
 export function buildGamePlanPdfHtml(
   imgDataUrls: string[],
   planTitle: string,
@@ -26,54 +26,37 @@ export function buildGamePlanPdfHtml(
 ): string {
   const dateLabel = new Date().toLocaleDateString(undefined, {
     year: "numeric",
-    month: "long",
+    month: "numeric",
     day: "numeric",
   });
 
   const logoBlock = meta?.logoDataUrl
-    ? `<img class="coverLogo" src="${meta.logoDataUrl}" alt="NetQwix" />`
-    : `<p class="brandFallback">NetQwix</p>`;
+    ? `<img class="headerLogo" src="${meta.logoDataUrl}" alt="NetQwix" />`
+    : `<p class="brandFallback">NETQWIX</p>`;
 
-  const sections = imgDataUrls
+  const frameBlocks = imgDataUrls
     .map((src, i) => {
       const item = items[i];
-      const shotTitle = item?.title?.trim() ?? "";
-      const caption = item?.description?.trim() || "";
-      const indexLabel = shotTitle
-        ? `Frame ${i + 1}: ${esc(shotTitle)}`
-        : `Frame ${i + 1}`;
+      const caption = item?.description?.trim() || item?.title?.trim() || "";
       return `
-        <section class="shot">
-          <p class="shotIndex">${indexLabel}</p>
-          <div class="shotImg">
-            <img src="${src}" alt="Screenshot ${i + 1}" />
+        <section class="frame">
+          <div class="frameImg">
+            <img src="${src}" alt="Frame ${i + 1}" />
           </div>
-          <div class="shotCopy">
-            ${
-              caption
-                ? `<p class="shotDesc">${esc(caption)}</p>`
-                : `<p class="shotDesc muted">No notes for this frame.</p>`
-            }
-          </div>
+          ${
+            caption
+              ? `<p class="frameNotes">${esc(caption)}</p>`
+              : ""
+          }
+          <hr class="rule" />
         </section>
       `;
     })
     .join("\n");
 
-  const trainerBlock =
-    meta?.trainerName || meta?.trainerAbout
-      ? `
-        <section class="trainer">
-          <h2>Coach</h2>
-          ${meta.trainerName ? `<p class="trainerName">${esc(meta.trainerName)}</p>` : ""}
-          ${meta.trainerAbout ? `<p>${esc(meta.trainerAbout)}</p>` : ""}
-        </section>
-      `
-      : "";
-
-  const notesBlock = planNotes.trim()
-    ? `<p class="sessionNotes">${esc(planNotes.trim())}</p>`
-    : "";
+  const sessionNotes = planNotes.trim();
+  const expertAbout = meta?.trainerAbout?.trim() ?? "";
+  const expertName = meta?.trainerName?.trim() ?? "";
 
   return `
 <!doctype html>
@@ -91,111 +74,141 @@ export function buildGamePlanPdfHtml(
         color: #111;
         border: 8px solid #14328d;
       }
-      .cover {
-        page-break-after: always;
-        min-height: 90vh;
-        padding-bottom: 24px;
-      }
-      .coverHeader {
+      .header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         gap: 12px;
-        margin-bottom: 12px;
+        margin-bottom: 10px;
       }
-      .coverLogo {
-        max-width: 200px;
-        max-height: 56px;
-        object-fit: contain;
-      }
-      .brandFallback {
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        color: #14328d;
+      h1.title {
         margin: 0;
-      }
-      h1.coverTitle {
-        margin: 0;
-        font-size: 28px;
+        font-size: 20px;
         font-weight: 800;
         text-transform: uppercase;
         color: #000;
       }
-      .meta { margin-top: 20px; }
-      .meta p { margin: 6px 0; font-size: 14px; line-height: 1.45; }
-      .meta .topic {
-        font-size: 20px;
+      .headerLogo {
+        max-width: 140px;
+        max-height: 48px;
+        object-fit: contain;
+      }
+      .brandFallback {
+        font-size: 12px;
         font-weight: 700;
-        margin-top: 12px;
+        letter-spacing: 0.12em;
         color: #14328d;
+        margin: 0;
+      }
+      .meta p {
+        margin: 4px 0;
+        font-size: 12px;
+        line-height: 1.45;
       }
       .sessionNotes {
-        margin-top: 14px;
-        font-size: 14px;
+        margin: 8px 0 0;
+        font-size: 11px;
         line-height: 1.5;
         white-space: pre-wrap;
         color: #333;
       }
-      .shotsTitle {
-        font-size: 16px;
-        font-weight: 700;
-        margin: 0 0 12px;
-        color: #14328d;
+      hr.rule {
+        border: none;
+        border-top: 2px solid #000;
+        margin: 16px 0;
       }
-      .shot {
+      .frame {
         page-break-inside: avoid;
-        margin: 0 0 20px;
-        padding-bottom: 12px;
-        border-bottom: 1px solid #ddd;
+        margin: 0 0 4px;
       }
-      .shotIndex {
-        font-size: 12px;
-        font-weight: 700;
-        color: #14328d;
-        margin: 0 0 8px;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
+      .frameImg {
+        text-align: center;
+        margin-bottom: 8px;
       }
-      .shotImg { text-align: center; margin-bottom: 10px; }
-      .shotImg img {
+      .frameImg img {
         max-width: 100%;
-        max-height: 320px;
+        max-height: 260px;
         object-fit: contain;
-        border-radius: 6px;
       }
-      .shotDesc { font-size: 14px; line-height: 1.5; color: #111; margin: 0; white-space: pre-wrap; }
-      .shotDesc.muted { color: #666; }
-      .trainer { margin-top: 24px; page-break-inside: avoid; }
-      .trainer h2 { margin: 0 0 8px; font-size: 18px; color: #14328d; }
-      .trainer p { margin: 4px 0; font-size: 13px; line-height: 1.4; }
-      .trainerName { font-weight: 700; font-size: 16px; }
-      .emptyShots { font-size: 14px; color: #666; }
+      .frameNotes {
+        font-size: 11px;
+        line-height: 1.5;
+        color: #111;
+        margin: 0 0 8px;
+        white-space: pre-wrap;
+      }
+      .expertFooter {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-top: 8px;
+        page-break-inside: avoid;
+      }
+      .expertFooter h2 {
+        margin: 0 0 6px;
+        font-size: 14px;
+        font-weight: 700;
+        color: #000;
+      }
+      .expertBio {
+        flex: 1;
+        max-width: 62%;
+      }
+      .expertBio p {
+        margin: 0;
+        font-size: 10px;
+        line-height: 1.4;
+        color: #111;
+        white-space: pre-wrap;
+      }
+      .expertName {
+        font-size: 14px;
+        font-weight: 700;
+        color: #000;
+        white-space: nowrap;
+        margin: 0;
+      }
+      .emptyFrames {
+        font-size: 12px;
+        color: #666;
+      }
     </style>
   </head>
   <body>
-    <div class="cover">
-      <div class="coverHeader">
-        <h1 class="coverTitle">Game Plan</h1>
-        ${logoBlock}
-      </div>
-      <div class="meta">
-        <p><strong>Date:</strong> ${esc(dateLabel)}</p>
-        ${meta?.traineeName ? `<p><strong>Trainee:</strong> ${esc(meta.traineeName)}</p>` : ""}
-        <p class="topic"><strong>Topic:</strong> ${esc(planTitle)}</p>
-        ${notesBlock}
-      </div>
-      ${trainerBlock}
+    <header class="header">
+      <h1 class="title">GAME PLAN</h1>
+      ${logoBlock}
+    </header>
+    <div class="meta">
+      <p><strong>Date:</strong> ${esc(dateLabel)}</p>
+      <p><strong>Topic:</strong> ${esc(planTitle)}</p>
+      ${meta?.traineeName ? `<p><strong>Name:</strong> ${esc(meta.traineeName)}</p>` : ""}
+      ${sessionNotes ? `<p class="sessionNotes">${esc(sessionNotes)}</p>` : ""}
     </div>
-    <div class="shots">
-      <p class="shotsTitle">Session frames</p>
+    <hr class="rule" />
+    <div class="frames">
       ${
-        sections ||
-        `<p class="emptyShots">No screenshots were attached to this plan.</p>`
+        frameBlocks ||
+        `<p class="emptyFrames">No screenshots were attached to this plan.</p>`
       }
     </div>
+    ${
+      expertName || expertAbout
+        ? `
+    <hr class="rule" />
+    <footer class="expertFooter">
+      <div class="expertBio">
+        <h2>Expert</h2>
+        ${expertAbout ? `<p>${esc(expertAbout)}</p>` : ""}
+      </div>
+      ${expertName ? `<p class="expertName">${esc(expertName)}</p>` : ""}
+    </footer>
+    `
+        : ""
+    }
   </body>
 </html>
 `;
+
 }

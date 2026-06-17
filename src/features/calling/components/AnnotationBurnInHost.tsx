@@ -13,6 +13,7 @@ import React, {
 import { Image, View } from "react-native";
 import { captureRef as captureViewToImage } from "react-native-view-shot";
 
+import type { AnnotationProjectionOptions } from "../annotationRenderUtils";
 import type { RemoteStroke } from "../useDrawingSync";
 import { StaticAnnotationCanvas } from "./StaticAnnotationCanvas";
 
@@ -22,7 +23,8 @@ export type AnnotationBurnInHostHandle = {
   composite: (
     baseUri: string,
     strokes: RemoteStroke[],
-    canvasSize: { width: number; height: number }
+    canvasSize: { width: number; height: number },
+    projection?: AnnotationProjectionOptions
   ) => Promise<string | null>;
 };
 
@@ -30,6 +32,7 @@ type BurnState = {
   baseUri: string;
   strokes: RemoteStroke[];
   canvasSize: { width: number; height: number };
+  projection?: AnnotationProjectionOptions;
   height: number;
 };
 
@@ -76,7 +79,7 @@ export const AnnotationBurnInHost = forwardRef<AnnotationBurnInHostHandle>(
     useImperativeHandle(
       ref,
       () => ({
-        composite: (baseUri, strokes, canvasSize) =>
+        composite: (baseUri, strokes, canvasSize, projection) =>
           new Promise<string | null>((resolve) => {
             if (!strokes.length || canvasSize.width < 2 || canvasSize.height < 2) {
               resolve(null);
@@ -86,7 +89,7 @@ export const AnnotationBurnInHost = forwardRef<AnnotationBurnInHostHandle>(
             imageReadyRef.current = false;
             const aspect = canvasSize.height / canvasSize.width;
             const height = Math.max(1, Math.round(EXPORT_WIDTH * aspect));
-            setJob({ baseUri, strokes, canvasSize, height });
+            setJob({ baseUri, strokes, canvasSize, projection, height });
           }),
       }),
       []
@@ -126,6 +129,7 @@ export const AnnotationBurnInHost = forwardRef<AnnotationBurnInHostHandle>(
           sourceCanvasSize={job.canvasSize}
           width={EXPORT_WIDTH}
           height={job.height}
+          projection={job.projection}
         />
       </View>
     );

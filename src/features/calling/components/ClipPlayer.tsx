@@ -9,6 +9,7 @@ import { runOnJS } from "react-native-reanimated";
 import { ResizeMode, Video, type AVPlaybackStatus } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
 import { clampPanForFrame, type PanPoint } from "../clipZoomPanUtils";
+import { getObjectFitContainRect } from "../annotationCoords";
 
 export type ClipPlayerHandle = {
   play: () => Promise<void> | void;
@@ -38,6 +39,8 @@ type Props = {
   onFrameLayout?: (width: number, height: number) => void;
   /** Intrinsic video dimensions (for annotation UV mapping). */
   onNaturalSize?: (width: number, height: number) => void;
+  /** Visible contain-rect inside this player frame (for annotation UV mapping). */
+  onAnnotationVideoRect?: (rect: { x: number; y: number; width: number; height: number }) => void;
 };
 
 const CLIP_BG = "#ffffff";
@@ -64,6 +67,7 @@ export function ClipPlayer({
   onReady,
   onFrameLayout,
   onNaturalSize,
+  onAnnotationVideoRect,
 }: Props) {
   const videoRef = React.useRef<Video>(null);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -79,6 +83,30 @@ export function ClipPlayer({
   const panAtGrant = useRef<PanPoint>({ x: 0, y: 0 });
   const liveZoom = useRef(1);
   const livePan = useRef<PanPoint>({ x: 0, y: 0 });
+  const naturalSizeRef = useRef<{ width: number; height: number } | null>(null);
+
+  const reportAnnotationRect = useCallback(() => {
+    if (!onAnnotationVideoRect) return;
+    const { w, h } = frameSize.current;
+    const ns = naturalSizeRef.current;
+    if (w <= 0 || h <= 0 || !ns || ns.width <= 0 || ns.height <= 0) return;
+    const base = getObjectFitContainRect(w, h, ns.width, ns.height);
+    if (!base) return;
+    const z = liveZoom.current;
+    const pan = livePan.current;
+    if (z <= 1.001) {
+      onAnnotationVideoRect(base);
+      return;
+    }
+    const cx = base.x + base.width / 2;
+    const cy = base.y + base.height / 2;
+    onAnnotationVideoRect({
+      x: cx - (base.width * z) / 2 + pan.x,
+      y: cy - (base.height * z) / 2 + pan.y,
+      width: base.width * z,
+      height: base.height * z,
+    });
+  }, [onAnnotationVideoRect]);
 
   const propZoom = clampZoom(Number.isFinite(zoom) ? zoom : 1);
   const propPanX = typeof pan?.x === "number" ? pan.x : 0;
@@ -94,7 +122,8 @@ export function ClipPlayer({
       setDisplayZoom(propZoom);
       setDisplayPan({ x: propPanX, y: propPanY });
     }
-  }, [propZoom, propPanX, propPanY]);
+    reportAnnotationRect();
+  }, [propZoom, propPanX, propPanY, reportAnnotationRect]);
 
   const isPlayingRef = useRef(isPlaying);
   isPlayingRef.current = isPlaying;
@@ -106,7 +135,7 @@ export function ClipPlayer({
     readyNotifiedRef.current = false;
     pendingPlayRef.current = isPlayingRef.current;
     pendingSeekMsRef.current = seekTargetMs ?? null;
-  }, [uri, seekTargetMs, retryKey]);
+  }, [uri, retryKey]);
 
   const applyPlayState = useCallback(async (playing: boolean) => {
     const player = videoRef.current;
@@ -166,9 +195,10 @@ export function ClipPlayer({
       frameSize.current = { w: width, h: height };
       if (width > 0 && height > 0) {
         onFrameLayout?.(width, height);
+        reportAnnotationRect();
       }
     },
-    [onFrameLayout]
+    [onFrameLayout, reportAnnotationRect]
   );
 
   const clampPanForFrameLocal = useCallback(
@@ -192,8 +222,9 @@ export function ClipPlayer({
       setDisplayZoom(z);
       setDisplayPan(p);
       onZoomPanChange?.(z, p, emit);
+      reportAnnotationRect();
     },
-    [clampPanForFrameLocal, onZoomPanChange]
+    [clampPanForFrameLocal, onZoomPanChange, reportAnnotationRect]
   );
 
   const endGesture = useCallback(() => {
@@ -345,7 +376,9 @@ export function ClipPlayer({
                 const ns = (status as { naturalSize?: { width: number; height: number } })
                   .naturalSize;
                 if (ns && ns.width > 0 && ns.height > 0) {
+                  naturalSizeRef.current = { width: ns.width, height: ns.height };
                   onNaturalSize?.(ns.width, ns.height);
+                  reportAnnotationRect();
                 }
                 if (onProgressSeconds && typeof status.positionMillis === "number") {
                   onProgressSeconds(status.positionMillis / 1000);

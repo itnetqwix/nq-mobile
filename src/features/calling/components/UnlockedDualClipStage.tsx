@@ -41,11 +41,14 @@ type Props = {
   progressSecondsByPane: [number, number];
   durationSecondsByPane: [number, number];
   onTogglePlay: (paneIndex: 0 | 1) => void;
-  onSeek: (paneIndex: 0 | 1, seconds: number) => void;
+  onSeek: (paneIndex: 0 | 1, seconds: number, commit?: boolean) => void;
   clipFocusIndex?: 0 | 1 | null;
   onToggleExpand?: (paneIndex: 0 | 1) => void;
-  /** When true, render only the video frames (no controls / zoom buttons)
-   *  so screenshots match the web `hide-in-screenshot` behavior. */
+  /** Pane position inside the clip frame (for annotation UV mapping). */
+  onPaneLayout?: (
+    paneIndex: 0 | 1,
+    layout: { x: number; y: number; width: number; height: number }
+  ) => void;
   capturing?: boolean;
 };
 
@@ -60,6 +63,7 @@ export function UnlockedDualClipStage({
   onSeek,
   clipFocusIndex = null,
   onToggleExpand,
+  onPaneLayout,
   capturing = false,
 }: Props) {
   const showBoth = clipFocusIndex == null;
@@ -77,6 +81,10 @@ export function UnlockedDualClipStage({
             <View
               key={paneIndex}
               style={[styles.pane, showBoth ? styles.paneHalf : styles.paneFocused]}
+              onLayout={(e) => {
+                const { x, y, width, height } = e.nativeEvent.layout;
+                onPaneLayout?.(paneIndex, { x, y, width, height });
+              }}
             >
               <View style={styles.player}>
                 <ClipPlayer uri={uri} {...paneProps} />
@@ -100,7 +108,7 @@ export function UnlockedDualClipStage({
                     onTogglePlay={() => onTogglePlay(paneIndex)}
                     progressSeconds={progressSecondsByPane[paneIndex]}
                     durationSeconds={durationSecondsByPane[paneIndex]}
-                    onSeek={(sec) => onSeek(paneIndex, sec)}
+                    onSeek={(sec, commit) => onSeek(paneIndex, sec, commit)}
                     disabled={!uri}
                     showExpand={!!onToggleExpand}
                     isExpanded={clipFocusIndex === paneIndex}
@@ -148,8 +156,9 @@ const styles = StyleSheet.create({
   },
   controlsDock: {
     flexShrink: 0,
-    paddingTop: 3,
-    paddingBottom: 3,
+    paddingTop: 6,
+    paddingBottom: 6,
+    paddingHorizontal: 4,
     backgroundColor: "#fff",
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "rgba(0,0,0,0.10)",
