@@ -2135,8 +2135,8 @@
     "semantic_hash": "31ed1272146d7304b486abd621dcf7af"
   },
   "src/features/home/components/HomeStickySearchBar.tsx": {
-    "mtime": 1781688822.2471318,
-    "ast_hash": "8269f7c88112028dddcaab05274405c8",
+    "mtime": 1781692832.4650056,
+    "ast_hash": "9a1fecd94b2c48840c72e8f22494e61d",
     "semantic_hash": ""
   },
   "src/features/home/components/StickyBottomPromoBar.tsx": {
@@ -2165,8 +2165,8 @@
     "semantic_hash": "a394746bacaaacd44ac8ae07a1925bbb"
   },
   "src/features/home/layout/DiscoverHomeChrome.tsx": {
-    "mtime": 1781690531.3468184,
-    "ast_hash": "ca9db86d3fa597bb6c6585e32be6d006",
+    "mtime": 1781692832.4656444,
+    "ast_hash": "c0d0c0f523e250387b601ab9d29863c6",
     "semantic_hash": ""
   },
   "src/features/home/layout/marketplaceLayout.ts": {
@@ -8570,8 +8570,8 @@
     "semantic_hash": ""
   },
   "src/features/home/components/TraineeQuickChipsRow.tsx": {
-    "mtime": 1781690561.2571526,
-    "ast_hash": "8a1f63aefdfe65fd3e5ab745b7626fba",
+    "mtime": 1781692832.465253,
+    "ast_hash": "e6196d16cf13c10fbdb9337c60c0d2c3",
     "semantic_hash": ""
   },
   "src/lib/media/downloadVideoToLibrary.ts": {

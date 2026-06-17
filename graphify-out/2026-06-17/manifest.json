@@ -1665,8 +1665,8 @@
     "semantic_hash": ""
   },
   "src/features/dashboard/components/home/LockerHub.tsx": {
-    "mtime": 1781681459.8372169,
-    "ast_hash": "5ebe95761266abdab32bc78a2084dcf2",
+    "mtime": 1781692314.150662,
+    "ast_hash": "d0f01194bb9284f6241ee46380b3ac88",
     "semantic_hash": ""
   },
   "src/features/dashboard/components/home/LockerTile.tsx": {
@@ -1700,8 +1700,8 @@
     "semantic_hash": ""
   },
   "src/features/dashboard/components/home/TraineeDiscoverDashboard.tsx": {
-    "mtime": 1781681519.3706396,
-    "ast_hash": "999e0408026d1491a3bc7f59d720e9a8",
+    "mtime": 1781692306.8457975,
+    "ast_hash": "99c229ff556af93dc0045637cdcbcf1f",
     "semantic_hash": ""
   },
   "src/features/dashboard/components/home/TraineeProfileSection.tsx": {
@@ -1830,8 +1830,8 @@
     "semantic_hash": ""
   },
   "src/features/dashboard/components/trainer/TrainerDashboardHub.tsx": {
-    "mtime": 1781681562.8413374,
-    "ast_hash": "aae6432e7606588f29bc29c4e427d4c8",
+    "mtime": 1781692317.9520385,
+    "ast_hash": "b3303aaeeef8f8204ccf9f6b9853e693",
     "semantic_hash": ""
   },
   "src/features/dashboard/components/trainer/TrainerEarningsSnapshot.tsx": {
@@ -1850,8 +1850,8 @@
     "semantic_hash": "ed46b52d5ec3ec4cf5c169fcd5c0961c"
   },
   "src/features/dashboard/components/trainer/TrainerLockerSection.tsx": {
-    "mtime": 1781681465.4324782,
-    "ast_hash": "a2285dca674ec2a142e1981c448b436b",
+    "mtime": 1781692323.8998039,
+    "ast_hash": "2a5cf25e7fdadaec608ec9b2f0b39682",
     "semantic_hash": ""
   },
   "src/features/dashboard/components/trainer/TrainerPulseHero.tsx": {
@@ -2005,8 +2005,8 @@
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/DashboardHomeScreen.tsx": {
-    "mtime": 1781682887.2909458,
-    "ast_hash": "2f9e65c1fc8237243c2b8eb78551d62c",
+    "mtime": 1781692323.942831,
+    "ast_hash": "48361a2b4af88bd67904076a8c413eef",
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/EditProfileScreen.tsx": {
