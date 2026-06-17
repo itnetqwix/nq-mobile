@@ -82,7 +82,6 @@ import {
 import { HomeOffersCarousel } from "../../home/components/HomeOffersCarousel";
 import { StickyBottomPromoBar } from "../../home/components/StickyBottomPromoBar";
 import { DiscoverHomeChrome } from "../../home/layout/DiscoverHomeChrome";
-import { TrainerQuickChipsRow } from "../../home/components/TrainerQuickChipsRow";
 import { useHomeScrollHandler } from "../../home/hooks/useHomeScrollHandler";
 
 function useDashboardHomeStyles() {
@@ -741,7 +740,14 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
                 />
               )}
 
-              <ReferFriendsBanner onPressInvite={() => openShell("invite")} />
+              <ReferFriendsBanner
+                onPressInvite={() =>
+                  navigation.navigate("DashboardFeature", {
+                    featureId: "friends",
+                    friendsTab: "invite",
+                  } as any)
+                }
+              />
 
               {showEmptyDashboard ? (
                 <HomeSection testID="home-empty-sessions-hint" title={t("dashboardHome.upcomingSessions")}>
@@ -775,18 +781,6 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
       </TabScreenShell>
     ) : (
       <TabScreenShell clearFloatingTabBar={false} background={themeColors.surface}>
-        <DiscoverHomeChrome
-          compactTop
-          role={AccountType.TRAINER}
-          profilePicture={(user as any)?.profile_picture}
-          profileName={name}
-          user={user as Record<string, unknown> | undefined}
-          onPressProfile={() => openShell("editProfile")}
-          onPressReviews={() => openShell("trainerReviews")}
-          showSearch={false}
-          showAsOnline={showAsOnline}
-          onAvailabilityToggle={handleAvailabilityToggle}
-        />
         <MorphRefreshHeader {...morphHome.headerProps} />
         <ScrollView
           style={{ flex: 1, backgroundColor: themeColors.background }}
@@ -807,15 +801,22 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
             />
           }
         >
+          <DiscoverHomeChrome
+            compactTop
+            role={AccountType.TRAINER}
+            profilePicture={(user as any)?.profile_picture}
+            profileName={name}
+            user={user as Record<string, unknown> | undefined}
+            onPressProfile={() => openShell("editProfile")}
+            onPressReviews={() => openShell("trainerReviews")}
+            showSearch={false}
+            showAsOnline={showAsOnline}
+            onAvailabilityToggle={handleAvailabilityToggle}
+          />
           {showTrainerHomeSkeleton ? (
             <TrainerHomeSkeleton />
           ) : (
             <>
-              <TrainerQuickChipsRow
-                onSchedule={() => openShell("trainerSchedule")}
-                onSessions={() => openFeature("upcoming-sessions")}
-                onClips={() => openShell("clips")}
-              />
               <HomeHeroCarousel contentWidth={marketplaceContentWidth} />
               <HomeOffersCarousel />
             </>
@@ -843,6 +844,12 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
             onOpenSurface={openShell}
             onOpenReviews={() => openShell("trainerReviews")}
             onSessionPress={openSession}
+            onPressInvite={() =>
+              navigation.navigate("DashboardFeature", {
+                featureId: "friends",
+                friendsTab: "invite",
+              } as any)
+            }
           />
         </ScrollView>
         <StickyBottomPromoBar />

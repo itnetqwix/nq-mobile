@@ -13,7 +13,7 @@ type Props = {
   user?: Record<string, unknown> | null;
   links?: SocialMediaLinks;
   size?: "sm" | "md";
-  align?: "left" | "center";
+  align?: "left" | "center" | "right";
 };
 
 type LinkItem = {
@@ -80,6 +80,7 @@ export function PublicSocialLinksRow({
       style={[
         styles.row,
         align === "center" && styles.rowCenter,
+        align === "right" && styles.rowRight,
         size === "sm" && styles.rowSm,
       ]}
     >
@@ -118,6 +119,7 @@ function useStyles() {
       },
       rowSm: { marginTop: 6, gap: 6 },
       rowCenter: { justifyContent: "center" },
+      rowRight: { justifyContent: "flex-end", alignSelf: "flex-end" },
       btn: {
         alignItems: "center",
         justifyContent: "center",

@@ -69,7 +69,7 @@ export function DashboardFeatureScreen({ route, navigation }: DashboardFeatureSc
     case "students":
       return wrap(<StudentsScreen />);
     case "friends":
-      return wrap(<FriendsScreen />);
+      return wrap(<FriendsScreen initialTab={route.params.friendsTab as any} />);
     case "my-community":
       return wrap(<CommunityScreen />);
     case "contact-us":

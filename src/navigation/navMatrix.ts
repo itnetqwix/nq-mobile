@@ -111,15 +111,6 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
     roles: [AccountType.TRAINER],
   },
   {
-    id: "upcoming-sessions",
-    label: "Upcoming Sessions",
-    icon: "time-outline",
-    target: { kind: "feature", featureId: "upcoming-sessions" },
-    surfaces: ["drawer", "more"],
-    group: "dashboard",
-    drawerRoles: [AccountType.TRAINER],
-  },
-  {
     id: "friends",
     label: "Friends",
     icon: "person-add-outline",
@@ -177,20 +168,11 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
     group: "tools",
   },
   {
-    id: "transactions",
-    label: "Transactions",
-    icon: "receipt-outline",
-    target: { kind: "shell", surfaceId: "transactions" },
-    surfaces: ["drawer", "more"],
-    group: "tools",
-    drawerRoles: [AccountType.TRAINER],
-  },
-  {
     id: "invite",
     label: "Invite Friends",
     icon: "mail-outline",
-    target: { kind: "shell", surfaceId: "invite" },
-    surfaces: ["drawer", "more"],
+    target: { kind: "feature", featureId: "friends" },
+    surfaces: [],
     group: "tools",
   },
   {

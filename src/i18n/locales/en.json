@@ -330,7 +330,7 @@
   "capture": {
     "uploadQueuedTitle": "Upload queued",
     "uploadQueuedBody": "You're offline or the connection dropped. We'll upload this video when you're back online.",
-    "uploadTitleLibrary": "Upload to My Videos",
+    "uploadTitleLibrary": "Upload video",
     "uploadTitleFriends": "Share with friends",
     "uploadTitleEmail": "Share by email",
     "uploadSubtitleLibrary": "Add title, sport, and subcategory to save in your locker.",
@@ -957,7 +957,8 @@
       "friends": "Friends",
       "requests": "Requests",
       "sent": "Sent",
-      "shareClips": "Share videos"
+      "shareClips": "Share videos",
+      "invite": "Invite"
     },
     "emptyFriends": "No friends yet",
     "emptyFriendsDescription": "Connect with trainers and trainees to build your network.",

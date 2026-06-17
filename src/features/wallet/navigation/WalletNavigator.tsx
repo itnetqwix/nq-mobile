@@ -9,11 +9,13 @@ import { SavedPaymentMethodsScreen } from "../screens/SavedPaymentMethodsScreen"
 import { AutoTopUpScreen } from "../screens/AutoTopUpScreen";
 import { StripeConnectOnboardingScreen } from "../screens/StripeConnectOnboardingScreen";
 import { PointsActivityScreen } from "../../points/screens/PointsActivityScreen";
+import { TransactionsScreen } from "../../dashboard/screens/TransactionsScreen";
 
 export type WalletStackParamList = {
   WalletHome: undefined;
   WalletTopUp: { suggestedAmount?: number } | undefined;
   WalletActivity: undefined;
+  WalletTransactions: undefined;
   WalletSecurity: undefined;
   WalletPaymentMethods: undefined;
   WalletAutoTopUp: undefined;
@@ -48,6 +50,7 @@ export function WalletNavigator({
         initialParams={initialRouteName === "WalletTopUp" ? initialParams : undefined}
       />
       <Stack.Screen name="WalletActivity" component={WalletActivityScreen} />
+      <Stack.Screen name="WalletTransactions" component={TransactionsScreen} />
       <Stack.Screen name="WalletSecurity" component={WalletSecurityScreen} />
       <Stack.Screen name="WalletPaymentMethods" component={SavedPaymentMethodsScreen} />
       <Stack.Screen name="WalletAutoTopUp" component={AutoTopUpScreen} />

@@ -31,7 +31,7 @@ export type ShellSurfaceRouteId = ShellSurfaceMeta["id"];
 
 export type HomeStackParamList = {
   DashboardHome: undefined;
-  DashboardFeature: { featureId: DashboardRouteId; bookLessonTrainerId?: string };
+  DashboardFeature: { featureId: DashboardRouteId; bookLessonTrainerId?: string; friendsTab?: string };
   Blogs: undefined;
   BlogPost: { slug: string };
   LegalDocument: { slug: "terms" | "privacy" };

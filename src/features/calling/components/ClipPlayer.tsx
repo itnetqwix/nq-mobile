@@ -396,7 +396,8 @@ export function ClipPlayer({
         </View>
         {initialLoading ? (
           <View style={styles.loadingOverlay} pointerEvents="none">
-            <ActivityIndicator size="small" color="#94a3b8" />
+            <ActivityIndicator size="small" color="#64748b" />
+            <Text style={styles.loadingText}>Loading video…</Text>
           </View>
         ) : null}
       </View>
@@ -425,7 +426,13 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.92)",
+    backgroundColor: "rgba(248,250,252,0.94)",
+    gap: 8,
+  },
+  loadingText: {
+    color: "#64748b",
+    fontSize: 12,
+    fontWeight: "600",
   },
   errorOverlay: {
     flex: 1,

@@ -7,9 +7,7 @@ import type { UtilitySurfaceId } from "../../config/shellSurfaces";
 import { TrainerOnlineToggle } from "../TrainerOnlineToggle";
 import { HomeUserAvatar } from "../home/HomeUserAvatar";
 import { useDashboardSessions } from "../../hooks/useDashboardSessions";
-import { formatNextOpenSlot } from "../../lib/trainerSlotUtils";
 import { PendingRequestsBanner } from "./PendingRequestsBanner";
-import { TodayScheduleTimeline } from "./TodayScheduleTimeline";
 import { TrainerGreetingRating } from "./TrainerGreetingRating";
 import { PerformanceTipsCard } from "./PerformanceTipsCard";
 import { TrainerRecentTraineesSection } from "./TrainerRecentTraineesSection";
@@ -42,6 +40,7 @@ type Props = {
   onOpenSurface: (id: UtilitySurfaceId) => void;
   onOpenReviews?: () => void;
   onSessionPress: (session: Record<string, unknown>) => void;
+  onPressInvite?: () => void;
   /** When true, top profile card is omitted (marketplace chrome handles header). */
   marketplaceHeader?: boolean;
 };
@@ -65,19 +64,18 @@ function TrainerDashboardHubInner({
   onOpenSurface,
   onOpenReviews,
   onSessionPress,
+  onPressInvite,
   marketplaceHeader = false,
 }: Props) {
   const { t } = useAppTranslation();
   const theme = useThemedStyles((palette) => createTrainerDashboardStyles(palette));
-  const { pendingSessions, todayTimeline } = useDashboardSessions(accountType);
+  const { pendingSessions } = useDashboardSessions(accountType);
 
   const { data: scheduleSlots = [] } = useQuery({
     queryKey: queryKeys.trainer.slots,
     queryFn: fetchTrainerSlots,
     staleTime: 120_000,
   });
-
-  const nextSlot = formatNextOpenSlot(scheduleSlots);
 
   return (
     <View style={[theme.stack, marketplaceHeader && theme.stackMarketplace]}>
@@ -106,18 +104,6 @@ function TrainerDashboardHubInner({
 
       <PendingRequestsBanner count={pendingSessions.length} onPress={onOpenSessions} />
 
-      <TodayScheduleTimeline
-        sessions={todayTimeline}
-        onSessionPress={onSessionPress}
-        onSeeAll={onOpenSessions}
-        onOpenSchedule={onOpenSchedule}
-        scheduleHint={
-          nextSlot
-            ? t("trainerDashboard.nextSlot", { when: nextSlot })
-            : t("trainerDashboard.noSlots")
-        }
-      />
-
       {loadingFriendRequests ? (
         <FriendRequestTilesSkeleton count={2} />
       ) : friendRequests.length > 0 && onAcceptFriend && onRejectFriend ? (
@@ -140,7 +126,7 @@ function TrainerDashboardHubInner({
         scheduleSlots={scheduleSlots}
       />
 
-      <ReferFriendsBanner onPressInvite={() => onOpenSurface("invite" as any)} />
+      <ReferFriendsBanner onPressInvite={() => onPressInvite?.()} />
 
       <TrainerLockerSection accountType={accountType} onOpenSurface={onOpenSurface} />
     </View>

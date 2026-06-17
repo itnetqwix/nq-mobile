@@ -37,6 +37,7 @@ import {
 } from "../../home/api/homeApi";
 
 import { ShareClipsPanel } from "../components/ShareClipsPanel";
+import { InviteFriendsScreen } from "../../dashboard/screens/InviteFriendsScreen";
 import { useChatRoomChrome } from "../../chats/hooks/useChatRoomChrome";
 import { ChatRoomScreen } from "../../chats/screens/ChatRoomScreen";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
@@ -46,8 +47,13 @@ const TABS = [
   { key: "requests", labelKey: "friends.tabs.requests" },
   { key: "sent", labelKey: "friends.tabs.sent" },
   { key: "share", labelKey: "friends.tabs.shareClips" },
+  { key: "invite", labelKey: "friends.tabs.invite" },
 ] as const;
 type Tab = (typeof TABS)[number]["key"];
+
+type FriendsScreenProps = {
+  initialTab?: Tab;
+};
 
 const REPORT_REASON_KEYS = [
   "friends.reportReasons.harassment",
@@ -238,11 +244,12 @@ function SentRequestCard({
   );
 }
 
-export function FriendsScreen() {
+export function FriendsScreen({ initialTab = "friends" }: FriendsScreenProps) {
   const { t } = useAppTranslation();
   const { width: screenWidth } = useWindowMetrics();
   const scrollRef = useRef<ScrollView>(null);
-  const [tab, setTab] = useState<Tab>("friends");
+  const initialIndex = Math.max(0, TABS.findIndex((tabItem) => tabItem.key === initialTab));
+  const [tab, setTab] = useState<Tab>(TABS[initialIndex]?.key ?? "friends");
   const [messageBusy, setMessageBusy] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
   const [activeChat, setActiveChat] = useState<{
@@ -438,6 +445,10 @@ export function FriendsScreen() {
       return <ShareClipsPanel />;
     }
 
+    if (tabKey === "invite") {
+      return <InviteFriendsScreen />;
+    }
+
     return (
       <MorphRefreshScrollSurface onRefresh={refetch} externalRefreshing={isRefetching} tintColor={colors.brandNavy}>
         {({ refreshControl, onScroll, scrollEventThrottle }) => (
@@ -517,7 +528,12 @@ export function FriendsScreen() {
 
   return (
     <View style={styles.root}>
-      <View style={styles.tabs}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.tabsScroll}
+        contentContainerStyle={styles.tabs}
+      >
         {TABS.map((tabItem, index) => (
           <Pressable
             key={tabItem.key}
@@ -535,7 +551,7 @@ export function FriendsScreen() {
             </Text>
           </Pressable>
         ))}
-      </View>
+      </ScrollView>
 
       <ScrollView
         ref={scrollRef}
@@ -543,6 +559,7 @@ export function FriendsScreen() {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         style={{ flex: 1 }}
+        contentOffset={{ x: initialIndex * screenWidth, y: 0 }}
         onMomentumScrollEnd={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
           const index = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
           const next = TABS[index];
@@ -563,14 +580,17 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surface },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
 
-  tabs: {
-    flexDirection: "row",
+  tabsScroll: {
+    flexGrow: 0,
     backgroundColor: colors.surfaceElevated,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
+  tabs: {
+    flexDirection: "row",
+  },
   tabBtn: {
-    flex: 1,
+    paddingHorizontal: space.md,
     paddingVertical: 14,
     alignItems: "center",
     borderBottomWidth: 2,

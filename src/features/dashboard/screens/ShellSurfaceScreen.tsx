@@ -2,8 +2,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import React from "react";
 import type { HomeStackParamList } from "../../../navigation/types";
 import { NotificationsScreen } from "../../notifications/screens/NotificationsScreen";
-import { InviteFriendsScreen } from "./InviteFriendsScreen";
-import { TransactionsScreen } from "./TransactionsScreen";
+import { FriendsScreen } from "../../friends/screens/FriendsScreen";
 import { ClipsScreen } from "./ClipsScreen";
 import { MyLibrarySubmissionsScreen } from "../../clips/screens/MyLibrarySubmissionsScreen";
 import { EditProfileScreen } from "./EditProfileScreen";
@@ -44,7 +43,9 @@ export function ShellSurfaceScreen({ route }: ShellSurfaceScreenProps) {
         />
       );
     case "transactions":
-      return wrap(<TransactionsScreen />);
+      return wrap(
+        <WalletNavigator initialRouteName="WalletTransactions" />
+      );
     case "clips":
       return wrap(<ClipsScreen />);
     case "clipSubmissions":
@@ -54,7 +55,7 @@ export function ShellSurfaceScreen({ route }: ShellSurfaceScreenProps) {
     case "savedLessons":
       return wrap(<SavedLessonsScreen />);
     case "invite":
-      return wrap(<InviteFriendsScreen />);
+      return wrap(<FriendsScreen initialTab="invite" />);
     case "settings":
       return wrap(isGuest ? <GuestSettingsScreen /> : <SettingsScreen />);
     case "trainerSchedule":
