@@ -340,6 +340,7 @@ export function WalletTopUpScreen({ navigation, route }: Props) {
           loading={busy}
           style={{ marginTop: space.lg }}
           size="lg"
+          testID="wallet-topup-submit"
         />
 
         {nativePaySupported && !busy ? (

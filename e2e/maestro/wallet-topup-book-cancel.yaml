@@ -1,0 +1,78 @@
+# Wallet top-up → instant book → cancel (trainee smoke)
+# Requires staging trainee with card/wallet test mode. Stripe sheet steps are optional when balance already covers booking.
+appId: ${APP_ID}
+env:
+  TRAINEE_EMAIL: ${TRAINEE_EMAIL}
+  TRAINEE_PASSWORD: ${TRAINEE_PASSWORD}
+---
+- launchApp
+- runFlow:
+    when:
+      visible: "Sign in"
+    commands:
+      - tapOn: "Email"
+      - inputText: ${TRAINEE_EMAIL}
+      - tapOn: "Password"
+      - inputText: ${TRAINEE_PASSWORD}
+      - tapOn: "Sign in"
+- extendedWaitUntil:
+    visible: "Book Expert"
+    timeout: 60000
+# Open wallet and add funds (optional if balance sufficient)
+- tapOn:
+    text: "Wallet"
+    optional: true
+- tapOn:
+    id: "wallet-add-funds"
+    optional: true
+- tapOn:
+    text: "Add funds"
+    optional: true
+- tapOn:
+    text: "$25"
+    optional: true
+- tapOn:
+    id: "wallet-topup-submit"
+    optional: true
+# Stripe PaymentSheet — complete manually in test mode, then return to app
+- extendedWaitUntil:
+    visible:
+      - "Available balance"
+      - "Book Expert"
+    timeout: 120000
+    optional: true
+- tapOn: "Book Expert"
+- tapOn:
+    text: "Instant"
+    optional: true
+- tapOn:
+    text: "15"
+    optional: true
+- tapOn:
+    text: "Continue"
+    optional: true
+- tapOn:
+    text: "Wallet"
+    optional: true
+- tapOn:
+    text: "Pay"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      - "Waiting"
+      - "Cancel booking"
+      - "Upcoming"
+    timeout: 120000
+    optional: true
+- tapOn:
+    text: "Cancel booking"
+    optional: true
+- tapOn:
+    text: "Cancel"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      - "cancelled"
+      - "Refund"
+    timeout: 60000
+    optional: true

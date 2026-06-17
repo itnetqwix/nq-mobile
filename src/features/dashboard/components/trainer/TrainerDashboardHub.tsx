@@ -9,6 +9,7 @@ import { HomeUserAvatar } from "../home/HomeUserAvatar";
 import { useDashboardSessions } from "../../hooks/useDashboardSessions";
 import { PendingRequestsBanner } from "./PendingRequestsBanner";
 import { TrainerGreetingRating } from "./TrainerGreetingRating";
+import { TrainerEarningsSnapshot } from "./TrainerEarningsSnapshot";
 import { PerformanceTipsCard } from "./PerformanceTipsCard";
 import { FriendRequestTilesSkeleton } from "../../../../components/ui";
 import { TrainerFriendRequestsSection } from "./TrainerFriendRequestsSection";
@@ -105,6 +106,8 @@ function TrainerDashboardHubInner({
       ) : null}
 
       <PendingRequestsBanner count={pendingSessions.length} onPress={onOpenSessions} />
+
+      <TrainerEarningsSnapshot onPress={() => onOpenSurface("wallet")} />
 
       {loadingFriendRequests ? (
         <FriendRequestTilesSkeleton count={2} />

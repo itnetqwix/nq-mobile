@@ -15,4 +15,5 @@ jobs:
           node-version: "20"
           cache: npm
       - run: npm ci --legacy-peer-deps
-      - run: npm test
+      - run: npm run test:phase4
+      - run: npm run test:e2e:validate

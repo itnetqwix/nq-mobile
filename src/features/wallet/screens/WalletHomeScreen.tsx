@@ -178,6 +178,8 @@ function TraineeWalletHome({ navigation }: Props) {
         <Pressable
           style={styles.addFundsBtn}
           onPress={() => navigation.navigate("WalletTopUp", undefined)}
+          accessibilityRole="button"
+          testID="wallet-add-funds"
         >
           <Ionicons name="add-circle" size={20} color={c.brandTextOn} />
           <Text style={styles.addFundsText}>{t("wallet.addFunds")}</Text>

@@ -1,0 +1,72 @@
+name: Maestro E2E
+
+on:
+  pull_request:
+  push:
+    branches: [main, master, develop]
+  workflow_dispatch:
+    inputs:
+      flow:
+        description: Flow file (relative to e2e/maestro/)
+        required: false
+        default: wallet-topup-book-cancel.yaml
+  schedule:
+    # Weekly — enable with repo variable MAESTRO_E2E_ENABLED=true and required secrets.
+    - cron: "0 7 * * 1"
+
+jobs:
+  validate-flows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npm run test:e2e:validate
+
+  maestro-smoke:
+    needs: validate-flows
+    if: >-
+      (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
+      && vars.MAESTRO_E2E_ENABLED == 'true'
+    runs-on: macos-14
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Maestro CLI
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Boot iOS Simulator
+        run: |
+          xcrun simctl boot "iPhone 15" 2>/dev/null || true
+          xcrun simctl bootstatus booted -b
+
+      - name: Install app (when MAESTRO_APP_PATH secret set)
+        env:
+          MAESTRO_APP_PATH: ${{ secrets.MAESTRO_APP_PATH }}
+        if: env.MAESTRO_APP_PATH != ''
+        run: xcrun simctl install booted "$MAESTRO_APP_PATH"
+
+      - name: Run Maestro flow
+        env:
+          APP_ID: ${{ secrets.MAESTRO_APP_ID }}
+          TRAINEE_EMAIL: ${{ secrets.TRAINEE_EMAIL }}
+          TRAINEE_PASSWORD: ${{ secrets.TRAINEE_PASSWORD }}
+          TRAINER_EMAIL: ${{ secrets.TRAINER_EMAIL }}
+          TRAINER_PASSWORD: ${{ secrets.TRAINER_PASSWORD }}
+        run: |
+          FLOW="${{ github.event.inputs.flow || 'wallet-topup-book-cancel.yaml' }}"
+          maestro test "e2e/maestro/${FLOW}" --format junit --output maestro-results.xml
+
+      - name: Upload Maestro results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-junit
+          path: maestro-results.xml
+          if-no-files-found: ignore
