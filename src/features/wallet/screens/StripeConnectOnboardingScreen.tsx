@@ -1,10 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useQuery } from "@tanstack/react-query";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { Button, Card, ScreenContainer } from "../../../components/ui";
+import { FadeInView } from "../../../lib/motion/FadeInView";
 import { useAuth } from "../../auth/context/AuthContext";
 import { queryKeys } from "../../../lib/queryKeys";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
@@ -18,7 +19,46 @@ import { useShellHeaderTitle } from "../../../navigation/useShellHeaderTitle";
 
 type Props = NativeStackScreenProps<WalletStackParamList, "StripeConnect">;
 
-export function StripeConnectOnboardingScreen({ navigation }: Props) {
+type StepState = "done" | "current" | "upcoming";
+
+function PayoutStep({
+  index,
+  title,
+  body,
+  state,
+}: {
+  index: number;
+  title: string;
+  body: string;
+  state: StepState;
+}) {
+  const c = useThemeColors();
+  const icon =
+    state === "done" ? "checkmark-circle" : state === "current" ? "ellipse" : "ellipse-outline";
+  const iconColor =
+    state === "done" ? c.success : state === "current" ? c.brandAccent : c.textMuted;
+
+  return (
+    <FadeInView index={index}>
+      <View style={stepStyles.row}>
+        <Ionicons name={icon} size={22} color={iconColor} />
+        <View style={stepStyles.copy}>
+          <Text style={[stepStyles.title, { color: c.text }]}>{title}</Text>
+          <Text style={[stepStyles.body, { color: c.textMuted }]}>{body}</Text>
+        </View>
+      </View>
+    </FadeInView>
+  );
+}
+
+const stepStyles = StyleSheet.create({
+  row: { flexDirection: "row", gap: space.md, alignItems: "flex-start" },
+  copy: { flex: 1, gap: 2 },
+  title: { ...typography.subtitle, fontWeight: "700" },
+  body: { ...typography.bodySm, lineHeight: 18 },
+});
+
+export function StripeConnectOnboardingScreen(_props: Props) {
   const { t } = useTranslation();
   useShellHeaderTitle(t("wallet.stripeConnectTitle", { defaultValue: "Payout setup" }));
   const c = useThemeColors();
@@ -41,27 +81,40 @@ export function StripeConnectOnboardingScreen({ navigation }: Props) {
     : false;
   const statusLoading = Boolean(stripeAccountId) && statusQuery.isLoading;
 
+  const steps = useMemo(() => {
+    const accountStep: StepState = stripeAccountId ? "done" : "current";
+    const verifyStep: StepState = !stripeAccountId
+      ? "upcoming"
+      : complete
+        ? "done"
+        : "current";
+    const readyStep: StepState = complete ? "done" : "upcoming";
+    return { accountStep, verifyStep, readyStep };
+  }, [complete, stripeAccountId]);
+
   const styles = useThemedStyles((palette) =>
     StyleSheet.create({
-      scroll: { padding: space.lg, gap: space.md },
+      scroll: { padding: space.lg, gap: space.lg },
       hero: {
         alignItems: "center",
-        paddingVertical: space.lg,
+        paddingVertical: space.md,
         gap: space.sm,
       },
       heroTitle: { ...typography.titleMd, color: palette.text, textAlign: "center" },
       heroSub: { ...typography.bodyMd, color: palette.textMuted, textAlign: "center", lineHeight: 22 },
-      statusRow: {
+      statusBanner: {
         flexDirection: "row",
         alignItems: "center",
         gap: space.sm,
         padding: space.md,
-        borderRadius: radii.md,
-        backgroundColor: palette.surfaceElevated,
+        borderRadius: radii.lg,
+        backgroundColor: complete ? palette.successSubtle : palette.warningSubtle,
         borderWidth: 1,
-        borderColor: palette.border,
+        borderColor: complete ? palette.success : palette.warning,
       },
-      statusText: { ...typography.bodyMd, color: palette.text, flex: 1 },
+      statusText: { ...typography.bodyMd, color: palette.text, flex: 1, fontWeight: "600" },
+      stepsCard: { gap: space.md },
+      footnote: { ...typography.caption, color: palette.textMuted, textAlign: "center", lineHeight: 18 },
     })
   );
 
@@ -70,7 +123,7 @@ export function StripeConnectOnboardingScreen({ navigation }: Props) {
       Alert.alert(
         t("wallet.stripeConnectTitle", { defaultValue: "Payout setup" }),
         t("wallet.stripeConnectMissingAccount", {
-          defaultValue: "Your payout account is still being created. Pull to refresh or try again shortly.",
+          defaultValue: "Your payout account is still being created. Tap refresh or try again shortly.",
         })
       );
       return;
@@ -94,48 +147,78 @@ export function StripeConnectOnboardingScreen({ navigation }: Props) {
     await statusQuery.refetch();
   }, [refreshUser, statusQuery]);
 
+  const statusMessage = !stripeAccountId
+    ? t("wallet.stripeConnectMissingAccount", {
+        defaultValue: "We're setting up your payout account. This usually takes a moment.",
+      })
+    : statusLoading
+      ? t("common.loading", { defaultValue: "Loading…" })
+      : complete
+        ? t("wallet.stripeConnectComplete", { defaultValue: "You're ready to receive payouts." })
+        : t("wallet.stripeConnectIncomplete", {
+            defaultValue: "Finish bank details in Stripe to unlock payouts.",
+          });
+
   return (
     <ScreenContainer scroll dismissKeyboardOnTap padding="lg" background={c.background} contentStyle={styles.scroll}>
-      <View style={styles.hero}>
-        <Ionicons name="card-outline" size={48} color={c.brandAccent} />
-        <Text style={styles.heroTitle}>
-          {t("wallet.stripeConnectTitle", { defaultValue: "Stripe Connect payouts" })}
-        </Text>
-        <Text style={styles.heroSub}>
-          {t("wallet.stripeConnectSub", {
-            defaultValue:
-              "Complete Stripe onboarding to receive lesson earnings. Required before your first payout.",
+      <FadeInView>
+        <View style={styles.hero}>
+          <Ionicons name="wallet-outline" size={44} color={c.brandAccent} />
+          <Text style={styles.heroTitle}>
+            {t("wallet.stripeConnectTitle", { defaultValue: "Payout setup" })}
+          </Text>
+          <Text style={styles.heroSub}>
+            {t("wallet.stripeConnectSub", {
+              defaultValue: "One quick Stripe setup so lesson earnings land in your bank.",
+            })}
+          </Text>
+        </View>
+      </FadeInView>
+
+      <FadeInView index={1}>
+        <View style={styles.statusBanner}>
+          <Ionicons
+            name={complete ? "checkmark-circle" : stripeAccountId ? "time-outline" : "hourglass-outline"}
+            size={22}
+            color={complete ? c.success : c.warning}
+          />
+          <Text style={styles.statusText}>{statusMessage}</Text>
+        </View>
+      </FadeInView>
+
+      <Card style={styles.stepsCard}>
+        <PayoutStep
+          index={0}
+          state={steps.accountStep}
+          title={t("wallet.stripeStepAccount", { defaultValue: "Create payout account" })}
+          body={t("wallet.stripeStepAccountBody", {
+            defaultValue: "We link your NetQwix trainer profile to Stripe.",
           })}
-        </Text>
-      </View>
-
-      <View style={styles.statusRow}>
-        <Ionicons
-          name={complete ? "checkmark-circle" : "time-outline"}
-          size={22}
-          color={complete ? c.success : c.warning}
         />
-        <Text style={styles.statusText}>
-          {!stripeAccountId
-            ? t("wallet.stripeConnectMissingAccount", {
-                defaultValue:
-                  "Your payout account is still being created. Pull to refresh or try again shortly.",
-              })
-            : statusLoading
-              ? t("common.loading", { defaultValue: "Loading…" })
-              : complete
-                ? t("wallet.stripeConnectComplete", { defaultValue: "Payout account verified." })
-                : t("wallet.stripeConnectIncomplete", {
-                    defaultValue: "Onboarding incomplete — add bank details in Stripe.",
-                  })}
-        </Text>
-      </View>
+        <PayoutStep
+          index={1}
+          state={steps.verifyStep}
+          title={t("wallet.stripeStepVerify", { defaultValue: "Verify in Stripe" })}
+          body={t("wallet.stripeStepVerifyBody", {
+            defaultValue: "Add identity and bank details securely in Stripe's hosted flow.",
+          })}
+        />
+        <PayoutStep
+          index={2}
+          state={steps.readyStep}
+          title={t("wallet.stripeStepReady", { defaultValue: "Receive payouts" })}
+          body={t("wallet.stripeStepReadyBody", {
+            defaultValue: "Lesson earnings transfer to your bank after each session.",
+          })}
+        />
+      </Card>
 
-      <Card>
+      <FadeInView index={2}>
         <Button
           onPress={() => void openOnboarding()}
           loading={busy || statusLoading}
           disabled={busy || statusLoading || !stripeAccountId}
+          leftIcon={complete ? "create-outline" : "open-outline"}
         >
           {complete
             ? t("wallet.stripeConnectUpdate", { defaultValue: "Update payout details" })
@@ -146,11 +229,12 @@ export function StripeConnectOnboardingScreen({ navigation }: Props) {
             {t("common.refreshStatus", { defaultValue: "Refresh status" })}
           </Text>
         </Pressable>
-      </Card>
-
-      <Button variant="ghost" onPress={() => navigation.goBack()}>
-        {t("common.back", { defaultValue: "Back" })}
-      </Button>
+        <Text style={[styles.footnote, { marginTop: space.md }]}>
+          {t("wallet.stripeConnectFootnote", {
+            defaultValue: "You'll return here after Stripe. Use refresh if your status doesn't update right away.",
+          })}
+        </Text>
+      </FadeInView>
     </ScreenContainer>
   );
 }

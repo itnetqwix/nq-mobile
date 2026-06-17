@@ -27,6 +27,7 @@ import { queryKeys } from "../../lib/queryKeys";
 import { useSocket } from "../socket/SocketContext";
 import { emitInstantLessonPhase } from "../instant-lesson/instantLessonBridge";
 import { navigationRef } from "../../navigation/navigationRef";
+import { presentInboxNotification } from "./inboxLocalNotification";
 
 /**
  * Centralised in-app notification system. Web parity with
@@ -277,6 +278,14 @@ export function NotificationProvider({
       if (isNewInInbox) {
         dispatch(incrementUnreadCount());
         pushToQueue({ ...payload, isRead: false });
+        void presentInboxNotification(
+          payload.title,
+          payload.description,
+          {
+            kind: "inbox",
+            notificationId: payload._id,
+          }
+        );
       }
 
       const bookingInfo = (payload.bookingInfo ?? {}) as Record<string, unknown>;

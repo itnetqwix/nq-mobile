@@ -14,6 +14,7 @@
 import { useEffect } from "react";
 import * as Notifications from "expo-notifications";
 import { AppState } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { useAuth } from "../auth/context/AuthContext";
 import { routePushNotificationTap } from "../../lib/notifications/notificationRouting";
@@ -33,6 +34,7 @@ import { stashInstantLessonNotificationAction } from "../instant-lesson/instantL
 import {
   configureAndroidChannels,
   registerDevicePushToken,
+  requestPushPermissionForReason,
   unregisterDevicePushToken,
 } from "./pushTokens";
 
@@ -106,7 +108,15 @@ export function PushNotificationBridge() {
        */
       (async () => {
         const result = await registerDevicePushToken();
-        if (cancelled || !result) return;
+        if (cancelled || !result) {
+          const prompted = await AsyncStorage.getItem("nq.push.prompted.v1");
+          if (!prompted && !cancelled) {
+            const ok = await requestPushPermissionForReason("booking_reminder");
+            if (ok) {
+              await AsyncStorage.setItem("nq.push.prompted.v1", "1");
+            }
+          }
+        }
       })();
     } else if (status === "signedOut") {
       void unregisterDevicePushToken();

@@ -1,15 +1,12 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { FlashList } from "@shopify/flash-list";
 import {
   ActionSheetIOS,
   ActivityIndicator,
   Alert,
   Image,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -18,11 +15,16 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../../../lib/queryKeys";
 import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { Ionicons } from "@expo/vector-icons";
-import { Button, EmptyState, MorphRefreshScrollSurface, Skeleton } from "../../../components/ui";
-import { useWindowMetrics } from "../../../lib/layout";
 import {
-  FLASHLIST_PERF_DEFAULTS,
-} from "../../../lib/lists/flatListPerf";
+  Button,
+  EmptyState,
+  MorphRefreshScrollSurface,
+  PresenceDot,
+  SegmentedControl,
+  Skeleton,
+} from "../../../components/ui";
+import { FadeInView } from "../../../lib/motion/FadeInView";
+import { FLASHLIST_PERF_DEFAULTS } from "../../../lib/lists/flatListPerf";
 import { colors, radii, space, typography } from "../../../theme";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { apiClient } from "../../../api/client";
@@ -35,21 +37,26 @@ import {
   postAcceptFriendRequest,
   postRejectFriendRequest,
 } from "../../home/api/homeApi";
-
 import { ShareClipsPanel } from "../components/ShareClipsPanel";
 import { InviteFriendsScreen } from "../../dashboard/screens/InviteFriendsScreen";
 import { useChatRoomChrome } from "../../chats/hooks/useChatRoomChrome";
 import { ChatRoomScreen } from "../../chats/screens/ChatRoomScreen";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 
-const TABS = [
+const PRIMARY_TABS = [
   { key: "friends", labelKey: "friends.tabs.friends" },
   { key: "requests", labelKey: "friends.tabs.requests" },
   { key: "sent", labelKey: "friends.tabs.sent" },
+] as const;
+
+const SECONDARY_TABS = [
   { key: "share", labelKey: "friends.tabs.shareClips" },
   { key: "invite", labelKey: "friends.tabs.invite" },
 ] as const;
-type Tab = (typeof TABS)[number]["key"];
+
+type PrimaryTab = (typeof PRIMARY_TABS)[number]["key"];
+type SecondaryTab = (typeof SECONDARY_TABS)[number]["key"];
+type Tab = PrimaryTab | SecondaryTab;
 
 type FriendsScreenProps = {
   initialTab?: Tab;
@@ -86,6 +93,7 @@ function Avatar({ uri, name, size = 48 }: { uri?: string; name?: string; size?: 
 
 function FriendCard({
   friend,
+  index,
   onMessage,
   messageBusy,
   onRemove,
@@ -93,6 +101,7 @@ function FriendCard({
   onReport,
 }: {
   friend: any;
+  index: number;
   onMessage: (userId: string, name: string, picture?: string) => void;
   messageBusy: boolean;
   onRemove: (userId: string, name: string) => void;
@@ -104,7 +113,7 @@ function FriendCard({
   const user = friend?.receiverId ?? friend?.senderId ?? friend;
   const name = user?.fullname || user?.fullName || t("friends.friendDefault");
   const userId = String(user?._id ?? "");
-  const showOnline = isOnline(userId) || !!user?.is_online;
+  const online = isOnline(userId) || !!user?.is_online;
 
   const showActions = () => {
     const options = [
@@ -113,7 +122,6 @@ function FriendCard({
       t("friends.reportUser"),
       t("common.cancel"),
     ];
-    const destructiveIndex = [0, 1];
 
     if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
@@ -135,42 +143,56 @@ function FriendCard({
   };
 
   return (
-    <View style={styles.row}>
-      <Avatar uri={user?.profile_picture} name={name} />
-      <View style={styles.rowInfo}>
-        <Text style={styles.rowName}>{name}</Text>
-        {!!user?.email && <Text style={styles.rowSub}>{user.email}</Text>}
-      </View>
-      <View style={styles.friendActions}>
-        {showOnline && <View style={styles.onlineDot} />}
-        <View style={styles.friendBtns}>
+    <FadeInView index={index}>
+      <View style={styles.card}>
+        <View style={styles.avatarWrap}>
+          <Avatar uri={user?.profile_picture} name={name} size={44} />
+          {online ? (
+            <View style={styles.presenceDot}>
+              <PresenceDot online size={10} ring />
+            </View>
+          ) : null}
+        </View>
+        <View style={styles.cardBody}>
+          <Text style={styles.rowName} numberOfLines={1}>
+            {name}
+          </Text>
+          {!!user?.email && (
+            <Text style={styles.rowSub} numberOfLines={1}>
+              {user.email}
+            </Text>
+          )}
+        </View>
+        <View style={styles.cardActions}>
           <Pressable
-            style={styles.msgBtn}
+            style={styles.iconBtn}
             onPress={() => onMessage(userId, name, user?.profile_picture)}
             disabled={messageBusy}
+            accessibilityLabel={t("friends.message")}
           >
             {messageBusy ? (
-              <ActivityIndicator size={14} color={colors.brandTextOn} />
+              <ActivityIndicator size="small" color={colors.brandNavy} />
             ) : (
-              <Ionicons name="chatbubble-outline" size={14} color={colors.brandTextOn} />
+              <Ionicons name="chatbubble-outline" size={20} color={colors.brandNavy} />
             )}
-            <Text style={styles.msgBtnText}>{t("friends.message")}</Text>
           </Pressable>
-          <Pressable onPress={showActions} hitSlop={8} style={styles.moreBtn}>
-            <Ionicons name="ellipsis-vertical" size={18} color={colors.textMuted} />
+          <Pressable onPress={showActions} hitSlop={8} style={styles.iconBtn}>
+            <Ionicons name="ellipsis-horizontal" size={20} color={colors.textMuted} />
           </Pressable>
         </View>
       </View>
-    </View>
+    </FadeInView>
   );
 }
 
 function RequestCard({
   request,
+  index,
   onAccept,
   onReject,
 }: {
   request: any;
+  index: number;
   onAccept: (id: string) => void;
   onReject: (id: string) => void;
 }) {
@@ -178,37 +200,41 @@ function RequestCard({
   const sender = request?.senderId;
   const name = sender?.fullname || sender?.fullName || t("friends.userDefault");
   return (
-    <View style={styles.row}>
-      <Avatar uri={sender?.profile_picture} name={name} />
-      <View style={styles.rowInfo}>
-        <Text style={styles.rowName}>{name}</Text>
-        <Text style={styles.rowSub}>{t("friends.sentYouRequest")}</Text>
+    <FadeInView index={index}>
+      <View style={styles.card}>
+        <Avatar uri={sender?.profile_picture} name={name} size={44} />
+        <View style={styles.cardBody}>
+          <Text style={styles.rowName}>{name}</Text>
+          <Text style={styles.rowSub}>{t("friends.sentYouRequest")}</Text>
+        </View>
+        <View style={styles.reqActions}>
+          <Button
+            label={t("friends.accept")}
+            size="sm"
+            fullWidth={false}
+            onPress={() => onAccept(request._id)}
+          />
+          <Button
+            label={t("friends.reject")}
+            size="sm"
+            variant="ghost"
+            fullWidth={false}
+            onPress={() => onReject(request._id)}
+          />
+        </View>
       </View>
-      <View style={styles.reqActions}>
-        <Button
-          label={t("friends.accept")}
-          size="sm"
-          fullWidth={false}
-          onPress={() => onAccept(request._id)}
-        />
-        <Button
-          label={t("friends.reject")}
-          size="sm"
-          variant="danger"
-          fullWidth={false}
-          onPress={() => onReject(request._id)}
-        />
-      </View>
-    </View>
+    </FadeInView>
   );
 }
 
 function SentRequestCard({
   request,
+  index,
   onCancel,
   cancelBusy,
 }: {
   request: any;
+  index: number;
   onCancel: (receiverId: string) => void;
   cancelBusy: boolean;
 }) {
@@ -219,37 +245,43 @@ function SentRequestCard({
   const isPending = status === "pending";
 
   return (
-    <View style={styles.row}>
-      <Avatar uri={receiver?.profile_picture} name={name} />
-      <View style={styles.rowInfo}>
-        <Text style={styles.rowName}>{name}</Text>
-        <View style={styles.statusRow}>
-          <View style={[styles.statusDot, isPending ? styles.statusPending : styles.statusAccepted]} />
-          <Text style={[styles.rowSub, { marginTop: 0 }]}>
+    <FadeInView index={index}>
+      <View style={styles.card}>
+        <Avatar uri={receiver?.profile_picture} name={name} size={44} />
+        <View style={styles.cardBody}>
+          <Text style={styles.rowName}>{name}</Text>
+          <Text style={styles.rowSub}>
             {isPending ? t("friends.pending") : t("friends.accepted")}
           </Text>
         </View>
+        {isPending ? (
+          <Button
+            label={t("friends.cancel")}
+            size="sm"
+            variant="ghost"
+            fullWidth={false}
+            onPress={() => onCancel(String(receiver?._id))}
+            disabled={cancelBusy}
+          />
+        ) : null}
       </View>
-      {isPending && (
-        <Button
-          label={t("friends.cancel")}
-          size="sm"
-          variant="danger"
-          fullWidth={false}
-          onPress={() => onCancel(String(receiver?._id))}
-          disabled={cancelBusy}
-        />
-      )}
-    </View>
+    </FadeInView>
   );
+}
+
+function resolveInitialTab(initialTab?: Tab): Tab {
+  if (!initialTab) return "friends";
+  return initialTab;
+}
+
+function isSecondaryTab(tab: Tab): tab is SecondaryTab {
+  return tab === "share" || tab === "invite";
 }
 
 export function FriendsScreen({ initialTab = "friends" }: FriendsScreenProps) {
   const { t } = useAppTranslation();
-  const { width: screenWidth } = useWindowMetrics();
-  const scrollRef = useRef<ScrollView>(null);
-  const initialIndex = Math.max(0, TABS.findIndex((tabItem) => tabItem.key === initialTab));
-  const [tab, setTab] = useState<Tab>(TABS[initialIndex]?.key ?? "friends");
+  const resolved = resolveInitialTab(initialTab);
+  const [tab, setTab] = useState<Tab>(resolved);
   const [messageBusy, setMessageBusy] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
   const [activeChat, setActiveChat] = useState<{
@@ -304,7 +336,8 @@ export function FriendsScreen({ initialTab = "friends" }: FriendsScreenProps) {
     Alert.alert(t("friends.removeConfirmTitle"), t("friends.removeConfirmBody", { name }), [
       { text: t("common.cancel"), style: "cancel" },
       {
-        text: t("friends.remove"), style: "destructive",
+        text: t("friends.remove"),
+        style: "destructive",
         onPress: async () => {
           try {
             await apiClient.post(API_ROUTES.user.removeFriend, { friendId });
@@ -322,7 +355,8 @@ export function FriendsScreen({ initialTab = "friends" }: FriendsScreenProps) {
     Alert.alert(t("friends.blockConfirmTitle"), t("friends.blockConfirmBody", { name }), [
       { text: t("common.cancel"), style: "cancel" },
       {
-        text: t("friends.block"), style: "destructive",
+        text: t("friends.block"),
+        style: "destructive",
         onPress: async () => {
           try {
             await apiClient.post(API_ROUTES.user.blockUser, { userId });
@@ -353,26 +387,26 @@ export function FriendsScreen({ initialTab = "friends" }: FriendsScreenProps) {
               userId,
               reason: reportReasons[idx],
             });
-            Alert.alert(t("friends.reportSubmittedTitle"), t("friends.reportSubmittedBody"));
+            Alert.alert(t("common.done"), t("friends.reportedBody"));
           } catch (e: any) {
             Alert.alert(t("common.error"), e?.response?.data?.error ?? t("friends.couldNotReport"));
           }
         }
       );
     } else {
-      Alert.alert(t("friends.reportTitle", { name }), t("friends.reportSelectReason"), [
-        ...reportReasons.map((r) => ({
-          text: r,
+      Alert.alert(t("friends.reportTitle", { name }), t("friends.pickReason"), [
+        ...reportReasons.map((reason) => ({
+          text: reason,
           onPress: async () => {
             try {
-              await apiClient.post(API_ROUTES.user.reportUser, { userId, reason: r });
-              Alert.alert(t("friends.reportSubmittedTitle"), t("friends.reportSubmittedBody"));
+              await apiClient.post(API_ROUTES.user.reportUser, { userId, reason });
+              Alert.alert(t("common.done"), t("friends.reportedBody"));
             } catch (e: any) {
               Alert.alert(t("common.error"), e?.response?.data?.error ?? t("friends.couldNotReport"));
             }
           },
         })),
-        { text: t("common.cancel"), style: "cancel" as const },
+        { text: t("common.cancel"), style: "cancel" },
       ]);
     }
   }, [t]);
@@ -411,103 +445,98 @@ export function FriendsScreen({ initialTab = "friends" }: FriendsScreenProps) {
     [queryClient, t]
   );
 
-  const renderTabBody = (tabKey: Tab) => {
+  const renderTabBody = () => {
+    if (tab === "share") {
+      return <ShareClipsPanel />;
+    }
+    if (tab === "invite") {
+      return <InviteFriendsScreen />;
+    }
+
+    const tabKey = tab as PrimaryTab;
     const isLoading =
-      tabKey === "friends" ? loadingFriends :
-      tabKey === "requests" ? loadingReqs :
-      tabKey === "sent" ? loadingSent : false;
+      tabKey === "friends" ? loadingFriends : tabKey === "requests" ? loadingReqs : loadingSent;
     const isRefetching =
-      tabKey === "friends" ? refreshingFriends :
-      tabKey === "requests" ? refreshingReqs :
-      tabKey === "sent" ? refreshingSent : false;
+      tabKey === "friends" ? refreshingFriends : tabKey === "requests" ? refreshingReqs : refreshingSent;
     const refetch =
-      tabKey === "friends" ? refetchFriends :
-      tabKey === "requests" ? refetchReqs :
-      tabKey === "sent" ? refetchSent : () => {};
+      tabKey === "friends" ? refetchFriends : tabKey === "requests" ? refetchReqs : refetchSent;
     const data =
-      tabKey === "friends" ? friends :
-      tabKey === "requests" ? requests :
-      tabKey === "sent" ? sentRequests : [];
+      tabKey === "friends" ? friends : tabKey === "requests" ? requests : sentRequests;
 
     if (isLoading) {
       return (
         <View style={styles.list}>
           {[0, 1, 2].map((i) => (
-            <View key={i} style={{ marginBottom: space.md }}>
-              <Skeleton width="100%" height={68} radius={radii.md} />
-            </View>
+            <Skeleton key={i} width="100%" height={72} radius={radii.md} />
           ))}
         </View>
       );
     }
 
-    if (tabKey === "share") {
-      return <ShareClipsPanel />;
-    }
-
-    if (tabKey === "invite") {
-      return <InviteFriendsScreen />;
-    }
-
     return (
       <MorphRefreshScrollSurface onRefresh={refetch} externalRefreshing={isRefetching} tintColor={colors.brandNavy}>
         {({ refreshControl, onScroll, scrollEventThrottle }) => (
-      <FlashList
-        data={data}
-        keyExtractor={flatListKeyExtractor}
-        renderItem={({ item }) =>
-          tabKey === "friends" ? (
-            <FriendCard
-              friend={item}
-              onMessage={handleMessage}
-              messageBusy={messageBusy}
-              onRemove={handleRemoveFriend}
-              onBlock={handleBlockUser}
-              onReport={handleReportUser}
-            />
-          ) : tabKey === "sent" ? (
-            <SentRequestCard
-              request={item}
-              onCancel={handleCancelRequest}
-              cancelBusy={cancelBusy}
-            />
-          ) : (
-            <RequestCard
-              request={item}
-              onAccept={handleAccept}
-              onReject={handleReject}
-            />
-          )
-        }
-        contentContainerStyle={styles.list}
-        refreshControl={refreshControl}
-        onScroll={onScroll}
-        scrollEventThrottle={scrollEventThrottle}
-        {...FLASHLIST_PERF_DEFAULTS}
-        ListEmptyComponent={
-          <EmptyState
-            icon={
-              tabKey === "friends" ? "people-outline" :
-              tabKey === "sent" ? "paper-plane-outline" :
-              "person-add-outline"
+          <FlashList
+            data={data}
+            keyExtractor={flatListKeyExtractor}
+            renderItem={({ item, index }) =>
+              tabKey === "friends" ? (
+                <FriendCard
+                  friend={item}
+                  index={index}
+                  onMessage={handleMessage}
+                  messageBusy={messageBusy}
+                  onRemove={handleRemoveFriend}
+                  onBlock={handleBlockUser}
+                  onReport={handleReportUser}
+                />
+              ) : tabKey === "sent" ? (
+                <SentRequestCard
+                  request={item}
+                  index={index}
+                  onCancel={handleCancelRequest}
+                  cancelBusy={cancelBusy}
+                />
+              ) : (
+                <RequestCard
+                  request={item}
+                  index={index}
+                  onAccept={handleAccept}
+                  onReject={handleReject}
+                />
+              )
             }
-            title={
-              tabKey === "friends"
-                ? t("friends.emptyFriends")
-                : tabKey === "sent"
-                ? t("friends.emptySent")
-                : t("friends.emptyRequests")
-            }
-            description={
-              tabKey === "friends"
-                ? t("friends.emptyFriendsDescription")
-                : tabKey === "sent"
-                ? t("friends.emptySentDescription")
-                : t("friends.emptyRequestsDescription")
+            contentContainerStyle={styles.list}
+            refreshControl={refreshControl}
+            onScroll={onScroll}
+            scrollEventThrottle={scrollEventThrottle}
+            {...FLASHLIST_PERF_DEFAULTS}
+            ListEmptyComponent={
+              <EmptyState
+                icon={
+                  tabKey === "friends"
+                    ? "people-outline"
+                    : tabKey === "sent"
+                      ? "paper-plane-outline"
+                      : "person-add-outline"
+                }
+                title={
+                  tabKey === "friends"
+                    ? t("friends.emptyFriends")
+                    : tabKey === "sent"
+                      ? t("friends.emptySent")
+                      : t("friends.emptyRequests")
+                }
+                description={
+                  tabKey === "friends"
+                    ? t("friends.emptyFriendsDescription")
+                    : tabKey === "sent"
+                      ? t("friends.emptySentDescription")
+                      : t("friends.emptyRequestsDescription")
+                }
+              />
             }
           />
-        }
-      />
         )}
       </MorphRefreshScrollSurface>
     );
@@ -528,116 +557,100 @@ export function FriendsScreen({ initialTab = "friends" }: FriendsScreenProps) {
 
   return (
     <View style={styles.root}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.tabsScroll}
-        contentContainerStyle={styles.tabs}
-      >
-        {TABS.map((tabItem, index) => (
-          <Pressable
-            key={tabItem.key}
-            style={[styles.tabBtn, tab === tabItem.key && styles.tabBtnActive]}
-            onPress={() => {
-              setTab(tabItem.key);
-              scrollRef.current?.scrollTo({ x: index * screenWidth, animated: true });
-            }}
-          >
-            <Text style={[styles.tabText, tab === tabItem.key && styles.tabTextActive]}>
-              {t(tabItem.labelKey)}
-              {tabItem.key === "requests" && requests.length > 0 && (
-                <Text style={styles.badge}> {requests.length}</Text>
-              )}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        style={{ flex: 1 }}
-        contentOffset={{ x: initialIndex * screenWidth, y: 0 }}
-        onMomentumScrollEnd={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
-          const index = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
-          const next = TABS[index];
-          if (next) setTab(next.key);
-        }}
-      >
-        {TABS.map((tabItem) => (
-          <View key={tabItem.key} style={{ width: screenWidth, flex: 1 }}>
-            {renderTabBody(tabItem.key)}
-          </View>
-        ))}
-      </ScrollView>
+      <SegmentedControl
+        options={PRIMARY_TABS.map((item) => ({
+          key: item.key,
+          label: t(item.labelKey),
+          badge: item.key === "requests" ? requests.length : undefined,
+        }))}
+        value={isSecondaryTab(tab) ? null : tab}
+        onChange={(key) => setTab(key)}
+      />
+      <View style={styles.quickLinks}>
+        {SECONDARY_TABS.map((item) => {
+          const active = tab === item.key;
+          return (
+            <Pressable
+              key={item.key}
+              onPress={() => setTab(item.key)}
+              style={[styles.quickLink, active && styles.quickLinkActive]}
+            >
+              <Ionicons
+                name={item.key === "share" ? "share-social-outline" : "person-add-outline"}
+                size={16}
+                color={active ? colors.brandTextOn : colors.brandNavy}
+              />
+              <Text style={[styles.quickLinkText, active && styles.quickLinkTextActive]}>
+                {t(item.labelKey)}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <View style={styles.body}>{renderTabBody()}</View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surface },
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-
-  tabsScroll: {
-    flexGrow: 0,
-    backgroundColor: colors.surfaceElevated,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  tabs: {
+  body: { flex: 1 },
+  quickLinks: {
     flexDirection: "row",
-  },
-  tabBtn: {
+    gap: space.sm,
     paddingHorizontal: space.md,
-    paddingVertical: 14,
-    alignItems: "center",
-    borderBottomWidth: 2,
-    borderBottomColor: "transparent",
+    paddingBottom: space.sm,
   },
-  tabBtnActive: { borderBottomColor: colors.brandNavy },
-  tabText: { ...typography.label, color: colors.textMuted, fontSize: 12 },
-  tabTextActive: { color: colors.brandNavy },
-  badge: { fontSize: 12, color: colors.danger, fontWeight: "700" },
+  quickLink: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceElevated,
+  },
+  quickLinkActive: {
+    backgroundColor: colors.brandNavy,
+    borderColor: colors.brandNavy,
+  },
+  quickLinkText: { ...typography.label, color: colors.brandNavy, fontWeight: "600", fontSize: 12 },
+  quickLinkTextActive: { color: colors.brandTextOn },
 
   list: { padding: space.md, gap: space.sm, paddingBottom: space.xl },
 
-  row: {
+  card: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: colors.surfaceElevated,
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
     padding: space.md,
     gap: space.md,
     borderWidth: 1,
     borderColor: colors.border,
+    marginBottom: space.sm,
   },
-  rowInfo: { flex: 1 },
-  rowName: { ...typography.subtitle, color: colors.text },
-  rowSub: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
-  onlineDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.success },
-
-  reqActions: { flexDirection: "column", gap: 6 },
-  friendActions: { alignItems: "flex-end", gap: 6 },
-  friendBtns: { flexDirection: "row", alignItems: "center", gap: 8 },
-  moreBtn: { padding: 4 },
-  msgBtn: {
-    flexDirection: "row",
+  avatarWrap: { position: "relative" },
+  presenceDot: { position: "absolute", right: -2, bottom: -2 },
+  cardBody: { flex: 1, minWidth: 0 },
+  cardActions: { flexDirection: "row", alignItems: "center", gap: 4 },
+  iconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.md,
     alignItems: "center",
-    gap: 4,
-    backgroundColor: colors.brandNavy,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: radii.pill,
+    justifyContent: "center",
+    backgroundColor: colors.brandSubtle,
   },
-  msgBtnText: { fontSize: 12, fontWeight: "700", color: colors.brandTextOn },
+
+  rowName: { ...typography.subtitle, color: colors.text, fontWeight: "600" },
+  rowSub: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+
+  reqActions: { alignItems: "flex-end", gap: 6 },
 
   avatarFallback: { backgroundColor: colors.brandNavy, alignItems: "center", justifyContent: "center" },
   avatarInitial: { color: colors.brandTextOn, fontWeight: "700" },
-
-  statusRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusPending: { backgroundColor: "#f59e0b" },
-  statusAccepted: { backgroundColor: colors.success },
 });

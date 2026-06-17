@@ -38,6 +38,9 @@ import {
   postRejectFriendRequest,
   setOnlineAvailability,
 } from "../../home/api/homeApi";
+import { useNotifications } from "../../notifications/NotificationContext";
+import { NotificationBellButton } from "../../notifications/components/NotificationBellButton";
+import { requestPushPermissionForReason } from "../../notifications/pushTokens";
 import { useNavigation, type CompositeScreenProps } from "@react-navigation/native";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -365,6 +368,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
   const [wizardTrainer, setWizardTrainer] = useState<Record<string, unknown> | null>(null);
   const [scheduleTrainer, setScheduleTrainer] = useState<Record<string, unknown> | null>(null);
   const { user, accountType, patchUser } = useAuth();
+  const { unreadCount } = useNotifications();
   const { openSession } = useSessionBooking();
   const queryClient = useQueryClient();
   const showAsOnline = resolveShowAsOnline(user);
@@ -391,12 +395,22 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
 
   const handleAvailabilityToggle = useCallback(
     async (next: boolean) => {
-      const confirmed = await setOnlineAvailability(next);
-      patchUser({ showAsOnline: confirmed });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.presence.onlineUsers });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
+      const previous = resolveShowAsOnline(user);
+      patchUser({ showAsOnline: next });
+      if (next && isTrainer) {
+        void requestPushPermissionForReason("instant_lesson");
+      }
+      try {
+        const confirmed = await setOnlineAvailability(next);
+        patchUser({ showAsOnline: confirmed });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.presence.onlineUsers });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
+      } catch (e) {
+        patchUser({ showAsOnline: previous });
+        throw e;
+      }
     },
-    [patchUser, queryClient]
+    [patchUser, queryClient, user, isTrainer]
   );
 
   const { data: sessions = [], isLoading: loadingSessions } = useQuery({
@@ -556,19 +570,16 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
           >
             <Ionicons name="wallet-outline" size={24} color={themeColors.brandNavy} />
           </Pressable>
-          <Pressable
+          <NotificationBellButton
             onPress={() => openShell("notifications")}
-            hitSlop={12}
-            style={{ padding: 4, marginLeft: 4 }}
+            color={themeColors.brandNavy}
+            unreadCount={unreadCount}
             accessibilityLabel={t("dashboardHome.notificationsA11y")}
-            accessibilityRole="button"
-          >
-            <Ionicons name="notifications-outline" size={24} color={themeColors.brandNavy} />
-          </Pressable>
+          />
         </View>
       ),
     });
-  }, [navigation, t, themeColors.brandNavy]);
+  }, [navigation, t, themeColors.brandNavy, unreadCount]);
 
   const handleAccept = useCallback(async (requestId: string) => {
     await postAcceptFriendRequest(requestId);

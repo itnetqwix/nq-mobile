@@ -16,6 +16,7 @@ import { SettingsScreen } from "./SettingsScreen";
 import { TrainerScheduleScreen } from "./TrainerScheduleScreen";
 import { WalletNavigator } from "../../wallet/navigation/WalletNavigator";
 import { StackSwipeBackShell } from "../../../navigation/StackSwipeBackShell";
+import { ShellNestedBackProvider } from "../../../navigation/ShellNestedBackContext";
 import { SupportChatScreen } from "../../support/SupportChatScreen";
 import { DeleteAccountScreen } from "../../account-lifecycle/screens/DeleteAccountScreen";
 import { HibernateAccountScreen } from "../../account-lifecycle/screens/HibernateAccountScreen";
@@ -29,7 +30,9 @@ export function ShellSurfaceScreen({ route }: ShellSurfaceScreenProps) {
   const isGuest = useGuestMode();
 
   const wrap = (node: React.ReactNode) => (
-    <StackSwipeBackShell>{node}</StackSwipeBackShell>
+    <ShellNestedBackProvider>
+      <StackSwipeBackShell>{node}</StackSwipeBackShell>
+    </ShellNestedBackProvider>
   );
 
   switch (surfaceId) {

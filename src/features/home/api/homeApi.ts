@@ -844,6 +844,15 @@ export async function setOnlineAvailability(showAsOnline: boolean): Promise<bool
   }
 }
 
+/** Keep trainer visible for instant booking while the app is backgrounded (not force-killed). */
+export async function setOnlineBackgroundGrace(graceMinutes = 15): Promise<void> {
+  await apiClient.put(API_ROUTES.user.onlineBackgroundGrace, { graceMinutes });
+}
+
+export async function clearOnlineBackgroundGrace(): Promise<void> {
+  await apiClient.delete(API_ROUTES.user.onlineBackgroundGrace);
+}
+
 export async function findNetqwixUserByEmail(email: string): Promise<any | null> {
   const normalized = email.trim().toLowerCase();
   if (!normalized) return null;

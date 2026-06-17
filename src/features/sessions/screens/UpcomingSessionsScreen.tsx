@@ -20,10 +20,10 @@ import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
 import {
   Button,
-  Card,
   EmptyState,
   MorphRefreshHeader,
   Pill,
+  SegmentedControl,
   SessionRowSkeleton,
   Skeleton,
   SkeletonGroup,
@@ -64,6 +64,7 @@ import type { RootStackParamList } from "../../../navigation/types";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { FLASHLIST_PERF_DEFAULTS } from "../../../lib/lists/flatListPerf";
 import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
+import { FadeInView } from "../../../lib/motion/FadeInView";
 
 const CALENDAR_COLLAPSED_KEY = "nq.sessions-calendar-collapsed";
 
@@ -139,11 +140,13 @@ function SessionCard({
   session,
   accountType,
   activeTab,
+  index = 0,
   onSessionActionComplete,
 }: {
   session: any;
   accountType: string | null;
   activeTab: StatusTab;
+  index?: number;
   onSessionActionComplete?: () => void;
 }) {
   const { t } = useAppTranslation();
@@ -177,6 +180,7 @@ function SessionCard({
   };
 
   return (
+    <FadeInView index={index}>
     <View style={styles.card}>
       <Pressable
         style={({ pressed }) => [styles.cardBody, pressed && { opacity: 0.92 }]}
@@ -312,6 +316,7 @@ function SessionCard({
         )}
       </View>
     </View>
+    </FadeInView>
   );
 }
 
@@ -341,7 +346,7 @@ export function UpcomingSessionsScreen() {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
-  const [calendarCollapsed, setCalendarCollapsed] = useState(false);
+  const [calendarCollapsed, setCalendarCollapsed] = useState(true);
 
   useEffect(() => {
     SecureStore.getItemAsync(CALENDAR_COLLAPSED_KEY)
@@ -419,11 +424,12 @@ export function UpcomingSessionsScreen() {
   const listBottomPad = floatingTabBarBottomInset(insets.bottom) + space.md;
 
   const renderSessionRow = useCallback(
-    ({ item }: { item: any }) => (
+    ({ item, index }: { item: any; index: number }) => (
       <SessionCard
         session={item}
         accountType={accountType}
         activeTab={activeTab}
+        index={index}
         onSessionActionComplete={() => {
           void refetch();
         }}
@@ -495,21 +501,21 @@ export function UpcomingSessionsScreen() {
         contentContainerStyle={styles.tabs}
         style={styles.tabsScroll}
       >
-        {STATUS_TAB_KEYS.map((tab) => (
-          <Pressable
-            key={tab.key}
-            style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-            onPress={() => {
-              setActiveTab(tab.key);
-              setSelectedDate(null);
-              listScrollRef.current?.scrollToOffset({ offset: 0, animated: false });
-            }}
-          >
-            <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
-              {t(tab.labelKey)}
-            </Text>
-          </Pressable>
-        ))}
+        <SegmentedControl
+          scrollable
+          compact
+          options={STATUS_TAB_KEYS.map((tab) => ({
+            key: tab.key,
+            label: t(tab.labelKey),
+          }))}
+          value={activeTab}
+          onChange={(key) => {
+            setActiveTab(key);
+            setSelectedDate(null);
+            listScrollRef.current?.scrollToOffset({ offset: 0, animated: false });
+          }}
+          style={styles.segmentControl}
+        />
       </ScrollView>
 
       <SessionsCalendar
@@ -570,26 +576,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceElevated,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
-    maxHeight: 44,
   },
-  tabs: {
-    flexDirection: "row",
-    paddingHorizontal: space.sm,
-    gap: space.sm,
-    alignItems: "center",
-  },
-  tab: {
-    paddingVertical: space.sm,
-    paddingHorizontal: space.md,
-    height: 44,
-    justifyContent: "center",
-    alignItems: "center",
-    borderBottomWidth: 2,
-    borderBottomColor: "transparent",
-  },
-  tabActive: { borderBottomColor: colors.brandNavy },
-  tabText: { ...typography.label, color: colors.textMuted },
-  tabTextActive: { color: colors.brandNavy },
+  tabs: { paddingVertical: space.xs },
+  segmentControl: { marginVertical: 0, marginHorizontal: 0 },
 
   list: { padding: space.md, gap: space.sm },
 

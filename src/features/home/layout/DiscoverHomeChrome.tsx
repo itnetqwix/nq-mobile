@@ -3,11 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Skeleton } from "../../../components/ui";
+import { OnlinePulseBorder } from "../../../components/ui/OnlinePulseBorder";
 import { AccountType, type AccountTypeValue } from "../../../constants/accountType";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
 import { useCompactA11yGuard } from "../../../lib/layout";
-import { radii, space, useScaledTypography, useThemeColors, useThemedStyles } from "../../../theme";
+import { radii, space, typography, useScaledTypography, useThemeColors, useThemedStyles } from "../../../theme";
 import { fetchMyTrainerStats } from "../../home/api/homeApi";
 import { HomeUserAvatar } from "../../dashboard/components/home/HomeUserAvatar";
 import { TrainerOnlineToggle } from "../../dashboard/components/TrainerOnlineToggle";
@@ -346,6 +347,7 @@ export function DiscoverHomeChrome({
       ]}
     >
       {isTrainer ? (
+        <OnlinePulseBorder active={!!showAsOnline} borderRadius={radii.lg}>
         <View
           style={[
             styles.trainerCard,
@@ -367,8 +369,19 @@ export function DiscoverHomeChrome({
             </View>
             {trainerTopRight}
           </View>
+          {showAsOnline ? (
+            <View style={[styles.onlineBanner, { backgroundColor: c.successSubtle, borderColor: c.success }]}>
+              <Ionicons name="radio-outline" size={14} color={c.success} />
+              <Text style={[styles.onlineBannerText, { color: c.success }]}>
+                {t("trainerDashboard.visibleForInstant", {
+                  defaultValue: "Visible for instant lessons",
+                })}
+              </Text>
+            </View>
+          ) : null}
           <TrainerProfileMeta user={user} onPressReviews={onPressReviews} />
         </View>
+        </OnlinePulseBorder>
       ) : (
         <View style={styles.topRow}>
           {avatar}
@@ -468,6 +481,21 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     paddingHorizontal: space.sm,
     paddingVertical: 4,
+  },
+  onlineBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: space.sm,
+    paddingVertical: 8,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    marginTop: space.xs,
+  },
+  onlineBannerText: {
+    ...typography.caption,
+    fontWeight: "700",
+    flex: 1,
   },
   topRow: {
     flexDirection: "row",

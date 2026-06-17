@@ -13,7 +13,7 @@ import {
   View,
 } from "react-native";
 import { AccountType } from "../../../constants/accountType";
-import { Button, EmptyState, MorphRefreshHeader, Pill, TrainerScheduleSkeleton } from "../../../components/ui";
+import { Button, EmptyState, MorphRefreshHeader, Pill, TrainerScheduleSkeleton, SegmentedControl } from "../../../components/ui";
 import { useCombinedScroll } from "../../../lib/refresh/useCombinedScroll";
 import { useMorphRefreshBundle } from "../../../lib/refresh/useMorphRefreshBundle";
 import { TabScreenShell } from "../../../lib/layout";
@@ -183,24 +183,14 @@ export function TrainerScheduleTabs() {
 
   return (
     <View style={styles.flex}>
-      <View style={styles.segmentRow}>
-        <Pressable
-          style={[styles.segmentBtn, segment === "sessions" && styles.segmentBtnActive]}
-          onPress={() => setSegment("sessions")}
-        >
-          <Text style={[styles.segmentText, segment === "sessions" && styles.segmentTextActive]}>
-            {t("schedule.mySessions")}
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[styles.segmentBtn, segment === "availability" && styles.segmentBtnActive]}
-          onPress={() => setSegment("availability")}
-        >
-          <Text style={[styles.segmentText, segment === "availability" && styles.segmentTextActive]}>
-            {t("schedule.availability")}
-          </Text>
-        </Pressable>
-      </View>
+      <SegmentedControl
+        options={[
+          { key: "sessions", label: t("schedule.mySessions") },
+          { key: "availability", label: t("schedule.availability") },
+        ]}
+        value={segment}
+        onChange={setSegment}
+      />
       {segment === "sessions" ? (
         <View style={styles.segmentBody}>
           <UpcomingSessionsScreen />
@@ -264,25 +254,5 @@ const styles = StyleSheet.create({
   },
   slotTime: { flex: 1, ...typography.subtitle, color: colors.textSecondary },
 
-  segmentRow: {
-    flexDirection: "row",
-    marginHorizontal: space.md,
-    marginTop: space.sm,
-    marginBottom: space.xs,
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 4,
-  },
-  segmentBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: radii.sm,
-    alignItems: "center",
-  },
-  segmentBtnActive: { backgroundColor: colors.brandNavy },
-  segmentText: { ...typography.label, color: colors.textMuted, fontWeight: "600" },
-  segmentTextActive: { color: colors.brandTextOn },
   segmentBody: { flex: 1 },
 });

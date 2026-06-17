@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Animated,
   Platform,
@@ -45,15 +44,13 @@ type Props = {
 
 export function TrainerOnlineToggle({ value, onToggle, embedded, compact }: Props) {
   const [displayOnline, setDisplayOnline] = useState(value);
-  const [syncing, setSyncing] = useState(false);
   const pulse = useRef(new Animated.Value(1)).current;
   const blend = useRef(new Animated.Value(value ? 1 : 0)).current;
 
   useEffect(() => {
-    if (syncing) return;
     setDisplayOnline(value);
     blend.setValue(value ? 1 : 0);
-  }, [value, syncing, blend]);
+  }, [value, blend]);
 
   useEffect(() => {
     Animated.timing(blend, {
@@ -80,11 +77,10 @@ export function TrainerOnlineToggle({ value, onToggle, embedded, compact }: Prop
 
   const handleChange = useCallback(
     async (next: boolean) => {
-      if (syncing || next === displayOnline) return;
+      if (next === displayOnline) return;
 
       const previous = displayOnline;
       setDisplayOnline(next);
-      setSyncing(true);
 
       try {
         haptics.impact();
@@ -95,11 +91,9 @@ export function TrainerOnlineToggle({ value, onToggle, embedded, compact }: Prop
         haptics.error();
         const message = e instanceof Error ? e.message : "Could not update online status.";
         Alert.alert("Online status", message);
-      } finally {
-        setSyncing(false);
       }
     },
-    [displayOnline, onToggle, syncing]
+    [displayOnline, onToggle]
   );
 
   const bgTint = blend.interpolate({
@@ -137,7 +131,7 @@ export function TrainerOnlineToggle({ value, onToggle, embedded, compact }: Prop
       <View
         style={styles.compactRow}
         accessibilityRole="switch"
-        accessibilityState={{ checked: displayOnline, busy: syncing }}
+        accessibilityState={{ checked: displayOnline }}
         accessibilityLabel={
           displayOnline ? "You are shown as online" : "You are shown as offline"
         }
@@ -146,25 +140,19 @@ export function TrainerOnlineToggle({ value, onToggle, embedded, compact }: Prop
         <Pressable
           style={styles.compactLabelWrap}
           onPress={() => handleChange(!displayOnline)}
-          disabled={syncing}
         >
           <Text style={styles.compactLabel} numberOfLines={1}>
             {displayOnline ? "Online" : "Offline"}
           </Text>
         </Pressable>
-        {syncing ? (
-          <ActivityIndicator size="small" color={displayOnline ? ONLINE.dot : OFFLINE.dot} />
-        ) : (
-          <Switch
-            value={displayOnline}
-            onValueChange={handleChange}
-            disabled={syncing}
+        <Switch
+          value={displayOnline}
+          onValueChange={handleChange}
             trackColor={{ false: OFFLINE.switchTrack, true: ONLINE.switchTrack }}
             thumbColor="#fff"
             ios_backgroundColor={displayOnline ? ONLINE.switchTrack : OFFLINE.switchTrack}
             style={styles.compactSwitch}
           />
-        )}
       </View>
     );
   }
@@ -183,7 +171,7 @@ export function TrainerOnlineToggle({ value, onToggle, embedded, compact }: Prop
       <View
         style={styles.pressable}
         accessibilityRole="switch"
-        accessibilityState={{ checked: displayOnline, busy: syncing }}
+        accessibilityState={{ checked: displayOnline }}
         accessibilityLabel={
           displayOnline ? "You are shown as online" : "You are shown as offline"
         }
@@ -216,19 +204,11 @@ export function TrainerOnlineToggle({ value, onToggle, embedded, compact }: Prop
         <Pressable
           style={styles.copy}
           onPress={() => handleChange(!displayOnline)}
-          disabled={syncing}
         >
           <View style={styles.titleRow}>
             <Animated.Text style={[styles.title, { color: titleColor }]}>
               {displayOnline ? "You're online" : "You're offline"}
             </Animated.Text>
-            {syncing ? (
-              <ActivityIndicator
-                size="small"
-                color={displayOnline ? ONLINE.dot : OFFLINE.dot}
-                style={styles.syncSpinner}
-              />
-            ) : null}
           </View>
           {displayOnline ? (
             <Animated.Text style={[styles.subtitle, { color: subtitleColor }]} numberOfLines={2}>
@@ -246,7 +226,6 @@ export function TrainerOnlineToggle({ value, onToggle, embedded, compact }: Prop
           <Switch
             value={displayOnline}
             onValueChange={handleChange}
-            disabled={syncing}
             trackColor={{
               false: OFFLINE.switchTrack,
               true: ONLINE.switchTrack,

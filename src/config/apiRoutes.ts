@@ -121,6 +121,7 @@ export const API_ROUTES = {
     updateNotificationsSettings: "/user/update-notifications-settings",
     updateTrainerStatus: "/user/update-trainer-status",
     onlineAvailability: "/user/online-availability",
+    onlineBackgroundGrace: "/user/online-background-grace",
     autoDeclineOutsideHours: "/user/auto-decline-outside-hours",
     deleteUser: (id: string) => `/user/delete-user/${id}` as const,
     approveExpert: (id: string) => `/user/approve-expert/${id}` as const,

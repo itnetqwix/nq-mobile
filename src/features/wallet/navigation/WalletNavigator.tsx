@@ -10,6 +10,7 @@ import { AutoTopUpScreen } from "../screens/AutoTopUpScreen";
 import { StripeConnectOnboardingScreen } from "../screens/StripeConnectOnboardingScreen";
 import { PointsActivityScreen } from "../../points/screens/PointsActivityScreen";
 import { TransactionsScreen } from "../../dashboard/screens/TransactionsScreen";
+import { useShellNestedBackRegistration } from "../../../navigation/ShellNestedBackContext";
 
 export type WalletStackParamList = {
   WalletHome: undefined;
@@ -30,11 +31,12 @@ type WalletNavigatorProps = {
   initialParams?: WalletStackParamList["WalletTopUp"];
 };
 
-export function WalletNavigator({
+function WalletStackInner({
   initialRouteName,
   initialParams,
-}: WalletNavigatorProps = {}) {
+}: WalletNavigatorProps) {
   const c = useThemeColors();
+  useShellNestedBackRegistration();
   return (
     <Stack.Navigator
       initialRouteName={initialRouteName ?? "WalletHome"}
@@ -58,4 +60,8 @@ export function WalletNavigator({
       <Stack.Screen name="StripeConnect" component={StripeConnectOnboardingScreen} />
     </Stack.Navigator>
   );
+}
+
+export function WalletNavigator(props: WalletNavigatorProps = {}) {
+  return <WalletStackInner {...props} />;
 }

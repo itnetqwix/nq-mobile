@@ -1,16 +1,16 @@
 # Graph Report - nq-mobile  (2026-06-17)
 
 ## Corpus Check
-- 1211 files · ~1,918,471 words
+- 1216 files · ~1,919,758 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 10950 nodes · 23273 edges · 525 communities (494 shown, 31 thin omitted)
+- 10986 nodes · 23362 edges · 523 communities (492 shown, 31 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 55 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `3eee226e`
+- Built from commit: `6fea6c67`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -527,16 +527,14 @@
 - [[_COMMUNITY_Community 520|Community 520]]
 - [[_COMMUNITY_Community 521|Community 521]]
 - [[_COMMUNITY_Community 522|Community 522]]
-- [[_COMMUNITY_Community 523|Community 523]]
-- [[_COMMUNITY_Community 524|Community 524]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `useThemeColors()` - 528 edges
+1. `useThemeColors()` - 530 edges
 2. `useThemedStyles()` - 285 edges
-3. `space` - 265 edges
+3. `space` - 266 edges
 4. `useAppTranslation()` - 261 edges
-5. `typography` - 239 edges
-6. `radii` - 202 edges
+5. `typography` - 240 edges
+6. `radii` - 203 edges
 7. `useAuth()` - 160 edges
 8. `locker` - 119 edges
 9. `auth` - 113 edges
@@ -564,19 +562,19 @@
 - **Trainee Mid-Lesson Clips Phased Rollout** — calling_clips_phases_phase0_contract, calling_clips_phases_phase1_trainee_send, calling_clips_phases_phase2_trainer_receive_sync [EXTRACTED 1.00]
 - **System States Global Gate Providers** — system_states_readme_system_gate_provider, system_states_readme_use_session_expired_navigation, system_states_readme_use_update_required_gate [EXTRACTED 1.00]
 
-## Communities (525 total, 31 thin omitted)
+## Communities (523 total, 31 thin omitted)
 
 ### Community 0 - "Live Call Modal Components"
 Cohesion: 0.03
-Nodes (149): useReduceMotion(), postMyClipsGrouped(), ClipGridThumb(), RecipientAvatar(), ShareClipsPanel(), useShareClipsStyles(), styles, pickProfileImageKey() (+141 more)
+Nodes (134): useReduceMotion(), ClipGridThumb(), RecipientAvatar(), ShareClipsPanel(), useShareClipsStyles(), styles, Props, SeeAllButton() (+126 more)
 
 ### Community 1 - "Trainer Presence & Schedule"
 Cohesion: 0.13
 Nodes (19): Props, Props, TransactionListRow(), Props, TONE_CLASSES, TransactionStatusPill(), Props, TransactionDetailView() (+11 more)
 
 ### Community 2 - "Home Content & CMS"
-Cohesion: 0.06
-Nodes (35): useCall(), meetingTheme, ActionButtons(), Props, styles, ClipMiniPip(), Props, styles (+27 more)
+Cohesion: 0.08
+Nodes (21): MeetingLiveNotesPanel(), Props, styles, MeetingTraineeNotesPanel(), Props, styles, EMPTY, LiveNote (+13 more)
 
 ### Community 3 - "English Auth Translations"
 Cohesion: 0.02
@@ -587,16 +585,16 @@ Cohesion: 0.02
 Nodes (119): locker, chooseVideo, clipDefault, clipSizeUnknown, clipTooLargeBody, clipTooLargeTitle, continueUpload, cropThumbnail (+111 more)
 
 ### Community 5 - "Social Feed & Friends"
-Cohesion: 0.05
-Nodes (45): API_ENDPOINTS, axiosInstance, isAuthRoute(), PeopleSection(), Props, PersonCard(), Props, Props (+37 more)
+Cohesion: 0.07
+Nodes (32): API_ENDPOINTS, PeopleSection(), Props, PersonCard(), Props, Props, StudentDetailModal(), PeopleSectionMode (+24 more)
 
 ### Community 6 - "Clip Share Inbox"
 Cohesion: 0.06
-Nodes (28): AuthProvider(), DashboardOnlineSocketBridge(), Props, SessionActionModal(), Props, SessionRateModal(), Props, SessionStatusBadge() (+20 more)
+Nodes (49): AccountType, useAuth(), LiveMeetingExperience(), Props, Props, SessionActionModal(), Props, SessionRateModal() (+41 more)
 
 ### Community 7 - "AI Review & Insights"
-Cohesion: 0.09
-Nodes (31): onUnauthorized(), clearSessionLocalThunk, completeSessionFromTokens, hydrateAuth, refreshUserThunk, signInThunk, signOutThunk, initialState (+23 more)
+Cohesion: 0.10
+Nodes (29): isInAuthGracePeriod(), onUnauthorized(), completeSessionFromTokens, hydrateAuth, refreshUserThunk, signInThunk, signOutThunk, IncomingNotification (+21 more)
 
 ### Community 8 - "English Settings Translations"
 Cohesion: 0.02
@@ -604,11 +602,11 @@ Nodes (88): settings, about, account, accountType, activeSessions, activeSession
 
 ### Community 9 - "Active Call Registry"
 Cohesion: 0.02
-Nodes (124): BookedSessionStatus, BrowseTrainersParams, ClipUploadSignClip, ClipUploadSignPayload, ClipUploadSignRow, createStorageCheckout(), EndSessionEarlyResponse, extractApiArray() (+116 more)
+Nodes (133): BookedSessionStatus, BrowseTrainersParams, ClipUploadSignClip, ClipUploadSignPayload, ClipUploadSignRow, createStorageCheckout(), endSessionEarly(), EndSessionEarlyResponse (+125 more)
 
 ### Community 10 - "Clip Picker & Trainer Slots"
-Cohesion: 0.03
-Nodes (108): formatInsightDate(), Props, ReviewAnalysisCard(), styles, LockerClip, NestedCategoryGroup, fetchTrainerSlots(), ClipShareInboxBanner() (+100 more)
+Cohesion: 0.05
+Nodes (59): fetchPointsBalance(), MenuRow(), Props, TrainerWalletHome(), useWalletBalance(), useWalletTopUpFlow(), HeaderBackButton(), styles (+51 more)
 
 ### Community 11 - "Arabic Wallet Translations"
 Cohesion: 0.03
@@ -643,12 +641,12 @@ Cohesion: 0.03
 Nodes (72): wallet, activity, activitySub, addFunds, addFundsSecurely, addFundsSecurelySub, amountUsd, applePaySuffix (+64 more)
 
 ### Community 19 - "Calling Captureclipscreenshot"
-Cohesion: 0.05
-Nodes (59): AccountTypeValue, getCurrentUser(), JSON_HEADERS, postLogin(), postLogout(), postSignUp(), postVerifyGoogleLogin(), signUpPayloadBody() (+51 more)
+Cohesion: 0.12
+Nodes (23): getCurrentUser(), JSON_HEADERS, postLogin(), postLogout(), postSignUp(), postVerifyGoogleLogin(), signUpPayloadBody(), GoogleLoginResponse (+15 more)
 
 ### Community 20 - "Api Pointsapi Fetchpointsbalance"
-Cohesion: 0.09
-Nodes (22): fetchSessionDetail(), BookingDetailsModal(), fmtDate(), fmtMoney(), Props, styles, Extension, fmt() (+14 more)
+Cohesion: 0.08
+Nodes (28): fetchSessionDetail(), BookingDetailsModal(), fmtDate(), fmtMoney(), Props, styles, Extension, fmt() (+20 more)
 
 ### Community 21 - "Locales Ar Auth"
 Cohesion: 0.03
@@ -684,7 +682,7 @@ Nodes (64): auth, accountCreatedTitle, accountCreatedTraineeBody, accountCreated
 
 ### Community 29 - "Components Rememberdevicecheckbox"
 Cohesion: 0.08
-Nodes (41): Props, RememberDeviceCheckbox(), styles, Props, styles, SystemStateActions(), Props, SystemStateHero() (+33 more)
+Nodes (39): SystemStateLayout(), useNetworkStatus(), useSessionExpiredNavigation(), isMaintenanceResponse(), systemStateIdFromError(), systemStateIdFromHttpStatus(), isBelowMin(), MIN_VERSION (+31 more)
 
 ### Community 30 - "Locales Ar Settings"
 Cohesion: 0.04
@@ -719,8 +717,8 @@ Cohesion: 0.04
 Nodes (57): settings, about, account, accountType, activeSessions, activeSessionsSubtitle, appearance, appUnlockSubtitle (+49 more)
 
 ### Community 38 - "A11y Usereducemotion Usereducemotion"
-Cohesion: 0.07
-Nodes (37): ClipThumbnailCard(), Props, DashboardBottomNav(), Props, DashboardHeader(), DashboardMobileDrawer(), Props, DashboardShell() (+29 more)
+Cohesion: 0.14
+Nodes (18): DashboardOnlineSocketBridge(), DashboardShell(), Props, NotificationSocketBridge(), buildAllNavItems(), buildBottomNavItems(), buildDesktopSidebarSections(), buildMobileDrawerSections() (+10 more)
 
 ### Community 39 - "Calling Annotationcoords"
 Cohesion: 0.06
@@ -728,23 +726,23 @@ Nodes (53): AnnotationFitMode, AnnotationMappingFrame, canvasPointToContentUV(),
 
 ### Community 40 - "Calling Callcontext Usecall"
 Cohesion: 0.07
-Nodes (38): LessonSummaryCard(), Props, styles, GamePlanStatusPill(), Props, useStyles(), GracePeriodBanner(), Props (+30 more)
+Nodes (34): fetchMyRaiseConcerns(), postRaiseConcern(), RaiseConcernReason, EarningsTrendsCard(), Range, useStyles(), TrainerEarningsPanel(), useCurrencyFormatter() (+26 more)
 
 ### Community 41 - "Locales En Chats"
 Cohesion: 0.04
 Nodes (56): chats, accept, addFriendsFromCommunity, addParticipants, archive, archived, archivedChatsA11y, archivedEmptyBody (+48 more)
 
 ### Community 42 - "Components Pendingauthresumebridge"
-Cohesion: 0.14
-Nodes (14): postTrainerSlots(), compare(), DayState, fmt12(), hasOverlap(), HOURS, MINUTES, parseHms() (+6 more)
+Cohesion: 0.05
+Nodes (46): postTrainerSlots(), ChatDaySeparator(), Props, styles, Props, RememberDeviceCheckbox(), styles, styles (+38 more)
 
 ### Community 43 - "Calling Clipevents"
-Cohesion: 0.05
-Nodes (52): buildFullscreenPayload(), CLIP_EVENTS, ClipPlayPausePayload, ClipSeekPayload, ClipSelectPayload, ClipUserInfo, shouldApplyRemoteSocketEvent(), buildPlayPauseEmitPayload() (+44 more)
+Cohesion: 0.04
+Nodes (55): buildFullscreenPayload(), CLIP_EVENTS, ClipPlayPausePayload, ClipSeekPayload, ClipSelectPayload, ClipUserInfo, shouldApplyRemoteSocketEvent(), buildPlayPauseEmitPayload() (+47 more)
 
 ### Community 44 - "Api Homeapi"
 Cohesion: 0.07
-Nodes (31): archiveChatConversation(), cancelScheduledMessage(), clearChatConversation(), createGroupWithInvites(), deleteChatConversation(), deleteGroup(), exitGroup(), fetchArchivedConversations() (+23 more)
+Nodes (30): archiveChatConversation(), cancelScheduledMessage(), clearChatConversation(), createGroupWithInvites(), deleteChatConversation(), deleteGroup(), exitGroup(), fetchArchivedConversations() (+22 more)
 
 ### Community 45 - "Locales Ar Chats"
 Cohesion: 0.04
@@ -779,56 +777,56 @@ Cohesion: 0.04
 Nodes (51): chats, accept, addFriendsFromCommunity, addParticipants, archive, archived, archivedChatsA11y, archivedEmptyBody (+43 more)
 
 ### Community 53 - "Components Instantlessondeadlinechip"
-Cohesion: 0.02
-Nodes (124): deleteTraineeNote(), fetchTraineeNote(), NudgeCandidate, NudgeTemplate, saveTraineeNote(), sendSessionRecap(), sendTraineeNudge(), TraineeNote (+116 more)
+Cohesion: 0.03
+Nodes (104): deleteTraineeNote(), fetchTraineeNote(), NudgeCandidate, NudgeTemplate, saveTraineeNote(), sendSessionRecap(), sendTraineeNudge(), TraineeNote (+96 more)
 
 ### Community 54 - "Ai Aiactions"
 Cohesion: 0.14
 Nodes (18): AiAction, AiActionType, describeAiAction(), navFeature(), navShell(), parseAiActions(), runAiAction(), FIRST_OPEN_SUGGESTIONS (+10 more)
 
 ### Community 55 - "Calling Callcontext"
-Cohesion: 0.12
-Nodes (22): CommunityMember, communityService, FriendRecord, MyCommunitySection(), CommunityGridCard(), Props, CommunityMemberActions(), Props (+14 more)
+Cohesion: 0.09
+Nodes (35): VoiceInputState, HomeCategoryChip, HomeCategoryChipsRow(), Props, useStyles(), HomeQuickAction, HomeQuickActionsRow(), Props (+27 more)
 
 ### Community 56 - "Ai Lessonsummarycard"
-Cohesion: 0.19
-Nodes (36): canPromptEarlySessionEnd(), dedupeSessionsById(), filterSessionsForStatusTab(), getBookedWindowEnd(), hasViewerAckedEarlyEnd(), instantPhase(), isEarlyEndedWithinBookedWindow(), isInstantAwaitingAccept() (+28 more)
+Cohesion: 0.18
+Nodes (35): INSTANT_PHASE, dedupeSessionsById(), filterSessionsForStatusTab(), getBookedWindowEnd(), instantPhase(), isEarlyEndedWithinBookedWindow(), isInstantExpiredForLists(), isLessonEffectivelyEnded() (+27 more)
 
 ### Community 57 - "Api Magiclinkapi Postmagiclinkrequest"
-Cohesion: 0.03
-Nodes (114): DeletionOtpStartResult, postMagicLinkRequest(), NetqwixLogo(), Props, styles, AuthEscapeLink(), Props, useStyles() (+106 more)
+Cohesion: 0.02
+Nodes (169): DeletionOtpStartResult, postWriteUs(), putProfile(), postMagicLinkRequest(), NetqwixLogo(), Props, styles, AuthEscapeLink() (+161 more)
 
 ### Community 58 - "Calling Sessionextensionapi Extensionquote"
-Cohesion: 0.04
-Nodes (71): AuthPageShell(), Props, Category(), CategoryProps, Props, DashboardContent(), Props, DashboardInCardTitle() (+63 more)
+Cohesion: 0.06
+Nodes (44): Props, Category(), CategoryProps, Faq(), FooterLanding(), FooterLandingProps, HowItWorks(), Props (+36 more)
 
 ### Community 59 - "Components Earningstrendscard"
 Cohesion: 0.12
-Nodes (25): ChatSendPayload, ChatSendResult, postChatMessage(), unwrapSendResponse(), uploadAndSendChatMedia(), abortChatMediaUpload(), getPresignedUploadUrl(), isNetworkSendError() (+17 more)
+Nodes (24): ChatSendPayload, ChatSendResult, postChatMessage(), unwrapSendResponse(), uploadAndSendChatMedia(), abortChatMediaUpload(), getPresignedUploadUrl(), uploadToS3() (+16 more)
 
 ### Community 60 - "Booking Bookingwalletguard"
-Cohesion: 0.06
-Nodes (36): CLIP_MODE_PIP, defaultClipModeLocalPipLayout(), defaultClipModeRemotePipLayout(), defaultLocalPipLayout(), resolveTilePosition(), resolveTileSize(), HiddenVideosMap, VideoHideType (+28 more)
+Cohesion: 0.05
+Nodes (48): meetingTheme, CLIP_MODE_PIP, CallEngineState, CallParticipant, CallSessionInfo, BackgroundBlurBadge(), positionStyles, Props (+40 more)
 
 ### Community 61 - "Components Chatdayseparator"
 Cohesion: 0.07
-Nodes (34): ChatDaySeparator(), Props, styles, ChatVideoThumbnail(), Props, styles, useChatE2E(), ChatDaySection (+26 more)
+Nodes (36): ChatVideoThumbnail(), Props, styles, useChatE2E(), ChatDaySection, ChatMessageLike, findMessageFlatRowIndex(), findMessageSectionLocation() (+28 more)
 
 ### Community 62 - "Context Authcontext"
 Cohesion: 0.04
-Nodes (57): BrandIcon, hasSocialMediaLinks(), IconLink, Props, SocialMediaLinks(), SocialMediaLinksMap, CoachesOnlineSection(), DashboardPromoImageCard() (+49 more)
+Nodes (63): BrandIcon, hasSocialMediaLinks(), IconLink, Props, SocialMediaLinks(), SocialMediaLinksMap, CoachesOnlineSection(), DashboardPromoImageCard() (+55 more)
 
 ### Community 63 - "Api Clipsapi"
 Cohesion: 0.09
-Nodes (37): socketCacheEvent, socketReconnected, userSignedIn, userSignedOut, coalesceKeys, invalidateChats(), invalidateContent(), invalidateForSocketEvent() (+29 more)
+Nodes (36): socketCacheEvent, socketReconnected, userSignedIn, userSignedOut, coalesceKeys, invalidateChats(), invalidateContent(), invalidateForSocketEvent() (+28 more)
 
 ### Community 64 - "Api Homeapi Setonlineavailability"
-Cohesion: 0.09
-Nodes (38): refreshAccessToken(), AuthSessionRow, ensureAuthSessionRegistered(), fetchAuthSessions(), postLogout(), revokeAllAuthSessions(), revokeAuthSession(), revokeOtherAuthSessions() (+30 more)
+Cohesion: 0.11
+Nodes (30): resolveAccountType(), AuthSessionRow, ensureAuthSessionRegistered(), fetchAuthSessions(), postLogout(), revokeAllAuthSessions(), revokeAuthSession(), revokeOtherAuthSessions() (+22 more)
 
 ### Community 65 - "Coachmarks Coachmark"
-Cohesion: 0.07
-Nodes (42): CGRect, CGSize, CoachMark(), Props, CoachMarkOverlay(), Layout, styles, CoachMarkAnchor (+34 more)
+Cohesion: 0.11
+Nodes (29): CoachMark(), Props, CoachMarkOverlay(), Layout, styles, CoachMarkAnchor, CoachMarkContext, CoachMarkPayload (+21 more)
 
 ### Community 66 - "Components Instantlessonsessionactions"
 Cohesion: 0.12
@@ -867,24 +865,24 @@ Cohesion: 0.05
 Nodes (42): locker, chooseVideo, clipDefault, friendDefault, friendsSelected_one, friendsSelected_other, keepAppOpen, myClips (+34 more)
 
 ### Community 75 - "Ai Aiassistantscreen Aiassistantscreen"
-Cohesion: 0.11
-Nodes (28): ClipPickerRow(), Props, styles, InstantLessonDeadlineChip(), Props, styles, InstantLessonIncomingCallOverlay(), styles (+20 more)
+Cohesion: 0.12
+Nodes (24): InstantLessonDeadlineChip(), Props, styles, InstantLessonIncomingCallOverlay(), styles, Props, SessionCountdownText(), styles (+16 more)
 
 ### Community 76 - "Config Dashboardroutes"
-Cohesion: 0.11
-Nodes (25): AppRoot(), styles, SystemStateHooks(), LoaderContext, LoaderContextValue, LoaderProvider(), styles, AuthProvider() (+17 more)
+Cohesion: 0.17
+Nodes (17): hydrateHapticsPreference(), readHapticsEnabledFromStorage(), createPersistedQueryClient(), migrateQueryPersistFromAsyncStorage(), persister, loadSharp(), require, createAsyncStorageBackedStore() (+9 more)
 
 ### Community 77 - "Api Homeapi Putprofile"
 Cohesion: 0.03
-Nodes (152): fetchMyTrainerStats(), MyTrainerStats, TrainerScheduleDay, ChatPolicyBanner(), Props, useStyles(), HomeOffersCarousel(), Props (+144 more)
+Nodes (101): LockerClip, fetchMyTrainerStats(), MyTrainerStats, postMyClipsGrouped(), CallSlotTakenOverModal(), Props, useStyles(), ClipShareInboxBanner() (+93 more)
 
 ### Community 78 - "Api Clipsshareapi Postclipsharerequests"
-Cohesion: 0.09
-Nodes (32): VideoTile(), PeerJoinedModal(), styles, PortraitCallChrome(), Props, styles, ProfileAvatar(), resolveAvatarUri() (+24 more)
+Cohesion: 0.05
+Nodes (52): formatInsightDate(), Props, ReviewAnalysisCard(), styles, postUpdateMobileNumber(), ProfileUpdate, SHELL_SURFACES, shellSurfaceById() (+44 more)
 
 ### Community 79 - "Auth Authsessionguard Isinauthgraceperiod"
-Cohesion: 0.14
-Nodes (20): captureClipFrames(), captureClipFrameUri(), withTimeout(), requestScreenshotUpload(), enqueueScreenshotUpload(), flushScreenshotUploadQueue(), migrateLegacyQueue(), PendingScreenshotUpload (+12 more)
+Cohesion: 0.06
+Nodes (32): extractSignUpUser(), isRecord(), readStripeId(), SignUpUserInfo, clearPendingGoogleSignupEmail(), getPendingGoogleSignupEmail(), setPendingGoogleSignupEmail(), isValidEmail() (+24 more)
 
 ### Community 80 - "Calling Clips Phases"
 Cohesion: 0.06
@@ -892,111 +890,111 @@ Nodes (37): ActionButtons Component, broadcastClipsMidLesson, ClipPickerModal, N
 
 ### Community 81 - "Calling Lessonnetworktier Lessonnetworktier"
 Cohesion: 0.06
-Nodes (26): CallContext, CallContextValue, PeerJoinedEvent, ProviderProps, StartArgs, buildIceConfig(), DEFAULT_ICE_SERVERS, sanitizeIceServers() (+18 more)
+Nodes (24): CallContext, CallContextValue, CallProvider(), CameraOffReason, PeerJoinedEvent, ProviderProps, StartArgs, CALL_EVENTS (+16 more)
 
 ### Community 82 - "Api Chatactionsapi"
 Cohesion: 0.06
-Nodes (28): metadata, DashboardNotificationButton(), getNotificationIcon(), NotificationListItem(), Props, NotificationSocketBridge(), normDay(), titleDay() (+20 more)
+Nodes (30): metadata, AuthUser, DashboardHeader(), DashboardNotificationButton(), DashboardProfileMenu(), getDisplayName(), getProfileImage(), Props (+22 more)
 
 ### Community 83 - "Actions Cacheinvalidation"
 Cohesion: 0.07
-Nodes (40): confirmProceedToPaymentIfWalletShort(), TopUpFlowPhase, TopUpFlowResult, newIdempotencyKey(), PRESET_RELOADS, PRESET_THRESHOLDS, Presets(), useStyles() (+32 more)
+Nodes (38): confirmProceedToPaymentIfWalletShort(), TopUpFlowPhase, TopUpFlowResult, newIdempotencyKey(), clearPinSession(), getPinSessionToken(), isPinSessionValid(), requireValidPinSession() (+30 more)
 
 ### Community 84 - "Api Homeapi Fetchinstantlessoneligibility"
-Cohesion: 0.08
-Nodes (35): fetchInstantLessonEligibility(), INSTANT_LESSON_DURATIONS, WIZARD_STEPS, wizardStepIndex(), styles, InstantBookingMeta, parseInstantBookingLessonId(), parseInstantBookingMeta() (+27 more)
+Cohesion: 0.11
+Nodes (26): fetchInstantLessonEligibility(), INSTANT_LESSON_DURATIONS, WIZARD_STEPS, wizardStepIndex(), InstantLessonBookingWizardModal(), styles, InstantBookingMeta, parseInstantBookingLessonId() (+18 more)
 
 ### Community 85 - "Components Trainerprofilemodal"
-Cohesion: 0.14
-Nodes (22): answeredCallUuids, CallKeepModule, callUuidToPayload, displayInstantLessonIncomingCall(), endAllInstantLessonCalls(), endInstantLessonCall(), getCallKeepModule(), getPayloadForCallUuid() (+14 more)
+Cohesion: 0.18
+Nodes (13): CGRect, CGSize, CVPixelBuffer, Error, LessonRecordingComposer, LessonRecordingComposerError, imageLoadFailed, noFrames (+5 more)
 
 ### Community 86 - "Ai Smartscheduleapi Smartschedulesuggestion"
-Cohesion: 0.13
-Nodes (27): putProfile(), CredentialRowEditor(), CredentialTextField(), Props, styles, getTrainerExtra(), needsTrainerProfileSetup(), saveTrainerCredentials() (+19 more)
+Cohesion: 0.09
+Nodes (32): clipIdOf(), ClipRecord, clipsFromSelectPayload(), clipsFromSession(), firstPlayableClip(), hasPlayableClipUrl(), isPlayableVideoClip(), JoinReadinessClipLike (+24 more)
 
 ### Community 87 - "Calling Clipzoompanutils"
 Cohesion: 0.10
-Nodes (55): endSessionEarly(), DeadlineChip(), Props, InstantLessonSessionActions(), Props, styles, Props, Props (+47 more)
+Nodes (53): DeadlineChip(), Props, InstantLessonSessionActions(), Props, styles, Props, SessionCard(), SessionsCalendar() (+45 more)
 
 ### Community 88 - "Api Authapi Resolveaccounttype"
-Cohesion: 0.08
-Nodes (34): apiClient, buildGamePlanPdfHtml(), esc(), GamePlanPdfMeta, fetchSessionReport(), removeReportImage(), requestCropImageUpload(), isPdfPrintAvailable() (+26 more)
+Cohesion: 0.05
+Nodes (57): captureClipFrames(), captureClipFrameUri(), withTimeout(), getNetQwixLogoDataUrl(), buildGamePlanPdfHtml(), esc(), GamePlanPdfMeta, reportPayloadHasImages() (+49 more)
 
 ### Community 89 - "Api Axiosauthmeta"
 Cohesion: 0.12
 Nodes (24): clampFontScale(), FONT_SCALE_BOUNDS, scaleFont(), useFontScale(), useScreenReader(), CompactA11yGuard, useCompactA11yGuard(), Breakpoint (+16 more)
 
 ### Community 90 - "Api Browserrequestheaders"
-Cohesion: 0.11
-Nodes (21): ClipPlaybackControls(), ControlMetrics, formatTime(), Props, styles, clampZoom(), ClipPlayer(), ClipPlayerHandle (+13 more)
+Cohesion: 0.14
+Nodes (15): ClipPlaybackControls(), ControlMetrics, formatTime(), Props, styles, ClipZoomControls(), Props, styles (+7 more)
 
 ### Community 91 - "Api Masterapi Fetchmasterrow"
-Cohesion: 0.16
-Nodes (24): fetchMasterRow(), deleteFileCache(), ensureCacheDir(), filePath(), readFileCache(), writeFileCache(), DEFAULT_LOADER_TIPS, advanceDeck() (+16 more)
+Cohesion: 0.14
+Nodes (27): fetchMasterRow(), deleteFileCache(), ensureCacheDir(), filePath(), readFileCache(), writeFileCache(), DEFAULT_LOADER_TIPS, LoaderTipCarousel() (+19 more)
 
 ### Community 92 - "Calendar Addtocalendar"
-Cohesion: 0.13
-Nodes (24): addEventToCalendar(), CalendarEvent, googleCalendarUrl(), resolveDates(), toUtcCompact(), SCHEDULED_DURATIONS, SCHEDULED_WIZARD_STEPS, ScheduledDurationMinutes (+16 more)
+Cohesion: 0.08
+Nodes (37): CheckoutPreview, fetchReferralBenefits(), fetchReferralInvites(), fetchReferralProgram(), fetchReferralResolve(), postReferralInvites(), postReferralPreviewCheckout(), ReferralInviteResult (+29 more)
 
 ### Community 93 - "Calling Callqualityutils"
 Cohesion: 0.11
 Nodes (21): bucketizeNetworkQuality(), buildCallQualitySocketPayload(), isPoorNetwork(), NetworkStatsSnapshot, QualityBucket, clipsMayLagMessage(), ConnectionQualityPill(), Props (+13 more)
 
 ### Community 94 - "Api Homeapi Fetchsessiondetail"
-Cohesion: 0.33
-Nodes (6): verification, accountRejectedLead, accountRejectedTitle, noRejectionReason, reapplyCta, rejectionReasonLabel
+Cohesion: 0.13
+Nodes (14): menu, dashboard, member, openSettings, tools, splash, preparing, tagline (+6 more)
 
 ### Community 95 - "Components Authescapelink"
 Cohesion: 0.07
-Nodes (35): assertInstantBookingSuccess(), extractInstantBookingId(), parseOnlineUsersResponse(), ParseOnlineUsersResult, authService, OnlineTrainerInfo, OnlineUserRecord, DURATION_OPTIONS (+27 more)
+Nodes (34): assertInstantBookingSuccess(), extractInstantBookingId(), parseOnlineUsersResponse(), ParseOnlineUsersResult, authService, OnlineTrainerInfo, OnlineUserRecord, DURATION_OPTIONS (+26 more)
 
 ### Community 96 - "Config Env Devdudes"
-Cohesion: 0.09
-Nodes (21): fetchNotifications(), patchNotificationsMarkRead(), EmitNotificationPayload, LocalToastPayload, NOTIFICATION_TITLES, NOTIFICATION_TYPES, NotificationContext, NotificationContextValue (+13 more)
+Cohesion: 0.07
+Nodes (28): fetchNotifications(), patchNotificationsMarkRead(), INSTANT_ALLOWED_MINUTES, isInstantDurationAllowed(), isScheduledSlotInPast(), shouldOpenTrainerScheduledBookingPopup(), emitInstantLessonPhase(), EmitNotificationPayload (+20 more)
 
 ### Community 97 - "Locales Es"
 Cohesion: 0.06
-Nodes (30): errors, generic, network, guestSettings, bannerBody, bannerTitle, languageSaved, replayIntro (+22 more)
+Nodes (31): cms, blogPostTitle, blogsEmpty, blogsSubtitle, blogsTitle, common, back, cancel (+23 more)
 
 ### Community 98 - "Lib Mediasendutils"
-Cohesion: 0.04
-Nodes (63): extractSignUpUser(), isRecord(), readStripeId(), SignUpUserInfo, clearPendingGoogleSignupEmail(), getPendingGoogleSignupEmail(), setPendingGoogleSignupEmail(), isValidEmail() (+55 more)
+Cohesion: 0.03
+Nodes (93): CommunityMember, communityService, FriendRecord, MyCommunitySection(), CommunityGridCard(), Props, CommunityMemberActions(), Props (+85 more)
 
 ### Community 99 - "Api Notificationsprefsapi"
-Cohesion: 0.19
-Nodes (10): INSTANT_ALLOWED_MINUTES, isInstantDurationAllowed(), isScheduledSlotInPast(), shouldOpenTrainerScheduledBookingPopup(), OPEN_RETRY_DELAYS_MS, SessionBookingContext, SessionBookingContextValue, extractBookingIdFromNotification() (+2 more)
+Cohesion: 0.09
+Nodes (28): Args, InlineClipCapture, useInlineClipRecording(), CapturedClipPlayer(), formatTime(), Props, styles, CapturedShareSheet() (+20 more)
 
 ### Community 100 - "Api Trainernotesapi"
 Cohesion: 0.07
 Nodes (66): post, post, post, post, post, post, post, post (+58 more)
 
 ### Community 101 - "Calling Callrejoinstore"
-Cohesion: 0.10
-Nodes (22): bootstrapCallRejoinStore(), LastInterruptedSession, listeners, notify(), setLastInterruptedSession(), allowWebMeetingFallback(), shouldUseNativeMeeting(), canUseNativeCallStack() (+14 more)
+Cohesion: 0.15
+Nodes (17): allowWebMeetingFallback(), shouldUseNativeMeeting(), canUseNativeCallStack(), getNativeCallUnavailableMessage(), isExpoGoRuntime(), isWebRTCModuleLinked(), Props, SessionRejoinBlockedModal() (+9 more)
 
 ### Community 102 - "Components Chatmediaviewermodal"
-Cohesion: 0.09
-Nodes (25): ChannelMatrix, DEFAULT_PREFS, fetchNotificationPreferences(), NOTIFICATION_CATEGORIES, NotificationCategoryId, NotificationPreferences, setMuteUntil(), setQuietHours() (+17 more)
+Cohesion: 0.08
+Nodes (33): ChannelMatrix, DEFAULT_PREFS, fetchNotificationPreferences(), NOTIFICATION_CATEGORIES, NotificationCategoryId, NotificationPreferences, setMuteUntil(), setQuietHours() (+25 more)
 
 ### Community 103 - "Locales Ar"
 Cohesion: 0.13
 Nodes (16): Args, deriveDurationSeconds(), LessonTimerSessionInput, LessonTimerSnapshot, LessonTimerStatus, parseHHMMToMinutes(), PendingExtensionRequestSnapshot, TIMER_EVENTS (+8 more)
 
 ### Community 104 - "Locales De"
-Cohesion: 0.09
-Nodes (33): DayAvailabilityRow(), Props, Props, QuickPresets(), Props, ScheduleSettingsCard(), Props, TimeSlotRow() (+25 more)
+Cohesion: 0.11
+Nodes (28): DayAvailabilityRow(), Props, Props, QuickPresets(), Props, TimeSlotRow(), ExtraInfoShape, UseTrainerScheduleReturn (+20 more)
 
 ### Community 105 - "Locales Fr"
 Cohesion: 0.04
-Nodes (72): AIFloatingButton(), Props, styles, HomeBanner, Tip, setOnlineAvailability(), BannerCta, HomeBannerCarousel() (+64 more)
+Nodes (72): HomeBanner, Tip, clearOnlineBackgroundGrace(), fetchRecentTrainees(), setOnlineAvailability(), setOnlineBackgroundGrace(), TrainerScheduleDay, BannerCta (+64 more)
 
 ### Community 106 - "Locales Zh"
-Cohesion: 0.19
-Nodes (16): updateBookedSessionStatus(), enqueueOfflineAction(), Executor, executors, flushOfflineActions(), hydrate(), OfflineAction, OfflineActionResult (+8 more)
+Cohesion: 0.14
+Nodes (23): lockerMutated, updateBookedSessionStatus(), CaptureClipUploadPayload, enqueueCaptureClipUpload(), executeCaptureClipUpload(), isCaptureUploadPayload(), isNetworkRequestError(), enqueueOfflineAction() (+15 more)
 
 ### Community 107 - "Api Homeapi Postwriteus"
-Cohesion: 0.12
-Nodes (18): IncomingPayload, initialState, instantLessonSlice, TraineeFlowPayload, Urgency, INSTANT_LESSON_STEPS, InstantLessonState, InstantLessonStep (+10 more)
+Cohesion: 0.10
+Nodes (15): IncomingPayload, initialState, instantLessonSlice, TraineeFlowPayload, clearTraineeFlowStorage(), initiateTraineeFlow(), INSTANT_LESSON_STEPS, InstantLessonState (+7 more)
 
 ### Community 108 - "Hooks Useguestfavoritetrainers"
 Cohesion: 0.14
@@ -1008,19 +1006,19 @@ Nodes (33): ClipTaxonomy, ClipTaxonomyCategory, ClipTaxonomySubcategory, createL
 
 ### Community 110 - "Api Privacyapi"
 Cohesion: 0.09
-Nodes (25): BlockedUser, DataExportBundle, DataExportResult, DataExportStatus, DEFAULT_PROFILE_VISIBILITY, disableTwoFactor(), fetchBlockedUsers(), fetchDataExportStatus() (+17 more)
+Nodes (22): BlockedUser, DataExportBundle, DataExportResult, DataExportStatus, DEFAULT_PROFILE_VISIBILITY, disableTwoFactor(), fetchBlockedUsers(), fetchDataExportStatus() (+14 more)
 
 ### Community 111 - "Calling Useclipsync Hiddenvideosmap"
-Cohesion: 0.05
-Nodes (38): ComingSoonSection(), Props, DashboardCard(), DashboardPageHeader(), Props, formatSessionLabel(), getStatusConfig(), Props (+30 more)
+Cohesion: 0.17
+Nodes (16): DashboardCard(), formatSessionLabel(), getStatusConfig(), Props, REASONS, ReportIssuePanel(), ReportTrackerCard(), ScreenMode (+8 more)
 
 ### Community 112 - "Calling Instantlessonrecordingcapture"
-Cohesion: 0.29
-Nodes (7): debounce(), DebouncedFn, throttle(), ThrottledFn, useDebouncedCallback(), GuardOptions, useThrottledCallback()
+Cohesion: 0.22
+Nodes (11): formatTime(), NetQwixVideoControls(), Props, styles, debounce(), DebouncedFn, throttle(), ThrottledFn (+3 more)
 
 ### Community 113 - "Instant Lesson Instantlessonbridge"
-Cohesion: 0.12
-Nodes (17): NetQwixTab(), PendingFile, Props, Props, UploadShareEmailPicker(), Props, UploadFriend, UploadShareFriendPicker() (+9 more)
+Cohesion: 0.09
+Nodes (23): DashboardSegmentTab, DashboardSegmentTabs(), Props, NetQwixTab(), PendingFile, Props, Props, UploadShareEmailPicker() (+15 more)
 
 ### Community 114 - "Locales Ko"
 Cohesion: 0.25
@@ -1031,12 +1029,12 @@ Cohesion: 0.26
 Nodes (9): BreakpointKey, breakpoints, mediaQueries, colors, ColorToken, cssVars, layout, radius (+1 more)
 
 ### Community 116 - "Calling Sessionextensionapi"
-Cohesion: 0.09
-Nodes (31): ActionHandlers, emitInstantLessonIncomingRequest(), emitInstantLessonPhase(), getInstantLessonActionHandlers(), Handlers, InstantLessonIncomingPayload, InstantLessonPhasePayload, registerInstantLessonActionHandlers() (+23 more)
+Cohesion: 0.06
+Nodes (53): ActionHandlers, emitInstantLessonIncomingRequest(), getInstantLessonActionHandlers(), Handlers, InstantLessonIncomingPayload, InstantLessonPhasePayload, registerInstantLessonActionHandlers(), registerInstantLessonHandlers() (+45 more)
 
 ### Community 117 - "Calling Uselessontimer Uselessontimer"
-Cohesion: 0.11
-Nodes (19): SessionCard(), dateKey(), DAY_LABELS, pad(), Props, SessionsCalendar(), TrainerAvailabilityPanel(), CacheEntry (+11 more)
+Cohesion: 0.18
+Nodes (10): dateKey(), DAY_LABELS, pad(), Props, styles, formatRemainingSeconds(), dateKey(), DAY_LABELS (+2 more)
 
 ### Community 118 - "Locales Ar Nav"
 Cohesion: 0.09
@@ -1083,12 +1081,12 @@ Cohesion: 0.13
 Nodes (19): CmsFaqBundle, CmsFaqItem, CmsFaqSection, CmsLegalDocument, CmsLegalSlug, CmsManifest, CmsPageDetail, CmsPageSummary (+11 more)
 
 ### Community 129 - "Calling Callpreferences"
-Cohesion: 0.12
-Nodes (22): ChatMediaViewerModal(), Props, useMediaViewerStyles(), isLikelyAudio(), buildPdfEmbedUrl(), LockerViewerModal(), Props, styles (+14 more)
+Cohesion: 0.11
+Nodes (22): ChatMediaViewerModal(), Props, useMediaViewerStyles(), formatMs(), LockerAudioPlayer(), Props, styles, buildPdfEmbedUrl() (+14 more)
 
 ### Community 130 - "Components Trainerbrowsecard"
-Cohesion: 0.28
-Nodes (7): PostLessonConcernBanner(), Props, styles, dismissedSessionIds, dismissPostLessonConcern(), isPostLessonConcernDismissed(), RootStackParamList
+Cohesion: 0.15
+Nodes (17): makeCardStyles(), TrainerBrowseCard(), TrainerBrowseCardProps, asArray(), buildRow(), CompareTrainerRow, emit(), hydrateCompareTrainersStore() (+9 more)
 
 ### Community 131 - "App Themednavigationcontainer"
 Cohesion: 0.15
@@ -1103,16 +1101,16 @@ Cohesion: 0.10
 Nodes (21): magicLink, backToOptions, cellA11y, checkSpamHint, entryCta, failedBody, failedTitle, featurePoint1 (+13 more)
 
 ### Community 134 - "Calling Uselessontimer"
-Cohesion: 0.04
-Nodes (47): fetchScheduledMeetings(), AuthSessionSocketBridge(), ActiveCall, getActiveCall(), registerActiveCall(), unregisterActiveCall(), CallProvider(), CALL_EVENTS (+39 more)
+Cohesion: 0.07
+Nodes (35): browserLikeUserAgent(), getBrowserLikeRequestHeaders(), fetchScheduledMeetings(), AuthSessionSocketBridge(), ActiveCall, getActiveCall(), registerActiveCall(), unregisterActiveCall() (+27 more)
 
 ### Community 135 - "Components Ratingsmodal"
 Cohesion: 0.03
 Nodes (70): dependencies, axios, babel-preset-expo, @config-plugins/react-native-callkeep, @config-plugins/react-native-webrtc, expo, expo-apple-authentication, expo-asset (+62 more)
 
 ### Community 136 - "Intl Currency"
-Cohesion: 0.12
-Nodes (24): CaptureShareTarget, ClipShareTargetWire, SHARE_BACKEND_NEW_USERS, SHARE_EMAIL, SHARE_FRIENDS, SHARE_MY_CLIPS, shareTargetSubtitleKey(), shareTargetTitleKey() (+16 more)
+Cohesion: 0.09
+Nodes (32): ClipConfirmPayload, fetchStorageInfo(), postClipConfirm(), postClipPresignUpload(), uploadLockerClip(), CapturedClip, CaptureShareTarget, ClipShareTargetWire (+24 more)
 
 ### Community 137 - "Locales Ar Activesessions"
 Cohesion: 0.11
@@ -1123,8 +1121,8 @@ Cohesion: 0.11
 Nodes (19): activeSessions, lastActive, loadError, noOthers, remove, removeSessionBody, removeSessionTitle, revokeAllOthers (+11 more)
 
 ### Community 139 - "Locales En"
-Cohesion: 0.07
-Nodes (31): NetQwixMeetingModule, hydrateHapticsPreference(), readHapticsEnabledFromStorage(), writeHapticsEnabledToStorage(), createPersistedQueryClient(), migrateQueryPersistFromAsyncStorage(), persister, Module (+23 more)
+Cohesion: 0.11
+Nodes (13): NetQwixMeetingModule, Module, ModuleDefinition, NetQwixMeetingModule, assets, BG, __dirname, left (+5 more)
 
 ### Community 140 - "Locales Es Activesessions"
 Cohesion: 0.11
@@ -1163,20 +1161,20 @@ Cohesion: 0.11
 Nodes (23): BrandedSessionLoader(), AppUnlockGate(), Props, biometricLabel(), isAppUnlockEnabled(), promptEnableAppUnlock(), requireAppUnlock(), setAppUnlockEnabled() (+15 more)
 
 ### Community 149 - "Calling Postsessionratingstore"
-Cohesion: 0.15
-Nodes (18): CallPreferences, emit(), getCallPreferences(), hydrateCallPreferences(), Listener, listeners, setBackgroundBlurEnabled(), setJoinAudioOnlyPref() (+10 more)
+Cohesion: 0.25
+Nodes (12): CallPreferences, emit(), getCallPreferences(), hydrateCallPreferences(), Listener, listeners, setBackgroundBlurEnabled(), setJoinAudioOnlyPref() (+4 more)
 
 ### Community 150 - "Instant Lesson Instantlessonbridge"
-Cohesion: 0.21
-Nodes (11): getCurrentUser(), isTransientNetworkError(), parseUserMeResponse(), postForgotPassword(), postLogin(), postSignUp(), resolveAccountType(), sleep() (+3 more)
+Cohesion: 0.12
+Nodes (23): Props, ClipThumbnailCard(), Props, ClipTile(), PracticeClipPickerModal(), Props, TABS, PracticeClipVideo() (+15 more)
 
 ### Community 151 - "A11y Index"
-Cohesion: 0.20
-Nodes (11): InstantRecordingCaptureHandle, startInstantLessonAudioCapture(), muxLessonRecordingUpload(), LessonStageFrameSamplerHandle, startLessonStageFrameSampler(), requestSessionRecordingUpload(), SessionRecordingFormat, uploadSessionRecordingFile() (+3 more)
+Cohesion: 0.22
+Nodes (10): InstantRecordingCaptureHandle, startInstantLessonAudioCapture(), muxLessonRecordingUpload(), LessonStageFrameSamplerHandle, startLessonStageFrameSampler(), requestSessionRecordingUpload(), SessionRecordingFormat, uploadSessionRecordingFile() (+2 more)
 
 ### Community 152 - "Api Chatactionsapi Deletechatmessage"
-Cohesion: 0.42
-Nodes (8): clearRecentTrainers(), getRecentTrainers(), keyFor(), pickSnapshot(), readList(), RecentTrainerRow, recordRecentTrainer(), writeList()
+Cohesion: 0.38
+Nodes (9): clearRecentTrainers(), getRecentTrainers(), keyFor(), pickSnapshot(), readList(), RecentTrainerRow, recordRecentTrainer(), writeList() (+1 more)
 
 ### Community 153 - "Api Homeapi Posttrainerslots"
 Cohesion: 0.48
@@ -1187,28 +1185,28 @@ Cohesion: 0.20
 Nodes (10): common, back, cancel, close, done, error, loading, ok (+2 more)
 
 ### Community 155 - "Components Sessionscalendar"
-Cohesion: 0.03
-Nodes (117): AIAssistantScreen(), fetchMyRaiseConcerns(), postRaiseConcern(), postWriteUs(), RaiseConcernReason, fetchSportCategories(), ProfileCompletionPill(), ProfileCompletionPillProps (+109 more)
+Cohesion: 0.04
+Nodes (77): HomeNav, PendingAuthResumeBridge(), Props, ShellSurfaceMeta, ContinueBookingBanner(), Props, useStyles(), mergeExperts() (+69 more)
 
 ### Community 156 - "Locales En Wallet"
 Cohesion: 0.12
 Nodes (17): wallet, activity, addFunds, availableBalance, benefitBookOneTap, benefitBookOneTapText, benefitClearHistory, benefitClearHistoryText (+9 more)
 
 ### Community 157 - "Webhome Homemaincont"
-Cohesion: 0.10
-Nodes (40): useSharedStepStyles(), useWalletPaymentOption(), useActiveCurrency(), useCurrencyFormatter(), Line(), PricingBreakdownSummary(), Props, useStyles() (+32 more)
+Cohesion: 0.06
+Nodes (65): SmartScheduleSuggestion, useSharedStepStyles(), ExtensionQuote, EXTENSION_DURATIONS, formatCountdown(), Props, SessionExtensionModal(), styles (+57 more)
 
 ### Community 158 - "Api Apicontract"
-Cohesion: 0.06
-Nodes (30): cancelPendingDeletion(), confirmAccountDeletionOtp(), confirmHibernateOtp(), getLifecycleState(), LifecycleState, startAccountDeletion(), startHibernate(), fetchLessonCallSlotStatus() (+22 more)
+Cohesion: 0.04
+Nodes (51): LessonSummaryCard(), Props, styles, parseAiEnvelope(), ReviewAnalysisPayload, fetchReviewAnalysis(), fetchSmartSchedule(), SmartSchedulePayload (+43 more)
 
 ### Community 159 - "Auth Jwtutils"
 Cohesion: 0.11
 Nodes (17): errors, generic, network, menu, dashboard, member, openSettings, tools (+9 more)
 
 ### Community 160 - "Booking Bookingwizardvalidation"
-Cohesion: 0.19
-Nodes (10): reportPayloadHasImages(), shouldUseServerGamePlanPdfStitch(), API_BASE_URL_CONFIGURED, _extraDevdudes, normalizeEnvUrl(), SERVER_GAME_PLAN_PDF_ENABLED, stripTrailingSlash(), getMetroLanHost() (+2 more)
+Cohesion: 0.83
+Nodes (3): getMetroLanHost(), resolveDevApiBaseUrl(), stripTrailingSlash()
 
 ### Community 161 - "Locales Ar Faq"
 Cohesion: 0.12
@@ -1283,12 +1281,12 @@ Cohesion: 0.16
 Nodes (18): API_OPERATIONS, ApiOperation, ApiOperationId, buildOpenApiDocument(), byId, flattenRoutes(), getApiOperation(), HttpMethod (+10 more)
 
 ### Community 179 - "Api Referralapi"
-Cohesion: 0.19
-Nodes (13): CheckoutPreview, fetchReferralBenefits(), fetchReferralInvites(), fetchReferralProgram(), fetchReferralResolve(), postReferralInvites(), postReferralPreviewCheckout(), ReferralInviteResult (+5 more)
+Cohesion: 0.11
+Nodes (24): EarnRule, fetchPointsCatalog(), fetchPointsLedger(), PointsBalance, PointsLedgerEntry, postRedeemPoints(), buildCoachPromoShareMessage(), createTrainerPromoCode() (+16 more)
 
 ### Community 180 - "Config Env"
-Cohesion: 0.06
-Nodes (52): VoiceInputState, postUpdateMobileNumber(), ProfileUpdate, HomeCategoryChip, HomeCategoryChipsRow(), Props, useStyles(), HomeQuickAction (+44 more)
+Cohesion: 0.22
+Nodes (13): LinkItem, Props, PublicSocialLinksRow(), useStyles(), buildSocialLinksPayload(), getSocialLinksFromUser(), hasPublicSocialLinks(), isValidSocialUrl() (+5 more)
 
 ### Community 181 - "Crypto Chatencryption"
 Cohesion: 0.27
@@ -1315,8 +1313,8 @@ Cohesion: 0.15
 Nodes (13): subtitle, title, subtitle, title, subtitle, title, aggressive, minimal (+5 more)
 
 ### Community 188 - "Api Authapi"
-Cohesion: 0.29
-Nodes (8): IDLE, resolveUserId(), useTrainerVerificationGate(), VerificationGateState, RootNavigator(), CachedVerificationGate, readVerificationGateCache(), writeVerificationGateCache()
+Cohesion: 0.25
+Nodes (9): IDLE, resolveUserId(), useTrainerVerificationGate(), VerificationGateState, RootNavigator(), needsTrainerOnboarding(), CachedVerificationGate, readVerificationGateCache() (+1 more)
 
 ### Community 189 - "Api Authrefresh"
 Cohesion: 0.10
@@ -1327,24 +1325,24 @@ Cohesion: 0.08
 Nodes (25): 10. Settings / privacy, 11. Wallet / payouts (trainer-heavy), 1. Live lessons, 2. Payments / escrow, 3. Schedule sessions, 4. Instant lessons, 5. Chats, 6. Onboarding (+17 more)
 
 ### Community 191 - "Components Comparetrainersmodal"
-Cohesion: 0.04
-Nodes (90): isApiSuccess(), AccountType, getApiErrorMessage(), readApiErrorBody(), useAuth(), ClipDeleteConfirmModal(), Props, ClipPlayerModal() (+82 more)
+Cohesion: 0.05
+Nodes (70): isApiSuccess(), getApiErrorMessage(), readApiErrorBody(), ClipDeleteConfirmModal(), Props, ClipPlayerModal(), ClipsGrid(), Props (+62 more)
 
 ### Community 192 - "Community 192"
-Cohesion: 0.38
-Nodes (8): browserLikeUserAgent(), getBrowserLikeRequestHeaders(), sanitizeHttpHeaders(), sanitizeHttpHeaderValue(), getLessonClientHeaders(), buildDeviceLabel(), getClientSessionHeaders(), stableDeviceId()
+Cohesion: 0.09
+Nodes (18): ComingSoonSection(), Props, DashboardPageHeader(), Props, DashboardSectionConfig, DashboardSectionId, getDashboardPageTitle(), resolveDashboardSection() (+10 more)
 
 ### Community 193 - "Community 193"
-Cohesion: 0.14
-Nodes (14): Props, ThemedNavigationContainer(), AppStatusBar(), AppColors, BRAND, NEUTRALS_DARK, NEUTRALS_LIGHT, Palette (+6 more)
+Cohesion: 0.13
+Nodes (16): Props, ThemedNavigationContainer(), AppStatusBar(), AppColors, BRAND, colorsDark, colorsLight, NEUTRALS_DARK (+8 more)
 
 ### Community 194 - "Community 194"
 Cohesion: 0.31
 Nodes (11): CachedChatMessage, CacheIndex, conversationKey(), indexKey(), readCachedChatMessages(), readIndex(), trimMessages(), writeCachedChatMessages() (+3 more)
 
 ### Community 195 - "Community 195"
-Cohesion: 0.13
-Nodes (16): Args, InlineClipCapture, useInlineClipRecording(), CapturedClipPlayer(), formatTime(), Props, styles, CapturedShareSheet() (+8 more)
+Cohesion: 0.14
+Nodes (14): searchAllMessages(), setConversationDisappearingTtl(), DisappearingMessagesSheet(), Option, OPTIONS, Props, GlobalMessageSearchResults(), Props (+6 more)
 
 ### Community 196 - "Hooks Userecentlyviewedtrainers"
 Cohesion: 0.29
@@ -1359,12 +1357,12 @@ Cohesion: 0.24
 Nodes (5): clearDeferredBookResume(), DeferredBookResume, emit(), listeners, setDeferredBookResume()
 
 ### Community 199 - "Locales Es Common"
-Cohesion: 0.08
-Nodes (24): errors, generic, network, menu, dashboard, member, openSettings, tools (+16 more)
+Cohesion: 0.07
+Nodes (27): common, back, cancel, close, done, error, loading, ok (+19 more)
 
 ### Community 200 - "Community 200"
-Cohesion: 0.16
-Nodes (15): LiveMeetingExperience(), Props, Args, deriveDurationSeconds(), LessonTimerSessionInput, LessonTimerSnapshot, LessonTimerStatus, parseHHMMToMinutes() (+7 more)
+Cohesion: 0.22
+Nodes (10): Args, deriveDurationSeconds(), LessonTimerSessionInput, LessonTimerSnapshot, LessonTimerStatus, parseHHMMToMinutes(), PendingExtensionRequestSnapshot, TIMER_EVENTS (+2 more)
 
 ### Community 201 - "Community 201"
 Cohesion: 0.24
@@ -1375,8 +1373,8 @@ Cohesion: 0.08
 Nodes (24): errors, generic, network, menu, dashboard, member, openSettings, tools (+16 more)
 
 ### Community 203 - "Community 203"
-Cohesion: 0.28
-Nodes (12): deleteChatMessage(), editChatMessage(), performDeleteChatMessage(), performEditChatMessage(), isNetworkOnline(), enqueueChatMutation(), flushOfflineChatMutations(), hydrateOfflineChatMutations() (+4 more)
+Cohesion: 0.26
+Nodes (13): deleteChatMessage(), editChatMessage(), performDeleteChatMessage(), performEditChatMessage(), isNetworkSendError(), isNetworkOnline(), enqueueChatMutation(), flushOfflineChatMutations() (+5 more)
 
 ### Community 204 - "Community 204"
 Cohesion: 0.20
@@ -1387,12 +1385,12 @@ Cohesion: 0.08
 Nodes (39): buildType, jsEngine, releaseStatus, serviceAccountKeyPath, track, build, development, preview (+31 more)
 
 ### Community 206 - "Community 206"
-Cohesion: 0.31
-Nodes (7): BannerPlacement, CmsHomeBundle, fetchCmsHome(), fetchHomeBanners(), fetchHomeTips(), HomeBannerCta, unwrapRecord()
+Cohesion: 0.18
+Nodes (10): axiosInstance, isAuthRoute(), getApiBaseUrl(), getDirectApiBaseUrl(), getRuntimeApiBaseUrl(), getSocketClientConfig(), SocketClientConfig, JSON_HEADERS (+2 more)
 
 ### Community 207 - "Community 207"
-Cohesion: 0.19
-Nodes (13): ExtensionQuote, EXTENSION_DURATIONS, formatCountdown(), Props, SessionExtensionModal(), styles, useCountdownToIso(), Args (+5 more)
+Cohesion: 0.23
+Nodes (10): getCurrentUser(), isTransientNetworkError(), parseUserMeResponse(), postForgotPassword(), postLogin(), postSignUp(), sleep(), LoginResponse (+2 more)
 
 ### Community 208 - "Components Chatmessagestatus"
 Cohesion: 0.32
@@ -1403,16 +1401,16 @@ Cohesion: 0.07
 Nodes (27): 10. Cases Handled (Cross-cutting), 11. Environment & Build, 12. How to Extend (Convention), 13. Useful Cross-references, 1. Project Overview, 2. Entry Points, 3. Top-level Folder Map (`src/`), 4. Navigation Topology (+19 more)
 
 ### Community 210 - "Community 210"
-Cohesion: 0.28
-Nodes (7): clearPendingSessionRating(), consumePendingSessionRating(), dismissRatingBanner(), hasShownSessionRating(), isRatingBannerDismissed(), markSessionRatingShown(), stashPendingSessionRating()
+Cohesion: 0.21
+Nodes (12): clearPendingSessionRating(), consumePendingSessionRating(), dismissRatingBanner(), hasShownSessionRating(), isRatingBannerDismissed(), markSessionRatingShown(), stashPendingSessionRating(), PostSessionRatingBanner() (+4 more)
 
 ### Community 211 - "Community 211"
-Cohesion: 0.07
-Nodes (27): common, back, cancel, close, done, error, loading, ok (+19 more)
+Cohesion: 0.08
+Nodes (24): errors, generic, network, menu, dashboard, member, openSettings, tools (+16 more)
 
 ### Community 212 - "Community 212"
-Cohesion: 0.20
-Nodes (10): common, back, cancel, close, done, error, loading, ok (+2 more)
+Cohesion: 0.19
+Nodes (9): emitSessionExpired(), emitUnauthorized(), listeners, onSessionExpired(), SessionExpiredListener, sessionExpiredListeners, UnauthorizedListener, listeners (+1 more)
 
 ### Community 213 - "Lib Chatpinneduiprefs"
 Cohesion: 0.40
@@ -1431,8 +1429,8 @@ Cohesion: 0.29
 Nodes (7): title, description, primary, title, systemStates, payment_success, phone_verification_pending
 
 ### Community 217 - "Locales De Traineravailability"
-Cohesion: 0.25
-Nodes (22): canEnterLesson(), canJoinSession(), canRejoinLesson(), formatSessionWhen(), getInstantAcceptDeadlineMs(), getInstantJoinDeadlineMs(), getInstantLessonEndMs(), getJoinDisabledReason() (+14 more)
+Cohesion: 0.24
+Nodes (23): canEnterLesson(), canJoinSession(), canRejoinLesson(), formatSessionWhen(), getInstantAcceptDeadlineMs(), getInstantJoinDeadlineMs(), getInstantLessonEndMs(), getJoinDisabledReason() (+15 more)
 
 ### Community 218 - "Locales Fr Payment"
 Cohesion: 0.29
@@ -1463,12 +1461,12 @@ Cohesion: 0.29
 Nodes (7): title, description, primary, title, systemStates, payment_success, phone_verification_pending
 
 ### Community 225 - "Community 225"
-Cohesion: 0.20
-Nodes (17): ClipConfirmPayload, postClipConfirm(), postClipPresignUpload(), uploadLockerClip(), backfillCapturedClipThumbnails(), CapturedClip, deleteCapturedClip(), generateThumbUri() (+9 more)
+Cohesion: 0.21
+Nodes (7): consumeSignOutNavigation(), markSignOutNavigation(), AuthGate(), Props, AuthSessionOverlay(), AuthSessionSpinner(), Props
 
 ### Community 226 - "Community 226"
-Cohesion: 0.19
-Nodes (9): emitSessionExpired(), emitUnauthorized(), listeners, onSessionExpired(), SessionExpiredListener, sessionExpiredListeners, UnauthorizedListener, listeners (+1 more)
+Cohesion: 0.36
+Nodes (5): TraineeBooking, TrainerIncoming, initialState, instantLessonSlice, InstantLessonState
 
 ### Community 227 - "Community 227"
 Cohesion: 0.08
@@ -1683,8 +1681,8 @@ Cohesion: 0.40
 Nodes (5): description, primary, secondary, title, empty_dashboard
 
 ### Community 280 - "Locales Ja Menu"
-Cohesion: 0.24
-Nodes (7): getNetQwixLogoDataUrl(), brandImages, introImages, INTRO_SLIDES, IntroSlide, Props, styles
+Cohesion: 0.04
+Nodes (51): BookingReminderCadence, fetchMyReferrals(), patchUserNotificationSettings(), postAccountPrivacy(), UserNotificationPrefs, NetQwixLoader(), NetQwixLoaderBackdrop, NetQwixLoaderVariant (+43 more)
 
 ### Community 281 - "Locales Ja Offline"
 Cohesion: 0.40
@@ -2215,12 +2213,12 @@ Cohesion: 0.14
 Nodes (13): devDependencies, @expo/ngrok, jest, patch-package, ts-jest, @types/jest, @types/luxon, @types/react (+5 more)
 
 ### Community 415 - "Community 415"
-Cohesion: 0.05
-Nodes (59): CompareColumn(), CompareTrainersModal(), Props, Stat(), styles, CompareTrainersTray(), Props, styles (+51 more)
+Cohesion: 0.16
+Nodes (21): addFavoriteTrainer(), removeFavoriteTrainer(), Props, TrainerProfileModal(), useFavoriteTrainers(), asRecordArray(), extractTrainerReviews(), getTrainerBio() (+13 more)
 
 ### Community 416 - "Community 416"
-Cohesion: 0.04
-Nodes (67): fetchMeetingSession(), CameraOffReason, captureLiveVideoFrame(), delay(), isMediaStreamVideoReady(), tryCaptureRef(), streamOffHintForTile(), fetchSessionHandoffSummary() (+59 more)
+Cohesion: 0.03
+Nodes (84): fetchMeetingSession(), captureLiveVideoFrame(), delay(), isMediaStreamVideoReady(), tryCaptureRef(), parseIceServersFromSession(), fetchSessionHandoffSummary(), fetchSessionJoinReadiness() (+76 more)
 
 ### Community 417 - "Community 417"
 Cohesion: 0.15
@@ -2275,12 +2273,12 @@ Cohesion: 0.25
 Nodes (8): getTrainerFriendsWhoBooked(), getTrainerFriendsWhoFavorited(), normalizeFriendPeers(), TrainerFriendPeer, FriendSocialStrip(), PeerAvatar(), Props, useStyles()
 
 ### Community 430 - "Community 430"
-Cohesion: 0.22
-Nodes (4): ErrorBoundary, NON_CRITICAL_ERRORS, Props, State
+Cohesion: 0.10
+Nodes (9): geistMono, geistSans, metadata, AuthProvider(), ErrorBoundary, NON_CRITICAL_ERRORS, Props, State (+1 more)
 
 ### Community 431 - "Community 431"
-Cohesion: 0.08
-Nodes (24): errors, generic, network, menu, dashboard, member, openSettings, tools (+16 more)
+Cohesion: 0.07
+Nodes (27): common, back, cancel, close, done, error, loading, ok (+19 more)
 
 ### Community 432 - "Community 432"
 Cohesion: 0.22
@@ -2291,16 +2289,16 @@ Cohesion: 0.22
 Nodes (8): contractVersion, info, description, title, version, openapi, operationCount, servers
 
 ### Community 434 - "Community 434"
-Cohesion: 0.11
-Nodes (24): EarnRule, fetchPointsBalance(), fetchPointsCatalog(), fetchPointsLedger(), PointsBalance, PointsLedgerEntry, postRedeemPoints(), buildCoachPromoShareMessage() (+16 more)
+Cohesion: 0.35
+Nodes (9): clearSession(), getAccessToken(), getAccountType(), getRefreshToken(), getSessionId(), getSessionStorage(), saveSession(), syncAuthCookies() (+1 more)
 
 ### Community 435 - "Community 435"
-Cohesion: 0.08
-Nodes (25): capture, batchCount, batchUploadedBody, batchUploadedTitle, clipTitles, editVideo, emailsParsed, shareEmailsPlaceholder (+17 more)
+Cohesion: 0.12
+Nodes (17): capture, batchCount, batchUploadedBody, batchUploadedTitle, clipTitles, editVideo, emailsParsed, shareEmailsPlaceholder (+9 more)
 
 ### Community 436 - "Community 436"
-Cohesion: 0.27
-Nodes (9): lockerMutated, CaptureClipUploadPayload, enqueueCaptureClipUpload(), executeCaptureClipUpload(), isCaptureUploadPayload(), isNetworkRequestError(), deleteCapturedClip(), getCapturedClips() (+1 more)
+Cohesion: 0.29
+Nodes (7): trainerAvailability, saveTimezone, timezoneError, timezoneSaved, timezoneSavedBody, timezoneSubtitle, timezoneTitle
 
 ### Community 437 - "Community 437"
 Cohesion: 0.39
@@ -2315,12 +2313,12 @@ Cohesion: 0.29
 Nodes (7): NSExceptionAllowsInsecureHTTPLoads, NSAppTransportSecurity, NSExceptionAllowsInsecureHTTPLoads, NSAllowsLocalNetworking, NSExceptionDomains, 127.0.0.1, localhost
 
 ### Community 440 - "Community 440"
-Cohesion: 0.29
-Nodes (9): promoRowGetItemLayout(), discountLabel(), EMPTY_FORM, Field(), PromoCard(), promoStatus(), StatBox(), TrainerPromoCodesScreen() (+1 more)
+Cohesion: 0.03
+Nodes (87): AIFloatingButton(), Props, styles, fetchTrainerSlots(), useChatRoomChrome(), useHomeScrollHandler(), SpaceKey, styles (+79 more)
 
 ### Community 441 - "Community 441"
-Cohesion: 0.20
-Nodes (10): common, back, cancel, close, done, error, loading, ok (+2 more)
+Cohesion: 0.29
+Nodes (7): guestSettings, bannerBody, bannerTitle, languageSaved, replayIntro, supportSection, version
 
 ### Community 442 - "Community 442"
 Cohesion: 0.17
@@ -2367,8 +2365,8 @@ Cohesion: 0.33
 Nodes (5): android, modules, ios, modules, platforms
 
 ### Community 454 - "Community 454"
-Cohesion: 0.07
-Nodes (31): fetchSessionDepartureStatus(), raiseSessionDepartureConcern(), respondSessionDeparture(), SessionDepartureStatus, BannerInput, MeetingStatusBanner, resolveMeetingStatusBanner(), Args (+23 more)
+Cohesion: 0.06
+Nodes (32): fetchSessionDepartureStatus(), raiseSessionDepartureConcern(), respondSessionDeparture(), SessionDepartureStatus, BannerInput, MeetingStatusBanner, resolveMeetingStatusBanner(), Args (+24 more)
 
 ### Community 455 - "Community 455"
 Cohesion: 0.33
@@ -2399,64 +2397,64 @@ Cohesion: 0.20
 Nodes (10): common, back, cancel, close, done, error, loading, ok (+2 more)
 
 ### Community 500 - "Community 500"
-Cohesion: 0.29
-Nodes (7): trainerAvailability, saveTimezone, timezoneError, timezoneSaved, timezoneSavedBody, timezoneSubtitle, timezoneTitle
+Cohesion: 0.28
+Nodes (5): bootstrapCallRejoinStore(), LastInterruptedSession, listeners, notify(), setLastInterruptedSession()
 
 ### Community 501 - "Community 501"
 Cohesion: 0.33
 Nodes (6): ios, bitcode, buildNumber, bundleIdentifier, icon, supportsTablet
 
 ### Community 502 - "Community 502"
-Cohesion: 0.11
-Nodes (27): AUTH_NO_SIGNOUT_PATHS, AuthAxiosMeta, bearerFromAuthHeader(), getAuthAxiosMeta(), GUEST_OR_OPTIONAL_AUTH_SOFT_401_PATHS, isAuthNoSignOutPath(), isSoft401Path(), TRAINEE_ONLY_SOFT_401_PATHS (+19 more)
+Cohesion: 0.07
+Nodes (36): refreshAccessToken(), AUTH_NO_SIGNOUT_PATHS, AuthAxiosMeta, bearerFromAuthHeader(), getAuthAxiosMeta(), GUEST_OR_OPTIONAL_AUTH_SOFT_401_PATHS, isAuthNoSignOutPath(), isSoft401Path() (+28 more)
 
 ### Community 503 - "Community 503"
-Cohesion: 0.22
-Nodes (4): AppDispatch, AppStore, makeStore(), RootState
+Cohesion: 0.19
+Nodes (15): AccountTypeValue, AUTH_GUEST_PATHS, getPostLoginPath(), isAuthGuestPath(), isProtectedPath(), isRoleAllowedForPath(), PROTECTED_PREFIXES, resolvePostLoginPath() (+7 more)
 
 ### Community 504 - "Community 504"
-Cohesion: 0.07
-Nodes (36): BookingReminderCadence, patchUserNotificationSettings(), postAccountPrivacy(), UserNotificationPrefs, DEVDUDES_LABEL, DEVDUDES_URL, WEB_APP_ORIGIN, WebAppRouteMap (+28 more)
+Cohesion: 0.08
+Nodes (30): AppRoot(), styles, SystemStateHooks(), LoaderContext, LoaderContextValue, LoaderProvider(), styles, applyLanguageFromUser() (+22 more)
 
 ### Community 505 - "Community 505"
-Cohesion: 0.42
-Nodes (5): clearPinSession(), getPinSessionToken(), isPinSessionValid(), savePinSession(), requireValidPinSession()
+Cohesion: 0.58
+Nodes (8): backfillCapturedClipThumbnails(), deleteCapturedClip(), generateThumbUri(), getCapturedClips(), persistClips(), saveCapturedClip(), storageKey(), updateCapturedClip()
 
 ### Community 506 - "Community 506"
 Cohesion: 0.70
 Nodes (4): fail(), ok(), warn(), store-preflight.sh script
 
 ### Community 507 - "Community 507"
-Cohesion: 0.15
-Nodes (15): exitAuthAsGuest(), ParentNav, navigateToBookTrainer(), navigateToMyLocker(), navigateToNotifications(), navigationRef, IncomingNotification, buildNotificationRoute() (+7 more)
+Cohesion: 0.29
+Nodes (7): trainerAvailability, saveTimezone, timezoneError, timezoneSaved, timezoneSavedBody, timezoneSubtitle, timezoneTitle
 
 ### Community 508 - "Community 508"
-Cohesion: 0.36
-Nodes (8): configureAndroidChannels(), ensureNotificationPermissions(), getDeviceId(), PushPermissionStatus, registerDevicePushToken(), RegisterTokenPayload, requestPushPermissionForReason(), unregisterDevicePushToken()
+Cohesion: 0.28
+Nodes (7): PostLessonConcernBanner(), Props, styles, dismissedSessionIds, dismissPostLessonConcern(), isPostLessonConcernDismissed(), RootStackParamList
 
 ### Community 509 - "Community 509"
-Cohesion: 0.43
-Nodes (5): parseAiEnvelope(), ReviewAnalysisPayload, fetchReviewAnalysis(), fetchSmartSchedule(), SmartSchedulePayload
+Cohesion: 0.36
+Nodes (6): getPosts, initialState, testSlice, testService, Post, TestState
 
 ### Community 510 - "Community 510"
-Cohesion: 0.25
-Nodes (5): FEATURE_BY_PATH, GUEST_SHELL_SURFACES, Options, SURFACE_BY_PATH, ShellSurfaceRouteId
+Cohesion: 0.40
+Nodes (4): FavoriteHeartButton(), Particle, Props, useStyles()
 
 ### Community 511 - "Community 511"
-Cohesion: 0.38
-Nodes (5): useVoiceInput(), UseVoiceInputOptions, VoiceInputError, VoiceInputResult, useSearchVoice()
+Cohesion: 0.07
+Nodes (35): useCall(), ActionButtons(), Props, styles, MeetingPeerJoinedToast(), PeerJoinedModal(), styles, PortraitCallChrome() (+27 more)
 
 ### Community 512 - "Community 512"
 Cohesion: 0.43
-Nodes (5): ClipShareRequestRow, fetchClipShareInbox(), postClipShareRequests(), respondClipShareRequest(), unwrap()
+Nodes (5): accessTokenExpiresWithin(), decodeJwtPayload(), getAccessTokenExpiryMs(), useProactiveTokenRefresh(), AuthProvider()
 
 ### Community 513 - "Community 513"
-Cohesion: 0.38
-Nodes (6): useSessionExtensionFlow, formatCountdown(), Props, styles, TrainerExtensionRequestModal(), useCountdownToIso()
+Cohesion: 0.29
+Nodes (4): FEATURE_BY_PATH, GUEST_SHELL_SURFACES, Options, SURFACE_BY_PATH
 
 ### Community 514 - "Community 514"
-Cohesion: 0.33
-Nodes (5): styles, dateKey(), DAY_LABELS, pad(), Props
+Cohesion: 0.29
+Nodes (7): trainerAvailability, saveTimezone, timezoneError, timezoneSaved, timezoneSavedBody, timezoneSubtitle, timezoneTitle
 
 ### Community 515 - "Community 515"
 Cohesion: 0.29
@@ -2467,56 +2465,48 @@ Cohesion: 0.33
 Nodes (6): tabs, bookNow, capture, chats, home, sessions
 
 ### Community 517 - "Community 517"
-Cohesion: 0.47
-Nodes (5): SmartScheduleSuggestion, nextDays(), Props, ScheduleStepDateTime(), useStyles()
+Cohesion: 0.40
+Nodes (4): Props, RatingsModal(), styles, useSubmitGuard()
 
 ### Community 518 - "Community 518"
-Cohesion: 0.40
-Nodes (5): addFavoriteTrainer(), extractArray(), favoritesRequestConfig, fetchFavoriteTrainers(), removeFavoriteTrainer()
-
-### Community 519 - "Community 519"
-Cohesion: 0.40
-Nodes (3): geistMono, geistSans, metadata
-
-### Community 520 - "Community 520"
 Cohesion: 0.50
 Nodes (4): CallPermissions, ensure(), ensureCallPermissions(), Grant
 
-### Community 521 - "Community 521"
-Cohesion: 0.40
-Nodes (5): cms, blogPostTitle, blogsEmpty, blogsSubtitle, blogsTitle
-
-### Community 522 - "Community 522"
+### Community 519 - "Community 519"
 Cohesion: 0.40
 Nodes (5): menu, dashboard, member, openSettings, tools
 
-### Community 523 - "Community 523"
-Cohesion: 0.50
-Nodes (4): formatMs(), LockerAudioPlayer(), Props, styles
-
-### Community 524 - "Community 524"
+### Community 520 - "Community 520"
 Cohesion: 0.60
 Nodes (4): downloadVideoToLibrary(), extensionFromUrl(), loadMediaLibrary(), MediaLibraryModule
 
+### Community 521 - "Community 521"
+Cohesion: 0.67
+Nodes (3): AIAssistantScreen(), useVoiceInput(), useSearchVoice()
+
+### Community 522 - "Community 522"
+Cohesion: 0.50
+Nodes (3): NotificationBellButton(), Props, styles
+
 ## Knowledge Gaps
-- **5974 isolated node(s):** `name`, `slug`, `scheme`, `version`, `orientation` (+5969 more)
+- **5989 isolated node(s):** `name`, `slug`, `scheme`, `version`, `orientation` (+5984 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **31 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Button()` connect `Api Magiclinkapi Postmagiclinkrequest` to `Live Call Modal Components`, `Community 513`, `Active Call Registry`, `Clip Picker & Trainer Slots`, `Api Pointsapi Fetchpointsbalance`, `Components Sessionscalendar`, `Components Rememberdevicecheckbox`, `Community 415`, `Community 416`, `A11y Usereducemotion Usereducemotion`, `Components Pendingauthresumebridge`, `Config Env`, `Components Instantlessondeadlinechip`, `Community 440`, `Calling Sessionextensionapi Extensionquote`, `Components Comparetrainersmodal`, `Ai Aiassistantscreen Aiassistantscreen`, `Api Homeapi Putprofile`, `Community 207`, `Actions Cacheinvalidation`, `Ai Smartscheduleapi Smartschedulesuggestion`, `Calling Clipzoompanutils`, `Lib Mediasendutils`, `Calling Callrejoinstore`, `Api Privacyapi`, `Community 504`?**
-  _High betweenness centrality (0.082) - this node is a cross-community bridge._
-- **Why does `useThemeColors()` connect `Live Call Modal Components` to `Community 517`, `Intl Currency`, `Active Call Registry`, `Clip Picker & Trainer Slots`, `Api Pointsapi Fetchpointsbalance`, `Components Sessionscalendar`, `Components Rememberdevicecheckbox`, `Webhome Homemaincont`, `Community 415`, `Calling Callcontext Usecall`, `Api Homeapi`, `Config Env`, `Components Instantlessondeadlinechip`, `Ai Aiactions`, `Community 440`, `Api Magiclinkapi Postmagiclinkrequest`, `Components Chatdayseparator`, `Coachmarks Coachmark`, `Components Instantlessonsessionactions`, `Community 193`, `Community 197`, `Community 201`, `Api Homeapi Putprofile`, `Api Clipsshareapi Postclipsharerequests`, `Components Chatmessagestatus`, `Actions Cacheinvalidation`, `Api Homeapi Fetchinstantlessoneligibility`, `Ai Smartscheduleapi Smartschedulesuggestion`, `Calling Clipzoompanutils`, `Components Chatmediaviewermodal`, `Locales Fr`, `Api Privacyapi`, `Locales Ko`, `Community 504`?**
-  _High betweenness centrality (0.049) - this node is a cross-community bridge._
-- **Why does `API_ROUTES` connect `Api Apicontract` to `Community 512`, `Api Cmsapi`, `Trainer Presence & Schedule`, `Community 518`, `Clip Share Inbox`, `Intl Currency`, `Active Call Registry`, `Calling Captureclipscreenshot`, `Instant Lesson Instantlessonbridge`, `A11y Index`, `Webhome Homemaincont`, `Community 416`, `Calling Callcontext Usecall`, `Api Homeapi`, `Trainer Weeklyavailabilitypainter`, `Community 434`, `Api Referralapi`, `Components Instantlessondeadlinechip`, `Ai Aiactions`, `Calling Callcontext`, `Crypto Chatencryption`, `Config Env`, `Community 442`, `Components Earningstrendscard`, `Api Magiclinkapi Postmagiclinkrequest`, `Components Chatdayseparator`, `Api Homeapi Setonlineavailability`, `Components Instantlessonsessionactions`, `Community 206`, `Community 207`, `Api Chatactionsapi`, `Actions Cacheinvalidation`, `Api Homeapi Fetchinstantlessoneligibility`, `Api Authapi Resolveaccounttype`, `Calendar Addtocalendar`, `Lib Mediasendutils`, `Components Chatmediaviewermodal`, `Locales De`, `Hooks Useguestfavoritetrainers`, `Instant Lesson Instantlessoncallkeep`, `Api Privacyapi`, `Calling Useclipsync Hiddenvideosmap`, `Community 508`, `Community 509`, `Community 511`?**
+- **Why does `Button()` connect `Api Magiclinkapi Postmagiclinkrequest` to `Live Call Modal Components`, `Active Call Registry`, `Clip Picker & Trainer Slots`, `Api Pointsapi Fetchpointsbalance`, `Locales Ja Menu`, `Components Sessionscalendar`, `Webhome Homemaincont`, `Community 415`, `Community 416`, `Calling Callcontext Usecall`, `Components Pendingauthresumebridge`, `Components Instantlessondeadlinechip`, `Community 440`, `Calling Sessionextensionapi Extensionquote`, `Components Comparetrainersmodal`, `Ai Aiassistantscreen Aiassistantscreen`, `Api Homeapi Putprofile`, `Api Clipsshareapi Postclipsharerequests`, `Auth Authsessionguard Isinauthgraceperiod`, `Calling Clipzoompanutils`, `Lib Mediasendutils`, `Calling Callrejoinstore`?**
+  _High betweenness centrality (0.083) - this node is a cross-community bridge._
+- **Why does `useThemeColors()` connect `Live Call Modal Components` to `Community 517`, `Intl Currency`, `Community 521`, `Active Call Registry`, `Clip Picker & Trainer Slots`, `Api Pointsapi Fetchpointsbalance`, `Locales Ja Menu`, `Components Sessionscalendar`, `Components Rememberdevicecheckbox`, `Api Apicontract`, `Community 415`, `Webhome Homemaincont`, `Calling Callcontext Usecall`, `Components Pendingauthresumebridge`, `Api Homeapi`, `Config Env`, `Components Instantlessondeadlinechip`, `Ai Aiactions`, `Calling Callcontext`, `Community 440`, `Api Magiclinkapi Postmagiclinkrequest`, `Components Chatdayseparator`, `Coachmarks Coachmark`, `Components Instantlessonsessionactions`, `Community 195`, `Community 193`, `Community 197`, `Community 201`, `Api Homeapi Putprofile`, `Api Clipsshareapi Postclipsharerequests`, `Components Chatmessagestatus`, `Community 210`, `Calling Clipzoompanutils`, `Api Notificationsprefsapi`, `Components Chatmediaviewermodal`, `Locales Fr`, `Locales Ko`, `Community 510`?**
+  _High betweenness centrality (0.060) - this node is a cross-community bridge._
+- **Why does `API_ROUTES` connect `Api Apicontract` to `Api Cmsapi`, `Trainer Presence & Schedule`, `Clip Share Inbox`, `Intl Currency`, `Active Call Registry`, `Calling Captureclipscreenshot`, `A11y Index`, `Webhome Homemaincont`, `Community 416`, `Api Homeapi`, `Trainer Weeklyavailabilitypainter`, `Api Referralapi`, `Components Instantlessondeadlinechip`, `Ai Aiactions`, `Crypto Chatencryption`, `Community 440`, `Api Magiclinkapi Postmagiclinkrequest`, `Community 442`, `Components Earningstrendscard`, `Components Chatdayseparator`, `Context Authcontext`, `Api Homeapi Setonlineavailability`, `Components Instantlessonsessionactions`, `Api Clipsshareapi Postclipsharerequests`, `Community 207`, `Community 206`, `Auth Authsessionguard Isinauthgraceperiod`, `Api Chatactionsapi`, `Actions Cacheinvalidation`, `Api Homeapi Fetchinstantlessoneligibility`, `Api Authapi Resolveaccounttype`, `Calendar Addtocalendar`, `Lib Mediasendutils`, `Components Chatmediaviewermodal`, `Hooks Useguestfavoritetrainers`, `Instant Lesson Instantlessoncallkeep`, `Api Privacyapi`, `Calling Useclipsync Hiddenvideosmap`, `Community 502`?**
   _High betweenness centrality (0.028) - this node is a cross-community bridge._
 - **Are the 3 inferred relationships involving `useThemeColors()` (e.g. with `Button()` and `Card()`) actually correct?**
   _`useThemeColors()` has 3 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `name`, `slug`, `scheme` to the rest of the system?**
-  _5974 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _5989 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Live Call Modal Components` be split into smaller, more focused modules?**
-  _Cohesion score 0.029369108049311095 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.03227272727272727 - nodes in this community are weakly interconnected._
 - **Should `Trainer Presence & Schedule` be split into smaller, more focused modules?**
   _Cohesion score 0.1310344827586207 - nodes in this community are weakly interconnected._

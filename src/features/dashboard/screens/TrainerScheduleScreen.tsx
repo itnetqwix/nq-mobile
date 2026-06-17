@@ -33,6 +33,7 @@ import { queryKeys } from "../../../lib/queryKeys";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { useAuth } from "../../auth/context/AuthContext";
 import { WeeklyAvailabilityPainter } from "../components/trainer/WeeklyAvailabilityPainter";
+import { FadeInView } from "../../../lib/motion/FadeInView";
 
 /** Same day order/casing as web `weekDays` in `nq-frontend-main/app/common/constants.js`. */
 const WEEKDAYS = [
@@ -393,6 +394,7 @@ export function TrainerScheduleScreen() {
           time ranges as you want per day. Tap a time to change it.
         </Text> */}
 
+        <FadeInView>
         <View style={styles.tzCard}>
           <View style={styles.tzTitleRow}>
             <Text style={styles.tzTitle}>{t("trainerAvailability.timezoneTitle")}</Text>
@@ -429,59 +431,26 @@ export function TrainerScheduleScreen() {
             />
           ) : null}
         </View>
+        </FadeInView>
 
-        <View style={styles.modeRow}>
-          <Pressable
-            onPress={() => setMode("painter")}
-            style={[
-              styles.modeBtn,
-              mode === "painter" && styles.modeBtnActive,
-            ]}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: mode === "painter" }}
-          >
-            <Ionicons
-              name="brush-outline"
-              size={14}
-              color={mode === "painter" ? colors.brandTextOn : colors.brandNavy}
-            />
-            <Text
-              style={[
-                styles.modeBtnText,
-                mode === "painter" && { color: colors.brandTextOn },
-              ]}
-            >
-              Quick paint
-            </Text>
+        {mode === "list" ? (
+          <Pressable onPress={() => setMode("painter")} style={styles.modeLink}>
+            <Ionicons name="brush-outline" size={16} color={colors.brandNavy} />
+            <Text style={styles.modeLinkText}>Back to quick paint</Text>
           </Pressable>
-          <Pressable
-            onPress={() => setMode("list")}
-            style={[styles.modeBtn, mode === "list" && styles.modeBtnActive]}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: mode === "list" }}
-          >
-            <Ionicons
-              name="list-outline"
-              size={14}
-              color={mode === "list" ? colors.brandTextOn : colors.brandNavy}
-            />
-            <Text
-              style={[
-                styles.modeBtnText,
-                mode === "list" && { color: colors.brandTextOn },
-              ]}
-            >
-              Per-day list
-            </Text>
+        ) : (
+          <Pressable onPress={() => setMode("list")} style={styles.modeLink}>
+            <Ionicons name="list-outline" size={16} color={colors.brandNavy} />
+            <Text style={styles.modeLinkText}>Edit day by day</Text>
           </Pressable>
-        </View>
+        )}
 
         {mode === "painter" ? (
+          <FadeInView index={1}>
           <View style={styles.dayCard}>
             <Text style={styles.dayTitle}>Weekly availability</Text>
             <Text style={styles.painterHint}>
-              Drag across cells to paint your weekly availability. Saves repeat
-              every week for the next 4 weeks.
+              Drag across the grid to mark when you're available. Changes repeat weekly.
             </Text>
             <WeeklyAvailabilityPainter
               initialDays={days}
@@ -489,6 +458,7 @@ export function TrainerScheduleScreen() {
               onPaintingChange={setIsPainting}
             />
           </View>
+          </FadeInView>
         ) : null}
 
         {mode === "list" ? days.map((d, dayIdx) => (
@@ -686,23 +656,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   pickerConfirmText: { ...typography.bodyMd, fontWeight: "700", color: colors.brandTextOn },
-  modeRow: {
-    flexDirection: "row",
-    gap: 6,
-    backgroundColor: colors.surfaceMuted,
-    padding: 4,
-    borderRadius: radii.pill,
-    alignSelf: "flex-start",
-  },
-  modeBtn: {
+  modeLink: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: radii.pill,
+    gap: 6,
+    alignSelf: "flex-start",
+    paddingVertical: space.xs,
   },
-  modeBtnActive: { backgroundColor: colors.brandNavy },
-  modeBtnText: { ...typography.bodySm, fontWeight: "700", color: colors.brandNavy },
+  modeLinkText: { ...typography.bodySm, fontWeight: "700", color: colors.brandNavy },
   painterHint: { ...typography.caption, color: colors.textMuted, marginBottom: 4 },
 });

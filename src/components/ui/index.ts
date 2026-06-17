@@ -33,6 +33,7 @@ export {
   type ScreenLoadingVariant,
 } from "./ScreenLoadingState";
 export { SectionHeader, type SectionHeaderProps } from "./SectionHeader";
+export { SegmentedControl, type SegmentOption } from "./SegmentedControl";
 export { Sheet, type SheetProps } from "./Sheet";
 export { Skeleton, type SkeletonProps } from "./Skeleton";
 export {
