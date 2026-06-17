@@ -31,7 +31,6 @@ import {
   TRAINEE_COACH_PREVIEW_COUNT,
 } from "../../lib/traineeDiscoverConstants";
 import { sortTrainersForDiscover } from "../../lib/sortTrainersForDiscover";
-import { RecentExpertsSection } from "./RecentExpertsSection";
 import { GuestSeededCoachesSection } from "./GuestSeededCoachesSection";
 import { useRecentlyViewedTrainers } from "../../hooks/useRecentlyViewedTrainers";
 import { ContinueWhereYouLeftOffCard } from "../trainee/ContinueWhereYouLeftOffCard";
@@ -346,13 +345,11 @@ export function TraineeDiscoverDashboard({
         />
       ) : null}
 
-      {!isGuest ? <RecentExpertsSection onSelectTrainer={handleViewTrainer} /> : null}
+      {!isGuest ? <FavoriteCoachesSection onSelectTrainer={handleViewTrainer} /> : null}
 
       {isGuest ? (
         <GuestSeededCoachesSection onSelectTrainer={handleViewTrainer} />
       ) : null}
-
-      {!isGuest ? <FavoriteCoachesSection onSelectTrainer={handleViewTrainer} /> : null}
 
       {!isGuest && onOpenFriends ? (
         <MiniFriendsSection onPressAll={onOpenFriends} />

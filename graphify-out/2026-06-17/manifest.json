@@ -1730,8 +1730,8 @@
     "semantic_hash": "627bd09677c9eef9a5c8d23a485b8fff"
   },
   "src/features/dashboard/components/locker/ClipUploadModal.tsx": {
-    "mtime": 1781677531.8538797,
-    "ast_hash": "8f67748842bd168b36c6827d69b23c76",
+    "mtime": 1781677781.5182757,
+    "ast_hash": "f0dc9956e6474d933551768a6d8736a0",
     "semantic_hash": ""
   },
   "src/features/dashboard/components/locker/ClipUploadPrepareModal.tsx": {
@@ -2075,8 +2075,8 @@
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/ShellSurfaceScreen.tsx": {
-    "mtime": 1781677455.368164,
-    "ast_hash": "797256eda4436d621cfa58bfafa05f94",
+    "mtime": 1781677579.3464,
+    "ast_hash": "5cae80fd22f884caaa16e1e34de7c928",
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/TrainerReviewsScreen.tsx": {
@@ -3555,8 +3555,8 @@
     "semantic_hash": "aece5bfa8917d29c889783e2297ed054"
   },
   "src/navigation/navMatrix.ts": {
-    "mtime": 1781677384.64842,
-    "ast_hash": "d72de01ffefe5e6a607c8f98d2837d4b",
+    "mtime": 1781677768.6846418,
+    "ast_hash": "250372f469790da722b57672dea5fd2b",
     "semantic_hash": ""
   },
   "src/navigation/navigationRef.ts": {

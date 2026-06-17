@@ -5,12 +5,14 @@ import { HomeUserAvatar } from "../home/HomeUserAvatar";
 import { trainerListItemKey } from "../../../../lib/lists/trainerListUtils";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
+import { DashboardPersonTile } from "../shared/DashboardPersonTile";
 
 type Props = {
   trainees: Record<string, unknown>[];
+  onSelectTrainee?: (trainee: Record<string, unknown>) => void;
 };
 
-export function TrainerRecentTraineesSection({ trainees }: Props) {
+export function TrainerRecentTraineesSection({ trainees, onSelectTrainee }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const styles = useStyles();
@@ -38,6 +40,19 @@ export function TrainerRecentTraineesSection({ trainees }: Props) {
           );
           const sport = String(user.sport ?? user.category ?? "");
           const sessionCount = typeof user.session_count === "number" ? user.session_count : null;
+
+          if (onSelectTrainee) {
+            return (
+              <DashboardPersonTile
+                key={trainerListItemKey(user, index, "recent-trainee-")}
+                name={name}
+                avatar={user.profile_picture as string | undefined}
+                onPress={() => onSelectTrainee(user)}
+                useHomeAvatar
+              />
+            );
+          }
+
           return (
             <View
               key={trainerListItemKey(user, index, "recent-trainee-")}
@@ -76,7 +91,7 @@ export function TrainerRecentTraineesSection({ trainees }: Props) {
 function useStyles() {
   return useThemedStyles((palette) =>
     StyleSheet.create({
-      wrap: {},
+      wrap: { marginBottom: space.md },
       header: {
         flexDirection: "row",
         alignItems: "center",
@@ -89,8 +104,9 @@ function useStyles() {
         fontWeight: "700",
       },
       strip: {
-        gap: space.sm,
-        paddingVertical: space.xs,
+        gap: space.md,
+        paddingVertical: space.sm,
+        paddingRight: space.sm,
       },
       tile: {
         width: 104,

@@ -1,8 +1,9 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
-import { Avatar } from "../../../../components/ui";
+import { Avatar, OnlinePulseBorder } from "../../../../components/ui";
 import { getS3ImageUrl } from "../../../../lib/imageUtils";
 import { radii, space, typography, useThemedStyles } from "../../../../theme";
+import { useAppTranslation } from "../../../../i18n/useAppTranslation";
 import { HomeUserAvatar } from "../home/HomeUserAvatar";
 
 export const PERSON_TILE_WIDTH = 108;
@@ -16,6 +17,8 @@ type Props = {
   style?: StyleProp<ViewStyle>;
   useHomeAvatar?: boolean;
   onlineStatus?: "online" | "offline";
+  /** When true and online, shows a pulsing green ring + "Live" pill. */
+  showLiveIllumination?: boolean;
 };
 
 /** Compact white person tile — shared by favorite coaches & friends strips. */
@@ -27,36 +30,61 @@ export function DashboardPersonTile({
   style,
   useHomeAvatar = false,
   onlineStatus,
+  showLiveIllumination = false,
 }: Props) {
+  const { t } = useAppTranslation();
   const styles = useStyles();
   const avatarUri = avatar ? getS3ImageUrl(avatar) : undefined;
-  const showOnlineRing = onlineStatus === "online";
+  const isLive = onlineStatus === "online";
+  const showOnlineRing = isLive;
+  const pulseLive = showLiveIllumination && isLive;
+
+  const avatarBlock = (
+    <View style={[styles.avatarWrap, showOnlineRing && !pulseLive && styles.avatarWrapOnline]}>
+      {useHomeAvatar ? (
+        <HomeUserAvatar
+          uri={avatar}
+          name={name}
+          size={PERSON_TILE_AVATAR}
+          onlineStatus={onlineStatus}
+        />
+      ) : (
+        <Avatar uri={avatarUri} name={name} size="sm" />
+      )}
+      {badge}
+      {showOnlineRing && !useHomeAvatar ? <View style={styles.onlineDot} /> : null}
+    </View>
+  );
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.tile, style, pressed && styles.tilePressed]}
+      style={({ pressed }) => [
+        styles.tile,
+        pulseLive && styles.tileLive,
+        style,
+        pressed && styles.tilePressed,
+      ]}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={name}
+      accessibilityLabel={isLive ? `${name}, ${t("traineeDiscover.liveNow")}` : name}
     >
       <View style={styles.content}>
-        <View style={[styles.avatarWrap, showOnlineRing && styles.avatarWrapOnline]}>
-          {useHomeAvatar ? (
-            <HomeUserAvatar
-              uri={avatar}
-              name={name}
-              size={PERSON_TILE_AVATAR}
-              onlineStatus={onlineStatus}
-            />
-          ) : (
-            <Avatar uri={avatarUri} name={name} size="sm" />
-          )}
-          {badge}
-          {showOnlineRing && !useHomeAvatar ? <View style={styles.onlineDot} /> : null}
-        </View>
+        {pulseLive ? (
+          <OnlinePulseBorder active borderRadius={PERSON_TILE_AVATAR / 2 + 6}>
+            {avatarBlock}
+          </OnlinePulseBorder>
+        ) : (
+          avatarBlock
+        )}
         <Text style={styles.name} numberOfLines={2}>
           {name}
         </Text>
+        {isLive ? (
+          <View style={styles.livePill}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveText}>{t("traineeDiscover.liveNow")}</Text>
+          </View>
+        ) : null}
       </View>
     </Pressable>
   );
@@ -112,6 +140,10 @@ function useStyles() {
         borderWidth: 1.5,
         borderColor: palette.surfaceElevated,
       },
+      tileLive: {
+        borderColor: "#86efac",
+        backgroundColor: palette.surfaceElevated,
+      },
       name: {
         ...typography.caption,
         color: palette.text,
@@ -120,6 +152,27 @@ function useStyles() {
         minHeight: 28,
         lineHeight: 15,
         paddingHorizontal: 2,
+      },
+      livePill: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: radii.pill,
+        backgroundColor: "#DCFCE7",
+      },
+      liveDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: "#16A34A",
+      },
+      liveText: {
+        fontSize: 10,
+        fontWeight: "800",
+        color: "#15803D",
+        letterSpacing: 0.2,
       },
     })
   );

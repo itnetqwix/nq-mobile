@@ -774,7 +774,11 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
                 />
               )}
 
-              <LockerHub accountType={accountType} onOpenSurface={openShell} />
+              <LockerHub
+                accountType={accountType}
+                onOpenSurface={openShell}
+                onSelectTrainer={setProfileTrainer}
+              />
             </>
           }
         />
@@ -841,6 +845,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
             onOpenSchedule={() => openShell("trainerSchedule")}
             onOpenSessions={() => openFeature("upcoming-sessions")}
             onOpenClips={() => openShell("clips")}
+            onOpenStudents={() => openFeature("students")}
             onOpenSurface={openShell}
             onOpenReviews={() => openShell("trainerReviews")}
             onSessionPress={openSession}

@@ -12,6 +12,7 @@ import { space, typography, useThemeColors, useThemedStyles } from "../../../../
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
 import { useAuth } from "../../../auth/context/AuthContext";
 import { getRecentTrainers, type RecentTrainerRow } from "../../lib/recentlyViewedTrainers";
+import { useTrainerOnlineLookup } from "../../hooks/useTrainerOnlineLookup";
 import { DashboardPersonTile } from "../shared/DashboardPersonTile";
 
 type ExpertRow = {
@@ -74,6 +75,8 @@ export function RecentExpertsSection({ onSelectTrainer }: Props) {
     staleTime: 120_000,
   });
 
+  const { isTrainerOnline } = useTrainerOnlineLookup();
+
   const loadViewed = useCallback(async () => {
     setViewed(await getRecentTrainers(userId));
   }, [userId]);
@@ -84,7 +87,13 @@ export function RecentExpertsSection({ onSelectTrainer }: Props) {
     }, [loadViewed])
   );
 
-  const experts = useMemo(() => mergeExperts(booked, viewed), [booked, viewed]);
+  const experts = useMemo(() => {
+    const merged = mergeExperts(booked, viewed);
+    return merged.map((row) => ({
+      ...row,
+      is_online: row.is_online || isTrainerOnline(row.id),
+    }));
+  }, [booked, viewed, isTrainerOnline]);
 
   if (isLoading) {
     return (
@@ -118,6 +127,7 @@ export function RecentExpertsSection({ onSelectTrainer }: Props) {
             onPress={() => onSelectTrainer(item.source)}
             useHomeAvatar
             onlineStatus={item.is_online ? "online" : undefined}
+            showLiveIllumination
           />
         ))}
       </ScrollView>

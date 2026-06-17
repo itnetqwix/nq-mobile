@@ -10,7 +10,6 @@ import { useDashboardSessions } from "../../hooks/useDashboardSessions";
 import { PendingRequestsBanner } from "./PendingRequestsBanner";
 import { TrainerGreetingRating } from "./TrainerGreetingRating";
 import { PerformanceTipsCard } from "./PerformanceTipsCard";
-import { TrainerRecentTraineesSection } from "./TrainerRecentTraineesSection";
 import { FriendRequestTilesSkeleton } from "../../../../components/ui";
 import { TrainerFriendRequestsSection } from "./TrainerFriendRequestsSection";
 import { TrainerLockerSection } from "./TrainerLockerSection";
@@ -37,6 +36,7 @@ type Props = {
   onOpenSchedule: () => void;
   onOpenSessions: () => void;
   onOpenClips: () => void;
+  onOpenStudents?: () => void;
   onOpenSurface: (id: UtilitySurfaceId) => void;
   onOpenReviews?: () => void;
   onSessionPress: (session: Record<string, unknown>) => void;
@@ -61,6 +61,7 @@ function TrainerDashboardHubInner({
   onOpenSchedule,
   onOpenSessions,
   onOpenClips,
+  onOpenStudents,
   onOpenSurface,
   onOpenReviews,
   onSessionPress,
@@ -114,8 +115,6 @@ function TrainerDashboardHubInner({
         />
       ) : null}
 
-      <TrainerRecentTraineesSection trainees={recentTrainees} />
-
       <MiniFriendsSection onPressAll={() => onOpenSurface("friends" as any)} />
 
       <DashboardClipsPreviewSection onViewMore={onOpenClips} />
@@ -128,7 +127,12 @@ function TrainerDashboardHubInner({
 
       <ReferFriendsBanner onPressInvite={() => onPressInvite?.()} />
 
-      <TrainerLockerSection accountType={accountType} onOpenSurface={onOpenSurface} />
+      <TrainerLockerSection
+        accountType={accountType}
+        onOpenSurface={onOpenSurface}
+        recentTrainees={recentTrainees}
+        onSelectTrainee={onOpenStudents ? () => onOpenStudents() : undefined}
+      />
     </View>
   );
 }

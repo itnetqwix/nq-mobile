@@ -1,7 +1,7 @@
 # Graph Report - nq-mobile  (2026-06-17)
 
 ## Corpus Check
-- 1210 files · ~1,917,996 words
+- 1210 files · ~1,918,038 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -576,12 +576,12 @@ Cohesion: 0.10
 Nodes (20): API_ENDPOINTS, axiosInstance, isAuthRoute(), getApiBaseUrl(), getDirectApiBaseUrl(), getRuntimeApiBaseUrl(), getSocketClientConfig(), SocketClientConfig (+12 more)
 
 ### Community 6 - "Clip Share Inbox"
-Cohesion: 0.03
-Nodes (79): DashboardCard(), DashboardSegmentTab, DashboardSegmentTabs(), Props, SessionListSkeleton(), LiveMeetingExperience(), Props, SessionActionModal() (+71 more)
+Cohesion: 0.04
+Nodes (65): DashboardCard(), SessionListSkeleton(), LiveMeetingExperience(), Props, SessionActionModal(), SessionCard(), Props, SessionRateModal() (+57 more)
 
 ### Community 7 - "AI Review & Insights"
-Cohesion: 0.05
-Nodes (52): isInAuthGracePeriod(), onUnauthorized(), LoaderProvider(), DashboardOnlineSocketBridge(), NotificationSocketBridge(), AuthProvider(), useAuthStore(), useDebouncedCallback() (+44 more)
+Cohesion: 0.04
+Nodes (63): isInAuthGracePeriod(), onUnauthorized(), LoaderProvider(), DashboardOnlineSocketBridge(), NotificationSocketBridge(), AuthProvider(), useAuthStore(), useDebouncedCallback() (+55 more)
 
 ### Community 8 - "English Settings Translations"
 Cohesion: 0.02
@@ -704,8 +704,8 @@ Cohesion: 0.04
 Nodes (57): settings, about, account, accountType, activeSessions, activeSessionsSubtitle, appearance, appUnlockSubtitle (+49 more)
 
 ### Community 38 - "A11y Usereducemotion Usereducemotion"
-Cohesion: 0.06
-Nodes (44): ClipThumbnailCard(), Props, DashboardBottomNav(), Props, DashboardHeader(), DashboardMobileDrawer(), Props, DashboardShell() (+36 more)
+Cohesion: 0.05
+Nodes (52): DashboardBottomNav(), Props, DashboardHeader(), DashboardMobileDrawer(), Props, DashboardShell(), Props, DashboardSidebar() (+44 more)
 
 ### Community 39 - "Calling Annotationcoords"
 Cohesion: 0.06
@@ -784,8 +784,8 @@ Cohesion: 0.08
 Nodes (33): postForgotPassword(), MagicLinkRequestResult, MagicLinkVerifyTokens, postMagicLinkRequest(), postMagicLinkVerify(), AuthModalChrome(), Props, styles (+25 more)
 
 ### Community 58 - "Calling Sessionextensionapi Extensionquote"
-Cohesion: 0.03
-Nodes (108): AuthPageShell(), Props, Category(), CategoryProps, Props, DashboardContent(), Props, DashboardInCardTitle() (+100 more)
+Cohesion: 0.04
+Nodes (82): AuthPageShell(), Props, Category(), CategoryProps, Props, DashboardContent(), Props, DashboardInCardTitle() (+74 more)
 
 ### Community 59 - "Components Earningstrendscard"
 Cohesion: 0.12
@@ -800,8 +800,8 @@ Cohesion: 0.07
 Nodes (32): ChatDaySeparator(), Props, styles, ChatDaySection, ChatMessageLike, findMessageFlatRowIndex(), findMessageSectionLocation(), formatChatDayLabel() (+24 more)
 
 ### Community 62 - "Context Authcontext"
-Cohesion: 0.03
-Nodes (67): BrandIcon, hasSocialMediaLinks(), IconLink, Props, SocialMediaLinks(), SocialMediaLinksMap, CoachesOnlineSection(), DashboardPromoImageCard() (+59 more)
+Cohesion: 0.04
+Nodes (60): BrandIcon, hasSocialMediaLinks(), IconLink, Props, SocialMediaLinks(), SocialMediaLinksMap, DashboardPromoImageCard(), Props (+52 more)
 
 ### Community 63 - "Api Clipsapi"
 Cohesion: 0.13
@@ -881,7 +881,7 @@ Nodes (29): CallContext, CallContextValue, CallProvider(), PeerJoinedEvent, Prov
 
 ### Community 82 - "Api Chatactionsapi"
 Cohesion: 0.04
-Nodes (42): ComingSoonSection(), Props, DashboardNotificationButton(), DashboardPageHeader(), Props, getNotificationIcon(), NotificationListItem(), Props (+34 more)
+Nodes (46): ComingSoonSection(), Props, CoachesOnlineSection(), DashboardNotificationButton(), DashboardPageHeader(), Props, DashboardSectionTitle(), Props (+38 more)
 
 ### Community 83 - "Actions Cacheinvalidation"
 Cohesion: 0.06
@@ -932,8 +932,8 @@ Cohesion: 0.13
 Nodes (14): menu, dashboard, member, openSettings, tools, splash, preparing, tagline (+6 more)
 
 ### Community 95 - "Components Authescapelink"
-Cohesion: 0.08
-Nodes (35): assertInstantBookingSuccess(), extractInstantBookingId(), parseOnlineUsersResponse(), ParseOnlineUsersResult, authService, OnlineTrainerInfo, OnlineUserRecord, DURATION_OPTIONS (+27 more)
+Cohesion: 0.07
+Nodes (36): assertInstantBookingSuccess(), extractInstantBookingId(), parseOnlineUsersResponse(), ParseOnlineUsersResult, authService, OnlineTrainerInfo, OnlineUserRecord, DURATION_OPTIONS (+28 more)
 
 ### Community 96 - "Config Env Devdudes"
 Cohesion: 0.10
@@ -1004,16 +1004,16 @@ Cohesion: 0.29
 Nodes (7): debounce(), DebouncedFn, throttle(), ThrottledFn, useDebouncedCallback(), GuardOptions, useThrottledCallback()
 
 ### Community 113 - "Instant Lesson Instantlessonbridge"
-Cohesion: 0.15
-Nodes (13): PendingFile, Props, Props, UploadShareEmailPicker(), Props, UploadFriend, UploadShareFriendPicker(), normalizeClipFileType() (+5 more)
+Cohesion: 0.09
+Nodes (23): DashboardSegmentTab, DashboardSegmentTabs(), Props, NetQwixTab(), PendingFile, Props, Props, UploadShareEmailPicker() (+15 more)
 
 ### Community 114 - "Locales Ko"
 Cohesion: 0.25
 Nodes (8): ChecklistItem, markDismissed(), pickNextSession(), PreClassChecklistSheet(), PreClassChecklistSheetProps, readDismissedMap(), SessionLike, styles
 
 ### Community 115 - "Locales Ru"
-Cohesion: 0.26
-Nodes (9): BreakpointKey, breakpoints, mediaQueries, colors, ColorToken, cssVars, layout, radius (+1 more)
+Cohesion: 0.09
+Nodes (29): ClipThumbnailCard(), Props, buildAllNavItems(), buildBottomNavItems(), buildDesktopSidebarSections(), buildMobileDrawerSections(), buildSidebarSections(), buildTopbarItems() (+21 more)
 
 ### Community 116 - "Calling Sessionextensionapi"
 Cohesion: 0.11
@@ -1313,7 +1313,7 @@ Nodes (25): 10. Settings / privacy, 11. Wallet / payouts (trainer-heavy), 1. Liv
 
 ### Community 191 - "Components Comparetrainersmodal"
 Cohesion: 0.04
-Nodes (95): isApiSuccess(), getApiErrorMessage(), readApiErrorBody(), ClipDeleteConfirmModal(), Props, ClipPlayerModal(), Props, ClipsGrid() (+87 more)
+Nodes (88): isApiSuccess(), getApiErrorMessage(), readApiErrorBody(), ClipDeleteConfirmModal(), Props, ClipPlayerModal(), Props, ClipsGrid() (+80 more)
 
 ### Community 192 - "Community 192"
 Cohesion: 0.16
