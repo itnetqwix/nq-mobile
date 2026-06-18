@@ -43,6 +43,7 @@ import { AccountType } from "../../../constants/accountType";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { HomeStackParamList } from "../../../navigation/types";
+import { openShellSurface } from "../../../navigation/openShellSurface";
 
 type ClipTab = "mine" | "library";
 
@@ -518,7 +519,7 @@ export function ClipsScreen() {
               <Pressable
                 style={({ pressed }) => [styles.shareModeBtn, pressed && { opacity: 0.88 }]}
                 onPress={() =>
-                  navigation.navigate("ShellSurface", { surfaceId: "clipSubmissions" })
+                  openShellSurface(navigation, { surfaceId: "clipSubmissions" })
                 }
                 accessibilityRole="button"
                 accessibilityLabel={t("locker.librarySubmissionsA11y", {

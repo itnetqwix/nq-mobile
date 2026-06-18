@@ -17,6 +17,7 @@ import { AccountType } from "../../../constants/accountType";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { bumpAvatarCacheBust, useAvatarCacheBust } from "../../../lib/avatarCacheBust";
 import type { MenuStackParamList } from "../../../navigation/types";
+import { openShellSurface } from "../../../navigation/openShellSurface";
 import { space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
 import { apiClient } from "../../../api/client";
@@ -388,7 +389,7 @@ export function EditProfileScreen() {
               />
               <Pressable
                 onPress={() =>
-                  navigation.navigate("ShellSurface", { surfaceId: "professionalProfile" })
+                  openShellSurface(navigation, { surfaceId: "professionalProfile" })
                 }
                 style={styles.enhanceBtn}
               >

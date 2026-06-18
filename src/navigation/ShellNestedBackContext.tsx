@@ -1,74 +1,45 @@
 import { useNavigation } from "@react-navigation/native";
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-} from "react";
+import React, { useEffect } from "react";
+import {
+  clearShellNestedBackHandlers,
+  registerShellNestedBackHandler,
+  tryShellNestedBack,
+} from "./shellNestedBackRegistry";
 
-type NestedBackHandler = {
-  canGoBack: () => boolean;
-  goBack: () => void;
-};
+export { tryShellNestedBack };
 
-type ShellNestedBackContextValue = {
-  register: (handler: NestedBackHandler) => () => void;
-  tryGoBack: () => boolean;
-};
-
-const ShellNestedBackContext = createContext<ShellNestedBackContextValue | null>(null);
-
-/** Wrap shell surfaces that host an inner stack (e.g. wallet). */
+/**
+ * Clears nested handlers when a shell surface unmounts.
+ * The header (`AppScreenHeader`) renders outside this tree, so handlers
+ * live in `shellNestedBackRegistry` where both header and content can reach them.
+ */
 export function ShellNestedBackProvider({ children }: { children: React.ReactNode }) {
-  const handlerRef = useRef<NestedBackHandler | null>(null);
-
-  const register = useCallback((handler: NestedBackHandler) => {
-    handlerRef.current = handler;
-    return () => {
-      if (handlerRef.current === handler) {
-        handlerRef.current = null;
-      }
-    };
-  }, []);
-
-  const tryGoBack = useCallback(() => {
-    const handler = handlerRef.current;
-    if (handler?.canGoBack()) {
-      handler.goBack();
-      return true;
-    }
-    return false;
-  }, []);
-
-  const value = useMemo(() => ({ register, tryGoBack }), [register, tryGoBack]);
-
-  return (
-    <ShellNestedBackContext.Provider value={value}>{children}</ShellNestedBackContext.Provider>
-  );
-}
-
-export function useShellNestedBack() {
-  return useContext(ShellNestedBackContext);
+  useEffect(() => () => clearShellNestedBackHandlers(), []);
+  return <>{children}</>;
 }
 
 /**
- * Registers an inner navigator (wallet stack, etc.) so the parent shell
- * header back button pops one inner frame before exiting the shell.
+ * Registers an inner navigator (wallet stack, etc.) so the shell header back
+ * button pops one inner frame before exiting the shell.
  */
 export function useShellNestedBackRegistration() {
-  const ctx = useShellNestedBack();
   const navigation = useNavigation();
 
   useEffect(() => {
-    if (!ctx) return undefined;
-
-    const handler: NestedBackHandler = {
+    const handler = {
       canGoBack: () => navigation.canGoBack(),
       goBack: () => navigation.goBack(),
     };
+    return registerShellNestedBackHandler(handler);
+  }, [navigation]);
+}
 
-    return ctx.register(handler);
-  }, [ctx, navigation]);
+/** HOC for screens hosted inside a nested stack within a shell surface. */
+export function withShellNestedBack<P extends object>(Screen: React.ComponentType<P>) {
+  function ScreenWithShellNestedBack(props: P) {
+    useShellNestedBackRegistration();
+    return <Screen {...props} />;
+  }
+  ScreenWithShellNestedBack.displayName = `ShellBack(${Screen.displayName ?? Screen.name ?? "Screen"})`;
+  return ScreenWithShellNestedBack;
 }

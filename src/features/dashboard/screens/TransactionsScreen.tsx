@@ -30,6 +30,7 @@ import { AccountType } from "../../../constants/accountType";
 import { useAuth } from "../../auth/context/AuthContext";
 import { dedupeRowsById, fetchBookingTransactions } from "../../home/api/homeApi";
 import type { MenuStackParamList } from "../../../navigation/types";
+import { openShellSurface } from "../../../navigation/openShellSurface";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
 import { useFloatingTabBarBottomInset } from "../../../navigation/useFloatingTabBarBottomInset";
@@ -487,7 +488,7 @@ export function TransactionsScreen() {
           onAction={() => {
             try {
               if (isTrainer) {
-                navigation.navigate("ShellSurface", { surfaceId: "trainerSchedule" });
+                openShellSurface(navigation, { surfaceId: "trainerSchedule" });
               } else {
                 navigation.navigate("DashboardFeature", { featureId: "book-lesson" });
               }

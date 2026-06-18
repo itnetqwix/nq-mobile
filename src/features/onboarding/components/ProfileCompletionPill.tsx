@@ -22,6 +22,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/context/AuthContext";
 import type { HomeStackParamList } from "../../../navigation/types";
+import { openShellSurface } from "../../../navigation/openShellSurface";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { Sheet } from "../../../components/ui";
 import {
@@ -317,13 +318,13 @@ function runAction(
 ): void {
   switch (action.kind) {
     case "shell":
-      navigation.navigate("ShellSurface", { surfaceId: action.surfaceId });
+      openShellSurface(navigation, { surfaceId: action.surfaceId });
       return;
     case "feature":
       navigation.navigate("DashboardFeature", { featureId: action.featureId });
       return;
     case "settings-section":
-      navigation.navigate("ShellSurface", { surfaceId: "settings" });
+      openShellSurface(navigation, { surfaceId: "settings" });
       return;
   }
 }

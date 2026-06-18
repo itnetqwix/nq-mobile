@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 
 import { haptics } from "../lib/haptics";
 import { radii, useThemeColors } from "../theme";
-import { useShellNestedBack } from "./ShellNestedBackContext";
+import { tryShellNestedBack } from "./shellNestedBackRegistry";
 
 const BOX_SIZE = 40;
 const ICON_SIZE = 22;
@@ -22,12 +22,11 @@ const ICON_SIZE = 22;
  */
 export function HeaderBackButton() {
   const navigation = useNavigation();
-  const nestedBack = useShellNestedBack();
   const c = useThemeColors();
 
   const handleBack = () => {
     haptics.tap();
-    if (nestedBack?.tryGoBack()) return;
+    if (tryShellNestedBack()) return;
     if (!navigation.canGoBack()) return;
     navigation.goBack();
   };

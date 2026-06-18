@@ -33,6 +33,7 @@ import { DEVDUDES_LABEL, DEVDUDES_URL, WEB_APP_ORIGIN } from "../../../config/en
 import { AccountType } from "../../../constants/accountType";
 import { WebRoutes } from "../../../constants/webRoutes";
 import type { MenuStackParamList, ShellSurfaceRouteId } from "../../../navigation/types";
+import { openHomeStackScreen, openShellSurface } from "../../../navigation/openShellSurface";
 import { space, typography, useThemeColors } from "../../../theme";
 import { useTheme, type ThemeMode } from "../../../theme/ThemeContext";
 import { areHapticsEnabled, haptics, setHapticsEnabled } from "../../../lib/haptics";
@@ -112,7 +113,7 @@ export function SettingsScreen() {
 
   const openShell = useCallback(
     (id: ShellSurfaceRouteId) => {
-      navigation.navigate("ShellSurface", { surfaceId: id });
+      openShellSurface(navigation, { surfaceId: id });
     },
     [navigation]
   );
@@ -420,7 +421,7 @@ export function SettingsScreen() {
       rows.push({
         icon: "card-outline",
         label: t("settings.trainerProfileBilling"),
-        onPress: () => navigation.navigate("ShellSurface", { surfaceId: "wallet" }),
+        onPress: () => openShellSurface(navigation, { surfaceId: "wallet" }),
       });
     }
     rows.push({
@@ -473,7 +474,7 @@ export function SettingsScreen() {
         icon: "wallet-outline",
         title: t("settings.walletSecurity"),
         keywords: "wallet pin security payment",
-        onPress: () => navigation.navigate("ShellSurface", { surfaceId: "wallet" }),
+        onPress: () => openShellSurface(navigation, { surfaceId: "wallet" }),
       },
       {
         key: "activeSessions",
@@ -481,7 +482,7 @@ export function SettingsScreen() {
         title: t("settings.activeSessions"),
         subtitle: t("settings.activeSessionsSubtitle"),
         keywords: "devices login sessions",
-        onPress: () => navigation.navigate("ActiveSessions"),
+        onPress: () => openHomeStackScreen(navigation, "ActiveSessions"),
       },
       {
         key: "notificationPreferences",
@@ -491,7 +492,7 @@ export function SettingsScreen() {
           defaultValue: "Categories, channels, mute, quiet hours",
         }),
         keywords: "notification reminders sms email push",
-        onPress: () => navigation.navigate("NotificationPreferences" as never),
+        onPress: () => openHomeStackScreen(navigation, "NotificationPreferences"),
       },
       {
         key: "privateAccount",
@@ -509,7 +510,7 @@ export function SettingsScreen() {
           defaultValue: "Review or unblock people you've blocked.",
         }),
         keywords: "block blocked users community safety",
-        onPress: () => navigation.navigate("BlockedUsers" as never),
+        onPress: () => openHomeStackScreen(navigation, "BlockedUsers"),
       },
       {
         key: "language",
@@ -566,7 +567,7 @@ export function SettingsScreen() {
           defaultValue: "Extra OTP step for trainer accounts on new devices.",
         }),
         keywords: "2fa otp auth security trainer",
-        onPress: () => navigation.navigate("TwoFactor" as never),
+        onPress: () => openHomeStackScreen(navigation, "TwoFactor"),
       });
     }
     return rows;
@@ -810,7 +811,7 @@ export function SettingsScreen() {
           icon="cloud-outline"
           title={t("settings.storagePlan")}
           subtitle={t("settings.storagePlanSubtitle")}
-          onPress={() => navigation.navigate("StoragePlan")}
+          onPress={() => openHomeStackScreen(navigation, "StoragePlan")}
         />
       </Card>
 
@@ -881,13 +882,13 @@ export function SettingsScreen() {
           icon="laptop-outline"
           title={t("settings.activeSessions")}
           subtitle={t("settings.activeSessionsSubtitle")}
-          onPress={() => navigation.navigate("ActiveSessions")}
+          onPress={() => openHomeStackScreen(navigation, "ActiveSessions")}
         />
         <Divider />
         <ListRow
           icon="wallet-outline"
           title={t("settings.walletSecurity")}
-          onPress={() => navigation.navigate("ShellSurface", { surfaceId: "wallet" })}
+          onPress={() => openShellSurface(navigation, { surfaceId: "wallet" })}
         />
       </Card>
 
@@ -1083,7 +1084,7 @@ export function SettingsScreen() {
           subtitle={t("settings.blockedAccountsSubtitle", {
             defaultValue: "Review or unblock people you've blocked.",
           })}
-          onPress={() => navigation.navigate("BlockedUsers" as never)}
+          onPress={() => openHomeStackScreen(navigation, "BlockedUsers")}
         />
         <Divider />
         <ListRow
@@ -1092,7 +1093,7 @@ export function SettingsScreen() {
           subtitle={t("settings.exportMyDataSubtitle", {
             defaultValue: "Download an archive of everything we hold (GDPR / DPDP).",
           })}
-          onPress={() => navigation.navigate("DataExport" as never)}
+          onPress={() => openHomeStackScreen(navigation, "DataExport")}
         />
         {isTrainer ? (
           <>
@@ -1103,7 +1104,7 @@ export function SettingsScreen() {
               subtitle={t("settings.twoFactorSubtitle", {
                 defaultValue: "Extra OTP step for trainer accounts on new devices.",
               })}
-              onPress={() => navigation.navigate("TwoFactor" as never)}
+              onPress={() => openHomeStackScreen(navigation, "TwoFactor")}
             />
           </>
         ) : null}
@@ -1121,7 +1122,7 @@ export function SettingsScreen() {
           subtitle={t("settings.notificationPreferencesHint", {
             defaultValue: "Categories, channels, mute, quiet hours",
           })}
-          onPress={() => navigation.navigate("NotificationPreferences" as never)}
+          onPress={() => openHomeStackScreen(navigation, "NotificationPreferences")}
         />
       </Card>
 

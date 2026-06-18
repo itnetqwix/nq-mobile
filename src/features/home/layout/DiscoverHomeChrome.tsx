@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import React, { useMemo } from "react";
+import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Skeleton } from "../../../components/ui";
 import { AccountType, type AccountTypeValue } from "../../../constants/accountType";
@@ -17,9 +17,10 @@ import {
 } from "../components/HomeCategoryChipsRow";
 import { HomeStickySearchBar } from "../components/HomeStickySearchBar";
 import type { VoiceInputState } from "../../ai/useVoiceInput";
-import { useMarketplaceHorizontalPad, useMarketplaceTopPadding } from "./marketplaceLayout";
+import { useMarketplaceTopPadding } from "./marketplaceLayout";
 import { PublicSocialLinksRow } from "../../../components/social/PublicSocialLinksRow";
 import { hasPublicSocialLinks, getSocialLinksFromUser } from "../../../lib/social/socialLinks";
+
 const PROFILE_AVATAR_SIZE = 80;
 
 type Props = {
@@ -88,9 +89,13 @@ const badgeStyles = StyleSheet.create({
 function TrainerProfileMeta({
   user,
   onPressReviews,
+  showAsOnline,
+  onAvailabilityToggle,
 }: {
   user?: Record<string, unknown> | null;
   onPressReviews?: () => void;
+  showAsOnline?: boolean;
+  onAvailabilityToggle?: (next: boolean) => Promise<void>;
 }) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
@@ -169,6 +174,13 @@ function TrainerProfileMeta({
           </Text>
         </View>
       )}
+      {onAvailabilityToggle != null ? (
+        <TrainerOnlineToggle
+          compact
+          value={showAsOnline ?? false}
+          onToggle={onAvailabilityToggle}
+        />
+      ) : null}
     </View>
   );
 }
@@ -296,20 +308,6 @@ export function DiscoverHomeChrome({
   useCompactA11yGuard();
   const { t } = useAppTranslation();
   const topPadding = useMarketplaceTopPadding(compactTop);
-  // Parent scroll views apply `md` gutter — cancel it for full-bleed band, then
-  // re-apply a single consistent inner pad so we don't double-inset content.
-  const parentPad = useMarketplaceHorizontalPad("md");
-  const innerPad = useMarketplaceHorizontalPad("sm");
-
-  const bandLayout = useMemo(
-    () => ({
-      marginLeft: -parentPad.paddingLeft,
-      marginRight: -parentPad.paddingRight,
-      paddingLeft: innerPad.paddingLeft,
-      paddingRight: innerPad.paddingRight,
-    }),
-    [innerPad.paddingLeft, innerPad.paddingRight, parentPad.paddingLeft, parentPad.paddingRight]
-  );
 
   const isTrainer = role === AccountType.TRAINER || role === "trainer";
   const isGuest = role === "guest";
@@ -320,8 +318,6 @@ export function DiscoverHomeChrome({
     : isGuest
       ? t("guest.exploringAsGuest")
       : t("traineeDiscover.roleTrainee");
-  const socialLinks = user ? getSocialLinksFromUser(user) : null;
-  const showSocialLinks = !!socialLinks && hasPublicSocialLinks(socialLinks);
 
   const avatar = onPressProfile ? (
     <Pressable
@@ -335,82 +331,47 @@ export function DiscoverHomeChrome({
     <HomeUserAvatar uri={profilePicture} name={displayName} size={PROFILE_AVATAR_SIZE} />
   );
 
-  const trainerTopRight = isTrainer ? (
-    <View style={styles.trainerTopRight}>
-      {onAvailabilityToggle != null ? (
-        <View style={[styles.onlineWrap, { borderColor: c.border, backgroundColor: c.surfaceElevated }]}>
-          <TrainerOnlineToggle
-            compact
-            value={showAsOnline ?? false}
-            onToggle={onAvailabilityToggle}
-          />
-        </View>
-      ) : null}
-      {showSocialLinks ? (
-        <PublicSocialLinksRow user={user} size="sm" align="right" />
-      ) : null}
-    </View>
-  ) : null;
-
   return (
     <View
       style={[
         styles.band,
-        bandLayout,
         {
           backgroundColor: c.homeMarketplaceBand,
           paddingTop: topPadding,
         },
       ]}
     >
-      {isTrainer ? (
-        <View
-          style={[
-            styles.trainerCard,
-            {
-              borderColor: c.border,
-              backgroundColor: c.surfaceElevated,
-            },
-          ]}
-        >
-          <View style={styles.trainerHeaderRow}>
-            <View style={styles.trainerIdentity}>
-              {avatar}
-              <View style={styles.trainerIdentityText}>
-                <Text style={[styles.name, text.titleMd, { color: c.text }]} numberOfLines={2}>
-                  {displayName}
-                </Text>
-                <RoleBadge label={roleLabel} />
-              </View>
-            </View>
-            {trainerTopRight}
+      <View style={styles.topRow}>
+        {avatar}
+        <View style={styles.profileCol}>
+          <View style={styles.nameRow}>
+            <Text style={[styles.name, text.titleMd, { color: c.text }]} numberOfLines={1}>
+              {displayName}
+            </Text>
+            {trailing}
           </View>
-          <TrainerProfileMeta user={user} onPressReviews={onPressReviews} />
-        </View>
-      ) : (
-        <View style={styles.topRow}>
-          {avatar}
-          <View style={styles.profileCol}>
-            <View style={styles.nameRow}>
-              <Text style={[styles.name, text.titleMd, { color: c.text }]} numberOfLines={1}>
-                {displayName}
-              </Text>
-              {trailing}
-            </View>
-            <RoleBadge label={roleLabel} />
+          <RoleBadge label={roleLabel} />
+          {isTrainer ? (
+            <TrainerProfileMeta
+              user={user}
+              onPressReviews={onPressReviews}
+              showAsOnline={showAsOnline}
+              onAvailabilityToggle={onAvailabilityToggle}
+            />
+          ) : (
             <TraineeProfileMeta
               subline={isGuest ? undefined : subline}
               walletBalanceLabel={isGuest ? undefined : walletBalanceLabel}
               onOpenWallet={isGuest ? undefined : onOpenWallet}
             />
-            {showSocialLinks ? (
-              <View style={styles.socialRow}>
-                <PublicSocialLinksRow user={user} size="sm" />
-              </View>
-            ) : null}
-          </View>
+          )}
+          {user && hasPublicSocialLinks(getSocialLinksFromUser(user)) ? (
+            <View style={styles.socialRow}>
+              <PublicSocialLinksRow user={user} size="sm" />
+            </View>
+          ) : null}
         </View>
-      )}
+      </View>
 
       {showSearch ? (
         <HomeStickySearchBar
@@ -425,24 +386,14 @@ export function DiscoverHomeChrome({
       ) : null}
 
       {categoryChips && categoryChips.length > 0 && onSelectCategory ? (
-        <View
-          style={[
-            styles.categoryBleed,
-            {
-              marginLeft: -innerPad.paddingLeft,
-              marginRight: -innerPad.paddingRight,
-            },
-          ]}
-        >
-          <HomeCategoryChipsRow
-            items={categoryChips}
-            selectedId={selectedCategoryId ?? "__all__"}
-            onSelect={(id) => {
-              if (id === "__all__") onSelectCategory(null);
-              else onSelectCategory(id);
-            }}
-          />
-        </View>
+        <HomeCategoryChipsRow
+          items={categoryChips}
+          selectedId={selectedCategoryId ?? "__all__"}
+          onSelect={(id) => {
+            if (id === "__all__") onSelectCategory(null);
+            else onSelectCategory(id);
+          }}
+        />
       ) : null}
     </View>
   );
@@ -450,60 +401,13 @@ export function DiscoverHomeChrome({
 
 const styles = StyleSheet.create({
   band: {
-    alignSelf: "stretch",
-    width: "100%",
     marginBottom: space.sm,
     paddingBottom: space.xs,
-  },
-  categoryBleed: {
-    marginTop: space.xxs,
-  },
-  trainerCard: {
-    marginBottom: space.sm,
-    padding: space.md,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    gap: space.xs,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
-  },
-  trainerHeaderRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: space.sm,
-  },
-  trainerIdentity: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: space.md,
-    minWidth: 0,
-  },
-  trainerIdentityText: {
-    flex: 1,
-    minWidth: 0,
-    justifyContent: "center",
-    paddingTop: space.xxs,
-  },
-  trainerTopRight: {
-    alignItems: "flex-end",
-    gap: space.xs,
-    flexShrink: 0,
-    maxWidth: "42%",
-  },
-  onlineWrap: {
-    borderWidth: 1,
-    borderRadius: radii.pill,
-    paddingHorizontal: space.sm,
-    paddingVertical: 4,
   },
   topRow: {
     flexDirection: "row",
     alignItems: "flex-start",
+    paddingHorizontal: space.md,
     paddingBottom: space.sm,
     gap: space.md,
   },

@@ -12,6 +12,7 @@ import { LockerListShell } from "../components/locker/LockerListShell";
 import { LockerViewerModal, type LockerViewerMode } from "../components/locker/LockerViewerModal";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
+import { openShellSurface } from "../../../navigation/openShellSurface";
 
 export function SavedLessonsScreen() {
   const { t } = useAppTranslation();
@@ -92,7 +93,7 @@ export function SavedLessonsScreen() {
             actionLabel={t("savedLessons.emptyCta", { defaultValue: "Browse clips" })}
             onAction={() => {
               try {
-                navigation.navigate("ShellSurface", { surfaceId: "clips" });
+                openShellSurface(navigation, { surfaceId: "clips" });
               } catch {
                 /* Older navigators — best effort. */
               }

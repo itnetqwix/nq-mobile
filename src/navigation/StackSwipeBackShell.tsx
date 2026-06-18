@@ -3,7 +3,7 @@ import React, { useCallback, useMemo, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
-import { useShellNestedBack } from "./ShellNestedBackContext";
+import { tryShellNestedBack } from "./shellNestedBackRegistry";
 
 const SWIPE_THRESHOLD = 56;
 
@@ -27,7 +27,6 @@ type Props = {
  */
 export function StackSwipeBackShell({ children, enabled = true, onBack }: Props) {
   const navigation = useNavigation();
-  const nestedBack = useShellNestedBack();
   /**
    * Belt-and-braces guard: even though `Gesture.Pan().onEnd` should run
    * once per gesture, `runOnJS` callbacks have historically been observed
@@ -43,11 +42,11 @@ export function StackSwipeBackShell({ children, enabled = true, onBack }: Props)
       onBack();
       return;
     }
-    if (nestedBack?.tryGoBack()) return;
+    if (tryShellNestedBack()) return;
     if (navigation.canGoBack()) {
       navigation.goBack();
     }
-  }, [navigation, nestedBack, onBack]);
+  }, [navigation, onBack]);
 
   const resetFired = useCallback(() => {
     hasFiredRef.current = false;
