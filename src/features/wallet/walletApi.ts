@@ -45,14 +45,22 @@ export type WalletConfig = {
   enabled?: boolean;
   escrowEnabled?: boolean;
   walletPayEnabled?: boolean;
+  topUpEnabled?: boolean;
+  region?: string;
+  currency?: string;
   minTopUpMinor?: number;
   maxTopUpMinor?: number;
   stepUpThresholdMinor?: number;
-  regionCurrency?: string;
+  regionCurrency?: Record<
+    string,
+    { currency: string; topUpEnabled: boolean; walletPayEnabled: boolean }
+  >;
 };
 
-export async function fetchWalletConfig(): Promise<WalletConfig> {
-  const res = await apiClient.get(API_ROUTES.wallet.config);
+export async function fetchWalletConfig(billingCountry?: string): Promise<WalletConfig> {
+  const res = await apiClient.get(API_ROUTES.wallet.config, {
+    params: billingCountry ? { country: billingCountry } : undefined,
+  });
   return ((res.data as { data?: WalletConfig })?.data ?? res.data) as WalletConfig;
 }
 

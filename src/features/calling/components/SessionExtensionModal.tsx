@@ -33,7 +33,8 @@ import { PricingBreakdownSummary } from "../../payments/PricingBreakdownSummary"
 import type { ExtensionOptions, ExtensionQuote } from "../sessionExtensionApi";
 import { fetchSessionExtensionOptions } from "../sessionExtensionApi";
 import type { UseSessionExtensionFlow } from "../useSessionExtensionFlow";
-import { chargeTotalDollars } from "../../payments/pricingTypes";
+import { SavedCardHint } from "../../../components/payments/SavedCardHint";
+import { useDefaultSavedCard } from "../../wallet/hooks/useDefaultSavedCard";
 import { useWalletPaymentOption } from "../../wallet/hooks/useWalletPaymentOption";
 import { verifyWalletPin } from "../../wallet/walletApi";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
@@ -124,7 +125,10 @@ export function SessionExtensionModal({
     [quote?.pricingQuote?.chargeTotalCents, extensionChargeTotal]
   );
 
-  const wallet = useWalletPaymentOption(extensionChargeTotal, paymentMethod === "wallet");
+  const wallet = useWalletPaymentOption(extensionChargeTotal, paymentMethod === "wallet", billingAddress.country);
+  const savedCard = useDefaultSavedCard(
+    (phase === "awaiting_payment" || phase === "paying") && extensionChargeTotal > 0
+  );
 
   useEffect(() => {
     if (wallet.storedPinToken && !pinSessionToken) {
@@ -426,6 +430,9 @@ export function SessionExtensionModal({
               <Text style={styles.payChipText}>Card</Text>
             </Pressable>
           </View>
+        ) : null}
+        {paymentMethod === "card" && extensionChargeTotal > 0 ? (
+          <SavedCardHint label={savedCard.label} loading={savedCard.isLoading} />
         ) : null}
         {paymentMethod === "wallet" && wallet.walletPayEnabled && extensionChargeTotal > 0 ? (
           <>

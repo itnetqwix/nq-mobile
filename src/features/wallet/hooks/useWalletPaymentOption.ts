@@ -6,7 +6,11 @@ import { fetchWalletConfig } from "../walletApi";
 import { useWalletBalance } from "./useWalletBalance";
 import { computeWalletPaymentOption } from "./walletPaymentOptionLogic";
 
-export function useWalletPaymentOption(priceDollars: number, enabled = true) {
+export function useWalletPaymentOption(
+  priceDollars: number,
+  enabled = true,
+  billingCountry?: string
+) {
   const { data: balance, refetch: refetchBalance } = useWalletBalance(enabled);
   const [storedPinToken, setStoredPinToken] = useState<string | null>(null);
 
@@ -15,8 +19,8 @@ export function useWalletPaymentOption(priceDollars: number, enabled = true) {
     void getPinSessionToken().then(setStoredPinToken);
   }, [enabled, balance?.pinSet]);
   const { data: config } = useQuery({
-    queryKey: queryKeys.wallet.config,
-    queryFn: fetchWalletConfig,
+    queryKey: [...queryKeys.wallet.config, billingCountry ?? "default"],
+    queryFn: () => fetchWalletConfig(billingCountry),
     staleTime: 300_000,
     enabled,
   });
@@ -35,5 +39,8 @@ export function useWalletPaymentOption(priceDollars: number, enabled = true) {
     ...option,
     storedPinToken,
     refetchBalance,
+    topUpEnabled: config?.topUpEnabled !== false,
+    walletRegion: config?.region,
+    walletCurrency: config?.currency,
   };
 }

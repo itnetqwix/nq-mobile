@@ -23,7 +23,9 @@ import { verifyWalletPin } from "../../../wallet/walletApi";
 import { INSTANT_LESSON_DURATIONS } from "../constants";
 import { useSharedStepStyles } from "../sharedStepStyles";
 import { PlatformPayButtonRow } from "../../../../components/payments/PlatformPayButtonRow";
+import { SavedCardHint } from "../../../../components/payments/SavedCardHint";
 import { useActiveCurrency, useCurrencyFormatter } from "../../../../lib/intl";
+import { useDefaultSavedCard } from "../../../wallet/hooks/useDefaultSavedCard";
 
 import { PricingBreakdownSummary } from "../../../payments/PricingBreakdownSummary";
 import type { PricingQuote } from "../../../payments/pricingTypes";
@@ -138,7 +140,8 @@ export function WizardStepPayment({
 
   const totalToCharge =
     chargeTotalDollars(pricingQuote) ?? (priceInfo?.amount ?? payableAmount);
-  const wallet = useWalletPaymentOption(totalToCharge);
+  const wallet = useWalletPaymentOption(totalToCharge, true, billing.country);
+  const savedCard = useDefaultSavedCard(payableAmount > 0);
   const canPayMixed =
     wallet.walletPayEnabled &&
     payableAmount > 0 &&
@@ -444,6 +447,10 @@ export function WizardStepPayment({
           <Text style={sharedStepStyles.muted}>Setting up payment...</Text>
         </View>
       )}
+
+      {!loading && payableAmount > 0 && !isFree ? (
+        <SavedCardHint label={savedCard.label} loading={savedCard.isLoading} />
+      ) : null}
 
       {!loading && wallet.walletPayEnabled && !isFree && wallet.canPayWithWallet ? (
         <>

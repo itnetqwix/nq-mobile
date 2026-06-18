@@ -17,12 +17,16 @@ function formatUsd(amount: number): string {
  */
 export async function confirmProceedToPaymentIfWalletShort(
   priceDollars: number,
-  onAddFunds?: (shortfall: number) => void
+  onAddFunds?: (shortfall: number) => void,
+  billingCountry?: string
 ): Promise<boolean> {
   const required = Math.max(0, Number(priceDollars) || 0);
   if (required <= 0) return true;
   try {
-    const [balance, config] = await Promise.all([fetchWalletBalance(), fetchWalletConfig()]);
+    const [balance, config] = await Promise.all([
+      fetchWalletBalance(),
+      fetchWalletConfig(billingCountry),
+    ]);
     const walletEnabled = config?.walletPayEnabled !== false && config?.enabled !== false;
     if (!walletEnabled) return true;
 

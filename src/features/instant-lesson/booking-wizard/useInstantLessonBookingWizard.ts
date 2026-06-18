@@ -62,8 +62,9 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
   const [couponError, setCouponError] = useState("");
   const [selectedClipIds, setSelectedClipIds] = useState<string[]>([]);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<"wallet" | "card" | undefined>();
+  const [paymentMethod, setPaymentMethod] = useState<"wallet" | "card" | "mixed" | undefined>();
   const [pinSessionToken, setPinSessionToken] = useState<string | undefined>();
+  const [walletAmount, setWalletAmount] = useState<number | undefined>();
   const [quoteId, setQuoteId] = useState<string | undefined>();
   const [chargingPrice, setChargingPrice] = useState(0);
   const [pricingQuote, setPricingQuote] = useState<PricingQuote | null>(null);
@@ -90,7 +91,8 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
     (payload: {
       paymentIntentId: string | null;
       chargingPrice: number;
-      paymentMethod?: "wallet" | "card";
+      paymentMethod?: "wallet" | "card" | "mixed";
+      walletAmount?: number;
       pinSessionToken?: string;
       quoteId?: string;
       pricingQuote?: PricingQuote | null;
@@ -98,6 +100,7 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
       setPaymentIntentId(payload.paymentIntentId);
       setChargingPrice(payload.chargingPrice);
       setPaymentMethod(payload.paymentMethod);
+      setWalletAmount(payload.walletAmount);
       setPinSessionToken(payload.pinSessionToken);
       setQuoteId(payload.quoteId ?? payload.pricingQuote?.quoteId);
       if (payload.pricingQuote) setPricingQuote(payload.pricingQuote);
@@ -406,6 +409,11 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
         if (paymentMethod === "wallet") {
           bookingPayload.payment_method = "wallet";
           if (pinSessionToken) bookingPayload.pin_session_token = pinSessionToken;
+        } else if (paymentMethod === "mixed") {
+          bookingPayload.payment_method = "mixed";
+          bookingPayload.wallet_amount = walletAmount ?? 0;
+          bookingPayload.payment_intent_id = paymentIntentId;
+          if (pinSessionToken) bookingPayload.pin_session_token = pinSessionToken;
         } else if (paymentIntentId) {
           bookingPayload.payment_intent_id = paymentIntentId;
         } else {
@@ -452,7 +460,8 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
   const handleSendRequest = useCallback(() => {
     if (!validateCoupon()) return;
     if (requiresPayment && payableAmount > 0 && chargingPrice > 0) {
-      const paid = paymentMethod === "wallet" || !!paymentIntentId;
+      const paid =
+        paymentMethod === "wallet" || paymentMethod === "mixed" || !!paymentIntentId;
       if (!paid) {
         Alert.alert(
           "Payment required",
