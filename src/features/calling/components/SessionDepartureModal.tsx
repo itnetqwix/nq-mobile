@@ -101,6 +101,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.55)",
     justifyContent: "center",
     padding: 24,
+    zIndex: 200,
+    elevation: 200,
   },
   card: {
     backgroundColor: "#1c1c1e",

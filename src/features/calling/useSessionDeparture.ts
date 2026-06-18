@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AppState, type AppStateStatus } from "react-native";
 import type { Socket } from "socket.io-client";
 import { SESSION_DEPARTURE_SOCKET_EVENTS } from "../../lib/sessions/sessionContract";
 import {
@@ -23,6 +24,7 @@ type Args = {
   isTrainer: boolean;
   onPartnerAcceptedEnd: () => void;
   onStayedActive: (status: SessionDepartureStatus) => void;
+  onRespondError?: (message: string) => void;
 };
 
 export function useSessionDeparture({
@@ -32,6 +34,7 @@ export function useSessionDeparture({
   isTrainer,
   onPartnerAcceptedEnd,
   onStayedActive,
+  onRespondError,
 }: Args) {
   const [prompt, setPrompt] = useState<SessionDeparturePrompt | null>(null);
   const [status, setStatus] = useState<SessionDepartureStatus | null>(null);
@@ -41,8 +44,10 @@ export function useSessionDeparture({
 
   const onAcceptedRef = useRef(onPartnerAcceptedEnd);
   const onStayedRef = useRef(onStayedActive);
+  const onRespondErrorRef = useRef(onRespondError);
   onAcceptedRef.current = onPartnerAcceptedEnd;
   onStayedRef.current = onStayedActive;
+  onRespondErrorRef.current = onRespondError;
 
   const refreshStatus = useCallback(async () => {
     try {
@@ -53,6 +58,33 @@ export function useSessionDeparture({
       return null;
     }
   }, [sessionId]);
+
+  const applyPromptFromStatus = useCallback(
+    (s: SessionDepartureStatus) => {
+      if (
+        s.pendingForUserId &&
+        String(s.pendingForUserId) === String(myUserId) &&
+        s.initiatedByRole
+      ) {
+        setPrompt({
+          sessionId,
+          departedRole: s.initiatedByRole,
+          departedDisplayName:
+            s.initiatedByRole === "trainer" ? "Your coach" : "Your trainee",
+          rejoinDeadlineAt: s.rejoinDeadlineAt,
+          bookedEndAt: s.bookedEndAt,
+        });
+      }
+    },
+    [myUserId, sessionId]
+  );
+
+  const recoverPendingPrompt = useCallback(async () => {
+    const s = await refreshStatus();
+    if (!s) return s;
+    applyPromptFromStatus(s);
+    return s;
+  }, [applyPromptFromStatus, refreshStatus]);
 
   const applyPrompt = useCallback((payload: Partial<SessionDeparturePrompt>) => {
     if (!payload?.sessionId || String(payload.sessionId) !== String(sessionId)) return;
@@ -92,19 +124,7 @@ export function useSessionDeparture({
     socket.on(SESSION_DEPARTURE_SOCKET_EVENTS.STAYED, onStayed);
 
     void refreshStatus().then((s) => {
-      if (
-        s?.pendingForUserId &&
-        String(s.pendingForUserId) === String(myUserId) &&
-        s.initiatedByRole
-      ) {
-        setPrompt({
-          sessionId,
-          departedRole: s.initiatedByRole,
-          departedDisplayName: s.initiatedByRole === "trainer" ? "Your coach" : "Your trainee",
-          rejoinDeadlineAt: s.rejoinDeadlineAt,
-          bookedEndAt: s.bookedEndAt,
-        });
-      }
+      if (s) applyPromptFromStatus(s);
     });
 
     return () => {
@@ -112,7 +132,24 @@ export function useSessionDeparture({
       socket.off(SESSION_DEPARTURE_SOCKET_EVENTS.RESOLVED, onResolved);
       socket.off(SESSION_DEPARTURE_SOCKET_EVENTS.STAYED, onStayed);
     };
-  }, [socket, sessionId, myUserId, applyPrompt, refreshStatus]);
+  }, [socket, sessionId, applyPrompt, applyPromptFromStatus, refreshStatus]);
+
+  /** Recover missed PROMPT after backgrounding or reconnect. */
+  useEffect(() => {
+    if (!sessionId) return;
+    const onAppState = (next: AppStateStatus) => {
+      if (next === "active") void recoverPendingPrompt();
+    };
+    const sub = AppState.addEventListener("change", onAppState);
+    const pollId = setInterval(() => {
+      if (AppState.currentState !== "active") return;
+      void recoverPendingPrompt();
+    }, 4000);
+    return () => {
+      sub.remove();
+      clearInterval(pollId);
+    };
+  }, [recoverPendingPrompt, sessionId]);
 
   useEffect(() => {
     const deadline = status?.rejoinDeadlineAt ?? prompt?.rejoinDeadlineAt;
@@ -144,6 +181,12 @@ export function useSessionDeparture({
         } else if (res?.departure) {
           onStayedRef.current(res.departure);
         }
+      } catch (err: unknown) {
+        const msg =
+          err instanceof Error
+            ? err.message
+            : "Could not update session. Check your connection and try again.";
+        onRespondErrorRef.current?.(msg);
       } finally {
         setResponding(false);
       }

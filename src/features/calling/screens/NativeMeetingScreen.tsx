@@ -192,7 +192,7 @@ import { SessionDepartureModal } from "../components/SessionDepartureModal";
 import { SessionRejoinBlockedModal } from "../components/SessionRejoinBlockedModal";
 import { ExtensionWaitingForCoachModal } from "../components/ExtensionWaitingForCoachModal";
 import { useLiveLessonUxState } from "../useLiveLessonUxState";
-import { initiateSessionDeparture } from "../../home/api/homeApi";
+import { initiateSessionDeparture, fetchSessionDepartureStatus } from "../../home/api/homeApi";
 import { reportOpsEvent } from "../../ops/opsEventsApi";
 import { meetingTheme } from "../meetingTheme";
 import { useSessionExtensionFlow } from "../useSessionExtensionFlow";
@@ -844,6 +844,7 @@ function MeetingSurface({
   const [measuredAnnotationToolbarHeight, setMeasuredAnnotationToolbarHeight] =
     useState(ANNOTATION_TOOLBAR_HEIGHT);
   const [lockedAnnotPane, setLockedAnnotPane] = useState<0 | 1 | null>(null);
+  const [unlockedAnnotPane, setUnlockedAnnotPane] = useState<0 | 1 | null>(null);
 
   const hasClipStage =
     clipPaneUrisEarly.length > 0 &&
@@ -1358,10 +1359,6 @@ function MeetingSurface({
 
   const dualClip = clipPaneUris.length >= 2;
 
-  const handleTakeScreenshot = useCallback(() => {
-    void screenshot.takeScreenshot();
-  }, [screenshot]);
-
   const clipScreenshotLabels = useMemo((): [string, string] => {
     const labels = clipSync.selectedClips.slice(0, 2).map((c, i) => {
       const t = String(c?.title ?? c?.name ?? "").trim();
@@ -1383,6 +1380,32 @@ function MeetingSurface({
   }, [clipProgresses, clipDurations]);
   const lockedDuration = Math.max(clipDurations[0], clipDurations[1]);
 
+  const handleTakeScreenshot = useCallback(() => {
+    if (hasClipStage && clipPaneUris.length > 0) {
+      const progressForPane = (paneIndex: 0 | 1) =>
+        lockedDualClip ? lockedProgress : (clipProgresses[paneIndex] ?? 0);
+      const sources = clipPaneUris
+        .slice(0, 2)
+        .map((uri, i) => ({
+          uri,
+          progressSeconds: progressForPane(i === 1 ? 1 : 0),
+        }))
+        .filter((s) => !!s.uri);
+      if (sources.length > 0) {
+        void screenshot.takeScreenshot(sources);
+        return;
+      }
+    }
+    void screenshot.takeScreenshot();
+  }, [
+    clipPaneUris,
+    clipProgresses,
+    hasClipStage,
+    lockedDualClip,
+    lockedProgress,
+    screenshot,
+  ]);
+
   const activePaneIndex = useMemo((): 0 | 1 => {
     const idx = clipSync.selectedClips.findIndex(
       (c) => clipIdOf(c) === clipSync.activeClipId
@@ -1393,9 +1416,25 @@ function MeetingSurface({
   /** Pane whose intrinsic size drives annotation UV mapping (focused or active clip). */
   const annotationSourcePane = useMemo((): 0 | 1 => {
     if (lockedDualClip && lockedAnnotPane != null) return lockedAnnotPane;
+    if (
+      dualClip &&
+      !lockedDualClip &&
+      annotationToolbarOpen &&
+      unlockedAnnotPane != null
+    ) {
+      return unlockedAnnotPane;
+    }
     if (clipFocusIndex === 0 || clipFocusIndex === 1) return clipFocusIndex;
     return activePaneIndex;
-  }, [activePaneIndex, clipFocusIndex, lockedAnnotPane, lockedDualClip]);
+  }, [
+    activePaneIndex,
+    annotationToolbarOpen,
+    clipFocusIndex,
+    dualClip,
+    lockedAnnotPane,
+    lockedDualClip,
+    unlockedAnnotPane,
+  ]);
 
   const syncMeasuredAnnotationRect = useCallback((pane: 0 | 1) => {
     const paneOff = paneOffsetRef.current[pane];
@@ -1443,34 +1482,25 @@ function MeetingSurface({
     }
   }, [clipPaneUris.length, hasClipStage, clipSync]);
 
-  const autoClipFocusForAnnotationRef = useRef(false);
   useEffect(() => {
     if (!isTrainer || !dualClip) {
-      autoClipFocusForAnnotationRef.current = false;
       setLockedAnnotPane(null);
+      setUnlockedAnnotPane(null);
       return;
     }
     if (annotationToolbarOpen) {
       if (lockedDualClip) {
         setLockedAnnotPane((prev) => prev ?? activePaneIndex);
-        return;
-      }
-      if (clipSync.clipFocusIndex == null) {
-        autoClipFocusForAnnotationRef.current = true;
-        clipSync.setClipFocus(annotationSourcePane);
+      } else {
+        setUnlockedAnnotPane((prev) => prev ?? activePaneIndex);
       }
       return;
     }
     setLockedAnnotPane(null);
-    if (autoClipFocusForAnnotationRef.current) {
-      autoClipFocusForAnnotationRef.current = false;
-      clipSync.setClipFocus(null);
-    }
+    setUnlockedAnnotPane(null);
   }, [
     activePaneIndex,
-    annotationSourcePane,
     annotationToolbarOpen,
-    clipSync,
     dualClip,
     isTrainer,
     lockedDualClip,
@@ -1483,6 +1513,11 @@ function MeetingSurface({
     if (lockedAnnotPane == null) return;
     syncMeasuredAnnotationRect(lockedAnnotPane);
   }, [lockedAnnotPane, syncMeasuredAnnotationRect]);
+
+  useEffect(() => {
+    if (unlockedAnnotPane == null) return;
+    syncMeasuredAnnotationRect(unlockedAnnotPane);
+  }, [unlockedAnnotPane, syncMeasuredAnnotationRect]);
 
   const unlockedTimelineProgress = clipProgresses[activePaneIndex];
   const unlockedTimelineDuration = clipDurations[activePaneIndex];
@@ -1778,7 +1813,51 @@ function MeetingSurface({
         type: NOTIFICATION_TYPES.TRANSCATIONAL,
       });
     },
+    onRespondError: (msg) => {
+      pushLocalToast({
+        title: "Couldn't update session",
+        description: msg,
+        type: NOTIFICATION_TYPES.TRANSCATIONAL,
+      });
+    },
   });
+
+  /** Initiator: open post-call when partner agrees to end (timer or departure resolved). */
+  useEffect(() => {
+    if (!awaitingPartnerEnd || postCallFlowStartedRef.current) return;
+    if (lessonTimer.status === "ended") {
+      void openPostCallFlow();
+    }
+  }, [awaitingPartnerEnd, lessonTimer.status, openPostCallFlow]);
+
+  /** Recovery if LESSON_TIME_ENDED or departure status was missed after endCall. */
+  useEffect(() => {
+    if (!awaitingPartnerEnd || postCallFlowStartedRef.current) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const readiness = await fetchSessionJoinReadiness(lessonId);
+        if (cancelled || postCallFlowStartedRef.current) return;
+        if (readiness?.timer?.status === "ended") {
+          void openPostCallFlow();
+          return;
+        }
+        const res = await fetchSessionDepartureStatus(lessonId);
+        if (cancelled || postCallFlowStartedRef.current) return;
+        if (res?.ended) {
+          void openPostCallFlow();
+        }
+      } catch {
+        /* poll errors are non-fatal */
+      }
+    };
+    void tick();
+    const id = setInterval(tick, 3000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [awaitingPartnerEnd, lessonId, openPostCallFlow]);
 
   const [rejoinBlockedDismissed, setRejoinBlockedDismissed] = useState(false);
 
@@ -2177,7 +2256,7 @@ function MeetingSurface({
     drawingSync.setTrainerDrawingEnabled(true);
   }, [annotationArmed, drawingSync]);
 
-  const canDraw = isTrainer && annotationArmed;
+  const canDraw = isTrainer && annotationArmed && !screenshot.capturing;
   const bigVideoActive =
     inClipMode
       ? clipSync.clipFullscreen || clipFocusIndex != null
@@ -2757,7 +2836,7 @@ function MeetingSurface({
                         <View style={styles.singleClipControlsDock}>
                           <ClipPlaybackControls
                             variant="inline"
-                            size="default"
+                            size="slim"
                             onLightBackground
                             isPlaying={clipSync.isClipPlaying(
                               clipSync.selectedClips[0]
@@ -3173,12 +3252,18 @@ function MeetingSurface({
           bottomOffset={chrome.annotationToolbarBottom}
           onLayoutHeight={setMeasuredAnnotationToolbarHeight}
           clipPaneSwitcher={
-            lockedDualClip && annotationToolbarOpen
+            dualClip && annotationToolbarOpen
               ? {
                   labels: clipScreenshotLabels,
-                  activeIndex: lockedAnnotPane ?? activePaneIndex,
+                  activeIndex: lockedDualClip
+                    ? (lockedAnnotPane ?? activePaneIndex)
+                    : (unlockedAnnotPane ?? activePaneIndex),
                   onSelect: (idx) => {
-                    setLockedAnnotPane(idx);
+                    if (lockedDualClip) {
+                      setLockedAnnotPane(idx);
+                    } else {
+                      setUnlockedAnnotPane(idx);
+                    }
                     syncMeasuredAnnotationRect(idx);
                   },
                 }
@@ -3387,7 +3472,8 @@ function MeetingSurface({
           <View style={styles.departureWaitCard}>
             <Text style={styles.departureWaitTitle}>Waiting for your partner</Text>
             <Text style={styles.departureWaitBody}>
-              They can choose to end the session or stay until the booked time ends.
+              Your partner will be asked to end the session or stay until the booked time
+              ends. You will continue to ratings and recap once they confirm.
             </Text>
           </View>
         </View>

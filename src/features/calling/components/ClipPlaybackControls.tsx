@@ -26,7 +26,16 @@ type ControlMetrics = {
   playIconSize: number;
 };
 
-function getControlMetrics(size: "default" | "compact"): ControlMetrics {
+function getControlMetrics(size: "default" | "compact" | "slim"): ControlMetrics {
+  if (size === "slim") {
+    return {
+      trackHeight: 3,
+      trackRowHeight: 24,
+      thumbSize: 12,
+      playBtnSize: 26,
+      playIconSize: 12,
+    };
+  }
   const compact = size === "compact";
   const trackHeight = compact ? 4 : 5;
   const thumbSize = compact ? 14 : 16;
@@ -57,7 +66,9 @@ type Props = {
   isExpanded?: boolean;
   onToggleExpand?: () => void;
   /** Smaller play button, track, and labels for shared dual-clip bar. */
-  size?: "default" | "compact";
+  size?: "default" | "compact" | "slim";
+  /** Hide elapsed/total labels (inline dual-clip panes). */
+  hideTimeLabels?: boolean;
   /** Higher-contrast timeline when sitting on a white clip stage. */
   onLightBackground?: boolean;
 };
@@ -76,6 +87,7 @@ export function ClipPlaybackControls({
   isExpanded,
   onToggleExpand,
   size = "default",
+  hideTimeLabels = false,
   onLightBackground = false,
 }: Props) {
   const metrics = useMemo(() => getControlMetrics(size), [size]);
@@ -132,7 +144,8 @@ export function ClipPlaybackControls({
       <View
         style={[
           styles.timelineCard,
-          size === "compact" && styles.timelineCardCompact,
+          (size === "compact" || size === "slim") && styles.timelineCardCompact,
+          size === "slim" && styles.timelineCardSlim,
           isInline && styles.timelineCardInline,
           light && styles.timelineCardLight,
           scrubbing && styles.timelineCardScrubbing,
@@ -170,7 +183,13 @@ export function ClipPlaybackControls({
               setTrackWidthPx(w);
             }}
             {...panResponder.panHandlers}
-            style={[styles.trackRow, { height: metrics.trackRowHeight, minHeight: 44 }]}
+            style={[
+              styles.trackRow,
+              {
+                height: metrics.trackRowHeight,
+                minHeight: size === "slim" ? 28 : 44,
+              },
+            ]}
             accessibilityRole="adjustable"
             accessibilityLabel="Clip timeline"
             accessibilityValue={{
@@ -215,26 +234,28 @@ export function ClipPlaybackControls({
               />
             </View>
           </View>
-          <View style={styles.timeRow}>
-            <Text
-              style={[
-                styles.timeText,
-                size === "compact" && styles.timeTextCompact,
-                light && styles.timeTextLight,
-              ]}
-            >
-              {formatTime(value)}
-            </Text>
-            <Text
-              style={[
-                styles.timeMuted,
-                size === "compact" && styles.timeTextCompact,
-                light && styles.timeMutedLight,
-              ]}
-            >
-              {formatTime(max)}
-            </Text>
-          </View>
+          {!hideTimeLabels ? (
+            <View style={styles.timeRow}>
+              <Text
+                style={[
+                  styles.timeText,
+                  (size === "compact" || size === "slim") && styles.timeTextCompact,
+                  light && styles.timeTextLight,
+                ]}
+              >
+                {formatTime(value)}
+              </Text>
+              <Text
+                style={[
+                  styles.timeMuted,
+                  (size === "compact" || size === "slim") && styles.timeTextCompact,
+                  light && styles.timeMutedLight,
+                ]}
+              >
+                {formatTime(max)}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         {showExpand && onToggleExpand ? (
@@ -242,7 +263,7 @@ export function ClipPlaybackControls({
             style={({ pressed }) => [
               styles.expandBtn,
               isExpanded && styles.expandBtnActive,
-              size === "compact" && styles.expandBtnCompact,
+              (size === "compact" || size === "slim") && styles.expandBtnCompact,
               pressed && { opacity: 0.85 },
             ]}
             onPress={onToggleExpand}
@@ -250,7 +271,7 @@ export function ClipPlaybackControls({
           >
             <Ionicons
               name={isExpanded ? "contract-outline" : "expand-outline"}
-              size={size === "compact" ? 16 : 18}
+              size={size === "slim" ? 14 : size === "compact" ? 16 : 18}
               color={isExpanded ? meetingTheme.onPrimary : meetingTheme.text}
             />
           </Pressable>
@@ -312,6 +333,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 5,
+  },
+  timelineCardSlim: {
+    gap: 4,
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
   },
   playBtn: {
     backgroundColor: meetingTheme.navy,

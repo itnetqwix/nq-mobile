@@ -151,6 +151,7 @@ export function useClipSync({
   const [clipFocusIndex, setClipFocusIndex] = useState<0 | 1 | null>(null);
   const [zoomPanByVideoId, setZoomPanByVideoId] = useState<Record<string, ZoomPan>>({});
   const lastSeekEmit = useRef(0);
+  const lastScrubSeekEmit = useRef(0);
   const lastPeriodicProgressEmit = useRef(0);
   const lastProgressByClipId = useRef<Record<string, number>>({});
   const lastLocalProgressRef = useRef<Record<string, number>>({});
@@ -379,7 +380,16 @@ export function useClipSync({
       }
       if (!vid) return;
       lastProgressByClipId.current[vid] = progressRaw;
+      const isScrubbing = payload?.scrubbing === true;
       const playingHeartbeat = payload?.playing === true || payload?.heartbeat === true;
+      if (!isTrainer && (isScrubbing || !playingHeartbeat)) {
+        setSeekHint({
+          videoId: vid,
+          progress: progressRaw,
+          receivedAt: Date.now(),
+        });
+        return;
+      }
       if (!isTrainer && playingHeartbeat) {
         const localProgress = lastLocalProgressRef.current[vid];
         if (
@@ -875,15 +885,24 @@ export function useClipSync({
         receivedAt: now,
       });
       if (!isTrainer || !socket) return;
-      if (!options?.forceEmit && now - lastSeekEmit.current < 200) return;
-      lastSeekEmit.current = now;
-      socket.emit(CLIP_EVENTS.ON_VIDEO_TIME, {
+      const isCommit = options?.forceEmit !== false;
+      const payload = {
         videoId: vid ?? undefined,
         progress: progressSeconds,
         both: bothLocked,
+        scrubbing: !isCommit,
         userInfo,
         sessionId,
-      });
+      };
+      if (isCommit) {
+        lastSeekEmit.current = now;
+        lastScrubSeekEmit.current = now;
+        socket.emit(CLIP_EVENTS.ON_VIDEO_TIME, payload);
+        return;
+      }
+      if (now - lastScrubSeekEmit.current < 80) return;
+      lastScrubSeekEmit.current = now;
+      socket.emit(CLIP_EVENTS.ON_VIDEO_TIME, payload);
     },
     [activeClipId, isTrainer, lockMode, selectedClips.length, sessionId, socket, userInfo]
   );

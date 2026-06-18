@@ -26,13 +26,45 @@ export const LIVE_LESSON_QA_MATRIX = [
     scenario: "ICE reconnect while both in-call",
     expected: "No duplicate peer-joined toast (reason=reconnect suppressed)",
   },
+  {
+    id: 20,
+    scenario: "Annotate on unlocked dual-clip",
+    expected: "Both panes visible; pane switcher changes stroke target only",
+  },
+  {
+    id: 21,
+    scenario: "Trainer scrubs locked dual-clip",
+    expected: "Trainee video + slim progress bar follow within ~100ms",
+  },
+  {
+    id: 22,
+    scenario: "Screenshot dual-clip with annotations",
+    expected: "Full-brightness frame from clip thumbnails; annotations burned in",
+  },
+  {
+    id: 23,
+    scenario: "Initiator ends then partner End",
+    expected: "Both reach post-call (trainer recap / trainee ratings)",
+  },
+  {
+    id: 24,
+    scenario: "Initiator ends then partner Stay",
+    expected: "Initiator sees paused state; no post-call until booked end",
+  },
+  {
+    id: 25,
+    scenario: "Missed SESSION_DEPARTURE_PROMPT",
+    expected: "Status poll on AppState active shows SessionDepartureModal",
+  },
 ] as const;
 
 describe("live lesson QA matrix", () => {
-  it("documents 19 E2E scenarios", () => {
-    expect(LIVE_LESSON_QA_MATRIX).toHaveLength(19);
+  it("documents 25 E2E scenarios", () => {
+    expect(LIVE_LESSON_QA_MATRIX).toHaveLength(25);
     expect(LIVE_LESSON_QA_MATRIX[7].expected).toContain("SessionRejoinBlockedModal");
     expect(LIVE_LESSON_QA_MATRIX[18].expected).toContain("reconnect");
+    expect(LIVE_LESSON_QA_MATRIX[19].expected).toContain("pane switcher");
+    expect(LIVE_LESSON_QA_MATRIX[22].expected).toContain("post-call");
   });
 });
 
@@ -48,5 +80,50 @@ describe("KeyboardFormModal smoke", () => {
     expect(src).toContain("KeyboardFormModal");
     expect(src).toContain('presentationStyle="pageSheet"');
     expect(src).not.toMatch(/KeyboardAvoidingView[\s\S]*transparent/);
+  });
+});
+
+describe("live lesson structural smoke", () => {
+  const fs = require("fs");
+  const path = require("path");
+  const read = (rel: string) =>
+    fs.readFileSync(path.join(__dirname, "..", rel), "utf8");
+
+  it("dual-clip annotation does not auto setClipFocus on toolbar open", () => {
+    const src = read("screens/NativeMeetingScreen.tsx");
+    expect(src).not.toMatch(
+      /annotationToolbarOpen[\s\S]{0,400}clipSync\.setClipFocus\(annotationSourcePane\)/
+    );
+    expect(src).toContain("unlockedAnnotPane");
+    expect(src).toContain('dualClip && annotationToolbarOpen');
+  });
+
+  it("useClipSync seek emits scrubbing flag for live trainer scrub", () => {
+    const src = read("useClipSync.ts");
+    expect(src).toContain("scrubbing: !isCommit");
+    expect(src).toContain("lastScrubSeekEmit");
+    expect(src).toContain("payload?.scrubbing === true");
+  });
+
+  it("ClipPlaybackControls exposes slim inline timeline tier", () => {
+    const src = read("components/ClipPlaybackControls.tsx");
+    expect(src).toContain('"slim"');
+    expect(src).toContain("hideTimeLabels");
+  });
+
+  it("useSessionDeparture recovers missed prompt on AppState active", () => {
+    const src = read("useSessionDeparture.ts");
+    expect(src).toContain("AppState.addEventListener");
+    expect(src).toContain("recoverPendingPrompt");
+    expect(src).toContain("onRespondError");
+  });
+
+  it("screenshot capture hides drawing overlay and prefers clip frames", () => {
+    const meeting = read("screens/NativeMeetingScreen.tsx");
+    expect(meeting).toContain("annotationArmed && !screenshot.capturing");
+    expect(meeting).toContain("screenshot.takeScreenshot(sources)");
+    const burnIn = read("components/AnnotationBurnInHost.tsx");
+    expect(burnIn).toContain("EXPORT_WIDTH = 1080");
+    expect(burnIn).toContain('resizeMode="cover"');
   });
 });

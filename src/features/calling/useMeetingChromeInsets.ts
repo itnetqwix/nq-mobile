@@ -2,7 +2,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 /** Heights reserved for bottom chrome so video never sits under controls. */
 export const ACTION_BAR_HEIGHT = 44;
-export const CLIP_TIMELINE_HEIGHT = 52;
+export const CLIP_TIMELINE_HEIGHT = 34;
 export const TOP_CHROME_HEIGHT = 44;
 /** Height of the DualVideoStrip shown below clips in clip mode. */
 export const DUAL_VIDEO_STRIP_HEIGHT = 102;

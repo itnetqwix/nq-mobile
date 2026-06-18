@@ -89,7 +89,7 @@ export function LockedDualClipStage({
         <View style={styles.controlsFooter}>
           <ClipPlaybackControls
             variant="inline"
-            size="compact"
+            size="slim"
             onLightBackground
             isPlaying={isPlaying}
             onTogglePlay={onTogglePlay}
@@ -142,8 +142,8 @@ const styles = StyleSheet.create({
   },
   controlsFooter: {
     backgroundColor: CLIP_BG,
-    paddingTop: 6,
-    paddingBottom: 6,
+    paddingTop: 3,
+    paddingBottom: 3,
     paddingHorizontal: 6,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "rgba(0,0,0,0.10)",

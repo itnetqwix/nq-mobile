@@ -102,7 +102,8 @@ export function UnlockedDualClipStage({
                 <View style={styles.controlsDock}>
                   <ClipPlaybackControls
                     variant="inline"
-                    size="default"
+                    size="slim"
+                    hideTimeLabels
                     onLightBackground
                     isPlaying={isPlayingByPane[paneIndex]}
                     onTogglePlay={() => onTogglePlay(paneIndex)}
@@ -156,8 +157,8 @@ const styles = StyleSheet.create({
   },
   controlsDock: {
     flexShrink: 0,
-    paddingTop: 6,
-    paddingBottom: 6,
+    paddingTop: 3,
+    paddingBottom: 3,
     paddingHorizontal: 4,
     backgroundColor: "#fff",
     borderTopWidth: StyleSheet.hairlineWidth,

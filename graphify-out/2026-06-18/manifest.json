@@ -750,14 +750,14 @@
     "semantic_hash": "aa9d9a73ec8765d0c73920c1438359b3"
   },
   "src/features/calling/captureClipScreenshot.ts": {
-    "mtime": 1781433027.350596,
-    "ast_hash": "ee7c515fb9469b35e431b6a3d7d2db0f",
+    "mtime": 1781783488.273104,
+    "ast_hash": "c8ec4bfa744e2fa7c87d68c269e8c16a",
     "semantic_hash": ""
   },
   "src/features/calling/captureLiveVideoFrame.ts": {
-    "mtime": 1780490168.1610324,
-    "ast_hash": "c9048e041b41e6f35b2807d1c9b5dab4",
-    "semantic_hash": "c9048e041b41e6f35b2807d1c9b5dab4"
+    "mtime": 1781783486.8496008,
+    "ast_hash": "3e480ceb0e2ed2b13a89a39ca8382c75",
+    "semantic_hash": ""
   },
   "src/features/calling/clipEvents.ts": {
     "mtime": 1779273844.4554172,
@@ -855,9 +855,9 @@
     "semantic_hash": "1e5d190a6340e5e2a05916e53dd1cef1"
   },
   "src/features/calling/components/LiveVideoCaptureHost.tsx": {
-    "mtime": 1780490168.1067972,
-    "ast_hash": "d50fb582a3ebad02d5424e9b96671c95",
-    "semantic_hash": "d50fb582a3ebad02d5424e9b96671c95"
+    "mtime": 1781783487.9660308,
+    "ast_hash": "8ecc5f46b896dae7c3f7fd72d5bb10ff",
+    "semantic_hash": ""
   },
   "src/features/calling/components/LockedDualClipStage.tsx": {
     "mtime": 1781674066.6653187,
@@ -969,11 +969,6 @@
     "ast_hash": "06046257242f18acdf6e4f92547d85a0",
     "semantic_hash": "06046257242f18acdf6e4f92547d85a0"
   },
-  "src/features/calling/components/ScreenshotCapturePickerModal.tsx": {
-    "mtime": 1780294673.462229,
-    "ast_hash": "f093538eedd22fe0398ba5109230958e",
-    "semantic_hash": "f093538eedd22fe0398ba5109230958e"
-  },
   "src/features/calling/components/ScreenshotCompositeHost.tsx": {
     "mtime": 1780215585.265483,
     "ast_hash": "c9c5ccd7ce00fe7d9157fdbdc60908f3",
@@ -1000,9 +995,9 @@
     "semantic_hash": ""
   },
   "src/features/calling/components/SessionScreenshotDetailsModal.tsx": {
-    "mtime": 1780490168.1260808,
-    "ast_hash": "8b143ba903fae06ee90810bf9cded8bd",
-    "semantic_hash": "8b143ba903fae06ee90810bf9cded8bd"
+    "mtime": 1781783541.1759958,
+    "ast_hash": "bb2d88d2bdd01f20063d245728f15f6a",
+    "semantic_hash": ""
   },
   "src/features/calling/components/SessionScreenshotSheet.tsx": {
     "mtime": 1780118462.5618343,
@@ -1050,8 +1045,8 @@
     "semantic_hash": "90c12feb666869b392fe096fbb8728b2"
   },
   "src/features/calling/gamePlanPdfHtml.ts": {
-    "mtime": 1781779172.8014657,
-    "ast_hash": "451d4cd75e776f5cc19f3d492ae313f4",
+    "mtime": 1781783543.1694672,
+    "ast_hash": "bc57ce1fe3263dc151436a5be9ba67ca",
     "semantic_hash": ""
   },
   "src/features/calling/hooks/useAdaptiveLessonNetwork.ts": {
@@ -1195,8 +1190,8 @@
     "semantic_hash": "806f6c977ce3955f42cdad76e91901c3"
   },
   "src/features/calling/screens/NativeMeetingScreen.tsx": {
-    "mtime": 1781779399.3471723,
-    "ast_hash": "a15d1573102f9cc9832f13f38a9bee2b",
+    "mtime": 1781783532.6528463,
+    "ast_hash": "82c4ca1e9c220b5ba9d91a8a324c76d2",
     "semantic_hash": ""
   },
   "src/features/calling/screens/PrecallLobbyScreen.tsx": {
@@ -1285,9 +1280,9 @@
     "semantic_hash": ""
   },
   "src/features/calling/useMeetingScreenshot.ts": {
-    "mtime": 1780490168.126683,
-    "ast_hash": "ac9718e680c0c320b67d6e0d73fd4a17",
-    "semantic_hash": "ac9718e680c0c320b67d6e0d73fd4a17"
+    "mtime": 1781783505.4289775,
+    "ast_hash": "9ec94db20ff53fb38cda708ec2bc344b",
+    "semantic_hash": ""
   },
   "src/features/calling/useScreenshotUploadRetry.ts": {
     "mtime": 1780490168.0945156,

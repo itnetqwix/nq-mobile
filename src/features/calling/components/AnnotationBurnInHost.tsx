@@ -17,7 +17,8 @@ import type { AnnotationProjectionOptions } from "../annotationRenderUtils";
 import type { RemoteStroke } from "../useDrawingSync";
 import { StaticAnnotationCanvas } from "./StaticAnnotationCanvas";
 
-const EXPORT_WIDTH = 720;
+const EXPORT_WIDTH = 1080;
+const EXPORT_JPEG_QUALITY = 0.96;
 
 export type AnnotationBurnInHostHandle = {
   composite: (
@@ -62,7 +63,7 @@ export function AnnotationBurnInHost({ ref }: Props) {
     try {
       const uri = await captureViewToImage(captureRefView, {
         format: "jpg",
-        quality: 0.9,
+        quality: EXPORT_JPEG_QUALITY,
         result: "tmpfile",
       });
       resolverRef.current?.(uri);
@@ -117,7 +118,7 @@ export function AnnotationBurnInHost({ ref }: Props) {
       <Image
         source={{ uri: job.baseUri }}
         style={{ width: EXPORT_WIDTH, height: job.height, backgroundColor: "#fff" }}
-        resizeMode="contain"
+        resizeMode="cover"
         onLoadEnd={() => {
           imageReadyRef.current = true;
           tryFinish();
