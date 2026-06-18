@@ -89,11 +89,17 @@ export function SessionHandoffScreen({
                 icon="document-text-outline"
                 label="Game plan"
                 value={
-                  summary.game_plan_status === "available"
-                    ? summary.game_plan_title ?? "Shared with trainee"
-                    : summary.game_plan_status === "pending"
-                      ? "Pending upload"
-                      : "Not shared yet"
+                  summary.game_plan_publish_status === "draft"
+                    ? "Draft (not shared)"
+                    : summary.game_plan_pdf_status === "pending"
+                      ? "PDF generating…"
+                      : summary.game_plan_pdf_status === "failed"
+                        ? "PDF failed — retry from locker"
+                        : summary.game_plan_status === "available"
+                          ? summary.game_plan_title ?? "Shared with trainee"
+                          : summary.game_plan_status === "pending"
+                            ? "Pending upload"
+                            : "Not shared yet"
                 }
               />
             ) : null}

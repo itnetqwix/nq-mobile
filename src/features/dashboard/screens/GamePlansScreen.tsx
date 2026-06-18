@@ -56,6 +56,48 @@ const KIND_META: Record<
   none:   { icon: "document-outline",       label: "Plan",      color: "#6b7280", bg: "#f3f4f6" },
 };
 
+function formatLessonDate(raw: unknown): string | null {
+  if (!raw) return null;
+  try {
+    const d = new Date(String(raw));
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  } catch {
+    return null;
+  }
+}
+
+function formatRelativeUpdated(raw: unknown): string | null {
+  if (!raw) return null;
+  try {
+    const d = new Date(String(raw));
+    if (Number.isNaN(d.getTime())) return null;
+    const diffMs = Date.now() - d.getTime();
+    const mins = Math.floor(diffMs / 60_000);
+    if (mins < 1) return "Updated just now";
+    if (mins < 60) return `Updated ${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 48) return `Updated ${hrs}h ago`;
+    return `Updated ${d.toLocaleDateString()}`;
+  } catch {
+    return null;
+  }
+}
+
+type SessionPlanMeta = {
+  report?: string;
+  sessionRecordingUrl?: string;
+  start_time?: string;
+  game_plan_pdf_status?: "idle" | "pending" | "ready" | "failed";
+  game_plan_pdf_version?: number;
+};
+
 export function GamePlansScreen() {
   const { t } = useAppTranslation();
   const { user, accountType } = useAuth();
@@ -71,6 +113,16 @@ export function GamePlansScreen() {
     queryKey: queryKeys.locker.reports,
     queryFn: () => postReportsGetAll({}),
     staleTime: 30_000,
+    refetchInterval: (query) => {
+      const rows = query.state.data ?? [];
+      const hasPending = rows.some((grp: { report?: Record<string, unknown>[] }) =>
+        (grp.report ?? []).some((item) => {
+          const session = item.session as SessionPlanMeta | undefined;
+          return session?.game_plan_pdf_status === "pending";
+        })
+      );
+      return hasPending ? 5000 : false;
+    },
   });
 
   const [viewer, setViewer] = useState<{
@@ -111,12 +163,15 @@ export function GamePlansScreen() {
     const reportData = (item.reportData as { imageUrl?: string; title?: string }[] | undefined)?.[0];
     const img = reportData?.imageUrl;
     const title = reportData?.title ?? String(item.title ?? t("gamePlans.planDefault", { defaultValue: "Game Plan" }));
-    const session = item.session as { report?: string; sessionRecordingUrl?: string } | undefined;
+    const session = item.session as SessionPlanMeta | undefined;
     const pdfName = session?.report;
+    const pdfVersion = session?.game_plan_pdf_version;
     const recording = session?.sessionRecordingUrl ?? (item.sessionRecordingUrl as string | undefined);
 
     const fromImg = img ? getS3ImageUrl(img) : "";
-    const fromPdf = pdfName ? getS3ImageUrl(pdfName) : "";
+    const fromPdf = pdfName
+      ? `${getS3ImageUrl(pdfName)}${pdfVersion ? `?v=${pdfVersion}` : ""}`
+      : "";
     const fromRec = typeof recording === "string" && recording.length > 0 ? getS3ImageUrl(recording) : "";
 
     const uri = fromPdf || fromImg || fromRec;
@@ -196,8 +251,17 @@ export function GamePlansScreen() {
                   {section.data.map((item, index) => {
                     const reportData = (item.reportData as { imageUrl?: string; title?: string }[] | undefined)?.[0];
                     const title = reportData?.title ?? String(item.title ?? t("gamePlans.planDefault", { defaultValue: "Game Plan" }));
-                    const session = item.session as { report?: string; sessionRecordingUrl?: string } | undefined;
+                    const session = item.session as SessionPlanMeta | undefined;
                     const hasPdf = !!session?.report;
+                    const pdfPending = session?.game_plan_pdf_status === "pending";
+                    const pdfFailed = session?.game_plan_pdf_status === "failed";
+                    const isDraft = item.publish_status === "draft";
+                    const lessonDate = formatLessonDate(session?.start_time ?? item.updatedAt);
+                    const updatedLabel = formatRelativeUpdated(item.updatedAt);
+                    const trainerLabel = String(
+                      (item.trainer as { fullname?: string; fullName?: string })?.fullname ??
+                        (item.trainer as { fullName?: string })?.fullName ?? ""
+                    );
                     const uri = !hasPdf && reportData?.imageUrl ? getS3ImageUrl(reportData.imageUrl) : "";
                     const kind = planKind(item);
                     const km = KIND_META[kind];
@@ -240,20 +304,55 @@ export function GamePlansScreen() {
                           {/* kind badge overlaid on hero */}
                           <View style={[styles.kindBadge, { backgroundColor: km.bg, borderColor: km.color + "44" }]}>
                             <Ionicons name={km.icon} size={11} color={km.color} />
-                            <Text style={[styles.kindBadgeText, { color: km.color }]}>{km.label}</Text>
+                            <Text style={[styles.kindBadgeText, { color: km.color }]}>
+                              {pdfPending ? "Generating PDF" : km.label}
+                            </Text>
                           </View>
+                          {isTrainer && isDraft ? (
+                            <View style={[styles.statusBadge, styles.draftBadge]}>
+                              <Text style={styles.draftBadgeText}>Draft</Text>
+                            </View>
+                          ) : null}
+                          {pdfFailed ? (
+                            <View style={[styles.statusBadge, styles.failedBadge]}>
+                              <Text style={styles.failedBadgeText}>PDF failed</Text>
+                            </View>
+                          ) : null}
                         </View>
 
                         {/* Content area */}
                         <View style={styles.cardBody}>
                           <Text style={styles.planTitle} numberOfLines={2}>{title}</Text>
 
-                          {/* Trainee tag for trainer view */}
+                          {lessonDate ? (
+                            <View style={styles.metaRow}>
+                              <Ionicons name="calendar-outline" size={11} color={c.textMuted} />
+                              <Text style={styles.metaText} numberOfLines={1}>{lessonDate}</Text>
+                            </View>
+                          ) : null}
+
                           {isTrainer && traineeLabel ? (
                             <View style={styles.traineeTag}>
                               <Ionicons name="person-outline" size={11} color={c.textMuted} />
                               <Text style={styles.traineeTagText} numberOfLines={1}>{traineeLabel}</Text>
                             </View>
+                          ) : null}
+
+                          {!isTrainer && trainerLabel ? (
+                            <View style={styles.traineeTag}>
+                              <Ionicons name="school-outline" size={11} color={c.textMuted} />
+                              <Text style={styles.traineeTagText} numberOfLines={1}>{trainerLabel}</Text>
+                            </View>
+                          ) : null}
+
+                          {updatedLabel ? (
+                            <Text style={styles.updatedText}>{updatedLabel}</Text>
+                          ) : null}
+
+                          {pdfPending ? (
+                            <Text style={styles.pendingText}>
+                              {t("gamePlans.pdfGenerating", { defaultValue: "PDF generating…" })}
+                            </Text>
                           ) : null}
 
                           <View style={styles.cardFooter}>
@@ -406,6 +505,56 @@ function useStyles() {
       kindBadgeText: {
         fontSize: 10,
         fontWeight: "700",
+      },
+      statusBadge: {
+        position: "absolute",
+        top: 8,
+        right: 8,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: radii.pill,
+      },
+      draftBadge: {
+        backgroundColor: "#fff8e6",
+        borderWidth: 1,
+        borderColor: "#f0c040",
+      },
+      draftBadgeText: {
+        fontSize: 10,
+        fontWeight: "700",
+        color: "#8a6d00",
+      },
+      failedBadge: {
+        backgroundColor: "#fef2f2",
+        borderWidth: 1,
+        borderColor: "#fca5a5",
+      },
+      failedBadgeText: {
+        fontSize: 10,
+        fontWeight: "700",
+        color: "#b91c1c",
+      },
+      metaRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        marginTop: 4,
+      },
+      metaText: {
+        fontSize: 11,
+        color: palette.textMuted,
+        flex: 1,
+      },
+      updatedText: {
+        fontSize: 11,
+        color: palette.textMuted,
+        marginTop: 4,
+      },
+      pendingText: {
+        fontSize: 11,
+        color: palette.brandNavy,
+        fontWeight: "600",
+        marginTop: 4,
       },
       cardBody: {
         paddingHorizontal: space.sm,

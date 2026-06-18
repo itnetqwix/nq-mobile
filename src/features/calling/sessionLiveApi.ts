@@ -102,6 +102,8 @@ export type SessionHandoffSummary = {
   game_plan_title?: string | null;
   game_plan_expected_by?: string | null;
   game_plan_updated_at?: string | null;
+  game_plan_pdf_status?: "idle" | "pending" | "ready" | "failed";
+  game_plan_publish_status?: "draft" | "published" | null;
   peer: {
     _id: string;
     fullname: string | null;

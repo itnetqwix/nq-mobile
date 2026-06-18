@@ -116,3 +116,13 @@ export async function fetchCmsBlogPost(
     opts
   );
 }
+
+export async function fetchCmsStaticPage(
+  slug: string,
+  opts?: { guest?: boolean }
+): Promise<CmsPageDetail | null> {
+  return publicGet<CmsPageDetail>(
+    `${API_ROUTES.cms.page(slug)}?type=page`,
+    opts
+  );
+}

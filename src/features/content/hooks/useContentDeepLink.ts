@@ -47,6 +47,7 @@ function pathFromDeepLink(url: string): string {
 type Options = {
   openShell: (id: ShellSurfaceRouteId) => void;
   openFeature?: (id: DashboardRouteId) => void;
+  openLegal?: (slug: "terms" | "privacy") => void;
   /** When set, protected surfaces redirect here (guest mode). */
   onRequireAuth?: () => void;
   /** Guest browse — allow public shells/features without auth. */
@@ -59,6 +60,7 @@ type Options = {
 export function useContentDeepLink({
   openShell,
   openFeature,
+  openLegal,
   onRequireAuth,
   isGuest = false,
 }: Options) {
@@ -88,8 +90,12 @@ export function useContentDeepLink({
         openFeature(feature);
         return;
       }
-      if (path === "legal/terms" || path === "terms") {
-        openFeature?.("faq");
+      if (path === "legal/terms" || path === "terms" || path === "t&c") {
+        openLegal?.("terms");
+        return;
+      }
+      if (path === "legal/privacy" || path === "privacy" || path === "privacy-policy") {
+        openLegal?.("privacy");
         return;
       }
       if (path.includes("wake-up")) {
@@ -98,6 +104,6 @@ export function useContentDeepLink({
       }
       Linking.openURL(url).catch(() => {});
     },
-    [openShell, openFeature, onRequireAuth, isGuest]
+    [openShell, openFeature, openLegal, onRequireAuth, isGuest]
   );
 }

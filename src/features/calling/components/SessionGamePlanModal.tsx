@@ -36,7 +36,10 @@ import {
   fetchSessionReport,
   removeReportImage,
   requestCropImageUpload,
+  saveSessionGamePlan,
 } from "../meetingReportApi";
+import { fetchSessionTimeline } from "../sessionLiveApi";
+import type { GamePlanSessionMetaInput } from "../gamePlanSessionMeta";
 import { getNetQwixLogoDataUrl } from "../gamePlanBrandLogo";
 import { LockerViewerModal } from "../../dashboard/components/locker/LockerViewerModal";
 import { ReportImageCropModal } from "./ReportImageCropModal";
@@ -50,10 +53,6 @@ import { buildGamePlanPdfHtml } from "../gamePlanPdfHtml";
 import { shouldUseServerGamePlanPdfStitch } from "../gamePlanPdfStrategy";
 import { isPdfPrintAvailable, printHtmlToPdfFile } from "../pdfPrint";
 import { sendChatTextMessage } from "../../chats/lib/sendChatText";
-import {
-  NOTIFICATION_TITLES,
-  useNotifications,
-} from "../../notifications/NotificationContext";
 import { meetingTheme } from "../meetingTheme";
 
 /** Light-surface palette — do not use `meetingTheme` here (dark-call colors are illegible on white). */
@@ -91,7 +90,6 @@ export function SessionGamePlanModal({
   onClose,
 }: Props) {
   const insets = useSafeAreaInsets();
-  const { emitNotification } = useNotifications();
   const [title, setTitle] = useState("");
   const [topic, setTopic] = useState("");
   const [reportItems, setReportItems] = useState<ReportScreenshotItem[]>([]);
@@ -100,27 +98,49 @@ export function SessionGamePlanModal({
   const [saveStep, setSaveStep] = useState<"idle" | "pdf" | "upload" | "report">("idle");
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
+  const [sessionMeta, setSessionMeta] = useState<GamePlanSessionMetaInput | null>(null);
+  const [publishStatus, setPublishStatus] = useState<"draft" | "published" | null>(null);
   const [cropIndex, setCropIndex] = useState<number | null>(null);
   const [cropUri, setCropUri] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchSessionReport({
-        sessions: sessionId,
-        trainer: trainerId,
-        trainee: traineeId,
-      });
+      const [res, timeline] = await Promise.all([
+        fetchSessionReport({
+          sessions: sessionId,
+          trainer: trainerId,
+          trainee: traineeId,
+        }),
+        fetchSessionTimeline(sessionId),
+      ]);
       const data = res?.data ?? res;
       setReportItems(parseReportScreenshotItems(data?.reportData));
       if (data?.title) setTitle(String(data.title));
       if (data?.description) setTopic(String(data.description));
+      const ps = data?.publish_status;
+      setPublishStatus(ps === "draft" || ps === "published" ? ps : null);
+      setSessionMeta({
+        sessionId,
+        startTime: timeline?.startTimeUtc ?? timeline?.bookedDate ?? null,
+        endTime: timeline?.endTimeUtc ?? null,
+        durationMinutes: timeline?.timer?.duration ?? null,
+        totalExtendedMinutes: timeline?.extensions?.reduce(
+          (n, e) => n + Number(e.minutes ?? 0),
+          0
+        ),
+        isInstant: timeline?.isInstant,
+        trainerName,
+        traineeName,
+        firstPublishedAt: data?.first_published_at ?? null,
+        updatedAt: data?.updatedAt ?? null,
+      });
     } catch {
       setReportItems([]);
     } finally {
       setLoading(false);
     }
-  }, [sessionId, trainerId, traineeId]);
+  }, [sessionId, trainerId, traineeId, trainerName, traineeName]);
 
   useEffect(() => {
     if (visible) void load();
@@ -212,10 +232,16 @@ export function SessionGamePlanModal({
       title.trim() || "Session",
       topic.trim(),
       payloadItems,
-      { trainerName, traineeName, logoDataUrl }
+      {
+        ...sessionMeta,
+        sessionId,
+        trainerName,
+        traineeName,
+        logoDataUrl,
+      }
     );
     return printHtmlToPdfFile(html);
-  }, [reportItems, title, topic, trainerName, traineeName]);
+  }, [reportItems, title, topic, trainerName, traineeName, sessionMeta, sessionId]);
 
   const previewPdf = async () => {
     if (!title.trim()) {
@@ -251,7 +277,7 @@ export function SessionGamePlanModal({
     [traineeId, reportItems.length]
   );
 
-  const save = async (alsoSendToChat: boolean) => {
+  const save = async (publish: boolean, alsoSendToChat = false) => {
     if (!title.trim()) {
       Alert.alert("Title required", "Add a topic title for this game plan.");
       return;
@@ -262,7 +288,11 @@ export function SessionGamePlanModal({
       const payloadItems = toReportDataPayload(reportItems);
       const useServerPdfStitch = shouldUseServerGamePlanPdfStitch(payloadItems);
 
-      if (payloadItems.length > 0 && !useServerPdfStitch) {
+      if (
+        publish &&
+        payloadItems.length > 0 &&
+        !useServerPdfStitch
+      ) {
         setSaveStep("pdf");
         if (!isPdfPrintAvailable()) {
           Alert.alert(
@@ -308,50 +338,52 @@ export function SessionGamePlanModal({
       }
 
       setSaveStep("report");
-      await apiClient.post(API_ROUTES.report.create, {
+      const saveRes = await saveSessionGamePlan({
         sessions: sessionId,
         trainer: trainerId,
         trainee: traineeId,
         title: title.trim(),
         topic: topic.trim() || title.trim(),
         reportData: payloadItems,
+        publish,
       });
+      const saveData = (saveRes as { data?: Record<string, unknown> })?.data ?? saveRes;
+      const stitchPending = Boolean(
+        (saveData as { serverPdfStitchEnqueued?: boolean })?.serverPdfStitchEnqueued
+      );
 
-      if (!lockerEdit) {
-        emitNotification({
-          title: NOTIFICATION_TITLES.gamePlanReport,
-          description: "Your coach shared a game plan. Open Game plans in your locker.",
-          receiverId: traineeId,
-          senderId: trainerId,
-          bookingInfo: { sessionId },
-        });
-      }
-
-      if (alsoSendToChat) {
+      if (publish && alsoSendToChat) {
         try {
           await sendSummaryToChat(title.trim(), topic.trim());
         } catch {
           Alert.alert(
-            "Saved to locker",
-            "Game plan was saved but could not be sent in chat."
+            publish ? "Published" : "Draft saved",
+            "Plan was saved but could not be sent in chat."
           );
           onClose();
           return;
         }
       }
 
-      Alert.alert(
-        alsoSendToChat ? "Game plan saved & sent" : "Game plan saved",
-        alsoSendToChat
-          ? "Your trainee received a chat message and can open Game plans in their locker."
-          : pdfAttached
-            ? "PDF and screenshots are in your locker under Game plans."
-            : useServerPdfStitch && payloadItems.length > 0
-              ? "Screenshots saved. PDF is being generated on the server and will appear in locker shortly."
-              : payloadItems.length > 0
-                ? "Screenshots are in your locker under Game plans."
-                : "Plan saved. Add screenshots during your next lesson for a richer PDF."
-      );
+      if (!publish) {
+        Alert.alert(
+          "Draft saved",
+          "Your changes are saved privately. Publish when you're ready to share with your trainee."
+        );
+      } else {
+        Alert.alert(
+          alsoSendToChat ? "Game plan published & sent" : "Game plan published",
+          alsoSendToChat
+            ? "Your trainee received a chat message and can open Game plans in their locker."
+            : stitchPending
+              ? "Screenshots saved. PDF is being generated and will appear in locker shortly."
+              : pdfAttached
+                ? "PDF and screenshots are in your locker under Game plans."
+                : payloadItems.length > 0
+                  ? "Screenshots are in your trainee's locker under Game plans."
+                  : "Plan published. Add screenshots during your next lesson for a richer PDF."
+        );
+      }
       onSaved?.();
       onClose();
     } catch (e: unknown) {
@@ -517,24 +549,49 @@ export function SessionGamePlanModal({
                 </Text>
               </Pressable>
               {lockerEdit ? (
-                <Pressable
-                  style={[styles.btnPrimary, saving && styles.btnDisabled]}
-                  onPress={() => void save(false)}
-                  disabled={saving}
-                >
-                  <Text style={styles.btnPrimaryText}>
-                    {saveLabel ?? "Save changes"}
-                  </Text>
-                </Pressable>
-              ) : (
                 <>
+                  {publishStatus === "draft" ? (
+                    <View style={styles.draftBanner}>
+                      <Text style={styles.draftBannerText}>Draft — not visible to trainee</Text>
+                    </View>
+                  ) : null}
+                  <Pressable
+                    style={[styles.btnSecondary, saving && styles.btnDisabled]}
+                    onPress={() => void save(false)}
+                    disabled={saving}
+                  >
+                    <Text style={styles.btnSecondaryText}>
+                      {saveLabel ?? "Save draft"}
+                    </Text>
+                  </Pressable>
                   <Pressable
                     style={[styles.btnPrimary, saving && styles.btnDisabled]}
                     onPress={() => void save(true)}
                     disabled={saving}
                   >
                     <Text style={styles.btnPrimaryText}>
-                      {saveLabel ?? "Save & notify trainee"}
+                      {saveLabel ?? "Publish update"}
+                    </Text>
+                  </Pressable>
+                </>
+              ) : (
+                <>
+                  <Pressable
+                    style={[styles.btnPrimary, saving && styles.btnDisabled]}
+                    onPress={() => void save(true, true)}
+                    disabled={saving}
+                  >
+                    <Text style={styles.btnPrimaryText}>
+                      {saveLabel ?? "Publish & notify trainee"}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.btnSecondary, saving && styles.btnDisabled]}
+                    onPress={() => void save(true, false)}
+                    disabled={saving}
+                  >
+                    <Text style={styles.btnSecondaryText}>
+                      {saveLabel ?? "Publish to locker"}
                     </Text>
                   </Pressable>
                   <Pressable
@@ -543,7 +600,7 @@ export function SessionGamePlanModal({
                     disabled={saving}
                   >
                     <Text style={styles.btnSecondaryText}>
-                      {saveLabel ?? "Save to locker only"}
+                      {saveLabel ?? "Save draft"}
                     </Text>
                   </Pressable>
                 </>
@@ -683,6 +740,20 @@ const styles = StyleSheet.create({
     backgroundColor: gamePlanTheme.surface,
   },
   btnPreviewText: { color: gamePlanTheme.navy, fontWeight: "700", fontSize: 15 },
+  draftBanner: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: "#fff8e6",
+    borderWidth: 1,
+    borderColor: "#f0c040",
+  },
+  draftBannerText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#8a6d00",
+    textAlign: "center",
+  },
   footer: {
     paddingHorizontal: 16,
     paddingTop: 10,

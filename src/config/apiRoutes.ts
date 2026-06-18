@@ -303,6 +303,7 @@ export const API_ROUTES = {
     get: "/report/get",
     getAll: "/report/get-all",
     deleteReport: (id: string) => `/report/delete-report/${id}` as const,
+    retryPdf: "/report/retry-pdf",
   },
   admin: {
     updateGlobalCommission: "/admin/update-global-commission",

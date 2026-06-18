@@ -25,6 +25,7 @@ export type AuthStackParamList = {
   MagicLinkVerify: { email: string; expiresInMinutes?: number };
   /** Hibernation wake-up OTP flow (Phase 2 item 16). */
   WakeUp: { contact?: string } | undefined;
+  LegalDocument: { slug: "terms" | "privacy" };
 };
 
 export type ShellSurfaceRouteId = ShellSurfaceMeta["id"];

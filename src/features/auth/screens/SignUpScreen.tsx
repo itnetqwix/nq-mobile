@@ -503,6 +503,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
             <LegalTermsAcceptance
               value={acceptedTermsAndPrivacy}
               onValueChange={setAcceptedTermsAndPrivacy}
+              onOpenLegal={(slug) => navigation.navigate("LegalDocument", { slug })}
             />
             <View style={styles.tcpaRow}>
               <Switch value={tcpa} onValueChange={setTcpa} />
@@ -553,6 +554,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
             <LegalTermsAcceptance
               value={acceptedTermsAndPrivacy}
               onValueChange={setAcceptedTermsAndPrivacy}
+              onOpenLegal={(slug) => navigation.navigate("LegalDocument", { slug })}
             />
             <View style={styles.tcpaRow}>
               <Switch value={tcpa} onValueChange={setTcpa} />

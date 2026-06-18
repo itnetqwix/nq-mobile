@@ -1,4 +1,8 @@
 import type { ReportScreenshotItem } from "./reportDataUtils";
+import {
+  formatGamePlanSessionHeaderLines,
+  type GamePlanSessionMetaInput,
+} from "./gamePlanSessionMeta";
 
 function esc(s: string): string {
   return String(s)
@@ -9,7 +13,7 @@ function esc(s: string): string {
     .replace(/'/g, "&#039;");
 }
 
-export type GamePlanPdfMeta = {
+export type GamePlanPdfMeta = GamePlanSessionMetaInput & {
   trainerName?: string;
   trainerAbout?: string;
   traineeName?: string;
@@ -24,11 +28,10 @@ export function buildGamePlanPdfHtml(
   items: ReportScreenshotItem[],
   meta?: GamePlanPdfMeta
 ): string {
-  const dateLabel = new Date().toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-  });
+  const sessionHeaderLines = formatGamePlanSessionHeaderLines(meta ?? {});
+  const headerHtml = sessionHeaderLines
+    .map((line) => `<p>${esc(line)}</p>`)
+    .join("\n");
 
   const logoBlock = meta?.logoDataUrl
     ? `<img class="headerLogo" src="${meta.logoDataUrl}" alt="NetQwix" />`
@@ -218,9 +221,8 @@ export function buildGamePlanPdfHtml(
       ${logoBlock}
     </header>
     <div class="meta">
-      <p><strong>Date:</strong> ${esc(dateLabel)}</p>
-      ${meta?.traineeName ? `<p><strong>Name:</strong> ${esc(meta.traineeName)}</p>` : ""}
-      ${sessionNotes ? `<p class="sessionNotes">${esc(sessionNotes)}</p>` : ""}
+      ${headerHtml}
+      ${sessionNotes ? `<p class="sessionNotes"><strong>Notes:</strong> ${esc(sessionNotes)}</p>` : ""}
     </div>
     <hr class="rule" />
     <div class="frames">

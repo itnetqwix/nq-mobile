@@ -8,6 +8,7 @@ import { MagicLinkRequestScreen } from "../features/auth/screens/MagicLinkReques
 import { MagicLinkVerifyScreen } from "../features/auth/screens/MagicLinkVerifyScreen";
 import { SignUpScreen } from "../features/auth/screens/SignUpScreen";
 import { WakeUpScreen } from "../features/auth/screens/WakeUpScreen";
+import { LegalDocumentScreen } from "../features/content/screens/LegalDocumentScreen";
 import type { RootStackParamList } from "./types";
 import type { AuthStackParamList } from "./types";
 import type { NavigatorScreenParams, RouteProp } from "@react-navigation/native";
@@ -66,6 +67,11 @@ export function AuthNavigator() {
         name="WakeUp"
         component={WakeUpScreen}
         options={{ title: "Wake up account" }}
+      />
+      <Stack.Screen
+        name="LegalDocument"
+        component={LegalDocumentScreen}
+        options={{ headerShown: true, title: "Legal" }}
       />
     </Stack.Navigator>
   );

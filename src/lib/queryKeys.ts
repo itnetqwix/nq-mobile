@@ -152,6 +152,7 @@ export const queryKeys = {
     legal: (slug: string) => ["content", "legal", slug] as const,
     blogs: (guest: boolean) => ["content", "blogs", guest ? "guest" : "auth"] as const,
     blogPost: (slug: string) => ["content", "blogPost", slug] as const,
+    page: (slug: string, type: string) => ["content", "page", type, slug] as const,
   },
 } as const;
 

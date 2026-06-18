@@ -409,12 +409,12 @@ export function SettingsScreen() {
       {
         icon: "shield-checkmark-outline",
         label: t("settings.privacyPolicy"),
-        onPress: () => void runSystemStateAction("open_privacy"),
+        onPress: () => openHomeStackScreen(navigation, "LegalDocument", { slug: "privacy" }),
       },
       {
         icon: "reader-outline",
         label: t("settings.termsConditions"),
-        onPress: () => void runSystemStateAction("open_terms"),
+        onPress: () => openHomeStackScreen(navigation, "LegalDocument", { slug: "terms" }),
       },
     ];
     if (isTrainer) {

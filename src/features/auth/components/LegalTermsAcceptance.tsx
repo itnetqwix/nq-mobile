@@ -1,16 +1,23 @@
 import React from "react";
-import { Linking, StyleSheet, Switch, Text, View } from "react-native";
-import { PRIVACY_POLICY_URL, TERMS_AND_CONDITIONS_URL } from "../../../constants/legalUrls";
+import { StyleSheet, Switch, Text, View } from "react-native";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { colors, space } from "../../../theme";
 
 type Props = {
   value: boolean;
   onValueChange: (next: boolean) => void;
+  onOpenLegal?: (slug: "terms" | "privacy") => void;
 };
 
-export function LegalTermsAcceptance({ value, onValueChange }: Props) {
+export function LegalTermsAcceptance({ value, onValueChange, onOpenLegal }: Props) {
   const { t } = useAppTranslation();
+
+  const openTerms = () => {
+    if (onOpenLegal) onOpenLegal("terms");
+  };
+  const openPrivacy = () => {
+    if (onOpenLegal) onOpenLegal("privacy");
+  };
 
   return (
     <View style={styles.row}>
@@ -21,11 +28,11 @@ export function LegalTermsAcceptance({ value, onValueChange }: Props) {
       />
       <Text style={styles.text}>
         {t("auth.legalTermsPrefix")}{" "}
-        <Text style={styles.link} onPress={() => Linking.openURL(TERMS_AND_CONDITIONS_URL)}>
+        <Text style={styles.link} onPress={openTerms}>
           {t("auth.termsConditions")}
         </Text>{" "}
         {t("auth.legalTermsAnd")}{" "}
-        <Text style={styles.link} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>
+        <Text style={styles.link} onPress={openPrivacy}>
           {t("auth.privacyPolicy")}
         </Text>
         <Text style={styles.required}> *</Text>
