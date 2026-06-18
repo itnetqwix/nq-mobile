@@ -176,6 +176,7 @@ import { CallSlotTakenOverModal } from "../components/CallSlotTakenOverModal";
 import {
   navigateToBookTrainer,
   navigateToMyLocker,
+  navigateToWalletTopUp,
 } from "../../../navigation/navigationRef";
 import { SessionHandoffScreen } from "../components/SessionHandoffScreen";
 import { GamePlanStatusPill } from "../components/GamePlanStatusPill";
@@ -3432,6 +3433,7 @@ function MeetingSurface({
           remainingSeconds={lessonTimer.remainingSeconds}
           flow={extensionFlow}
           onDismiss={() => setTraineeExtendOpen(false)}
+          onAddFunds={(shortfall) => navigateToWalletTopUp(shortfall)}
         />
       ) : null}
       {isTrainer ? (

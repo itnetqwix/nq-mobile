@@ -8,14 +8,36 @@ import {
 
 import type { PricingQuote } from "../payments/pricingTypes";
 
+export type ExtensionAvailabilityCode =
+  | "ok"
+  | "coach_outside_hours"
+  | "slot_ends_soon"
+  | "next_booking_conflict"
+  | "invalid_minutes";
+
 export type ExtensionQuote = {
   allowed: boolean;
   reason?: string;
+  code?: ExtensionAvailabilityCode;
   amount: number;
   minutes: number;
   newEndTimeUtc?: string;
   remainingSeconds?: number | null;
+  maxMinutes?: number;
+  allowedDurations?: number[];
+  slotEndsAt?: string | null;
+  minutesUntilSlotEnd?: number | null;
   pricingQuote?: PricingQuote | null;
+};
+
+export type ExtensionOptions = {
+  allowed: boolean;
+  reason?: string | null;
+  code?: ExtensionAvailabilityCode;
+  allowedDurations: number[];
+  maxMinutes: number;
+  slotEndsAt?: string | null;
+  minutesUntilSlotEnd?: number | null;
 };
 
 /** Snapshot of the in-flight extension request shared between trainer and trainee. */
@@ -81,6 +103,17 @@ export async function fetchSessionExtensionQuote(
   });
   const data = (res.data as { data?: ExtensionQuote })?.data ?? res.data;
   return data as ExtensionQuote;
+}
+
+/** Server-driven duration chips (weekly slot boundary + conflict checks). */
+export async function fetchSessionExtensionOptions(
+  sessionId: string
+): Promise<ExtensionOptions> {
+  const res = await apiClient.get(API_ROUTES.trainee.sessionExtensionOptions, {
+    params: { sessionId },
+  });
+  const data = (res.data as { data?: ExtensionOptions })?.data ?? res.data;
+  return data as ExtensionOptions;
 }
 
 /**

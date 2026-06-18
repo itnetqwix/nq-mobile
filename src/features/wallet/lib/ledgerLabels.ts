@@ -1,12 +1,25 @@
-export function ledgerReferenceLabel(referenceType?: string): string {
+type LedgerMetadata = {
+  kind?: string;
+  session_id?: string;
+};
+
+export function ledgerReferenceLabel(
+  referenceType?: string,
+  metadata?: LedgerMetadata | null
+): string {
   const t = String(referenceType ?? "").toLowerCase();
-  if (t === "topup") return "Wallet top-up";
-  if (t === "booking") return "Lesson booking";
-  if (t === "extension") return "Session extension";
-  if (t === "refund") return "Refund";
+  const kind = String(metadata?.kind ?? "").toLowerCase();
+
+  if (t === "topup") return "Top-up";
+  if (t === "extension" || kind === "extension") return "Extension hold";
+  if (t === "escrow_hold") {
+    return kind === "extension" ? "Extension hold" : "Lesson hold";
+  }
+  if (t === "booking") return kind === "extension" ? "Extension payment" : "Lesson payment";
+  if (t === "refund" || t === "escrow_refund") return "Refund";
   if (t === "payout") return "Payout";
-  if (t === "escrow_hold") return "Payment held";
   if (t === "escrow_release") return "Payment released";
+  if (t === "adjustment") return "Balance adjustment";
   return referenceType ? String(referenceType).replace(/_/g, " ") : "Transaction";
 }
 

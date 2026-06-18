@@ -36,7 +36,8 @@ import {
 export type PaymentCompletePayload = {
   paymentIntentId: string | null;
   chargingPrice: number;
-  paymentMethod?: "wallet" | "card";
+  paymentMethod?: "wallet" | "card" | "mixed";
+  walletAmount?: number;
   pinSessionToken?: string;
   quoteId?: string;
   pricingQuote?: PricingQuote | null;
@@ -138,92 +139,110 @@ export function WizardStepPayment({
   const totalToCharge =
     chargeTotalDollars(pricingQuote) ?? (priceInfo?.amount ?? payableAmount);
   const wallet = useWalletPaymentOption(totalToCharge);
+  const canPayMixed =
+    wallet.walletPayEnabled &&
+    payableAmount > 0 &&
+    wallet.available > 0 &&
+    wallet.shortfall > 0;
   const lengthLabel =
     durationLabel ??
     INSTANT_LESSON_DURATIONS.find((d) => d.minutes === durationMinutes)?.label ??
     `${durationMinutes} min`;
 
-  const createIntent = useCallback(async () => {
-    if (shouldSkipPaymentIntent(payableAmount, expectedPrice)) {
-      setPriceInfo({ amount: 0, skip: true });
-      setPaymentReady(true);
-      return;
-    }
-    setLoading(true);
-    try {
-      const trainerId = String((trainer as any)?._id ?? (trainer as any)?.userInfo?._id ?? "");
-      const quote = await fetchSessionPricingQuote({
-        productType: bookingType === "instant" ? "instant_lesson" : "session_booking",
-        sessionSubtotalCents: Math.round(expectedPrice * 100),
-        trainerId,
-        promoDiscountCents: Math.round(promoDiscountAmount * 100),
-        promoSponsorType,
-        user: user as Record<string, unknown>,
-        paymentMethodHint: wallet.canPayWithWallet ? "wallet_us" : "card_domestic_us",
-      });
-      setPricingQuote(quote);
-
-      const res = await apiClient.post(API_ROUTES.transaction.createPaymentIntent, {
-        amount: expectedPrice,
-        destination: trainerStripeId,
-        commission,
-        customer: userStripeId,
-        couponCode: couponCode.trim().toLowerCase() || undefined,
-        _bookingType: bookingType,
-        trainer_id: trainerId,
-        quoteId: quote?.quoteId,
-        billingAddress: { country: billing.country, state: billing.state },
-      });
-      const data = unwrapApiData<{
-        skip?: boolean;
-        client_secret?: string;
-      }>(res);
-      if (data?.skip) {
+  const setupCardPayment = useCallback(
+    async (
+      amountDollars: number
+    ): Promise<{ clientSecret?: string; skip?: boolean; quoteId?: string } | null> => {
+      if (shouldSkipPaymentIntent(payableAmount, expectedPrice) || amountDollars <= 0) {
         setPriceInfo({ amount: 0, skip: true });
         setPaymentReady(true);
-        return;
+        return { skip: true };
       }
-      const clientSecret = data?.client_secret;
-      if (!clientSecret) throw new Error("No client secret returned.");
-      const chargeTotal = quote?.chargeTotalCents != null ? quote.chargeTotalCents / 100 : payableAmount;
-      setPriceInfo({
-        amount: chargeTotal,
-        skip: false,
-        clientSecret,
-        quoteId: quote?.quoteId,
-      });
+      setLoading(true);
+      try {
+        const trainerId = String((trainer as any)?._id ?? (trainer as any)?.userInfo?._id ?? "");
+        const quote = await fetchSessionPricingQuote({
+          productType: bookingType === "instant" ? "instant_lesson" : "session_booking",
+          sessionSubtotalCents: Math.round(expectedPrice * 100),
+          trainerId,
+          promoDiscountCents: Math.round(promoDiscountAmount * 100),
+          promoSponsorType,
+          user: user as Record<string, unknown>,
+          paymentMethodHint: "card_domestic_us",
+        });
+        setPricingQuote(quote);
 
-      const { error } = await initPaymentSheet({
-        paymentIntentClientSecret: clientSecret,
-        merchantDisplayName: "NetQwix",
-      });
-      if (error) {
-        Alert.alert("Payment setup error", error.message);
-        return;
+        const res = await apiClient.post(API_ROUTES.transaction.createPaymentIntent, {
+          amount: amountDollars,
+          destination: trainerStripeId,
+          commission,
+          customer: userStripeId,
+          couponCode: couponCode.trim().toLowerCase() || undefined,
+          _bookingType: bookingType,
+          trainer_id: trainerId,
+          quoteId: quote?.quoteId,
+          billingAddress: { country: billing.country, state: billing.state },
+        });
+        const data = unwrapApiData<{
+          skip?: boolean;
+          client_secret?: string;
+        }>(res);
+        if (data?.skip) {
+          setPriceInfo({ amount: 0, skip: true });
+          setPaymentReady(true);
+          return { skip: true, quoteId: quote?.quoteId };
+        }
+        const clientSecret = data?.client_secret;
+        if (!clientSecret) throw new Error("No client secret returned.");
+        const chargeTotal =
+          amountDollars === expectedPrice && quote?.chargeTotalCents != null
+            ? quote.chargeTotalCents / 100
+            : amountDollars;
+        setPriceInfo({
+          amount: chargeTotal,
+          skip: false,
+          clientSecret,
+          quoteId: quote?.quoteId,
+        });
+
+        const { error } = await initPaymentSheet({
+          paymentIntentClientSecret: clientSecret,
+          merchantDisplayName: "NetQwix",
+        });
+        if (error) {
+          Alert.alert("Payment setup error", error.message);
+          return null;
+        }
+        setPaymentReady(true);
+        return { clientSecret, quoteId: quote?.quoteId };
+      } catch (e: unknown) {
+        Alert.alert("Payment error", getApiErrorMessage(e, "Could not set up payment."));
+        return null;
+      } finally {
+        setLoading(false);
       }
-      setPaymentReady(true);
-    } catch (e: unknown) {
-      Alert.alert("Payment error", getApiErrorMessage(e, "Could not set up payment."));
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    payableAmount,
-    expectedPrice,
-    trainerStripeId,
-    commission,
-    userStripeId,
-    couponCode,
-    initPaymentSheet,
-    bookingType,
-    billing.country,
-    billing.state,
-    user,
-    trainer,
-    promoDiscountAmount,
-    promoSponsorType,
-    wallet.canPayWithWallet,
-  ]);
+    },
+    [
+      payableAmount,
+      expectedPrice,
+      trainerStripeId,
+      commission,
+      userStripeId,
+      couponCode,
+      initPaymentSheet,
+      bookingType,
+      billing.country,
+      billing.state,
+      user,
+      trainer,
+      promoDiscountAmount,
+      promoSponsorType,
+    ]
+  );
+
+  const createIntent = useCallback(() => {
+    void setupCardPayment(expectedPrice);
+  }, [setupCardPayment, expectedPrice]);
 
   useEffect(() => {
     createIntent();
@@ -276,6 +295,68 @@ export function WizardStepPayment({
     totalToCharge,
     pricingQuote,
     priceInfo,
+  ]);
+
+  const handleMixedPay = useCallback(async () => {
+    try {
+      let token = pinSessionToken ?? wallet.storedPinToken ?? undefined;
+      if (wallet.needsPin && !token) {
+        if (!/^\d{6}$/.test(pin)) {
+          Alert.alert("PIN required", "Enter your 6-digit wallet PIN for this payment.");
+          return;
+        }
+        const res = await verifyWalletPin(pin);
+        token = res.pinSessionToken;
+        setPinSessionToken(token);
+        setPin("");
+      }
+      setPaymentReady(false);
+      const setup = await setupCardPayment(wallet.shortfall);
+      if (!setup) return;
+      if (setup.skip) {
+        completePayment({
+          paymentIntentId: null,
+          chargingPrice: totalToCharge,
+          paymentMethod: "mixed",
+          walletAmount: wallet.available,
+          pinSessionToken: token,
+          quoteId: setup.quoteId ?? pricingQuote?.quoteId,
+          pricingQuote,
+        });
+        return;
+      }
+      const { error } = await presentPaymentSheet();
+      if (error) {
+        if (error.code !== "Canceled") {
+          Alert.alert("Payment failed", error.message);
+        }
+        return;
+      }
+      const intentId = setup.clientSecret?.split("_secret_")[0] ?? null;
+      completePayment({
+        paymentIntentId: intentId,
+        chargingPrice: totalToCharge,
+        paymentMethod: "mixed",
+        walletAmount: wallet.available,
+        pinSessionToken: token,
+        quoteId: setup.quoteId ?? pricingQuote?.quoteId,
+        pricingQuote,
+      });
+    } catch (e: unknown) {
+      Alert.alert("Payment", getApiErrorMessage(e, "Could not complete mixed payment."));
+    }
+  }, [
+    wallet.needsPin,
+    wallet.shortfall,
+    wallet.available,
+    pin,
+    pinSessionToken,
+    wallet.storedPinToken,
+    setupCardPayment,
+    presentPaymentSheet,
+    completePayment,
+    totalToCharge,
+    pricingQuote,
   ]);
 
   const handlePay = useCallback(async () => {
@@ -377,6 +458,9 @@ export function WizardStepPayment({
               onChangeText={setPin}
             />
           ) : null}
+          <Text style={sharedStepStyles.muted}>
+            Spendable balance: {fmt(wallet.available, { currency: activeCurrency })}
+          </Text>
           <Pressable style={sharedStepStyles.primaryBtn} onPress={handleWalletPay}>
             <Ionicons name="wallet-outline" size={18} color={c.brandTextOn} />
             <Text style={sharedStepStyles.primaryBtnText}>
@@ -397,7 +481,37 @@ export function WizardStepPayment({
         </>
       ) : null}
 
-      {!loading && wallet.walletPayEnabled && !isFree && !wallet.canPayWithWallet && wallet.shortfall > 0 ? (
+      {!loading && canPayMixed ? (
+        <>
+          {wallet.needsPin && !pinSessionToken ? (
+            <TextInput
+              style={styles.pinInput}
+              keyboardType="number-pad"
+              secureTextEntry
+              maxLength={6}
+              placeholder="6-digit PIN"
+              value={pin}
+              onChangeText={setPin}
+            />
+          ) : null}
+          <Text style={sharedStepStyles.muted}>
+            Spendable balance: {fmt(wallet.available, { currency: activeCurrency })}
+          </Text>
+          <Pressable
+            style={sharedStepStyles.primaryBtn}
+            disabled={loading}
+            onPress={handleMixedPay}
+          >
+            <Ionicons name="wallet-outline" size={18} color={c.brandTextOn} />
+            <Text style={sharedStepStyles.primaryBtnText}>
+              Pay {fmt(wallet.available, { currency: activeCurrency })} wallet +{" "}
+              {fmt(wallet.shortfall, { currency: activeCurrency })} card
+            </Text>
+          </Pressable>
+        </>
+      ) : null}
+
+      {!loading && wallet.walletPayEnabled && !isFree && !wallet.canPayWithWallet && wallet.shortfall > 0 && !canPayMixed ? (
         <View style={styles.shortfallBox}>
           <Text style={sharedStepStyles.muted}>
             Need {fmt(wallet.shortfall, { currency: activeCurrency })} more in your wallet.

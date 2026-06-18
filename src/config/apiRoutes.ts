@@ -231,6 +231,7 @@ export const API_ROUTES = {
     guestSeededTrainers: "/trainee/guest-activity/seeded-trainers",
     personalizedFeed: "/trainee/personalized-feed",
     sessionExtensionQuote: "/trainee/session-extension/quote",
+    sessionExtensionOptions: "/trainee/session-extension/options",
     sessionExtensionRequest: "/trainee/session-extension/request",
     sessionExtensionCancel: "/trainee/session-extension/cancel-request",
     sessionExtensionPaymentIntent: "/trainee/session-extension/create-payment-intent",

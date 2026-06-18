@@ -50,7 +50,8 @@ export type BookSessionPayload = {
   charging_price: number;
   time_zone: string;
   coupon_code?: string;
-  payment_method?: "wallet";
+  payment_method?: "wallet" | "mixed";
+  wallet_amount?: number;
   pin_session_token?: string;
   payment_intent_id?: string;
   quote_id?: string;

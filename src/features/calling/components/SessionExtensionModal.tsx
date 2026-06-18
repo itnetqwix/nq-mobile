@@ -20,6 +20,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -29,13 +30,15 @@ import { fetchSessionPricingQuote } from "../../payments/fetchSessionPricingQuot
 import { resolveTraineeBillingAddress } from "../../payments/resolveTraineeBillingAddress";
 import { colors, radii, space, typography } from "../../../theme";
 import { PricingBreakdownSummary } from "../../payments/PricingBreakdownSummary";
-import type { ExtensionQuote } from "../sessionExtensionApi";
+import type { ExtensionOptions, ExtensionQuote } from "../sessionExtensionApi";
+import { fetchSessionExtensionOptions } from "../sessionExtensionApi";
 import type { UseSessionExtensionFlow } from "../useSessionExtensionFlow";
 import { chargeTotalDollars } from "../../payments/pricingTypes";
+import { useWalletPaymentOption } from "../../wallet/hooks/useWalletPaymentOption";
+import { verifyWalletPin } from "../../wallet/walletApi";
+import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 
-/** Mobile UI surfaces only the most common picks; the backend still accepts
- *  60/120 for parity with legacy clients. */
-const EXTENSION_DURATIONS = [5, 10, 15, 30, 60, 120] as const;
+const FALLBACK_EXTENSION_DURATIONS = [5, 10, 15, 30] as const;
 
 type Props = {
   visible: boolean;
@@ -46,6 +49,8 @@ type Props = {
   defaultMinutes?: number;
   flow: UseSessionExtensionFlow;
   onDismiss: () => void;
+  /** Optional: navigate trainee to wallet top-up when balance is short. */
+  onAddFunds?: (shortfallDollars: number) => void;
 };
 
 function formatCountdown(seconds: number) {
@@ -75,15 +80,25 @@ export function SessionExtensionModal({
   defaultMinutes = 10,
   flow,
   onDismiss,
+  onAddFunds,
 }: Props) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
 
   const [minutes, setMinutes] = useState<number>(defaultMinutes);
   const [quote, setQuote] = useState<ExtensionQuote | null>(null);
+  const [options, setOptions] = useState<ExtensionOptions | null>(null);
+  const [optionsLoading, setOptionsLoading] = useState(false);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"wallet" | "card">("wallet");
+  const [pin, setPin] = useState("");
+  const [pinSessionToken, setPinSessionToken] = useState<string | undefined>();
+
+  const durationChoices = useMemo(() => {
+    const fromServer = options?.allowedDurations?.filter((m) => m > 0) ?? [];
+    return fromServer.length > 0 ? fromServer : [...FALLBACK_EXTENSION_DURATIONS];
+  }, [options?.allowedDurations]);
 
   const userStripeId = String(
     (user as Record<string, unknown>)?.stripe_account_id ?? ""
@@ -96,7 +111,58 @@ export function SessionExtensionModal({
   const { state, fetchQuote, requestExtension, cancelRequest, payAndConfirm } = flow;
   const { phase, request, message } = state;
 
+  const extensionChargeTotal = useMemo(() => {
+    const fromQuote = chargeTotalDollars(quote?.pricingQuote ?? null);
+    if (fromQuote != null) return fromQuote;
+    return Number(request?.amount ?? quote?.amount ?? 0);
+  }, [quote, request?.amount]);
+
+  const extensionChargeMinor = useMemo(
+    () =>
+      quote?.pricingQuote?.chargeTotalCents ??
+      Math.round(extensionChargeTotal * 100),
+    [quote?.pricingQuote?.chargeTotalCents, extensionChargeTotal]
+  );
+
+  const wallet = useWalletPaymentOption(extensionChargeTotal, paymentMethod === "wallet");
+
+  useEffect(() => {
+    if (wallet.storedPinToken && !pinSessionToken) {
+      setPinSessionToken(wallet.storedPinToken);
+    }
+  }, [wallet.storedPinToken, pinSessionToken]);
+
   const expiryCountdown = useCountdownToIso(request?.expiresAt ?? null);
+
+  /** Load server-driven duration chips when the modal opens. */
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    setOptionsLoading(true);
+    fetchSessionExtensionOptions(sessionId)
+      .then((opts) => {
+        if (cancelled) return;
+        setOptions(opts);
+        if (!opts.allowed) {
+          setQuoteError(opts.reason ?? "Extension not available right now.");
+        } else if (opts.allowedDurations?.length) {
+          setMinutes((prev) =>
+            opts.allowedDurations.includes(prev)
+              ? prev
+              : opts.allowedDurations[0] ?? defaultMinutes
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setOptions(null);
+      })
+      .finally(() => {
+        if (!cancelled) setOptionsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, sessionId, defaultMinutes]);
 
   /** Refresh the price preview whenever the chip changes (only matters in the
    *  request phase; the server snapshot already carries the locked-in price
@@ -205,22 +271,58 @@ export function SessionExtensionModal({
     }
   }, [minutes, requestExtension]);
 
-  const extensionChargeTotal = useMemo(() => {
-    const fromQuote = chargeTotalDollars(quote?.pricingQuote ?? null);
-    if (fromQuote != null) return fromQuote;
-    return Number(request?.amount ?? quote?.amount ?? 0);
-  }, [quote, request?.amount]);
-
-  const extensionChargeMinor = useMemo(
-    () =>
-      quote?.pricingQuote?.chargeTotalCents ??
-      Math.round(extensionChargeTotal * 100),
-    [quote?.pricingQuote?.chargeTotalCents, extensionChargeTotal]
-  );
-
   const handlePay = useCallback(async () => {
+    if (paymentMethod === "wallet" && extensionChargeMinor > 0) {
+      if (!wallet.canPayWithWallet) {
+        if (onAddFunds && wallet.shortfall > 0) {
+          Alert.alert(
+            "Add funds",
+            `You need $${wallet.shortfall.toFixed(2)} more in your wallet, or pay with card.`,
+            [
+              { text: "Pay with card", onPress: () => setPaymentMethod("card") },
+              { text: "Add funds", onPress: () => onAddFunds(wallet.shortfall) },
+              { text: "Cancel", style: "cancel" },
+            ]
+          );
+        } else {
+          Alert.alert(
+            "Wallet balance too low",
+            "Pay with card or add funds to your wallet first."
+          );
+        }
+        return;
+      }
+      let token = pinSessionToken ?? wallet.storedPinToken ?? undefined;
+      if (wallet.needsPin && !token) {
+        if (!/^\d{6}$/.test(pin)) {
+          Alert.alert("PIN required", "Enter your 6-digit wallet PIN for this payment.");
+          return;
+        }
+        try {
+          const res = await verifyWalletPin(pin);
+          token = res.pinSessionToken;
+          setPinSessionToken(token);
+          setPin("");
+        } catch (e: unknown) {
+          Alert.alert("Wallet payment", getApiErrorMessage(e, "Could not verify PIN."));
+          return;
+        }
+      }
+      const ok = await payAndConfirm({
+        method: "wallet",
+        pinSessionToken: token,
+        quoteId: quote?.pricingQuote?.quoteId,
+        chargeTotalCents: extensionChargeMinor,
+        billingAddress: {
+          country: billingAddress.country,
+          state: billingAddress.state,
+        },
+      });
+      if (ok) return;
+    }
+
     const ok = await payAndConfirm({
-      method: paymentMethod,
+      method: "card",
       customer: userStripeId || undefined,
       quoteId: quote?.pricingQuote?.quoteId,
       chargeTotalCents: extensionChargeMinor,
@@ -232,7 +334,19 @@ export function SessionExtensionModal({
     if (ok) {
       // SESSION_EXTENSION_APPLIED will flip phase to "applied" -> auto close.
     }
-  }, [payAndConfirm, paymentMethod, userStripeId, quote?.pricingQuote?.quoteId, extensionChargeMinor]);
+  }, [
+    payAndConfirm,
+    paymentMethod,
+    userStripeId,
+    quote?.pricingQuote?.quoteId,
+    extensionChargeMinor,
+    extensionChargeTotal,
+    wallet,
+    pin,
+    pinSessionToken,
+    onAddFunds,
+    billingAddress,
+  ]);
 
   // Auto-dismiss on terminal success.
   useEffect(() => {
@@ -313,6 +427,36 @@ export function SessionExtensionModal({
             </Pressable>
           </View>
         ) : null}
+        {paymentMethod === "wallet" && wallet.walletPayEnabled && extensionChargeTotal > 0 ? (
+          <>
+            {wallet.needsPin && !pinSessionToken ? (
+              <TextInput
+                style={styles.pinInput}
+                keyboardType="number-pad"
+                secureTextEntry
+                maxLength={6}
+                placeholder="6-digit wallet PIN"
+                value={pin}
+                onChangeText={setPin}
+              />
+            ) : null}
+            <Text style={styles.walletHint}>
+              Spendable balance: ${wallet.available.toFixed(2)}
+            </Text>
+            {!wallet.canPayWithWallet && wallet.shortfall > 0 ? (
+              <View style={styles.shortfallRow}>
+                <Text style={styles.shortfallText}>
+                  Need ${wallet.shortfall.toFixed(2)} more for wallet pay.
+                </Text>
+                {onAddFunds ? (
+                  <Pressable onPress={() => onAddFunds(wallet.shortfall)}>
+                    <Text style={styles.addFundsLink}>Add funds</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : null}
+          </>
+        ) : null}
         {message ? <Text style={styles.error}>{message}</Text> : null}
         <Button
           label={
@@ -366,7 +510,7 @@ export function SessionExtensionModal({
         ) : null}
 
         <View style={styles.chipRow}>
-          {EXTENSION_DURATIONS.map((opt) => (
+          {durationChoices.map((opt) => (
             <Pressable
               key={opt}
               style={[styles.chip, minutes === opt && styles.chipActive]}
@@ -380,6 +524,15 @@ export function SessionExtensionModal({
             </Pressable>
           ))}
         </View>
+
+        {optionsLoading ? (
+          <ActivityIndicator color={colors.brandNavy} style={{ marginVertical: space.xs }} />
+        ) : options?.minutesUntilSlotEnd != null && options.minutesUntilSlotEnd > 0 ? (
+          <Text style={styles.notice}>
+            Coach availability ends in {options.minutesUntilSlotEnd} min
+            {options.maxMinutes ? ` (max +${options.maxMinutes}m)` : ""}.
+          </Text>
+        ) : null}
 
         {quoteLoading ? (
           <ActivityIndicator
@@ -407,6 +560,8 @@ export function SessionExtensionModal({
             !inExtendWindow ||
             phase === "requesting" ||
             quoteLoading ||
+            optionsLoading ||
+            (options != null && !options.allowed) ||
             (!!quoteError && !quote?.allowed)
           }
           fullWidth
@@ -481,4 +636,16 @@ const styles = StyleSheet.create({
   },
   payChipActive: { backgroundColor: colors.brandNavy, borderColor: colors.brandNavy },
   payChipText: { ...typography.label, color: colors.textSecondary },
+  pinInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: space.xs,
+  },
+  walletHint: { ...typography.caption, color: colors.textMuted },
+  shortfallRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
+  shortfallText: { ...typography.caption, color: colors.danger },
+  addFundsLink: { ...typography.caption, color: colors.brandNavy, fontWeight: "700" },
 });

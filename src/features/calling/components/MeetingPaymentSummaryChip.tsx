@@ -29,6 +29,16 @@ function fmtMoneyMinor(minor: unknown): string {
   return `$${(n / 100).toFixed(2)}`;
 }
 
+function escrowStatusLabel(status: string): string {
+  const s = status.toLowerCase();
+  if (s === "held") return "Held in escrow";
+  if (s === "releasing") return "Releasing to coach";
+  if (s === "released") return "Released";
+  if (s === "refunded") return "Refunded";
+  if (s === "disputed") return "Disputed";
+  return status;
+}
+
 export function MeetingPaymentSummaryChip({
   sessionId,
   enabled,
@@ -41,7 +51,8 @@ export function MeetingPaymentSummaryChip({
     queryKey: queryKeys.sessions.detail(sessionId),
     queryFn: () => fetchSessionDetail(sessionId),
     enabled: enabled && !!sessionId,
-    staleTime: 60_000,
+    staleTime: 30_000,
+    refetchInterval: enabled ? 45_000 : false,
   });
 
   const escrow = data?.escrow as Record<string, unknown> | null | undefined;
@@ -115,7 +126,9 @@ export function MeetingPaymentSummaryChip({
           {milestoneCopy?.body ? (
             <Text style={styles.panelMilestone}>{milestoneCopy.body}</Text>
           ) : null}
-          <Text style={styles.panelStatus}>Status: {status}</Text>
+          <Text style={styles.panelStatus}>
+            Status: {escrowStatusLabel(status)}
+          </Text>
           {lines.map((row) => (
             <View key={row.label} style={styles.row}>
               <Text style={styles.rowKey}>{row.label}</Text>

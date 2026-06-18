@@ -90,8 +90,9 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
   } | null>(null);
   const [visiblePromos, setVisiblePromos] = useState<any[]>([]);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<"wallet" | "card" | undefined>();
+  const [paymentMethod, setPaymentMethod] = useState<"wallet" | "card" | "mixed" | undefined>();
   const [pinSessionToken, setPinSessionToken] = useState<string | undefined>();
+  const [walletAmount, setWalletAmount] = useState<number | undefined>();
   const [quoteId, setQuoteId] = useState<string | undefined>();
   const [chargingPrice, setChargingPrice] = useState(0);
   const [pricingQuote, setPricingQuote] = useState<PricingQuote | null>(null);
@@ -348,7 +349,8 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     (payload: {
       paymentIntentId: string | null;
       chargingPrice: number;
-      paymentMethod?: "wallet" | "card";
+      paymentMethod?: "wallet" | "card" | "mixed";
+      walletAmount?: number;
       pinSessionToken?: string;
       quoteId?: string;
       pricingQuote?: PricingQuote | null;
@@ -356,6 +358,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
       setPaymentIntentId(payload.paymentIntentId);
       setChargingPrice(payload.chargingPrice);
       setPaymentMethod(payload.paymentMethod);
+      setWalletAmount(payload.walletAmount);
       setPinSessionToken(payload.pinSessionToken);
       setQuoteId(payload.quoteId ?? payload.pricingQuote?.quoteId);
       if (payload.pricingQuote) setPricingQuote(payload.pricingQuote);
@@ -518,6 +521,10 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
       if (paymentMethod === "wallet" && chargingPrice > 0) {
         bookPayload.payment_method = "wallet";
         if (pinSessionToken) bookPayload.pin_session_token = pinSessionToken;
+      } else if (paymentMethod === "mixed" && chargingPrice > 0) {
+        bookPayload.payment_method = "mixed";
+        bookPayload.wallet_amount = walletAmount ?? 0;
+        if (pinSessionToken) bookPayload.pin_session_token = pinSessionToken;
       }
 
       const bookingInfo = await bookScheduledSession(bookPayload);
@@ -610,7 +617,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     if (!validateCoupon()) return;
     const requiresPayment = hourlyRate > 0 && expectedPrice > 0;
     const promoMadeFree = requiresPayment && chargingPrice === 0 && !paymentIntentId;
-    if (requiresPayment && !paymentIntentId && !promoMadeFree && paymentMethod !== "wallet") {
+    if (requiresPayment && !paymentIntentId && !promoMadeFree && paymentMethod !== "wallet" && paymentMethod !== "mixed") {
       if (payableAmount > 0) {
         Alert.alert("Payment required", "Please complete payment before requesting the session.");
         return;

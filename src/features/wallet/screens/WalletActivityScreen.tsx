@@ -120,7 +120,9 @@ export function WalletActivityScreen() {
             <Ionicons name="swap-horizontal" size={18} color={c.iconPrimary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.title}>{ledgerReferenceLabel(item.reference_type)}</Text>
+            <Text style={styles.title}>
+              {ledgerReferenceLabel(item.reference_type, item.metadata)}
+            </Text>
             <Text style={styles.date}>
               {item.createdAt ? new Date(item.createdAt).toLocaleString() : ""}
             </Text>
