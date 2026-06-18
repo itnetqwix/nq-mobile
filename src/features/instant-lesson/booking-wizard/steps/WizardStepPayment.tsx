@@ -28,6 +28,10 @@ import { useActiveCurrency, useCurrencyFormatter } from "../../../../lib/intl";
 import { PricingBreakdownSummary } from "../../../payments/PricingBreakdownSummary";
 import type { PricingQuote } from "../../../payments/pricingTypes";
 import { chargeTotalDollars } from "../../../payments/pricingTypes";
+import {
+  resolveWizardPayableAmount,
+  shouldSkipPaymentIntent,
+} from "../../../payments/wizardPaymentLogic";
 
 export type PaymentCompletePayload = {
   paymentIntentId: string | null;
@@ -120,13 +124,16 @@ export function WizardStepPayment({
     (trainer as any)?.commission ?? (trainer as any)?.userInfo?.commission ?? "0"
   );
 
-  const payableAmount = useMemo(() => {
-    if (payableAmountProp != null) return payableAmountProp;
-    if (promoResult?.valid && promoResult.final_amount != null) {
-      return Number(promoResult.final_amount);
-    }
-    return expectedPrice;
-  }, [payableAmountProp, promoResult, expectedPrice]);
+  const payableAmount = useMemo(
+    () =>
+      resolveWizardPayableAmount({
+        payableAmountProp,
+        promoValid: promoResult?.valid,
+        promoFinalAmount: promoResult?.final_amount,
+        expectedPrice,
+      }),
+    [payableAmountProp, promoResult, expectedPrice]
+  );
 
   const totalToCharge =
     chargeTotalDollars(pricingQuote) ?? (priceInfo?.amount ?? payableAmount);
@@ -137,12 +144,7 @@ export function WizardStepPayment({
     `${durationMinutes} min`;
 
   const createIntent = useCallback(async () => {
-    if (payableAmount <= 0) {
-      setPriceInfo({ amount: 0, skip: true });
-      setPaymentReady(true);
-      return;
-    }
-    if (expectedPrice <= 0) {
+    if (shouldSkipPaymentIntent(payableAmount, expectedPrice)) {
       setPriceInfo({ amount: 0, skip: true });
       setPaymentReady(true);
       return;

@@ -10,6 +10,7 @@ import { AccountType } from "../../../constants/accountType";
 import { useAuth } from "../../auth/context/AuthContext";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { useWalletBalance } from "../hooks/useWalletBalance";
+import { walletBalanceDisplayParts } from "../walletBalanceDisplayLogic";
 import { useQuery } from "@tanstack/react-query";
 import { fetchPointsBalance } from "../../points/api/pointsApi";
 import { queryKeys } from "../../../lib/queryKeys";
@@ -109,6 +110,7 @@ function TraineeWalletHome({ navigation }: Props) {
     queryFn: fetchPointsBalance,
   });
   const available = balance?.balances?.available ?? 0;
+  const balanceParts = walletBalanceDisplayParts(balance?.balances);
   const fmt = useCurrencyFormatter();
 
   const benefits = useMemo(
@@ -167,10 +169,10 @@ function TraineeWalletHome({ navigation }: Props) {
             {fmt(available, { currency: balance?.currency })}
           </Text>
         )}
-        {(balance?.balances?.pending_topup ?? 0) > 0 && (
+        {balanceParts.showPendingTopUp && (
           <Text style={styles.pendingText}>
             {t("wallet.pendingTopUp", {
-              amount: fmt(balance!.balances.pending_topup, { currency: balance?.currency }),
+              amount: fmt(balanceParts.pendingTopUp, { currency: balance?.currency }),
               defaultValue: "{{amount}} pending",
             })}
           </Text>

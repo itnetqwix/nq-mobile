@@ -36,6 +36,8 @@
     "sync:api-contract": "npx --yes tsx scripts/sync-openapi-contract.ts",
     "test": "jest",
     "test:phase4": "jest --testPathPattern=\"paymentEdgeCases.phase4|paymentStatusLabels|pricingQuoteHint|bookingWalletGuard|walletPaymentOptionLogic|walletTopUpFlowLogic\"",
+    "test:payment-flow": "node scripts/run-payment-flow-coverage.mjs",
+    "test:payment-flow:unit": "jest --testPathPattern=\"wizardPaymentLogic|pricingTypes|pricingQuoteHint|currency.test|stripeConnectLogic|trainerEarningsDisplayLogic|walletBalanceDisplayLogic\" --forceExit",
     "test:e2e:validate": "node scripts/validate-maestro-flows.mjs",
     "test:watch": "jest --watch",
     "test:e2e": "maestro test e2e/maestro",

@@ -6,6 +6,7 @@ import { queryKeys } from "../../../../lib/queryKeys";
 import { fetchTrainerEarnings } from "../../../wallet/walletApi";
 import { DashboardStatChip } from "../shared/DashboardStatChip";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
+import { computeTrainerEarningsDisplay } from "./trainerEarningsDisplayLogic";
 
 type Props = {
   onPress?: () => void;
@@ -19,27 +20,25 @@ export function TrainerEarningsSnapshot({ onPress }: Props) {
     staleTime: 120_000,
   });
 
-  const available = earnings?.balances?.available ?? 0;
-  const pending =
-    (earnings?.balances?.pending_release ?? 0) +
-    (earnings?.balances?.pending_payout ?? 0);
+  const { available, pending, showPending, availableLabel, pendingLabel } =
+    computeTrainerEarningsDisplay(earnings?.balances);
 
   return (
     <View style={styles.row}>
       <DashboardStatChip
         icon="cash-outline"
         label={t("trainerDashboard.earningsAvailable")}
-        value={`$${available.toFixed(0)}`}
+        value={availableLabel}
         onPress={onPress}
         tone="success"
         expand
         accessibilityLabel={t("trainerDashboard.earningsA11y")}
       />
-      {pending > 0 ? (
+      {showPending ? (
         <DashboardStatChip
           icon="time-outline"
           label={t("trainerDashboard.earningsPending")}
-          value={`$${pending.toFixed(0)}`}
+          value={pendingLabel}
           expand
         />
       ) : null}
