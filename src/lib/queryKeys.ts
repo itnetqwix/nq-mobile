@@ -25,6 +25,11 @@ export const queryKeys = {
     config: ["wallet", "config"] as const,
     earnings: ["wallet", "earnings"] as const,
     stripeConnect: ["wallet", "stripeConnect"] as const,
+    paymentMethods: ["wallet", "paymentMethods"] as const,
+    autoTopUp: ["wallet", "autoTopUp"] as const,
+    trainerPulse: ["wallet", "trainerPulse"] as const,
+    trainerEarningsSeries: (range: string) => ["wallet", "trainerEarningsSeries", range] as const,
+    refundTimeline: (key: string) => ["wallet", "refundTimeline", key] as const,
   },
   friends: {
     all: ["friends"] as const,

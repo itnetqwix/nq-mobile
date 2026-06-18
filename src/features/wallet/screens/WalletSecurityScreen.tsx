@@ -7,6 +7,8 @@ import { space, typography, useThemedStyles } from "../../../theme";
 import {
   biometricWalletLabel,
   isBiometricWalletEnabled,
+  isDeviceBiometricAvailable,
+  promptDeviceBiometric,
   requireBiometricForWallet,
   setBiometricWalletEnabled,
 } from "../../../lib/security/biometricGate";
@@ -36,6 +38,7 @@ export function WalletSecurityScreen() {
   const [confirmPin, setConfirmPin] = useState("");
   const [mode, setMode] = useState<"set" | "confirm" | "verify">("verify");
   const [biometricOn, setBiometricOn] = useState(false);
+  const [bioAvailable, setBioAvailable] = useState(false);
   const [bioLabel, setBioLabel] = useState(() => t("wallet.biometricsDefault"));
   const [busy, setBusy] = useState(false);
 
@@ -44,6 +47,7 @@ export function WalletSecurityScreen() {
   useEffect(() => {
     void isBiometricWalletEnabled().then(setBiometricOn);
     void biometricWalletLabel().then(setBioLabel);
+    void isDeviceBiometricAvailable().then(setBioAvailable);
     void checkDeviceIntegrity().then((r) => {
       if (r.compromised) {
         Alert.alert(
@@ -164,27 +168,35 @@ export function WalletSecurityScreen() {
       )}
 
       <View style={{ marginTop: space.md }}>
-        <Button
-          label={
-            biometricOn
-              ? t("wallet.biometricProtectionOn", { label: bioLabel })
-              : t("wallet.enableBiometricForWallet", { label: bioLabel })
-          }
-          variant="secondary"
-          onPress={async () => {
-            const next = !biometricOn;
-            if (next) {
-              const ok = await requireBiometricForWallet(
-                t("wallet.enableBiometricPrompt", { label: bioLabel }),
-                { failClosed: true }
-              );
-              if (!ok) return;
+        {bioAvailable ? (
+          <Button
+            label={
+              biometricOn
+                ? t("wallet.biometricProtectionOn", { label: bioLabel })
+                : t("wallet.enableBiometricForWallet", { label: bioLabel })
             }
-            await setBiometricWalletEnabled(next);
-            setBiometricOn(next);
-          }}
-          fullWidth
-        />
+            variant="secondary"
+            onPress={async () => {
+              const next = !biometricOn;
+              if (next) {
+                const ok = await promptDeviceBiometric(
+                  t("wallet.enableBiometricPrompt", { label: bioLabel }),
+                  { failClosed: true }
+                );
+                if (!ok) return;
+              }
+              await setBiometricWalletEnabled(next);
+              setBiometricOn(next);
+            }}
+            fullWidth
+          />
+        ) : (
+          <Text style={styles.sub}>
+            {t("wallet.biometricsUnavailable", {
+              defaultValue: "Biometric unlock is not available on this device.",
+            })}
+          </Text>
+        )}
       </View>
     </ScrollView>
   );

@@ -63,7 +63,6 @@ import { HomeHeroCarousel } from "../../../home/components/HomeHeroCarousel";
 import { HomeOffersCarousel } from "../../../home/components/HomeOffersCarousel";
 import { StickyBottomPromoBar } from "../../../home/components/StickyBottomPromoBar";
 import { DiscoverHomeChrome } from "../../../home/layout/DiscoverHomeChrome";
-import { TraineeQuickChipsRow } from "../../../home/components/TraineeQuickChipsRow";
 import { MiniFriendsSection } from "../shared/MiniFriendsSection";
 import { DashboardClipsPreviewSection } from "../shared/DashboardClipsPreviewSection";
 import { TipsForYouSection } from "../shared/TipsForYouSection";
@@ -300,12 +299,6 @@ export function TraineeDiscoverDashboard({
       ? `$${walletBalance.balances.available.toFixed(2)}`
       : undefined;
 
-  const handleQuickInstant = useCallback(() => {
-    setBrowseFilters((prev) => ({ ...prev, onlineOnly: true }));
-    setSelectedCategory(null);
-    setSearch("");
-  }, []);
-
   const altCategories = useMemo(() => {
     if (!selectedCategory) return [];
     return dashboardCategories.filter((c) => c !== selectedCategory).slice(0, 3);
@@ -515,13 +508,6 @@ export function TraineeDiscoverDashboard({
 
   const marketplaceScrollContent = (
     <>
-      {!isGuest && onQuickBook ? (
-        <TraineeQuickChipsRow
-          onInstant={handleQuickInstant}
-          onBookNow={onQuickBook}
-          onClips={() => onOpenClips?.()}
-        />
-      ) : null}
       {leadingContent}
       <HomeHeroCarousel
         guest={isGuest}
@@ -550,7 +536,7 @@ export function TraineeDiscoverDashboard({
       >
         <DiscoverHomeChrome
           compactTop
-          role={AccountType.TRAINEE}
+          role={isGuest ? "guest" : AccountType.TRAINEE}
           subline={marketplaceSubline}
           profilePicture={profilePicture}
           profileName={name}

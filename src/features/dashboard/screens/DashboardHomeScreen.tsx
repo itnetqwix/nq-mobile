@@ -373,10 +373,12 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
   const queryClient = useQueryClient();
   const showAsOnline = resolveShowAsOnline(user);
   const gutter = useHorizontalGutter("md");
-  const marketplaceScrollBottom = useMarketplaceScrollPadding();
+  const isTrainee = accountType === AccountType.TRAINEE;
+  const marketplaceScrollBottom = useMarketplaceScrollPadding({
+    extra: isTrainee ? 0 : space.lg,
+  });
   const marketplaceContentWidth = useMarketplaceContentWidth();
   const homeScroll = useHomeScrollHandler();
-  const isTrainee = accountType === AccountType.TRAINEE;
   const isTrainer = accountType === AccountType.TRAINER;
   const hasProfilePhoto = !!((user as any)?.profile_picture);
   const openEditProfile = () =>

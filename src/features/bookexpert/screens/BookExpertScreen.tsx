@@ -37,6 +37,7 @@ import { useAuth } from "../../auth/context/AuthContext";
 import { resolveTraineeTimeZone } from "../../../lib/user/resolveTraineeTimeZone";
 import { useGuestMode } from "../../auth/hooks/useGuestMode";
 import { useRequireAuth } from "../../auth/hooks/useRequireAuth";
+import { useFloatingTabBarBottomInset } from "../../../navigation/useFloatingTabBarBottomInset";
 import { getTraineeInterests } from "../../dashboard/lib/traineeInterests";
 
 type Props = { bookLessonTrainerId?: string };
@@ -48,6 +49,7 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
   const { requireAuth } = useRequireAuth();
   const themeColors = useThemeColors();
   const styles = useMemo(() => makeStyles(themeColors), [themeColors]);
+  const listBottomPad = useFloatingTabBarBottomInset(space.md);
 
   const traineeInterests = useMemo(() => getTraineeInterests(user), [user]);
 
@@ -275,7 +277,7 @@ export function BookExpertScreen({ bookLessonTrainerId }: Props) {
               }
             />
           )}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: listBottomPad }]}
           refreshControl={refreshControl}
           onScroll={onScroll}
           scrollEventThrottle={scrollEventThrottle}
@@ -374,7 +376,7 @@ function makeStyles(colors: AppColors) {
       backgroundColor: `${colors.brandNavy}08`,
     },
     activeFiltersText: { ...typography.bodySm, color: colors.brandNavy, fontWeight: "600" },
-    list: { padding: space.md, gap: space.sm, paddingBottom: space.xl },
+    list: { padding: space.md, gap: space.sm },
     listBanner: {
       flexDirection: "row",
       alignItems: "center",

@@ -33,12 +33,21 @@ type WalletNavigatorProps = {
   initialParams?: WalletStackParamList["WalletTopUp"];
 };
 
+/** Registers wallet stack back handling from inside a screen so nested pops work. */
+function withWalletNestedBack<P extends object>(Screen: React.ComponentType<P>) {
+  function WalletScreenWithNestedBack(props: P) {
+    useShellNestedBackRegistration();
+    return <Screen {...props} />;
+  }
+  WalletScreenWithNestedBack.displayName = `WalletBack(${Screen.displayName ?? Screen.name ?? "Screen"})`;
+  return WalletScreenWithNestedBack;
+}
+
 function WalletStackInner({
   initialRouteName,
   initialParams,
 }: WalletNavigatorProps) {
   const c = useThemeColors();
-  useShellNestedBackRegistration();
   return (
     <Stack.Navigator
       initialRouteName={initialRouteName ?? "WalletHome"}
@@ -47,20 +56,20 @@ function WalletStackInner({
         contentStyle: { backgroundColor: c.background },
       }}
     >
-      <Stack.Screen name="WalletHome" component={WalletHomeScreen} />
+      <Stack.Screen name="WalletHome" component={withWalletNestedBack(WalletHomeScreen)} />
       <Stack.Screen
         name="WalletTopUp"
-        component={WalletTopUpScreen}
+        component={withWalletNestedBack(WalletTopUpScreen)}
         initialParams={initialRouteName === "WalletTopUp" ? initialParams : undefined}
       />
-      <Stack.Screen name="WalletActivity" component={WalletActivityScreen} />
-      <Stack.Screen name="WalletTransactions" component={TransactionsScreen} />
-      <Stack.Screen name="WalletSecurity" component={WalletSecurityScreen} />
-      <Stack.Screen name="WalletPaymentMethods" component={SavedPaymentMethodsScreen} />
-      <Stack.Screen name="WalletAutoTopUp" component={AutoTopUpScreen} />
-      <Stack.Screen name="PointsActivity" component={PointsActivityScreen} />
-      <Stack.Screen name="StripeConnect" component={StripeConnectOnboardingScreen} />
-      <Stack.Screen name="TrainerEarnings" component={TrainerEarningsScreen} />
+      <Stack.Screen name="WalletActivity" component={withWalletNestedBack(WalletActivityScreen)} />
+      <Stack.Screen name="WalletTransactions" component={withWalletNestedBack(TransactionsScreen)} />
+      <Stack.Screen name="WalletSecurity" component={withWalletNestedBack(WalletSecurityScreen)} />
+      <Stack.Screen name="WalletPaymentMethods" component={withWalletNestedBack(SavedPaymentMethodsScreen)} />
+      <Stack.Screen name="WalletAutoTopUp" component={withWalletNestedBack(AutoTopUpScreen)} />
+      <Stack.Screen name="PointsActivity" component={withWalletNestedBack(PointsActivityScreen)} />
+      <Stack.Screen name="StripeConnect" component={withWalletNestedBack(StripeConnectOnboardingScreen)} />
+      <Stack.Screen name="TrainerEarnings" component={withWalletNestedBack(TrainerEarningsScreen)} />
     </Stack.Navigator>
   );
 }

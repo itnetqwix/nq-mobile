@@ -17,13 +17,29 @@ export async function setBiometricWalletEnabled(enabled: boolean): Promise<void>
   await SecureStore.setItemAsync(BIOMETRIC_WALLET_KEY, enabled ? "1" : "0");
 }
 
+export async function isDeviceBiometricAvailable(): Promise<boolean> {
+  const hasHardware = await LocalAuthentication.hasHardwareAsync();
+  const enrolled = await LocalAuthentication.isEnrolledAsync();
+  return hasHardware && enrolled;
+}
+
 export async function biometricWalletLabel(): Promise<string> {
   const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
-  if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
+  const hasFace = types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION);
+  const hasFingerprint = types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT);
+  const hasIris = types.includes(LocalAuthentication.AuthenticationType.IRIS);
+
+  if (hasFace && hasFingerprint) {
+    return Platform.OS === "ios" ? "Face ID or Touch ID" : "Face or fingerprint";
+  }
+  if (hasFace) {
     return Platform.OS === "ios" ? "Face ID" : "Face unlock";
   }
-  if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
-    return "Fingerprint";
+  if (hasFingerprint) {
+    return Platform.OS === "ios" ? "Touch ID" : "Fingerprint";
+  }
+  if (hasIris) {
+    return "Iris unlock";
   }
   return "Biometrics";
 }
@@ -33,17 +49,13 @@ type GateOptions = {
   failClosed?: boolean;
 };
 
-export async function requireBiometricForWallet(
+/** Prompt the device biometric UI (Face ID, Touch ID, fingerprint, etc.). */
+export async function promptDeviceBiometric(
   actionLabel: string,
   options?: GateOptions
 ): Promise<boolean> {
-  const enabled = await isBiometricWalletEnabled();
-  if (!enabled) return true;
-
-  const hasHardware = await LocalAuthentication.hasHardwareAsync();
-  const enrolled = await LocalAuthentication.isEnrolledAsync();
-
-  if (!hasHardware || !enrolled) {
+  const available = await isDeviceBiometricAvailable();
+  if (!available) {
     return options?.failClosed ? false : true;
   }
 
@@ -51,6 +63,16 @@ export async function requireBiometricForWallet(
     promptMessage: actionLabel,
     cancelLabel: "Cancel",
     disableDeviceFallback: options?.failClosed ?? false,
+    fallbackLabel: Platform.OS === "ios" ? "Use passcode" : undefined,
   });
   return result.success;
+}
+
+export async function requireBiometricForWallet(
+  actionLabel: string,
+  options?: GateOptions
+): Promise<boolean> {
+  const enabled = await isBiometricWalletEnabled();
+  if (!enabled) return true;
+  return promptDeviceBiometric(actionLabel, options);
 }

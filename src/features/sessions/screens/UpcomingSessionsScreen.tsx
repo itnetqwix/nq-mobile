@@ -11,7 +11,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -62,6 +61,7 @@ import { useSessionBooking } from "../SessionBookingContext";
 import { SessionsCalendar } from "../components/SessionsCalendar";
 import type { RootStackParamList } from "../../../navigation/types";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import { useFloatingTabBarBottomInset } from "../../../navigation/useFloatingTabBarBottomInset";
 import { FLASHLIST_PERF_DEFAULTS } from "../../../lib/lists/flatListPerf";
 import { flatListKeyExtractor } from "../../../lib/lists/trainerListUtils";
 import { FadeInView } from "../../../lib/motion/FadeInView";
@@ -344,7 +344,6 @@ export function UpcomingSessionsScreen() {
   const { t } = useAppTranslation();
   const homeScroll = useHomeScrollHandler();
   const { accountType } = useAuth();
-  const insets = useSafeAreaInsets();
   const isTrainerOuter = accountType === AccountType.TRAINER;
   const outerNavigation = useNavigation<NativeStackNavigationProp<any>>();
   const [activeTab, setActiveTab] = useState<StatusTab>("upcoming");
@@ -431,7 +430,7 @@ export function UpcomingSessionsScreen() {
     return dates;
   }, [rawSessions, activeTab]);
 
-  const listBottomPad = floatingTabBarBottomInset(insets.bottom) + space.md;
+  const listBottomPad = useFloatingTabBarBottomInset(space.md);
 
   const renderSessionRow = useCallback(
     ({ item, index }: { item: any; index: number }) => (

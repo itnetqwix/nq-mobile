@@ -125,7 +125,7 @@
     "semantic_hash": "7348eb7bffb22457650e6a671e725047"
   },
   "src/components/payments/PlatformPayButtonRow.tsx": {
-    "mtime": 1781712953.1459503,
+    "mtime": 1781718506.8688471,
     "ast_hash": "6fc55744894ac40707f86449b53052d0",
     "semantic_hash": ""
   },
@@ -320,7 +320,7 @@
     "semantic_hash": ""
   },
   "src/config/env.ts": {
-    "mtime": 1781712953.145459,
+    "mtime": 1781718506.8596253,
     "ast_hash": "2982521953c3da9222460326cecbe997",
     "semantic_hash": ""
   },
@@ -530,7 +530,7 @@
     "semantic_hash": ""
   },
   "src/features/auth/components/SocialAuthButtons.tsx": {
-    "mtime": 1781712953.1459107,
+    "mtime": 1781718506.868734,
     "ast_hash": "6711fb5f7d5a18aea355d9c23308906f",
     "semantic_hash": ""
   },
@@ -610,7 +610,7 @@
     "semantic_hash": "f0c78ea1de086308fc97d64fa960f231"
   },
   "src/features/auth/screens/SignUpScreen.tsx": {
-    "mtime": 1781712953.145561,
+    "mtime": 1781718506.8598828,
     "ast_hash": "ce0d715515f4a471abd2fd21e1318b7b",
     "semantic_hash": ""
   },
@@ -980,7 +980,7 @@
     "semantic_hash": "c9c5ccd7ce00fe7d9157fdbdc60908f3"
   },
   "src/features/calling/components/SessionExtensionModal.tsx": {
-    "mtime": 1781712953.145341,
+    "mtime": 1781718506.8546698,
     "ast_hash": "e482680f1325d4f95f5e76c2d8f78e54",
     "semantic_hash": ""
   },
@@ -1695,7 +1695,7 @@
     "semantic_hash": "402e0939ec2a1333f518bcb5aae866a1"
   },
   "src/features/dashboard/components/home/SessionPreviewRow.tsx": {
-    "mtime": 1781712953.145408,
+    "mtime": 1781718506.8595474,
     "ast_hash": "bc18cda4264d541f43161ace68a0aff7",
     "semantic_hash": ""
   },
@@ -1830,14 +1830,14 @@
     "semantic_hash": ""
   },
   "src/features/dashboard/components/trainer/TrainerDashboardHub.tsx": {
-    "mtime": 1781715171.4296203,
+    "mtime": 1781718506.859296,
     "ast_hash": "3f4fc4e4e826c9b1c78fdb60eb74ac53",
     "semantic_hash": ""
   },
   "src/features/dashboard/components/trainer/TrainerEarningsSnapshot.tsx": {
-    "mtime": 1779535635.225325,
-    "ast_hash": "435c537a3bd37b7ec28172c0561dbcce",
-    "semantic_hash": "435c537a3bd37b7ec28172c0561dbcce"
+    "mtime": 1781718732.1759028,
+    "ast_hash": "bf6729d3b69d554e1498e59037b1742b",
+    "semantic_hash": ""
   },
   "src/features/dashboard/components/trainer/TrainerFriendRequestsSection.tsx": {
     "mtime": 1780391652.2613232,
@@ -2070,7 +2070,7 @@
     "semantic_hash": "42f29a4cb9bb588a1d668add676005ab"
   },
   "src/features/dashboard/screens/SettingsScreen.tsx": {
-    "mtime": 1781712953.145586,
+    "mtime": 1781718506.859977,
     "ast_hash": "6fee1e354da3adf01475b447019122e0",
     "semantic_hash": ""
   },
@@ -2135,7 +2135,7 @@
     "semantic_hash": "31ed1272146d7304b486abd621dcf7af"
   },
   "src/features/home/components/HomeStickySearchBar.tsx": {
-    "mtime": 1781712953.1454742,
+    "mtime": 1781718506.8596613,
     "ast_hash": "30d88cf8c73788517f2b4a17690ca7a9",
     "semantic_hash": ""
   },
@@ -2165,7 +2165,7 @@
     "semantic_hash": "a394746bacaaacd44ac8ae07a1925bbb"
   },
   "src/features/home/layout/DiscoverHomeChrome.tsx": {
-    "mtime": 1781712953.145505,
+    "mtime": 1781718506.8597412,
     "ast_hash": "2599c15113617ad382310a4298f9ed7a",
     "semantic_hash": ""
   },
@@ -2185,7 +2185,7 @@
     "semantic_hash": "4d9a7a68967f938f1883fc2504dbcd3c"
   },
   "src/features/instant-lesson/InstantLessonContext.tsx": {
-    "mtime": 1781712953.1455278,
+    "mtime": 1781718506.8597848,
     "ast_hash": "43dc34559e179dbda1bb5d7d4d83c599",
     "semantic_hash": ""
   },
@@ -2195,7 +2195,7 @@
     "semantic_hash": "edac00798532e593c69a025311452426"
   },
   "src/features/instant-lesson/InstantLessonTraineeModal.tsx": {
-    "mtime": 1781712953.1455379,
+    "mtime": 1781718506.8599052,
     "ast_hash": "5e6ea99e8e2761abb15b0594519ad1a2",
     "semantic_hash": ""
   },
@@ -2265,8 +2265,8 @@
     "semantic_hash": "12cf85068b4de9aadfc14b00aea1e71d"
   },
   "src/features/instant-lesson/booking-wizard/steps/WizardStepPayment.tsx": {
-    "mtime": 1781712953.3194382,
-    "ast_hash": "cf19bc7ed7cb9a3fe0af1e89683ba42b",
+    "mtime": 1781718744.3120244,
+    "ast_hash": "446fd3b6b549e01f25eed918897f4afd",
     "semantic_hash": ""
   },
   "src/features/instant-lesson/booking-wizard/types.ts": {
@@ -2275,7 +2275,7 @@
     "semantic_hash": "558d1fb55f20a089ba8b660196bd1fe4"
   },
   "src/features/instant-lesson/booking-wizard/useInstantLessonBookingWizard.ts": {
-    "mtime": 1781712953.145375,
+    "mtime": 1781718506.8593252,
     "ast_hash": "f0a1c186648074ebc9e297db05d2ac7a",
     "semantic_hash": ""
   },
@@ -2580,12 +2580,12 @@
     "semantic_hash": "384bdbb2c671734f662e2481ea30c12b"
   },
   "src/features/scheduled-booking/useScheduledBookingWizard.ts": {
-    "mtime": 1781712953.1456087,
+    "mtime": 1781718506.860107,
     "ast_hash": "5dd5dcaa2012a51f69859b3d7c38338e",
     "semantic_hash": ""
   },
   "src/features/sessions/SessionActionModal.tsx": {
-    "mtime": 1781712953.145338,
+    "mtime": 1781718506.8592331,
     "ast_hash": "280db0dbe97d7cdf9eb7ff7156f32069",
     "semantic_hash": ""
   },
@@ -2630,7 +2630,7 @@
     "semantic_hash": "1d27c55e5687af2fb9b68f82c9aca2f9"
   },
   "src/features/sessions/screens/UpcomingSessionsScreen.tsx": {
-    "mtime": 1781712953.145405,
+    "mtime": 1781718506.859461,
     "ast_hash": "5af1b63a8e2c217bb4951a331b4dc136",
     "semantic_hash": ""
   },
@@ -2870,12 +2870,12 @@
     "semantic_hash": "e9d1371f3bebabae89236bd8636565a0"
   },
   "src/features/wallet/components/TrainerEarningsPanel.tsx": {
-    "mtime": 1781712953.1452925,
+    "mtime": 1781718506.8272438,
     "ast_hash": "eec38639c7a4a39648850daab203a6d7",
     "semantic_hash": ""
   },
   "src/features/wallet/components/TrainerWalletHome.tsx": {
-    "mtime": 1781712953.145281,
+    "mtime": 1781718506.820168,
     "ast_hash": "9cc1075bcef2598e17fb4f7cb334d6ec",
     "semantic_hash": ""
   },
@@ -2885,12 +2885,12 @@
     "semantic_hash": "15552ecbfbcd0a702db5459e3ef6fb24"
   },
   "src/features/wallet/hooks/useWalletPaymentOption.ts": {
-    "mtime": 1781712953.1454244,
+    "mtime": 1781718506.8595636,
     "ast_hash": "62840cee3fc9be582ff23c5d2382ea20",
     "semantic_hash": ""
   },
   "src/features/wallet/hooks/useWalletTopUpFlow.ts": {
-    "mtime": 1781715166.1943214,
+    "mtime": 1781718506.8689613,
     "ast_hash": "85b05527fe9d0e94feb44efb42243e01",
     "semantic_hash": ""
   },
@@ -2900,7 +2900,7 @@
     "semantic_hash": "a5cfe6329fabfc1e7580bfab43d87421"
   },
   "src/features/wallet/navigation/WalletNavigator.tsx": {
-    "mtime": 1781712953.1458416,
+    "mtime": 1781718506.8683476,
     "ast_hash": "6904d41d5b816004e1d9e3199628d142",
     "semantic_hash": ""
   },
@@ -2910,12 +2910,12 @@
     "semantic_hash": "33f5d66ef484f942fcac2cdbb1612e48"
   },
   "src/features/wallet/screens/SavedPaymentMethodsScreen.tsx": {
-    "mtime": 1781712953.3165245,
+    "mtime": 1781718506.8688664,
     "ast_hash": "fd1879676ba509b221a00b27a7f5a267",
     "semantic_hash": ""
   },
   "src/features/wallet/screens/TrainerEarningsScreen.tsx": {
-    "mtime": 1781712953.1455278,
+    "mtime": 1781718506.859823,
     "ast_hash": "ce7dc94c9486ca0861ed618f7a4d8206",
     "semantic_hash": ""
   },
@@ -2925,8 +2925,8 @@
     "semantic_hash": ""
   },
   "src/features/wallet/screens/WalletHomeScreen.tsx": {
-    "mtime": 1781715171.490509,
-    "ast_hash": "235a514250283f4af6ab3e9c4435f87f",
+    "mtime": 1781718747.4405115,
+    "ast_hash": "655e12b1e915a9f053caf1ed1a8b0f24",
     "semantic_hash": ""
   },
   "src/features/wallet/screens/WalletSecurityScreen.tsx": {
@@ -2935,7 +2935,7 @@
     "semantic_hash": "91a5791c4a0214e6f1b2fbe259f6191a"
   },
   "src/features/wallet/screens/WalletTopUpScreen.tsx": {
-    "mtime": 1781715174.6443875,
+    "mtime": 1781718506.868867,
     "ast_hash": "1b996057c3984b2cab231327b3cc1bca",
     "semantic_hash": ""
   },
@@ -3125,7 +3125,7 @@
     "semantic_hash": "83b029aa1c4650f206237a14711bd2c5"
   },
   "src/lib/booking/bookingWalletGuard.ts": {
-    "mtime": 1781712953.145904,
+    "mtime": 1781718506.8687098,
     "ast_hash": "8edc7bea06d5bcc4b555e92c886d6df2",
     "semantic_hash": ""
   },
@@ -3275,7 +3275,7 @@
     "semantic_hash": ""
   },
   "src/lib/payments/paymentStatusLabels.ts": {
-    "mtime": 1781712953.1454995,
+    "mtime": 1781718506.859607,
     "ast_hash": "624ecc88414abbc5636b11c67c9f2f55",
     "semantic_hash": ""
   },
@@ -3725,7 +3725,7 @@
     "semantic_hash": ""
   },
   "app.json": {
-    "mtime": 1781712953.1453834,
+    "mtime": 1781718506.8594182,
     "ast_hash": "bfb90fa440058c3680a99cc96c19eba8",
     "semantic_hash": ""
   },
@@ -5540,8 +5540,8 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1781715239.70451,
-    "ast_hash": "7d18616576c6eb816168f90da0ed917a",
+    "mtime": 1781721439.6456685,
+    "ast_hash": "f456fcc3cbe1e5122c1f564ba2456e10",
     "semantic_hash": ""
   },
   "scripts/android-dev-env.sh": {
@@ -5595,8 +5595,8 @@
     "semantic_hash": ""
   },
   ".github/workflows/test.yml": {
-    "mtime": 1780490362.6671882,
-    "ast_hash": "d377a35e819165633d205897b4febadd",
+    "mtime": 1781718780.1592228,
+    "ast_hash": "20aa1925a29eea49dd2b22ce34b2c594",
     "semantic_hash": ""
   },
   "PROJECT_DOCUMENTATION.md": {
@@ -5615,8 +5615,8 @@
     "semantic_hash": ""
   },
   "e2e/maestro/README.md": {
-    "mtime": 1781715239.0772386,
-    "ast_hash": "cc4359aa0ccb6a473d2997a8134f4c80",
+    "mtime": 1781718506.859906,
+    "ast_hash": "6f30061927096ce5a4e3874141d12b75",
     "semantic_hash": ""
   },
   "e2e/maestro/instant-book-accept-join-end.yaml": {
@@ -8390,7 +8390,7 @@
     "semantic_hash": ""
   },
   "src/features/auth/components/AppleSignInButton.tsx": {
-    "mtime": 1781712953.14586,
+    "mtime": 1781718506.8683298,
     "ast_hash": "d48072f7e249505c1b59bfac6a92da54",
     "semantic_hash": ""
   },
@@ -8515,8 +8515,8 @@
     "semantic_hash": ""
   },
   "src/features/wallet/stripeConnectApi.ts": {
-    "mtime": 1781441694.242093,
-    "ast_hash": "7cd89179aa0202de7c888e78cd47ff1e",
+    "mtime": 1781718732.3274662,
+    "ast_hash": "48c0869c69351a97c63eaf4787bd489e",
     "semantic_hash": ""
   },
   "docs/CRITICAL_FLOWS_E2E.md": {
@@ -8810,7 +8810,7 @@
     "semantic_hash": ""
   },
   "src/components/ui/SegmentedControl.tsx": {
-    "mtime": 1781712953.1454508,
+    "mtime": 1781718506.8596065,
     "ast_hash": "1df8c4ff8c1f091788c2acf6ac1daff9",
     "semantic_hash": ""
   },
@@ -8835,58 +8835,128 @@
     "semantic_hash": ""
   },
   "src/features/wallet/components/TrainerPaymentExplainer.tsx": {
-    "mtime": 1781712953.1454215,
+    "mtime": 1781718506.8595467,
     "ast_hash": "777b082ff1872ab612b8bb24323f914d",
     "semantic_hash": ""
   },
   "src/features/wallet/components/WalletPaymentExplainer.tsx": {
-    "mtime": 1781712953.1459403,
+    "mtime": 1781718506.8688335,
     "ast_hash": "067e89ed6d683045bcb80895a9427c41",
     "semantic_hash": ""
   },
   "src/lib/payments/__tests__/paymentStatusLabels.test.ts": {
-    "mtime": 1781712953.14592,
+    "mtime": 1781718506.8688443,
     "ast_hash": "03535075677675e2f08133fd7dc4cbac",
     "semantic_hash": ""
   },
   "src/lib/payments/pricingQuoteHint.ts": {
-    "mtime": 1781712953.1456027,
+    "mtime": 1781718506.868305,
     "ast_hash": "5e3cfd09184e99cc662225fdf5c92e50",
     "semantic_hash": ""
   },
   "src/lib/payments/__tests__/paymentEdgeCases.phase4.test.ts": {
-    "mtime": 1781712953.145383,
+    "mtime": 1781718506.8594444,
     "ast_hash": "ee837954cae5ba02d2510a9a733dfb45",
     "semantic_hash": ""
   },
   "src/features/wallet/hooks/__tests__/walletPaymentOptionLogic.test.ts": {
-    "mtime": 1781712953.145876,
+    "mtime": 1781718506.868391,
     "ast_hash": "38b6e1b950a6337320ed531bfd181caf",
     "semantic_hash": ""
   },
   "src/features/wallet/hooks/__tests__/walletTopUpFlowLogic.test.ts": {
-    "mtime": 1781715125.855396,
+    "mtime": 1781718506.8591754,
     "ast_hash": "c762264e664b505c6913c60079bd1f9d",
     "semantic_hash": ""
   },
   "src/features/wallet/hooks/walletPaymentOptionLogic.ts": {
-    "mtime": 1781712953.1456385,
+    "mtime": 1781718506.8683932,
     "ast_hash": "f1dc0ef888b321300b0cd86b9559e49e",
     "semantic_hash": ""
   },
   "src/features/wallet/hooks/walletTopUpFlowLogic.ts": {
-    "mtime": 1781715119.739709,
+    "mtime": 1781718506.8598907,
     "ast_hash": "2e1befe0e8313b3a31d2cedc98954bd2",
     "semantic_hash": ""
   },
   "src/lib/booking/__tests__/bookingWalletGuard.test.ts": {
-    "mtime": 1781712953.1456172,
+    "mtime": 1781718506.860089,
     "ast_hash": "7773a2ddaaa89efe5b1e10ec2cdd69f2",
     "semantic_hash": ""
   },
   "e2e/maestro/wallet-topup-book-cancel.yaml": {
-    "mtime": 1781715236.7262104,
+    "mtime": 1781718506.859219,
     "ast_hash": "76ca992539adba293f136fbdeda60101",
+    "semantic_hash": ""
+  },
+  "scripts/run-payment-flow-coverage.mjs": {
+    "mtime": 1781721440.0477812,
+    "ast_hash": "b606894f726dabdb1c40d84e0329b938",
+    "semantic_hash": ""
+  },
+  "scripts/validate-maestro-flows.mjs": {
+    "mtime": 1781718506.868825,
+    "ast_hash": "457c45d42cd163b209cbe4294c77df68",
+    "semantic_hash": ""
+  },
+  "src/features/dashboard/components/trainer/__tests__/trainerEarningsDisplayLogic.test.ts": {
+    "mtime": 1781718711.901802,
+    "ast_hash": "dd9d162f7f95d11a1ba426ba7f102d56",
+    "semantic_hash": ""
+  },
+  "src/features/dashboard/components/trainer/trainerEarningsDisplayLogic.ts": {
+    "mtime": 1781718709.8853679,
+    "ast_hash": "842b73c5eaf718c0189c273e116f8f2d",
+    "semantic_hash": ""
+  },
+  "src/features/payments/__tests__/pricingTypes.test.ts": {
+    "mtime": 1781718693.3629298,
+    "ast_hash": "18c640e51d700778be66c9b1157e99ba",
+    "semantic_hash": ""
+  },
+  "src/features/payments/__tests__/wizardPaymentLogic.test.ts": {
+    "mtime": 1781718707.1323254,
+    "ast_hash": "375bc2c36592ffc6c5042a2c2000af4d",
+    "semantic_hash": ""
+  },
+  "src/features/payments/wizardPaymentLogic.ts": {
+    "mtime": 1781721101.610798,
+    "ast_hash": "ba60ae77c65680327970b07ac24a4ea7",
+    "semantic_hash": ""
+  },
+  "src/features/wallet/__tests__/stripeConnectLogic.test.ts": {
+    "mtime": 1781718718.4538112,
+    "ast_hash": "3bcc0f4210a2fefb78b8c5ef8ef7da79",
+    "semantic_hash": ""
+  },
+  "src/features/wallet/__tests__/walletBalanceDisplayLogic.test.ts": {
+    "mtime": 1781718716.2498147,
+    "ast_hash": "22fbc4c23734ab35a0efb21e2b8cfd7f",
+    "semantic_hash": ""
+  },
+  "src/features/wallet/stripeConnectLogic.ts": {
+    "mtime": 1781718735.2355485,
+    "ast_hash": "495fb82306aa2be14b0c32aee3622ac4",
+    "semantic_hash": ""
+  },
+  "src/features/wallet/walletBalanceDisplayLogic.ts": {
+    "mtime": 1781718713.321328,
+    "ast_hash": "952d41a903f395038e95cd56d7cd2388",
+    "semantic_hash": ""
+  },
+  "src/lib/intl/__tests__/currency.test.ts": {
+    "mtime": 1781721260.2945824,
+    "ast_hash": "f1e978358bd92eb93f329e136bf88b9f",
+    "semantic_hash": ""
+  },
+  "src/lib/payments/__tests__/pricingQuoteHint.test.ts": {
+    "mtime": 1781718690.3484766,
+    "ast_hash": "6dcfc8f6bef7ac9852a12f973cd8f019",
+    "semantic_hash": ""
+  },
+  ".github/workflows/maestro-e2e.yml": {
+    "mtime": 1781718506.8593462,
+    "ast_hash": "74a335fcd0817f2f53fdcb7f33312ae7",
     "semantic_hash": ""
   }
 }

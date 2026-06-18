@@ -127,12 +127,20 @@ export async function waitForTopUpSettled(
 }
 
 export async function setWalletPin(pin: string) {
-  const res = await apiClient.post(API_ROUTES.wallet.pinSet, { pin });
+  const normalized = String(pin ?? "").trim();
+  if (!/^\d{6}$/.test(normalized)) {
+    throw new Error("PIN must be exactly 6 digits.");
+  }
+  const res = await apiClient.post(API_ROUTES.wallet.pinSet, { pin: normalized });
   return res.data;
 }
 
 export async function verifyWalletPin(pin: string) {
-  const res = await apiClient.post(API_ROUTES.wallet.pinVerify, { pin });
+  const normalized = String(pin ?? "").trim();
+  if (!/^\d{6}$/.test(normalized)) {
+    throw new Error("PIN must be exactly 6 digits.");
+  }
+  const res = await apiClient.post(API_ROUTES.wallet.pinVerify, { pin: normalized });
   return ((res.data as { data?: { pinSessionToken?: string } })?.data ?? res.data) as {
     pinSessionToken?: string;
   };

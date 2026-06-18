@@ -28,7 +28,7 @@ type Props = {
   subline?: string;
   profilePicture?: string;
   profileName: string;
-  role?: AccountTypeValue | "trainer" | "trainee";
+  role?: AccountTypeValue | "trainer" | "trainee" | "guest";
   user?: Record<string, unknown> | null;
   onPressProfile?: () => void;
   onPressReviews?: () => void;
@@ -312,11 +312,14 @@ export function DiscoverHomeChrome({
   );
 
   const isTrainer = role === AccountType.TRAINER || role === "trainer";
+  const isGuest = role === "guest";
 
   const displayName = profileName?.trim() || t("dashboardHome.userDefault", { defaultValue: "Member" });
   const roleLabel = isTrainer
     ? t("trainerDashboard.roleTrainer")
-    : t("traineeDiscover.roleTrainee");
+    : isGuest
+      ? t("guest.exploringAsGuest")
+      : t("traineeDiscover.roleTrainee");
   const socialLinks = user ? getSocialLinksFromUser(user) : null;
   const showSocialLinks = !!socialLinks && hasPublicSocialLinks(socialLinks);
 
@@ -396,9 +399,9 @@ export function DiscoverHomeChrome({
             </View>
             <RoleBadge label={roleLabel} />
             <TraineeProfileMeta
-              subline={subline}
-              walletBalanceLabel={walletBalanceLabel}
-              onOpenWallet={onOpenWallet}
+              subline={isGuest ? undefined : subline}
+              walletBalanceLabel={isGuest ? undefined : walletBalanceLabel}
+              onOpenWallet={isGuest ? undefined : onOpenWallet}
             />
             {showSocialLinks ? (
               <View style={styles.socialRow}>
