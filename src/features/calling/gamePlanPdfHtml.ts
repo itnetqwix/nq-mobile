@@ -143,13 +143,14 @@ export function buildGamePlanPdfHtml(
         gap: 10px;
       }
       .frameImg {
-        flex: 0 0 42%;
-        max-width: 42%;
+        flex: 0 0 48%;
+        max-width: 48%;
       }
       .frameImg img {
         width: 100%;
-        max-height: 180px;
-        object-fit: contain;
+        max-height: 280px;
+        object-fit: cover;
+        border-radius: 4px;
       }
       .frameCaption {
         flex: 1;

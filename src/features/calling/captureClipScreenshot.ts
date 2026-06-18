@@ -22,7 +22,7 @@ export async function captureClipFrameUri(
       const result = await withTimeout(
         VideoThumbnails.getThumbnailAsync(videoUri, {
           time: ms,
-          quality: 0.82,
+          quality: 0.92,
         }),
         timeoutMs
       );

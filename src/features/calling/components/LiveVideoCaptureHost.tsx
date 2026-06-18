@@ -7,8 +7,8 @@ import React from "react";
 import { StyleSheet, View } from "react-native";
 import { RTCView, type MediaStream } from "react-native-webrtc";
 
-const HOST_WIDTH = 720;
-const HOST_HEIGHT = 480;
+const HOST_WIDTH = 1080;
+const HOST_HEIGHT = 720;
 
 type Props = {
   stream: MediaStream | null;

@@ -5,7 +5,8 @@ import * as FileSystem from "expo-file-system/legacy";
 import type { MediaStream } from "react-native-webrtc";
 
 const MIN_CAPTURE_BYTES = 6_000;
-const LIVE_CAPTURE_WIDTH = 720;
+const LIVE_CAPTURE_WIDTH = 1080;
+const LIVE_CAPTURE_JPEG_QUALITY = 0.96;
 
 function delay(ms: number) {
   return new Promise<void>((r) => setTimeout(r, ms));
@@ -27,7 +28,7 @@ async function tryCaptureRef(
   try {
     const uri = await captureRef(ref, {
       format: "jpg",
-      quality: 0.9,
+      quality: LIVE_CAPTURE_JPEG_QUALITY,
       result: "tmpfile",
       width: LIVE_CAPTURE_WIDTH,
       ...options,

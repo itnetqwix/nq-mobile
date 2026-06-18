@@ -483,7 +483,7 @@ export function SessionGamePlanModal({
                     <Image
                       source={{ uri: getS3ImageUrl(item.imageUrl) }}
                       style={styles.shotImage}
-                      resizeMode="contain"
+                      resizeMode="cover"
                     />
                     <Text style={styles.shotIndex}>Frame {index + 1}</Text>
                     <TextInput
@@ -656,9 +656,9 @@ const styles = StyleSheet.create({
   },
   shotImage: {
     width: "100%",
-    height: 180,
+    height: 220,
     borderRadius: 10,
-    backgroundColor: "#eee",
+    backgroundColor: "#000",
   },
   shotIndex: {
     marginTop: 10,

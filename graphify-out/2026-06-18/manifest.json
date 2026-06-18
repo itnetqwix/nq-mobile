@@ -785,8 +785,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/components/AnnotationBurnInHost.tsx": {
-    "mtime": 1781673149.771385,
-    "ast_hash": "1bcdba7b48c567996d338a48687a75be",
+    "mtime": 1781780753.6332984,
+    "ast_hash": "53c3066ff3ee5f35f3412584ede9a0eb",
     "semantic_hash": ""
   },
   "src/features/calling/components/BackgroundBlurBadge.tsx": {
@@ -1195,13 +1195,13 @@
     "semantic_hash": "806f6c977ce3955f42cdad76e91901c3"
   },
   "src/features/calling/screens/NativeMeetingScreen.tsx": {
-    "mtime": 1781779166.6915536,
-    "ast_hash": "facb5511552d538bdb1339737bb09094",
+    "mtime": 1781779399.3471723,
+    "ast_hash": "a15d1573102f9cc9832f13f38a9bee2b",
     "semantic_hash": ""
   },
   "src/features/calling/screens/PrecallLobbyScreen.tsx": {
-    "mtime": 1781461981.1216652,
-    "ast_hash": "81507b09a13e929d2cf0db320328bfa6",
+    "mtime": 1781779346.6557977,
+    "ast_hash": "ca906ec707c0246715d30b721196d11d",
     "semantic_hash": ""
   },
   "src/features/calling/screenshotUploadQueue.ts": {
@@ -1750,8 +1750,8 @@
     "semantic_hash": ""
   },
   "src/features/dashboard/components/locker/LockerViewerModal.tsx": {
-    "mtime": 1781779245.8645675,
-    "ast_hash": "45052b97f76a8a4408c219d189127082",
+    "mtime": 1781780757.9400446,
+    "ast_hash": "912ada8aa234287a982aeb2ac02df4bf",
     "semantic_hash": ""
   },
   "src/features/dashboard/components/shared/DashboardPressableRow.tsx": {
@@ -5540,8 +5540,8 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1781779204.985471,
-    "ast_hash": "1154fd77af7bd8e9caa4e22af7151754",
+    "mtime": 1781780758.6188211,
+    "ast_hash": "f456fcc3cbe1e5122c1f564ba2456e10",
     "semantic_hash": ""
   },
   "scripts/android-dev-env.sh": {
@@ -8725,8 +8725,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/__tests__/liveLessonQaMatrix.test.ts": {
-    "mtime": 1781461981.1218596,
-    "ast_hash": "6f69223434245c2a0fdfc60b965f5d39",
+    "mtime": 1781779294.7235425,
+    "ast_hash": "d4d8e6502d29f49ffd8223c348fb1d95",
     "semantic_hash": ""
   },
   "src/features/calling/__tests__/useLiveLessonUxState.test.ts": {
@@ -8977,6 +8977,11 @@
   "src/lib/resolvePdfForViewing.ts": {
     "mtime": 1781779220.2936654,
     "ast_hash": "b89b68e7ca21a130a58f6e6abb3b0e75",
+    "semantic_hash": ""
+  },
+  "src/lib/openPdfExternally.ts": {
+    "mtime": 1781780743.3810012,
+    "ast_hash": "24d9e54e1331d2c5c2e899a01d412e90",
     "semantic_hash": ""
   }
 }

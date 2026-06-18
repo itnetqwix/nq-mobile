@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState, type RefObject } from "react";
-import { Alert, Platform, View } from "react-native";
+import { Alert, Dimensions, PixelRatio, Platform, View } from "react-native";
 import { captureRef } from "react-native-view-shot";
 import * as FileSystem from "expo-file-system/legacy";
 import { putFileToPresignedUrl } from "../../lib/presignedPut";
@@ -50,6 +50,11 @@ const CAPTURE_SETTLE_MS = 32;
 const COMPOSITE_LAYOUT_DELAY_MS = 100;
 const MIN_CAPTURE_BYTES = 6_000;
 const UPLOAD_MIME = "image/jpeg";
+const CAPTURE_JPEG_QUALITY = 0.96;
+const SCREEN_CAPTURE_WIDTH = Math.min(
+  1440,
+  Math.round(Dimensions.get("window").width * PixelRatio.get())
+);
 
 function extractImageKeyFromPresignResponse(
   presignBody: unknown,
@@ -136,8 +141,9 @@ export function useMeetingScreenshot({
       try {
         const uri = await captureRef(ref, {
           format: "jpg",
-          quality: 0.88,
+          quality: CAPTURE_JPEG_QUALITY,
           result: "tmpfile",
+          width: SCREEN_CAPTURE_WIDTH,
           ...extra,
         });
         const normalized = uri.split("?")[0];
@@ -243,7 +249,7 @@ export function useMeetingScreenshot({
   );
 
   const takeScreenshot = useCallback(
-    async (fallbackSources?: ScreenshotCaptureSource[]) => {
+    async (clipSourcesExplicit?: ScreenshotCaptureSource[]) => {
       if (!isTrainer) return;
       setCapturing(true);
       setCaptureStage("capturing");
@@ -259,37 +265,29 @@ export function useMeetingScreenshot({
         await delay(CAPTURE_SETTLE_MS);
 
         const clipSources =
-          fallbackSources && fallbackSources.length > 0
-            ? fallbackSources
+          clipSourcesExplicit && clipSourcesExplicit.length > 0
+            ? clipSourcesExplicit
             : undefined;
 
         let localUri: string | null = null;
 
         if (clipSources?.length) {
           localUri = await captureFromClipSources(clipSources);
-        }
-
-        const liveReady = isLiveVideoReady?.() ?? false;
-        if (!localUri && liveReady && captureLiveFrame) {
-          await delay(96);
-          localUri = await captureLiveFrame();
-        }
-        if (!localUri) {
-          await delay(liveReady ? 48 : CAPTURE_SETTLE_MS);
+        } else {
           localUri = await captureViewShot(captureTargetRef);
-        }
-        if (!localUri && clipSources?.length) {
-          localUri = await captureFromClipSources(clipSources);
-        }
-        if (!localUri && captureLiveFrame && !clipSources?.length) {
-          localUri = await captureLiveFrame();
+          if (!localUri) {
+            const liveReady = isLiveVideoReady?.() ?? false;
+            if (liveReady && captureLiveFrame) {
+              await delay(96);
+              localUri = await captureLiveFrame();
+            }
+          }
         }
 
         if (!localUri) {
-          const hint = liveReady
-            ? "Video is still loading. Wait a moment and try again, or capture from a clip."
-            : "Could not capture this frame. Load a clip, focus live video, or wait until the camera feed is visible.";
-          throw new Error(hint);
+          throw new Error(
+            "Could not capture this frame. Wait until the lesson view is visible and try again."
+          );
         }
 
         if (applyAnnotationBurnIn) {

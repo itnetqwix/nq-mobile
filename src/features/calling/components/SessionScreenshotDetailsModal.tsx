@@ -187,7 +187,7 @@ export function SessionScreenshotDetailsModal({
                     <Image
                       source={{ uri: previewUri }}
                       style={styles.preview}
-                      resizeMode="contain"
+                      resizeMode="cover"
                     />
                     <View style={styles.toolRow}>
                       <Pressable
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   root: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     padding: 16,
   },
@@ -332,8 +332,8 @@ const styles = StyleSheet.create({
   },
   preview: {
     width: "100%",
-    height: 280,
-    backgroundColor: "#fff",
+    height: 340,
+    backgroundColor: "#000",
     borderRadius: 8,
   },
   toolRow: {

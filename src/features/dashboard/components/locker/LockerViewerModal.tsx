@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import * as Sharing from "expo-sharing";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -23,6 +22,7 @@ import {
 } from "../../../../components/media";
 import { isLikelyAudio, isLikelyPdf } from "../../../../lib/clipMediaUrl";
 import { downloadVideoToLibrary } from "../../../../lib/media/downloadVideoToLibrary";
+import { openPdfWithSystemFallback } from "../../../../lib/openPdfExternally";
 import { resolvePdfForViewing } from "../../../../lib/resolvePdfForViewing";
 import { LockerAudioPlayer } from "./LockerAudioPlayer";
 import { colors, space } from "../../../../theme";
@@ -60,36 +60,6 @@ type Props = {
   onShareFriends?: () => void;
   shareFriendsAccessibilityLabel?: string;
 };
-
-function openPdfWithSystemFallback(
-  localUri: string | null,
-  accessUrl: string | null,
-  fallbackUri: string
-): Promise<boolean> {
-  if (localUri) {
-    try {
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(localUri, {
-          mimeType: "application/pdf",
-          UTI: "com.adobe.pdf",
-        });
-        return true;
-      }
-    } catch {
-      /* try Linking next */
-    }
-  }
-
-  const target = accessUrl ?? fallbackUri;
-  try {
-    const can = await Linking.canOpenURL(target);
-    if (!can) return false;
-    await Linking.openURL(target);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 export function LockerViewerModal({
   visible,

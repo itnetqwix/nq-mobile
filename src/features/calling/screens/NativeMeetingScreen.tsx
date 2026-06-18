@@ -131,10 +131,6 @@ import {
   MeetingTrainerOverflowMenu,
   type TrainerOverflowAction,
 } from "../components/MeetingTrainerOverflowMenu";
-import {
-  ScreenshotCapturePickerModal,
-  type ScreenshotCaptureChoice,
-} from "../components/ScreenshotCapturePickerModal";
 import { ClipPickerModal } from "../components/ClipPickerModal";
 import { LockedDualClipStage } from "../components/LockedDualClipStage";
 import { UnlockedDualClipStage } from "../components/UnlockedDualClipStage";
@@ -163,7 +159,6 @@ import {
   isMediaStreamVideoReady,
 } from "../captureLiveVideoFrame";
 import { useScreenshotUploadRetry } from "../useScreenshotUploadRetry";
-import type { ScreenshotCaptureSource } from "../useMeetingScreenshot";
 import {
   enqueueScreenshotUpload,
   replaceQueuedUploadUri,
@@ -1163,7 +1158,6 @@ function MeetingSurface({
   } | null>(null);
   const [screenshotSheetOpen, setScreenshotSheetOpen] = useState(false);
   const [screenshotDetailsOpen, setScreenshotDetailsOpen] = useState(false);
-  const [screenshotPickerOpen, setScreenshotPickerOpen] = useState(false);
   const [pendingScreenshotKey, setPendingScreenshotKey] = useState<string | null>(null);
   const [pendingScreenshotPreviewUri, setPendingScreenshotPreviewUri] = useState<
     string | null
@@ -1364,38 +1358,9 @@ function MeetingSurface({
 
   const dualClip = clipPaneUris.length >= 2;
 
-  const buildScreenshotSources = useCallback((): ScreenshotCaptureSource[] => {
-    if (clipPaneUris.length === 0 && activeClipUri) {
-      return [{ uri: activeClipUri, progressSeconds: clipProgresses[0] ?? 0 }];
-    }
-    return clipSync.selectedClips.slice(0, 2).flatMap((clip, i) => {
-      const { url } = resolveClipPlayback(clip);
-      if (!url) return [];
-      return [{ uri: url, progressSeconds: clipProgresses[i as 0 | 1] ?? 0 }];
-    });
-  }, [activeClipUri, clipPaneUris.length, clipProgresses, clipSync.selectedClips]);
-
-  const resolveScreenshotSources = useCallback(
-    (choice: ScreenshotCaptureChoice): ScreenshotCaptureSource[] | undefined => {
-      const all = buildScreenshotSources();
-      if (choice === "stage") {
-        if (all.length > 0) return all.slice(0, 1);
-        return undefined;
-      }
-      if (choice === "bothClips") return all.length >= 2 ? all : all.slice(0, 1);
-      if (choice === "clip1") return all.slice(1, 2);
-      if (choice === "clip0") return all.slice(0, 1);
-      return all.slice(0, 1);
-    },
-    [buildScreenshotSources]
-  );
-
-  const handleScreenshotChoice = useCallback(
-    (choice: ScreenshotCaptureChoice) => {
-      void screenshot.takeScreenshot(resolveScreenshotSources(choice));
-    },
-    [resolveScreenshotSources, screenshot]
-  );
+  const handleTakeScreenshot = useCallback(() => {
+    void screenshot.takeScreenshot();
+  }, [screenshot]);
 
   const clipScreenshotLabels = useMemo((): [string, string] => {
     const labels = clipSync.selectedClips.slice(0, 2).map((c, i) => {
@@ -1711,7 +1676,7 @@ function MeetingSurface({
     (action: TrainerOverflowAction) => {
       switch (action) {
         case "screenshot":
-          setScreenshotPickerOpen(true);
+          handleTakeScreenshot();
           break;
         case "gallery":
           void screenshot.refreshScreenshots();
@@ -1734,7 +1699,7 @@ function MeetingSurface({
           break;
       }
     },
-    [handleToggleLock, instantRecording, openAudioOutputPicker, screenshot]
+    [handleTakeScreenshot, handleToggleLock, instantRecording, openAudioOutputPicker, screenshot]
   );
 
   const continueAfterRecap = useCallback(async () => {
@@ -2623,8 +2588,7 @@ function MeetingSurface({
 
       {screenshot.capturing ? (
         <View style={styles.captureOverlay} pointerEvents="none">
-          <ActivityIndicator size="large" color="#fff" />
-          <Text style={styles.captureOverlayText}>Capturing…</Text>
+          <ActivityIndicator size="small" color="#fff" />
         </View>
       ) : null}
 
@@ -3251,6 +3215,8 @@ function MeetingSurface({
         onExitClipMode={isTrainer ? exitClipMode : undefined}
         annotationArmed={annotationArmed}
         onToggleDrawing={isTrainer ? handleAnnotationToggle : undefined}
+        onScreenshot={isTrainer ? handleTakeScreenshot : undefined}
+        screenshotCapturing={screenshot.capturing}
         onOpenClipPicker={() => setPickerOpen(true)}
         showCamerasVisible={isTrainer && inClipMode && meetingLayout.cameraStripCollapsed}
         onShowCameras={() => meetingLayout.setCameraStripCollapsed(false)}
@@ -3352,14 +3318,6 @@ function MeetingSurface({
               void screenshot.refreshScreenshots();
               setScreenshotSheetOpen(true);
             }}
-          />
-          <ScreenshotCapturePickerModal
-            visible={screenshotPickerOpen}
-            hasDualClips={dualClip}
-            inLiveFocus={inLiveFocus}
-            clipLabels={clipScreenshotLabels}
-            onClose={() => setScreenshotPickerOpen(false)}
-            onSelect={handleScreenshotChoice}
           />
           <SessionGamePlanModal
             visible={gamePlanOpen}
@@ -3831,17 +3789,16 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   captureOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.45)",
+    position: "absolute",
+    top: 12,
+    right: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(0,0,0,0.55)",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 20,
-    gap: 10,
-  },
-  captureOverlayText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
   },
   recordNotice: {
     position: "absolute",
