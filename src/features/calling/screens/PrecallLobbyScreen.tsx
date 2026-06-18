@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   Image,
   Linking,
   Platform,
@@ -357,11 +358,13 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
           : c.textMuted;
 
   const networkLabel = precallNetworkLabel(network.quality, network.loading);
+  const previewMaxHeight = Math.round(Dimensions.get("window").height * 0.4);
 
   return (
+    <View style={[styles.page, { paddingTop: insets.top }]}>
     <ScrollView
       style={styles.scroll}
-      contentContainerStyle={[styles.shell, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 }]}
+      contentContainerStyle={[styles.shell, { paddingBottom: space.sm }]}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
@@ -396,7 +399,7 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
         </View>
       </View>
 
-      <View style={[styles.previewWrap, { backgroundColor: "#0d0d10" }]}>
+      <View style={[styles.previewWrap, { backgroundColor: "#0d0d10", maxHeight: previewMaxHeight, height: previewMaxHeight }]}>
         {streamId && videoTrack && cameraOn ? (
           <RTCView
             streamURL={streamId}
@@ -589,25 +592,6 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
       </View>
 
       <View style={[styles.blurRow, { borderColor: c.border, backgroundColor: c.surfaceElevated }]}>
-        <Ionicons name="contrast-outline" size={16} color={c.brandNavy} />
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.blurTitle, { color: c.text }]}>
-            Background dim
-          </Text>
-          <Text style={[styles.blurSub, { color: c.textMuted }]}>
-            Softens your background on this device (not full blur yet).
-          </Text>
-        </View>
-        <Switch
-          value={blurEnabled}
-          onValueChange={handleBlurToggle}
-          trackColor={{ false: c.surfaceMuted, true: c.brandAccent }}
-          thumbColor="#fff"
-          ios_backgroundColor={c.surfaceMuted}
-        />
-      </View>
-
-      <View style={[styles.blurRow, { borderColor: c.border, backgroundColor: c.surfaceElevated }]}>
         <Ionicons name="volume-high-outline" size={16} color={c.brandNavy} />
         <View style={{ flex: 1 }}>
           <Text style={[styles.blurTitle, { color: c.text }]}>Audio device</Text>
@@ -706,6 +690,9 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
         </View>
       ) : null}
 
+    </ScrollView>
+
+      <View style={[styles.stickyActions, { paddingBottom: insets.bottom + 12, borderTopColor: c.border, backgroundColor: c.background }]}>
       <View style={styles.actions}>
         {callSlotBlocked && callSlotCanTakeOver ? (
           <Pressable
@@ -783,18 +770,24 @@ export function PrecallLobbyScreen({ lessonId, onJoin, onCancel }: Props) {
           {t("precall.lessonId", { id: lessonId })}
         </Text>
       </View>
-    </ScrollView>
+      </View>
+    </View>
   );
 }
 
 function useStyles() {
   return useThemedStyles((palette) =>
     StyleSheet.create({
+      page: { flex: 1, backgroundColor: palette.background },
       shell: {
         backgroundColor: palette.background,
         paddingHorizontal: space.md,
-        gap: space.md,
-        flexGrow: 1,
+        gap: space.sm,
+      },
+      stickyActions: {
+        borderTopWidth: StyleSheet.hairlineWidth,
+        paddingHorizontal: space.md,
+        paddingTop: space.sm,
       },
       scroll: { flex: 1, backgroundColor: palette.background },
       headerRow: { flexDirection: "row", alignItems: "center", gap: 12 },
@@ -823,7 +816,6 @@ function useStyles() {
       previewWrap: {
         borderRadius: radii.lg,
         overflow: "hidden",
-        aspectRatio: 3 / 4,
         position: "relative",
       },
       preview: { width: "100%", height: "100%" },

@@ -155,11 +155,13 @@ describe("buildGamePlanPdfHtml layout", () => {
         trainerAbout: "USPTA certified",
       }
     );
-    expect(html).toContain("GAME PLAN");
-    expect(html).toContain("Topic:");
+    expect(html).toContain("Game Plan");
+    expect(html).toContain("planTitle");
     expect(html).toContain("Forehand topspin");
+    expect(html).not.toContain("Topic:");
     expect(html).toContain("Name:");
     expect(html).toContain("Alex Trainee");
+    expect(html).toContain("frameRow");
     expect(html).toContain("Contact point");
     expect(html).toContain("Expert");
     expect(html).toContain("Coach Pat");

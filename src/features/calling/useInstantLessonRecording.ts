@@ -24,7 +24,7 @@ import {
 } from "./sessionRecordingApi";
 
 /** Native instant recording (audio + stage video); set false to hide UI only. */
-export const INSTANT_RECORDING_CAPTURE_ENABLED = true;
+export const INSTANT_RECORDING_CAPTURE_ENABLED = false;
 
 type Args = {
   socket: Socket | null;

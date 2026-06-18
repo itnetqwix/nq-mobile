@@ -21,12 +21,18 @@ export const LIVE_LESSON_QA_MATRIX = [
   { id: 16, scenario: "Trainee initiates departure", expected: "Symmetric stay/end flow" },
   { id: 17, scenario: "Instant vs scheduled session", expected: "Join policy + timer source verified" },
   { id: 18, scenario: "Extension rejected at timer 0", expected: "Explicit rejection surfaced" },
+  {
+    id: 19,
+    scenario: "ICE reconnect while both in-call",
+    expected: "No duplicate peer-joined toast (reason=reconnect suppressed)",
+  },
 ] as const;
 
 describe("live lesson QA matrix", () => {
-  it("documents 18 E2E scenarios", () => {
-    expect(LIVE_LESSON_QA_MATRIX).toHaveLength(18);
+  it("documents 19 E2E scenarios", () => {
+    expect(LIVE_LESSON_QA_MATRIX).toHaveLength(19);
     expect(LIVE_LESSON_QA_MATRIX[7].expected).toContain("SessionRejoinBlockedModal");
+    expect(LIVE_LESSON_QA_MATRIX[18].expected).toContain("reconnect");
   });
 });
 

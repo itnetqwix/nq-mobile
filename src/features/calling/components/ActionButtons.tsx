@@ -28,6 +28,9 @@ type Props = {
   bottomInset?: number;
   audioRouteLabel?: string;
   onToggleAudioRoute?: () => void;
+  /** Trainer: expand collapsed camera strip during clip mode. */
+  onShowCameras?: () => void;
+  showCamerasVisible?: boolean;
 };
 
 const BTN = 36;
@@ -49,6 +52,8 @@ export function ActionButtons({
   bottomInset = 12,
   audioRouteLabel,
   onToggleAudioRoute,
+  onShowCameras,
+  showCamerasVisible = false,
 }: Props) {
   const { micEnabled, cameraEnabled, toggleMute, toggleCamera, switchCamera, endCall } =
     useCall();
@@ -94,6 +99,16 @@ export function ActionButtons({
             haptic="tap"
           >
             <Ionicons name="volume-high-outline" size={ICON} color={meetingTheme.text} />
+          </RoundButton>
+        ) : null}
+
+        {isTrainer && showCamerasVisible && onShowCameras ? (
+          <RoundButton
+            onPress={onShowCameras}
+            accessibilityLabel="Show cameras"
+            haptic="select"
+          >
+            <Ionicons name="people-outline" size={ICON} color={meetingTheme.text} />
           </RoundButton>
         ) : null}
 

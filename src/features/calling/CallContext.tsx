@@ -52,6 +52,7 @@ export type PeerJoinedEvent = {
   to_user: string;
   sessionId: string;
   peerId?: string;
+  reason?: "initial" | "reconnect";
 };
 
 type CallContextValue = {
@@ -214,6 +215,9 @@ export function CallProvider({
   const onPeerDisconnectedRef = useRef(onPeerDisconnected);
   const onPeerJoinedRef = useRef(onPeerJoinedCb);
   const onSlotTakenOverRef = useRef(onSlotTakenOver);
+  const peersJoinNotifiedRef = useRef<Set<string>>(new Set());
+  const bothJoinedRef = useRef(false);
+  bothJoinedRef.current = bothJoined;
   onEndedRef.current = onEnded;
   onPeerLeftRef.current = onPeerLeft;
   onPeerDisconnectedRef.current = onPeerDisconnected;
@@ -275,6 +279,16 @@ export function CallProvider({
       onStatus: (s) => active && setStatus(s),
       onPeerJoined: (info) => {
         if (!active) return;
+        const peerKey = String(info.peerId ?? info.from_user ?? "");
+        const isReconnect = info.reason === "reconnect";
+        if (
+          isReconnect ||
+          (bothJoinedRef.current && peersJoinNotifiedRef.current.has(peerKey))
+        ) {
+          setPartnerDisconnected(false);
+          return;
+        }
+        if (peerKey) peersJoinNotifiedRef.current.add(peerKey);
         setPeerJoined(info);
         setPartnerDisconnected(false);
         onPeerJoinedRef.current?.(info);
@@ -339,6 +353,7 @@ export function CallProvider({
     });
     engineRef.current = engine;
 
+    peersJoinNotifiedRef.current.clear();
     engine.start().catch((err) => {
       setLastError(err?.message ?? "Failed to start call");
     });

@@ -282,6 +282,7 @@ export const API_ROUTES = {
     savedSessionsUploadUrl: "/common/saved-sessions-upload-url",
     getAllSavedSessions: "/common/get-all-saved-sessions",
     pdfUploadUrl: "/common/pdf-upload-url",
+    fileDownloadUrl: "/common/file-download-url",
     getClips: "/common/get-clips",
     getSharedClips: "/common/get-shared-clips",
     getLibraryClips: "/common/get-library-clips",

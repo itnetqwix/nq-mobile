@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as Sharing from "expo-sharing";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -22,6 +23,7 @@ import {
 } from "../../../../components/media";
 import { isLikelyAudio, isLikelyPdf } from "../../../../lib/clipMediaUrl";
 import { downloadVideoToLibrary } from "../../../../lib/media/downloadVideoToLibrary";
+import { resolvePdfForViewing } from "../../../../lib/resolvePdfForViewing";
 import { LockerAudioPlayer } from "./LockerAudioPlayer";
 import { colors, space } from "../../../../theme";
 
@@ -59,8 +61,34 @@ type Props = {
   shareFriendsAccessibilityLabel?: string;
 };
 
-function buildPdfEmbedUrl(url: string): string {
-  return `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(url)}`;
+function openPdfWithSystemFallback(
+  localUri: string | null,
+  accessUrl: string | null,
+  fallbackUri: string
+): Promise<boolean> {
+  if (localUri) {
+    try {
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(localUri, {
+          mimeType: "application/pdf",
+          UTI: "com.adobe.pdf",
+        });
+        return true;
+      }
+    } catch {
+      /* try Linking next */
+    }
+  }
+
+  const target = accessUrl ?? fallbackUri;
+  try {
+    const can = await Linking.canOpenURL(target);
+    if (!can) return false;
+    await Linking.openURL(target);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function LockerViewerModal({
@@ -93,6 +121,8 @@ export function LockerViewerModal({
   const [error, setError] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(initialIndex);
+  const [pdfLocalUri, setPdfLocalUri] = useState<string | null>(null);
+  const [pdfAccessUrl, setPdfAccessUrl] = useState<string | null>(null);
 
   const items = useMemo<LockerViewerPlaylistItem[]>(() => {
     if (playlist?.length) return playlist;
@@ -107,6 +137,17 @@ export function LockerViewerModal({
   const currentSharedBy = current?.sharedBy ?? sharedBy;
   const currentClipId = current?.clipId ?? clipId;
   const canSwipe = items.length > 1 && currentMode === "video";
+
+  const resolvedMode: LockerViewerMode = useMemo(() => {
+    if (currentMode === "audio" || isLikelyAudio(currentUri)) return "audio";
+    if (currentMode === "pdf") return "pdf";
+    if (currentMode === "image" && isLikelyPdf(currentUri)) return "pdf";
+    if (currentMode === "video") return "video";
+    if (isLikelyPdf(currentUri)) return "pdf";
+    return currentMode;
+  }, [currentMode, currentUri]);
+
+  const nativeMode = resolvedMode === "video" ? "video" : "image";
 
   useEffect(() => {
     if (visible) {
@@ -124,6 +165,39 @@ export function LockerViewerModal({
     setLoading(currentMode !== "audio" && !isLikelyAudio(currentUri));
   }, [activeIndex, visible, currentUri, currentMode]);
 
+  useEffect(() => {
+    if (!visible || resolvedMode !== "pdf" || !currentUri) {
+      setPdfLocalUri(null);
+      setPdfAccessUrl(null);
+      return;
+    }
+
+    let cancelled = false;
+    setPdfLocalUri(null);
+    setPdfAccessUrl(null);
+    setLoading(true);
+    setError(false);
+
+    void (async () => {
+      try {
+        const resolved = await resolvePdfForViewing(currentUri);
+        if (cancelled) return;
+        setPdfLocalUri(resolved.localUri);
+        setPdfAccessUrl(resolved.accessUrl);
+        setLoading(false);
+      } catch {
+        if (!cancelled) {
+          setLoading(false);
+          setError(true);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, resolvedMode, currentUri]);
+
   const goToIndex = useCallback(
     (next: number) => {
       const clamped = Math.min(Math.max(0, next), items.length - 1);
@@ -134,18 +208,18 @@ export function LockerViewerModal({
     [items.length, onIndexChange]
   );
 
-  const resolvedMode: LockerViewerMode = useMemo(() => {
-    if (currentMode === "audio" || isLikelyAudio(currentUri)) return "audio";
-    if (currentMode === "pdf") return "pdf";
-    if (currentMode === "image" && isLikelyPdf(currentUri)) return "pdf";
-    if (currentMode === "video") return "video";
-    if (isLikelyPdf(currentUri)) return "pdf";
-    return currentMode;
-  }, [currentMode, currentUri]);
-
-  const nativeMode = resolvedMode === "video" ? "video" : "image";
-
   const openExternally = useCallback(async () => {
+    if (resolvedMode === "pdf") {
+      const opened = await openPdfWithSystemFallback(
+        pdfLocalUri,
+        pdfAccessUrl,
+        currentUri
+      );
+      if (opened) return;
+      Alert.alert("Failed to open", "Could not open this PDF on your device.");
+      return;
+    }
+
     const webUrl = currentClipId
       ? `https://netqwix.com/clips/${encodeURIComponent(currentClipId)}`
       : currentUri;
@@ -159,7 +233,7 @@ export function LockerViewerModal({
     } catch {
       Alert.alert("Failed to open", "Could not launch the system browser for this file.");
     }
-  }, [currentUri, currentClipId]);
+  }, [resolvedMode, pdfLocalUri, pdfAccessUrl, currentUri, currentClipId]);
 
   const confirmDownload = useCallback(() => {
     Alert.alert(
@@ -337,28 +411,38 @@ export function LockerViewerModal({
             </View>
           ) : resolvedMode === "pdf" ? (
             <View style={styles.fill}>
-              <WebView
-                source={{ uri: buildPdfEmbedUrl(currentUri) }}
-                style={styles.fill}
-                onLoadStart={() => {
-                  setLoading(true);
-                  setError(false);
-                }}
-                onLoadEnd={() => setLoading(false)}
-                onError={() => {
-                  setLoading(false);
-                  setError(true);
-                }}
-                onHttpError={() => {
-                  setLoading(false);
-                  setError(true);
-                }}
-                allowsInlineMediaPlayback
-                mediaPlaybackRequiresUserAction={false}
-                originWhitelist={["*"]}
-                javaScriptEnabled
-                domStorageEnabled
-              />
+              {pdfLocalUri ? (
+                <WebView
+                  source={{ uri: pdfLocalUri }}
+                  style={styles.fill}
+                  onLoadStart={() => {
+                    setLoading(true);
+                    setError(false);
+                  }}
+                  onLoadEnd={() => setLoading(false)}
+                  onError={() => {
+                    setLoading(false);
+                    void openPdfWithSystemFallback(pdfLocalUri, pdfAccessUrl, currentUri).then(
+                      (opened) => {
+                        if (!opened) setError(true);
+                      }
+                    );
+                  }}
+                  onHttpError={() => {
+                    setLoading(false);
+                    void openPdfWithSystemFallback(pdfLocalUri, pdfAccessUrl, currentUri).then(
+                      (opened) => {
+                        if (!opened) setError(true);
+                      }
+                    );
+                  }}
+                  allowsInlineMediaPlayback
+                  mediaPlaybackRequiresUserAction={false}
+                  originWhitelist={["*"]}
+                  javaScriptEnabled
+                  domStorageEnabled
+                />
+              ) : null}
             </View>
           ) : canSwipe && mediaHeight > 0 ? (
             <PagerView

@@ -9,12 +9,18 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 
 import { fetchSessionDetail } from "../../home/api/homeApi";
 import { queryKeys } from "../../../lib/queryKeys";
+import {
+  escrowMilestoneCopy,
+  type EscrowMilestone,
+} from "../escrowMilestone";
 import { meetingTheme } from "../meetingTheme";
 
 type Props = {
   sessionId: string;
   enabled: boolean;
   topOffset: number;
+  /** Optional UX milestone override (timer warnings, departure, post-call). */
+  escrowMilestone?: EscrowMilestone | null;
 };
 
 function fmtMoneyMinor(minor: unknown): string {
@@ -27,6 +33,7 @@ export function MeetingPaymentSummaryChip({
   sessionId,
   enabled,
   topOffset,
+  escrowMilestone = "session_active",
 }: Props) {
   const [expanded, setExpanded] = useState(false);
 
@@ -81,6 +88,8 @@ export function MeetingPaymentSummaryChip({
 
   const total = fmtMoneyMinor(escrow!.charge_total_minor);
   const status = String(escrow!.status ?? "held");
+  const milestoneCopy =
+    escrowMilestone != null ? escrowMilestoneCopy(escrowMilestone) : null;
 
   return (
     <View style={[styles.wrap, { top: topOffset }]} pointerEvents="box-none">
@@ -100,7 +109,12 @@ export function MeetingPaymentSummaryChip({
       </Pressable>
       {expanded ? (
         <View style={styles.panel}>
-          <Text style={styles.panelTitle}>Payment held in escrow</Text>
+          <Text style={styles.panelTitle}>
+            {milestoneCopy?.title ?? "Payment held in escrow"}
+          </Text>
+          {milestoneCopy?.body ? (
+            <Text style={styles.panelMilestone}>{milestoneCopy.body}</Text>
+          ) : null}
           <Text style={styles.panelStatus}>Status: {status}</Text>
           {lines.map((row) => (
             <View key={row.label} style={styles.row}>
@@ -156,6 +170,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     marginBottom: 2,
+  },
+  panelMilestone: {
+    color: "rgba(255,255,255,0.82)",
+    fontSize: 11,
+    lineHeight: 15,
+    marginBottom: 4,
   },
   panelStatus: {
     color: "rgba(255,255,255,0.75)",

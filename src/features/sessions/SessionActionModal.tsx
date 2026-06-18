@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -55,6 +55,7 @@ import { formatEscrowStatusLabel, formatRefundStatusLabel } from "../../lib/paym
 import { formatRefundTransferLabel } from "../../lib/sessions/refundTransferLabel";
 import { InstantLessonSessionActions } from "../instant-lesson/components/InstantLessonSessionActions";
 import { SessionEarlyEndActions } from "./components/SessionEarlyEndActions";
+import { fetchSessionJoinReadiness } from "../calling/sessionLiveApi";
 
 type Props = {
   visible: boolean;
@@ -111,6 +112,13 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
   const completed = status === "completed";
   const terminal = viewSession ? isSessionTerminalForUI(viewSession) : false;
   const instant = isInstantLesson(viewSession);
+
+  useQuery({
+    queryKey: queryKeys.sessions.joinReadiness(sessionId),
+    queryFn: () => fetchSessionJoinReadiness(sessionId, { refreshIce: true }),
+    enabled: visible && !!sessionId && instant,
+    staleTime: 15_000,
+  });
   const outcomeKey = viewSession ? getSessionOutcomeI18nKey(viewSession) : null;
   const outcomeLabel = outcomeKey ? t(outcomeKey as any) : null;
   const refundReasonKey = getRefundReasonI18nKey(
@@ -389,13 +397,35 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
   const handleJoin = useCallback(() => {
     if (!sessionId || !joinEnabled) return;
     onClose();
-    const go = () => {
-      if (navigationRef.isReady()) {
-        navigationRef.navigate("Meeting", { lessonId: sessionId });
+    void (async () => {
+      try {
+        const readiness = await fetchSessionJoinReadiness(sessionId, {
+          refreshIce: true,
+        });
+        const canJoin =
+          readiness?.can_join ?? readiness?.join_policy?.can_join ?? true;
+        if (!canJoin) {
+          const reason =
+            readiness?.join_block_reason ??
+            readiness?.join_policy?.block_reason ??
+            readiness?.join_code ??
+            readiness?.join_policy?.join_code ??
+            "This session is not ready to join yet.";
+          Alert.alert("Cannot join lesson", reason);
+          return;
+        }
+        if (navigationRef.isReady()) {
+          navigationRef.navigate("Meeting", {
+            lessonId: sessionId,
+            refreshIce: true,
+          } as never);
+        }
+      } catch (e: unknown) {
+        const msg =
+          e instanceof Error ? e.message : "Could not verify join readiness.";
+        Alert.alert("Cannot join lesson", msg);
       }
-    };
-    go();
-    setTimeout(go, 400);
+    })();
   }, [sessionId, joinEnabled, onClose]);
 
   if (!viewSession) return null;

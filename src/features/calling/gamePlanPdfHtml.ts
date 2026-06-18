@@ -37,17 +37,23 @@ export function buildGamePlanPdfHtml(
   const frameBlocks = imgDataUrls
     .map((src, i) => {
       const item = items[i];
-      const caption = item?.description?.trim() || item?.title?.trim() || "";
+      const frameTitle = item?.title?.trim() ?? "";
+      const frameDesc = item?.description?.trim() ?? "";
+      const captionBlock =
+        frameTitle || frameDesc
+          ? `<div class="frameCaption">
+              ${frameTitle ? `<p class="frameTitle">${esc(frameTitle)}</p>` : ""}
+              ${frameDesc ? `<p class="frameNotes">${esc(frameDesc)}</p>` : ""}
+            </div>`
+          : "";
       return `
         <section class="frame">
-          <div class="frameImg">
-            <img src="${src}" alt="Frame ${i + 1}" />
+          <div class="frameRow">
+            <div class="frameImg">
+              <img src="${src}" alt="Frame ${i + 1}" />
+            </div>
+            ${captionBlock}
           </div>
-          ${
-            caption
-              ? `<p class="frameNotes">${esc(caption)}</p>`
-              : ""
-          }
           <hr class="rule" />
         </section>
       `;
@@ -66,32 +72,42 @@ export function buildGamePlanPdfHtml(
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
       * { box-sizing: border-box; }
-      @page { margin: 18px; }
+      @page { margin: 12px; }
       body {
         font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
         margin: 0;
-        padding: 16px;
+        padding: 10px;
         color: #111;
-        border: 8px solid #14328d;
+        border: 6px solid #14328d;
       }
       .header {
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 10px;
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: 8px;
       }
-      h1.title {
-        margin: 0;
-        font-size: 20px;
+      .headerMain { flex: 1; min-width: 0; }
+      .brandLabel {
+        margin: 0 0 2px;
+        font-size: 10px;
         font-weight: 800;
+        letter-spacing: 0.14em;
         text-transform: uppercase;
+        color: #14328d;
+      }
+      h1.planTitle {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 800;
+        line-height: 1.25;
         color: #000;
       }
       .headerLogo {
-        max-width: 140px;
-        max-height: 48px;
+        max-width: 168px;
+        max-height: 52px;
         object-fit: contain;
+        flex-shrink: 0;
       }
       .brandFallback {
         font-size: 12px;
@@ -101,40 +117,57 @@ export function buildGamePlanPdfHtml(
         margin: 0;
       }
       .meta p {
-        margin: 4px 0;
-        font-size: 12px;
-        line-height: 1.45;
+        margin: 2px 0;
+        font-size: 11px;
+        line-height: 1.4;
       }
       .sessionNotes {
-        margin: 8px 0 0;
-        font-size: 11px;
-        line-height: 1.5;
+        margin: 6px 0 0;
+        font-size: 10px;
+        line-height: 1.45;
         white-space: pre-wrap;
         color: #333;
       }
       hr.rule {
         border: none;
         border-top: 2px solid #000;
-        margin: 16px 0;
+        margin: 10px 0;
       }
       .frame {
         page-break-inside: avoid;
-        margin: 0 0 4px;
+        margin: 0 0 2px;
+      }
+      .frameRow {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
       }
       .frameImg {
-        text-align: center;
-        margin-bottom: 8px;
+        flex: 0 0 42%;
+        max-width: 42%;
       }
       .frameImg img {
-        max-width: 100%;
-        max-height: 260px;
+        width: 100%;
+        max-height: 180px;
         object-fit: contain;
       }
-      .frameNotes {
+      .frameCaption {
+        flex: 1;
+        min-width: 0;
+        padding-top: 2px;
+      }
+      .frameTitle {
         font-size: 11px;
-        line-height: 1.5;
+        font-weight: 700;
+        line-height: 1.35;
+        color: #000;
+        margin: 0 0 4px;
+      }
+      .frameNotes {
+        font-size: 10px;
+        line-height: 1.45;
         color: #111;
-        margin: 0 0 8px;
+        margin: 0;
         white-space: pre-wrap;
       }
       .expertFooter {
@@ -177,12 +210,14 @@ export function buildGamePlanPdfHtml(
   </head>
   <body>
     <header class="header">
-      <h1 class="title">GAME PLAN</h1>
+      <div class="headerMain">
+        <p class="brandLabel">Game Plan</p>
+        <h1 class="planTitle">${esc(planTitle)}</h1>
+      </div>
       ${logoBlock}
     </header>
     <div class="meta">
       <p><strong>Date:</strong> ${esc(dateLabel)}</p>
-      <p><strong>Topic:</strong> ${esc(planTitle)}</p>
       ${meta?.traineeName ? `<p><strong>Name:</strong> ${esc(meta.traineeName)}</p>` : ""}
       ${sessionNotes ? `<p class="sessionNotes">${esc(sessionNotes)}</p>` : ""}
     </div>

@@ -566,6 +566,7 @@ export class NativeCallEngine {
         to_user: ui.to_user,
         sessionId: ui.sessionId ?? this.sessionId,
         peerId: ui.peerId,
+        reason: ui.reason === "reconnect" ? "reconnect" : "initial",
       });
 
       /** Deterministic offerer avoids mobile↔mobile glare (both sides used to send offers). */

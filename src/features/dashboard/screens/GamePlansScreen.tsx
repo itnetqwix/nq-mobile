@@ -22,6 +22,8 @@ import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
 import { queryKeys } from "../../../lib/queryKeys";
 
+const HERO_HEIGHT = 110;
+
 function formatReportDate(
   id: { month?: number; day?: number; year?: number } | null | undefined,
   reportsFallback: string
@@ -135,8 +137,8 @@ export function GamePlansScreen() {
   const planKind = (item: Record<string, unknown>): KindType => {
     const reportData = (item.reportData as { imageUrl?: string }[] | undefined)?.[0];
     const session = item.session as { report?: string; sessionRecordingUrl?: string } | undefined;
-    if (reportData?.imageUrl) return "image";
     if (session?.report) return "pdf";
+    if (reportData?.imageUrl) return "image";
     if (session?.sessionRecordingUrl || item.sessionRecordingUrl) {
       const rec = String(session?.sessionRecordingUrl ?? item.sessionRecordingUrl ?? "");
       return isLikelyAudio(rec) ? "audio" : "video";
@@ -194,7 +196,9 @@ export function GamePlansScreen() {
                   {section.data.map((item, index) => {
                     const reportData = (item.reportData as { imageUrl?: string; title?: string }[] | undefined)?.[0];
                     const title = reportData?.title ?? String(item.title ?? t("gamePlans.planDefault", { defaultValue: "Game Plan" }));
-                    const uri = reportData?.imageUrl ? getS3ImageUrl(reportData.imageUrl) : "";
+                    const session = item.session as { report?: string; sessionRecordingUrl?: string } | undefined;
+                    const hasPdf = !!session?.report;
+                    const uri = !hasPdf && reportData?.imageUrl ? getS3ImageUrl(reportData.imageUrl) : "";
                     const kind = planKind(item);
                     const km = KIND_META[kind];
 
@@ -223,7 +227,7 @@ export function GamePlansScreen() {
                             <ImageWithSkeleton
                               uri={uri}
                               width={cardWidth}
-                              height={160}
+                              height={HERO_HEIGHT}
                               borderRadius={radii.md}
                               resizeMode="cover"
                               accessibilityLabel={title}
@@ -381,7 +385,7 @@ function useStyles() {
         position: "relative",
       },
       heroPh: {
-        height: 160,
+        height: HERO_HEIGHT,
         alignItems: "center",
         justifyContent: "center",
         borderTopLeftRadius: radii.lg,
@@ -389,29 +393,30 @@ function useStyles() {
       },
       kindBadge: {
         position: "absolute",
-        top: 10,
-        left: 10,
+        top: 8,
+        left: 8,
         flexDirection: "row",
         alignItems: "center",
-        gap: 4,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
+        gap: 3,
+        paddingHorizontal: 7,
+        paddingVertical: 3,
         borderRadius: radii.pill,
         borderWidth: 1,
       },
       kindBadgeText: {
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: "700",
       },
       cardBody: {
-        padding: space.md,
-        gap: space.xs,
+        paddingHorizontal: space.sm,
+        paddingVertical: space.sm,
+        gap: 4,
       },
       planTitle: {
-        ...typography.bodyMd,
+        ...typography.bodySm,
         fontWeight: "700",
         color: palette.text,
-        lineHeight: 20,
+        lineHeight: 18,
       },
       traineeTag: {
         flexDirection: "row",
@@ -428,14 +433,14 @@ function useStyles() {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        marginTop: space.xs,
+        marginTop: 4,
       },
       editBtn: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 5,
-        paddingVertical: 6,
-        paddingHorizontal: 10,
+        gap: 4,
+        paddingVertical: 4,
+        paddingHorizontal: 8,
         borderRadius: radii.pill,
         borderWidth: 1,
         borderColor: palette.border,

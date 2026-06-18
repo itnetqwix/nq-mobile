@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "../../../components/ui";
 import { radii, space, typography, useThemedStyles, useThemeColors } from "../../../theme";
+import { escrowMilestoneCopy, type EscrowMilestone } from "../escrowMilestone";
 import type { SessionHandoffSummary } from "../sessionLiveApi";
 
 type Props = {
@@ -134,6 +135,9 @@ export function SessionHandoffScreen({
                 ))}
               </View>
             ) : null}
+            {!isTrainer && summary?.escrow_milestone ? (
+              <EscrowMilestoneCard milestone={summary.escrow_milestone} />
+            ) : null}
           </ScrollView>
         )}
 
@@ -151,6 +155,21 @@ export function SessionHandoffScreen({
         </View>
       </View>
     </Modal>
+  );
+}
+
+function EscrowMilestoneCard({ milestone }: { milestone: EscrowMilestone }) {
+  const c = useThemeColors();
+  const styles = useStyles();
+  const copy = escrowMilestoneCopy(milestone);
+  return (
+    <View style={[styles.notesCard, { borderColor: c.border, backgroundColor: c.brandAccentSubtle }]}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <Ionicons name="shield-checkmark-outline" size={18} color={c.brandNavy} />
+        <Text style={[styles.notesTitle, { color: c.text }]}>{copy.title}</Text>
+      </View>
+      <Text style={[styles.noteLine, { color: c.textMuted }]}>{copy.body}</Text>
+    </View>
   );
 }
 

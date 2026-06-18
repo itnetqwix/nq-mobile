@@ -1,5 +1,6 @@
 import { apiClient } from "../../api/client";
 import { API_ROUTES } from "../../config/apiRoutes";
+import type { EscrowMilestone } from "./escrowMilestone";
 
 export type JoinReadinessClip = {
   _id: string;
@@ -107,6 +108,7 @@ export type SessionHandoffSummary = {
     role: "trainer" | "trainee";
   } | null;
   ended_at: string | null;
+  escrow_milestone?: EscrowMilestone | null;
 };
 
 export async function fetchSessionHandoffSummary(

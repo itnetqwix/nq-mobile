@@ -153,6 +153,7 @@ export function useClipSync({
   const lastSeekEmit = useRef(0);
   const lastPeriodicProgressEmit = useRef(0);
   const lastProgressByClipId = useRef<Record<string, number>>({});
+  const lastLocalProgressRef = useRef<Record<string, number>>({});
   const clipFrameSizesRef = useRef<Record<string, { w: number; h: number }>>({});
   const pendingZoomPanEmitRef = useRef<
     Record<string, { zoom: number; pan: PanPoint }>
@@ -378,6 +379,21 @@ export function useClipSync({
       }
       if (!vid) return;
       lastProgressByClipId.current[vid] = progressRaw;
+      const playingHeartbeat = payload?.playing === true || payload?.heartbeat === true;
+      if (!isTrainer && playingHeartbeat) {
+        const localProgress = lastLocalProgressRef.current[vid];
+        if (
+          typeof localProgress === "number" &&
+          Math.abs(progressRaw - localProgress) > 0.3
+        ) {
+          setSeekHint({
+            videoId: vid,
+            progress: progressRaw,
+            receivedAt: Date.now(),
+          });
+          return;
+        }
+      }
       setSeekHint({
         videoId: vid,
         progress: progressRaw,
@@ -784,6 +800,7 @@ export function useClipSync({
 
   const togglePlay = useCallback(
     (next?: boolean, videoIdOverride?: string | null) => {
+      if (!isTrainer) return;
       const bothLocked = lockMode && selectedClips.length >= 2;
       const vid =
         videoIdOverride ??
@@ -847,6 +864,7 @@ export function useClipSync({
 
   const seek = useCallback(
     (progressSeconds: number, options?: { forceEmit?: boolean; videoId?: string }) => {
+      if (!isTrainer) return;
       const bothLocked = lockMode && selectedClips.length >= 2;
       const vid = options?.videoId ?? activeClipId;
       if (!vid && !bothLocked) return;
@@ -1096,6 +1114,7 @@ export function useClipSync({
     (videoId: string | null, progressSeconds: number) => {
       if (!isTrainer || !socket || !sessionId || !videoId) return;
       lastProgressByClipId.current[String(videoId)] = progressSeconds;
+      lastLocalProgressRef.current[String(videoId)] = progressSeconds;
       if (!isPlaying) return;
       const now = Date.now();
       const minMs =
@@ -1113,6 +1132,44 @@ export function useClipSync({
     },
     [isPlaying, isTrainer, lockMode, selectedClips.length, sessionId, socket, userInfo]
   );
+
+  /** Trainer: resync heartbeat while clips play (corrects trainee drift). */
+  useEffect(() => {
+    if (!isTrainer || !socket || !sessionId || !isPlaying) return;
+    const tick = () => {
+      const bothLocked = lockMode && selectedClips.length >= 2;
+      const vid =
+        activeClipId ??
+        (selectedClips[0] ? clipIdOf(selectedClips[0]) : null);
+      const progress = bothLocked
+        ? lastProgressByClipId.current.__both
+        : vid
+          ? lastProgressByClipId.current[String(vid)]
+          : undefined;
+      if (typeof progress !== "number") return;
+      socket.emit(CLIP_EVENTS.ON_VIDEO_TIME, {
+        videoId: bothLocked ? undefined : vid ?? undefined,
+        progress,
+        both: bothLocked,
+        playing: true,
+        heartbeat: true,
+        lockMode,
+        userInfo,
+        sessionId,
+      });
+    };
+    const id = setInterval(tick, 3000);
+    return () => clearInterval(id);
+  }, [
+    activeClipId,
+    isPlaying,
+    isTrainer,
+    lockMode,
+    selectedClips,
+    sessionId,
+    socket,
+    userInfo,
+  ]);
 
   return {
     selectedClips,

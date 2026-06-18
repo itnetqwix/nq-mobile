@@ -207,6 +207,10 @@ import {
   SessionTimeWarningModal,
   type SessionWarningKind,
 } from "../components/SessionTimeWarningModal";
+import {
+  escrowMilestoneFromTimerWarning,
+  type EscrowMilestone,
+} from "../escrowMilestone";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Meeting">;
 
@@ -302,8 +306,10 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
    *  `MeetingSurface` when it opens the post-call flow so the CallContext's
    *  `onEnded` (engine teardown) doesn't yank us back to Home prematurely. */
   const postCallActiveRef = useRef(false);
+  /** Initiator tapped End — wait for partner departure response before going home. */
+  const awaitingDepartureRef = useRef(false);
   /**
-   * Set when the PEER (trainer) explicitly presses "End call". In this case
+   * Set when the PEER explicitly presses "End call". In this case
    * the trainee should NOT be navigated home — MeetingSurface will open their
    * post-call flow (ratings + handoff). We only stash a drop record when a
    * call tears down for unknown reasons (ICE failure etc.), not a clean end.
@@ -315,7 +321,14 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
     postCallActiveRef.current = false;
     navigation.reset({ index: 0, routes: [{ name: "Main" }] });
   }, [navigation]);
+  const onDepartureInitiated = useCallback(() => {
+    awaitingDepartureRef.current = true;
+  }, []);
+
   const handleCallEnded = useCallback(() => {
+    if (awaitingDepartureRef.current) {
+      return;
+    }
     if (postCallActiveRef.current) {
       /**
        * Post-call flow is currently open (ratings / game-plan / handoff modals
@@ -354,6 +367,7 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
     goHome();
   }, [goHome, lessonId]);
   const beginPostCallFlow = useCallback(() => {
+    awaitingDepartureRef.current = false;
     postCallActiveRef.current = true;
     try {
       const { setLastInterruptedSession } = require("../callRejoinStore");
@@ -462,11 +476,7 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
       startWithCameraOff={startWithCameraOff}
       onEnded={handleCallEnded}
       onPeerJoined={() => {
-        pushLocalToast({
-          title: NOTIFICATION_TITLES.peerJoinedCall,
-          description: `${peerDisplayName} joined the meeting.`,
-          type: NOTIFICATION_TYPES.DEFAULT,
-        });
+        /* Join UX: MeetingPeerJoinedToast only (deduped in CallContext). */
       }}
       onPeerDisconnected={() => {
         pushLocalToast({
@@ -476,6 +486,8 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
         });
       }}
       onPeerLeft={() => {
+        peerEndedCallRef.current = true;
+        setPeerEndedCall(true);
         pushLocalToast({
           title: NOTIFICATION_TITLES.peerLeftCall,
           description: `${peerDisplayName} ended the call. You'll be asked whether to end the session.`,
@@ -500,6 +512,7 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
           });
         }}
         onPostCallFlowStart={beginPostCallFlow}
+        onDepartureInitiated={onDepartureInitiated}
         peerEndedCall={peerEndedCall}
         myId={me._id}
         peerId={peer._id}
@@ -522,6 +535,7 @@ function MeetingSurface({
   onExit,
   onRejoinLesson,
   onPostCallFlowStart,
+  onDepartureInitiated,
   peerEndedCall = false,
   myId,
   peerId,
@@ -534,9 +548,10 @@ function MeetingSurface({
   onExit: () => void;
   onRejoinLesson: () => void;
   onPostCallFlowStart: () => void;
+  /** Parent sets awaiting-departure ref so engine teardown does not navigate home. */
+  onDepartureInitiated?: () => void;
   /**
-   * Flips to `true` when the remote peer (trainer) explicitly presses "End call".
-   * Trainee uses this to open their post-call flow immediately.
+   * Flips to `true` when the remote peer explicitly presses "End call".
    */
   peerEndedCall?: boolean;
   myId: string;
@@ -746,6 +761,8 @@ function MeetingSurface({
     null
   );
   const seenWarningsRef = useRef<Set<SessionWarningKind>>(new Set());
+  const [escrowMilestone, setEscrowMilestone] =
+    useState<EscrowMilestone>("session_active");
 
   /** Extension + time-warning modals must not stack (only one blocking sheet). */
   const extensionUiBlocking = useMemo(() => {
@@ -1138,6 +1155,7 @@ function MeetingSurface({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [traineeDroveClips, setTraineeDroveClips] = useState(false);
   const [ratingsOpen, setRatingsOpen] = useState(false);
+  const [awaitingPartnerEnd, setAwaitingPartnerEnd] = useState(false);
   const [gamePlanOpen, setGamePlanOpen] = useState(false);
   const [gamePlanBanner, setGamePlanBanner] = useState<{
     title: string;
@@ -1752,6 +1770,7 @@ function MeetingSurface({
 
   const openPostCallFlow = useCallback(async () => {
     if (postCallFlowStartedRef.current) return;
+    setAwaitingPartnerEnd(false);
     postCallFlowStartedRef.current = true;
     refreshSessionsAfterLessonEnd();
     onPostCallFlowStart();
@@ -1839,6 +1858,8 @@ function MeetingSurface({
           style: "destructive",
           onPress: () => {
             void (async () => {
+              onDepartureInitiated?.();
+              setAwaitingPartnerEnd(true);
               try {
                 await initiateSessionDeparture(lessonId);
                 reportOpsEvent({
@@ -1847,16 +1868,26 @@ function MeetingSurface({
                   session_id: lessonId,
                   title: "User initiated session departure",
                 });
-              } catch {
-                /* ON_CLOSE still initiates departure on the server */
+              } catch (err: unknown) {
+                setAwaitingPartnerEnd(false);
+                const msg =
+                  err instanceof Error
+                    ? err.message
+                    : "Could not start session end. Check your connection and try again.";
+                pushLocalToast({
+                  title: "Couldn't end session",
+                  description: msg,
+                  type: NOTIFICATION_TYPES.TRANSCATIONAL,
+                });
+                return;
               }
-              setTimeout(() => endCall(), 0);
+              endCall();
             })();
           },
         },
       ]
     );
-  }, [endCall, lessonId]);
+  }, [endCall, lessonId, onDepartureInitiated, pushLocalToast]);
 
   const pipBounds = meetingBounds ?? { width: winW, height: winH };
 
@@ -2370,6 +2401,9 @@ function MeetingSurface({
         if (seenWarningsRef.current.has(key)) return;
         if (extensionUiBlocking) return;
         seenWarningsRef.current.add(key);
+        setEscrowMilestone(
+          key === "five" ? "ending_soon_five" : "ending_soon_two"
+        );
         setActiveWarning(key);
         return;
       }
@@ -2390,6 +2424,26 @@ function MeetingSurface({
     [pushLocalToast, peerDisplayName, extensionUiBlocking]
   );
 
+  useEffect(() => {
+    if (isTrainer) return;
+    if (
+      lessonTimer.status === "ended" ||
+      awaitingPartnerEnd ||
+      handoffOpen ||
+      ratingsOpen ||
+      peerEndedCall
+    ) {
+      setEscrowMilestone("early_end");
+    }
+  }, [
+    isTrainer,
+    lessonTimer.status,
+    awaitingPartnerEnd,
+    handoffOpen,
+    ratingsOpen,
+    peerEndedCall,
+  ]);
+
   /** Reset the "already shown" guards whenever the timer is extended so the
    *  next 5/2-min crossing re-opens the modal for the trainee. */
   useEffect(() => {
@@ -2397,6 +2451,7 @@ function MeetingSurface({
     const onExtended = (data: any) => {
       if (!data || String(data.sessionId) !== String(lessonId)) return;
       seenWarningsRef.current = new Set();
+      setEscrowMilestone("session_active");
     };
     socket.on("LESSON_TIMER_EXTENDED", onExtended);
     return () => {
@@ -2465,9 +2520,23 @@ function MeetingSurface({
 
   useEffect(() => {
     if (!socket) return;
-    const onWarning = (data: { sessionId?: string; kind?: string }) => {
+    const onWarning = (data: {
+      sessionId?: string;
+      kind?: string;
+      escrow_milestone?: EscrowMilestone;
+    }) => {
       if (String(data?.sessionId) !== String(lessonId)) return;
       const kind = data?.kind;
+      const fromPayload = data?.escrow_milestone;
+      if (
+        fromPayload === "ending_soon_five" ||
+        fromPayload === "ending_soon_two"
+      ) {
+        setEscrowMilestone(fromPayload);
+      } else {
+        const derived = escrowMilestoneFromTimerWarning(kind);
+        if (derived) setEscrowMilestone(derived);
+      }
       if (kind === "five" || kind === "two" || kind === "one" || kind === "thirty") {
         onTimerCrossThreshold(kind);
       }
@@ -2582,15 +2651,27 @@ function MeetingSurface({
         ]}
       >
         {!isTrainer && hasClipStage ? (
-          <View style={styles.coachChipRow} pointerEvents="none">
-            <MeetingCoachChip
-              icon="play-circle-outline"
-              label={
-                traineeDroveClips
-                  ? "Clips shared with coach"
-                  : "Coach is controlling clips"
-              }
-            />
+          <View style={styles.traineeClipSyncRow} pointerEvents="none">
+            <View style={styles.traineeClipSyncTrack}>
+              <View
+                style={[
+                  styles.traineeClipSyncFill,
+                  {
+                    width: `${Math.min(
+                      100,
+                      lockedDualClip
+                        ? lockedDuration > 0
+                          ? (lockedProgress / lockedDuration) * 100
+                          : 0
+                        : clipDurations[activePaneIndex] > 0
+                          ? (clipProgresses[activePaneIndex] / clipDurations[activePaneIndex]) *
+                            100
+                          : 0
+                    )}%`,
+                  },
+                ]}
+              />
+            </View>
           </View>
         ) : null}
         {isTrainer && annotationArmed && !annotationToolbarOpen && !hasClipStage ? (
@@ -2643,8 +2724,8 @@ function MeetingSurface({
                 onSeek={(sec, commit) => handleClipSeek(0, sec, commit)}
                 onPaneLayout={handleAnnotationPaneLayout}
                 capturing={screenshot.capturing}
-                focusPaneIndex={lockedAnnotating ? lockedAnnotPane : null}
-                hideTimeline={lockedAnnotating}
+                focusPaneIndex={null}
+                hideTimeline={false}
                 paneLabels={clipScreenshotLabels}
               />
             ) : dualClip && clipPaneUris[0] && clipPaneUris[1] ? (
@@ -2836,6 +2917,7 @@ function MeetingSurface({
         <MeetingPaymentSummaryChip
           sessionId={lessonId}
           enabled={partnerInSession}
+          escrowMilestone={escrowMilestone}
           topOffset={
             chrome.insets.top +
             (meetingStatusBanner ? 108 : 56) +
@@ -3170,6 +3252,8 @@ function MeetingSurface({
         annotationArmed={annotationArmed}
         onToggleDrawing={isTrainer ? handleAnnotationToggle : undefined}
         onOpenClipPicker={() => setPickerOpen(true)}
+        showCamerasVisible={isTrainer && inClipMode && meetingLayout.cameraStripCollapsed}
+        onShowCameras={() => meetingLayout.setCameraStripCollapsed(false)}
       />
       </View>
 
@@ -3319,6 +3403,7 @@ function MeetingSurface({
         prompt={departure.prompt}
         isTrainer={isTrainer}
         responding={departure.responding}
+        autoStayMs={0}
         onStay={() => {
           reportOpsEvent({
             event_type: "SESSION_DEPARTURE_STAYED",
@@ -3338,6 +3423,17 @@ function MeetingSurface({
           void departure.respond(true);
         }}
       />
+
+      {awaitingPartnerEnd && !departure.prompt && !postCallFlowStartedRef.current ? (
+        <View style={styles.departureWaitOverlay} pointerEvents="none">
+          <View style={styles.departureWaitCard}>
+            <Text style={styles.departureWaitTitle}>Waiting for your partner</Text>
+            <Text style={styles.departureWaitBody}>
+              They can choose to end the session or stay until the booked time ends.
+            </Text>
+          </View>
+        </View>
+      ) : null}
 
       <SessionRejoinBlockedModal
         visible={
@@ -3691,6 +3787,49 @@ const styles = StyleSheet.create({
   coachChipRowDraw: {
     top: 40,
   },
+  traineeClipSyncRow: {
+    position: "absolute",
+    top: 8,
+    left: 16,
+    right: 16,
+    zIndex: 12,
+  },
+  traineeClipSyncTrack: {
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    overflow: "hidden",
+  },
+  traineeClipSyncFill: {
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.9)",
+  },
+  departureWaitOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 80,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.45)",
+    padding: 24,
+  },
+  departureWaitCard: {
+    backgroundColor: "#1c1c1e",
+    borderRadius: 16,
+    padding: 20,
+    gap: 8,
+    maxWidth: 320,
+  },
+  departureWaitTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  departureWaitBody: {
+    color: "#c7c7cc",
+    fontSize: 14,
+    lineHeight: 20,
+  },
   captureOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.45)",
@@ -3753,17 +3892,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 14,
     zIndex: 40,
-  },
-  departureWaitTitle: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  departureWaitBody: {
-    color: "#aeaeb2",
-    fontSize: 13,
-    marginTop: 6,
-    lineHeight: 18,
   },
   departureConcernBtn: {
     marginTop: 10,
