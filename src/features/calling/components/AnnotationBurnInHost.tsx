@@ -112,13 +112,13 @@ export function AnnotationBurnInHost({ ref }: Props) {
         top: 0,
         width: EXPORT_WIDTH,
         height: job.height,
-        backgroundColor: "#ffffff",
+        backgroundColor: "#0a0a12",
       }}
     >
       <Image
         source={{ uri: job.baseUri }}
-        style={{ width: EXPORT_WIDTH, height: job.height, backgroundColor: "#fff" }}
-        resizeMode="cover"
+        style={{ width: EXPORT_WIDTH, height: job.height, backgroundColor: "#0a0a12" }}
+        resizeMode={job.projection?.contentFit === "contain" ? "contain" : "cover"}
         onLoadEnd={() => {
           imageReadyRef.current = true;
           tryFinish();

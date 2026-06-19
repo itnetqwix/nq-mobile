@@ -44,6 +44,9 @@ export type RemoteStroke = {
   /** Video / clip intrinsic size for contentUv strokes. */
   contentAspect?: { width: number; height: number };
   contentFit?: "contain" | "cover";
+  /** Dual-clip pane (0 = top, 1 = bottom) or live vs clip stage. */
+  paneIndex?: 0 | 1;
+  stage?: "clip" | "live";
   targetUserId?: string | null;
 };
 
@@ -114,6 +117,8 @@ function parseIncomingStrokePayload(
           coordSpace: "contentUv",
           targetUserId: obj.targetUserId != null ? String(obj.targetUserId) : null,
           sourceCanvasSize: canvasSize,
+          paneIndex: obj.paneIndex === 1 ? 1 : obj.paneIndex === 0 ? 0 : undefined,
+          stage: obj.stage === "live" || obj.stage === "clip" ? obj.stage : undefined,
           ...readStrokeAspectMeta(obj),
         };
       }
@@ -178,6 +183,8 @@ function parseIncomingStrokePayload(
           coordSpace: "contentUv",
           targetUserId: obj.targetUserId != null ? String(obj.targetUserId) : null,
           sourceCanvasSize: canvasSize,
+          paneIndex: obj.paneIndex === 1 ? 1 : obj.paneIndex === 0 ? 0 : undefined,
+          stage: obj.stage === "live" || obj.stage === "clip" ? obj.stage : undefined,
           ...readStrokeAspectMeta(obj),
         };
       }
@@ -248,6 +255,8 @@ function serializeStrokeForSocket(stroke: RemoteStroke): string {
         targetUserId: stroke.targetUserId ?? undefined,
         contentAspect: stroke.contentAspect,
         contentFit: stroke.contentFit,
+        paneIndex: stroke.paneIndex,
+        stage: stroke.stage,
         shape: webShape,
         start: { u: b.x0, v: b.y0 },
         end: { u: b.x1, v: b.y1 },
@@ -270,6 +279,8 @@ function serializeStrokeForSocket(stroke: RemoteStroke): string {
       targetUserId: stroke.targetUserId ?? undefined,
       contentAspect: stroke.contentAspect,
       contentFit: stroke.contentFit,
+      paneIndex: stroke.paneIndex,
+      stage: stroke.stage,
       points: stroke.points.map((p) => ({ u: p.x, v: p.y })),
       color: stroke.color,
       width: stroke.width,

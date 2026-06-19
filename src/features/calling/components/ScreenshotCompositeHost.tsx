@@ -39,14 +39,14 @@ export function ScreenshotCompositeHost({
         left: -4000,
         top: 0,
         width: 360,
-        backgroundColor: "#ffffff",
+        backgroundColor: "#0a0a12",
       }}
     >
       {frameUris.map((uri, i) => (
         <Image
           key={`${uri}-${i}`}
           source={{ uri }}
-          style={{ width: 360, height: 240, backgroundColor: "#fff" }}
+          style={{ width: 360, height: 240, backgroundColor: "#0a0a12" }}
           resizeMode="contain"
           onLoadEnd={() => setLoadedCount((n) => n + 1)}
         />

@@ -145,6 +145,8 @@ export type SessionDepartureStatus = {
   concernRaisedAt: string | null;
   canRaiseConcern: boolean;
   bookedEndAt: string | null;
+  /** Present when the booking row has actual_end_at set. */
+  actualEndAt?: string | null;
 };
 
 export type SessionDepartureResponse = {
@@ -152,6 +154,16 @@ export type SessionDepartureResponse = {
   ended?: boolean;
   submitted?: boolean;
 };
+
+/** True when the session booking has ended (from GET or POST departure APIs). */
+export function isSessionEndedFromDeparture(
+  res: SessionDepartureResponse | null | undefined
+): boolean {
+  if (!res) return false;
+  if (res.ended === true) return true;
+  if (res.departure?.actualEndAt) return true;
+  return false;
+}
 
 /** POST /user/session-departure/:sessionId — initiate asymmetric end-call departure. */
 export async function initiateSessionDeparture(

@@ -720,8 +720,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/annotationRenderUtils.ts": {
-    "mtime": 1781673011.756562,
-    "ast_hash": "0ce0e7bc6645234c44e3ee09945b4050",
+    "mtime": 1781854620.9541862,
+    "ast_hash": "a85358b867754a825c15b1117c39cc66",
     "semantic_hash": ""
   },
   "src/features/calling/api/lessonCallSlotApi.ts": {
@@ -785,8 +785,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/components/AnnotationBurnInHost.tsx": {
-    "mtime": 1781789532.1128464,
-    "ast_hash": "d1cb7f871f3eb6caff2f0ce5f1c9ec30",
+    "mtime": 1781854780.80807,
+    "ast_hash": "a02ecd8bfb8a58488005e67bbcf6a9b2",
     "semantic_hash": ""
   },
   "src/features/calling/components/BackgroundBlurBadge.tsx": {
@@ -820,8 +820,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/components/ClipPlayer.tsx": {
-    "mtime": 1781677487.1340413,
-    "ast_hash": "4f1b4be8625f587dedcf90639dd0ba41",
+    "mtime": 1781854411.2075248,
+    "ast_hash": "1a7dead08a884e6ff464e4c1a3c3d846",
     "semantic_hash": ""
   },
   "src/features/calling/components/ClipZoomControls.tsx": {
@@ -840,8 +840,8 @@
     "semantic_hash": "280431ae0514c7052d0bb10ef7cb754f"
   },
   "src/features/calling/components/DrawingOverlay.tsx": {
-    "mtime": 1781673027.5111957,
-    "ast_hash": "2c82ffac3d02b1d63f9db4dac85a639b",
+    "mtime": 1781854667.3050914,
+    "ast_hash": "37b8bc2ea85c114a2dccbecce97aeafb",
     "semantic_hash": ""
   },
   "src/features/calling/components/DualLiveStage.tsx": {
@@ -970,9 +970,9 @@
     "semantic_hash": "06046257242f18acdf6e4f92547d85a0"
   },
   "src/features/calling/components/ScreenshotCompositeHost.tsx": {
-    "mtime": 1780215585.265483,
-    "ast_hash": "c9c5ccd7ce00fe7d9157fdbdc60908f3",
-    "semantic_hash": "c9c5ccd7ce00fe7d9157fdbdc60908f3"
+    "mtime": 1781854783.3415773,
+    "ast_hash": "d4a6d2bd508d2de69c99e5c3b25db217",
+    "semantic_hash": ""
   },
   "src/features/calling/components/SessionExtensionModal.tsx": {
     "mtime": 1781852388.150721,
@@ -995,8 +995,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/components/SessionScreenshotDetailsModal.tsx": {
-    "mtime": 1781783541.1759958,
-    "ast_hash": "bb2d88d2bdd01f20063d245728f15f6a",
+    "mtime": 1781854826.2599201,
+    "ast_hash": "b89adf50c771bce472c730e8dffddb48",
     "semantic_hash": ""
   },
   "src/features/calling/components/SessionScreenshotSheet.tsx": {
@@ -1175,9 +1175,9 @@
     "semantic_hash": "38bbf10fe8814cf326d0fa96c8ab5376"
   },
   "src/features/calling/reportDataUtils.ts": {
-    "mtime": 1780488357.628707,
-    "ast_hash": "2cab2e00ecb8e8116d7b56c4028b5e94",
-    "semantic_hash": "2cab2e00ecb8e8116d7b56c4028b5e94"
+    "mtime": 1781854784.9403799,
+    "ast_hash": "205ec3b38d47e68b3691440cbf67a4a9",
+    "semantic_hash": ""
   },
   "src/features/calling/screens/MeetingRouter.tsx": {
     "mtime": 1781461981.1216931,
@@ -1190,8 +1190,8 @@
     "semantic_hash": "806f6c977ce3955f42cdad76e91901c3"
   },
   "src/features/calling/screens/NativeMeetingScreen.tsx": {
-    "mtime": 1781852521.8337839,
-    "ast_hash": "c3e94a2189e973b5d027c4ee4f906696",
+    "mtime": 1781854877.97673,
+    "ast_hash": "30baac361b8b8cceff093410459a210d",
     "semantic_hash": ""
   },
   "src/features/calling/screens/PrecallLobbyScreen.tsx": {
@@ -1250,8 +1250,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/useDrawingSync.ts": {
-    "mtime": 1781673151.1078897,
-    "ast_hash": "14a091ab0eae3d93ec128fae85b8cfe1",
+    "mtime": 1781854629.089186,
+    "ast_hash": "7ccedac7c80ae23bf41164e137dcf1c3",
     "semantic_hash": ""
   },
   "src/features/calling/useInstantLessonRecording.ts": {
@@ -1270,8 +1270,8 @@
     "semantic_hash": "3f07cc90b5986d9b1949071b5aa6c54b"
   },
   "src/features/calling/useMeetingChromeInsets.ts": {
-    "mtime": 1781789455.4327781,
-    "ast_hash": "d1cdace31923043692c0159c33ae73a3",
+    "mtime": 1781854620.9541647,
+    "ast_hash": "4d01c743211b464aeb87b44844764b4f",
     "semantic_hash": ""
   },
   "src/features/calling/useMeetingLayout.ts": {
@@ -1280,8 +1280,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/useMeetingScreenshot.ts": {
-    "mtime": 1781783505.4289775,
-    "ast_hash": "9ec94db20ff53fb38cda708ec2bc344b",
+    "mtime": 1781854780.8080623,
+    "ast_hash": "2123f9b3f0356243a4061e54b850bbff",
     "semantic_hash": ""
   },
   "src/features/calling/useScreenshotUploadRetry.ts": {
@@ -2110,8 +2110,8 @@
     "semantic_hash": ""
   },
   "src/features/home/api/homeApi.ts": {
-    "mtime": 1781682836.88021,
-    "ast_hash": "1b329d22e6e9692de4949d44decab0b1",
+    "mtime": 1781854285.6809123,
+    "ast_hash": "76ece22ba7ed5635a0f3a7469dc5d3fe",
     "semantic_hash": ""
   },
   "src/features/home/components/HomeCategoryChipsRow.tsx": {
@@ -8695,8 +8695,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/useSessionDeparture.ts": {
-    "mtime": 1781852417.1722262,
-    "ast_hash": "8e3fe247c2679018fbf8361fe6fcefdb",
+    "mtime": 1781854390.0285542,
+    "ast_hash": "7b4d0e8558e2f92cf43135c363c38cea",
     "semantic_hash": ""
   },
   "src/features/capture/clipUploadShareTarget.ts": {

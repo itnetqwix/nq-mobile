@@ -55,6 +55,14 @@ type Props = {
   /** Active clip zoom/pan for UV emit and render. */
   zoomPan?: { zoom: number; pan: PanPoint } | null;
   annotationTargetUserId?: string | null;
+  /** Per-stroke projection (dual-pane / live vs clip). */
+  resolveStrokeProjection?: (stroke: RemoteStroke) => import("../annotationRenderUtils").AnnotationProjectionOptions;
+  /** Dual-clip pane hit targets in overlay coordinates. */
+  paneHitRects?: Array<{ paneIndex: 0 | 1; rect: ContentRect }>;
+  activeAnnotationPane?: 0 | 1 | null;
+  onAnnotationPaneSelect?: (pane: 0 | 1) => void;
+  annotationStage?: "clip" | "live";
+  annotationPaneIndex?: 0 | 1;
   onStrokeComplete?: (
     stroke: RemoteStroke,
     canvasSize: { width: number; height: number }
@@ -203,6 +211,12 @@ export function DrawingOverlay({
   measuredContentRect = null,
   zoomPan = null,
   annotationTargetUserId = null,
+  resolveStrokeProjection,
+  paneHitRects,
+  activeAnnotationPane = null,
+  onAnnotationPaneSelect,
+  annotationStage = "clip",
+  annotationPaneIndex = 0,
   onStrokeComplete,
 }: Props) {
   const [strokes, setStrokes] = useState<Stroke[]>([]);
@@ -232,6 +246,18 @@ export function DrawingOverlay({
   measuredContentRectRef.current = measuredContentRect;
   const zoomPanRef = useRef(zoomPan);
   zoomPanRef.current = zoomPan;
+  const resolveStrokeProjectionRef = useRef(resolveStrokeProjection);
+  resolveStrokeProjectionRef.current = resolveStrokeProjection;
+  const paneHitRectsRef = useRef(paneHitRects);
+  paneHitRectsRef.current = paneHitRects;
+  const activeAnnotationPaneRef = useRef(activeAnnotationPane);
+  activeAnnotationPaneRef.current = activeAnnotationPane;
+  const onAnnotationPaneSelectRef = useRef(onAnnotationPaneSelect);
+  onAnnotationPaneSelectRef.current = onAnnotationPaneSelect;
+  const annotationStageRef = useRef(annotationStage);
+  annotationStageRef.current = annotationStage;
+  const annotationPaneIndexRef = useRef(annotationPaneIndex);
+  annotationPaneIndexRef.current = annotationPaneIndex;
   const contentInsetsRef = useRef({ top: 0, bottom: 0, left: 0, right: 0 });
 
   const projectionOptions = useCallback(() => {
@@ -251,27 +277,45 @@ export function DrawingOverlay({
     };
   }, [annotationTargetUserId, contentFit]);
 
+  const projectionOptionsForStroke = useCallback(
+    (stroke: RemoteStroke) =>
+      resolveStrokeProjectionRef.current?.(stroke) ?? projectionOptions(),
+    [projectionOptions]
+  );
+
+  const strokeMeta = useCallback(
+    (): Pick<RemoteStroke, "paneIndex" | "stage"> => ({
+      paneIndex: annotationStageRef.current === "clip" ? annotationPaneIndexRef.current : undefined,
+      stage: annotationStageRef.current,
+    }),
+    []
+  );
+
   const emitStroke = useCallback(
     (stroke: RemoteStroke) => {
       try {
         const canvasSize = canvasSizeRef.current;
-        const synced = strokeForSyncEmit(stroke, canvasSize, projectionOptions());
+        const synced = strokeForSyncEmit(
+          { ...strokeMeta(), ...stroke },
+          canvasSize,
+          projectionOptionsForStroke(stroke)
+        );
         onStrokeComplete?.(synced, canvasSize);
       } catch {
         /* ignore */
       }
     },
-    [onStrokeComplete, projectionOptions]
+    [onStrokeComplete, projectionOptionsForStroke, strokeMeta]
   );
 
   const projectForDisplay = useCallback(
     (stroke: RemoteStroke) => {
-      const opts = projectionOptions();
+      const opts = projectionOptionsForStroke(stroke);
       return projectStrokeToCanvas(
         stroke,
         canvasSize,
-        stroke.contentAspect ?? contentAspect,
-        stroke.contentFit ?? contentFit,
+        stroke.contentAspect ?? opts.contentAspect ?? contentAspect,
+        stroke.contentFit ?? opts.contentFit ?? contentFit,
         opts.contentInsets,
         {
           measuredContentRect: opts.measuredContentRect,
@@ -279,7 +323,7 @@ export function DrawingOverlay({
         }
       );
     },
-    [canvasSize, contentAspect, contentFit, projectionOptions]
+    [canvasSize, contentAspect, contentFit, projectionOptionsForStroke]
   );
 
   const commitStroke = useCallback((stroke: Stroke) => {
@@ -351,8 +395,31 @@ export function DrawingOverlay({
     emitStroke(stroke);
   }, [emitStroke, textAnchor, textDraft]);
 
+  const hitTestPane = useCallback((x: number, y: number): boolean => {
+    const rects = paneHitRectsRef.current;
+    if (!rects?.length) return true;
+    let hitPane: 0 | 1 | null = null;
+    for (const { paneIndex, rect } of rects) {
+      if (
+        x >= rect.x &&
+        x <= rect.x + rect.width &&
+        y >= rect.y &&
+        y <= rect.y + rect.height
+      ) {
+        hitPane = paneIndex;
+        break;
+      }
+    }
+    if (hitPane == null) return false;
+    const active = activeAnnotationPaneRef.current;
+    if (active != null && hitPane !== active) return false;
+    onAnnotationPaneSelectRef.current?.(hitPane);
+    return true;
+  }, []);
+
   const onPanStart = useCallback(
     (x: number, y: number) => {
+      if (!hitTestPane(x, y)) return;
       if (toolRef.current === "text") {
         openTextModal(x, y);
         return;
@@ -370,7 +437,7 @@ export function DrawingOverlay({
         width: strokeWidthRef.current,
       });
     },
-    [openTextModal]
+    [hitTestPane, openTextModal]
   );
 
   const onPanUpdate = useCallback((x: number, y: number) => {

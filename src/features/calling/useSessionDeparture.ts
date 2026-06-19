@@ -6,6 +6,7 @@ import {
   fetchSessionDepartureStatus,
   raiseSessionDepartureConcern,
   respondSessionDeparture,
+  isSessionEndedFromDeparture,
   type SessionDepartureStatus,
 } from "../home/api/homeApi";
 
@@ -80,11 +81,20 @@ export function useSessionDeparture({
   );
 
   const recoverPendingPrompt = useCallback(async () => {
-    const s = await refreshStatus();
-    if (!s) return s;
-    applyPromptFromStatus(s);
-    return s;
-  }, [applyPromptFromStatus, refreshStatus]);
+    try {
+      const res = await fetchSessionDepartureStatus(sessionId);
+      if (res?.departure) setStatus(res.departure);
+      if (isSessionEndedFromDeparture(res)) {
+        onAcceptedRef.current();
+        return res?.departure ?? null;
+      }
+      const s = res?.departure;
+      if (s) applyPromptFromStatus(s);
+      return s ?? null;
+    } catch {
+      return null;
+    }
+  }, [applyPromptFromStatus, sessionId]);
 
   const applyPrompt = useCallback((payload: Partial<SessionDeparturePrompt>) => {
     if (!payload?.sessionId || String(payload.sessionId) !== String(sessionId)) return;

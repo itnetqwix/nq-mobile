@@ -242,6 +242,28 @@ export function ClipPlayer({
     panAtGrant.current = { ...livePan.current };
   }, []);
 
+  const onPinchUpdate = useCallback(
+    (scale: number) => {
+      const nextZoom = clampZoom(pinchStartZoom.current * scale);
+      const nextPan = clampPanForFrameLocal(livePan.current, nextZoom);
+      applyZoomPan(nextZoom, nextPan, "throttle");
+    },
+    [applyZoomPan, clampPanForFrameLocal]
+  );
+
+  const onPanUpdate = useCallback(
+    (translationX: number, translationY: number) => {
+      const zoomNow = liveZoom.current || 1;
+      if (zoomNow <= 1.001) return;
+      const next = {
+        x: panAtGrant.current.x + translationX / zoomNow,
+        y: panAtGrant.current.y + translationY / zoomNow,
+      };
+      applyZoomPan(zoomNow, next, "throttle");
+    },
+    [applyZoomPan]
+  );
+
   const pinchGesture = useMemo(() => {
     if (!zoomGesturesEnabled || !onZoomPanChange) {
       return Gesture.Pinch().enabled(false);
@@ -251,16 +273,14 @@ export function ClipPlayer({
         runOnJS(pinchBegin)();
       })
       .onUpdate((e) => {
-        const nextZoom = clampZoom(pinchStartZoom.current * e.scale);
-        const nextPan = clampPanForFrameLocal(livePan.current, nextZoom);
-        runOnJS(applyZoomPan)(nextZoom, nextPan, "throttle");
+        runOnJS(onPinchUpdate)(e.scale);
       })
       .onFinalize(() => {
         runOnJS(endGesture)();
       });
   }, [
-    applyZoomPan,
     endGesture,
+    onPinchUpdate,
     onZoomPanChange,
     pinchBegin,
     zoomGesturesEnabled,
@@ -279,17 +299,12 @@ export function ClipPlayer({
         runOnJS(panBegin)();
       })
       .onUpdate((e) => {
-        const zoomNow = liveZoom.current || 1;
-        const next = {
-          x: panAtGrant.current.x + e.translationX / zoomNow,
-          y: panAtGrant.current.y + e.translationY / zoomNow,
-        };
-        runOnJS(applyZoomPan)(zoomNow, next, "throttle");
+        runOnJS(onPanUpdate)(e.translationX, e.translationY);
       })
       .onFinalize(() => {
         runOnJS(endGesture)();
       });
-  }, [applyZoomPan, endGesture, onZoomPanChange, panBegin, zoomGesturesEnabled]);
+  }, [endGesture, onPanUpdate, onZoomPanChange, panBegin, zoomGesturesEnabled]);
 
   const clipGestures = useMemo(
     () => Gesture.Simultaneous(pinchGesture, panGesture),

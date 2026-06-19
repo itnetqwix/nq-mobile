@@ -780,8 +780,8 @@
     "semantic_hash": "111e5c6b1da91acfff13c29c0fcc7bb9"
   },
   "src/features/calling/components/ActionButtons.tsx": {
-    "mtime": 1781779063.99098,
-    "ast_hash": "800a657a6cbf8e4330f8cecd3cdbd33f",
+    "mtime": 1781852396.9596903,
+    "ast_hash": "49fcf63b678850acc9b8c0fb1ed07677",
     "semantic_hash": ""
   },
   "src/features/calling/components/AnnotationBurnInHost.tsx": {
@@ -975,8 +975,8 @@
     "semantic_hash": "c9c5ccd7ce00fe7d9157fdbdc60908f3"
   },
   "src/features/calling/components/SessionExtensionModal.tsx": {
-    "mtime": 1781799314.9026153,
-    "ast_hash": "c61e747e3f1ad54d9e9e1dfc9883a9c7",
+    "mtime": 1781852388.150721,
+    "ast_hash": "102c826eb9aece2e958c72acb79b3fba",
     "semantic_hash": ""
   },
   "src/features/calling/components/SessionGamePlanModal.tsx": {
@@ -1190,8 +1190,8 @@
     "semantic_hash": "806f6c977ce3955f42cdad76e91901c3"
   },
   "src/features/calling/screens/NativeMeetingScreen.tsx": {
-    "mtime": 1781798028.8022933,
-    "ast_hash": "bebc048b8c88ca4a7d7059b800cf50cb",
+    "mtime": 1781852521.8337839,
+    "ast_hash": "c3e94a2189e973b5d027c4ee4f906696",
     "semantic_hash": ""
   },
   "src/features/calling/screens/PrecallLobbyScreen.tsx": {
@@ -2375,7 +2375,7 @@
     "semantic_hash": "c33aaa699d88c07b956bbba2fc5c532a"
   },
   "src/features/meeting/screens/MeetingScreen.tsx": {
-    "mtime": 1779428899.0280068,
+    "mtime": 1781852561.3663735,
     "ast_hash": "2385dc46849411df0f65c2dce3cb0a97",
     "semantic_hash": "2385dc46849411df0f65c2dce3cb0a97"
   },
@@ -8390,8 +8390,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/components/DualVideoStrip.tsx": {
-    "mtime": 1781498437.5324087,
-    "ast_hash": "739af302ad593c41174296471f668197",
+    "mtime": 1781852564.9841802,
+    "ast_hash": "aadc8a5ca6353e16ff9f277de21ff76c",
     "semantic_hash": ""
   },
   "src/features/capture/screens/CaptureScreen.tsx": {
@@ -8695,8 +8695,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/useSessionDeparture.ts": {
-    "mtime": 1781789636.6470506,
-    "ast_hash": "a6d2642ef1be16608aa203381f551b3e",
+    "mtime": 1781852417.1722262,
+    "ast_hash": "8e3fe247c2679018fbf8361fe6fcefdb",
     "semantic_hash": ""
   },
   "src/features/capture/clipUploadShareTarget.ts": {

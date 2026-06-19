@@ -60,17 +60,27 @@ export function toReportDataPayload(
     }));
 }
 
-async function remoteImageToDataUrl(url: string): Promise<string | null> {
+async function remoteImageToDataUrl(url: string, attempt = 0): Promise<string | null> {
   try {
     const dest = `${FileSystem.cacheDirectory}gp-${Date.now()}-${Math.random().toString(36).slice(2)}.img`;
     const dl = await FileSystem.downloadAsync(url, dest);
-    if (dl.status < 200 || dl.status >= 300) return null;
+    if (dl.status < 200 || dl.status >= 300) {
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+        return remoteImageToDataUrl(url, attempt + 1);
+      }
+      return null;
+    }
     const b64 = await FileSystem.readAsStringAsync(dl.uri, {
       encoding: FileSystem.EncodingType.Base64,
     });
     await FileSystem.deleteAsync(dl.uri, { idempotent: true }).catch(() => {});
     return `data:image/jpeg;base64,${b64}`;
   } catch {
+    if (attempt < 2) {
+      await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+      return remoteImageToDataUrl(url, attempt + 1);
+    }
     return null;
   }
 }

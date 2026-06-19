@@ -327,6 +327,32 @@ export function strokeForSyncEmit(
   };
 }
 
+export function projectStrokesForCapture(
+  strokes: RemoteStroke[],
+  canvasSize: { width: number; height: number },
+  resolveOptions: (stroke: RemoteStroke) => AnnotationProjectionOptions
+): RemoteStroke[] {
+  return strokes.map((stroke) => {
+    const opts = resolveOptions(stroke);
+    const projected = projectStrokeToCanvas(
+      stroke,
+      canvasSize,
+      opts.contentAspect ?? stroke.contentAspect,
+      opts.contentFit ?? stroke.contentFit ?? "contain",
+      opts.contentInsets,
+      {
+        measuredContentRect: opts.measuredContentRect,
+        zoomPan: opts.zoomPan,
+      }
+    );
+    return {
+      ...projected,
+      coordSpace: "canvasPx" as const,
+      sourceCanvasSize: canvasSize,
+    };
+  });
+}
+
 export function projectStrokesForTarget(
   strokes: RemoteStroke[],
   sourceCanvas: { width: number; height: number },

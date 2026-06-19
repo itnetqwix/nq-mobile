@@ -38,11 +38,13 @@ export function useMeetingChromeInsets(options?: {
   const floatingClipReserve = inClipMode && !inlineClipControls ? clipTimelineReserve : 0;
   /** Corner PIPs overlay the clip stage — no extra main-pane bottom reserve. */
   const videoStripReserve = 0;
-  const annotationReserve = annotationToolbarOpen
-    ? annotationToolbarHeight +
-      8 +
-      (dualInlineClipControls ? CLIP_TIMELINE_HEIGHT + 6 : 0)
-    : 0;
+  /** Float over clip stage — do not shrink video when toolbar opens in clip mode. */
+  const annotationReserve =
+    annotationToolbarOpen && !inClipMode
+      ? annotationToolbarHeight +
+        8 +
+        (dualInlineClipControls ? CLIP_TIMELINE_HEIGHT + 6 : 0)
+      : 0;
   const bottomStackReserve = annotationReserve;
 
   const pipSafeBottom =

@@ -274,13 +274,17 @@ export function useMeetingScreenshot({
         if (clipSources?.length) {
           localUri = await captureFromClipSources(clipSources);
         } else {
-          localUri = await captureViewShot(captureTargetRef);
+          const liveReady = isLiveVideoReady?.() ?? false;
+          if (liveReady && captureLiveFrame) {
+            await delay(96);
+            localUri = await captureLiveFrame();
+          }
           if (!localUri) {
-            const liveReady = isLiveVideoReady?.() ?? false;
-            if (liveReady && captureLiveFrame) {
-              await delay(96);
-              localUri = await captureLiveFrame();
-            }
+            localUri = await captureViewShot(captureTargetRef);
+          }
+          if (!localUri && liveReady && captureLiveFrame) {
+            await delay(160);
+            localUri = await captureLiveFrame();
           }
         }
 

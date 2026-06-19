@@ -3,7 +3,7 @@
  */
 
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -81,12 +81,77 @@ export function SessionScreenshotDetailsModal({
   const [saving, setSaving] = useState(false);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
   const [cropOpen, setCropOpen] = useState(false);
+  const [queuedSave, setQueuedSave] = useState<{ title: string; description: string } | null>(
+    null
+  );
+
+  const persistScreenshot = useCallback(
+    async (key: string, frameTitle: string, frameDescription: string) => {
+      const reportData = [...existingItems];
+      const lastIdx = reportData.length - 1;
+      if (lastIdx >= 0 && reportData[lastIdx]?.imageUrl === key) {
+        reportData[lastIdx] = {
+          ...reportData[lastIdx],
+          title: frameTitle.trim(),
+          description: frameDescription.trim(),
+        };
+      } else {
+        reportData.push({
+          title: frameTitle.trim(),
+          description: frameDescription.trim(),
+          imageUrl: key,
+        });
+      }
+      await apiClient.post(API_ROUTES.report.create, {
+        sessions: sessionId,
+        trainer: trainerId,
+        trainee: traineeId,
+        title: reportTitle || "Session notes",
+        topic: reportTopic || reportTitle || "Session notes",
+        reportData: toReportDataPayload(reportData),
+      });
+      setDescription("");
+      setTitle("");
+      onSaved?.();
+      Keyboard.dismiss();
+      onClose();
+    },
+    [
+      existingItems,
+      onClose,
+      onSaved,
+      reportTitle,
+      reportTopic,
+      sessionId,
+      trainerId,
+      traineeId,
+    ]
+  );
+
+  useEffect(() => {
+    if (!imageKey || !queuedSave) return;
+    void (async () => {
+      setSaving(true);
+      try {
+        await persistScreenshot(imageKey, queuedSave.title, queuedSave.description);
+        setQueuedSave(null);
+      } catch (e: unknown) {
+        const err = e as { response?: { data?: { message?: string } }; message?: string };
+        const msg =
+          err?.response?.data?.message ?? err?.message ?? "Could not save screenshot.";
+        Alert.alert("Could not save", msg);
+      } finally {
+        setSaving(false);
+      }
+    })();
+  }, [imageKey, persistScreenshot, queuedSave]);
 
   useEffect(() => {
     if (!visible) {
       setDescription("");
       setTitle("");
       setLocalPreview(null);
+      setQueuedSave(null);
       return;
     }
     let cancelled = false;
@@ -124,37 +189,15 @@ export function SessionScreenshotDetailsModal({
   };
 
   const handleAdd = async () => {
-    if (!imageKey || uploadPending) return;
+    if (!previewUri && !imageKey) return;
     Keyboard.dismiss();
+    if (uploadPending || !imageKey) {
+      setQueuedSave({ title, description });
+      return;
+    }
     setSaving(true);
     try {
-      const reportData = [...existingItems];
-      const lastIdx = reportData.length - 1;
-      if (lastIdx >= 0 && reportData[lastIdx]?.imageUrl === imageKey) {
-        reportData[lastIdx] = {
-          ...reportData[lastIdx],
-          title: title.trim(),
-          description: description.trim(),
-        };
-      } else {
-        reportData.push({
-          title: title.trim(),
-          description: description.trim(),
-          imageUrl: imageKey,
-        });
-      }
-      await apiClient.post(API_ROUTES.report.create, {
-        sessions: sessionId,
-        trainer: trainerId,
-        trainee: traineeId,
-        title: reportTitle || "Session notes",
-        topic: reportTopic || reportTitle || "Session notes",
-        reportData: toReportDataPayload(reportData),
-      });
-      setDescription("");
-      setTitle("");
-      onSaved?.();
-      handleClose();
+      await persistScreenshot(imageKey, title, description);
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } }; message?: string };
       const msg =
@@ -229,19 +272,30 @@ export function SessionScreenshotDetailsModal({
                 {uploadPending && !imageKey ? (
                   <View style={styles.uploadRow}>
                     <ActivityIndicator color="#000080" size="small" />
-                    <Text style={styles.uploadHint}>Uploading photo…</Text>
+                    <Text style={styles.uploadHint}>
+                      {queuedSave
+                        ? "Uploading photo — will save when ready…"
+                        : "Uploading photo…"}
+                    </Text>
                   </View>
                 ) : null}
                 <Pressable
-                  style={[styles.addBtn, (saving || !imageKey || uploadPending) && styles.addBtnDisabled]}
+                  style={[
+                    styles.addBtn,
+                    (saving || (!previewUri && !imageKey)) && styles.addBtnDisabled,
+                  ]}
                   onPress={() => void handleAdd()}
-                  disabled={saving || !imageKey || uploadPending}
+                  disabled={saving || (!previewUri && !imageKey)}
                 >
                   {saving ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
                     <Text style={styles.addBtnText}>
-                      {imageKey ? "Add" : "Waiting for upload…"}
+                      {uploadPending && !imageKey
+                        ? queuedSave
+                          ? "Queued — waiting for upload"
+                          : "Save when upload finishes"
+                        : "Add"}
                     </Text>
                   )}
                 </Pressable>
