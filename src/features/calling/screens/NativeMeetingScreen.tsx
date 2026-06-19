@@ -200,6 +200,7 @@ import {
   fetchSessionDepartureStatus,
   isSessionEndedFromDeparture,
 } from "../../home/api/homeApi";
+import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { reportOpsEvent } from "../../ops/opsEventsApi";
 import { meetingTheme } from "../meetingTheme";
 import { useSessionExtensionFlow } from "../useSessionExtensionFlow";
@@ -1773,7 +1774,7 @@ function MeetingSurface({
   );
 
   const continueAfterRecap = useCallback(async () => {
-    /** Only open the PDF game-plan editor when the trainer captured screenshots during the lesson. */
+    /** Open game plan when screenshots exist on the server or were captured this session. */
     try {
       const res = await fetchSessionReport({
         sessions: lessonId,
@@ -1782,15 +1783,22 @@ function MeetingSurface({
       });
       const data = res?.data ?? res;
       const items = parseReportScreenshotItems(data?.reportData);
-      if (items.length > 0) {
+      if (
+        items.length > 0 ||
+        screenshot.screenshotKeys.length > 0 ||
+        !!pendingScreenshotPreviewRef.current
+      ) {
         setGamePlanOpen(true);
         return;
       }
     } catch {
-      /* fall through to ratings */
+      if (screenshot.screenshotKeys.length > 0 || pendingScreenshotPreviewRef.current) {
+        setGamePlanOpen(true);
+        return;
+      }
     }
     setRatingsOpen(true);
-  }, [lessonId, myId, peerId]);
+  }, [lessonId, myId, peerId, screenshot.screenshotKeys.length]);
 
   /**
    * Safety valve: if the trainer skips/dismisses the game plan without the
@@ -1947,7 +1955,7 @@ function MeetingSurface({
       setAwaitingPartnerTimedOut(false);
       return;
     }
-    const id = setTimeout(() => setAwaitingPartnerTimedOut(true), 30_000);
+    const id = setTimeout(() => setAwaitingPartnerTimedOut(true), 12_000);
     return () => clearTimeout(id);
   }, [awaitingPartnerEnd, postCallFlowStarted]);
 
@@ -1997,7 +2005,6 @@ function MeetingSurface({
               onDepartureInitiated?.();
               setPartnerStayedAfterDeparture(false);
               setAwaitingPartnerTimedOut(false);
-              setAwaitingPartnerEnd(true);
               try {
                 const depRes = await initiateSessionDeparture(lessonId);
                 reportOpsEvent({
@@ -2007,25 +2014,36 @@ function MeetingSurface({
                   title: "User initiated session departure",
                 });
                 if (isSessionEndedFromDeparture(depRes)) {
-                  setAwaitingPartnerEnd(false);
                   endCall();
                   void openPostCallFlow();
                   return;
                 }
+                setAwaitingPartnerEnd(true);
+                endCall();
               } catch (err: unknown) {
                 setAwaitingPartnerEnd(false);
-                const msg =
-                  err instanceof Error
-                    ? err.message
-                    : "Could not start session end. Check your connection and try again.";
+                const msg = getApiErrorMessage(
+                  err,
+                  "Could not start session end. Check your connection and try again."
+                );
+                const terminal =
+                  /cancelled|already ended|session has ended|session not found/i.test(msg);
+                if (terminal) {
+                  endCall();
+                  void openPostCallFlow();
+                  pushLocalToast({
+                    title: "Session ended",
+                    description: msg,
+                    type: NOTIFICATION_TYPES.TRANSCATIONAL,
+                  });
+                  return;
+                }
                 pushLocalToast({
                   title: "Couldn't end session",
                   description: msg,
                   type: NOTIFICATION_TYPES.TRANSCATIONAL,
                 });
-                return;
               }
-              endCall();
             })();
           },
         },
@@ -3757,14 +3775,17 @@ function MeetingSurface({
               Your partner will be asked to end the session or stay until the booked time
               ends. You will continue to ratings and recap once they confirm.
             </Text>
-            {awaitingPartnerTimedOut ? (
-              <Pressable
-                style={styles.departureConcernBtn}
-                onPress={() => void openPostCallFlow()}
-              >
-                <Text style={styles.departureConcernBtnText}>Leave anyway</Text>
-              </Pressable>
-            ) : null}
+            <Pressable
+              style={[
+                styles.departureConcernBtn,
+                !awaitingPartnerTimedOut && styles.departureConcernBtnMuted,
+              ]}
+              onPress={() => void openPostCallFlow()}
+            >
+              <Text style={styles.departureConcernBtnText}>
+                {awaitingPartnerTimedOut ? "Continue without partner" : "Skip waiting"}
+              </Text>
+            </Pressable>
           </View>
         </View>
       ) : null}
@@ -3826,7 +3847,7 @@ function MeetingSurface({
         visible={timeWarningVisible}
         kind={activeWarning ?? "five"}
         audience={isTrainer ? "trainer" : "trainee"}
-        canExtend={!isTrainer && activeWarning === "two"}
+        canExtend={!isTrainer && (activeWarning === "two" || activeWarning === "five")}
         onExtend={() => {
           setActiveWarning(null);
           setTraineeExtendOpen(true);
@@ -4233,6 +4254,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
+  },
+  departureConcernBtnMuted: {
+    backgroundColor: "rgba(255,59,48,0.55)",
   },
   departureConcernBtnText: {
     color: "#fff",

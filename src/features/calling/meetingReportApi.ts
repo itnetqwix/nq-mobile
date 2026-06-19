@@ -1,13 +1,38 @@
 import { apiClient } from "../../api/client";
 import { API_ROUTES } from "../../config/apiRoutes";
 
+function delay(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+async function postWithRetry<T>(
+  url: string,
+  payload: unknown,
+  attempts = 3
+): Promise<T> {
+  let lastError: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await apiClient.post(url, payload);
+      return res.data as T;
+    } catch (err) {
+      lastError = err;
+      const isNetwork =
+        err instanceof Error &&
+        (/network error/i.test(err.message) || err.message === "Network Error");
+      if (!isNetwork || i === attempts - 1) throw err;
+      await delay(600 * (i + 1));
+    }
+  }
+  throw lastError;
+}
+
 export async function requestScreenshotUpload(payload: {
   sessions: string;
   trainer: string;
   trainee: string;
 }): Promise<{ data?: { url?: string } }> {
-  const res = await apiClient.post(API_ROUTES.report.addImage, payload);
-  return res.data;
+  return postWithRetry(API_ROUTES.report.addImage, payload);
 }
 
 export async function fetchSessionReport(payload: {
@@ -39,8 +64,7 @@ export async function saveSessionGamePlan(payload: {
   reportData: Array<{ imageUrl: string; title?: string; description?: string }>;
   publish: boolean;
 }) {
-  const res = await apiClient.post(API_ROUTES.report.create, payload);
-  return res.data;
+  return postWithRetry(API_ROUTES.report.create, payload);
 }
 
 export async function retryGamePlanPdf(payload: {

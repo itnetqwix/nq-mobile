@@ -41,7 +41,7 @@ const COPY: Record<
 > = {
   five: {
     title: "5 minutes left",
-    body: "You have 5 minutes before this lesson ends.",
+    body: "You have 5 minutes before this lesson ends. You can request more time now.",
     icon: "time-outline",
     color: "#1e88e5",
   },
@@ -105,9 +105,9 @@ export function SessionTimeWarningModal({
           <Text style={styles.title}>{copy.title}</Text>
           <Text style={styles.body}>{copy.body}</Text>
 
-          {kind === "two" && canExtend ? (
+          {canExtend && (kind === "two" || kind === "five") ? (
             <View style={styles.actionStack}>
-              {onQuickExtendTenMin ? (
+              {kind === "two" && onQuickExtendTenMin ? (
                 <Button
                   label={
                     quickExtendPrice
@@ -120,7 +120,12 @@ export function SessionTimeWarningModal({
                 />
               ) : null}
               <View style={styles.actionRow}>
-                <Button label="Custom" onPress={onExtend} variant="secondary" fullWidth />
+                <Button
+                  label={kind === "five" ? "Request extension" : "Custom"}
+                  onPress={onExtend}
+                  variant="secondary"
+                  fullWidth
+                />
                 <Button label="Not now" onPress={onDismiss} variant="ghost" fullWidth />
               </View>
             </View>

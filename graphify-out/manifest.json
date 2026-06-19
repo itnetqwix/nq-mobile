@@ -980,8 +980,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/components/SessionGamePlanModal.tsx": {
-    "mtime": 1781800989.4526114,
-    "ast_hash": "508ecdd786dc4862fd1c097248cbd44b",
+    "mtime": 1781859668.9871402,
+    "ast_hash": "4fb6aa8dd833658f18987eeaecd23c2c",
     "semantic_hash": ""
   },
   "src/features/calling/components/SessionHandoffScreen.tsx": {
@@ -995,8 +995,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/components/SessionScreenshotDetailsModal.tsx": {
-    "mtime": 1781854826.2599201,
-    "ast_hash": "b89adf50c771bce472c730e8dffddb48",
+    "mtime": 1781859588.6051884,
+    "ast_hash": "263f8fff072b1082fd1ba5adf2786ba7",
     "semantic_hash": ""
   },
   "src/features/calling/components/SessionScreenshotSheet.tsx": {
@@ -1005,8 +1005,8 @@
     "semantic_hash": "25034b1196303d30d0d74d648a583853"
   },
   "src/features/calling/components/SessionTimeWarningModal.tsx": {
-    "mtime": 1781674179.4821646,
-    "ast_hash": "0c6fca86767b65a2429cfdc2e4362bc4",
+    "mtime": 1781859509.5288446,
+    "ast_hash": "fa46a2bbf18bde8ffa5766c841fdfa29",
     "semantic_hash": ""
   },
   "src/features/calling/components/StaticAnnotationCanvas.tsx": {
@@ -1130,8 +1130,8 @@
     "semantic_hash": "bddaf1e6b937026e475ab7451beab4d1"
   },
   "src/features/calling/meetingReportApi.ts": {
-    "mtime": 1781800946.3654368,
-    "ast_hash": "c45e05f3551f82b7b03e1e7053d712ca",
+    "mtime": 1781859476.2109408,
+    "ast_hash": "a238c1e3d68505fe60e48cf12079d5dd",
     "semantic_hash": ""
   },
   "src/features/calling/meetingStreamLabels.ts": {
@@ -1190,8 +1190,8 @@
     "semantic_hash": "806f6c977ce3955f42cdad76e91901c3"
   },
   "src/features/calling/screens/NativeMeetingScreen.tsx": {
-    "mtime": 1781854877.97673,
-    "ast_hash": "30baac361b8b8cceff093410459a210d",
+    "mtime": 1781859545.1445255,
+    "ast_hash": "9b1726a1fd7eb90f69febf51c65eb858",
     "semantic_hash": ""
   },
   "src/features/calling/screens/PrecallLobbyScreen.tsx": {
@@ -1280,8 +1280,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/useMeetingScreenshot.ts": {
-    "mtime": 1781854780.8080623,
-    "ast_hash": "2123f9b3f0356243a4061e54b850bbff",
+    "mtime": 1781859473.0702004,
+    "ast_hash": "683ad43361364cba1f4f4c57be43e06d",
     "semantic_hash": ""
   },
   "src/features/calling/useScreenshotUploadRetry.ts": {
@@ -2180,8 +2180,8 @@
     "semantic_hash": "4d9a7a68967f938f1883fc2504dbcd3c"
   },
   "src/features/instant-lesson/InstantLessonContext.tsx": {
-    "mtime": 1781788810.4393935,
-    "ast_hash": "43dc34559e179dbda1bb5d7d4d83c599",
+    "mtime": 1781859503.4435828,
+    "ast_hash": "f604e88fed10f02369412d968eb85630",
     "semantic_hash": ""
   },
   "src/features/instant-lesson/InstantLessonStatusBanner.tsx": {
@@ -2190,14 +2190,14 @@
     "semantic_hash": "edac00798532e593c69a025311452426"
   },
   "src/features/instant-lesson/InstantLessonTraineeModal.tsx": {
-    "mtime": 1781788810.439428,
-    "ast_hash": "5e6ea99e8e2761abb15b0594519ad1a2",
+    "mtime": 1781859647.7389634,
+    "ast_hash": "6ddea9f6a8427b960eea4f1d8afad5c8",
     "semantic_hash": ""
   },
   "src/features/instant-lesson/InstantLessonTrainerModal.tsx": {
-    "mtime": 1779962123.3054574,
-    "ast_hash": "f391ba254835f7ce4cbd72e0ebefde6b",
-    "semantic_hash": "f391ba254835f7ce4cbd72e0ebefde6b"
+    "mtime": 1781859565.0923972,
+    "ast_hash": "3628cbea804010a27c85179affa68903",
+    "semantic_hash": ""
   },
   "src/features/instant-lesson/TrainerOnlinePresenceBridge.tsx": {
     "mtime": 1781682845.6591902,

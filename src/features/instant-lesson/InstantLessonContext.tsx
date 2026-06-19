@@ -513,7 +513,7 @@ export function InstantLessonProvider({
           step: "accepted",
           joinDeadlineAt: joinMs,
           expiresAt: joinMs,
-          minimized: false,
+          minimized: true,
         };
       });
       scheduleExpiry(joinMs, () => setTrainerIncoming(null));

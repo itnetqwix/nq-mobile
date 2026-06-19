@@ -35,6 +35,7 @@ import {
   toReportDataPayload,
   type ReportScreenshotItem,
 } from "../reportDataUtils";
+import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { ReportImageCropModal } from "./ReportImageCropModal";
 
 type Props = {
@@ -136,9 +137,7 @@ export function SessionScreenshotDetailsModal({
         await persistScreenshot(imageKey, queuedSave.title, queuedSave.description);
         setQueuedSave(null);
       } catch (e: unknown) {
-        const err = e as { response?: { data?: { message?: string } }; message?: string };
-        const msg =
-          err?.response?.data?.message ?? err?.message ?? "Could not save screenshot.";
+        const msg = getApiErrorMessage(e, "Could not save screenshot.");
         Alert.alert("Could not save", msg);
       } finally {
         setSaving(false);

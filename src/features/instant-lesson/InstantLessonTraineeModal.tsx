@@ -253,6 +253,9 @@ export function InstantLessonTraineeModal() {
 
           {step === "accepted" && (
             <>
+              <Pressable style={styles.closeBtn} onPress={minimizeBooking} hitSlop={12}>
+                <Ionicons name="chevron-down" size={22} color={colors.textMuted} />
+              </Pressable>
               <View style={styles.successBadge}>
                 <Ionicons name="checkmark-circle" size={64} color={colors.success} />
               </View>
@@ -261,14 +264,21 @@ export function InstantLessonTraineeModal() {
                 <Text style={{ fontWeight: "700" }}>{trainerName}</Text> is ready. Tap below to enter
                 the live lesson now.
               </Text>
-              <InstantLessonDeadlineChip
-                deadlineMs={
-                  traineeBooking.joinDeadlineAt ??
-                  Date.now() + INSTANT_JOIN_AFTER_ACCEPT_MS
-                }
-                label="Join within"
-                variant="urgent"
-              />
+              <View style={styles.sessionInfoCard}>
+                <Text style={styles.sessionInfoTitle}>Session window</Text>
+                <InstantLessonDeadlineChip
+                  deadlineMs={
+                    traineeBooking.joinDeadlineAt ??
+                    Date.now() + INSTANT_JOIN_AFTER_ACCEPT_MS
+                  }
+                  label="Join within"
+                  variant="urgent"
+                />
+                <Text style={styles.sessionInfoHint}>
+                  Minimize this card to keep browsing. Your lesson timer starts when both of you join
+                  the live call.
+                </Text>
+              </View>
               <Pressable
                 style={({ pressed }) => [
                   styles.joinNowBtn,
@@ -361,6 +371,28 @@ const styles = StyleSheet.create({
   },
   secondaryBtnText: { ...typography.button, color: colors.textSecondary },
   closeBtn: { position: "absolute", top: space.sm, right: space.sm, padding: 4, zIndex: 1 },
+  sessionInfoCard: {
+    width: "100%",
+    marginTop: space.sm,
+    padding: space.md,
+    borderRadius: radii.md,
+    backgroundColor: colors.surfaceMuted,
+    gap: space.xs,
+    alignItems: "center",
+  },
+  sessionInfoTitle: {
+    ...typography.label,
+    color: colors.brandNavy,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  sessionInfoHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: "center",
+    lineHeight: 18,
+  },
   waitingActions: { gap: space.xs },
   successBadge: {
     alignSelf: "center",

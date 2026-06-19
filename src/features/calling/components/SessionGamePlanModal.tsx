@@ -41,6 +41,7 @@ import {
 import { fetchSessionTimeline } from "../sessionLiveApi";
 import type { GamePlanSessionMetaInput } from "../gamePlanSessionMeta";
 import { getNetQwixLogoDataUrl } from "../gamePlanBrandLogo";
+import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { LockerViewerModal } from "../../dashboard/components/locker/LockerViewerModal";
 import { ReportImageCropModal } from "./ReportImageCropModal";
 import {
@@ -387,7 +388,10 @@ export function SessionGamePlanModal({
       onSaved?.();
       onClose();
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Try again.";
+      const msg = getApiErrorMessage(
+        e,
+        "Could not save your game plan. Check your connection and try again."
+      );
       Alert.alert("Could not save", msg);
     } finally {
       setSaving(false);
@@ -515,7 +519,7 @@ export function SessionGamePlanModal({
                     <Image
                       source={{ uri: getS3ImageUrl(item.imageUrl) }}
                       style={styles.shotImage}
-                      resizeMode="cover"
+                      resizeMode="contain"
                     />
                     <Text style={styles.shotIndex}>Frame {index + 1}</Text>
                     <TextInput
@@ -661,7 +665,7 @@ const styles = StyleSheet.create({
   heading: { fontSize: 24, fontWeight: "800", color: gamePlanTheme.text },
   sub: { marginTop: 6, fontSize: 14, color: gamePlanTheme.textMuted, lineHeight: 20 },
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, paddingBottom: 120 },
+  scrollContent: { paddingHorizontal: 16, paddingBottom: 200 },
   sectionLabel: {
     fontSize: 12,
     fontWeight: "800",
@@ -715,7 +719,7 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 220,
     borderRadius: 10,
-    backgroundColor: "#000",
+    backgroundColor: "#0a0a12",
   },
   shotIndex: {
     marginTop: 10,
@@ -755,12 +759,21 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   footer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
     paddingHorizontal: 16,
-    paddingTop: 10,
-    gap: 10,
+    paddingTop: 12,
+    gap: 8,
+    backgroundColor: gamePlanTheme.canvas,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: gamePlanTheme.border,
-    backgroundColor: gamePlanTheme.surface,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: -2 },
+    elevation: 8,
   },
   btnPrimary: {
     paddingVertical: 14,

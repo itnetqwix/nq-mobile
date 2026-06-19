@@ -272,7 +272,10 @@ export function useMeetingScreenshot({
         let localUri: string | null = null;
 
         if (clipSources?.length) {
-          localUri = await captureFromClipSources(clipSources);
+          localUri = await captureViewShot(captureTargetRef);
+          if (!localUri) {
+            localUri = await captureFromClipSources(clipSources);
+          }
         } else {
           const liveReady = isLiveVideoReady?.() ?? false;
           if (liveReady && captureLiveFrame) {
