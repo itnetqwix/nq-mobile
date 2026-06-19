@@ -27,6 +27,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "../../../components/ui";
 import { useAuth } from "../../auth/context/AuthContext";
 import { fetchSessionPricingQuote } from "../../payments/fetchSessionPricingQuote";
+import { chargeTotalDollars } from "../../payments/pricingTypes";
 import { resolveTraineeBillingAddress } from "../../payments/resolveTraineeBillingAddress";
 import { colors, radii, space, typography } from "../../../theme";
 import { PricingBreakdownSummary } from "../../payments/PricingBreakdownSummary";

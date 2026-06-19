@@ -28,9 +28,9 @@ type Props = {
   bottomInset?: number;
   audioRouteLabel?: string;
   onToggleAudioRoute?: () => void;
-  /** Trainer: expand collapsed camera strip during clip mode. */
-  onShowCameras?: () => void;
-  showCamerasVisible?: boolean;
+  /** Trainer-only: expand/collapse synced live-camera strip during clip review. */
+  onToggleCameraStrip?: () => void;
+  cameraStripCollapsed?: boolean;
 };
 
 const BTN = 36;
@@ -52,8 +52,8 @@ export function ActionButtons({
   bottomInset = 12,
   audioRouteLabel,
   onToggleAudioRoute,
-  onShowCameras,
-  showCamerasVisible = false,
+  onToggleCameraStrip,
+  cameraStripCollapsed = true,
 }: Props) {
   const { micEnabled, cameraEnabled, toggleMute, toggleCamera, switchCamera, endCall } =
     useCall();
@@ -102,13 +102,20 @@ export function ActionButtons({
           </RoundButton>
         ) : null}
 
-        {isTrainer && showCamerasVisible && onShowCameras ? (
+        {inClipMode && onToggleCameraStrip ? (
           <RoundButton
-            onPress={onShowCameras}
-            accessibilityLabel="Show cameras"
+            onPress={onToggleCameraStrip}
+            accessibilityLabel={
+              cameraStripCollapsed ? "Show live cameras" : "Hide live cameras"
+            }
+            active={!cameraStripCollapsed}
             haptic="select"
           >
-            <Ionicons name="people-outline" size={ICON} color={meetingTheme.text} />
+            <Ionicons
+              name={cameraStripCollapsed ? "videocam-outline" : "videocam"}
+              size={ICON}
+              color={!cameraStripCollapsed ? meetingTheme.onPrimary : meetingTheme.text}
+            />
           </RoundButton>
         ) : null}
 

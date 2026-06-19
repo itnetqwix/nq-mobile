@@ -207,6 +207,7 @@ import {
   escrowMilestoneFromTimerWarning,
   type EscrowMilestone,
 } from "../escrowMilestone";
+import { SESSION_DEPARTURE_SOCKET_EVENTS } from "../../../lib/sessions/sessionContract";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Meeting">;
 
@@ -373,8 +374,20 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
     }
   }, []);
 
-  const role: SessionRole =
-    accountType === AccountType.TRAINER ? "Trainer" : "Trainee";
+  const role: SessionRole = useMemo(() => {
+    if (accountType === AccountType.TRAINER) return "Trainer";
+    if (accountType === AccountType.TRAINEE) return "Trainee";
+    const uid = String((user as Record<string, unknown>)?._id ?? "");
+    if (session && uid) {
+      const trainerId = String(
+        (session as SessionRow).trainer_id ??
+          (session as SessionRow).trainer_info?._id ??
+          ""
+      );
+      if (trainerId && trainerId === uid) return "Trainer";
+    }
+    return "Trainee";
+  }, [accountType, session, user]);
 
   const me: CallParticipant | null = useMemo(() => {
     if (!user) return null;
@@ -1153,6 +1166,7 @@ function MeetingSurface({
   const [traineeDroveClips, setTraineeDroveClips] = useState(false);
   const [ratingsOpen, setRatingsOpen] = useState(false);
   const [awaitingPartnerEnd, setAwaitingPartnerEnd] = useState(false);
+  const [partnerStayedAfterDeparture, setPartnerStayedAfterDeparture] = useState(false);
   const [gamePlanOpen, setGamePlanOpen] = useState(false);
   const [gamePlanBanner, setGamePlanBanner] = useState<{
     title: string;
@@ -1823,6 +1837,52 @@ function MeetingSurface({
     },
   });
 
+  /** Initiator: partner agreed to end — open post-call flow. */
+  useEffect(() => {
+    if (!socket || !lessonId) return;
+    const onStayed = (payload: { sessionId?: string }) => {
+      if (payload?.sessionId && String(payload.sessionId) !== String(lessonId)) return;
+      setAwaitingPartnerEnd(false);
+      setPartnerStayedAfterDeparture(true);
+      void departure.refreshStatus();
+      pushLocalToast({
+        title: "Session still active",
+        description: isTrainer
+          ? "Your trainee chose to stay until the booked time ends."
+          : "Your coach chose to stay. You can wait for them to rejoin.",
+        type: NOTIFICATION_TYPES.TRANSCATIONAL,
+      });
+    };
+    const onResolved = (payload: { sessionId?: string; acceptEnd?: boolean }) => {
+      if (payload?.sessionId && String(payload.sessionId) !== String(lessonId)) return;
+      if (!payload?.acceptEnd) return;
+      setAwaitingPartnerEnd(false);
+      setPartnerStayedAfterDeparture(false);
+      if (!postCallFlowStartedRef.current) {
+        void openPostCallFlow();
+      }
+    };
+    socket.on(SESSION_DEPARTURE_SOCKET_EVENTS.STAYED, onStayed);
+    socket.on(SESSION_DEPARTURE_SOCKET_EVENTS.RESOLVED, onResolved);
+    return () => {
+      socket.off(SESSION_DEPARTURE_SOCKET_EVENTS.STAYED, onStayed);
+      socket.off(SESSION_DEPARTURE_SOCKET_EVENTS.RESOLVED, onResolved);
+    };
+  }, [
+    socket,
+    lessonId,
+    isTrainer,
+    departure.refreshStatus,
+    openPostCallFlow,
+    pushLocalToast,
+  ]);
+
+  /** If WebRTC tears down before the departure socket arrives, recover the prompt. */
+  useEffect(() => {
+    if (!peerEndedCall) return;
+    void departure.recoverPendingPrompt();
+  }, [peerEndedCall, departure.recoverPendingPrompt]);
+
   /** Initiator: open post-call when partner agrees to end (timer or departure resolved). */
   useEffect(() => {
     if (!awaitingPartnerEnd || postCallFlowStartedRef.current) return;
@@ -1904,6 +1964,7 @@ function MeetingSurface({
           onPress: () => {
             void (async () => {
               onDepartureInitiated?.();
+              setPartnerStayedAfterDeparture(false);
               setAwaitingPartnerEnd(true);
               try {
                 await initiateSessionDeparture(lessonId);
@@ -2520,6 +2581,8 @@ function MeetingSurface({
       extensionResetRef.current();
     }
     if (endedNotifiedRef.current) return;
+    if (departure.prompt || departure.waitingAfterDecline) return;
+    if (awaitingPartnerEnd && !postCallFlowStartedRef.current) return;
     endedNotifiedRef.current = true;
     void (async () => {
       const skipToast = postCallFlowStartedRef.current;
@@ -2537,7 +2600,15 @@ function MeetingSurface({
       }
       void openPostCallFlow();
     })();
-  }, [lessonTimer.status, pushLocalToast, lessonId, openPostCallFlow]);
+  }, [
+    lessonTimer.status,
+    pushLocalToast,
+    lessonId,
+    openPostCallFlow,
+    departure.prompt,
+    departure.waitingAfterDecline,
+    awaitingPartnerEnd,
+  ]);
 
   useEffect(() => {
     if (!socket || !lessonId) return;
@@ -3304,8 +3375,15 @@ function MeetingSurface({
         onScreenshot={isTrainer ? handleTakeScreenshot : undefined}
         screenshotCapturing={screenshot.capturing}
         onOpenClipPicker={() => setPickerOpen(true)}
-        showCamerasVisible={isTrainer && inClipMode && meetingLayout.cameraStripCollapsed}
-        onShowCameras={() => meetingLayout.setCameraStripCollapsed(false)}
+        cameraStripCollapsed={meetingLayout.cameraStripCollapsed}
+        onToggleCameraStrip={
+          inClipMode
+            ? () =>
+                meetingLayout.setCameraStripCollapsed(
+                  !meetingLayout.cameraStripCollapsed
+                )
+            : undefined
+        }
       />
       </View>
 
@@ -3425,7 +3503,7 @@ function MeetingSurface({
 
       {/* Two-party paid extension flow. The hook drives which modal renders;
           mounted once for both roles. */}
-      {!isTrainer ? (
+      {!isTrainer && traineeExtendOpen ? (
         <SessionExtensionModal
           visible={traineeExtendOpen}
           sessionId={lessonId}
@@ -3465,9 +3543,23 @@ function MeetingSurface({
             session_id: lessonId,
             title: "Partner chose to end session",
           });
+          setPartnerStayedAfterDeparture(false);
           void departure.respond(true);
         }}
       />
+
+      {partnerStayedAfterDeparture && !departure.prompt && !awaitingPartnerEnd ? (
+        <View style={styles.departureWaitBanner} pointerEvents="box-none">
+          <Text style={styles.departureWaitTitle}>Partner chose to stay</Text>
+          <Text style={styles.departureWaitBody}>
+            The lesson timer continues until the booked end time. Leave now or rejoin later from
+            your schedule.
+          </Text>
+          <Pressable style={styles.departureConcernBtn} onPress={onExit}>
+            <Text style={styles.departureConcernBtnText}>Leave lesson</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       {awaitingPartnerEnd && !departure.prompt && !postCallFlowStartedRef.current ? (
         <View style={styles.departureWaitOverlay} pointerEvents="none">

@@ -223,6 +223,7 @@ export function useSessionDeparture({
     respond,
     raiseConcern,
     refreshStatus,
+    recoverPendingPrompt,
     clearPrompt: () => setPrompt(null),
   };
 }

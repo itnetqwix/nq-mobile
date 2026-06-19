@@ -4,8 +4,7 @@
  */
 
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { StyleSheet, View } from "react-native";
 import type { MediaStream } from "react-native-webrtc";
 
 import type { CallParticipant } from "../types";
@@ -67,10 +66,10 @@ export function DualVideoStrip({
   bounds,
   safeTop,
   pipReservedBottom,
-  collapsedBottom,
+  collapsedBottom: _collapsedBottom,
   collapsed,
-  onCollapsedChange,
-  showCollapseControl = false,
+  onCollapsedChange: _onCollapsedChange,
+  showCollapseControl: _showCollapseControl = false,
   localPip,
   remotePip,
   pipDragDisabled = false,
@@ -83,20 +82,9 @@ export function DualVideoStrip({
   const localH = localPip.size?.h ?? CLIP_MODE_PIP.h;
   const remoteW = remotePip.size?.w ?? CLIP_MODE_PIP.w;
   const remoteH = remotePip.size?.h ?? CLIP_MODE_PIP.h;
-  const dockBottom = collapsedBottom ?? pipReservedBottom + 8;
 
   if (collapsed) {
-    if (!showCollapseControl) return null;
-    return (
-      <Pressable
-        style={[styles.collapsedPill, { bottom: dockBottom }]}
-        onPress={() => onCollapsedChange(false)}
-        accessibilityLabel="Show live cameras"
-      >
-        <Ionicons name="videocam-outline" size={14} color="#fff" />
-        <Text style={styles.collapsedText}>Show cameras</Text>
-      </Pressable>
-    );
+    return null;
   }
 
   if (!bounds) return null;
@@ -154,16 +142,6 @@ export function DualVideoStrip({
         zIndex={pipZIndex + 1}
       />
 
-      {showCollapseControl ? (
-        <Pressable
-          style={[styles.collapseBtn, { bottom: dockBottom }]}
-          onPress={() => onCollapsedChange(true)}
-          hitSlop={8}
-          accessibilityLabel="Hide cameras"
-        >
-          <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.85)" />
-        </Pressable>
-      ) : null}
     </View>
   );
 }
@@ -173,37 +151,5 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: 25,
     pointerEvents: "box-none",
-  },
-  collapseBtn: {
-    position: "absolute",
-    left: 14,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.18)",
-    zIndex: 56,
-  },
-  collapsedPill: {
-    position: "absolute",
-    left: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    zIndex: 25,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
-  },
-  collapsedText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "600",
   },
 });
