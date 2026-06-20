@@ -2,7 +2,7 @@ import React from "react";
 import { Modal, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, space } from "../../../theme";
-import { navigateToWalletTopUp } from "../../../navigation/navigationRef";
+import { navigateToWalletSecurity, navigateToWalletTopUp } from "../../../navigation/navigationRef";
 import type { InstantLessonBookingWizardModalProps } from "./types";
 import { useInstantLessonBookingWizard } from "./useInstantLessonBookingWizard";
 import { WizardHeader } from "./WizardHeader";
@@ -82,6 +82,7 @@ export function InstantLessonBookingWizardModal({ visible, trainer, onDismiss }:
               onPaymentComplete={w.handlePaymentComplete}
               onNext={() => w.goNext()}
               onAddFunds={(shortfall) => navigateToWalletTopUp(shortfall)}
+              onSetupPin={navigateToWalletSecurity}
             />
           )}
 

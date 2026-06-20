@@ -184,7 +184,7 @@ export function useSessionPresence({
         setPartnerLeftKind((prev) => {
           if (prev != null) {
             showSuccessThenClear(`${peerDisplayName} rejoined the session.`);
-          } else {
+          } else if (!lessonActiveRef.current && !mediaPartnerJoinedRef.current) {
             showSuccessThenClear(
               `${peerDisplayName} joined the session. Please join if you haven't yet.`,
               3500
@@ -325,9 +325,18 @@ export function useSessionPresence({
   useEffect(() => {
     if (trainerConnected !== true || traineeConnected !== true) return;
     setPartnerReconnecting(false);
-    setPartnerLeftKind(null);
-    dismissPresenceBanner();
-  }, [trainerConnected, traineeConnected, dismissPresenceBanner]);
+    setPresenceMessage((msg) => {
+      if (!msg) return null;
+      if (
+        msg.includes("lost connection") ||
+        msg.includes("reconnect") ||
+        msg.includes("Waiting for them")
+      ) {
+        return null;
+      }
+      return msg;
+    });
+  }, [trainerConnected, traineeConnected]);
 
   useEffect(() => {
     if (!partnerConnected) return;

@@ -19,7 +19,9 @@ import { useAuth } from "../../../auth/context/AuthContext";
 import { fetchSessionPricingQuote } from "../../../payments/fetchSessionPricingQuote";
 import { resolveTraineeBillingAddress } from "../../../payments/resolveTraineeBillingAddress";
 import { useWalletPaymentOption } from "../../../wallet/hooks/useWalletPaymentOption";
-import { verifyWalletPin } from "../../../wallet/walletApi";
+import { WalletPinSetupBanner } from "../../../wallet/components/WalletPinSetupBanner";
+import { resolveWalletPinSessionForPayment } from "../../../wallet/security/walletPinPaymentFlow";
+import { navigateToWalletSecurity } from "../../../../navigation/navigationRef";
 import { INSTANT_LESSON_DURATIONS } from "../constants";
 import { useSharedStepStyles } from "../sharedStepStyles";
 import { PlatformPayButtonRow } from "../../../../components/payments/PlatformPayButtonRow";
@@ -69,6 +71,7 @@ type Props = {
   onPaymentComplete: (payload: PaymentCompletePayload) => void;
   onNext: () => void;
   onAddFunds?: (shortfallDollars: number) => void;
+  onSetupPin?: () => void;
 };
 
 export function WizardStepPayment({
@@ -87,6 +90,7 @@ export function WizardStepPayment({
   onPaymentComplete,
   onNext,
   onAddFunds,
+  onSetupPin,
 }: Props) {
   const c = useThemeColors();
   const sharedStepStyles = useSharedStepStyles();
@@ -267,14 +271,15 @@ export function WizardStepPayment({
 
   const handleWalletPay = useCallback(async () => {
     try {
-      let token = pinSessionToken ?? wallet.storedPinToken ?? undefined;
-      if (wallet.needsPin && !token) {
-        if (!/^\d{6}$/.test(pin)) {
-          Alert.alert("PIN required", "Enter your 6-digit wallet PIN for this payment.");
-          return;
-        }
-        const res = await verifyWalletPin(pin);
-        token = res.pinSessionToken;
+      const gate = await resolveWalletPinSessionForPayment(
+        wallet,
+        pin,
+        pinSessionToken ?? wallet.storedPinToken ?? undefined,
+        { onSetupPin: onSetupPin ?? navigateToWalletSecurity }
+      );
+      if (!gate.ok) return;
+      const token = gate.token;
+      if (token && token !== pinSessionToken) {
         setPinSessionToken(token);
         setPin("");
       }
@@ -290,10 +295,10 @@ export function WizardStepPayment({
       Alert.alert("Wallet payment", getApiErrorMessage(e, "Could not verify PIN."));
     }
   }, [
-    wallet.needsPin,
+    wallet,
     pin,
     pinSessionToken,
-    wallet.storedPinToken,
+    onSetupPin,
     completePayment,
     totalToCharge,
     pricingQuote,
@@ -302,14 +307,15 @@ export function WizardStepPayment({
 
   const handleMixedPay = useCallback(async () => {
     try {
-      let token = pinSessionToken ?? wallet.storedPinToken ?? undefined;
-      if (wallet.needsPin && !token) {
-        if (!/^\d{6}$/.test(pin)) {
-          Alert.alert("PIN required", "Enter your 6-digit wallet PIN for this payment.");
-          return;
-        }
-        const res = await verifyWalletPin(pin);
-        token = res.pinSessionToken;
+      const gate = await resolveWalletPinSessionForPayment(
+        wallet,
+        pin,
+        pinSessionToken ?? wallet.storedPinToken ?? undefined,
+        { onSetupPin: onSetupPin ?? navigateToWalletSecurity }
+      );
+      if (!gate.ok) return;
+      const token = gate.token;
+      if (token && token !== pinSessionToken) {
         setPinSessionToken(token);
         setPin("");
       }
@@ -349,12 +355,12 @@ export function WizardStepPayment({
       Alert.alert("Payment", getApiErrorMessage(e, "Could not complete mixed payment."));
     }
   }, [
-    wallet.needsPin,
-    wallet.shortfall,
-    wallet.available,
+    wallet,
     pin,
     pinSessionToken,
-    wallet.storedPinToken,
+    onSetupPin,
+    wallet.shortfall,
+    wallet.available,
     setupCardPayment,
     presentPaymentSheet,
     completePayment,
@@ -454,7 +460,9 @@ export function WizardStepPayment({
 
       {!loading && wallet.walletPayEnabled && !isFree && wallet.canPayWithWallet ? (
         <>
-          {wallet.needsPin && !pinSessionToken ? (
+          {wallet.needsPinSetup ? (
+            <WalletPinSetupBanner onSetupPin={onSetupPin} />
+          ) : wallet.needsPin && !pinSessionToken ? (
             <TextInput
               style={styles.pinInput}
               keyboardType="number-pad"
@@ -490,7 +498,9 @@ export function WizardStepPayment({
 
       {!loading && canPayMixed ? (
         <>
-          {wallet.needsPin && !pinSessionToken ? (
+          {wallet.needsPinSetup ? (
+            <WalletPinSetupBanner onSetupPin={onSetupPin} />
+          ) : wallet.needsPin && !pinSessionToken ? (
             <TextInput
               style={styles.pinInput}
               keyboardType="number-pad"

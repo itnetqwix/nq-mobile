@@ -24,7 +24,7 @@ import {
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
-import { fetchSessionReport, requestCropImageUpload } from "../meetingReportApi";
+import { fetchSessionReport, requestCropImageUpload, saveScreenshotToReport } from "../meetingReportApi";
 import { putFileToPresignedUrl } from "../../../lib/presignedPut";
 import {
   extractPresignedFilename,
@@ -88,7 +88,18 @@ export function SessionScreenshotDetailsModal({
 
   const persistScreenshot = useCallback(
     async (key: string, frameTitle: string, frameDescription: string) => {
-      const reportData = [...existingItems];
+      let reportData = [...existingItems];
+      try {
+        const res = await fetchSessionReport({
+          sessions: sessionId,
+          trainer: trainerId,
+          trainee: traineeId,
+        });
+        const data = res?.data ?? res;
+        reportData = parseReportScreenshotItems(data?.reportData);
+      } catch {
+        /* use cached list */
+      }
       const lastIdx = reportData.length - 1;
       if (lastIdx >= 0 && reportData[lastIdx]?.imageUrl === key) {
         reportData[lastIdx] = {
@@ -103,7 +114,7 @@ export function SessionScreenshotDetailsModal({
           imageUrl: key,
         });
       }
-      await apiClient.post(API_ROUTES.report.create, {
+      await saveScreenshotToReport({
         sessions: sessionId,
         trainer: trainerId,
         trainee: traineeId,

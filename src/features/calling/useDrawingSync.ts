@@ -307,6 +307,8 @@ export function useDrawingSync({
   drawingEmitMinMs = 0,
 }: Args) {
   const [remoteStrokes, setRemoteStrokes] = useState<RemoteStroke[]>([]);
+  /** Trainer-only mirror of strokeBufferRef for overlay rendering after undo/clear/reconnect. */
+  const [trainerBufferStrokes, setTrainerBufferStrokes] = useState<RemoteStroke[]>([]);
   const [drawingEnabled, setDrawingEnabled] = useState(false);
   const strokeBufferRef = useRef<RemoteStroke[]>([]);
   const lastEmitAtRef = useRef(0);
@@ -335,8 +337,11 @@ export function useDrawingSync({
     if (buf.length > MAX_REPLAY_STROKES) {
       strokeBufferRef.current = buf.slice(-MAX_REPLAY_STROKES);
     }
+    if (isTrainer) {
+      setTrainerBufferStrokes([...strokeBufferRef.current]);
+    }
     setCommittedStrokeCount(strokeBufferRef.current.length);
-  }, []);
+  }, [isTrainer]);
 
   const rebroadcastStrokeBuffer = useCallback(() => {
     if (!isTrainer || !socket) return;
@@ -388,7 +393,13 @@ export function useDrawingSync({
         setRemoteStrokes([]);
         return;
       }
-      if (parsed) applyRemoteStroke(parsed);
+      if (parsed && typeof parsed === "object") {
+        const target = parsed.targetUserId;
+        if (target && String(target) !== String(userInfo.from_user)) {
+          return;
+        }
+        applyRemoteStroke(parsed);
+      }
     };
 
     const onClear = (payload?: { sessionId?: string }) => {
@@ -488,9 +499,19 @@ export function useDrawingSync({
     []
   );
 
+  const clearPendingStrokeEmit = useCallback(() => {
+    pendingStrokeRef.current = null;
+    if (pendingTimerRef.current) {
+      clearTimeout(pendingTimerRef.current);
+      pendingTimerRef.current = null;
+    }
+  }, []);
+
   const clearCanvas = useCallback(() => {
+    clearPendingStrokeEmit();
     setRemoteStrokes([]);
     strokeBufferRef.current = [];
+    setTrainerBufferStrokes([]);
     syncStrokeCount();
     if (!isTrainer || !socket) return;
     socket.emit(DRAWING_EVENTS.EMIT_CLEAR_CANVAS, {
@@ -498,24 +519,27 @@ export function useDrawingSync({
       sessionId,
       canvasIndex,
     });
-  }, [canvasIndex, isTrainer, sessionId, socket, syncStrokeCount, userInfo]);
+  }, [
+    canvasIndex,
+    clearPendingStrokeEmit,
+    isTrainer,
+    sessionId,
+    socket,
+    syncStrokeCount,
+    userInfo,
+  ]);
 
   /** Web parity: pop last stroke, clear peer canvas, replay remaining strokes. */
   const undoLastStroke = useCallback(() => {
     if (!isTrainer || strokeBufferRef.current.length === 0) return false;
-    if (pendingStrokeRef.current) {
-      pendingStrokeRef.current = null;
-      if (pendingTimerRef.current) {
-        clearTimeout(pendingTimerRef.current);
-        pendingTimerRef.current = null;
-      }
-    }
+    clearPendingStrokeEmit();
     strokeBufferRef.current.pop();
+    setTrainerBufferStrokes([...strokeBufferRef.current]);
     syncStrokeCount();
     setRemoteStrokes([]);
     rebroadcastStrokeBuffer();
     return true;
-  }, [isTrainer, rebroadcastStrokeBuffer, syncStrokeCount]);
+  }, [clearPendingStrokeEmit, isTrainer, rebroadcastStrokeBuffer, syncStrokeCount]);
 
   const setTrainerDrawingEnabled = useCallback(
     (enabled: boolean) => {
@@ -541,21 +565,16 @@ export function useDrawingSync({
       sessionId,
       canvasIndex,
     });
-    const canvasSize = lastCanvasSizeRef.current;
-    for (const stroke of strokeBufferRef.current) {
-      try {
-        socket.emit(DRAWING_EVENTS.DRAW, {
-          strikes: serializeStrokeForSocket(stroke),
-          canvasSize,
-          userInfo,
-          sessionId,
-          canvasIndex,
-        });
-      } catch {
-        /* ignore */
-      }
-    }
-  }, [canvasIndex, drawingEnabled, isTrainer, sessionId, socket, userInfo]);
+    rebroadcastStrokeBuffer();
+  }, [
+    canvasIndex,
+    drawingEnabled,
+    isTrainer,
+    rebroadcastStrokeBuffer,
+    sessionId,
+    socket,
+    userInfo,
+  ]);
 
   const getCaptureStrokes = useCallback((): RemoteStroke[] => {
     if (isTrainer) return [...strokeBufferRef.current];
@@ -577,9 +596,11 @@ export function useDrawingSync({
     undoLastStroke,
     getCaptureStrokes,
     getLastCanvasSize,
+    trainerBufferStrokes,
     resetRemote: () => {
       setRemoteStrokes([]);
       strokeBufferRef.current = [];
+      setTrainerBufferStrokes([]);
       syncStrokeCount();
     },
     replaySocketState,

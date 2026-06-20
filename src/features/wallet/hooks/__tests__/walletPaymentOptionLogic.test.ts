@@ -21,6 +21,19 @@ describe("computeWalletPaymentOption", () => {
     expect(r.shortfall).toBe(50);
   });
 
+  it("requires PIN setup when step-up applies but no PIN exists", () => {
+    const r = computeWalletPaymentOption({
+      priceDollars: 100,
+      availableDollars: 200,
+      walletPayEnabled: true,
+      stepUpThresholdMinor: 5000,
+      pinSet: false,
+    });
+    expect(r.requiresPinStepUp).toBe(true);
+    expect(r.needsPinSetup).toBe(true);
+    expect(r.needsPin).toBe(false);
+  });
+
   it("requires PIN for payments at or above step-up threshold", () => {
     const r = computeWalletPaymentOption({
       priceDollars: 100,

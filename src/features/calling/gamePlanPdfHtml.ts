@@ -22,7 +22,7 @@ export type GamePlanPdfMeta = GamePlanSessionMetaInput & {
 
 /** Single-flow GAME PLAN layout — matches server stitch + web `#report-pdf`. */
 export function buildGamePlanPdfHtml(
-  imgDataUrls: string[],
+  imgDataUrls: Array<string | null>,
   planTitle: string,
   planNotes: string,
   items: ReportScreenshotItem[],
@@ -49,11 +49,14 @@ export function buildGamePlanPdfHtml(
               ${frameDesc ? `<p class="frameNotes">${esc(frameDesc)}</p>` : ""}
             </div>`
           : "";
+      const imageBlock = src
+        ? `<img src="${src}" alt="Frame ${i + 1}" />`
+        : `<div class="framePlaceholder">Image unavailable</div>`;
       return `
         <section class="frame">
           <div class="frameRow">
             <div class="frameImg">
-              <img src="${src}" alt="Frame ${i + 1}" />
+              ${imageBlock}
             </div>
             ${captionBlock}
           </div>
@@ -151,9 +154,22 @@ export function buildGamePlanPdfHtml(
       }
       .frameImg img {
         width: 100%;
-        max-height: 280px;
-        object-fit: cover;
+        max-height: 420px;
+        object-fit: contain;
         border-radius: 4px;
+      }
+      .framePlaceholder {
+        width: 100%;
+        min-height: 180px;
+        max-height: 420px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #eef1f5;
+        border-radius: 4px;
+        color: #5c6370;
+        font-size: 12px;
+        font-weight: 600;
       }
       .frameCaption {
         flex: 1;

@@ -30,6 +30,8 @@ type Props = {
   focusPaneIndex?: 0 | 1 | null;
   /** Hide shared timeline while annotating so controls do not overlap. */
   hideTimeline?: boolean;
+  /** Locked playback — play/pause only, no shared scrub. */
+  seekEnabled?: boolean;
   paneLabels?: [string, string];
 };
 
@@ -46,6 +48,7 @@ export function LockedDualClipStage({
   capturing = false,
   focusPaneIndex = null,
   hideTimeline = false,
+  seekEnabled = true,
   paneLabels,
 }: Props) {
   const singlePaneFocus = focusPaneIndex === 0 || focusPaneIndex === 1;
@@ -96,6 +99,7 @@ export function LockedDualClipStage({
             progressSeconds={progressSeconds}
             durationSeconds={durationSeconds}
             onSeek={onSeek}
+            seekEnabled={seekEnabled}
             disabled={!uris[0] || !uris[1]}
           />
         </View>

@@ -58,6 +58,8 @@ type Props = {
   /** `commit` false while scrubbing; true on release / tap. */
   onSeek: (seconds: number, commit?: boolean) => void;
   disabled?: boolean;
+  /** When false, timeline is display-only (locked dual-clip playback). */
+  seekEnabled?: boolean;
   bottomOffset?: number;
   /** `inline` anchors to parent pane; `floating` uses absolute bottom on meeting surface. */
   variant?: "floating" | "inline";
@@ -81,6 +83,7 @@ export function ClipPlaybackControls({
   onTogglePlay,
   onSeek,
   disabled,
+  seekEnabled = true,
   bottomOffset = 108,
   variant = "floating",
   showExpand,
@@ -107,8 +110,8 @@ export function ClipPlaybackControls({
   const panResponder = useMemo(
     () =>
       PanResponder.create({
-        onStartShouldSetPanResponder: () => !disabled,
-        onMoveShouldSetPanResponder: () => !disabled,
+        onStartShouldSetPanResponder: () => !disabled && seekEnabled,
+        onMoveShouldSetPanResponder: () => !disabled && seekEnabled,
         onPanResponderGrant: (evt) => {
           setScrubbing(true);
           seekFromX(evt.nativeEvent.locationX, false);
@@ -120,7 +123,7 @@ export function ClipPlaybackControls({
         },
         onPanResponderTerminate: () => setScrubbing(false),
       }),
-    [disabled, max, onSeek]
+    [disabled, max, onSeek, seekEnabled]
   );
 
   const thumbLeft = Math.max(

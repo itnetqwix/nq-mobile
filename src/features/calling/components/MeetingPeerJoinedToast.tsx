@@ -8,14 +8,20 @@ import { meetingTheme } from "../meetingTheme";
  * Lightweight top toast when the partner joins — does not block the video stage.
  */
 export function MeetingPeerJoinedToast({ topOffset = 56 }: { topOffset?: number }) {
-  const { peerJoined, peer, acknowledgePeerJoined } = useCall();
+  const { peerJoined, peer, acknowledgePeerJoined, bothJoined } = useCall();
   const name = peer?.fullname || peer?.fullName || "Your partner";
 
   useEffect(() => {
-    if (!peerJoined) return;
+    if (bothJoined && peerJoined) {
+      acknowledgePeerJoined();
+    }
+  }, [bothJoined, peerJoined, acknowledgePeerJoined]);
+
+  useEffect(() => {
+    if (!peerJoined || bothJoined) return;
     const id = setTimeout(() => acknowledgePeerJoined(), 6000);
     return () => clearTimeout(id);
-  }, [peerJoined, acknowledgePeerJoined]);
+  }, [peerJoined, bothJoined, acknowledgePeerJoined]);
 
   if (!peerJoined) return null;
 

@@ -44,6 +44,7 @@ type SeekHint = {
   videoId: string;
   progress: number;
   receivedAt: number;
+  lockProgresses?: [number, number];
 } | null;
 
 type ZoomPan = {
@@ -143,7 +144,9 @@ export function useClipSync({
   const [hiddenVideos, setHiddenVideos] = useState<HiddenVideosMap>(EMPTY_HIDDEN);
   const [seekHint, setSeekHint] = useState<SeekHint>(null);
   const [lockMode, setLockMode] = useState(false);
-  /** Shared timeline anchor when dual clips are locked (seconds). */
+  /** Per-pane timeline anchor when dual clips are locked (seconds). */
+  const [lockProgresses, setLockProgresses] = useState<[number, number]>([0, 0]);
+  /** @deprecated Shared lock point — use lockProgresses when both panes differ. */
   const [lockPoint, setLockPoint] = useState(0);
   const [layoutMode, setLayoutMode] = useState<ClipLayoutMode>("default");
   const [clipFullscreen, setClipFullscreen] = useState(false);
@@ -242,6 +245,7 @@ export function useClipSync({
     setHiddenVideos(EMPTY_HIDDEN);
     setSeekHint(null);
     setLockMode(false);
+    setLockProgresses([0, 0]);
     setLockPoint(0);
     setLayoutMode("default");
     setClipFullscreen(false);
@@ -360,16 +364,6 @@ export function useClipSync({
       if (!matchesSession(payload) || !isFromPeer(payload)) return;
       const progressRaw = seekProgressFromPayload(payload ?? {});
       if (progressRaw == null) return;
-      const both = isBothClipsPayload(payload ?? {}, lockModeRef.current);
-      if (both) {
-        lastProgressByClipId.current.__both = progressRaw;
-        setSeekHint({
-          videoId: "",
-          progress: progressRaw,
-          receivedAt: Date.now(),
-        });
-        return;
-      }
       let vid = clipIdFromPayload(payload ?? {});
       if (!vid) {
         const idx = clipIndexFromLegacyNumber(payload ?? {});
@@ -431,21 +425,46 @@ export function useClipSync({
       lockModeRef.current = nextLocked;
       setLockMode(nextLocked);
       if (!nextLocked) {
+        setLockProgresses([0, 0]);
         setLockPoint(0);
         pendingPlayAfterLockRef.current = null;
         return;
       }
+      const fromPayload =
+        Array.isArray(payload?.lockProgresses) && payload.lockProgresses.length >= 2
+          ? ([
+              Number(payload.lockProgresses[0]) || 0,
+              Number(payload.lockProgresses[1]) || 0,
+            ] as [number, number])
+          : null;
+      const lockFromPerClip = (): [number, number] => {
+        const clips = selectedClipsRef.current;
+        const read = (idx: 0 | 1) => {
+          const clip = clips[idx];
+          const id = clip ? clipIdOf(clip) : null;
+          if (!id) return 0;
+          const p = lastProgressByClipId.current[String(id)];
+          return typeof p === "number" && Number.isFinite(p) ? p : 0;
+        };
+        return [read(0), read(1)];
+      };
       const lockFromPayload =
-        typeof payload?.lockPoint === "number" && Number.isFinite(payload.lockPoint)
-          ? payload.lockPoint
-          : typeof lastProgressByClipId.current.__both === "number"
-            ? lastProgressByClipId.current.__both
-            : 0;
-      setLockPoint(lockFromPayload);
+        fromPayload ??
+        (typeof payload?.lockPoint === "number" && Number.isFinite(payload.lockPoint)
+          ? ([payload.lockPoint, payload.lockPoint] as [number, number])
+          : lockFromPerClip());
+      setLockProgresses(lockFromPayload);
+      setLockPoint(lockFromPayload[0]);
+      for (let i = 0; i < 2; i++) {
+        const clip = selectedClipsRef.current[i];
+        const id = clip ? clipIdOf(clip) : null;
+        if (id) lastProgressByClipId.current[String(id)] = lockFromPayload[i];
+      }
       setSeekHint({
         videoId: "",
-        progress: lockFromPayload,
+        progress: lockFromPayload[0],
         receivedAt: Date.now(),
+        lockProgresses: lockFromPayload,
       });
       const pending = pendingPlayAfterLockRef.current;
       if (pending != null) {
@@ -735,6 +754,7 @@ export function useClipSync({
         locked: false,
         isLockMode: false,
         lockPoint: 0,
+        lockProgresses: [0, 0],
         userInfo,
         sessionId,
       });
@@ -879,17 +899,35 @@ export function useClipSync({
       const vid = options?.videoId ?? activeClipId;
       if (!vid && !bothLocked) return;
       const now = Date.now();
-      setSeekHint({
-        videoId: bothLocked ? "" : (vid ?? ""),
-        progress: progressSeconds,
-        receivedAt: now,
-      });
-      if (!isTrainer || !socket) return;
+      if (bothLocked) {
+        const paneIdx = options?.videoId
+          ? selectedClips.findIndex((c) => clipIdOf(c) === String(options.videoId))
+          : -1;
+        if (paneIdx === 0 || paneIdx === 1) {
+          setLockProgresses((prev) => {
+            const next: [number, number] = [...prev];
+            next[paneIdx] = progressSeconds;
+            return next;
+          });
+        }
+        setSeekHint({
+          videoId: vid ?? "",
+          progress: progressSeconds,
+          receivedAt: now,
+        });
+      } else {
+        setSeekHint({
+          videoId: vid ?? "",
+          progress: progressSeconds,
+          receivedAt: now,
+        });
+      }
+      if (!socket) return;
       const isCommit = options?.forceEmit !== false;
       const payload = {
-        videoId: vid ?? undefined,
+        videoId: bothLocked ? (options?.videoId ?? vid ?? undefined) : (vid ?? undefined),
         progress: progressSeconds,
-        both: bothLocked,
+        both: false,
         scrubbing: !isCommit,
         userInfo,
         sessionId,
@@ -927,38 +965,41 @@ export function useClipSync({
       durations?: [number, number];
     }) => {
       const next = !lockMode;
-      let nextLockPoint = lockPoint;
+      let nextLockProgresses: [number, number] = lockProgresses;
       if (next && opts) {
-        if (typeof opts.lockPoint === "number") {
-          nextLockPoint = opts.lockPoint;
-        } else if (opts.progresses && opts.durations) {
-          const [p0, p1] = opts.progresses;
-          const [d0, d1] = opts.durations;
-          nextLockPoint = d0 > d1 ? p0 : p1;
+        if (opts.progresses) {
+          nextLockProgresses = opts.progresses;
+        } else if (typeof opts.lockPoint === "number") {
+          nextLockProgresses = [opts.lockPoint, opts.lockPoint];
         }
-        setLockPoint(nextLockPoint);
+        setLockProgresses(nextLockProgresses);
+        setLockPoint(nextLockProgresses[0]);
         setSeekHint({
           videoId: "",
-          progress: nextLockPoint,
+          progress: nextLockProgresses[0],
           receivedAt: Date.now(),
+          lockProgresses: nextLockProgresses,
         });
       }
       lockModeRef.current = next;
       setLockMode(next);
       if (!next) {
         setClipFocusIndex(null);
+        setLockProgresses([0, 0]);
+        setLockPoint(0);
         pendingPlayAfterLockRef.current = null;
       }
       if (!isTrainer || !socket) return;
       socket.emit(CLIP_EVENTS.TOGGLE_LOCK_MODE, {
         locked: next,
         isLockMode: next,
-        lockPoint: nextLockPoint,
+        lockPoint: nextLockProgresses[0],
+        lockProgresses: nextLockProgresses,
         userInfo,
         sessionId,
       });
     },
-    [isTrainer, lockMode, lockPoint, socket, userInfo, sessionId]
+    [isTrainer, lockMode, lockPoint, lockProgresses, socket, userInfo, sessionId]
   );
 
   const setClipFocus = useCallback(
@@ -1047,7 +1088,8 @@ export function useClipSync({
       socket.emit(CLIP_EVENTS.TOGGLE_LOCK_MODE, {
         locked: true,
         isLockMode: true,
-        lockPoint,
+        lockPoint: lockProgresses[0],
+        lockProgresses,
         userInfo,
         sessionId,
       });
@@ -1088,13 +1130,18 @@ export function useClipSync({
         })
       );
     }
-    const bothProgress = lastProgressByClipId.current.__both;
-    if (typeof bothProgress === "number" && lockMode) {
-      socket.emit(CLIP_EVENTS.ON_VIDEO_TIME, {
-        progress: bothProgress,
-        both: true,
-        userInfo,
-        sessionId,
+    if (lockMode && selectedClips.length >= 2) {
+      selectedClips.slice(0, 2).forEach((clip) => {
+        const id = clipIdOf(clip);
+        const progress = id ? lastProgressByClipId.current[String(id)] : undefined;
+        if (typeof progress !== "number" || !id) return;
+        socket.emit(CLIP_EVENTS.ON_VIDEO_TIME, {
+          videoId: id,
+          progress,
+          both: false,
+          userInfo,
+          sessionId,
+        });
       });
     } else {
       Object.entries(lastProgressByClipId.current).forEach(([videoId, progress]) => {
@@ -1115,6 +1162,7 @@ export function useClipSync({
     isTrainer,
     lockMode,
     lockPoint,
+    lockProgresses,
     playingByClipId,
     selectedClips,
     sessionId,
@@ -1140,11 +1188,10 @@ export function useClipSync({
         LESSON_NETWORK_TIER_CONFIG[networkTierRef.current].clipProgressEmitMs;
       if (now - lastPeriodicProgressEmit.current < minMs) return;
       lastPeriodicProgressEmit.current = now;
-      const bothLocked = lockMode && selectedClips.length >= 2;
       socket.emit(CLIP_EVENTS.ON_VIDEO_TIME, {
-        videoId: bothLocked ? undefined : String(videoId),
+        videoId: String(videoId),
         progress: progressSeconds,
-        both: bothLocked,
+        both: false,
         userInfo,
         sessionId,
       });
@@ -1156,20 +1203,33 @@ export function useClipSync({
   useEffect(() => {
     if (!isTrainer || !socket || !sessionId || !isPlaying) return;
     const tick = () => {
-      const bothLocked = lockMode && selectedClips.length >= 2;
+      if (lockMode && selectedClips.length >= 2) {
+        for (const clip of selectedClips.slice(0, 2)) {
+          const id = clipIdOf(clip);
+          const progress = id ? lastProgressByClipId.current[String(id)] : undefined;
+          if (typeof progress !== "number" || !id) continue;
+          socket.emit(CLIP_EVENTS.ON_VIDEO_TIME, {
+            videoId: id,
+            progress,
+            both: false,
+            playing: true,
+            heartbeat: true,
+            lockMode,
+            userInfo,
+            sessionId,
+          });
+        }
+        return;
+      }
       const vid =
         activeClipId ??
         (selectedClips[0] ? clipIdOf(selectedClips[0]) : null);
-      const progress = bothLocked
-        ? lastProgressByClipId.current.__both
-        : vid
-          ? lastProgressByClipId.current[String(vid)]
-          : undefined;
+      const progress = vid ? lastProgressByClipId.current[String(vid)] : undefined;
       if (typeof progress !== "number") return;
       socket.emit(CLIP_EVENTS.ON_VIDEO_TIME, {
-        videoId: bothLocked ? undefined : vid ?? undefined,
+        videoId: vid ?? undefined,
         progress,
-        both: bothLocked,
+        both: false,
         playing: true,
         heartbeat: true,
         lockMode,
@@ -1207,6 +1267,7 @@ export function useClipSync({
     seekHint,
     lockMode,
     lockPoint,
+    lockProgresses,
     layoutMode,
     clipFullscreen,
     clipFocusIndex,

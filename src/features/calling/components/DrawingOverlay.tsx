@@ -67,6 +67,8 @@ type Props = {
     stroke: RemoteStroke,
     canvasSize: { width: number; height: number }
   ) => void;
+  /** Trainer: committed strokes render from remoteStrokes (socket buffer), not local state. */
+  commitToRemoteLayer?: boolean;
 };
 
 function shapePath(tool: AnnotationTool, x0: number, y0: number, x1: number, y1: number): SkPath {
@@ -218,6 +220,7 @@ export function DrawingOverlay({
   annotationStage = "clip",
   annotationPaneIndex = 0,
   onStrokeComplete,
+  commitToRemoteLayer = false,
 }: Props) {
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const [textLabels, setTextLabels] = useState<RemoteStroke[]>([]);
@@ -326,7 +329,11 @@ export function DrawingOverlay({
     [canvasSize, contentAspect, contentFit, projectionOptionsForStroke]
   );
 
+  const commitToRemoteLayerRef = useRef(commitToRemoteLayer);
+  commitToRemoteLayerRef.current = commitToRemoteLayer;
+
   const commitStroke = useCallback((stroke: Stroke) => {
+    if (commitToRemoteLayerRef.current) return;
     setStrokes((s) => [...s, stroke]);
     setCurrent(null);
   }, []);
@@ -360,10 +367,12 @@ export function DrawingOverlay({
     setCurrent(null);
     if (pts.length > 1) {
       const path = freehandPathFromPoints(pts);
-      setStrokes((s) => [
-        ...s,
-        { path, color: colorRef.current, width: strokeWidthRef.current },
-      ]);
+      if (!commitToRemoteLayerRef.current) {
+        setStrokes((s) => [
+          ...s,
+          { path, color: colorRef.current, width: strokeWidthRef.current },
+        ]);
+      }
       emitStroke({
         points: pts,
         color: colorRef.current,
@@ -391,7 +400,9 @@ export function DrawingOverlay({
       kind: "text",
       text: value,
     };
-    setTextLabels((s) => [...s, stroke]);
+    if (!commitToRemoteLayerRef.current) {
+      setTextLabels((s) => [...s, stroke]);
+    }
     emitStroke(stroke);
   }, [emitStroke, textAnchor, textDraft]);
 
@@ -487,18 +498,26 @@ export function DrawingOverlay({
   const allText = useMemo(
     () =>
       [
-        ...remoteStrokes.filter((r) => r.kind === "text" && r.text),
-        ...textLabels,
+        ...remoteStrokes.filter((r) => {
+          if (r.kind !== "text" || !r.text) return false;
+          const stage = r.stage ?? "clip";
+          return stage === annotationStage;
+        }),
+        ...(commitToRemoteLayer ? [] : textLabels),
       ].map((t) => projectForDisplay(t)),
-    [remoteStrokes, textLabels, projectForDisplay]
+    [remoteStrokes, textLabels, projectForDisplay, annotationStage, commitToRemoteLayer]
   );
 
   const scaledRemoteStrokes = useMemo(
     () =>
       remoteStrokes
-        .filter((r) => r.kind !== "text")
+        .filter((r) => {
+          if (r.kind === "text") return false;
+          const stage = r.stage ?? "clip";
+          return stage === annotationStage;
+        })
         .map((r) => projectForDisplay(r)),
-    [remoteStrokes, projectForDisplay]
+    [remoteStrokes, projectForDisplay, annotationStage]
   );
 
   if (

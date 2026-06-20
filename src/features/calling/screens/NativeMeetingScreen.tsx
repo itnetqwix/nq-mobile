@@ -173,7 +173,6 @@ import type { ClipRow } from "../../instant-lesson/instantLessonClipsApi";
 import { RatingsModal } from "../components/RatingsModal";
 import { MeetingJoinBanner } from "../components/MeetingJoinBanner";
 import { SessionRecapSheet } from "../components/SessionRecapSheet";
-import { MeetingAgendaBanner } from "../components/MeetingAgendaBanner";
 import { CallSlotTakenOverModal } from "../components/CallSlotTakenOverModal";
 import {
   navigateToBookTrainer,
@@ -495,11 +494,7 @@ export function NativeMeetingScreen({ navigation, route }: Props) {
         /* Join UX: MeetingPeerJoinedToast only (deduped in CallContext). */
       }}
       onPeerDisconnected={() => {
-        pushLocalToast({
-          title: NOTIFICATION_TITLES.peerLeftCall,
-          description: `${peerDisplayName} disconnected. Waiting for them to rejoin…`,
-          type: NOTIFICATION_TYPES.TRANSCATIONAL,
-        });
+        /* Disconnect UX: presence banner + meetingStatusBanner only (no toast). */
       }}
       onPeerLeft={() => {
         peerEndedCallRef.current = true;
@@ -628,14 +623,14 @@ function MeetingSurface({
     isTrainer,
     peerDisplayName,
     mediaPartnerJoined: bothJoined || !!peerJoined,
-    lessonActive: (bothJoined || !!peerJoined) && !partnerDisconnected,
+    lessonActive: bothJoined || !!peerJoined,
   });
 
   /** Socket presence when synced; otherwise fall back to WebRTC join signals. */
   const partnerInSession =
     presence.trainerConnected != null && presence.traineeConnected != null
-      ? presence.partnerConnected
-      : (bothJoined || !!peerJoined) && !partnerDisconnected;
+      ? presence.partnerConnected || partnerDisconnected
+      : bothJoined || !!peerJoined;
   const { pushLocalToast } = useNotifications();
   const openAudioOutputPicker = useCallback(() => {
     const options: Array<{ text: string; onPress?: () => void; style?: "cancel" }> = [
@@ -1208,7 +1203,11 @@ function MeetingSurface({
   } | null>(null);
   const clipFrameOffsetRef = useRef({ x: 0, y: 0 });
   const paneOffsetRef = useRef<Partial<Record<0 | 1, { x: number; y: number }>>>({});
+  const paneLayoutReadyRef = useRef<Partial<Record<0 | 1, boolean>>>({});
   const clipLocalRectRef = useRef<Partial<Record<0 | 1, ContentRect>>>({});
+  const [clipPaneVideoRects, setClipPaneVideoRects] = useState<
+    Partial<Record<0 | 1, ContentRect>>
+  >({});
   const clipNaturalSizeByPaneRef = useRef<
     Partial<Record<0 | 1, { width: number; height: number }>>
   >({});
@@ -1226,7 +1225,6 @@ function MeetingSurface({
   useEffect(() => () => resetMeetingAnnotation(), [resetMeetingAnnotation]);
 
   const [networkBannerDismissed, setNetworkBannerDismissed] = useState(false);
-  const [agendaBannerDismissed, setAgendaBannerDismissed] = useState(false);
   const [statusBannerDismissed, setStatusBannerDismissed] = useState(false);
   const [errorBannerDismissed, setErrorBannerDismissed] = useState(false);
   const clipProgressRefs = useRef<[number, number]>([0, 0]);
@@ -1236,10 +1234,6 @@ function MeetingSurface({
   useEffect(() => {
     setNetworkBannerDismissed(false);
   }, [networkAdaptive.mode, networkAdaptive.videoPausedForNetwork]);
-
-  useEffect(() => {
-    setAgendaBannerDismissed(false);
-  }, [lessonLive.liveState.focusedClipTitle]);
 
   useEffect(() => {
     setErrorBannerDismissed(false);
@@ -1261,12 +1255,13 @@ function MeetingSurface({
     }
     if (lessonStartedNotifiedRef.current) return;
     lessonStartedNotifiedRef.current = true;
+    if (peerJoined) return;
     pushLocalToast({
       title: NOTIFICATION_TITLES.sessionStarted,
       description: "Lesson started — you're both in the call.",
       type: NOTIFICATION_TYPES.TRANSCATIONAL,
     });
-  }, [bothUsersForTimer, pushLocalToast]);
+  }, [bothUsersForTimer, peerJoined, pushLocalToast]);
 
   /** When the trainer selects a clip we receive the clip metadata so we can
    *  compute the playback URL locally. The trainee receives only the id via
@@ -1350,33 +1345,26 @@ function MeetingSurface({
     }
   }, [clipSync.activeClipId, clipSync.activeClipUrl]);
 
-  useEffect(() => {
-    if (!isTrainer || !clipSync.activeClipId) return;
-    const clip = clipSync.selectedClips.find(
-      (c) => clipIdOf(c) === clipSync.activeClipId
-    );
-    const title = String(clip?.title ?? clip?.name ?? "Clip");
-    lessonLive.setFocusedClip(String(clipSync.activeClipId), title);
-  }, [isTrainer, clipSync.activeClipId, clipSync.selectedClips, lessonLive.setFocusedClip]);
-
   const clipPaneUris = clipPaneUrisEarly;
 
   useEffect(() => {
     if (!clipSync.lockMode || clipSync.selectedClips.length < 2) return;
-    const point = clipSync.lockPoint;
-    if (!Number.isFinite(point)) return;
-    clipProgressRefs.current = [point, point];
-    setClipProgresses([point, point]);
-  }, [clipSync.lockMode, clipSync.lockPoint, clipSync.selectedClips.length]);
+    const [p0, p1] = clipSync.lockProgresses;
+    clipProgressRefs.current = [p0, p1];
+    setClipProgresses([p0, p1]);
+  }, [clipSync.lockMode, clipSync.lockProgresses, clipSync.selectedClips.length]);
 
   useEffect(() => {
     if (!clipSync.seekHint || isTrainer) return;
-    const { progress, videoId } = clipSync.seekHint;
+    const { progress, videoId, lockProgresses } = clipSync.seekHint;
     if (!Number.isFinite(progress)) return;
     if (clipSync.lockMode && clipSync.selectedClips.length >= 2) {
-      clipProgressRefs.current = [progress, progress];
-      setClipProgresses([progress, progress]);
-      return;
+      if (lockProgresses) {
+        clipProgressRefs.current = [...lockProgresses];
+        setClipProgresses([lockProgresses[0], lockProgresses[1]]);
+        return;
+      }
+      if (!videoId) return;
     }
     if (!videoId) return;
     const paneIndex = clipSync.selectedClips.findIndex(
@@ -1416,8 +1404,7 @@ function MeetingSurface({
 
   const handleTakeScreenshot = useCallback(() => {
     if (hasClipStage && clipPaneUris.length > 0) {
-      const progressForPane = (paneIndex: 0 | 1) =>
-        lockedDualClip ? lockedProgress : (clipProgresses[paneIndex] ?? 0);
+      const progressForPane = (paneIndex: 0 | 1) => clipProgresses[paneIndex] ?? 0;
       const sources = clipPaneUris
         .slice(0, 2)
         .map((uri, i) => ({
@@ -1435,8 +1422,6 @@ function MeetingSurface({
     clipPaneUris,
     clipProgresses,
     hasClipStage,
-    lockedDualClip,
-    lockedProgress,
     screenshot,
   ]);
 
@@ -1471,9 +1456,10 @@ function MeetingSurface({
   ]);
 
   const syncMeasuredAnnotationRect = useCallback((pane: 0 | 1) => {
-    const paneOff = paneOffsetRef.current[pane];
+    if (!paneLayoutReadyRef.current[pane]) return;
     const local = clipLocalRectRef.current[pane];
-    if (!local) return;
+    if (!local || local.width <= 0 || local.height <= 0) return;
+    const paneOff = paneOffsetRef.current[pane];
     const baseX = clipFrameOffsetRef.current.x + (paneOff?.x ?? 0);
     const baseY = clipFrameOffsetRef.current.y + (paneOff?.y ?? 0);
     setMeasuredAnnotationRect({
@@ -1487,6 +1473,7 @@ function MeetingSurface({
   const handleAnnotationPaneLayout = useCallback(
     (paneIndex: 0 | 1, layout: { x: number; y: number; width: number; height: number }) => {
       paneOffsetRef.current[paneIndex] = { x: layout.x, y: layout.y };
+      paneLayoutReadyRef.current[paneIndex] = true;
       if (paneIndex === annotationSourcePane) {
         syncMeasuredAnnotationRect(paneIndex);
       }
@@ -1498,6 +1485,14 @@ function MeetingSurface({
     () => clipSync.selectedClips.map((c) => clipIdOf(c)).join("|"),
     [clipSync.selectedClips]
   );
+
+  useEffect(() => {
+    paneLayoutReadyRef.current = {};
+    clipLocalRectRef.current = {};
+    paneOffsetRef.current = {};
+    setClipPaneVideoRects({});
+    setMeasuredAnnotationRect(null);
+  }, [clipSelectionKey]);
 
   /** Single shared clip fills the stage (trainer pick or trainee share). */
   useEffect(() => {
@@ -1570,13 +1565,24 @@ function MeetingSurface({
     const clip = clipSync.selectedClips[paneIndex];
     const clipId = clip ? clipIdOf(clip) : null;
     const zoomPan = clipId ? clipSync.zoomPanByVideoId[String(clipId)] : undefined;
-    const seekForPane =
-      clipSync.seekHint &&
-      (!clipSync.seekHint.videoId ||
-        clipSync.seekHint.videoId === clipId ||
-        clipSync.lockMode)
-        ? Math.floor(clipSync.seekHint.progress * 1000)
-        : null;
+    const seekForPane = (() => {
+      if (!clipSync.seekHint) return null;
+      const { progress, videoId, lockProgresses } = clipSync.seekHint;
+      if (clipSync.lockMode && lockProgresses) {
+        return Math.floor(lockProgresses[paneIndex] * 1000);
+      }
+      if (
+        !videoId ||
+        videoId === clipId ||
+        (clipSync.lockMode && !videoId)
+      ) {
+        return Math.floor(progress * 1000);
+      }
+      if (videoId === clipId) {
+        return Math.floor(progress * 1000);
+      }
+      return null;
+    })();
     const seekNonce = clipSync.seekHint?.receivedAt ?? null;
     return {
       isPlaying: clipSync.lockMode
@@ -1610,6 +1616,19 @@ function MeetingSurface({
       },
       onAnnotationVideoRect: (rect: ContentRect) => {
         clipLocalRectRef.current[paneIndex] = rect;
+        setClipPaneVideoRects((prev) => {
+          const cur = prev[paneIndex];
+          if (
+            cur &&
+            cur.x === rect.x &&
+            cur.y === rect.y &&
+            cur.width === rect.width &&
+            cur.height === rect.height
+          ) {
+            return prev;
+          }
+          return { ...prev, [paneIndex]: rect };
+        });
         if (paneIndex === annotationSourcePane) {
           syncMeasuredAnnotationRect(paneIndex);
         }
@@ -1660,13 +1679,6 @@ function MeetingSurface({
 
   const handleClipSeek = useCallback(
     (paneIndex: 0 | 1, sec: number, commit = true) => {
-      if (clipSync.lockMode && clipSync.selectedClips.length >= 2) {
-        clipEndedRef.current = [false, false];
-        clipProgressRefs.current = [sec, sec];
-        setClipProgresses([sec, sec]);
-        clipSync.seek(sec, { forceEmit: commit });
-        return;
-      }
       clipEndedRef.current[paneIndex] = false;
       clipProgressRefs.current[paneIndex] = sec;
       setClipProgresses((prev) => {
@@ -1708,7 +1720,9 @@ function MeetingSurface({
 
   const handleLockedClipTogglePlay = useCallback(() => {
     if (!clipSync.isPlaying && (isClipAtEnd(0) || isClipAtEnd(1))) {
-      handleClipSeek(0, 0);
+      const [p0, p1] = clipSync.lockProgresses;
+      handleClipSeek(0, p0);
+      handleClipSeek(1, p1);
     }
     clipSync.togglePlay();
   }, [clipSync, handleClipSeek, isClipAtEnd]);
@@ -1731,17 +1745,16 @@ function MeetingSurface({
     if (clipSync.clipFocusIndex != null) {
       clipSync.setClipFocus(null);
     }
-    const lockPoint =
-      clipDurations[0] > clipDurations[1]
-        ? clipProgresses[0]
-        : clipProgresses[1];
-    clipSync.toggleLockMode({
-      lockPoint,
-      progresses: clipProgresses,
-      durations: clipDurations,
-    });
-    handleClipSeek(0, lockPoint);
-  }, [clipDurations, clipProgresses, clipSync, handleClipSeek]);
+    const progresses: [number, number] = [clipProgresses[0], clipProgresses[1]];
+    clipSync.toggleLockMode({ progresses });
+    for (const pane of [0, 1] as const) {
+      const clip = clipSync.selectedClips[pane];
+      const id = clip ? clipIdOf(clip) : null;
+      if (id) {
+        clipSync.seek(progresses[pane], { forceEmit: true, videoId: id });
+      }
+    }
+  }, [clipProgresses, clipSync]);
 
   const handleTrainerOverflow = useCallback(
     (action: TrainerOverflowAction) => {
@@ -2374,7 +2387,12 @@ function MeetingSurface({
     drawingSync.setTrainerDrawingEnabled(true);
   }, [annotationArmed, drawingSync]);
 
-  const canDraw = isTrainer && annotationArmed && !screenshot.capturing;
+  const annotationLayoutReady =
+    inLiveFocus ||
+    !hasClipStage ||
+    (measuredAnnotationRect != null && measuredAnnotationRect.width > 0);
+  const canDraw =
+    isTrainer && annotationArmed && !screenshot.capturing && annotationLayoutReady;
   const bigVideoActive =
     inClipMode
       ? clipSync.clipFullscreen || clipFocusIndex != null
@@ -2481,6 +2499,18 @@ function MeetingSurface({
   }, [annotationSourcePane, clipSync.selectedClips, clipSync.zoomPanByVideoId, hasClipStage]);
 
   const getPaneMeasuredRect = useCallback((pane: 0 | 1): ContentRect | null => {
+    const fromState = clipPaneVideoRects[pane];
+    if (fromState && fromState.width > 0 && fromState.height > 0) {
+      const paneOff = paneOffsetRef.current[pane];
+      const baseX = clipFrameOffsetRef.current.x + (paneOff?.x ?? 0);
+      const baseY = clipFrameOffsetRef.current.y + (paneOff?.y ?? 0);
+      return {
+        x: baseX + fromState.x,
+        y: baseY + fromState.y,
+        width: fromState.width,
+        height: fromState.height,
+      };
+    }
     const local = clipLocalRectRef.current[pane];
     if (!local) return null;
     const paneOff = paneOffsetRef.current[pane];
@@ -2492,7 +2522,7 @@ function MeetingSurface({
       width: local.width,
       height: local.height,
     };
-  }, []);
+  }, [clipPaneVideoRects]);
 
   const getPaneZoomPan = useCallback(
     (pane: 0 | 1) => {
@@ -2516,7 +2546,7 @@ function MeetingSurface({
           zoomPan: null,
         };
       }
-      const pane = (stroke.paneIndex ?? annotationSourcePane) as 0 | 1;
+      const pane = (stroke.paneIndex ?? 0) as 0 | 1;
       const aspect =
         stroke.contentAspect ??
         clipNaturalSizeByPaneRef.current[pane] ??
@@ -2526,19 +2556,19 @@ function MeetingSurface({
       const canvasSize = drawingSync.getLastCanvasSize();
       let contentInsets: ReturnType<typeof resolveClipContentInsets> | undefined;
       if (measured == null && annotationClipLayout) {
-        if (annotationClipLayout.mode === "single") {
-          contentInsets = resolveClipContentInsets(canvasSize, annotationClipLayout);
-        } else {
-          contentInsets = resolveClipContentInsets(canvasSize, {
-            ...annotationClipLayout,
-            paneIndex: pane,
-          });
-        }
+        const layoutBase =
+          annotationClipLayout.mode === "single"
+            ? annotationClipLayout
+            : { ...annotationClipLayout, paneIndex: pane };
+        contentInsets = resolveClipContentInsets(canvasSize, {
+          ...layoutBase,
+          trainerControls: true,
+        });
       }
       return {
         contentAspect: aspect,
         contentFit: "contain",
-        measuredContentRect: measured ?? measuredAnnotationRect,
+        measuredContentRect: measured,
         zoomPan: getPaneZoomPan(pane),
         contentInsets,
       };
@@ -2571,7 +2601,7 @@ function MeetingSurface({
     dualClip,
     getPaneMeasuredRect,
     hasClipStage,
-    measuredAnnotationRect,
+    clipPaneVideoRects,
     clipProgresses,
     clipDurations,
   ]);
@@ -2612,11 +2642,6 @@ function MeetingSurface({
   useEffect(() => {
     annotationCaptureContextRef.current = { hasClipStage, inLiveFocus };
   }, [hasClipStage, inLiveFocus]);
-
-  useEffect(() => {
-    if (!isTrainer) return;
-    setDrawingOverlayKey((k) => k + 1);
-  }, [annotationToolbarOpen, isTrainer]);
 
   useEffect(() => {
     syncMeasuredAnnotationRect(annotationSourcePane);
@@ -3037,10 +3062,11 @@ function MeetingSurface({
                 durationSeconds={lockedDuration}
                 onTogglePlay={handleLockedClipTogglePlay}
                 onSeek={(sec, commit) => handleClipSeek(0, sec, commit)}
+                seekEnabled={false}
                 onPaneLayout={handleAnnotationPaneLayout}
                 capturing={screenshot.capturing}
-                focusPaneIndex={null}
-                hideTimeline={false}
+                focusPaneIndex={lockedAnnotating ? lockedAnnotPane : null}
+                hideTimeline={lockedAnnotating}
                 paneLabels={clipScreenshotLabels}
               />
             ) : dualClip && clipPaneUris[0] && clipPaneUris[1] ? (
@@ -3177,10 +3203,13 @@ function MeetingSurface({
         <DrawingOverlay
           key={`stage-${drawingOverlayKey}`}
           enabled={canDraw}
-          showRemoteLayer={!isTrainer}
+          showRemoteLayer
+          commitToRemoteLayer={isTrainer}
           tool={annotationTool}
           color={annotationColor}
-          remoteStrokes={drawingSync.remoteStrokes}
+          remoteStrokes={
+            isTrainer ? drawingSync.trainerBufferStrokes : drawingSync.remoteStrokes
+          }
           contentAspect={annotationContentAspect}
           contentFit={annotationContentFit}
           clipAnnotationLayout={annotationClipLayout}
@@ -3219,18 +3248,6 @@ function MeetingSurface({
             networkAdaptive.markManualVideoRestore();
             if (!cameraEnabled) toggleCamera();
           }}
-        />
-      ) : null}
-
-      {!isTrainer && !agendaBannerDismissed ? (
-        <MeetingAgendaBanner
-          focusedClipTitle={lessonLive.liveState.focusedClipTitle}
-          topOffset={
-            chrome.insets.top +
-            (meetingStatusBanner && !statusBannerDismissed ? 108 : 56) +
-            stackedBannerExtra
-          }
-          onDismiss={() => setAgendaBannerDismissed(true)}
         />
       ) : null}
 
@@ -3519,12 +3536,9 @@ function MeetingSurface({
           onToggleDrawing={handleAnnotationToolbarDrawingToggle}
           onClear={() => {
             drawingSync.clearCanvas();
-            setDrawingOverlayKey((k) => k + 1);
           }}
           onUndo={() => {
-            if (drawingSync.undoLastStroke()) {
-              setDrawingOverlayKey((k) => k + 1);
-            }
+            drawingSync.undoLastStroke();
           }}
           canUndo={drawingSync.canUndo}
           bottomOffset={chrome.annotationToolbarBottom}

@@ -140,6 +140,10 @@ export async function setWalletPin(pin: string) {
     throw new Error("PIN must be exactly 6 digits.");
   }
   const res = await apiClient.post(API_ROUTES.wallet.pinSet, { pin: normalized });
+  const body = res.data as { status?: string; error?: string; data?: unknown };
+  if (body?.status === "FAIL" || body?.error) {
+    throw new Error(body.error ?? "Could not set wallet PIN.");
+  }
   return res.data;
 }
 

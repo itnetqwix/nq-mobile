@@ -37,7 +37,9 @@ import type { UseSessionExtensionFlow } from "../useSessionExtensionFlow";
 import { SavedCardHint } from "../../../components/payments/SavedCardHint";
 import { useDefaultSavedCard } from "../../wallet/hooks/useDefaultSavedCard";
 import { useWalletPaymentOption } from "../../wallet/hooks/useWalletPaymentOption";
-import { verifyWalletPin } from "../../wallet/walletApi";
+import { WalletPinSetupBanner } from "../../wallet/components/WalletPinSetupBanner";
+import { resolveWalletPinSessionForPayment } from "../../wallet/security/walletPinPaymentFlow";
+import { navigateToWalletSecurity } from "../../../navigation/navigationRef";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 
 const FALLBACK_EXTENSION_DURATIONS = [5, 10, 15, 30] as const;
@@ -298,20 +300,14 @@ export function SessionExtensionModal({
         return;
       }
       let token = pinSessionToken ?? wallet.storedPinToken ?? undefined;
-      if (wallet.needsPin && !token) {
-        if (!/^\d{6}$/.test(pin)) {
-          Alert.alert("PIN required", "Enter your 6-digit wallet PIN for this payment.");
-          return;
-        }
-        try {
-          const res = await verifyWalletPin(pin);
-          token = res.pinSessionToken;
-          setPinSessionToken(token);
-          setPin("");
-        } catch (e: unknown) {
-          Alert.alert("Wallet payment", getApiErrorMessage(e, "Could not verify PIN."));
-          return;
-        }
+      const gate = await resolveWalletPinSessionForPayment(wallet, pin, token, {
+        onSetupPin: navigateToWalletSecurity,
+      });
+      if (!gate.ok) return;
+      token = gate.token;
+      if (token && token !== pinSessionToken) {
+        setPinSessionToken(token);
+        setPin("");
       }
       const ok = await payAndConfirm({
         method: "wallet",
@@ -437,7 +433,9 @@ export function SessionExtensionModal({
         ) : null}
         {paymentMethod === "wallet" && wallet.walletPayEnabled && extensionChargeTotal > 0 ? (
           <>
-            {wallet.needsPin && !pinSessionToken ? (
+            {wallet.needsPinSetup ? (
+              <WalletPinSetupBanner onSetupPin={navigateToWalletSecurity} />
+            ) : wallet.needsPin && !pinSessionToken ? (
               <TextInput
                 style={styles.pinInput}
                 keyboardType="number-pad"

@@ -55,6 +55,17 @@ export async function requestCropImageUpload(payload: {
   return res.data;
 }
 
+export async function saveScreenshotToReport(payload: {
+  sessions: string;
+  trainer: string;
+  trainee: string;
+  title: string;
+  topic: string;
+  reportData: Array<{ imageUrl: string; title?: string; description?: string }>;
+}) {
+  return postWithRetry(API_ROUTES.report.create, payload);
+}
+
 export async function saveSessionGamePlan(payload: {
   sessions: string;
   trainer: string;

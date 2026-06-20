@@ -18,14 +18,18 @@ export function computeWalletPaymentOption({
   const enabled = walletPayEnabled !== false;
   const shortfall = Math.max(0, price - available);
   const canPayWithWallet = enabled && price > 0 && available >= price;
-  const needsPin =
-    price > 0 && stepUpThresholdMinor / 100 <= price && Boolean(pinSet);
+  const requiresPinStepUp =
+    price > 0 && stepUpThresholdMinor / 100 <= price;
+  const needsPinSetup = requiresPinStepUp && !pinSet;
+  const needsPin = requiresPinStepUp && Boolean(pinSet);
 
   return {
     available,
     walletPayEnabled: enabled,
     canPayWithWallet,
     shortfall,
+    requiresPinStepUp,
+    needsPinSetup,
     needsPin,
     pinSet: Boolean(pinSet),
   };

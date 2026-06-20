@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../../components/ui";
@@ -13,6 +13,7 @@ import {
   setBiometricWalletEnabled,
 } from "../../../lib/security/biometricGate";
 import { checkDeviceIntegrity } from "../../../lib/security/deviceIntegrity";
+import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { setWalletPin, verifyWalletPin } from "../walletApi";
 import { queryKeys } from "../../../lib/queryKeys";
 import { useWalletBalance } from "../hooks/useWalletBalance";
@@ -29,20 +30,24 @@ export function WalletSecurityScreen() {
       content: { padding: space.lg, gap: space.md },
       sub: { ...typography.bodySm, color: c.textMuted, lineHeight: 20 },
       step: { ...typography.label, color: c.textMuted, fontWeight: "600" },
+      loading: { paddingVertical: space.xl, alignItems: "center" },
     })
   );
 
   const queryClient = useQueryClient();
-  const { data: balance } = useWalletBalance();
+  const { data: balance, isLoading: balanceLoading, isFetching: balanceFetching } =
+    useWalletBalance();
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
-  const [mode, setMode] = useState<"set" | "confirm" | "verify">("verify");
+  const [mode, setMode] = useState<"set" | "confirm" | "verify">("set");
   const [biometricOn, setBiometricOn] = useState(false);
   const [bioAvailable, setBioAvailable] = useState(false);
   const [bioLabel, setBioLabel] = useState(() => t("wallet.biometricsDefault"));
   const [busy, setBusy] = useState(false);
 
-  const pinSet = balance?.pinSet;
+  const pinSet = balance?.pinSet === true;
+  const balanceReady = !balanceLoading && balance != null;
+  const inPinCreation = !pinSet || mode === "set" || mode === "confirm";
 
   useEffect(() => {
     void isBiometricWalletEnabled().then(setBiometricOn);
@@ -56,8 +61,15 @@ export function WalletSecurityScreen() {
         );
       }
     });
-    setMode(pinSet ? "verify" : "set");
-  }, [pinSet, t]);
+  }, [t]);
+
+  useEffect(() => {
+    if (!balanceReady) return;
+    setMode((current) => {
+      if (current === "set" || current === "confirm") return current;
+      return pinSet ? "verify" : "set";
+    });
+  }, [pinSet, balanceReady]);
 
   const handleSetFlow = async () => {
     if (mode === "set") {
@@ -80,16 +92,15 @@ export function WalletSecurityScreen() {
       setBusy(true);
       try {
         await setWalletPin(pin);
+        await queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all });
         Alert.alert(t("wallet.pinSetAlertTitle"), t("wallet.pinSetSuccess"));
         setPin("");
         setConfirmPin("");
         setMode("verify");
-        void queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all });
       } catch (e: unknown) {
         Alert.alert(
           t("wallet.errorTitle"),
-          (e as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-            (e as Error).message
+          getApiErrorMessage(e, t("wallet.pinSetFailed", { defaultValue: "Could not set PIN." }))
         );
       } finally {
         setBusy(false);
@@ -109,14 +120,16 @@ export function WalletSecurityScreen() {
     setBusy(true);
     try {
       const res = await verifyWalletPin(pin);
-      if (res.pinSessionToken) await savePinSession(res.pinSessionToken);
+      if (!res.pinSessionToken) {
+        throw new Error("No PIN session returned. Try again.");
+      }
+      await savePinSession(res.pinSessionToken);
       Alert.alert(t("wallet.verified"), t("wallet.verifiedBody"));
       setPin("");
     } catch (e: unknown) {
       Alert.alert(
         t("wallet.errorTitle"),
-        (e as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-          (e as Error).message
+        getApiErrorMessage(e, t("wallet.pinVerifyFailed", { defaultValue: "Could not verify PIN." }))
       );
     } finally {
       setBusy(false);
@@ -126,28 +139,55 @@ export function WalletSecurityScreen() {
   const activePin = mode === "confirm" ? confirmPin : pin;
   const onPinChange = mode === "confirm" ? setConfirmPin : setPin;
 
+  if (!balanceReady) {
+    return (
+      <View style={[styles.root, styles.loading]}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
       <Text style={styles.sub}>
-        {pinSet ? t("wallet.pinProtects") : t("wallet.createPin")}
+        {inPinCreation && pinSet
+          ? t("wallet.changePinHint", {
+              defaultValue: "Choose a new 6-digit PIN, then confirm it.",
+            })
+          : pinSet
+            ? t("wallet.pinProtects")
+            : t("wallet.createPin")}
       </Text>
 
-      {!pinSet ? (
+      {inPinCreation ? (
         <>
           <Text style={styles.step}>
             {mode === "set" ? t("wallet.stepChoosePin") : t("wallet.stepConfirmPin")}
           </Text>
-          <PinPad value={activePin} onChange={onPinChange} disabled={busy} />
+          <PinPad value={activePin} onChange={onPinChange} disabled={busy || balanceFetching} />
           <Button
             label={mode === "set" ? t("wallet.continue") : t("wallet.setPin")}
             onPress={handleSetFlow}
             loading={busy}
             fullWidth
           />
+          {pinSet ? (
+            <Button
+              label={t("wallet.cancel", { defaultValue: "Cancel" })}
+              variant="secondary"
+              onPress={() => {
+                setMode("verify");
+                setPin("");
+                setConfirmPin("");
+              }}
+              disabled={busy}
+              fullWidth
+            />
+          ) : null}
         </>
       ) : (
         <>
-          <PinPad value={pin} onChange={setPin} disabled={busy} />
+          <PinPad value={pin} onChange={setPin} disabled={busy || balanceFetching} />
           <Button
             label={t("wallet.verifyPinSession")}
             onPress={handleVerify}

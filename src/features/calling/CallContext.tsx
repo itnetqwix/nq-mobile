@@ -283,7 +283,8 @@ export function CallProvider({
         const isReconnect = info.reason === "reconnect";
         if (
           isReconnect ||
-          (bothJoinedRef.current && peersJoinNotifiedRef.current.has(peerKey))
+          bothJoinedRef.current ||
+          (peerKey && peersJoinNotifiedRef.current.has(peerKey))
         ) {
           setPartnerDisconnected(false);
           return;

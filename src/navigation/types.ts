@@ -39,7 +39,7 @@ export type HomeStackParamList = {
   ShellSurface: {
     surfaceId: ShellSurfaceRouteId;
     /** Deep-link into the wallet stack (e.g. Add funds from booking). */
-    walletScreen?: "WalletTopUp";
+    walletScreen?: "WalletTopUp" | "WalletSecurity";
     walletParams?: { suggestedAmount?: number };
   };
   TransactionDetail: { bookingId?: string; ledgerEntryId?: string };

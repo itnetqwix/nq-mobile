@@ -60,6 +60,11 @@ export function toReportDataPayload(
     }));
 }
 
+/** Inline placeholder when an S3 frame fails to load for PDF embedding. */
+export const PDF_FRAME_IMAGE_MISSING_PLACEHOLDER = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="100%" height="100%" fill="#eef1f5"/><text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="14" fill="#5c6370">Image unavailable</text></svg>'
+)}`;
+
 async function remoteImageToDataUrl(url: string, attempt = 0): Promise<string | null> {
   try {
     const dest = `${FileSystem.cacheDirectory}gp-${Date.now()}-${Math.random().toString(36).slice(2)}.img`;
@@ -85,32 +90,45 @@ async function remoteImageToDataUrl(url: string, attempt = 0): Promise<string | 
   }
 }
 
-/** Fetch S3 images and return base64 data URLs for PDF HTML embedding. */
-export async function fetchImageKeysAsBase64DataUrls(
+/** Fetch S3 images; returns one entry per key (`null` when load fails after retries). */
+export async function resolveBase64DataUrlsForPdf(
   keys: string[]
-): Promise<string[]> {
-  const results = await Promise.all(
+): Promise<Array<string | null>> {
+  return Promise.all(
     keys.map(async (key) => {
       const url = getS3ImageUrl(key);
       if (!url) return null;
       return remoteImageToDataUrl(url);
     })
   );
+}
+
+/** Fetch S3 images and return base64 data URLs for PDF HTML embedding. */
+export async function fetchImageKeysAsBase64DataUrls(
+  keys: string[]
+): Promise<string[]> {
+  const results = await resolveBase64DataUrlsForPdf(keys);
   return results.filter((x): x is string => !!x);
 }
 
 /**
  * Web parity: PDF HTML must use inline base64 only (expo-print won't load remote URLs).
- * @throws if any image fails to convert
+ * @throws if every image fails to convert
  */
 export async function requireBase64DataUrlsForPdf(keys: string[]): Promise<string[]> {
-  const dataUrls = await fetchImageKeysAsBase64DataUrls(keys);
+  const dataUrls = await resolveBase64DataUrlsForPdf(keys);
   if (keys.length === 0) return [];
-  if (dataUrls.length !== keys.length) {
-    const missing = keys.length - dataUrls.length;
+  const loaded = dataUrls.filter((x): x is string => !!x);
+  if (loaded.length === 0) {
+    throw new Error(
+      "Could not load screenshots for the PDF. Check your connection and try again."
+    );
+  }
+  if (loaded.length !== keys.length) {
+    const missing = keys.length - loaded.length;
     throw new Error(
       `Could not load ${missing} screenshot${missing === 1 ? "" : "s"} for the PDF. Check your connection and try again.`
     );
   }
-  return dataUrls;
+  return loaded;
 }

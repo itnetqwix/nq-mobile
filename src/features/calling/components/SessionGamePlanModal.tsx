@@ -36,6 +36,7 @@ import {
   fetchSessionReport,
   removeReportImage,
   requestCropImageUpload,
+  retryGamePlanPdf,
   saveSessionGamePlan,
 } from "../meetingReportApi";
 import { fetchSessionTimeline } from "../sessionLiveApi";
@@ -46,7 +47,8 @@ import { LockerViewerModal } from "../../dashboard/components/locker/LockerViewe
 import { ReportImageCropModal } from "./ReportImageCropModal";
 import {
   parseReportScreenshotItems,
-  requireBase64DataUrlsForPdf,
+  PDF_FRAME_IMAGE_MISSING_PLACEHOLDER,
+  resolveBase64DataUrlsForPdf,
   type ReportScreenshotItem,
   toReportDataPayload,
 } from "../reportDataUtils";
@@ -95,7 +97,10 @@ export function SessionGamePlanModal({
   const [topic, setTopic] = useState("");
   const [reportItems, setReportItems] = useState<ReportScreenshotItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [savingAction, setSavingAction] = useState<
+    null | "draft" | "publish" | "publish_notify" | "preview"
+  >(null);
+  const saving = savingAction != null;
   const [saveStep, setSaveStep] = useState<"idle" | "pdf" | "upload" | "report">("idle");
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
@@ -226,7 +231,13 @@ export function SessionGamePlanModal({
     const payloadItems = toReportDataPayload(reportItems);
     if (!payloadItems.length) throw new Error("Add at least one screenshot to preview the PDF.");
     const keys = payloadItems.map((i) => i.imageUrl);
-    const dataUrls = await requireBase64DataUrlsForPdf(keys);
+    const resolved = await resolveBase64DataUrlsForPdf(keys);
+    if (!resolved.some(Boolean)) {
+      throw new Error("Could not load screenshots for the PDF. Check your connection and try again.");
+    }
+    const dataUrls = resolved.map(
+      (url) => url ?? PDF_FRAME_IMAGE_MISSING_PLACEHOLDER
+    );
     const logoDataUrl = await getNetQwixLogoDataUrl();
     const html = buildGamePlanPdfHtml(
       dataUrls,
@@ -244,6 +255,26 @@ export function SessionGamePlanModal({
     return printHtmlToPdfFile(html);
   }, [reportItems, title, topic, trainerName, traineeName, sessionMeta, sessionId]);
 
+  const runServerPdfRetry = useCallback(async () => {
+    try {
+      await retryGamePlanPdf({
+        sessions: sessionId,
+        trainer: trainerId,
+        trainee: traineeId,
+      });
+      Alert.alert(
+        "PDF retry started",
+        "Your PDF is being regenerated. It will appear in your locker shortly."
+      );
+    } catch (e: unknown) {
+      const msg = getApiErrorMessage(
+        e,
+        "Could not retry PDF generation. Check your connection and try again."
+      );
+      Alert.alert("Retry failed", msg);
+    }
+  }, [sessionId, trainerId, traineeId]);
+
   const previewPdf = async () => {
     if (!title.trim()) {
       Alert.alert("Title required", "Add a topic title before previewing the PDF.");
@@ -251,8 +282,17 @@ export function SessionGamePlanModal({
     }
     setPreviewBusy(true);
     try {
+      const keys = toReportDataPayload(reportItems).map((i) => i.imageUrl);
+      const resolved = await resolveBase64DataUrlsForPdf(keys);
+      const missing = resolved.filter((url) => !url).length;
       const { uri } = await buildPlanPdf();
       setPreviewUri(uri);
+      if (missing > 0) {
+        Alert.alert(
+          "Partial preview",
+          `${missing} screenshot${missing === 1 ? "" : "s"} could not be loaded. Placeholders are shown in the PDF.`
+        );
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Could not build preview.";
       Alert.alert("Preview failed", msg);
@@ -283,24 +323,21 @@ export function SessionGamePlanModal({
       Alert.alert("Title required", "Add a topic title for this game plan.");
       return;
     }
-    setSaving(true);
+    const action: typeof savingAction =
+      publish && alsoSendToChat
+        ? "publish_notify"
+        : publish
+          ? "publish"
+          : "draft";
+    setSavingAction(action);
     try {
       let pdfAttached = false;
       const payloadItems = toReportDataPayload(reportItems);
-      const useServerPdfStitch = shouldUseServerGamePlanPdfStitch(payloadItems);
+      const serverStitchFallback = shouldUseServerGamePlanPdfStitch(payloadItems);
 
-      if (
-        publish &&
-        payloadItems.length > 0 &&
-        !useServerPdfStitch
-      ) {
+      if (publish && payloadItems.length > 0) {
         setSaveStep("pdf");
-        if (!isPdfPrintAvailable()) {
-          Alert.alert(
-            "Rebuild required for PDF",
-            "This app build does not include PDF export. Run npm run ios:device or android:install-dev after pulling latest code, then try again. Screenshots will still be saved."
-          );
-        } else {
+        if (isPdfPrintAvailable()) {
           try {
             const { uri: pdfUri } = await buildPlanPdf();
             let pdfBytes = 0;
@@ -333,8 +370,15 @@ export function SessionGamePlanModal({
             pdfAttached = true;
           } catch (e) {
             const msg = e instanceof Error ? e.message : "PDF export failed.";
-            Alert.alert("PDF export failed", `${msg} Screenshots will still be saved.`);
+            if (!serverStitchFallback) {
+              Alert.alert("PDF export failed", `${msg} Screenshots will still be saved.`);
+            }
           }
+        } else if (!serverStitchFallback) {
+          Alert.alert(
+            "Rebuild required for PDF",
+            "This app build does not include PDF export. Run npm run ios:device or android:install-dev after pulling latest code, then try again. Screenshots will still be saved."
+          );
         }
       }
 
@@ -349,9 +393,12 @@ export function SessionGamePlanModal({
         publish,
       });
       const saveData = (saveRes as { data?: Record<string, unknown> })?.data ?? saveRes;
-      const stitchPending = Boolean(
-        (saveData as { serverPdfStitchEnqueued?: boolean })?.serverPdfStitchEnqueued
-      );
+      const stitchPending =
+        !pdfAttached &&
+        serverStitchFallback &&
+        Boolean(
+          (saveData as { serverPdfStitchEnqueued?: boolean })?.serverPdfStitchEnqueued
+        );
 
       if (publish && alsoSendToChat) {
         try {
@@ -370,6 +417,19 @@ export function SessionGamePlanModal({
         Alert.alert(
           "Draft saved",
           "Your changes are saved privately. Publish when you're ready to share with your trainee."
+        );
+      } else if (
+        payloadItems.length > 0 &&
+        !pdfAttached &&
+        !stitchPending
+      ) {
+        Alert.alert(
+          "Game plan published",
+          "Screenshots are saved, but PDF generation failed. You can retry from here or rebuild the PDF later.",
+          [
+            { text: "OK", style: "cancel" },
+            { text: "Retry PDF", onPress: () => void runServerPdfRetry() },
+          ]
         );
       } else {
         Alert.alert(
@@ -394,20 +454,21 @@ export function SessionGamePlanModal({
       );
       Alert.alert("Could not save", msg);
     } finally {
-      setSaving(false);
+      setSavingAction(null);
       setSaveStep("idle");
     }
   };
 
-  const saveLabel = saving
-    ? saveStep === "pdf"
-      ? "Building PDF…"
-      : saveStep === "upload"
-        ? "Uploading PDF…"
-        : saveStep === "report"
-          ? "Saving…"
-          : "Saving…"
-    : null;
+  const labelForAction = (action: typeof savingAction) => {
+    if (!action || action === "preview") return null;
+    if (saveStep === "pdf") return "Building PDF…";
+    if (saveStep === "upload") return "Uploading PDF…";
+    if (saveStep === "report") return "Saving…";
+    if (action === "draft") return "Saving draft…";
+    if (action === "publish_notify") return "Publishing…";
+    if (action === "publish") return "Publishing…";
+    return "Saving…";
+  };
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
@@ -565,7 +626,7 @@ export function SessionGamePlanModal({
                     disabled={saving}
                   >
                     <Text style={styles.btnSecondaryText}>
-                      {saveLabel ?? "Save draft"}
+                      {labelForAction(savingAction === "draft" ? "draft" : null) ?? "Save draft"}
                     </Text>
                   </Pressable>
                   <Pressable
@@ -574,7 +635,8 @@ export function SessionGamePlanModal({
                     disabled={saving}
                   >
                     <Text style={styles.btnPrimaryText}>
-                      {saveLabel ?? "Publish update"}
+                      {labelForAction(savingAction === "publish" ? "publish" : null) ??
+                        "Publish update"}
                     </Text>
                   </Pressable>
                 </>
@@ -586,7 +648,9 @@ export function SessionGamePlanModal({
                     disabled={saving}
                   >
                     <Text style={styles.btnPrimaryText}>
-                      {saveLabel ?? "Publish & notify trainee"}
+                      {labelForAction(
+                        savingAction === "publish_notify" ? "publish_notify" : null
+                      ) ?? "Publish & notify trainee"}
                     </Text>
                   </Pressable>
                   <Pressable
@@ -595,7 +659,8 @@ export function SessionGamePlanModal({
                     disabled={saving}
                   >
                     <Text style={styles.btnSecondaryText}>
-                      {saveLabel ?? "Publish to locker"}
+                      {labelForAction(savingAction === "publish" ? "publish" : null) ??
+                        "Publish to locker"}
                     </Text>
                   </Pressable>
                   <Pressable
@@ -604,7 +669,7 @@ export function SessionGamePlanModal({
                     disabled={saving}
                   >
                     <Text style={styles.btnSecondaryText}>
-                      {saveLabel ?? "Save draft"}
+                      {labelForAction(savingAction === "draft" ? "draft" : null) ?? "Save draft"}
                     </Text>
                   </Pressable>
                 </>

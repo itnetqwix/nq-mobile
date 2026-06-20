@@ -370,10 +370,17 @@ export function InstantLessonProvider({
       }
 
       if (phaseLower === "active" || phaseLower === "completed") {
+        clearExpiryTimer();
         setTrainerIncoming((prev) => {
           if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
           return null;
         });
+        if (phaseLower === "active") {
+          setTraineeBooking((prev) => {
+            if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;
+            return null;
+          });
+        }
         if (phaseLower === "completed") {
           setTraineeBooking((prev) => {
             if (!prev || String(prev.lessonId) !== String(lessonId)) return prev;

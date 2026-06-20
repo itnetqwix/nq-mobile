@@ -47,6 +47,16 @@ export function resolveMeetingStatusBanner(input: BannerInput): MeetingStatusBan
       variant: "warning",
     };
   }
+  if (
+    input.partnerInSession &&
+    input.partnerDisconnected &&
+    !input.presenceMessage?.toLowerCase().includes("left")
+  ) {
+    return {
+      message: `${input.peerDisplayName} disconnected. Waiting for them to rejoin…`,
+      variant: "warning",
+    };
+  }
   if (input.partnerInSession && !input.hasRemoteStream && !input.partnerDisconnected) {
     return {
       message: "Connecting live video…",

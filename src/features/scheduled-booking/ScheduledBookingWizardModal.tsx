@@ -5,7 +5,7 @@ import { colors, space } from "../../theme";
 import { WizardHeader } from "../instant-lesson/booking-wizard/WizardHeader";
 import { WizardStepClips } from "../instant-lesson/booking-wizard/steps/WizardStepClips";
 import { WizardStepPayment } from "../instant-lesson/booking-wizard/steps/WizardStepPayment";
-import { navigateToWalletTopUp } from "../../navigation/navigationRef";
+import { navigateToWalletSecurity, navigateToWalletTopUp } from "../../navigation/navigationRef";
 import { ScheduleStepConfirm } from "./steps/ScheduleStepConfirm";
 import { ScheduleStepDateTime } from "./steps/ScheduleStepDateTime";
 import { ScheduleStepDuration } from "./steps/ScheduleStepDuration";
@@ -123,6 +123,10 @@ export function ScheduledBookingWizardModal({ visible, trainer, onDismiss, onBoo
               onAddFunds={(shortfall) => {
                 onDismiss();
                 navigateToWalletTopUp(shortfall);
+              }}
+              onSetupPin={() => {
+                onDismiss();
+                navigateToWalletSecurity();
               }}
             />
           )}
