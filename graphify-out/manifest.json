@@ -975,8 +975,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/components/SessionExtensionModal.tsx": {
-    "mtime": 1781936185.8906965,
-    "ast_hash": "40b105f49d4095867b544e7a187c2a3c",
+    "mtime": 1781951652.4472282,
+    "ast_hash": "2769a10d8e923f893296134e9e7dbacb",
     "semantic_hash": ""
   },
   "src/features/calling/components/SessionGamePlanModal.tsx": {
@@ -1205,8 +1205,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/sessionExtensionApi.ts": {
-    "mtime": 1781798116.0246637,
-    "ast_hash": "047196d92e555d2f49be2938597776a2",
+    "mtime": 1781951797.0488591,
+    "ast_hash": "f935409ba3540535a7182a32596b7ca3",
     "semantic_hash": ""
   },
   "src/features/calling/sessionLiveApi.ts": {
@@ -1290,9 +1290,9 @@
     "semantic_hash": "36a77cfc38ee141fdf545ca9a97325da"
   },
   "src/features/calling/useSessionExtensionFlow.ts": {
-    "mtime": 1780218599.5321898,
-    "ast_hash": "2ac40f7e183518644026c5964640ebae",
-    "semantic_hash": "2ac40f7e183518644026c5964640ebae"
+    "mtime": 1781951666.6957266,
+    "ast_hash": "b5a7171a9fa22ea7c0bba83360deb556",
+    "semantic_hash": ""
   },
   "src/features/calling/useSessionPresence.ts": {
     "mtime": 1781933861.2906442,
@@ -2260,8 +2260,8 @@
     "semantic_hash": "12cf85068b4de9aadfc14b00aea1e71d"
   },
   "src/features/instant-lesson/booking-wizard/steps/WizardStepPayment.tsx": {
-    "mtime": 1781936146.1828713,
-    "ast_hash": "046b75ebb65dec6c2354b473ce70bf26",
+    "mtime": 1781951822.4626534,
+    "ast_hash": "6a3e540d96916634ecfef1b8b8ea26a3",
     "semantic_hash": ""
   },
   "src/features/instant-lesson/booking-wizard/types.ts": {
@@ -2270,8 +2270,8 @@
     "semantic_hash": "558d1fb55f20a089ba8b660196bd1fe4"
   },
   "src/features/instant-lesson/booking-wizard/useInstantLessonBookingWizard.ts": {
-    "mtime": 1781799310.870283,
-    "ast_hash": "43b31dcd1edcbe7b79f91744e02f6e22",
+    "mtime": 1781951946.9125566,
+    "ast_hash": "952ee4f47c6b30091338217dee5f8647",
     "semantic_hash": ""
   },
   "src/features/instant-lesson/cancelInstantLessonApi.ts": {
@@ -2575,8 +2575,8 @@
     "semantic_hash": "384bdbb2c671734f662e2481ea30c12b"
   },
   "src/features/scheduled-booking/useScheduledBookingWizard.ts": {
-    "mtime": 1781798029.1292791,
-    "ast_hash": "c7dc6b9a8dad14344699fbf2b237f66e",
+    "mtime": 1781952069.2541091,
+    "ast_hash": "1fd9b46cb26f41371d1dd7950c74e651",
     "semantic_hash": ""
   },
   "src/features/sessions/SessionActionModal.tsx": {
@@ -2880,8 +2880,8 @@
     "semantic_hash": "15552ecbfbcd0a702db5459e3ef6fb24"
   },
   "src/features/wallet/hooks/useWalletPaymentOption.ts": {
-    "mtime": 1781799251.6478817,
-    "ast_hash": "06a237492839b7f0b4ff82202d3c0731",
+    "mtime": 1781951796.9155862,
+    "ast_hash": "5bfc3289422a72204185986ba6d3fc83",
     "semantic_hash": ""
   },
   "src/features/wallet/hooks/useWalletTopUpFlow.ts": {
@@ -8855,8 +8855,8 @@
     "semantic_hash": ""
   },
   "src/features/wallet/hooks/__tests__/walletPaymentOptionLogic.test.ts": {
-    "mtime": 1781936203.5187306,
-    "ast_hash": "96151cac9a7f21d6e8d1c6fea03cc3ed",
+    "mtime": 1781952112.2983716,
+    "ast_hash": "7cefeb839886e1d691cbd8bb57d6324d",
     "semantic_hash": ""
   },
   "src/features/wallet/hooks/__tests__/walletTopUpFlowLogic.test.ts": {
@@ -8865,8 +8865,8 @@
     "semantic_hash": ""
   },
   "src/features/wallet/hooks/walletPaymentOptionLogic.ts": {
-    "mtime": 1781936023.8835378,
-    "ast_hash": "0da4e78fbeb8cace4a8891242801035b",
+    "mtime": 1781951585.584266,
+    "ast_hash": "a7f3141001db1e983aff573d8b516df2",
     "semantic_hash": ""
   },
   "src/features/wallet/hooks/walletTopUpFlowLogic.ts": {
@@ -9000,8 +9000,13 @@
     "semantic_hash": ""
   },
   "src/features/wallet/security/walletPinPaymentFlow.ts": {
-    "mtime": 1781936118.3922918,
-    "ast_hash": "538726996e7d6af2f0dffb03ed276d71",
+    "mtime": 1781951924.8765152,
+    "ast_hash": "eb13cfa50269475ec8049dc58ee1c121",
+    "semantic_hash": ""
+  },
+  "src/features/calling/extensionPaymentRecoverability.ts": {
+    "mtime": 1781951606.706185,
+    "ast_hash": "ec83e866981e1fc8adad8e0a9d18e4fd",
     "semantic_hash": ""
   }
 }

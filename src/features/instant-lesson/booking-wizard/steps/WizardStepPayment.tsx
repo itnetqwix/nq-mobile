@@ -19,6 +19,7 @@ import { useAuth } from "../../../auth/context/AuthContext";
 import { fetchSessionPricingQuote } from "../../../payments/fetchSessionPricingQuote";
 import { resolveTraineeBillingAddress } from "../../../payments/resolveTraineeBillingAddress";
 import { useWalletPaymentOption } from "../../../wallet/hooks/useWalletPaymentOption";
+import { computeWalletPaymentOption } from "../../../wallet/hooks/walletPaymentOptionLogic";
 import { WalletPinSetupBanner } from "../../../wallet/components/WalletPinSetupBanner";
 import { resolveWalletPinSessionForPayment } from "../../../wallet/security/walletPinPaymentFlow";
 import { navigateToWalletSecurity } from "../../../../navigation/navigationRef";
@@ -253,7 +254,7 @@ export function WizardStepPayment({
 
   useEffect(() => {
     createIntent();
-  }, [createIntent, wallet.canPayWithWallet]);
+  }, [createIntent]);
 
   useEffect(() => {
     if (wallet.storedPinToken && !pinSessionToken) {
@@ -271,6 +272,7 @@ export function WizardStepPayment({
 
   const handleWalletPay = useCallback(async () => {
     try {
+      await wallet.refetchBalance();
       const gate = await resolveWalletPinSessionForPayment(
         wallet,
         pin,
@@ -307,8 +309,19 @@ export function WizardStepPayment({
 
   const handleMixedPay = useCallback(async () => {
     try {
+      await wallet.refetchBalance();
+      const mixedPinWallet = {
+        ...wallet,
+        ...computeWalletPaymentOption({
+          priceDollars: totalToCharge,
+          availableDollars: wallet.available,
+          walletPayEnabled: wallet.walletPayEnabled,
+          pinSet: wallet.pinSet,
+          pinCheckDollars: wallet.available,
+        }),
+      };
       const gate = await resolveWalletPinSessionForPayment(
-        wallet,
+        mixedPinWallet,
         pin,
         pinSessionToken ?? wallet.storedPinToken ?? undefined,
         { onSetupPin: onSetupPin ?? navigateToWalletSecurity }
@@ -476,7 +489,11 @@ export function WizardStepPayment({
           <Text style={sharedStepStyles.muted}>
             Spendable balance: {fmt(wallet.available, { currency: activeCurrency })}
           </Text>
-          <Pressable style={sharedStepStyles.primaryBtn} onPress={handleWalletPay}>
+          <Pressable
+            style={sharedStepStyles.primaryBtn}
+            onPress={handleWalletPay}
+            disabled={wallet.needsPinSetup}
+          >
             <Ionicons name="wallet-outline" size={18} color={c.brandTextOn} />
             <Text style={sharedStepStyles.primaryBtnText}>
               Pay {fmt(totalToCharge, { currency: activeCurrency })} with wallet (
@@ -516,7 +533,7 @@ export function WizardStepPayment({
           </Text>
           <Pressable
             style={sharedStepStyles.primaryBtn}
-            disabled={loading}
+            disabled={loading || wallet.needsPinSetup}
             onPress={handleMixedPay}
           >
             <Ionicons name="wallet-outline" size={18} color={c.brandTextOn} />

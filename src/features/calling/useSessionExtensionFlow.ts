@@ -45,6 +45,7 @@ import {
   type ExtensionRequestSnapshot,
 } from "./sessionExtensionApi";
 import { fetchWalletBalance } from "../wallet/walletApi";
+import { shouldCancelExtensionOnPaymentFailure } from "./extensionPaymentRecoverability";
 import { useStripe } from "@stripe/stripe-react-native";
 import type { PendingExtensionRequestSnapshot } from "./useLessonTimer";
 
@@ -141,12 +142,13 @@ export function useSessionExtensionFlow({
   /** Rehydrate from LESSON_STATE_SYNC after a reconnect / late mount. */
   useEffect(() => {
     if (!pendingFromSync) {
-      // Only clear if we were waiting on a request that the server dropped.
       if (
         state.phase === "awaiting_trainer" ||
         state.phase === "awaiting_payment"
       ) {
-        reset();
+        if (!lastRequestIdRef.current) {
+          reset();
+        }
       }
       return;
     }
@@ -443,9 +445,16 @@ export function useSessionExtensionFlow({
           e?.response?.data?.message ??
           e?.message ??
           "Payment failed.";
-        // Don't leave the timer paused on the server forever.
-        await cancelRequest(`payment_failed:${msg}`).catch(() => undefined);
-        setState((prev) => ({ ...prev, phase: "error", message: msg }));
+        if (shouldCancelExtensionOnPaymentFailure(msg)) {
+          await cancelRequest(`payment_failed:${msg}`).catch(() => undefined);
+          setState((prev) => ({ ...prev, phase: "error", message: msg }));
+        } else {
+          setState((prev) => ({
+            ...prev,
+            phase: "awaiting_payment",
+            message: msg,
+          }));
+        }
         return false;
       }
     },

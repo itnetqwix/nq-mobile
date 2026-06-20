@@ -129,6 +129,12 @@ export function SessionExtensionModal({
   );
 
   const wallet = useWalletPaymentOption(extensionChargeTotal, paymentMethod === "wallet", billingAddress.country);
+  const payDisabled =
+    phase === "paying" ||
+    wallet.needsPinSetup ||
+    (paymentMethod === "wallet" &&
+      extensionChargeTotal > 0 &&
+      !wallet.canPayWithWallet);
   const savedCard = useDefaultSavedCard(
     (phase === "awaiting_payment" || phase === "paying") && extensionChargeTotal > 0
   );
@@ -279,6 +285,18 @@ export function SessionExtensionModal({
   }, [minutes, requestExtension]);
 
   const handlePay = useCallback(async () => {
+    if (wallet.needsPinSetup) {
+      Alert.alert(
+        "Set up wallet PIN",
+        "Create a 6-digit wallet PIN in Wallet security before paying with wallet.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Set up PIN", onPress: () => navigateToWalletSecurity() },
+        ]
+      );
+      return;
+    }
+
     if (paymentMethod === "wallet" && extensionChargeMinor > 0) {
       if (!wallet.canPayWithWallet) {
         if (onAddFunds && wallet.shortfall > 0) {
@@ -309,7 +327,7 @@ export function SessionExtensionModal({
         setPinSessionToken(token);
         setPin("");
       }
-      const ok = await payAndConfirm({
+      await payAndConfirm({
         method: "wallet",
         pinSessionToken: token,
         quoteId: quote?.pricingQuote?.quoteId,
@@ -319,21 +337,20 @@ export function SessionExtensionModal({
           state: billingAddress.state,
         },
       });
-      if (ok) return;
+      return;
     }
 
-    const ok = await payAndConfirm({
-      method: "card",
-      customer: userStripeId || undefined,
-      quoteId: quote?.pricingQuote?.quoteId,
-      chargeTotalCents: extensionChargeMinor,
-      billingAddress: {
-        country: billingAddress.country,
-        state: billingAddress.state,
-      },
-    });
-    if (ok) {
-      // SESSION_EXTENSION_APPLIED will flip phase to "applied" -> auto close.
+    if (paymentMethod === "card") {
+      await payAndConfirm({
+        method: "card",
+        customer: userStripeId || undefined,
+        quoteId: quote?.pricingQuote?.quoteId,
+        chargeTotalCents: extensionChargeMinor,
+        billingAddress: {
+          country: billingAddress.country,
+          state: billingAddress.state,
+        },
+      });
     }
   }, [
     payAndConfirm,
@@ -471,7 +488,7 @@ export function SessionExtensionModal({
               : `Pay $${extensionChargeTotal.toFixed(2)}`
           }
           onPress={handlePay}
-          disabled={phase === "paying"}
+          disabled={payDisabled}
           fullWidth
         />
         <Button

@@ -975,8 +975,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/components/SessionExtensionModal.tsx": {
-    "mtime": 1781852388.150721,
-    "ast_hash": "102c826eb9aece2e958c72acb79b3fba",
+    "mtime": 1781936185.8906965,
+    "ast_hash": "40b105f49d4095867b544e7a187c2a3c",
     "semantic_hash": ""
   },
   "src/features/calling/components/SessionGamePlanModal.tsx": {
@@ -2205,8 +2205,8 @@
     "semantic_hash": ""
   },
   "src/features/instant-lesson/booking-wizard/InstantLessonBookingWizardModal.tsx": {
-    "mtime": 1781342263.6065392,
-    "ast_hash": "9d1b27a565521a3e54f2960b6a56eff5",
+    "mtime": 1781936203.518714,
+    "ast_hash": "d3aab1bf4b1a1e825411009db116ca72",
     "semantic_hash": ""
   },
   "src/features/instant-lesson/booking-wizard/WizardHeader.tsx": {
@@ -2260,8 +2260,8 @@
     "semantic_hash": "12cf85068b4de9aadfc14b00aea1e71d"
   },
   "src/features/instant-lesson/booking-wizard/steps/WizardStepPayment.tsx": {
-    "mtime": 1781799291.8152795,
-    "ast_hash": "158c4f320ead25accf8337f329896614",
+    "mtime": 1781936146.1828713,
+    "ast_hash": "046b75ebb65dec6c2354b473ce70bf26",
     "semantic_hash": ""
   },
   "src/features/instant-lesson/booking-wizard/types.ts": {
@@ -2530,9 +2530,9 @@
     "semantic_hash": ""
   },
   "src/features/scheduled-booking/ScheduledBookingWizardModal.tsx": {
-    "mtime": 1780570653.666493,
-    "ast_hash": "32d1bb42f59271312abc5ae4113a6125",
-    "semantic_hash": "32d1bb42f59271312abc5ae4113a6125"
+    "mtime": 1781936205.0860245,
+    "ast_hash": "c60a68e64c072661a8d89eea0d34b029",
+    "semantic_hash": ""
   },
   "src/features/scheduled-booking/constants.ts": {
     "mtime": 1780213750.1965508,
@@ -2925,8 +2925,8 @@
     "semantic_hash": ""
   },
   "src/features/wallet/screens/WalletSecurityScreen.tsx": {
-    "mtime": 1781763539.0099814,
-    "ast_hash": "1da1249eb847bc01bfee050f0adbf264",
+    "mtime": 1781936024.338309,
+    "ast_hash": "57854dc7cbdee3cb23042497d6c678ea",
     "semantic_hash": ""
   },
   "src/features/wallet/screens/WalletTopUpScreen.tsx": {
@@ -2955,8 +2955,8 @@
     "semantic_hash": "c2c69bf2a03644a2666ec1fc278d3d38"
   },
   "src/features/wallet/walletApi.ts": {
-    "mtime": 1781799245.7248354,
-    "ast_hash": "4650e0200ae0d28ad9da964fec18b07b",
+    "mtime": 1781936203.6400044,
+    "ast_hash": "fad53c1eab56fe7250e7d79fa4117d39",
     "semantic_hash": ""
   },
   "src/features/webrtc/buildIceConfiguration.ts": {
@@ -3550,13 +3550,13 @@
     "semantic_hash": ""
   },
   "src/navigation/navigationRef.ts": {
-    "mtime": 1780488692.0873337,
-    "ast_hash": "4575554095d2331b304316f5ed227265",
-    "semantic_hash": "4575554095d2331b304316f5ed227265"
+    "mtime": 1781936045.5537457,
+    "ast_hash": "268e544e533e964897607097b8ad3d49",
+    "semantic_hash": ""
   },
   "src/navigation/types.ts": {
-    "mtime": 1781801041.9772544,
-    "ast_hash": "615d36cbf4094f26ca246bb6a05265f9",
+    "mtime": 1781936023.8877118,
+    "ast_hash": "6635ed47fbfe31ffc6c549112577e6b1",
     "semantic_hash": ""
   },
   "src/navigation/useFloatingTabBarBottomInset.ts": {
@@ -8855,8 +8855,8 @@
     "semantic_hash": ""
   },
   "src/features/wallet/hooks/__tests__/walletPaymentOptionLogic.test.ts": {
-    "mtime": 1781788810.439573,
-    "ast_hash": "38b6e1b950a6337320ed531bfd181caf",
+    "mtime": 1781936203.5187306,
+    "ast_hash": "96151cac9a7f21d6e8d1c6fea03cc3ed",
     "semantic_hash": ""
   },
   "src/features/wallet/hooks/__tests__/walletTopUpFlowLogic.test.ts": {
@@ -8865,8 +8865,8 @@
     "semantic_hash": ""
   },
   "src/features/wallet/hooks/walletPaymentOptionLogic.ts": {
-    "mtime": 1781788810.439537,
-    "ast_hash": "f1dc0ef888b321300b0cd86b9559e49e",
+    "mtime": 1781936023.8835378,
+    "ast_hash": "0da4e78fbeb8cace4a8891242801035b",
     "semantic_hash": ""
   },
   "src/features/wallet/hooks/walletTopUpFlowLogic.ts": {
@@ -8992,6 +8992,16 @@
   "src/features/calling/gamePlanSessionMeta.ts": {
     "mtime": 1781800923.6405752,
     "ast_hash": "89bb0242899b53261c80d8cf2c87573e",
+    "semantic_hash": ""
+  },
+  "src/features/wallet/components/WalletPinSetupBanner.tsx": {
+    "mtime": 1781936064.7646341,
+    "ast_hash": "2f13cf94f882e618344e1d68f3d6a2ca",
+    "semantic_hash": ""
+  },
+  "src/features/wallet/security/walletPinPaymentFlow.ts": {
+    "mtime": 1781936118.3922918,
+    "ast_hash": "538726996e7d6af2f0dffb03ed276d71",
     "semantic_hash": ""
   }
 }

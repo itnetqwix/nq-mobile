@@ -29,6 +29,10 @@ import {
   promoSponsorFromResult,
 } from "../../../lib/promo/promoDisplay";
 import { useWalletBalance } from "../../wallet/hooks/useWalletBalance";
+import {
+  resolvePinSessionTokenForSubmit,
+  validateWalletPinBeforeSubmit,
+} from "../../wallet/security/walletPinPaymentFlow";
 
 function trainerIdOf(t: WizardTrainer): string {
   if (!t) return "";
@@ -406,14 +410,23 @@ export function useInstantLessonBookingWizard({ visible, trainer, onDismiss }: U
         charging_price: expectedPrice,
       };
       if (requiresPayment && chargingPrice > 0) {
+        const pinToken = await resolvePinSessionTokenForSubmit(pinSessionToken);
+        const pinErr = validateWalletPinBeforeSubmit({
+          paymentMethod,
+          chargingPrice,
+          walletAmount,
+          pinSet: walletBalance?.pinSet,
+          pinSessionToken: pinToken,
+        });
+        if (pinErr) throw new Error(pinErr);
         if (paymentMethod === "wallet") {
           bookingPayload.payment_method = "wallet";
-          if (pinSessionToken) bookingPayload.pin_session_token = pinSessionToken;
+          if (pinToken) bookingPayload.pin_session_token = pinToken;
         } else if (paymentMethod === "mixed") {
           bookingPayload.payment_method = "mixed";
           bookingPayload.wallet_amount = walletAmount ?? 0;
           bookingPayload.payment_intent_id = paymentIntentId;
-          if (pinSessionToken) bookingPayload.pin_session_token = pinSessionToken;
+          if (pinToken) bookingPayload.pin_session_token = pinToken;
         } else if (paymentIntentId) {
           bookingPayload.payment_intent_id = paymentIntentId;
         } else {

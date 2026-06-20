@@ -56,6 +56,10 @@ import {
   promoSponsorFromResult,
 } from "../../lib/promo/promoDisplay";
 import { useWalletBalance } from "../wallet/hooks/useWalletBalance";
+import {
+  resolvePinSessionTokenForSubmit,
+  validateWalletPinBeforeSubmit,
+} from "../wallet/security/walletPinPaymentFlow";
 
 export type ScheduledTrainer = Record<string, unknown> | null;
 
@@ -518,13 +522,21 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
       if (couponCode.trim()) bookPayload.coupon_code = couponCode.trim();
       if (quoteId) bookPayload.quote_id = quoteId;
       if (paymentIntentId) bookPayload.payment_intent_id = paymentIntentId;
-      if (paymentMethod === "wallet" && chargingPrice > 0) {
-        bookPayload.payment_method = "wallet";
-        if (pinSessionToken) bookPayload.pin_session_token = pinSessionToken;
-      } else if (paymentMethod === "mixed" && chargingPrice > 0) {
-        bookPayload.payment_method = "mixed";
-        bookPayload.wallet_amount = walletAmount ?? 0;
-        if (pinSessionToken) bookPayload.pin_session_token = pinSessionToken;
+      if (chargingPrice > 0 && (paymentMethod === "wallet" || paymentMethod === "mixed")) {
+        const pinToken = await resolvePinSessionTokenForSubmit(pinSessionToken);
+        const pinErr = validateWalletPinBeforeSubmit({
+          paymentMethod,
+          chargingPrice,
+          walletAmount,
+          pinSet: walletBalance?.pinSet,
+          pinSessionToken: pinToken,
+        });
+        if (pinErr) throw new Error(pinErr);
+        bookPayload.payment_method = paymentMethod;
+        if (paymentMethod === "mixed") {
+          bookPayload.wallet_amount = walletAmount ?? 0;
+        }
+        if (pinToken) bookPayload.pin_session_token = pinToken;
       }
 
       const bookingInfo = await bookScheduledSession(bookPayload);

@@ -45,6 +45,19 @@ describe("computeWalletPaymentOption", () => {
     expect(r.needsPin).toBe(true);
   });
 
+  it("uses wallet portion for mixed-pay PIN step-up", () => {
+    const r = computeWalletPaymentOption({
+      priceDollars: 120,
+      availableDollars: 40,
+      walletPayEnabled: true,
+      stepUpThresholdMinor: 5000,
+      pinSet: true,
+      pinCheckDollars: 40,
+    });
+    expect(r.requiresPinStepUp).toBe(false);
+    expect(r.needsPin).toBe(false);
+  });
+
   it("disables wallet pay when feature flag off", () => {
     const r = computeWalletPaymentOption({
       priceDollars: 40,

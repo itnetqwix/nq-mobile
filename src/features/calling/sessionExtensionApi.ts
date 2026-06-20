@@ -243,7 +243,10 @@ export async function confirmSessionExtension(payload: {
         );
   return postWithIdempotencyRetry(
     API_ROUTES.trainee.sessionExtensionConfirm,
-    payload,
+    {
+      ...payload,
+      quote_id: payload.quoteId,
+    },
     { headers: idempotencyHeaders(idemKey) }
   );
 }

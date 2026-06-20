@@ -9,7 +9,8 @@ import { computeWalletPaymentOption } from "./walletPaymentOptionLogic";
 export function useWalletPaymentOption(
   priceDollars: number,
   enabled = true,
-  billingCountry?: string
+  billingCountry?: string,
+  pinCheckDollars?: number
 ) {
   const { data: balance, refetch: refetchBalance } = useWalletBalance(enabled);
   const [storedPinToken, setStoredPinToken] = useState<string | null>(null);
@@ -33,6 +34,7 @@ export function useWalletPaymentOption(
     walletPayEnabled,
     stepUpThresholdMinor: config?.stepUpThresholdMinor,
     pinSet: balance?.pinSet,
+    pinCheckDollars,
   });
 
   return {
