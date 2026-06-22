@@ -1,7 +1,29 @@
+import * as FileSystem from "expo-file-system/legacy";
 import type { ClipConfirmPayload } from "../home/api/homeApi";
 import { uploadLockerClip } from "../home/api/homeApi";
 import type { CapturedClip } from "./capturedClipsStorage";
 import { deleteCapturedClip } from "./capturedClipsStorage";
+
+export async function resolveVideoSizeBytes(uri: string, known?: number): Promise<number> {
+  if (known != null && known > 0) return known;
+  try {
+    const info = await FileSystem.getInfoAsync(uri, { size: true });
+    if (info.exists && "size" in info && typeof info.size === "number" && info.size > 0) {
+      return info.size;
+    }
+  } catch {
+    /* ignore */
+  }
+  return 0;
+}
+
+/** Normalize iOS/Android capture MIME for `/storage/clips/presign`. */
+export function normalizeCaptureVideoMime(mime?: string | null): string {
+  const raw = String(mime ?? "").trim().toLowerCase();
+  if (raw === "video/quicktime" || raw === "video/mov") return "video/quicktime";
+  if (raw.startsWith("video/")) return raw;
+  return "video/mp4";
+}
 
 export type BatchClipItem = {
   clip: CapturedClip;
@@ -34,12 +56,15 @@ export async function uploadCapturedClipsBatch(params: {
 
   for (let index = 0; index < total; index++) {
     const item = params.items[index]!;
-    let fileBytes = item.clip.fileSizeBytes ?? 0;
+    const fileBytes = await resolveVideoSizeBytes(item.videoUri, item.clip.fileSizeBytes);
+    if (fileBytes <= 0) {
+      throw new Error("Could not read video file size. Try re-capturing or pick the clip again.");
+    }
 
     const { clipId } = await uploadLockerClip({
       videoUri: item.videoUri,
-      videoMime: params.videoMime,
-      videoSizeBytes: fileBytes > 0 ? fileBytes : 1,
+      videoMime: normalizeCaptureVideoMime(params.videoMime ?? item.clip.mimeType),
+      videoSizeBytes: fileBytes,
       thumbUri: item.thumbUri,
       title: item.title.trim(),
       category: params.category,

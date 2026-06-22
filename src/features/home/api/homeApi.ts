@@ -790,29 +790,35 @@ export async function postClipPresignUpload(params: {
   sizeBytes?: number;
   purpose?: "clip" | "thumbnail";
 }): Promise<{ uploadUrl: string; key: string; mediaUrl: string; expiresIn: number }> {
-  const res = await apiClient.post(API_ROUTES.storage.clipsPresign, {
-    contentType: params.contentType,
-    filename: params.filename,
-    sizeBytes: params.sizeBytes,
-    purpose: params.purpose,
-  });
-  const body = (res.data ?? {}) as {
-    success?: number;
-    uploadUrl?: string;
-    key?: string;
-    mediaUrl?: string;
-    expiresIn?: number;
-    message?: string;
-  };
-  if (body.success !== 1 || !body.uploadUrl || !body.mediaUrl) {
-    throw new Error(body.message || "Failed to get upload URL");
+  try {
+    const res = await apiClient.post(API_ROUTES.storage.clipsPresign, {
+      contentType: params.contentType,
+      filename: params.filename,
+      sizeBytes: params.sizeBytes,
+      fileSizeBytes: params.sizeBytes,
+      purpose: params.purpose,
+    });
+    const body = (res.data ?? {}) as {
+      success?: number;
+      uploadUrl?: string;
+      key?: string;
+      mediaUrl?: string;
+      expiresIn?: number;
+      message?: string;
+    };
+    if (body.success !== 1 || !body.uploadUrl || !body.mediaUrl) {
+      throw new Error(body.message || "Failed to get upload URL");
+    }
+    return {
+      uploadUrl: body.uploadUrl,
+      key: body.key ?? "",
+      mediaUrl: body.mediaUrl,
+      expiresIn: body.expiresIn ?? 900,
+    };
+  } catch (e: unknown) {
+    const { getApiErrorMessage } = await import("../../../lib/http/getApiErrorMessage");
+    throw new Error(getApiErrorMessage(e, "Failed to get upload URL"));
   }
-  return {
-    uploadUrl: body.uploadUrl,
-    key: body.key ?? "",
-    mediaUrl: body.mediaUrl,
-    expiresIn: body.expiresIn ?? 900,
-  };
 }
 
 export async function postShareClipsToEmail(userEmail: string, clips: any[]): Promise<void> {

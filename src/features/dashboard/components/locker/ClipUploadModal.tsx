@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import * as VideoThumbnails from "expo-video-thumbnails";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -52,6 +52,8 @@ import {
 import {
   uploadCapturedClipsBatch,
   parseShareEmails,
+  normalizeCaptureVideoMime,
+  resolveVideoSizeBytes,
   type BatchUploadProgress,
 } from "../../../capture/uploadCapturedClipsBatch";
 import {
@@ -163,6 +165,8 @@ export function ClipUploadModal({
   const [batchProgress, setBatchProgress] = useState<BatchUploadProgress | null>(null);
   const [categoryAccordionOpen, setCategoryAccordionOpen] = useState(true);
   const [subcategoryAccordionOpen, setSubcategoryAccordionOpen] = useState(false);
+  const [keyboardInset, setKeyboardInset] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
 
   const batchVideos = useMemo(() => {
     if (initialVideos.length > 0) return initialVideos;
@@ -360,7 +364,18 @@ export function ClipUploadModal({
     };
   }, [visible, initialVideo?.uri, initialVideo?.durationSecs, initialVideo?.fileName, initialVideo?.fileSizeBytes, initialVideo?.mimeType, initialVideo?.title, initialVideo?.thumbUri, showPrepareStep, t]);
 
-  const lockShareTarget = !!initialVideo || initialVideos.length > 0;
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const onShow = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardInset(e.endCoordinates.height);
+    });
+    const onHide = Keyboard.addListener(hideEvent, () => setKeyboardInset(0));
+    return () => {
+      onShow.remove();
+      onHide.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (!visible || !isTrainer || !profileCategory || !taxonomy) return;
@@ -378,7 +393,7 @@ export function ClipUploadModal({
     }
   }, [visible, categoryId, subcategoryId, selectedCategory, isTrainer, profileCategory]);
 
-  const videoMime = videoAsset?.mimeType ?? "video/mp4";
+  const videoMime = normalizeCaptureVideoMime(videoAsset?.mimeType);
 
   const pickVideo = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -495,7 +510,7 @@ export function ClipUploadModal({
       try {
         let totalBytes = 0;
         for (const v of batchVideos) {
-          totalBytes += v.fileSizeBytes ?? 0;
+          totalBytes += await resolveVideoSizeBytes(v.uri, v.fileSizeBytes);
         }
         if (shareTarget === SHARE_MY_CLIPS && totalBytes > 0) {
           try {
@@ -506,6 +521,7 @@ export function ClipUploadModal({
                 t("locker.storageFullBody"),
                 [{ text: t("common.ok") }]
               );
+              setUploadBusy(false);
               return;
             }
           } catch {
@@ -515,6 +531,7 @@ export function ClipUploadModal({
 
         const items = await Promise.all(
           batchVideos.map(async (v) => {
+            const fileBytes = await resolveVideoSizeBytes(v.uri, v.fileSizeBytes);
             const thumb =
               batchThumbs[v.uri] ??
               (await generateVideoThumbUri(v.uri, v.durationSecs));
@@ -525,7 +542,7 @@ export function ClipUploadModal({
                 createdAt: new Date().toISOString(),
                 label: batchTitles[v.uri],
                 durationSecs: v.durationSecs,
-                fileSizeBytes: v.fileSizeBytes,
+                fileSizeBytes: fileBytes > 0 ? fileBytes : v.fileSizeBytes,
                 mimeType: v.mimeType,
               },
               videoUri: v.uri,
@@ -717,11 +734,16 @@ export function ClipUploadModal({
     else onClose();
   };
 
+  const footerBottomPad = renderAsScreen
+    ? floatingTabBarBottomInset(insets.bottom) + space.sm
+    : Math.max(insets.bottom, space.md);
+  const scrollBottomPad = footerBottomPad + 100 + (keyboardInset > 0 ? keyboardInset : 0);
+
   const shell = (
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={insets.top + 8}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={renderAsScreen ? insets.top + 64 : insets.top + 8}
       >
         <View style={[styles.header, { paddingTop: Math.max(insets.top, space.md) }]}>
           {renderAsScreen ? (
@@ -748,7 +770,8 @@ export function ClipUploadModal({
 
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
           <ScrollView
-            contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 120 }]}
+            ref={scrollRef}
+            contentContainerStyle={[styles.body, { paddingBottom: scrollBottomPad }]}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
           >
@@ -960,7 +983,6 @@ export function ClipUploadModal({
           ) : null}
 
           <Text style={styles.label}>{t("locker.shareTo")}</Text>
-          {!lockShareTarget ? (
           <View style={styles.shareTargetChips}>
             {[
               { key: SHARE_MY_CLIPS, icon: "folder-outline" as keyof typeof Ionicons.glyphMap, label: t("locker.shareMyClips") },
@@ -983,7 +1005,6 @@ export function ClipUploadModal({
               );
             })}
           </View>
-          ) : null}
 
           {shareTarget === SHARE_FRIENDS && (
             <View style={styles.friendPickerBox}>
@@ -1034,9 +1055,18 @@ export function ClipUploadModal({
                 })}
                 placeholderTextColor={c.textMuted}
                 keyboardType="email-address"
+                textContentType="emailAddress"
+                autoComplete="email"
                 autoCapitalize="none"
                 autoCorrect={false}
-                multiline
+                returnKeyType="done"
+                blurOnSubmit
+                onSubmitEditing={Keyboard.dismiss}
+                onFocus={() => {
+                  requestAnimationFrame(() => {
+                    scrollRef.current?.scrollToEnd({ animated: true });
+                  });
+                }}
                 editable={!uploadBusy}
               />
               {parsedEmails.length > 0 ? (
@@ -1108,11 +1138,7 @@ export function ClipUploadModal({
         <View
           style={[
             styles.footer,
-            {
-              paddingBottom: renderAsScreen
-                ? floatingTabBarBottomInset(insets.bottom) + space.sm
-                : Math.max(insets.bottom, space.md),
-            },
+            { paddingBottom: footerBottomPad },
           ]}
         >
           <Text style={styles.footerHint} numberOfLines={2}>
@@ -1400,7 +1426,7 @@ function useStyles() {
         color: palette.textMuted,
       },
       batchInput: { flex: 1 },
-      emailInput: { minHeight: 72, textAlignVertical: "top" },
+      emailInput: { paddingVertical: 12 },
     })
   );
 }

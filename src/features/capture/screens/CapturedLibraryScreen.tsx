@@ -215,11 +215,8 @@ export function CapturedLibraryScreen() {
 
   const openUploadForClip = (clip: CapturedClip) => {
     haptics.tap();
-    navigation.navigate("CapturedClipUpload", {
-      clips: [clip],
-      shareTarget: "my-clips",
-      showPrepareStep: !clip.thumbUri,
-    });
+    setViewerClip(clip);
+    setShareSheetVisible(true);
   };
 
   const formatDuration = (secs?: number) => {
@@ -300,7 +297,7 @@ export function CapturedLibraryScreen() {
           <Pressable
             hitSlop={10}
             onPress={() => openUploadForClip(item)}
-            accessibilityLabel="Upload clip"
+            accessibilityLabel="Share clip"
           >
             <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
           </Pressable>
