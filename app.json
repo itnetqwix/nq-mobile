@@ -77,7 +77,7 @@
         "android.permission.INTERNET",
         "android.permission.SYSTEM_ALERT_WINDOW"
       ],
-      "package": "com.netqwix.mobile"
+      "package": "com.netqwix.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"

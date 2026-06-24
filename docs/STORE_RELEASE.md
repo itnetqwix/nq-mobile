@@ -5,7 +5,7 @@ Package IDs (do not change after first store upload):
 | Platform | ID |
 |----------|-----|
 | iOS | `com.netqwix.nqmobile` |
-| Android | `com.netqwix.mobile` |
+| Android | `com.netqwix.app` |
 
 ---
 
@@ -60,9 +60,12 @@ First submit: EAS asks for Apple credentials or uses API key in `credentials/` (
 
 ### B1. Play Console (one-time)
 
-1. [Play Console](https://play.google.com/console) → **Create app** → package **com.netqwix.mobile**.
+1. [Play Console](https://play.google.com/console) → **Create app** → package **com.netqwix.app**.
 2. Complete **Dashboard** tasks:
-   - Privacy policy URL (e.g. `https://netqwix.com/privacy`)
+   - Privacy policy URL: `https://netqwix.com/privacy-policy`
+   - Terms URL: `https://netqwix.com/terms`
+   - Cancellation policy URL: `https://netqwix.com/cancellation-policy`
+   - Refund policy URL: `https://netqwix.com/refund-policy`
    - App access (test login if required)
    - Ads: No
    - Content rating (IARC questionnaire)
@@ -101,7 +104,7 @@ After first Android build:
 eas credentials -p android
 ```
 
-Copy **SHA-1** of the upload keystore → [Google Cloud Console](https://console.cloud.google.com/) → OAuth Android client for `com.netqwix.mobile` → add SHA-1.
+Copy **SHA-1** of the upload keystore → [Google Cloud Console](https://console.cloud.google.com/) → OAuth Android client for `com.netqwix.app` → add SHA-1.
 
 ---
 

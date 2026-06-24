@@ -10,8 +10,8 @@ import type { AuthStackParamList, HomeStackParamList } from "../../../navigation
 import { space, useThemeColors } from "../../../theme";
 import { fetchCmsLegal, type CmsLegalSlug } from "../api/cmsApi";
 import {
-  PRIVACY_POLICY_URL,
-  TERMS_AND_CONDITIONS_URL,
+  legalUrlForSlug,
+  type LegalUrlSlug,
 } from "../../../constants/legalUrls";
 
 type Props =
@@ -41,13 +41,18 @@ export function LegalDocumentScreen({ route, navigation }: Props) {
   });
 
   React.useLayoutEffect(() => {
+    const titleBySlug: Record<CmsLegalSlug, string> = {
+      privacy: t("settings.privacyPolicy"),
+      terms: t("settings.termsConditions"),
+      cancellation: t("settings.cancellationPolicy"),
+      refund: t("settings.refundPolicy"),
+    };
     navigation.setOptions({
-      title: data?.title ?? (slug === "privacy" ? t("settings.privacyPolicy") : t("settings.termsConditions")),
+      title: data?.title ?? titleBySlug[slug],
     });
   }, [navigation, data?.title, slug, t]);
 
-  const fallbackUrl =
-    slug === "privacy" ? PRIVACY_POLICY_URL : TERMS_AND_CONDITIONS_URL;
+  const fallbackUrl = legalUrlForSlug(slug as LegalUrlSlug);
 
   if (isLoading && !data) {
     return (

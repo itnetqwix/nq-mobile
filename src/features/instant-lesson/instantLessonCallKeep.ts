@@ -109,7 +109,7 @@ export async function setupInstantLessonCallKeep(): Promise<boolean> {
           additionalPermissions: [],
           selfManaged: false,
           foregroundService: {
-            channelId: "com.netqwix.mobile.callkeep",
+            channelId: "com.netqwix.app.callkeep",
             channelName: "Instant lesson calls",
             notificationTitle: "NetQwix",
             notificationIcon: "ic_launcher",

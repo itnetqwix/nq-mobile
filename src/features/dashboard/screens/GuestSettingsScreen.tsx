@@ -205,6 +205,20 @@ export function GuestSettingsScreen() {
         />
         <Divider />
         <ListRow
+          icon="calendar-outline"
+          title={t("settings.cancellationPolicy")}
+          onPress={() =>
+            navigation.navigate("LegalDocument", { slug: "cancellation" })
+          }
+        />
+        <Divider />
+        <ListRow
+          icon="cash-outline"
+          title={t("settings.refundPolicy")}
+          onPress={() => navigation.navigate("LegalDocument", { slug: "refund" })}
+        />
+        <Divider />
+        <ListRow
           icon="newspaper-outline"
           title={t("cms.blogsTitle")}
           onPress={() => navigation.navigate("Blogs")}

@@ -25,7 +25,7 @@ export type AuthStackParamList = {
   MagicLinkVerify: { email: string; expiresInMinutes?: number };
   /** Hibernation wake-up OTP flow (Phase 2 item 16). */
   WakeUp: { contact?: string } | undefined;
-  LegalDocument: { slug: "terms" | "privacy" };
+  LegalDocument: { slug: "terms" | "privacy" | "cancellation" | "refund" };
 };
 
 export type ShellSurfaceRouteId = ShellSurfaceMeta["id"];
@@ -35,7 +35,7 @@ export type HomeStackParamList = {
   DashboardFeature: { featureId: DashboardRouteId; bookLessonTrainerId?: string; friendsTab?: string };
   Blogs: undefined;
   BlogPost: { slug: string };
-  LegalDocument: { slug: "terms" | "privacy" };
+  LegalDocument: { slug: "terms" | "privacy" | "cancellation" | "refund" };
   ShellSurface: {
     surfaceId: ShellSurfaceRouteId;
     /** Deep-link into the wallet stack (e.g. Add funds from booking). */

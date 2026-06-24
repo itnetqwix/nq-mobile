@@ -416,6 +416,16 @@ export function SettingsScreen() {
         label: t("settings.termsConditions"),
         onPress: () => openHomeStackScreen(navigation, "LegalDocument", { slug: "terms" }),
       },
+      {
+        icon: "calendar-outline",
+        label: t("settings.cancellationPolicy"),
+        onPress: () => openHomeStackScreen(navigation, "LegalDocument", { slug: "cancellation" }),
+      },
+      {
+        icon: "cash-outline",
+        label: t("settings.refundPolicy"),
+        onPress: () => openHomeStackScreen(navigation, "LegalDocument", { slug: "refund" }),
+      },
     ];
     if (isTrainer) {
       rows.push({

@@ -3,7 +3,7 @@ import { apiClient } from "../../../api/client";
 import { API_BASE_URL } from "../../../config/env";
 import { API_ROUTES } from "../../../config/apiRoutes";
 
-export type CmsLegalSlug = "terms" | "privacy";
+export type CmsLegalSlug = "terms" | "privacy" | "cancellation" | "refund";
 
 export type CmsLegalDocument = {
   slug: CmsLegalSlug;
