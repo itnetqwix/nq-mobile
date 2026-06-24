@@ -58,6 +58,7 @@ import { queryKeys } from "../lib/queryKeys";
 import { StoreProvider } from "../store/StoreProvider";
 import { AppBootstrapGate } from "../components/splash";
 import { CmsLiveRefreshBridge } from "../features/content/CmsLiveRefreshBridge";
+import { LegalReconsentGate } from "../features/content/LegalReconsentGate";
 import { hydrateHotStorageFallback } from "../lib/storage/mmkvHotStorage";
 import { applyHapticsPreference } from "../lib/haptics";
 import { hydrateHapticsPreference } from "../lib/hapticsPreference";
@@ -165,6 +166,7 @@ export function AppRoot() {
                               <SessionLifecycleBridge />
                               <NetworkStatusBanner />
                               <CmsLiveRefreshBridge />
+                              <LegalReconsentGate />
                               <ThemedNavigationContainer />
                               <CoachMarkOverlay />
                             </CoachMarkProvider>

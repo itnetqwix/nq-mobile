@@ -40,8 +40,8 @@
     "semantic_hash": "6d51d67e46e2ed85073ef89d33a3062c"
   },
   "src/app/AppRoot.tsx": {
-    "mtime": 1781498668.8739388,
-    "ast_hash": "57dc09f3837f130a0bff9246bc5b4527",
+    "mtime": 1782300000.148118,
+    "ast_hash": "43bcbb70d149a5a1b597a0ce3f764c6a",
     "semantic_hash": ""
   },
   "src/app/ThemedNavigationContainer.tsx": {
@@ -315,8 +315,8 @@
     "semantic_hash": ""
   },
   "src/config/apiRoutes.ts": {
-    "mtime": 1782295865.2692122,
-    "ast_hash": "9307b367ba2b1d35b72b4c19fb38f4ee",
+    "mtime": 1782299927.0389683,
+    "ast_hash": "450a4d9d368d7dfd929b323f9747d481",
     "semantic_hash": ""
   },
   "src/config/env.ts": {
@@ -1440,8 +1440,8 @@
     "semantic_hash": "44afac659cd81a6852fb7afcd206a38b"
   },
   "src/features/chats/lib/offlineChatQueue.ts": {
-    "mtime": 1781434439.8360474,
-    "ast_hash": "fceb389b3474611aba036e113700a05e",
+    "mtime": 1782299403.9907718,
+    "ast_hash": "ceced4ec1262087f62e2a4b55023cc54",
     "semantic_hash": ""
   },
   "src/features/chats/lib/openChatTab.ts": {
@@ -3000,8 +3000,8 @@
     "semantic_hash": ""
   },
   "src/i18n/locales/en.json": {
-    "mtime": 1782298357.8700516,
-    "ast_hash": "8db6c11ef38c8f943c352de677c448c1",
+    "mtime": 1782299974.6625528,
+    "ast_hash": "af011630a809f765a478011b2483cb7a",
     "semantic_hash": ""
   },
   "src/i18n/locales/es.json": {
@@ -3780,8 +3780,8 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1782294010.1250632,
-    "ast_hash": "3b67fada3c68bc73adfcee8e6696aa52",
+    "mtime": 1782299281.9683726,
+    "ast_hash": "b3f92fee579afc198830ce5107bdf5a3",
     "semantic_hash": ""
   },
   "scripts/android-dev-env.sh": {
@@ -4260,8 +4260,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/__tests__/liveLessonQaMatrix.test.ts": {
-    "mtime": 1781789688.82205,
-    "ast_hash": "5f3713bdc3fc7eff821d647660eed38c",
+    "mtime": 1782299405.6828134,
+    "ast_hash": "d809a051b9a62811330cfc7032eb3b20",
     "semantic_hash": ""
   },
   "src/features/calling/__tests__/useLiveLessonUxState.test.ts": {
@@ -4325,8 +4325,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/__tests__/annotationCoords.test.ts": {
-    "mtime": 1781779246.357768,
-    "ast_hash": "6f4de396517d592b984c59add65ad2f4",
+    "mtime": 1782299404.8758404,
+    "ast_hash": "deedd576142311d7b3e3c1eec3b1d810",
     "semantic_hash": ""
   },
   "scripts/generate-app-icons.mjs": {
@@ -4627,6 +4627,16 @@
   "src/features/sessions/lib/sessionGamePlanAccess.ts": {
     "mtime": 1782298374.2398415,
     "ast_hash": "37fef7de74b03e052666cf4cd7a439f5",
+    "semantic_hash": ""
+  },
+  "src/features/content/LegalReconsentGate.tsx": {
+    "mtime": 1782299996.8916593,
+    "ast_hash": "1e4a3cbb994693ee5701d057d1ae5d80",
+    "semantic_hash": ""
+  },
+  "src/features/content/api/userLegalApi.ts": {
+    "mtime": 1782299932.424827,
+    "ast_hash": "99130ece2cca17ffcf25f8a84ac3b2bb",
     "semantic_hash": ""
   }
 }

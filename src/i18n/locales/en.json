@@ -189,6 +189,19 @@
       "cellA11y": "Code digit {{index}}"
     }
   },
+  "legal": {
+    "reconsent": {
+      "alertTitle": "Legal update",
+      "titleBoth": "We've updated our Terms & Privacy Policy",
+      "titleTerms": "We've updated our Terms & Conditions",
+      "titlePrivacy": "We've updated our Privacy Policy",
+      "body": "Please review the updated documents and accept to continue using NetQwix. Your previous acceptance no longer matches the current version.",
+      "mustAccept": "You must accept the updated Terms and Privacy Policy to continue.",
+      "continue": "I agree — continue",
+      "failed": "Could not save your acceptance. Check your connection and try again.",
+      "thanks": "Thank you — you're all set."
+    }
+  },
   "verification": {
     "accountRejectedTitle": "Account not approved",
     "accountRejectedLead": "Your account was not approved. Review the reason below, make updates, and submit again for review.",

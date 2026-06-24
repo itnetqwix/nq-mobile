@@ -124,6 +124,6 @@ describe("live lesson structural smoke", () => {
     expect(meeting).toContain("screenshot.takeScreenshot(sources)");
     const burnIn = read("components/AnnotationBurnInHost.tsx");
     expect(burnIn).toContain("EXPORT_WIDTH = 1080");
-    expect(burnIn).toContain('resizeMode="cover"');
+    expect(burnIn).toContain('resizeMode={job.projection?.contentFit === "contain" ? "contain" : "cover"}');
   });
 });

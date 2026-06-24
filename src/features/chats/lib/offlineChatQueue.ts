@@ -85,7 +85,9 @@ function subscribe(l: Listener) {
 
 export function subscribeOfflineChatQueueEvents(listener: EventListener) {
   eventListeners.add(listener);
-  return () => eventListeners.delete(listener);
+  return () => {
+    eventListeners.delete(listener);
+  };
 }
 
 function countSnapshot(): number {

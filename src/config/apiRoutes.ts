@@ -44,6 +44,8 @@ export const API_ROUTES = {
   user: {
     me: "/user/me",
     deleteMe: "/user/me",
+    legalStatus: "/user/legal/status",
+    legalAccept: "/user/legal/accept",
     chatPublicKeyMe: "/user/me/chat-public-key",
     chatPublicKey: (userId: string) => `/user/${userId}/chat-public-key` as const,
     signUp: "/user/sign-up",

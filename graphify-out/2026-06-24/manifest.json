@@ -1440,8 +1440,8 @@
     "semantic_hash": "44afac659cd81a6852fb7afcd206a38b"
   },
   "src/features/chats/lib/offlineChatQueue.ts": {
-    "mtime": 1781434439.8360474,
-    "ast_hash": "fceb389b3474611aba036e113700a05e",
+    "mtime": 1782299403.9907718,
+    "ast_hash": "ceced4ec1262087f62e2a4b55023cc54",
     "semantic_hash": ""
   },
   "src/features/chats/lib/openChatTab.ts": {
@@ -1640,8 +1640,8 @@
     "semantic_hash": ""
   },
   "src/features/dashboard/components/home/LockerHub.tsx": {
-    "mtime": 1781692314.150662,
-    "ast_hash": "d0f01194bb9284f6241ee46380b3ac88",
+    "mtime": 1782298319.201455,
+    "ast_hash": "ad06f40cd5ccf5fd5c52286b9d5891a4",
     "semantic_hash": ""
   },
   "src/features/dashboard/components/home/LockerTile.tsx": {
@@ -1805,8 +1805,8 @@
     "semantic_hash": ""
   },
   "src/features/dashboard/components/trainer/TrainerDashboardHub.tsx": {
-    "mtime": 1782294051.7169907,
-    "ast_hash": "9ce94452c4e4894475d5bca5374d8e12",
+    "mtime": 1782298347.850217,
+    "ast_hash": "c0ec2fe450b0bc16fa3ee26f73b930ec",
     "semantic_hash": ""
   },
   "src/features/dashboard/components/trainer/TrainerEarningsSnapshot.tsx": {
@@ -1825,8 +1825,8 @@
     "semantic_hash": "ed46b52d5ec3ec4cf5c169fcd5c0961c"
   },
   "src/features/dashboard/components/trainer/TrainerLockerSection.tsx": {
-    "mtime": 1781692323.8998039,
-    "ast_hash": "2a5cf25e7fdadaec608ec9b2f0b39682",
+    "mtime": 1782298326.3050022,
+    "ast_hash": "8b4909412585eee58949feacce866043",
     "semantic_hash": ""
   },
   "src/features/dashboard/components/trainer/TrainerPulseHero.tsx": {
@@ -1885,9 +1885,9 @@
     "semantic_hash": "d5c33677439d5725cb14c312119fabbe"
   },
   "src/features/dashboard/config/dashboardRoutes.ts": {
-    "mtime": 1780310960.7260878,
-    "ast_hash": "6967a66f6a3c715393e03637beacf57f",
-    "semantic_hash": "6967a66f6a3c715393e03637beacf57f"
+    "mtime": 1782298358.5129085,
+    "ast_hash": "53c1c1fd5fec77f97a3b8126276035b2",
+    "semantic_hash": ""
   },
   "src/features/dashboard/config/shellSurfaces.ts": {
     "mtime": 1781611557.7501545,
@@ -1980,8 +1980,8 @@
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/DashboardHomeScreen.tsx": {
-    "mtime": 1782294071.432771,
-    "ast_hash": "0060a531d337389b6c53a1bbc8e7841f",
+    "mtime": 1782298355.549229,
+    "ast_hash": "0659b438e06cba286f7ca4928fd08748",
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/EditProfileScreen.tsx": {
@@ -1995,8 +1995,8 @@
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/GamePlansScreen.tsx": {
-    "mtime": 1781801016.7715464,
-    "ast_hash": "a714aea49b3e3e87e584bf93a4e5e89b",
+    "mtime": 1782298481.344348,
+    "ast_hash": "ee4449b76ee4834a25e84fcf81798023",
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/GuestDiscoverHomeScreen.tsx": {
@@ -2560,8 +2560,8 @@
     "semantic_hash": ""
   },
   "src/features/sessions/SessionActionModal.tsx": {
-    "mtime": 1781779061.3711038,
-    "ast_hash": "143510be262d3690ddbfd9d78f8102c6",
+    "mtime": 1782298405.4915066,
+    "ast_hash": "950aea2b899bca77eeb4414dfe33c942",
     "semantic_hash": ""
   },
   "src/features/sessions/SessionBookingContext.tsx": {
@@ -2900,13 +2900,13 @@
     "semantic_hash": ""
   },
   "src/features/wallet/screens/WalletHomeScreen.tsx": {
-    "mtime": 1781718747.4405115,
-    "ast_hash": "655e12b1e915a9f053caf1ed1a8b0f24",
+    "mtime": 1782298505.1717315,
+    "ast_hash": "7a0f4d34eea50f9adb83ca13c5f62460",
     "semantic_hash": ""
   },
   "src/features/wallet/screens/WalletSecurityScreen.tsx": {
-    "mtime": 1781936024.338309,
-    "ast_hash": "57854dc7cbdee3cb23042497d6c678ea",
+    "mtime": 1782298501.3661118,
+    "ast_hash": "15a74a0e7501b0e8a09a35a9d6188d1d",
     "semantic_hash": ""
   },
   "src/features/wallet/screens/WalletTopUpScreen.tsx": {
@@ -3000,8 +3000,8 @@
     "semantic_hash": ""
   },
   "src/i18n/locales/en.json": {
-    "mtime": 1782297177.7996044,
-    "ast_hash": "e68bb31656033255337832bdb30ca0be",
+    "mtime": 1782298357.8700516,
+    "ast_hash": "8db6c11ef38c8f943c352de677c448c1",
     "semantic_hash": ""
   },
   "src/i18n/locales/es.json": {
@@ -3275,8 +3275,8 @@
     "semantic_hash": ""
   },
   "src/lib/queryKeys.ts": {
-    "mtime": 1782297178.917287,
-    "ast_hash": "0ce637534d9bfc70aaec066bb5dd2a6f",
+    "mtime": 1782298395.8214014,
+    "ast_hash": "4ac0747338f7245953b0d2465d09dd50",
     "semantic_hash": ""
   },
   "src/lib/queryPersist.ts": {
@@ -3525,8 +3525,8 @@
     "semantic_hash": "aece5bfa8917d29c889783e2297ed054"
   },
   "src/navigation/navMatrix.ts": {
-    "mtime": 1782296540.9210746,
-    "ast_hash": "f2ebbe58121d6c44dbbce67488093fd2",
+    "mtime": 1782298359.5712047,
+    "ast_hash": "04594c10058c72e9902c1bdd5e71ca12",
     "semantic_hash": ""
   },
   "src/navigation/navigationRef.ts": {
@@ -3780,8 +3780,8 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1782294010.1250632,
-    "ast_hash": "3b67fada3c68bc73adfcee8e6696aa52",
+    "mtime": 1782299281.9683726,
+    "ast_hash": "b3f92fee579afc198830ce5107bdf5a3",
     "semantic_hash": ""
   },
   "scripts/android-dev-env.sh": {
@@ -4260,8 +4260,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/__tests__/liveLessonQaMatrix.test.ts": {
-    "mtime": 1781789688.82205,
-    "ast_hash": "5f3713bdc3fc7eff821d647660eed38c",
+    "mtime": 1782299405.6828134,
+    "ast_hash": "d809a051b9a62811330cfc7032eb3b20",
     "semantic_hash": ""
   },
   "src/features/calling/__tests__/useLiveLessonUxState.test.ts": {
@@ -4325,8 +4325,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/__tests__/annotationCoords.test.ts": {
-    "mtime": 1781779246.357768,
-    "ast_hash": "6f4de396517d592b984c59add65ad2f4",
+    "mtime": 1782299404.8758404,
+    "ast_hash": "deedd576142311d7b3e3c1eec3b1d810",
     "semantic_hash": ""
   },
   "scripts/generate-app-icons.mjs": {
@@ -4617,6 +4617,16 @@
   "e2e/maestro/scheduled-booking-wizard.yaml": {
     "mtime": 1782297084.1953032,
     "ast_hash": "7b9d9707d377996d9d64a88244d4c01e",
+    "semantic_hash": ""
+  },
+  "src/features/dashboard/components/home/LockerGrid.tsx": {
+    "mtime": 1782298310.3562684,
+    "ast_hash": "efe07eb8a93906cffdc4f2d7f4680fdc",
+    "semantic_hash": ""
+  },
+  "src/features/sessions/lib/sessionGamePlanAccess.ts": {
+    "mtime": 1782298374.2398415,
+    "ast_hash": "37fef7de74b03e052666cf4cd7a439f5",
     "semantic_hash": ""
   }
 }
