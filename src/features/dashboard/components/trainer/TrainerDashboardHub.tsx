@@ -114,7 +114,9 @@ function TrainerDashboardHubInner({
         trainees={recentTrainees}
         onSelectTrainee={
           onSelectRecentTrainee
-            ? (trainee) => onSelectRecentTrainee(trainee)
+            ? (trainee) => {
+                if (trainee) onSelectRecentTrainee(trainee);
+              }
             : onOpenStudents
               ? () => onOpenStudents()
               : undefined

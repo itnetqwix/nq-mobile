@@ -236,7 +236,12 @@ export async function fetchSentFriendRequests(): Promise<any[]> {
 
 export async function fetchRecentTrainees(): Promise<any[]> {
   const res = await apiClient.get(API_ROUTES.trainer.getRecentTrainees);
-  return res.data?.result ?? res.data ?? [];
+  return extractApiArray(res.data).filter(
+    (row) =>
+      row &&
+      typeof row === "object" &&
+      ("_id" in row || "fullname" in row || "fullName" in row)
+  );
 }
 
 export type MyTrainerStats = {

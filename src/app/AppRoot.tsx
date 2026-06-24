@@ -8,6 +8,7 @@ import {
 import { StripeProvider } from "@stripe/stripe-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { StyleSheet } from "react-native";
+import { useFonts } from "expo-font";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import {
@@ -63,6 +64,7 @@ import { hydrateHotStorageFallback } from "../lib/storage/mmkvHotStorage";
 import { applyHapticsPreference } from "../lib/haptics";
 import { hydrateHapticsPreference } from "../lib/hapticsPreference";
 import { setGlobalQueryClient } from "../store/queryClientRef";
+import { poppinsFontMap } from "../theme/fonts";
 
 initMobileSentry();
 
@@ -77,6 +79,7 @@ function SystemStateHooks() {
 
 export function AppRoot() {
   const [localeReady, setLocaleReady] = useState(false);
+  const [fontsLoaded] = useFonts(poppinsFontMap);
   const queryClient = useMemo(() => createPersistedQueryClient(), []);
 
   useEffect(() => {
@@ -128,7 +131,7 @@ export function AppRoot() {
     <GestureHandlerRootView style={styles.flex}>
       <StoreProvider>
       <SafeAreaProvider>
-      <AppBootstrapGate appInitReady={localeReady}>
+      <AppBootstrapGate appInitReady={localeReady && fontsLoaded}>
         <StripeProvider
           publishableKey={STRIPE_PUBLISHABLE_KEY || "pk_test_placeholder"}
           merchantIdentifier={

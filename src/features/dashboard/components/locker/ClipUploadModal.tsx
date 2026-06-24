@@ -37,6 +37,7 @@ import {
 import { apiClient } from "../../../../api/client";
 import { API_ROUTES } from "../../../../config/apiRoutes";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
+import { Button } from "../../../../components/ui";
 import { floatingTabBarBottomInset } from "../../../../navigation/FloatingTabBar";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
 import { haptics } from "../../../../lib/haptics";
@@ -1049,8 +1050,8 @@ export function ClipUploadModal({
             </Text>
           ) : null}
 
-          <Text style={styles.label}>{t("locker.shareTo")}</Text>
-          <View style={styles.shareTargetChips}>
+          <Text style={styles.sectionHeading}>{t("locker.shareTo")}</Text>
+          <View style={styles.shareSegment}>
             {[
               { key: SHARE_MY_CLIPS, icon: "folder-outline" as keyof typeof Ionicons.glyphMap, label: t("locker.shareMyClips") },
               { key: SHARE_FRIENDS, icon: "people-outline" as keyof typeof Ionicons.glyphMap, label: t("locker.shareFriends") },
@@ -1060,12 +1061,14 @@ export function ClipUploadModal({
               return (
                 <Pressable
                   key={opt.key}
-                  style={[styles.shareChip, on && styles.shareChipOn]}
+                  style={[styles.shareSegmentBtn, on && styles.shareSegmentBtnOn]}
                   onPress={() => setShareTarget(opt.key)}
                   disabled={uploadBusy}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: on }}
                 >
-                  <Ionicons name={opt.icon} size={14} color={on ? c.brandNavy : c.textMuted} />
-                  <Text style={[styles.shareChipText, on && styles.shareChipTextOn]} numberOfLines={1}>
+                  <Ionicons name={opt.icon} size={18} color={on ? c.brandNavy : c.textMuted} />
+                  <Text style={[styles.shareSegmentLabel, on && styles.shareSegmentLabelOn]} numberOfLines={2}>
                     {opt.label}
                   </Text>
                 </Pressable>
@@ -1074,7 +1077,7 @@ export function ClipUploadModal({
           </View>
 
           {shareTarget === SHARE_FRIENDS && (
-            <View style={styles.friendPickerBox}>
+            <View style={styles.sharePanel}>
               <Text style={styles.label}>{t("locker.selectFriends")}</Text>
               {friendsList.length === 0 ? (
                 <Text style={styles.muted}>{t("locker.noFriendsForShare")}</Text>
@@ -1111,7 +1114,7 @@ export function ClipUploadModal({
           )}
 
           {shareTarget === SHARE_EMAIL && (
-            <View style={styles.friendPickerBox}>
+            <View style={styles.sharePanel}>
               <Text style={styles.label}>{t("locker.shareEmailLabel")}</Text>
               <TextInput
                 style={[styles.input, styles.emailInput]}
@@ -1213,26 +1216,14 @@ export function ClipUploadModal({
               ? t("locker.titleLabel")
               : submitAction.hint}
           </Text>
-          <Pressable
-            style={({ pressed }) => [
-              styles.submit,
-              !canSubmit && styles.submitDisabled,
-              pressed && canSubmit && { opacity: 0.9 },
-            ]}
+          <Button
+            label={submitAction.label}
+            leftIcon={submitAction.icon}
+            size="lg"
+            loading={uploadBusy}
+            disabled={!canSubmit}
             onPress={() => void submit()}
-            disabled={!canSubmit || uploadBusy}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: !canSubmit || uploadBusy }}
-          >
-            {uploadBusy ? (
-              <ActivityIndicator color={c.brandTextOn} />
-            ) : (
-              <>
-                <Ionicons name={submitAction.icon} size={20} color={c.brandTextOn} />
-                <Text style={styles.submitText}>{submitAction.label}</Text>
-              </>
-            )}
-          </Pressable>
+          />
         </View>
       </KeyboardAvoidingView>
   );
@@ -1452,26 +1443,48 @@ function useStyles() {
       },
       progressFill: { height: "100%", backgroundColor: palette.brandNavy, borderRadius: 4 },
       progressHint: { ...typography.caption, color: palette.textMuted, fontStyle: "italic" },
-      shareTargetRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-      shareTargetChips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-      shareChip: {
+      sectionHeading: {
+        ...typography.label,
+        color: palette.text,
+        marginTop: space.xs,
+      },
+      shareSegment: {
         flexDirection: "row",
+        gap: space.sm,
+        marginBottom: space.xs,
+      },
+      shareSegmentBtn: {
+        flex: 1,
+        minHeight: 72,
         alignItems: "center",
-        gap: 4,
-        paddingVertical: 6,
-        paddingHorizontal: 10,
-        borderRadius: radii.pill,
+        justifyContent: "center",
+        gap: 6,
+        paddingHorizontal: space.sm,
+        paddingVertical: space.sm,
+        borderRadius: radii.lg,
         borderWidth: 1,
         borderColor: palette.border,
         backgroundColor: palette.background,
       },
-      shareChipOn: {
+      shareSegmentBtnOn: {
         borderColor: palette.brandNavy,
         backgroundColor: palette.brandSubtle,
       },
-      shareChipText: { ...typography.caption, fontWeight: "700", color: palette.textMuted },
-      shareChipTextOn: { color: palette.brandNavy },
-      friendPickerBox: { gap: space.sm },
+      shareSegmentLabel: {
+        ...typography.caption,
+        fontWeight: "600",
+        color: palette.textMuted,
+        textAlign: "center",
+      },
+      shareSegmentLabelOn: { color: palette.brandNavy, fontWeight: "700" },
+      sharePanel: {
+        gap: space.sm,
+        padding: space.md,
+        borderRadius: radii.lg,
+        borderWidth: 1,
+        borderColor: palette.border,
+        backgroundColor: palette.surfaceMuted,
+      },
       friendChips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
       editVideoBtn: {
         flexDirection: "row",

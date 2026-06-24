@@ -10,12 +10,14 @@ import { DashboardPersonTile } from "../shared/DashboardPersonTile";
 type Props = {
   trainees: Record<string, unknown>[];
   loading?: boolean;
-  onSelectTrainee?: (trainee: Record<string, unknown>) => void;
+  selectedTraineeId?: string | null;
+  onSelectTrainee?: (trainee: Record<string, unknown> | null) => void;
 };
 
 export function TrainerRecentTraineesSection({
   trainees,
   loading = false,
+  selectedTraineeId = null,
   onSelectTrainee,
 }: Props) {
   const { t } = useAppTranslation();
@@ -37,7 +39,7 @@ export function TrainerRecentTraineesSection({
       <View style={styles.headerRow}>
         <Ionicons name="time-outline" size={15} color={c.textSecondary} />
         <Text style={styles.title}>
-          {t("dashboardHome.recentEnthusiasts", { defaultValue: "Recent Enthusiasts" })}
+          {t("dashboardHome.recentTrainees", { defaultValue: "Recent Enthusiasts" })}
         </Text>
       </View>
       <ScrollView
@@ -47,19 +49,26 @@ export function TrainerRecentTraineesSection({
         contentContainerStyle={styles.strip}
       >
         {trainees.map((user, index) => {
+          const traineeId = String(user._id ?? "");
           const name = String(
             user.fullname ??
               user.fullName ??
               user.name ??
               t("dashboardHome.userDefault", { defaultValue: "Student" })
           );
+          const selected = !!traineeId && selectedTraineeId === traineeId;
           return (
             <DashboardPersonTile
               key={trainerListItemKey(user, index, "recent-trainee-")}
               name={name}
               avatar={user.profile_picture as string | undefined}
-              onPress={onSelectTrainee ? () => onSelectTrainee(user) : () => {}}
+              onPress={
+                onSelectTrainee
+                  ? () => onSelectTrainee(selected ? null : user)
+                  : () => {}
+              }
               useHomeAvatar
+              style={selected ? styles.tileSelected : undefined}
             />
           );
         })}
@@ -73,7 +82,6 @@ function useStyles() {
     StyleSheet.create({
       wrap: {
         marginBottom: 0,
-        paddingHorizontal: space.md,
       },
       headerRow: {
         flexDirection: "row",
@@ -83,6 +91,11 @@ function useStyles() {
       },
       title: { ...typography.titleSm, color: palette.text, fontWeight: "700" },
       strip: { gap: space.md, paddingVertical: space.sm, paddingRight: space.sm },
+      tileSelected: {
+        borderColor: palette.brandNavy,
+        borderWidth: 2,
+        backgroundColor: palette.brandSubtle,
+      },
     })
   );
 }

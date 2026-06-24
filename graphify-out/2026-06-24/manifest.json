@@ -1805,8 +1805,8 @@
     "semantic_hash": ""
   },
   "src/features/dashboard/components/trainer/TrainerDashboardHub.tsx": {
-    "mtime": 1782298347.850217,
-    "ast_hash": "c0ec2fe450b0bc16fa3ee26f73b930ec",
+    "mtime": 1782303334.9583185,
+    "ast_hash": "9ebae00c70d768dfe336c9bc55b71957",
     "semantic_hash": ""
   },
   "src/features/dashboard/components/trainer/TrainerEarningsSnapshot.tsx": {
@@ -1835,8 +1835,8 @@
     "semantic_hash": "ddfcd370c44bf623fb9516b09261f5b2"
   },
   "src/features/dashboard/components/trainer/TrainerRecentTraineesSection.tsx": {
-    "mtime": 1782294163.3225439,
-    "ast_hash": "7ac28f580755bbbf418701e5d716baaa",
+    "mtime": 1782303318.1747818,
+    "ast_hash": "b95aa29e43d92bc8faf0135e389aff21",
     "semantic_hash": ""
   },
   "src/features/dashboard/components/trainer/TrainerReviewsSheet.tsx": {
@@ -1960,8 +1960,8 @@
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/ClipsScreen.tsx": {
-    "mtime": 1782296636.5649753,
-    "ast_hash": "8f3fe392ae861d309c208f1ac27ae891",
+    "mtime": 1782303358.928152,
+    "ast_hash": "d0a66a2ab8c55b11bc865acee56fca40",
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/CommunityScreen.tsx": {
@@ -2090,8 +2090,8 @@
     "semantic_hash": ""
   },
   "src/features/home/api/homeApi.ts": {
-    "mtime": 1782106295.6444726,
-    "ast_hash": "c6b8be04c8866eb4d9c88c8925bfe484",
+    "mtime": 1782303300.8537111,
+    "ast_hash": "95944543fcef74526b6c408bb408078c",
     "semantic_hash": ""
   },
   "src/features/home/components/HomeCategoryChipsRow.tsx": {
@@ -3000,8 +3000,8 @@
     "semantic_hash": ""
   },
   "src/i18n/locales/en.json": {
-    "mtime": 1782299974.6625528,
-    "ast_hash": "af011630a809f765a478011b2483cb7a",
+    "mtime": 1782303343.4341946,
+    "ast_hash": "c5e4c8bf52cdf3490d7af188a82e4087",
     "semantic_hash": ""
   },
   "src/i18n/locales/es.json": {
@@ -4630,8 +4630,8 @@
     "semantic_hash": ""
   },
   "src/features/content/LegalReconsentGate.tsx": {
-    "mtime": 1782299996.8916593,
-    "ast_hash": "1e4a3cbb994693ee5701d057d1ae5d80",
+    "mtime": 1782300788.4744112,
+    "ast_hash": "ff4d2ba7a92f02dd446ce83a6e307dd4",
     "semantic_hash": ""
   },
   "src/features/content/api/userLegalApi.ts": {
@@ -4642,6 +4642,16 @@
   "src/navigation/stackTransitions.ts": {
     "mtime": 1782300316.4600217,
     "ast_hash": "0f36b6e0bbe348b8a4da586f27660e13",
+    "semantic_hash": ""
+  },
+  "src/features/dashboard/components/trainer/TrainerLockerTraineePanel.tsx": {
+    "mtime": 1782303352.4394329,
+    "ast_hash": "50300d4fd2752bcc6aa955d85ccf8c70",
+    "semantic_hash": ""
+  },
+  "src/lib/clips/traineeClipGroups.ts": {
+    "mtime": 1782303309.190824,
+    "ast_hash": "f49426b9f942f99cdbfcf9d08592ba1c",
     "semantic_hash": ""
   }
 }

@@ -21,23 +21,19 @@
 
 import { Platform, PixelRatio, TextStyle } from "react-native";
 import { clampFontScale, useFontScale } from "../lib/a11y/useFontScale";
+import {
+  FONT_BOLD,
+  FONT_EXTRABOLD,
+  FONT_MEDIUM,
+  FONT_REGULAR,
+  FONT_SEMIBOLD,
+} from "./fonts";
 
-/** Default font family — System on iOS (San Francisco), Roboto on Android.
- *  Use Inter when we add it via `expo-font`; the constants stay the same. */
-const FONT_REGULAR = Platform.select({
-  ios: "System",
-  android: "sans-serif",
-  default: "System",
-});
-const FONT_MEDIUM = Platform.select({
-  ios: "System",
-  android: "sans-serif-medium",
-  default: "System",
-});
-const FONT_BOLD = Platform.select({
-  ios: "System",
-  android: "sans-serif-medium",
-  default: "System",
+/** App-wide Poppins stack (matches web `Poppins, Poppins Fallback`). */
+const FONT_MONO = Platform.select({
+  ios: "Menlo",
+  android: "monospace",
+  default: "Menlo",
 });
 
 function build(scale: number) {
@@ -59,19 +55,19 @@ function build(scale: number) {
     fontFamily: family,
   });
   return {
-    displayLg: mk(40, 48, "800", -0.5, FONT_BOLD),
-    displayMd: mk(32, 40, "800", -0.4, FONT_BOLD),
+    displayLg: mk(40, 48, "800", -0.5, FONT_EXTRABOLD),
+    displayMd: mk(32, 40, "800", -0.4, FONT_EXTRABOLD),
     /**
      * `displaySm` — the smallest display tier, used for hero amounts
      * (wallet balance, earnings) where we want something punchier than
      * `titleLg` but lighter than `displayMd`. Inserted between the two
      * for a clean 32 / 28 / 24 step.
      */
-    displaySm: mk(28, 36, "800", -0.3, FONT_BOLD),
+    displaySm: mk(28, 36, "800", -0.3, FONT_EXTRABOLD),
     titleLg: mk(24, 32, "700", -0.2, FONT_BOLD),
     titleMd: mk(20, 28, "700", -0.1, FONT_BOLD),
     titleSm: mk(17, 24, "700", 0, FONT_BOLD),
-    subtitle: mk(15, 22, "600", 0, FONT_MEDIUM),
+    subtitle: mk(15, 22, "600", 0, FONT_SEMIBOLD),
     bodyLg: mk(16, 24, "400", 0, FONT_REGULAR),
     bodyMd: mk(14, 22, "400", 0, FONT_REGULAR),
     bodySm: mk(13, 20, "400", 0, FONT_REGULAR),
@@ -81,17 +77,11 @@ function build(scale: number) {
      * keep compiling. New code should use `bodyMd` directly.
      */
     body: mk(14, 22, "400", 0, FONT_REGULAR),
-    label: mk(13, 18, "600", 0.1, FONT_MEDIUM),
+    label: mk(13, 18, "600", 0.1, FONT_SEMIBOLD),
     overline: mk(11, 16, "700", 0.6, FONT_BOLD),
     caption: mk(12, 16, "400", 0, FONT_REGULAR),
     button: mk(15, 20, "700", 0.1, FONT_BOLD),
-    monoNumber: mk(
-      16,
-      20,
-      "700",
-      1,
-      Platform.select({ ios: "Menlo", android: "monospace", default: "Menlo" })
-    ),
+    monoNumber: mk(16, 20, "700", 1, FONT_MONO),
   } as const;
 }
 

@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { ClipSectionSkeleton, EmptyState, ImageWithSkeleton } from "../../../components/ui";
+import { ClipSectionSkeleton, EmptyState, ImageWithSkeleton, Button } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { getClipPlaybackUrl, getClipThumbnailUrl } from "../../../lib/clipMediaUrl";
 import {
@@ -40,6 +40,7 @@ import { shareClipExternally } from "../../clips/lib/shareClipExternally";
 import { SharedClipInfoSheet } from "../../clips/components/SharedClipInfoSheet";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
+import { TrainerLockerTraineePanel } from "../components/trainer/TrainerLockerTraineePanel";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { HomeStackParamList } from "../../../navigation/types";
@@ -245,6 +246,7 @@ export function ClipsScreen() {
   const [friendShareClipIds, setFriendShareClipIds] = useState<string[]>([]);
   const [librarySheetClip, setLibrarySheetClip] = useState<LockerClip | null>(null);
   const [sharedInfoClip, setSharedInfoClip] = useState<LockerClip | null>(null);
+  const [selectedTraineeId, setSelectedTraineeId] = useState<string | null>(null);
   const [viewerIndex, setViewerIndex] = useState(0);
   const [viewer, setViewer] = useState<{
     uri: string;
@@ -288,17 +290,24 @@ export function ClipsScreen() {
         flexDirection: "row",
         alignItems: "center",
         gap: space.md,
-        paddingVertical: 10,
-        paddingHorizontal: space.sm,
+        paddingVertical: 12,
+        paddingHorizontal: 0,
         borderTopWidth: StyleSheet.hairlineWidth,
         borderTopColor: palette.border,
       },
       thumbWrap: {
-        width: 64,
-        height: 64,
-        borderRadius: radii.sm,
+        width: 72,
+        height: 72,
+        borderRadius: radii.md,
         overflow: "hidden",
         backgroundColor: palette.surfaceMuted,
+        position: "relative",
+      },
+      playOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "rgba(0,0,0,0.28)",
       },
       thumbPh: {
         flex: 1,
@@ -431,7 +440,11 @@ export function ClipsScreen() {
     void myQ.refetch();
     void sharedQ.refetch();
     void libraryQ.refetch();
-  }, [myQ, sharedQ, libraryQ]);
+    if (isTrainer) {
+      void queryClient.refetchQueries({ queryKey: queryKeys.presence.recentTrainees });
+      void queryClient.refetchQueries({ queryKey: queryKeys.trainerRole.recentTraineeClips });
+    }
+  }, [myQ, sharedQ, libraryQ, isTrainer, queryClient]);
 
   const confirmRemoveSharedClip = useCallback(
     (clip: LockerClip) => {
@@ -587,27 +600,42 @@ export function ClipsScreen() {
     const clipId = String(clip._id ?? "");
     const canSelectInShareMode = shareMode && tab === "mine" && !!clipId && !isSharedCopy;
     const isSelected = canSelectInShareMode && !!selectedClipIds[clipId];
+    const clipTitle = String(clip.title ?? clip.file_name ?? t("locker.clipDefault"));
 
-    return (
-      <Pressable
-        key={key}
-        style={styles.clipCard}
-        onPress={() => {
-          if (canSelectInShareMode) {
-            toggleClipSelect(clipId);
-            return;
-          }
-          openClip(clip);
-        }}
-        onLongPress={
-          tab === "mine" && clipId && !isSharedCopy
-            ? () => {
-                if (!shareMode) setShareMode(true);
-                toggleClipSelect(clipId);
-              }
-            : undefined
-        }
-      >
+    const thumbBlock = (
+      <View style={styles.thumbWrap}>
+        {thumb ? (
+          <ImageWithSkeleton
+            uri={thumb}
+            width={72}
+            height={72}
+            borderRadius={radii.md}
+            resizeMode="cover"
+            accessibilityLabel={clipTitle}
+          />
+        ) : (
+          <View style={[styles.thumbPh, { width: 72, height: 72 }]}>
+            <Ionicons name="film-outline" size={24} color={c.brandAccent} />
+          </View>
+        )}
+        {!canSelectInShareMode ? (
+          <Pressable
+            style={styles.playOverlay}
+            onPress={() => openClip(clip)}
+            accessibilityRole="button"
+            accessibilityLabel={t("locker.playClipA11y", {
+              title: clipTitle,
+              defaultValue: "Play {{title}}",
+            })}
+          >
+            <Ionicons name="play-circle" size={34} color="#fff" />
+          </Pressable>
+        ) : null}
+      </View>
+    );
+
+    const rowContent = (
+      <>
         {canSelectInShareMode ? (
           <View style={[styles.selectMark, isSelected && styles.selectMarkOn]}>
             {isSelected ? (
@@ -615,25 +643,10 @@ export function ClipsScreen() {
             ) : null}
           </View>
         ) : null}
-        <View style={styles.thumbWrap}>
-          {thumb ? (
-            <ImageWithSkeleton
-              uri={thumb}
-              width={64}
-              height={64}
-              borderRadius={radii.sm}
-              resizeMode="cover"
-              accessibilityLabel={String(clip.title ?? clip.file_name ?? t("locker.clipDefault"))}
-            />
-          ) : (
-            <View style={styles.thumbPh}>
-              <Ionicons name="play-circle" size={28} color={c.brandAccent} />
-            </View>
-          )}
-        </View>
+        {thumbBlock}
         <View style={styles.clipMeta}>
           <Text style={styles.clipTitle} numberOfLines={2}>
-            {String(clip.title ?? clip.file_name ?? t("locker.clipDefault"))}
+            {clipTitle}
           </Text>
           {statusText ? (
             <View style={styles.libChip}>
@@ -650,10 +663,7 @@ export function ClipsScreen() {
           {showSharedInfo ? (
             <Pressable
               style={styles.libAction}
-              onPress={(e) => {
-                e.stopPropagation?.();
-                setSharedInfoClip(clip);
-              }}
+              onPress={() => setSharedInfoClip(clip)}
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel={t("locker.sharedClipInfoA11y", {
@@ -670,10 +680,7 @@ export function ClipsScreen() {
           {opts?.showRemoveAction && clipId ? (
             <Pressable
               style={styles.libAction}
-              onPress={(e) => {
-                e.stopPropagation?.();
-                confirmRemoveSharedClip(clip);
-              }}
+              onPress={() => confirmRemoveSharedClip(clip)}
               hitSlop={8}
               disabled={removingClipId === clipId}
               accessibilityRole="button"
@@ -688,19 +695,36 @@ export function ClipsScreen() {
           ) : canRequestLibrary ? (
             <Pressable
               style={styles.libAction}
-              onPress={(e) => {
-                e.stopPropagation?.();
-                setLibrarySheetClip(clip);
-              }}
+              onPress={() => setLibrarySheetClip(clip)}
               hitSlop={8}
             >
               <Ionicons name="library-outline" size={20} color={c.brandNavy} />
             </Pressable>
-          ) : !showSharedInfo ? (
-            <Ionicons name="chevron-forward" size={18} color={c.textMuted} />
           ) : null}
         </View>
-      </Pressable>
+      </>
+    );
+
+    if (canSelectInShareMode) {
+      return (
+        <Pressable
+          key={key}
+          style={styles.clipCard}
+          onPress={() => toggleClipSelect(clipId)}
+          onLongPress={() => {
+            if (!shareMode) setShareMode(true);
+            toggleClipSelect(clipId);
+          }}
+        >
+          {rowContent}
+        </Pressable>
+      );
+    }
+
+    return (
+      <View key={key} style={styles.clipCard}>
+        {rowContent}
+      </View>
     );
   };
 
@@ -793,6 +817,16 @@ export function ClipsScreen() {
 
         {tab === "mine" && (
           <>
+            {isTrainer ? (
+              <TrainerLockerTraineePanel
+                selectedTraineeId={selectedTraineeId}
+                onSelectTrainee={(trainee) =>
+                  setSelectedTraineeId(trainee ? String(trainee._id ?? "") || null : null)
+                }
+                renderClipRow={(clip, key) => renderClipRow(clip, key)}
+              />
+            ) : null}
+
             <ClipShareInboxBanner
               onAccepted={() => {
                 void sharedQ.refetch();
