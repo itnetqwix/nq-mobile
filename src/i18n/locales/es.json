@@ -1261,7 +1261,8 @@
       "trainerLocalTime": "Hora local del coach: {{time}}",
       "unavailable": "Tiempo insuficiente",
       "coachRate": "Tarifa del coach: {{rate}}/h",
-      "next": "Siguiente: adjuntar clips"
+      "next": "Siguiente: adjuntar clips",
+      "pickAnotherTime": "Elige otra hora"
     },
     "confirm": {
       "title": "Revisar y solicitar",
@@ -1294,6 +1295,24 @@
       "continue": "Continuar",
       "skip": "Omitir promo",
       "tapToApply": "Toca para aplicar"
+    },
+    "alerts": {
+      "selectTimeTitle": "Selecciona una hora",
+      "selectTimeBody": "Elige una hora de inicio disponible para tu sesión.",
+      "selectTimeGoBack": "Vuelve y elige una hora de inicio que encaje con la duración de tu sesión.",
+      "chooseTimeFirst": "Elige primero la hora de la sesión.",
+      "slotUnavailableTitle": "Hora no disponible",
+      "slotUnavailableBody": "Esta hora ya no está disponible. Elige otro horario.",
+      "noDurationsTitle": "Tiempo insuficiente",
+      "noDurationsBody": "Este horario no permite ninguna duración de sesión. Elige otra hora.",
+      "suggestionUnavailableTitle": "Sugerencia no disponible",
+      "suggestionUnavailableBody": "Esa hora sugerida ya no está libre. Elige otro horario.",
+      "paymentRequiredTitle": "Pago requerido",
+      "paymentRequiredBody": "Completa el pago antes de solicitar la sesión.",
+      "bookingFailedTitle": "Error al reservar",
+      "bookingFailedBody": "No se pudo reservar la sesión. Inténtalo de nuevo.",
+      "bookingFailedPaidTitle": "Horario ocupado tras el pago",
+      "bookingFailedPaidBody": "Este horario acaba de reservarse. Tu pago con tarjeta se reembolsó automáticamente — elige otro horario."
     }
   },
   "continueBooking": {

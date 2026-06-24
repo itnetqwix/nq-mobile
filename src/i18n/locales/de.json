@@ -1177,7 +1177,8 @@
       "trainerLocalTime": "Lokale Coach-Zeit: {{time}}",
       "unavailable": "Nicht genug Zeit",
       "coachRate": "Coach-Tarif: {{rate}}/Std.",
-      "next": "Weiter: Clips anhängen"
+      "next": "Weiter: Clips anhängen",
+      "pickAnotherTime": "Andere Zeit wählen"
     },
     "confirm": {
       "title": "Prüfen & anfragen",
@@ -1210,6 +1211,24 @@
       "continue": "Weiter",
       "skip": "Promo überspringen",
       "tapToApply": "Tippen zum Anwenden"
+    },
+    "alerts": {
+      "selectTimeTitle": "Zeit auswählen",
+      "selectTimeBody": "Wähle eine verfügbare Startzeit für deine Session.",
+      "selectTimeGoBack": "Geh zurück und wähle eine Startzeit, die zur Sitzungsdauer passt.",
+      "chooseTimeFirst": "Wähle zuerst eine Sitzungszeit.",
+      "slotUnavailableTitle": "Zeit nicht verfügbar",
+      "slotUnavailableBody": "Diese Zeit ist nicht mehr verfügbar. Bitte wähle einen anderen Termin.",
+      "noDurationsTitle": "Nicht genug Zeit",
+      "noDurationsBody": "In diesen Slot passt keine Sitzungsdauer. Wähle eine andere Zeit.",
+      "suggestionUnavailableTitle": "Vorschlag nicht verfügbar",
+      "suggestionUnavailableBody": "Dieser vorgeschlagene Termin ist nicht mehr frei. Wähle einen anderen Slot.",
+      "paymentRequiredTitle": "Zahlung erforderlich",
+      "paymentRequiredBody": "Bitte schließe die Zahlung ab, bevor du die Session anfragst.",
+      "bookingFailedTitle": "Buchung fehlgeschlagen",
+      "bookingFailedBody": "Die Session konnte nicht gebucht werden. Bitte versuche es erneut.",
+      "bookingFailedPaidTitle": "Slot nach Zahlung vergeben",
+      "bookingFailedPaidBody": "Dieser Termin wurde gerade vergeben. Deine Kartenzahlung wurde automatisch erstattet — wähle einen anderen Slot."
     }
   }
 }

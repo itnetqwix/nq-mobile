@@ -1,9 +1,10 @@
+import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "../../../components/ui";
-import { space, typography, useThemedStyles } from "../../../theme";
+import { Button, Card } from "../../../components/ui";
+import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import {
   biometricWalletLabel,
   isBiometricWalletEnabled,
@@ -23,13 +24,49 @@ import { useShellHeaderTitle } from "../../../navigation/useShellHeaderTitle";
 
 export function WalletSecurityScreen() {
   const { t } = useTranslation();
+  const c = useThemeColors();
   useShellHeaderTitle(t("wallet.security"));
-  const styles = useThemedStyles((c) =>
+  const styles = useThemedStyles((palette) =>
     StyleSheet.create({
-      root: { flex: 1, backgroundColor: c.surface },
-      content: { padding: space.lg, gap: space.md },
-      sub: { ...typography.bodySm, color: c.textMuted, lineHeight: 20 },
-      step: { ...typography.label, color: c.textMuted, fontWeight: "600" },
+      root: { flex: 1, backgroundColor: palette.surface },
+      content: { padding: space.lg, gap: space.md, paddingBottom: space.xxl },
+      hero: {
+        alignItems: "center",
+        gap: space.sm,
+        paddingVertical: space.sm,
+      },
+      heroIcon: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: palette.brandAccentSubtle,
+        alignItems: "center",
+        justifyContent: "center",
+      },
+      heroTitle: { ...typography.titleMd, color: palette.text, textAlign: "center" },
+      sub: { ...typography.bodySm, color: palette.textMuted, lineHeight: 20, textAlign: "center" },
+      stepRow: {
+        flexDirection: "row",
+        justifyContent: "center",
+        gap: space.sm,
+        marginBottom: space.xs,
+      },
+      stepPill: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: radii.pill,
+        borderWidth: 1,
+      },
+      stepPillActive: {
+        backgroundColor: palette.brandAccentSubtle,
+        borderColor: palette.brandNavy,
+      },
+      stepPillIdle: {
+        backgroundColor: palette.surfaceMuted,
+        borderColor: palette.border,
+      },
+      stepText: { ...typography.caption, fontWeight: "700" },
+      card: { gap: space.md },
       loading: { paddingVertical: space.xl, alignItems: "center" },
     })
   );
@@ -149,21 +186,62 @@ export function WalletSecurityScreen() {
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
-      <Text style={styles.sub}>
-        {inPinCreation && pinSet
-          ? t("wallet.changePinHint", {
-              defaultValue: "Choose a new 6-digit PIN, then confirm it.",
-            })
-          : pinSet
-            ? t("wallet.pinProtects")
-            : t("wallet.createPin")}
-      </Text>
+      <View style={styles.hero}>
+        <View style={styles.heroIcon}>
+          <Ionicons name="lock-closed" size={28} color={c.brandNavy} />
+        </View>
+        <Text style={styles.heroTitle}>
+          {pinSet
+            ? t("wallet.pinProtects", { defaultValue: "Your wallet PIN" })
+            : t("wallet.createPin", { defaultValue: "Create your wallet PIN" })}
+        </Text>
+        <Text style={styles.sub}>
+          {inPinCreation && pinSet
+            ? t("wallet.changePinHint", {
+                defaultValue: "Choose a new 6-digit PIN, then confirm it.",
+              })
+            : pinSet
+              ? t("wallet.pinProtectsBody", {
+                  defaultValue:
+                    "Use this PIN for larger wallet payments, top-ups, and card checkouts.",
+                })
+              : t("wallet.createPinBody", {
+                  defaultValue:
+                    "A 6-digit PIN protects NetQwix Wallet payments. You'll be asked before booking or paying with wallet balance.",
+                })}
+        </Text>
+      </View>
 
       {inPinCreation ? (
+        <View style={styles.stepRow}>
+          <View
+            style={[
+              styles.stepPill,
+              mode === "set" ? styles.stepPillActive : styles.stepPillIdle,
+            ]}
+          >
+            <Text style={[styles.stepText, { color: mode === "set" ? c.brandNavy : c.textMuted }]}>
+              1 · Choose
+            </Text>
+          </View>
+          <View
+            style={[
+              styles.stepPill,
+              mode === "confirm" ? styles.stepPillActive : styles.stepPillIdle,
+            ]}
+          >
+            <Text
+              style={[styles.stepText, { color: mode === "confirm" ? c.brandNavy : c.textMuted }]}
+            >
+              2 · Confirm
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
+      <Card variant="outlined" padding="md" style={styles.card}>
+      {inPinCreation ? (
         <>
-          <Text style={styles.step}>
-            {mode === "set" ? t("wallet.stepChoosePin") : t("wallet.stepConfirmPin")}
-          </Text>
           <PinPad value={activePin} onChange={onPinChange} disabled={busy || balanceFetching} />
           <Button
             label={mode === "set" ? t("wallet.continue") : t("wallet.setPin")}
@@ -206,8 +284,9 @@ export function WalletSecurityScreen() {
           />
         </>
       )}
+      </Card>
 
-      <View style={{ marginTop: space.md }}>
+      <Card variant="outlined" padding="md">
         {bioAvailable ? (
           <Button
             label={
@@ -237,7 +316,7 @@ export function WalletSecurityScreen() {
             })}
           </Text>
         )}
-      </View>
+      </Card>
     </ScrollView>
   );
 }

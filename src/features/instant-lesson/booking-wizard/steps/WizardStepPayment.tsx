@@ -144,10 +144,11 @@ export function WizardStepPayment({
     [payableAmountProp, promoResult, expectedPrice]
   );
 
+  const wallet = useWalletPaymentOption(payableAmount, true, billing.country);
+
   const totalToCharge =
     chargeTotalDollars(wallet.canPayWithWallet ? walletPricingQuote ?? pricingQuote : pricingQuote) ??
     (priceInfo?.amount ?? payableAmount);
-  const wallet = useWalletPaymentOption(totalToCharge, true, billing.country);
   const savedCard = useDefaultSavedCard(payableAmount > 0);
   const canPayMixed =
     wallet.walletPayEnabled &&
@@ -441,7 +442,7 @@ export function WizardStepPayment({
     promoResult.discount_amount > 0;
 
   return (
-    <View style={sharedStepStyles.card}>
+    <View testID="wizard-step-payment" style={sharedStepStyles.card}>
       <Text style={sharedStepStyles.sectionTitle}>Payment</Text>
 
       <View style={styles.summaryBox}>
@@ -522,6 +523,7 @@ export function WizardStepPayment({
             Spendable balance: {fmt(wallet.available, { currency: activeCurrency })}
           </Text>
           <Pressable
+            testID="wizard-payment-wallet"
             style={sharedStepStyles.primaryBtn}
             onPress={handleWalletPay}
             disabled={wallet.needsPinSetup}
@@ -533,6 +535,7 @@ export function WizardStepPayment({
             </Text>
           </Pressable>
           <Pressable
+            testID="wizard-payment-card"
             style={[sharedStepStyles.primaryBtn, styles.cardBtn]}
             disabled={!paymentReady}
             onPress={handlePay}
@@ -564,6 +567,7 @@ export function WizardStepPayment({
             Spendable balance: {fmt(wallet.available, { currency: activeCurrency })}
           </Text>
           <Pressable
+            testID="wizard-payment-mixed"
             style={sharedStepStyles.primaryBtn}
             disabled={loading || wallet.needsPinSetup}
             onPress={handleMixedPay}
@@ -592,6 +596,7 @@ export function WizardStepPayment({
 
       {!loading && (
         <Pressable
+          testID="wizard-payment-primary"
           style={[
             sharedStepStyles.primaryBtn,
             (!paymentReady && !isFree && !(wallet.canPayWithWallet && wallet.walletPayEnabled)) &&

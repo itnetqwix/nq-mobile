@@ -1177,7 +1177,8 @@
       "trainerLocalTime": "الوقت المحلي للمدرب: {{time}}",
       "unavailable": "الوقت غير كافٍ",
       "coachRate": "سعر المدرب: {{rate}}/ساعة",
-      "next": "التالي: إرفاق مقاطع"
+      "next": "التالي: إرفاق مقاطع",
+      "pickAnotherTime": "اختر وقتاً آخر"
     },
     "confirm": {
       "title": "مراجعة وطلب",
@@ -1210,6 +1211,24 @@
       "continue": "متابعة",
       "skip": "تخطي العرض",
       "tapToApply": "اضغط للتطبيق"
+    },
+    "alerts": {
+      "selectTimeTitle": "اختر وقتاً",
+      "selectTimeBody": "اختر وقت بدء متاح لجلستك.",
+      "selectTimeGoBack": "ارجع واختر وقت بدء يناسب مدة جلستك.",
+      "chooseTimeFirst": "اختر وقت الجلسة أولاً.",
+      "slotUnavailableTitle": "الوقت غير متاح",
+      "slotUnavailableBody": "لم يعد هذا الوقت متاحاً. يرجى اختيار موعد آخر.",
+      "noDurationsTitle": "الوقت غير كافٍ",
+      "noDurationsBody": "لا يتسع هذا الموعد لأي مدة للجلسة. اختر وقتاً آخر.",
+      "suggestionUnavailableTitle": "الاقتراح غير متاح",
+      "suggestionUnavailableBody": "الوقت المقترح لم يعد متاحاً. اختر موعداً آخر.",
+      "paymentRequiredTitle": "الدفع مطلوب",
+      "paymentRequiredBody": "أكمل الدفع قبل طلب الجلسة.",
+      "bookingFailedTitle": "فشل الحجز",
+      "bookingFailedBody": "تعذر حجز الجلسة. حاول مرة أخرى.",
+      "bookingFailedPaidTitle": "تم حجز الموعد بعد الدفع",
+      "bookingFailedPaidBody": "تم حجز هذا الوقت للتو. تم استرداد دفعة بطاقتك تلقائياً — اختر موعداً آخر."
     }
   }
 }

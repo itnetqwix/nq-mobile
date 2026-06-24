@@ -32,7 +32,7 @@
     "instantBooking": "Instant booking",
     "bookLesson": "Book a session",
     "manageAvailability": "Manage availability",
-    "myCommunity": "My community",
+    "myCommunity": "NQ Community",
     "inviteFriends": "Invite friends",
     "myTrainees": "My trainees",
     "upcomingSessions": "Upcoming sessions",
@@ -227,7 +227,7 @@
     "email": "Email",
     "accountType": "Account type",
     "editProfile": "Edit profile",
-    "mySchedule": "My schedule",
+    "mySchedule": "Schedule",
     "coachPromoCodes": "Promo codes",
     "coachPromoCodesSubtitle": "Discounts for your sessions (from your payout)",
     "themeMatchSystem": "Match system",
@@ -1116,6 +1116,10 @@
     "sessionsBody": "Sign in to view upcoming sessions, join calls, and manage bookings.",
     "chatsTitle": "Messages",
     "chatsBody": "Sign in to chat with experts and trainees.",
+    "clipsTitle": "Your clip library",
+    "clipsBody": "Sign in to upload, save, and share training clips.",
+    "gamePlansTitle": "Game plans",
+    "gamePlansBody": "Sign in to view and create session game plans.",
     "lock": {
       "chatWithCoach": "Sign in to chat with {{name}}",
       "bookWithCoach": "Sign in to book {{name}}",
@@ -1374,7 +1378,7 @@
       "bookingFailedTitle": "Booking failed",
       "bookingFailedBody": "Could not book the session. Please try again.",
       "bookingFailedPaidTitle": "Slot taken after payment",
-      "bookingFailedPaidBody": "Your payment went through but this time was just taken. Choose another slot — contact support if you need a refund."
+      "bookingFailedPaidBody": "This time was just taken. Your card payment was refunded automatically — choose another slot."
     }
   },
   "notifications": {
@@ -1809,7 +1813,7 @@
     "upcoming": "Upcoming",
     "past": "Past",
     "empty": "No sessions scheduled",
-    "mySchedule": "My Schedule",
+    "mySchedule": "Schedule",
     "editSchedule": "Edit schedule",
     "available": "Available",
     "noWeeklySlots": "No weekly slots yet",

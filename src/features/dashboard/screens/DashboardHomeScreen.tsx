@@ -59,7 +59,6 @@ import {
 } from "../components/home";
 import { TraineePendingRequestsBanner } from "../components/trainee/TraineePendingRequestsBanner";
 import { TrainerDashboardHub } from "../components/trainer/TrainerDashboardHub";
-import { TrainerRecentEnthusiastsStickyBar } from "../components/trainer/TrainerRecentEnthusiastsStickyBar";
 import AIFloatingButton from "../../ai/AIFloatingButton";
 import AIAssistantScreen from "../../ai/AIAssistantScreen";
 import { useSessionBooking } from "../../sessions/SessionBookingContext";
@@ -667,6 +666,9 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
               tabNav.navigate("BookNow" as never);
             }
           }}
+          leadingContent={
+            <LockerHub accountType={accountType} onOpenSurface={openShell} />
+          }
           contentContainerStyle={[gutter, styles.content]}
           onScroll={onHomeScroll}
           scrollEventThrottle={morphHome.scrollEventThrottle}
@@ -787,8 +789,6 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
                   testID="home-upcoming-sessions"
                 />
               )}
-
-              <LockerHub accountType={accountType} onOpenSurface={openShell} />
             </>
           }
         />
@@ -856,6 +856,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
             onOpenSessions={() => openFeature("upcoming-sessions")}
             onOpenClips={() => openShell("clips")}
             onOpenStudents={() => openFeature("students")}
+            onSelectRecentTrainee={() => openFeature("students")}
             onOpenSurface={openShell}
             onOpenReviews={() => openShell("trainerReviews")}
             onSessionPress={openSession}
@@ -867,10 +868,6 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
             }
           />
         </ScrollView>
-        <TrainerRecentEnthusiastsStickyBar
-          trainees={recentTrainees}
-          onSelectTrainee={() => openFeature("students")}
-        />
       </TabScreenShell>
     )}
 

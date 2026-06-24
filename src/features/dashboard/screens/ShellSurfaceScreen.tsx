@@ -22,8 +22,36 @@ import { DeleteAccountScreen } from "../../account-lifecycle/screens/DeleteAccou
 import { HibernateAccountScreen } from "../../account-lifecycle/screens/HibernateAccountScreen";
 import { TrainerReviewsScreen } from "./TrainerReviewsScreen";
 import { TrainerPromoCodesScreen } from "../../promo/screens/TrainerPromoCodesScreen";
+import { GuestTabGateScreen } from "../../auth/screens/GuestTabGateScreen";
 
 export type ShellSurfaceScreenProps = NativeStackScreenProps<HomeStackParamList, "ShellSurface">;
+
+function guestGatedContent(
+  isGuest: boolean,
+  surfaceId: string,
+  content: React.ReactNode
+): React.ReactNode {
+  if (!isGuest) return content;
+  if (surfaceId === "clips" || surfaceId === "clipSubmissions") {
+    return (
+      <GuestTabGateScreen
+        icon="videocam-outline"
+        titleKey="guest.clipsTitle"
+        bodyKey="guest.clipsBody"
+      />
+    );
+  }
+  if (surfaceId === "gamePlans") {
+    return (
+      <GuestTabGateScreen
+        icon="document-text-outline"
+        titleKey="guest.gamePlansTitle"
+        bodyKey="guest.gamePlansBody"
+      />
+    );
+  }
+  return content;
+}
 
 export function ShellSurfaceScreen({ route }: ShellSurfaceScreenProps) {
   const { surfaceId } = route.params;
@@ -50,11 +78,11 @@ export function ShellSurfaceScreen({ route }: ShellSurfaceScreenProps) {
         <WalletNavigator initialRouteName="WalletTransactions" />
       );
     case "clips":
-      return wrap(<ClipsScreen />);
+      return wrap(guestGatedContent(isGuest, surfaceId, <ClipsScreen />));
     case "clipSubmissions":
-      return wrap(<MyLibrarySubmissionsScreen />);
+      return wrap(guestGatedContent(isGuest, surfaceId, <MyLibrarySubmissionsScreen />));
     case "gamePlans":
-      return wrap(<GamePlansScreen />);
+      return wrap(guestGatedContent(isGuest, surfaceId, <GamePlansScreen />));
     case "savedLessons":
       return wrap(<SavedLessonsScreen />);
     case "invite":

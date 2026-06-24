@@ -56,6 +56,7 @@ import {
   resolveVideoSizeBytes,
   type BatchUploadProgress,
 } from "../../../capture/uploadCapturedClipsBatch";
+import { deleteCapturedClip } from "../../../capture/capturedClipsStorage";
 import {
   ClipUploadPrepareModal,
   type PreparedClipUpload,
@@ -507,6 +508,22 @@ export function ClipUploadModal({
     if (isBatch) {
       setUploadBusy(true);
       setBatchProgress(null);
+      type PreparedBatchItem = {
+        clip: {
+          id: string;
+          uri: string;
+          createdAt: string;
+          label?: string;
+          durationSecs?: number;
+          fileSizeBytes?: number;
+          mimeType?: string;
+        };
+        videoUri: string;
+        thumbUri: string;
+        title: string;
+        captureClipId?: string;
+      };
+      let preparedItems: PreparedBatchItem[] | null = null;
       try {
         let totalBytes = 0;
         for (const v of batchVideos) {
@@ -532,9 +549,21 @@ export function ClipUploadModal({
         const items = await Promise.all(
           batchVideos.map(async (v) => {
             const fileBytes = await resolveVideoSizeBytes(v.uri, v.fileSizeBytes);
+            if (fileBytes > MAX_CLIP_FILE_BYTES) {
+              throw new Error(
+                t("locker.clipTooLargeBody", { max: formatStorageMb(MAX_CLIP_FILE_BYTES) })
+              );
+            }
             const thumb =
               batchThumbs[v.uri] ??
               (await generateVideoThumbUri(v.uri, v.durationSecs));
+            if (!thumb) {
+              throw new Error(
+                t("capture.thumbRequired", {
+                  defaultValue: "Could not generate a preview for one of the videos.",
+                })
+              );
+            }
             return {
               clip: {
                 id: v.captureClipId ?? v.uri,
@@ -546,12 +575,13 @@ export function ClipUploadModal({
                 mimeType: v.mimeType,
               },
               videoUri: v.uri,
-              thumbUri: thumb ?? v.uri,
+              thumbUri: thumb,
               title: batchTitles[v.uri] ?? t("locker.clipDefault"),
               captureClipId: v.captureClipId,
             };
           })
         );
+        preparedItems = items;
 
         const { clipIds } = await uploadCapturedClipsBatch({
           items,
@@ -581,7 +611,37 @@ export function ClipUploadModal({
         onClose();
       } catch (e) {
         haptics.error();
-        Alert.alert(t("locker.uploadFailedTitle"), getApiErrorMessage(e));
+        if (isNetworkRequestError(e) && preparedItems?.length) {
+          for (const item of preparedItems) {
+            const fileBytes = item.clip.fileSizeBytes ?? 1;
+            await enqueueCaptureClipUpload({
+              videoUri: item.videoUri,
+              videoMime,
+              videoSizeBytes: fileBytes > 0 ? fileBytes : 1,
+              thumbUri: item.thumbUri,
+              title: item.title,
+              category: selectedCategory?.name ?? profileCategory,
+              category_id: categoryId,
+              subcategory_id: subcategoryId,
+              shareOptions,
+              captureClipId: item.captureClipId,
+              userId: user?._id != null ? String(user._id) : null,
+            });
+          }
+          Alert.alert(
+            t("capture.uploadQueuedTitle", { defaultValue: "Upload queued" }),
+            t("capture.batchUploadQueuedBody", {
+              defaultValue:
+                "{{count}} clip(s) will upload when you're back online.",
+              count: preparedItems.length,
+            })
+          );
+          dispatch(lockerMutated());
+          onUploaded();
+          onClose();
+        } else {
+          Alert.alert(t("locker.uploadFailedTitle"), getApiErrorMessage(e));
+        }
       } finally {
         setUploadBusy(false);
         setBatchProgress(null);
@@ -674,6 +734,12 @@ export function ClipUploadModal({
       }
 
       haptics.success();
+      if (captureClipId) {
+        await deleteCapturedClip(
+          user?._id != null ? String(user._id) : null,
+          captureClipId
+        ).catch(() => {});
+      }
       Alert.alert(
         t("locker.uploadedTitle"),
         shareTarget === SHARE_FRIENDS
@@ -717,6 +783,7 @@ export function ClipUploadModal({
           })
         );
         onClose();
+        onUploaded();
       } else {
         Alert.alert(t("locker.uploadFailedTitle"), getApiErrorMessage(e));
       }

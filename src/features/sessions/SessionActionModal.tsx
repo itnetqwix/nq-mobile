@@ -56,6 +56,14 @@ import { formatRefundTransferLabel } from "../../lib/sessions/refundTransferLabe
 import { InstantLessonSessionActions } from "../instant-lesson/components/InstantLessonSessionActions";
 import { SessionEarlyEndActions } from "./components/SessionEarlyEndActions";
 import { fetchSessionJoinReadiness } from "../calling/sessionLiveApi";
+import { fetchSessionHandoffSummary } from "../calling/sessionLiveApi";
+import { SessionGamePlanModal } from "../calling/components/SessionGamePlanModal";
+import { LockerViewerModal } from "../dashboard/components/locker/LockerViewerModal";
+import {
+  resolveSessionGamePlanViewer,
+  sessionPartyIds,
+  type GamePlanViewerPayload,
+} from "./lib/sessionGamePlanAccess";
 
 type Props = {
   visible: boolean;
@@ -73,6 +81,9 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
   const [localSession, setLocalSession] = useState<any | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [ratingsOpen, setRatingsOpen] = useState(false);
+  const [gamePlanViewer, setGamePlanViewer] = useState<GamePlanViewerPayload | null>(null);
+  const [gamePlanEditOpen, setGamePlanEditOpen] = useState(false);
+  const [gamePlanBusy, setGamePlanBusy] = useState(false);
 
   useEffect(() => {
     setLocalSession(session);
@@ -112,6 +123,57 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
   const completed = status === "completed";
   const terminal = viewSession ? isSessionTerminalForUI(viewSession) : false;
   const instant = isInstantLesson(viewSession);
+
+  const { trainerId: planTrainerId, traineeId: planTraineeId } = useMemo(
+    () => sessionPartyIds(viewSession),
+    [viewSession]
+  );
+
+  const handoffQ = useQuery({
+    queryKey: queryKeys.sessions.handoff(sessionId),
+    queryFn: () => fetchSessionHandoffSummary(sessionId),
+    enabled: visible && completed && !!sessionId,
+    staleTime: 30_000,
+  });
+
+  const gamePlanStatus = handoffQ.data?.game_plan_status ?? "none";
+  const gamePlanTitle = handoffQ.data?.game_plan_title;
+  const showGamePlanActions =
+    completed &&
+    !terminal &&
+    (gamePlanStatus === "available" ||
+      gamePlanStatus === "pending" ||
+      (isTrainer && gamePlanStatus !== "none"));
+
+  const openGamePlanViewer = useCallback(async () => {
+    if (!sessionId || !planTrainerId || !planTraineeId) {
+      Alert.alert("Game plan", "Session details are missing for this plan.");
+      return;
+    }
+    setGamePlanBusy(true);
+    try {
+      const payload = await resolveSessionGamePlanViewer({
+        sessionId,
+        trainerId: planTrainerId,
+        traineeId: planTraineeId,
+        fallbackTitle: gamePlanTitle ?? undefined,
+      });
+      if (!payload) {
+        Alert.alert(
+          "Game plan",
+          gamePlanStatus === "pending"
+            ? "Your coach is still finalizing this game plan. Check back soon."
+            : "No game plan document is available for this session yet."
+        );
+        return;
+      }
+      setGamePlanViewer(payload);
+    } catch (e: unknown) {
+      Alert.alert("Game plan", "Could not load the game plan. Try again in a moment.");
+    } finally {
+      setGamePlanBusy(false);
+    }
+  }, [sessionId, planTrainerId, planTraineeId, gamePlanTitle, gamePlanStatus]);
 
   useQuery({
     queryKey: queryKeys.sessions.joinReadiness(sessionId),
@@ -626,6 +688,31 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
 
               {completed && !terminal ? (
                 <>
+                  {showGamePlanActions ? (
+                    <>
+                      <Button
+                        label={
+                          gamePlanBusy
+                            ? "Opening game plan…"
+                            : gamePlanTitle
+                              ? `View game plan — ${gamePlanTitle}`
+                              : "View game plan"
+                        }
+                        leftIcon="document-text-outline"
+                        onPress={() => void openGamePlanViewer()}
+                        disabled={gamePlanBusy}
+                        loading={gamePlanBusy}
+                      />
+                      {isTrainer && planTrainerId && planTraineeId ? (
+                        <Button
+                          label="Edit game plan"
+                          variant="secondary"
+                          leftIcon="create-outline"
+                          onPress={() => setGamePlanEditOpen(true)}
+                        />
+                      ) : null}
+                    </>
+                  ) : null}
                   {ratingSummary ? (
                     <Text style={styles.hint}>Your rating: {ratingSummary}</Text>
                   ) : null}
@@ -724,6 +811,27 @@ export function SessionActionModal({ visible, session, onClose, onSessionUpdated
             }
           });
         }}
+      />
+      {gamePlanEditOpen && planTrainerId && planTraineeId ? (
+        <SessionGamePlanModal
+          visible
+          sessionId={sessionId}
+          trainerId={planTrainerId}
+          traineeId={planTraineeId}
+          lockerEdit
+          onClose={() => setGamePlanEditOpen(false)}
+          onSaved={() => {
+            setGamePlanEditOpen(false);
+            void handoffQ.refetch();
+          }}
+        />
+      ) : null}
+      <LockerViewerModal
+        visible={!!gamePlanViewer}
+        onClose={() => setGamePlanViewer(null)}
+        uri={gamePlanViewer?.uri ?? ""}
+        title={gamePlanViewer?.title}
+        mode={gamePlanViewer?.mode ?? "pdf"}
       />
     </Modal>
   );

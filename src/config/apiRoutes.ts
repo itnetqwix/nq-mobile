@@ -224,6 +224,7 @@ export const API_ROUTES = {
     instantLessonEligibility: "/trainee/instant-lesson/eligibility",
     profile: "/trainee/profile",
     checkSlot: "/trainee/check-slot",
+    holdScheduledSlot: "/trainee/hold-scheduled-slot",
     recentTrainers: "/trainee/recent-trainers",
     favoriteTrainers: "/trainee/favorite-trainers",
     favoriteTrainer: (trainerId: string) => `/trainee/favorite-trainers/${trainerId}` as const,

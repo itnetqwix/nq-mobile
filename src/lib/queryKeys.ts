@@ -12,6 +12,7 @@ export const queryKeys = {
     detail: (sessionId: string) => ["sessions", "detail", sessionId] as const,
     lookup: (lessonId: string) => ["sessionLookup", lessonId] as const,
     joinReadiness: (lessonId: string) => ["session", "join-readiness", lessonId] as const,
+    handoff: (sessionId: string) => ["session", "handoff", sessionId] as const,
   },
   scheduledMeetings: ["scheduledMeetings"] as const,
   notifications: {
@@ -49,6 +50,7 @@ export const queryKeys = {
         : (["groupMembers", groupId] as const),
     groupInvites: ["groupInvites"] as const,
     globalSearch: (q: string) => ["chat", "globalSearch", q] as const,
+    scheduled: ["chat", "scheduled"] as const,
     pinned: (conversationId: string) => ["chat", "pinned", conversationId] as const,
   },
   presence: {

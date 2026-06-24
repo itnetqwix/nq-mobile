@@ -506,28 +506,6 @@ export function InstantLessonProvider({
     [socket, clearExpiryTimer, stopRinging]
   );
 
-  const acceptRequest = useCallback(() => {
-    if (!trainerIncoming || trainerIncoming.step !== "incoming" || !socket) return;
-    const { lessonId, coachId, traineeId } = trainerIncoming;
-    emitAccept(lessonId, coachId, traineeId, (joinMs) => {
-      void dismissInstantLessonIncomingCall(lessonId);
-      void endInstantLessonCall(lessonId);
-      applyInstantAcceptToSessionCache(lessonId, joinMs);
-      setTrainerIncoming((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          step: "accepted",
-          joinDeadlineAt: joinMs,
-          expiresAt: joinMs,
-          minimized: true,
-        };
-      });
-      scheduleExpiry(joinMs, () => setTrainerIncoming(null));
-      invalidateSessionLists();
-    });
-  }, [trainerIncoming, socket, emitAccept, scheduleExpiry, invalidateSessionLists, applyInstantAcceptToSessionCache]);
-
   const expireRequest = useCallback(() => {
     if (!trainerIncoming || !socket) return;
     if (trainerIncoming.step === "incoming") {
@@ -542,22 +520,6 @@ export function InstantLessonProvider({
     void endInstantLessonCall(String(trainerIncoming.lessonId));
     setTrainerIncoming(null);
   }, [trainerIncoming, socket, clearExpiryTimer, stopRinging]);
-
-  const declineRequest = useCallback(() => {
-    if (!trainerIncoming || !socket) return;
-    void stopRinging();
-    const lid = String(trainerIncoming.lessonId);
-    markLessonDismissed(lid);
-    socket.emit(EVENTS.DECLINE, {
-      lessonId: trainerIncoming.lessonId,
-      coachId: trainerIncoming.coachId,
-      traineeId: trainerIncoming.traineeId,
-    });
-    clearExpiryTimer();
-    void dismissInstantLessonIncomingCall(lid);
-    void endInstantLessonCall(lid);
-    setTrainerIncoming(null);
-  }, [trainerIncoming, socket, clearExpiryTimer, stopRinging, markLessonDismissed]);
 
   const joinTrainerLesson = useCallback(() => {
     if (!trainerIncoming || trainerIncoming.step !== "accepted") return;
@@ -966,6 +928,26 @@ export function InstantLessonProvider({
     },
     [socket, userId, stopRinging, clearExpiryTimer, markLessonDismissed, invalidateSessionLists]
   );
+
+  const acceptRequest = useCallback(() => {
+    if (!trainerIncoming || trainerIncoming.step !== "incoming") return;
+    void acceptInstantSession({
+      _id: trainerIncoming.lessonId,
+      id: trainerIncoming.lessonId,
+      coach_id: trainerIncoming.coachId,
+      trainee_id: trainerIncoming.traineeId,
+    }).catch(() => {});
+  }, [trainerIncoming, acceptInstantSession]);
+
+  const declineRequest = useCallback(() => {
+    if (!trainerIncoming || trainerIncoming.step !== "incoming") return;
+    void declineInstantSession({
+      _id: trainerIncoming.lessonId,
+      id: trainerIncoming.lessonId,
+      coach_id: trainerIncoming.coachId,
+      trainee_id: trainerIncoming.traineeId,
+    }).catch(() => {});
+  }, [trainerIncoming, declineInstantSession]);
 
   const acceptIncomingPayload = useCallback(
     async (payload: InstantLessonIncomingPayload) => {

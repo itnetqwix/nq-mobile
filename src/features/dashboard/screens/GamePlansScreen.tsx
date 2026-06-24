@@ -4,6 +4,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -21,8 +22,10 @@ import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
 import { queryKeys } from "../../../lib/queryKeys";
+import { useDebouncedValue, SEARCH_LOCAL_DEBOUNCE_MS } from "../../../lib/timing";
 
-const HERO_HEIGHT = 110;
+const COMPACT_THUMB = 44;
+type PlanFilter = "all" | "draft" | "published" | "pending";
 
 function formatReportDate(
   id: { month?: number; day?: number; year?: number } | null | undefined,
@@ -106,8 +109,13 @@ export function GamePlansScreen() {
   const { width: windowWidth } = useWindowDimensions();
   const cardWidth = windowWidth - space.md * 2;
   const isTrainer = accountType !== AccountType.TRAINEE;
+  const columnWidth = (cardWidth - space.sm) / 2;
 
   const styles = useStyles();
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [planFilter, setPlanFilter] = useState<PlanFilter>("all");
+  const debouncedSearch = useDebouncedValue(searchQuery, SEARCH_LOCAL_DEBOUNCE_MS);
 
   const reportsQ = useQuery({
     queryKey: queryKeys.locker.reports,
@@ -203,6 +211,38 @@ export function GamePlansScreen() {
 
   const totalPlans = reportSections.reduce((n, s) => n + s.data.length, 0);
 
+  const flatPlans = useMemo(
+    () =>
+      reportSections.flatMap((section) =>
+        section.data.map((item) => ({ item, sectionDate: section.date }))
+      ),
+    [reportSections]
+  );
+
+  const filteredPlans = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase();
+    return flatPlans.filter(({ item }) => {
+      const reportData = (item.reportData as { title?: string }[] | undefined)?.[0];
+      const title = String(reportData?.title ?? item.title ?? "");
+      if (q && !title.toLowerCase().includes(q)) return false;
+      if (!isTrainer || planFilter === "all") return true;
+      const session = item.session as SessionPlanMeta | undefined;
+      if (planFilter === "draft") return item.publish_status === "draft";
+      if (planFilter === "published") return item.publish_status !== "draft";
+      if (planFilter === "pending") return session?.game_plan_pdf_status === "pending";
+      return true;
+    });
+  }, [flatPlans, debouncedSearch, isTrainer, planFilter]);
+
+  const filterChips: { id: PlanFilter; label: string }[] = isTrainer
+    ? [
+        { id: "all", label: t("gamePlans.filterAll", { defaultValue: "All" }) },
+        { id: "published", label: t("gamePlans.filterPublished", { defaultValue: "Published" }) },
+        { id: "draft", label: t("gamePlans.filterDraft", { defaultValue: "Drafts" }) },
+        { id: "pending", label: t("gamePlans.filterPending", { defaultValue: "Generating" }) },
+      ]
+    : [];
+
   return (
     <>
       <LockerListShell
@@ -223,170 +263,171 @@ export function GamePlansScreen() {
           />
         ) : (
           <>
-            {/* total count header */}
             <View style={styles.listHeader}>
               <Ionicons name="folder-open-outline" size={18} color={c.brandNavy} />
               <Text style={styles.listHeaderText}>
                 {t("gamePlans.totalPlans", {
                   defaultValue: "{{count}} game plans",
-                  count: totalPlans,
+                  count: filteredPlans.length,
                 })}
               </Text>
             </View>
 
-            {reportSections.map((section, si) => (
-              <View key={`${section.date}-${si}`} style={styles.section}>
-                {/* sticky-feeling date header */}
-                <View style={styles.dateHeader}>
-                  <View style={styles.dateIconWrap}>
-                    <Ionicons name="calendar-outline" size={15} color={c.brandNavy} />
-                  </View>
-                  <Text style={styles.dateText}>{section.date}</Text>
-                  <View style={styles.datePill}>
-                    <Text style={styles.datePillText}>{section.data.length}</Text>
-                  </View>
-                </View>
+            <View style={[styles.searchBar, { borderColor: c.border, backgroundColor: c.surfaceElevated }]}>
+              <Ionicons name="search-outline" size={18} color={c.textMuted} />
+              <TextInput
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder={t("gamePlans.searchPlaceholder", {
+                  defaultValue: "Search by title…",
+                })}
+                placeholderTextColor={c.textMuted}
+                style={[styles.searchInput, { color: c.text }]}
+                autoCorrect={false}
+                autoCapitalize="none"
+                clearButtonMode="while-editing"
+              />
+            </View>
 
-                <View style={styles.cardsWrap}>
-                  {section.data.map((item, index) => {
-                    const reportData = (item.reportData as { imageUrl?: string; title?: string }[] | undefined)?.[0];
-                    const title = reportData?.title ?? String(item.title ?? t("gamePlans.planDefault", { defaultValue: "Game Plan" }));
-                    const session = item.session as SessionPlanMeta | undefined;
-                    const hasPdf = !!session?.report;
-                    const pdfPending = session?.game_plan_pdf_status === "pending";
-                    const pdfFailed = session?.game_plan_pdf_status === "failed";
-                    const isDraft = item.publish_status === "draft";
-                    const lessonDate = formatLessonDate(session?.start_time ?? item.updatedAt);
-                    const updatedLabel = formatRelativeUpdated(item.updatedAt);
-                    const trainerLabel = String(
-                      (item.trainer as { fullname?: string; fullName?: string })?.fullname ??
-                        (item.trainer as { fullName?: string })?.fullName ?? ""
-                    );
-                    const uri = !hasPdf && reportData?.imageUrl ? getS3ImageUrl(reportData.imageUrl) : "";
-                    const kind = planKind(item);
-                    const km = KIND_META[kind];
-
-                    const sessionId = String(
-                      item.sessions ?? (item.session as { _id?: string } | undefined)?._id ?? ""
-                    );
-                    const trainerId = String((item.trainer as { _id?: string })?._id ?? item.trainer ?? "");
-                    const traineeId = String((item.trainee as { _id?: string })?._id ?? item.trainee ?? "");
-                    const traineeLabel = String(
-                      (item.trainee as { fullname?: string; fullName?: string })?.fullname ??
-                        (item.trainee as { fullName?: string })?.fullName ?? ""
-                    );
-                    const canEdit = isTrainer && !!sessionId && !!trainerId && !!traineeId;
-
-                    return (
-                      <Pressable
-                        key={`plan-${String(item._id ?? "row")}-${index}`}
-                        style={({ pressed }) => [styles.planCard, pressed && { opacity: 0.94 }]}
-                        onPress={() => openPlan(item)}
-                        accessibilityRole="button"
-                        accessibilityLabel={title}
+            {isTrainer && filterChips.length > 0 ? (
+              <View style={styles.filterRow}>
+                {filterChips.map((chip) => {
+                  const active = planFilter === chip.id;
+                  return (
+                    <Pressable
+                      key={chip.id}
+                      onPress={() => setPlanFilter(chip.id)}
+                      style={[
+                        styles.filterChip,
+                        {
+                          borderColor: active ? c.brandNavy : c.border,
+                          backgroundColor: active ? c.brandAccentSubtle : c.surface,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.filterChipText,
+                          { color: active ? c.brandNavy : c.textMuted },
+                        ]}
                       >
-                        {/* Hero area */}
-                        <View style={styles.heroWrap}>
-                          {uri ? (
-                            <ImageWithSkeleton
-                              uri={uri}
-                              width={cardWidth}
-                              height={HERO_HEIGHT}
-                              borderRadius={radii.md}
-                              resizeMode="cover"
-                              accessibilityLabel={title}
-                            />
-                          ) : (
-                            <View style={[styles.heroPh, { backgroundColor: km.bg }]}>
-                              <Ionicons name={km.icon} size={40} color={km.color} />
-                            </View>
-                          )}
-                          {/* kind badge overlaid on hero */}
-                          <View style={[styles.kindBadge, { backgroundColor: km.bg, borderColor: km.color + "44" }]}>
-                            <Ionicons name={km.icon} size={11} color={km.color} />
-                            <Text style={[styles.kindBadgeText, { color: km.color }]}>
-                              {pdfPending ? "Generating PDF" : km.label}
-                            </Text>
-                          </View>
-                          {isTrainer && isDraft ? (
-                            <View style={[styles.statusBadge, styles.draftBadge]}>
-                              <Text style={styles.draftBadgeText}>Draft</Text>
-                            </View>
-                          ) : null}
-                          {pdfFailed ? (
-                            <View style={[styles.statusBadge, styles.failedBadge]}>
-                              <Text style={styles.failedBadgeText}>PDF failed</Text>
-                            </View>
-                          ) : null}
-                        </View>
-
-                        {/* Content area */}
-                        <View style={styles.cardBody}>
-                          <Text style={styles.planTitle} numberOfLines={2}>{title}</Text>
-
-                          {lessonDate ? (
-                            <View style={styles.metaRow}>
-                              <Ionicons name="calendar-outline" size={11} color={c.textMuted} />
-                              <Text style={styles.metaText} numberOfLines={1}>{lessonDate}</Text>
-                            </View>
-                          ) : null}
-
-                          {isTrainer && traineeLabel ? (
-                            <View style={styles.traineeTag}>
-                              <Ionicons name="person-outline" size={11} color={c.textMuted} />
-                              <Text style={styles.traineeTagText} numberOfLines={1}>{traineeLabel}</Text>
-                            </View>
-                          ) : null}
-
-                          {!isTrainer && trainerLabel ? (
-                            <View style={styles.traineeTag}>
-                              <Ionicons name="school-outline" size={11} color={c.textMuted} />
-                              <Text style={styles.traineeTagText} numberOfLines={1}>{trainerLabel}</Text>
-                            </View>
-                          ) : null}
-
-                          {updatedLabel ? (
-                            <Text style={styles.updatedText}>{updatedLabel}</Text>
-                          ) : null}
-
-                          {pdfPending ? (
-                            <Text style={styles.pendingText}>
-                              {t("gamePlans.pdfGenerating", { defaultValue: "PDF generating…" })}
-                            </Text>
-                          ) : null}
-
-                          <View style={styles.cardFooter}>
-                            {/* Edit button for trainers */}
-                            {canEdit ? (
-                              <Pressable
-                                style={styles.editBtn}
-                                onPress={(e) => {
-                                  e.stopPropagation?.();
-                                  setEditPlan({ sessionId, trainerId, traineeId, traineeName: traineeLabel || undefined });
-                                }}
-                                hitSlop={8}
-                                accessibilityRole="button"
-                              >
-                                <Ionicons name="create-outline" size={14} color={c.brandNavy} />
-                                <Text style={styles.editBtnText}>{t("gamePlans.edit", { defaultValue: "Edit plan" })}</Text>
-                              </Pressable>
-                            ) : (
-                              <View />
-                            )}
-
-                            {/* Preview CTA */}
-                            <View style={styles.previewCta}>
-                              <Text style={styles.previewCtaText}>{t("gamePlans.tapToPreview", { defaultValue: "Tap to preview" })}</Text>
-                              <Ionicons name="arrow-forward" size={13} color={c.brandNavy} />
-                            </View>
-                          </View>
-                        </View>
-                      </Pressable>
-                    );
-                  })}
-                </View>
+                        {chip.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
               </View>
-            ))}
+            ) : null}
+
+            {filteredPlans.length === 0 ? (
+              <Text style={styles.emptyFilter}>
+                {t("gamePlans.noSearchResults", {
+                  defaultValue: "No game plans match your search.",
+                })}
+              </Text>
+            ) : (
+              <View style={styles.compactGrid}>
+                {filteredPlans.map(({ item, sectionDate }, index) => {
+                  const reportData = (item.reportData as { imageUrl?: string; title?: string }[] | undefined)?.[0];
+                  const title = reportData?.title ?? String(item.title ?? t("gamePlans.planDefault", { defaultValue: "Game Plan" }));
+                  const session = item.session as SessionPlanMeta | undefined;
+                  const hasPdf = !!session?.report;
+                  const pdfPending = session?.game_plan_pdf_status === "pending";
+                  const isDraft = item.publish_status === "draft";
+                  const lessonDate = formatLessonDate(session?.start_time ?? item.updatedAt);
+                  const traineeLabel = String(
+                    (item.trainee as { fullname?: string; fullName?: string })?.fullname ??
+                      (item.trainee as { fullName?: string })?.fullName ?? ""
+                  );
+                  const trainerLabel = String(
+                    (item.trainer as { fullname?: string; fullName?: string })?.fullname ??
+                      (item.trainer as { fullName?: string })?.fullName ?? ""
+                  );
+                  const uri = !hasPdf && reportData?.imageUrl ? getS3ImageUrl(reportData.imageUrl) : "";
+                  const kind = planKind(item);
+                  const km = KIND_META[kind];
+                  const sessionId = String(
+                    item.sessions ?? (item.session as { _id?: string } | undefined)?._id ?? ""
+                  );
+                  const trainerId = String((item.trainer as { _id?: string })?._id ?? item.trainer ?? "");
+                  const traineeId = String((item.trainee as { _id?: string })?._id ?? item.trainee ?? "");
+                  const canEdit = isTrainer && !!sessionId && !!trainerId && !!traineeId;
+
+                  return (
+                    <Pressable
+                      key={`plan-${String(item._id ?? "row")}-${index}`}
+                      style={({ pressed }) => [
+                        styles.compactCard,
+                        { width: columnWidth },
+                        pressed && { opacity: 0.92 },
+                      ]}
+                      onPress={() => openPlan(item)}
+                      accessibilityRole="button"
+                      accessibilityLabel={title}
+                    >
+                      {uri ? (
+                        <ImageWithSkeleton
+                          uri={uri}
+                          width={COMPACT_THUMB}
+                          height={COMPACT_THUMB}
+                          borderRadius={radii.sm}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={[styles.compactThumb, { backgroundColor: km.bg }]}>
+                          <Ionicons name={km.icon} size={20} color={km.color} />
+                        </View>
+                      )}
+                      <View style={styles.compactBody}>
+                        <Text style={styles.planTitle} numberOfLines={2}>
+                          {title}
+                        </Text>
+                        <Text style={styles.metaText} numberOfLines={1}>
+                          {lessonDate ?? sectionDate}
+                        </Text>
+                        {isTrainer && traineeLabel ? (
+                          <Text style={styles.metaText} numberOfLines={1}>
+                            {traineeLabel}
+                          </Text>
+                        ) : null}
+                        {!isTrainer && trainerLabel ? (
+                          <Text style={styles.metaText} numberOfLines={1}>
+                            {trainerLabel}
+                          </Text>
+                        ) : null}
+                        <View style={styles.badgeRow}>
+                          {isTrainer && isDraft ? (
+                            <Text style={styles.miniBadgeDraft}>Draft</Text>
+                          ) : null}
+                          {pdfPending ? (
+                            <Text style={styles.miniBadgePending}>PDF…</Text>
+                          ) : (
+                            <Text style={[styles.miniBadgeKind, { color: km.color }]}>{km.label}</Text>
+                          )}
+                        </View>
+                        {canEdit ? (
+                          <Pressable
+                            style={styles.editBtn}
+                            onPress={(e) => {
+                              e.stopPropagation?.();
+                              setEditPlan({
+                                sessionId,
+                                trainerId,
+                                traineeId,
+                                traineeName: traineeLabel || undefined,
+                              });
+                            }}
+                            hitSlop={8}
+                          >
+                            <Ionicons name="create-outline" size={12} color={c.brandNavy} />
+                          </Pressable>
+                        ) : null}
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
           </>
         )}
       </LockerListShell>
@@ -433,182 +474,112 @@ function useStyles() {
         color: palette.textMuted,
         fontWeight: "600",
       },
-      section: {
-        marginBottom: space.md,
-      },
-      dateHeader: {
+      searchBar: {
         flexDirection: "row",
         alignItems: "center",
         gap: space.xs,
+        borderWidth: 1,
+        borderRadius: radii.md,
+        paddingHorizontal: space.sm,
+        paddingVertical: 8,
         marginBottom: space.sm,
-        paddingHorizontal: 2,
       },
-      dateIconWrap: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        backgroundColor: palette.brandSubtle,
-        alignItems: "center",
-        justifyContent: "center",
-      },
-      dateText: {
-        ...typography.titleSm,
-        color: palette.text,
-        fontWeight: "700",
+      searchInput: {
         flex: 1,
+        ...typography.bodySm,
+        paddingVertical: 0,
       },
-      datePill: {
-        backgroundColor: palette.brandNavy,
-        paddingHorizontal: 8,
-        paddingVertical: 2,
+      filterRow: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: space.xs,
+        marginBottom: space.sm,
+      },
+      filterChip: {
+        paddingHorizontal: 10,
+        paddingVertical: 6,
         borderRadius: radii.pill,
-        minWidth: 24,
-        alignItems: "center",
+        borderWidth: 1,
       },
-      datePillText: {
-        color: palette.brandTextOn,
-        fontSize: 11,
+      filterChipText: {
+        ...typography.caption,
         fontWeight: "700",
       },
-      cardsWrap: {
-        gap: space.sm,
+      emptyFilter: {
+        ...typography.bodySm,
+        color: palette.textMuted,
+        textAlign: "center",
+        paddingVertical: space.lg,
       },
-      planCard: {
-        borderRadius: radii.lg,
+      compactGrid: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        justifyContent: "space-between",
+        rowGap: space.sm,
+      },
+      compactCard: {
+        flexDirection: "row",
+        gap: space.xs,
+        borderRadius: radii.md,
         borderWidth: 1,
         borderColor: palette.border,
         backgroundColor: palette.surfaceElevated,
-        overflow: "hidden",
+        padding: space.xs,
+        minHeight: 88,
       },
-      heroWrap: {
-        position: "relative",
-      },
-      heroPh: {
-        height: HERO_HEIGHT,
+      compactThumb: {
+        width: COMPACT_THUMB,
+        height: COMPACT_THUMB,
+        borderRadius: radii.sm,
         alignItems: "center",
         justifyContent: "center",
-        borderTopLeftRadius: radii.lg,
-        borderTopRightRadius: radii.lg,
       },
-      kindBadge: {
-        position: "absolute",
-        top: 8,
-        left: 8,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 3,
-        paddingHorizontal: 7,
-        paddingVertical: 3,
-        borderRadius: radii.pill,
-        borderWidth: 1,
-      },
-      kindBadgeText: {
-        fontSize: 10,
-        fontWeight: "700",
-      },
-      statusBadge: {
-        position: "absolute",
-        top: 8,
-        right: 8,
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: radii.pill,
-      },
-      draftBadge: {
-        backgroundColor: "#fff8e6",
-        borderWidth: 1,
-        borderColor: "#f0c040",
-      },
-      draftBadgeText: {
-        fontSize: 10,
-        fontWeight: "700",
-        color: "#8a6d00",
-      },
-      failedBadge: {
-        backgroundColor: "#fef2f2",
-        borderWidth: 1,
-        borderColor: "#fca5a5",
-      },
-      failedBadgeText: {
-        fontSize: 10,
-        fontWeight: "700",
-        color: "#b91c1c",
-      },
-      metaRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        marginTop: 4,
-      },
-      metaText: {
-        fontSize: 11,
-        color: palette.textMuted,
+      compactBody: {
         flex: 1,
+        minWidth: 0,
+        gap: 2,
+        position: "relative",
+        paddingRight: 18,
       },
-      updatedText: {
-        fontSize: 11,
-        color: palette.textMuted,
-        marginTop: 4,
-      },
-      pendingText: {
-        fontSize: 11,
-        color: palette.brandNavy,
-        fontWeight: "600",
-        marginTop: 4,
-      },
-      cardBody: {
-        paddingHorizontal: space.sm,
-        paddingVertical: space.sm,
-        gap: 4,
-      },
-      planTitle: {
-        ...typography.bodySm,
-        fontWeight: "700",
-        color: palette.text,
-        lineHeight: 18,
-      },
-      traineeTag: {
+      badgeRow: {
         flexDirection: "row",
-        alignItems: "center",
+        flexWrap: "wrap",
         gap: 4,
         marginTop: 2,
       },
-      traineeTagText: {
-        ...typography.caption,
-        color: palette.textMuted,
-        flex: 1,
-      },
-      cardFooter: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginTop: 4,
-      },
-      editBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        paddingVertical: 4,
-        paddingHorizontal: 8,
+      miniBadgeDraft: {
+        fontSize: 9,
+        fontWeight: "700",
+        color: "#8a6d00",
+        backgroundColor: "#fff8e6",
+        paddingHorizontal: 5,
+        paddingVertical: 1,
         borderRadius: radii.pill,
-        borderWidth: 1,
-        borderColor: palette.border,
-        backgroundColor: palette.surfaceMuted,
       },
-      editBtnText: {
-        ...typography.caption,
+      miniBadgePending: {
+        fontSize: 9,
+        fontWeight: "700",
         color: palette.brandNavy,
+      },
+      miniBadgeKind: {
+        fontSize: 9,
         fontWeight: "700",
       },
-      previewCta: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
+      metaText: {
+        fontSize: 10,
+        color: palette.textMuted,
       },
-      previewCtaText: {
+      planTitle: {
         ...typography.caption,
-        color: palette.brandNavy,
-        fontWeight: "600",
+        fontWeight: "700",
+        color: palette.text,
+        lineHeight: 14,
+      },
+      editBtn: {
+        position: "absolute",
+        right: 0,
+        bottom: 0,
+        padding: 4,
       },
     })
   );

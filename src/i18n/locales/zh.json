@@ -1177,7 +1177,8 @@
       "trainerLocalTime": "教练当地时间：{{time}}",
       "unavailable": "时间不足",
       "coachRate": "教练费率：{{rate}}/小时",
-      "next": "下一步：附加片段"
+      "next": "下一步：附加片段",
+      "pickAnotherTime": "选择其他时间"
     },
     "confirm": {
       "title": "确认并请求",
@@ -1210,6 +1211,24 @@
       "continue": "继续",
       "skip": "跳过优惠码",
       "tapToApply": "点击应用"
+    },
+    "alerts": {
+      "selectTimeTitle": "选择时间",
+      "selectTimeBody": "请选择可用的会话开始时间。",
+      "selectTimeGoBack": "请返回并选择与您的会话时长匹配的开始时间。",
+      "chooseTimeFirst": "请先选择会话时间。",
+      "slotUnavailableTitle": "时间不可用",
+      "slotUnavailableBody": "该时间已不再可用，请选择其他时间段。",
+      "noDurationsTitle": "时间不足",
+      "noDurationsBody": "该时段无法容纳任何会话时长，请另选时间。",
+      "suggestionUnavailableTitle": "建议时间不可用",
+      "suggestionUnavailableBody": "建议的时间已不可用，请选择其他时段。",
+      "paymentRequiredTitle": "需要付款",
+      "paymentRequiredBody": "请先完成付款再提交会话请求。",
+      "bookingFailedTitle": "预订失败",
+      "bookingFailedBody": "无法预订该会话，请重试。",
+      "bookingFailedPaidTitle": "付款后时段已被占用",
+      "bookingFailedPaidBody": "该时间刚被预订。您的卡付款已自动退款 — 请选择其他时间。"
     }
   }
 }

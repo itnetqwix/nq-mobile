@@ -225,6 +225,7 @@ export function TrainerBrowseCard({
             </Text>
           </Pressable>
           <Pressable
+            testID="book-expert-schedule"
             style={[styles.actionBtn, styles.actionBtnOutline, styles.actionBtnFlex]}
             onPress={() => onSchedule(trainer)}
           >

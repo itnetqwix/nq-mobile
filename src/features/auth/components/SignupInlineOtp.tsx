@@ -45,7 +45,7 @@ export function SignupInlineOtp({
   const formatValid =
     channel === "email"
       ? Boolean(destination && EMAIL_RE.test(destination))
-      : Boolean(destination && destination.replace(/\D/g, "").length >= 10);
+      : Boolean(destination && destination.startsWith("+") && destination.replace(/\D/g, "").length >= 11);
 
   const canSendOtp =
     !disabled &&

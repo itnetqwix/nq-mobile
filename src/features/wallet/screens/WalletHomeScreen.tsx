@@ -18,6 +18,7 @@ import { useFloatingTabBarBottomInset } from "../../../navigation/useFloatingTab
 import type { WalletStackParamList } from "../navigation/WalletNavigator";
 import { TrainerWalletHome } from "../components/TrainerWalletHome";
 import { WalletPaymentExplainer } from "../components/WalletPaymentExplainer";
+import { WalletPinSetupBanner } from "../components/WalletPinSetupBanner";
 import { useShellHeaderTitle } from "../../../navigation/useShellHeaderTitle";
 import { useCurrencyFormatter } from "../../../lib/intl";
 
@@ -188,6 +189,12 @@ function TraineeWalletHome({ navigation }: Props) {
         </Pressable>
       </View>
 
+      {!balance?.pinSet ? (
+        <WalletPinSetupBanner
+          onSetupPin={() => navigation.navigate("WalletSecurity")}
+        />
+      ) : null}
+
       <Text style={styles.sectionTitle}>{t("wallet.whyUseWallet")}</Text>
       {benefits.map((b) => (
         <View key={b.title} style={styles.benefitRow}>
@@ -254,7 +261,13 @@ function TraineeWalletHome({ navigation }: Props) {
         <MenuRow
           icon="lock-closed-outline"
           label={t("wallet.security")}
-          sub={balance?.pinSet ? t("wallet.pinSet") : t("wallet.pinNotSet")}
+          sub={
+            balance?.pinSet
+              ? t("wallet.pinSet")
+              : t("wallet.pinSetupRequired", {
+                  defaultValue: "Required for wallet payments — set up now",
+                })
+          }
           onPress={() => navigation.navigate("WalletSecurity")}
         />
       </View>

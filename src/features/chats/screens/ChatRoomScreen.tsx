@@ -51,8 +51,14 @@ import {
   resolveChatMediaUri,
 } from "../lib/chatMediaUtils";
 import { ChatDaySeparator } from "../components/ChatDaySeparator";
-import { deleteChatMessage, editChatMessage, fetchGroupMembers } from "../api/chatActionsApi";
+import { deleteChatMessage, editChatMessage, fetchGroupMembers, reactToMessage } from "../api/chatActionsApi";
 import { GroupMembersSheet } from "../components/GroupMembersSheet";
+import {
+  MessageActionsSheet,
+  type MessageAction,
+} from "../components/MessageActionsSheet";
+import { ForwardPickerSheet } from "../components/ForwardPickerSheet";
+import { ScheduledMessageComposer } from "../components/ScheduledMessageComposer";
 import {
   findMessageFlatRowIndex,
   formatChatDayLabel,
@@ -653,6 +659,9 @@ export function ChatRoomScreen({
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [editTarget, setEditTarget] = useState<Message | null>(null);
   const [editDraft, setEditDraft] = useState("");
+  const [actionMessage, setActionMessage] = useState<Message | null>(null);
+  const [forwardMessageId, setForwardMessageId] = useState<string | null>(null);
+  const [scheduleComposerOpen, setScheduleComposerOpen] = useState(false);
 
   useEffect(() => {
     if (isGroup || !partner?._id) return;
@@ -934,7 +943,7 @@ export function ChatRoomScreen({
         return [...replaced.filter((m) => m._id !== event.clientId), { ...msg, status: "sent", pending: false }];
       });
       queryClient.invalidateQueries({ queryKey: ["chatMessages", conversationId] });
-      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
     });
     return unsub;
   }, [conversationId, queryClient]);
@@ -1026,7 +1035,7 @@ export function ChatRoomScreen({
             : m
         )
       );
-      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
       if (chatPolicy && !chatPolicy.hasPaidSession) {
         setChatPolicy((p) => (p ? { ...p, remainingToday: Math.max(0, p.remainingToday - 1) } : p));
       }
@@ -1111,7 +1120,7 @@ export function ChatRoomScreen({
             )
           );
         }
-        queryClient.invalidateQueries({ queryKey: ["conversations"] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations });
         if (chatPolicy && !chatPolicy.hasPaidSession) {
           setChatPolicy((p) => (p ? { ...p, remainingToday: Math.max(0, p.remainingToday - 1) } : p));
         }
@@ -1231,6 +1240,118 @@ export function ChatRoomScreen({
   }, [recording, sendMediaMessage]);
 
   const insertEmoji = useCallback((emoji: string) => setText((prev) => prev + emoji), []);
+
+  const messageActions = useMemo((): MessageAction[] => {
+    if (!actionMessage) return [];
+    const item = actionMessage;
+    const senderId = resolveSenderId(item.senderId);
+    const isMine = senderId === currentUserId;
+    const actions: MessageAction[] = [
+      {
+        id: "reply",
+        label: "Reply",
+        icon: "arrow-undo-outline",
+        onPress: () => setReplyTo(item),
+      },
+    ];
+
+    const plainText = chatE2E.decryptForDisplay(item.content);
+    if (item.type === "text" || plainText.trim()) {
+      actions.push({
+        id: "copy",
+        label: "Copy",
+        icon: "copy-outline",
+        onPress: () => {
+          void (async () => {
+            const Clipboard = require("expo-clipboard") as {
+              setStringAsync: (value: string) => Promise<void>;
+            };
+            await Clipboard.setStringAsync(plainText);
+          })();
+        },
+      });
+    }
+
+    actions.push({
+      id: "forward",
+      label: "Forward",
+      icon: "arrow-redo-outline",
+      onPress: () => setForwardMessageId(item._id),
+    });
+
+    if (isMine && item.type === "text") {
+      const canEdit = Date.now() - new Date(item.createdAt).getTime() < 30 * 60 * 1000;
+      if (canEdit) {
+        actions.push({
+          id: "edit",
+          label: "Edit",
+          icon: "create-outline",
+          onPress: () => {
+            if (Platform.OS === "ios") {
+              Alert.prompt("Edit message", undefined, (t) => {
+                if (!t?.trim()) return;
+                void editChatMessage(item._id, t.trim()).then(() =>
+                  queryClient.invalidateQueries({
+                    queryKey: queryKeys.chats.messages(conversationId),
+                  })
+                );
+              }, "plain-text", plainText);
+            } else {
+              setEditDraft(plainText);
+              setEditTarget(item);
+            }
+          },
+        });
+      }
+      actions.push({
+        id: "delete",
+        label: "Delete",
+        icon: "trash-outline",
+        destructive: true,
+        onPress: () => {
+          void deleteChatMessage(item._id).then(() =>
+            queryClient.invalidateQueries({ queryKey: ["chatMessages", conversationId] })
+          );
+        },
+      });
+    } else if (!isMine) {
+      actions.push({
+        id: "report",
+        label: "Report",
+        icon: "flag-outline",
+        destructive: true,
+        onPress: () => {
+          Alert.alert("Report reason", "", [
+            ...REPORT_REASONS.map((reason) => ({
+              text: reason,
+              onPress: async () => {
+                try {
+                  await apiClient.post(API_ROUTES.user.reportUser, {
+                    userId: partner?._id,
+                    reason,
+                  });
+                  Alert.alert("Report Submitted", "Thank you. We will review your report.");
+                } catch (err: any) {
+                  Alert.alert("Error", err?.response?.data?.error ?? "Could not submit report.");
+                }
+              },
+            })),
+            { text: "Cancel", style: "cancel" },
+          ]);
+        },
+      });
+    }
+
+    return actions;
+  }, [
+    actionMessage,
+    chatE2E,
+    conversationId,
+    currentUserId,
+    partner?._id,
+    queryClient,
+    resolveSenderId,
+  ]);
 
   // ─── Profile actions ──────────────────────────────────────────────────────
 
@@ -1377,49 +1498,7 @@ export function ChatRoomScreen({
         : null;
 
       const onLongPressMsg = () => {
-        const buttons: { text: string; style?: "destructive" | "cancel"; onPress?: () => void }[] =
-          [
-            {
-              text: "Reply",
-              onPress: () => setReplyTo(item),
-            },
-          ];
-        if (isMine && item.type === "text") {
-        const created = new Date(item.createdAt).getTime();
-        const canEdit = Date.now() - created < 30 * 60 * 1000;
-        if (canEdit) {
-          buttons.push({
-            text: "Edit",
-            onPress: () => {
-              const plain = chatE2E.decryptForDisplay(item.content);
-              if (Platform.OS === "ios") {
-                Alert.prompt("Edit message", undefined, (t) => {
-                  if (!t?.trim()) return;
-                  void editChatMessage(item._id, t.trim()).then(() =>
-                    queryClient.invalidateQueries({
-                      queryKey: queryKeys.chats.messages(conversationId),
-                    })
-                  );
-                }, "plain-text", plain);
-              } else {
-                setEditDraft(plain);
-                setEditTarget(item);
-              }
-            },
-          });
-        }
-        buttons.push({
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            void deleteChatMessage(item._id).then(() =>
-              queryClient.invalidateQueries({ queryKey: ["chatMessages", conversationId] })
-            );
-          },
-        });
-        }
-        buttons.push({ text: "Cancel", style: "cancel" });
-        Alert.alert("Message", undefined, buttons);
+        setActionMessage(item);
       };
 
       return (
@@ -1603,6 +1682,15 @@ export function ChatRoomScreen({
               </Text>
             )}
           </View>
+        </Pressable>
+        <Pressable
+          onPress={() => setScheduleComposerOpen(true)}
+          hitSlop={10}
+          style={styles.headerMore}
+          accessibilityRole="button"
+          accessibilityLabel="Schedule message"
+        >
+          <Ionicons name="calendar-outline" size={20} color={themeColors.textMuted} />
         </Pressable>
         <Pressable onPress={handleProfileAction} hitSlop={10} style={styles.headerMore}>
           <Ionicons name="ellipsis-vertical" size={20} color={themeColors.textMuted} />
@@ -2054,6 +2142,33 @@ export function ChatRoomScreen({
           onLeftGroup={onGoBack}
         />
       ) : null}
+
+      <MessageActionsSheet
+        visible={!!actionMessage}
+        onClose={() => setActionMessage(null)}
+        actions={messageActions}
+        currentReaction={null}
+        onReact={(emoji) => {
+          if (!actionMessage) return;
+          void reactToMessage(actionMessage._id, emoji).then(() =>
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.chats.messages(conversationId),
+            })
+          );
+        }}
+      />
+      <ForwardPickerSheet
+        visible={!!forwardMessageId}
+        messageId={forwardMessageId ?? ""}
+        currentUserId={currentUserId}
+        excludeConversationId={conversationId}
+        onClose={() => setForwardMessageId(null)}
+      />
+      <ScheduledMessageComposer
+        visible={scheduleComposerOpen}
+        conversationId={conversationId}
+        onClose={() => setScheduleComposerOpen(false)}
+      />
     </View>
   );
 }

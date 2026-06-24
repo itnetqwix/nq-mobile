@@ -31,7 +31,10 @@ export function ScheduledBookingWizardModal({ visible, trainer, onDismiss, onBoo
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onDismiss}>
-      <View style={[styles.shell, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 12 }]}>
+      <View
+        testID="scheduled-booking-wizard"
+        style={[styles.shell, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 12 }]}
+      >
         <WizardHeader
           step={w.step as any}
           stepNum={w.stepNum}

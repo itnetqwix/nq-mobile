@@ -73,7 +73,7 @@ export const DASHBOARD_ROUTES: readonly DashboardRouteMeta[] = [
   },
   {
     id: "my-community",
-    title: "My community",
+    title: "NQ Community",
     subtitle: "Community feed and connections.",
     webPath: "/dashboard/my-community",
     allowedRoles: [AccountType.TRAINER, AccountType.TRAINEE],

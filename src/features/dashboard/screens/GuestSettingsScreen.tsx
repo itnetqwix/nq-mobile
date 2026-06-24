@@ -3,21 +3,16 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Constants from "expo-constants";
 import React, { useCallback, useState } from "react";
-import { Alert, Linking, Modal, Pressable, StyleSheet, Switch, Text, View } from "react-native";
+import { Linking, Modal, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import {
   Button,
   Card,
-  LanguagePickerModal,
   ListRow,
   ScreenContainer,
   SectionHeader,
 } from "../../../components/ui";
 import { DEVDUDES_LABEL, DEVDUDES_URL } from "../../../config/env";
-import i18n from "../../../i18n";
-import { applyRtlLocale } from "../../../i18n/applyRtlLocale";
-import { languageLabelForCode, normalizeAppLocale } from "../../../i18n/languages";
-import { persistAppLocale } from "../../../i18n/localeStorage";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { areHapticsEnabled, haptics, setHapticsEnabled } from "../../../lib/haptics";
 import type { MenuStackParamList } from "../../../navigation/types";
@@ -38,8 +33,6 @@ export function GuestSettingsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MenuStackParamList>>();
   const { openAuth } = useRequireAuth();
   const { mode: themeMode, setMode: setThemeMode } = useTheme();
-  const [localeDraft, setLocaleDraft] = useState(() => normalizeAppLocale(i18n.language));
-  const [langOpen, setLangOpen] = useState(false);
   const [replayIntroOpen, setReplayIntroOpen] = useState(false);
   const [hapticsOn, setHapticsOn] = useState(areHapticsEnabled());
 
@@ -49,20 +42,6 @@ export function GuestSettingsScreen() {
     },
     [navigation]
   );
-
-  const saveLocale = async (code: string) => {
-    const nextLoc = normalizeAppLocale(code);
-    setLocaleDraft(nextLoc);
-    await i18n.changeLanguage(nextLoc);
-    await persistAppLocale(nextLoc);
-    const needsRtlReload = applyRtlLocale(nextLoc);
-    if (needsRtlReload) {
-      Alert.alert(
-        t("guestSettings.languageSaved"),
-        t("settings.regionalRtlRestartBody")
-      );
-    }
-  };
 
   const appVersion =
     Constants.expoConfig?.version ?? Constants.nativeAppVersion ?? "1.0.0";
@@ -152,23 +131,6 @@ export function GuestSettingsScreen() {
           }
         />
       </Card>
-
-      <SectionHeader label={t("settings.regionalTitle")} />
-      <Card variant="outlined" padding={0}>
-        <ListRow
-          icon="language-outline"
-          title={t("settings.language")}
-          subtitle={languageLabelForCode(localeDraft)}
-          onPress={() => setLangOpen(true)}
-        />
-      </Card>
-
-      <LanguagePickerModal
-        visible={langOpen}
-        selectedCode={localeDraft}
-        onClose={() => setLangOpen(false)}
-        onSelect={(code) => void saveLocale(code)}
-      />
 
       <SectionHeader label={t("guestSettings.supportSection")} />
       <Card variant="outlined" padding={0}>

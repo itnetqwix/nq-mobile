@@ -1,5 +1,5 @@
-# Scheduled lesson: book → trainer confirm → join → game plan (smoke)
-# Requires: staging API, trainee login, trainer on second device for confirm/join.
+# Scheduled lesson: full wizard smoke, then optional Upcoming check.
+# Post-booking call + game plan still needs a second device (trainer confirm/join).
 appId: ${APP_ID}
 env:
   TRAINEE_EMAIL: ${TRAINEE_EMAIL}
@@ -7,33 +7,16 @@ env:
 ---
 - launchApp
 - runFlow:
-    when:
-      visible: "Sign in"
-    commands:
-      - tapOn: "Email"
-      - inputText: ${TRAINEE_EMAIL}
-      - tapOn: "Password"
-      - inputText: ${TRAINEE_PASSWORD}
-      - tapOn: "Sign in"
-- extendedWaitUntil:
-    visible: "Book Expert"
-    timeout: 60000
-- tapOn: "Book Expert"
-- tapOn:
-    text: "Schedule"
-    optional: true
-- tapOn:
-    text: ".*"
-    index: 0
-    optional: true
-- assertVisible:
-    text: ".*"
-    optional: true
-- back
+    file: flows/login-trainee.yaml
+    env:
+      TRAINEE_EMAIL: ${TRAINEE_EMAIL}
+      TRAINEE_PASSWORD: ${TRAINEE_PASSWORD}
+- runFlow:
+    file: flows/scheduled-booking-wizard-steps.yaml
 - tapOn:
     text: "Upcoming"
     optional: true
 - assertVisible:
-    text: ".*session.*"
+    text: ".*pending.*|.*requested.*|.*session.*"
     optional: true
-# In-call steps (trainer device): join → screenshot → game plan — run manually or extend with testIDs.
+# Trainer device: confirm booking → join call → game plan — extend when trainer testIDs exist.

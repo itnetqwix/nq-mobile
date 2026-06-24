@@ -469,7 +469,15 @@ export function ClipsScreen() {
 
   const openClip = (clip: Record<string, unknown>) => {
     const uri = getClipPlaybackUrl(clip);
-    if (!uri) return;
+    if (!uri) {
+      Alert.alert(
+        t("locker.clipUnavailableTitle", { defaultValue: "Video unavailable" }),
+        t("locker.clipUnavailableBody", {
+          defaultValue: "This clip is still processing or the file is missing. Pull to refresh and try again.",
+        })
+      );
+      return;
+    }
     const sharer = clip.sharer as Record<string, unknown> | undefined;
     const sharerName =
       sharer?.fullname ?? sharer?.fullName ?? clip.shared_by_name ?? null;

@@ -9,7 +9,7 @@ on:
       flow:
         description: Flow file (relative to e2e/maestro/)
         required: false
-        default: wallet-topup-book-cancel.yaml
+        default: scheduled-booking-wizard.yaml
   schedule:
     # Weekly — enable with repo variable MAESTRO_E2E_ENABLED=true and required secrets.
     - cron: "0 7 * * 1"
@@ -60,7 +60,7 @@ jobs:
           TRAINER_EMAIL: ${{ secrets.TRAINER_EMAIL }}
           TRAINER_PASSWORD: ${{ secrets.TRAINER_PASSWORD }}
         run: |
-          FLOW="${{ github.event.inputs.flow || 'wallet-topup-book-cancel.yaml' }}"
+          FLOW="${{ github.event.inputs.flow || 'scheduled-booking-wizard.yaml' }}"
           maestro test "e2e/maestro/${FLOW}" --format junit --output maestro-results.xml
 
       - name: Upload Maestro results

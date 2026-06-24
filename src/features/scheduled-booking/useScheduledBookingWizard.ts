@@ -26,7 +26,7 @@ import { resolvePaymentMethodHint } from "../../lib/payments/pricingQuoteHint";
 import { getApiErrorMessage } from "../../lib/http/getApiErrorMessage";
 import { chargeTotalDollars } from "../payments/pricingTypes";
 import { navigateToWalletTopUp } from "../../navigation/navigationRef";
-import { bookScheduledSession, fetchDayAvailability, validateSlotRange } from "./scheduledBookingApi";
+import { bookScheduledSession, fetchDayAvailability, holdScheduledSlot, validateSlotRange } from "./scheduledBookingApi";
 import {
   addTraineeClipsToBookedSession,
   fetchMyClipsForBooking,
@@ -299,16 +299,41 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     setStep("datetime");
   }, []);
 
+  const reserveCurrentSlot = useCallback(async (): Promise<boolean> => {
+    if (!tid || !selectedStart || !sessionEnd) return false;
+    try {
+      const hold = await holdScheduledSlot({
+        trainerId: tid,
+        bookedDateIso,
+        traineeTimeZone: traineeTz,
+        from: toHHmm(selectedStart),
+        to: toHHmm(sessionEnd),
+      });
+      return hold.held === true;
+    } catch {
+      return false;
+    }
+  }, [tid, selectedStart, sessionEnd, bookedDateIso, traineeTz]);
+
   const advanceFromPayment = useCallback(() => {
     void (async () => {
+      await reserveCurrentSlot();
       const slotOk = await validateCurrentSlot();
       if (!slotOk.ok) {
-        handleSlotUnavailable(slotOk.message);
+        handleSlotUnavailable(slotOk.message, {
+          titleKey: "scheduledBooking.alerts.bookingFailedPaidTitle",
+          bodyKey: "scheduledBooking.alerts.bookingFailedPaidBody",
+        });
         return;
       }
       setStep("confirm");
     })();
-  }, [validateCurrentSlot, handleSlotUnavailable]);
+  }, [reserveCurrentSlot, validateCurrentSlot, handleSlotUnavailable]);
+
+  useEffect(() => {
+    if (!visible || step !== "payment" || !tid || !selectedStart || !sessionEnd) return;
+    void reserveCurrentSlot();
+  }, [visible, step, tid, selectedStart, sessionEnd, reserveCurrentSlot]);
 
   const expectedPrice = useMemo(
     () => Number(((hourlyRate / 60) * durationMinutes).toFixed(2)),
@@ -593,7 +618,10 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
           const ok = await confirmProceedToPaymentIfWalletShort(quoteTotal, (shortfall) => {
             navigateToWalletTopUp(shortfall);
           });
-          if (ok) setStep("payment");
+          if (ok) {
+            await reserveCurrentSlot();
+            setStep("payment");
+          }
           return;
         }
       }
@@ -610,6 +638,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     pricingQuote,
     validateCurrentSlot,
     handleSlotUnavailable,
+    reserveCurrentSlot,
     t,
   ]);
 

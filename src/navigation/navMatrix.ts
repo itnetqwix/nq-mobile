@@ -62,7 +62,7 @@ export type NavMatrixEntry = {
 export const NAV_MATRIX: readonly NavMatrixEntry[] = [
   {
     id: "my-locker",
-    label: "damdam",
+    label: "Home",
     icon: "home-outline",
     target: { kind: "tab", tab: "Home" },
     surfaces: ["drawer"],
@@ -120,7 +120,7 @@ export const NAV_MATRIX: readonly NavMatrixEntry[] = [
   },
   {
     id: "my-community",
-    label: "My Community",
+    label: "NQ Community",
     icon: "people-outline",
     target: { kind: "feature", featureId: "my-community" },
     surfaces: ["drawer", "more"],

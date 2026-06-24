@@ -96,7 +96,7 @@ export function ScheduleStepDateTime({
     t(`scheduledBooking.datetime.${key}` as "scheduledBooking.datetime.morning");
 
   return (
-    <View style={styles.root}>
+    <View testID="schedule-step-datetime" style={styles.root}>
       {trainerName ? (
         <Text style={styles.trainerName}>{trainerName}</Text>
       ) : null}
@@ -162,6 +162,7 @@ export function ScheduleStepDateTime({
           return (
             <Pressable
               key={iso}
+              testID="schedule-date-chip"
               style={[styles.dateChip, on && styles.dateChipOn]}
               onPress={() => onSelectDate(iso)}
               accessibilityRole="button"
@@ -247,6 +248,7 @@ export function ScheduleStepDateTime({
                     return (
                       <Pressable
                         key={iso}
+                        testID="schedule-time-slot"
                         style={[styles.timeChip, on && styles.timeChipOn]}
                         onPress={() => onSelectStart(iso)}
                         accessibilityRole="button"
@@ -280,6 +282,7 @@ export function ScheduleStepDateTime({
       ) : null}
 
       <Pressable
+        testID="schedule-datetime-continue"
         style={[shared.primaryBtn, !selectedStartIso && shared.btnDisabled, styles.cta]}
         disabled={!selectedStartIso}
         onPress={onNext}

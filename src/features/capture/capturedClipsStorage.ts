@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as FileSystem from "expo-file-system/legacy";
 import * as VideoThumbnails from "expo-video-thumbnails";
 
 export type CapturedClip = {
@@ -14,6 +15,7 @@ export type CapturedClip = {
 
 const LEGACY_KEY = "@netqwix/captured_clips";
 const PREFIX = "nq.capturedClips.";
+const CLIP_DIR = `${FileSystem.documentDirectory ?? ""}captured-clips/`;
 
 function storageKey(userId: string | null | undefined): string {
   if (!userId) return `${PREFIX}guest`;
@@ -25,6 +27,22 @@ async function persistClips(
   clips: CapturedClip[]
 ): Promise<void> {
   await AsyncStorage.setItem(storageKey(userId), JSON.stringify(clips));
+}
+
+async function copyVideoToSandbox(uri: string, clipId: string): Promise<string> {
+  if (!uri || uri.startsWith(CLIP_DIR)) return uri;
+  await FileSystem.makeDirectoryAsync(CLIP_DIR, { intermediates: true });
+  const lower = uri.toLowerCase();
+  const ext = lower.includes(".mov") ? "mov" : lower.includes(".m4v") ? "m4v" : "mp4";
+  const dest = `${CLIP_DIR}${clipId}.${ext}`;
+  try {
+    const info = await FileSystem.getInfoAsync(dest);
+    if (info.exists) return dest;
+    await FileSystem.copyAsync({ from: uri, to: dest });
+    return dest;
+  } catch {
+    return uri;
+  }
 }
 
 export async function getCapturedClips(
@@ -46,12 +64,27 @@ export async function getCapturedClips(
   }
 }
 
+/** Move guest clips into the signed-in user's library after auth. */
+export async function migrateGuestCapturedClips(userId: string): Promise<void> {
+  const guestClips = await getCapturedClips(null);
+  if (!guestClips.length) return;
+  const userClips = await getCapturedClips(userId);
+  const seen = new Set(userClips.map((c) => c.id));
+  const merged = [
+    ...guestClips.filter((c) => !seen.has(c.id)),
+    ...userClips,
+  ];
+  await persistClips(userId, merged);
+  await AsyncStorage.removeItem(storageKey(null));
+}
+
 export async function saveCapturedClip(
   userId: string | null | undefined,
   clip: CapturedClip
 ): Promise<void> {
+  const durableUri = await copyVideoToSandbox(clip.uri, clip.id);
   const existing = await getCapturedClips(userId);
-  existing.unshift(clip);
+  existing.unshift({ ...clip, uri: durableUri });
   await persistClips(userId, existing);
 }
 
@@ -72,6 +105,10 @@ export async function deleteCapturedClip(
   id: string
 ): Promise<void> {
   const existing = await getCapturedClips(userId);
+  const target = existing.find((c) => c.id === id);
+  if (target?.uri?.startsWith(CLIP_DIR)) {
+    void FileSystem.deleteAsync(target.uri, { idempotent: true }).catch(() => {});
+  }
   const updated = existing.filter((c) => c.id !== id);
   await persistClips(userId, updated);
 }
@@ -109,4 +146,14 @@ export async function backfillCapturedClipThumbnails(
 
   if (changed) await persistClips(userId, next);
   return next;
+}
+
+export async function capturedClipFileExists(uri: string): Promise<boolean> {
+  if (!uri) return false;
+  try {
+    const info = await FileSystem.getInfoAsync(uri);
+    return info.exists;
+  } catch {
+    return false;
+  }
 }

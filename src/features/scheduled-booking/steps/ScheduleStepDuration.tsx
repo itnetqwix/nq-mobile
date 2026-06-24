@@ -43,7 +43,7 @@ export function ScheduleStepDuration({
   const noDurations = availableDurations.length === 0;
 
   return (
-    <View style={styles.root}>
+    <View testID="schedule-step-duration" style={styles.root}>
       <Text style={styles.heroTitle}>{t("scheduledBooking.duration.title")}</Text>
 
       {noDurations ? (
@@ -89,6 +89,7 @@ export function ScheduleStepDuration({
           return (
             <Pressable
               key={min}
+              testID={`schedule-duration-${min}`}
               style={[
                 styles.durationTile,
                 on && enabled && styles.durationTileOn,
@@ -136,6 +137,7 @@ export function ScheduleStepDuration({
       ) : null}
 
       <Pressable
+        testID="schedule-duration-continue"
         style={[shared.primaryBtn, (!canContinue || noDurations) && shared.btnDisabled]}
         disabled={!canContinue || noDurations}
         onPress={onNext}

@@ -43,7 +43,7 @@ export function WizardStepClips({
   );
 
   return (
-    <View style={sharedStepStyles.card}>
+    <View testID="wizard-step-clips" style={sharedStepStyles.card}>
       <Text style={sharedStepStyles.sectionTitle}>Videos (optional)</Text>
       <Text style={sharedStepStyles.muted}>
         Pick up to {MAX_CLIPS} clips from your locker — like the web locker step before the coach is notified.
@@ -90,7 +90,7 @@ export function WizardStepClips({
       </Text>
 
       <View style={sharedStepStyles.rowGap}>
-        <Pressable style={sharedStepStyles.secondaryBtn} onPress={onSkip}>
+        <Pressable testID="wizard-clips-skip" style={sharedStepStyles.secondaryBtn} onPress={onSkip}>
           <Text style={sharedStepStyles.secondaryBtnText}>Skip clips</Text>
         </Pressable>
         <Pressable style={sharedStepStyles.primaryBtn} onPress={onNext}>

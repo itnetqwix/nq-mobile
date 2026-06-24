@@ -19,7 +19,6 @@ import {
   Button,
   Card,
   InlineSavedIndicator,
-  LanguagePickerModal,
   ListRow,
   Pill,
   ScreenContainer,
@@ -55,10 +54,6 @@ import {
 } from "../../home/api/homeApi";
 import { setReadReceiptsEnabled } from "../../chats/api/chatActionsApi";
 import { requestPushPermissionForReason } from "../../notifications/pushTokens";
-import i18n from "../../../i18n";
-import { applyRtlLocale } from "../../../i18n/applyRtlLocale";
-import { bcp47ForAppLocale, languageLabelForCode, normalizeAppLocale } from "../../../i18n/languages";
-import { persistAppLocale } from "../../../i18n/localeStorage";
 import {
   readProfileVisibility,
   updateProfileVisibility,
@@ -131,19 +126,12 @@ export function SettingsScreen() {
   const email = (user?.email as string) ?? "";
   const isTrainer = accountType === AccountType.TRAINER;
 
-  const [localeDraft, setLocaleDraft] = useState(() => normalizeAppLocale(i18n.language));
   const [tzDraft, setTzDraft] = useState(defaultTz);
-  const [langOpen, setLangOpen] = useState(false);
   const [tzOpen, setTzOpen] = useState(false);
   const [regionalBusy, setRegionalBusy] = useState(false);
 
   useEffect(() => {
     if (!user) return;
-    const loc =
-      typeof user.preferred_locale === "string" && user.preferred_locale.trim()
-        ? normalizeAppLocale(user.preferred_locale)
-        : normalizeAppLocale(i18n.language);
-    setLocaleDraft(loc);
     setTzDraft(
       typeof user.time_zone === "string" && user.time_zone.trim()
         ? (user.time_zone as string).trim()
@@ -152,23 +140,13 @@ export function SettingsScreen() {
   }, [user]);
 
   const regionalDirty = useMemo(() => {
-    const draftLoc = normalizeAppLocale(localeDraft);
-    const savedLocStr =
-      typeof user?.preferred_locale === "string" ? user.preferred_locale.trim() : "";
-    const savedLoc = savedLocStr ? normalizeAppLocale(savedLocStr) : null;
-    const locDiff =
-      savedLoc !== null
-        ? draftLoc !== savedLoc
-        : draftLoc !== normalizeAppLocale(i18n.language);
-
     const savedTz = (
       typeof user?.time_zone === "string" && user.time_zone.trim()
         ? user.time_zone
         : defaultTz
     ).trim();
-    const tzDiff = tzDraft.trim() !== savedTz;
-    return locDiff || tzDiff;
-  }, [user, localeDraft, tzDraft, i18n.language]);
+    return tzDraft.trim() !== savedTz;
+  }, [user, tzDraft]);
 
   const saveRegional = async () => {
     if (!accountType) {
@@ -178,22 +156,10 @@ export function SettingsScreen() {
     const role = accountType === AccountType.TRAINER ? "Trainer" : "Trainee";
     setRegionalBusy(true);
     try {
-      const nextLoc = normalizeAppLocale(localeDraft);
       const nextTz = tzDraft.trim() || defaultTz;
-      const localeBcp47 = bcp47ForAppLocale(nextLoc);
-      await putProfile(role, { preferred_locale: localeBcp47, time_zone: nextTz });
-      await i18n.changeLanguage(nextLoc);
-      await persistAppLocale(nextLoc);
-      patchUser({ preferred_locale: localeBcp47, time_zone: nextTz });
-      const needsRtlReload = applyRtlLocale(nextLoc);
-      if (needsRtlReload) {
-        Alert.alert(
-          t("settings.regionalSaved"),
-          t("settings.regionalRtlRestartBody")
-        );
-      } else {
-        Alert.alert(t("settings.regionalSaved"), t("settings.regionalSavedBody"));
-      }
+      await putProfile(role, { time_zone: nextTz });
+      patchUser({ time_zone: nextTz });
+      Alert.alert(t("settings.regionalSaved"), t("settings.regionalSavedBody"));
     } catch (e) {
       Alert.alert(t("settings.regionalError"), getApiErrorMessage(e));
     } finally {
@@ -523,14 +489,6 @@ export function SettingsScreen() {
         onPress: () => openHomeStackScreen(navigation, "BlockedUsers"),
       },
       {
-        key: "language",
-        icon: "language-outline",
-        title: t("settings.language"),
-        subtitle: languageLabelForCode(localeDraft),
-        keywords: "language locale regional",
-        onPress: () => setLangOpen(true),
-      },
-      {
         key: "timezone",
         icon: "globe-outline",
         title: t("settings.timezone"),
@@ -584,8 +542,6 @@ export function SettingsScreen() {
   }, [
     handleDeleteAccount,
     isTrainer,
-    languageLabelForCode,
-    localeDraft,
     navigation,
     openDashboard,
     openShell,
@@ -604,7 +560,8 @@ export function SettingsScreen() {
         fields: [row.title, row.subtitle ?? "", row.keywords ?? ""],
       })),
       { limit: 16, fieldWeights: [1, 0.9, 0.7] }
-    ).map((hit) => hit.item);
+    ).map((hit) => hit.item)
+      .filter((row) => row.interactive !== false);
   }, [searchableRows, debouncedSettingsSearch]);
 
   const suggestionRows = useMemo(() => searchResults.slice(0, 6), [searchResults]);
@@ -828,13 +785,6 @@ export function SettingsScreen() {
       <SectionHeader label={t("settings.regionalTitle")} />
       <Card variant="outlined" padding={0} style={styles.sectionCard}>
         <ListRow
-          icon="language-outline"
-          title={t("settings.language")}
-          subtitle={languageLabelForCode(localeDraft)}
-          onPress={() => setLangOpen(true)}
-        />
-        <Divider />
-        <ListRow
           icon="globe-outline"
           title={t("settings.timezone")}
           subtitle={tzDraft}
@@ -855,12 +805,6 @@ export function SettingsScreen() {
         ) : null}
       </Card>
 
-      <LanguagePickerModal
-        visible={langOpen}
-        selectedCode={localeDraft}
-        onClose={() => setLangOpen(false)}
-        onSelect={(code) => setLocaleDraft(normalizeAppLocale(code))}
-      />
       <TimeZoneSearchModal
         visible={tzOpen}
         selectedId={tzDraft}
@@ -946,8 +890,14 @@ export function SettingsScreen() {
                         read_receipts_enabled: next,
                       },
                     } as any);
-                  } catch {
+                  } catch (e) {
                     setReadReceipts(!next);
+                    Alert.alert(
+                      t("settings.readReceiptsErrorTitle", {
+                        defaultValue: "Couldn't update read receipts",
+                      }),
+                      getApiErrorMessage(e)
+                    );
                   } finally {
                     setReadReceiptsBusy(false);
                   }

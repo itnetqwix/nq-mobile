@@ -59,7 +59,7 @@ export function ScheduleStepConfirm({
       : t("scheduledBooking.confirm.clipsCount", { count: selectedClipIds.length });
 
   return (
-    <View style={styles.root}>
+    <View testID="schedule-step-confirm" style={styles.root}>
       <Text style={styles.heroTitle}>{t("scheduledBooking.confirm.title")}</Text>
 
       <View style={styles.summaryBox}>
@@ -124,6 +124,7 @@ export function ScheduleStepConfirm({
       </View>
 
       <Pressable
+        testID="schedule-confirm-submit"
         style={[shared.primaryBtn, isSubmitting && shared.btnDisabled]}
         disabled={isSubmitting}
         onPress={onSubmit}

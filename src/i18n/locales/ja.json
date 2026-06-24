@@ -1177,7 +1177,8 @@
       "trainerLocalTime": "コーチの現地時間: {{time}}",
       "unavailable": "時間が足りません",
       "coachRate": "コーチ料金: {{rate}}/時間",
-      "next": "次へ: クリップを添付"
+      "next": "次へ: クリップを添付",
+      "pickAnotherTime": "別の時間を選ぶ"
     },
     "confirm": {
       "title": "確認してリクエスト",
@@ -1210,6 +1211,24 @@
       "continue": "続ける",
       "skip": "プロモをスキップ",
       "tapToApply": "タップして適用"
+    },
+    "alerts": {
+      "selectTimeTitle": "時間を選択",
+      "selectTimeBody": "セッションの開始時間を選択してください。",
+      "selectTimeGoBack": "戻って、セッションの長さに合う開始時間を選んでください。",
+      "chooseTimeFirst": "先にセッションの時間を選んでください。",
+      "slotUnavailableTitle": "予約できません",
+      "slotUnavailableBody": "この時間は利用できなくなりました。別の時間を選んでください。",
+      "noDurationsTitle": "時間が足りません",
+      "noDurationsBody": "この枠ではセッション時間が入りません。別の時間を選んでください。",
+      "suggestionUnavailableTitle": "候補が利用できません",
+      "suggestionUnavailableBody": "提案された時間はもう空いていません。別の枠を選んでください。",
+      "paymentRequiredTitle": "支払いが必要です",
+      "paymentRequiredBody": "セッションを依頼する前に支払いを完了してください。",
+      "bookingFailedTitle": "予約に失敗しました",
+      "bookingFailedBody": "セッションを予約できませんでした。もう一度お試しください。",
+      "bookingFailedPaidTitle": "支払い後に枠が埋まりました",
+      "bookingFailedPaidBody": "この時間は直前で予約されました。カード決済は自動で返金されました — 別の時間を選んでください。"
     }
   }
 }

@@ -17,6 +17,11 @@ import { InstantLessonTrainerModal } from "../features/instant-lesson/InstantLes
 import { MeetingRouter } from "../features/calling/screens/MeetingRouter";
 import { NotificationToast } from "../features/notifications/NotificationToast";
 import { OnboardingWalkthrough } from "../features/onboarding/OnboardingWalkthrough";
+import {
+  IntroOnboardingScreen,
+  isIntroOnboardingComplete,
+  setIntroOnboardingComplete,
+} from "../features/intro-onboarding";
 import { AuthNavigator } from "./AuthNavigator";
 import { DashboardDrawerShell } from "./DashboardDrawerShell";
 import { SystemStateScreen } from "../features/system-states/screens/SystemStateScreen";
@@ -35,6 +40,31 @@ function MainWithAppUnlock() {
 /** Guest browse — same dashboard shell, no biometric gate or auth-only overlays. */
 function GuestBrowseShell() {
   return <DashboardDrawerShell />;
+}
+
+function GuestBrowseWithIntro() {
+  const [introDone, setIntroDone] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    void isIntroOnboardingComplete().then(setIntroDone);
+  }, []);
+
+  if (introDone === null) {
+    return null;
+  }
+
+  if (!introDone) {
+    return (
+      <IntroOnboardingScreen
+        onGetStarted={async () => {
+          await setIntroOnboardingComplete();
+          setIntroDone(true);
+        }}
+      />
+    );
+  }
+
+  return <GuestBrowseShell />;
 }
 
 export function RootNavigator() {
@@ -165,7 +195,7 @@ export function RootNavigator() {
           <>
             <Stack.Screen
               name="Main"
-              component={GuestBrowseShell}
+              component={GuestBrowseWithIntro}
               options={{ headerShown: false, title: "" }}
             />
             <Stack.Screen

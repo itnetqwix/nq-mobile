@@ -4,6 +4,8 @@ export const SCHEDULED_DURATIONS = [15, 30, 45, 60, 75, 90] as const;
 export const SCHEDULED_BOOKING_BUFFER_MINUTES = 15;
 /** Earliest bookable start from now — 2 hours (matches backend). */
 export const SCHEDULED_MIN_LEAD_TIME_MINUTES = 120;
+/** Soft hold while completing payment (matches backend). */
+export const SCHEDULED_SLOT_HOLD_MINUTES = 10;
 
 export type ScheduledDurationMinutes = (typeof SCHEDULED_DURATIONS)[number];
 

@@ -201,7 +201,14 @@ export function WizardStepDuration({
         />
       ) : null}
 
-      <Pressable style={sharedStepStyles.primaryBtn} onPress={onNext}>
+      <Pressable
+        style={[
+          sharedStepStyles.primaryBtn,
+          eligibility && !eligibility.eligible ? sharedStepStyles.btnDisabled : null,
+        ]}
+        onPress={onNext}
+        disabled={Boolean(eligibility && !eligibility.eligible)}
+      >
         <Text style={sharedStepStyles.primaryBtnText}>Next</Text>
         <Ionicons name="arrow-forward" size={18} color={c.brandTextOn} />
       </Pressable>

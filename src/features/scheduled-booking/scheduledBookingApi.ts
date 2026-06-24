@@ -41,6 +41,29 @@ export async function validateSlotRange(params: {
   return unwrapApiData<CheckSlotResponse>(res);
 }
 
+export type HoldSlotResponse = {
+  held?: boolean;
+  expiresInMinutes?: number;
+  message?: string;
+};
+
+export async function holdScheduledSlot(params: {
+  trainerId: string;
+  bookedDateIso: string;
+  traineeTimeZone: string;
+  from: string;
+  to: string;
+}): Promise<HoldSlotResponse> {
+  const res = await apiClient.post(API_ROUTES.trainee.holdScheduledSlot, {
+    trainer_id: params.trainerId,
+    booked_date: params.bookedDateIso,
+    traineeTimeZone: params.traineeTimeZone,
+    session_start_time: params.from,
+    session_end_time: params.to,
+  });
+  return unwrapApiData<HoldSlotResponse>(res);
+}
+
 export type BookSessionPayload = {
   trainer_id: string;
   status: "booked";

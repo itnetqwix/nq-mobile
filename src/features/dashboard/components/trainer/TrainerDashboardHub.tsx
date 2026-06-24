@@ -9,8 +9,8 @@ import { HomeUserAvatar } from "../home/HomeUserAvatar";
 import { useDashboardSessions } from "../../hooks/useDashboardSessions";
 import { PendingRequestsBanner } from "./PendingRequestsBanner";
 import { TrainerGreetingRating } from "./TrainerGreetingRating";
-import { TrainerEarningsSnapshot } from "./TrainerEarningsSnapshot";
 import { PerformanceTipsCard } from "./PerformanceTipsCard";
+import { TrainerRecentTraineesSection } from "./TrainerRecentTraineesSection";
 import { FriendRequestTilesSkeleton } from "../../../../components/ui";
 import { TrainerFriendRequestsSection } from "./TrainerFriendRequestsSection";
 import { TrainerLockerSection } from "./TrainerLockerSection";
@@ -38,6 +38,7 @@ type Props = {
   onOpenSessions: () => void;
   onOpenClips: () => void;
   onOpenStudents?: () => void;
+  onSelectRecentTrainee?: (trainee: Record<string, unknown>) => void;
   onOpenSurface: (id: UtilitySurfaceId) => void;
   onOpenReviews?: () => void;
   onSessionPress: (session: Record<string, unknown>) => void;
@@ -63,6 +64,7 @@ function TrainerDashboardHubInner({
   onOpenSessions,
   onOpenClips,
   onOpenStudents,
+  onSelectRecentTrainee,
   onOpenSurface,
   onOpenReviews,
   onSessionPress,
@@ -106,7 +108,18 @@ function TrainerDashboardHubInner({
 
       <PendingRequestsBanner count={pendingSessions.length} onPress={onOpenSessions} />
 
-      <TrainerEarningsSnapshot onPress={() => onOpenSurface("wallet")} />
+      <TrainerLockerSection accountType={accountType} onOpenSurface={onOpenSurface} />
+
+      <TrainerRecentTraineesSection
+        trainees={recentTrainees}
+        onSelectTrainee={
+          onSelectRecentTrainee
+            ? (trainee) => onSelectRecentTrainee(trainee)
+            : onOpenStudents
+              ? () => onOpenStudents()
+              : undefined
+        }
+      />
 
       {loadingFriendRequests ? (
         <FriendRequestTilesSkeleton count={2} />
@@ -129,8 +142,6 @@ function TrainerDashboardHubInner({
       />
 
       <ReferFriendsBanner onPressInvite={() => onPressInvite?.()} />
-
-      <TrainerLockerSection accountType={accountType} onOpenSurface={onOpenSurface} />
     </View>
   );
 }

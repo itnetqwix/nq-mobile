@@ -38,11 +38,12 @@ export function useInlineClipRecording({ onCaptured }: Args) {
     setBusy(true);
     try {
       const { status: camStatus } = await ImagePicker.requestCameraPermissionsAsync();
-      if (camStatus !== "granted") {
+      const { status: micStatus } = await ImagePicker.requestMicrophonePermissionsAsync();
+      if (camStatus !== "granted" || micStatus !== "granted") {
         haptics.error();
         Alert.alert(
-          "Camera Access Required",
-          "Please grant camera access in Settings to record clips.",
+          "Camera & microphone required",
+          "Please grant camera and microphone access in Settings to record clips with audio.",
           [{ text: "OK" }]
         );
         return;

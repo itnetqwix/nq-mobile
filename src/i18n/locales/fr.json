@@ -1177,7 +1177,8 @@
       "trainerLocalTime": "Heure locale du coach : {{time}}",
       "unavailable": "Pas assez de temps",
       "coachRate": "Tarif du coach : {{rate}}/h",
-      "next": "Suivant : joindre des clips"
+      "next": "Suivant : joindre des clips",
+      "pickAnotherTime": "Choisir un autre horaire"
     },
     "confirm": {
       "title": "Vérifier et demander",
@@ -1210,6 +1211,24 @@
       "continue": "Continuer",
       "skip": "Passer la promo",
       "tapToApply": "Appuyer pour appliquer"
+    },
+    "alerts": {
+      "selectTimeTitle": "Sélectionnez une heure",
+      "selectTimeBody": "Choisissez une heure de début disponible pour votre séance.",
+      "selectTimeGoBack": "Revenez en arrière et choisissez une heure compatible avec la durée de votre séance.",
+      "chooseTimeFirst": "Choisissez d'abord l'heure de la séance.",
+      "slotUnavailableTitle": "Horaire indisponible",
+      "slotUnavailableBody": "Cet horaire n'est plus disponible. Veuillez en choisir un autre.",
+      "noDurationsTitle": "Temps insuffisant",
+      "noDurationsBody": "Ce créneau ne peut accueillir aucune durée de séance. Choisissez un autre horaire.",
+      "suggestionUnavailableTitle": "Suggestion indisponible",
+      "suggestionUnavailableBody": "Cet horaire suggéré n'est plus libre. Choisissez un autre créneau.",
+      "paymentRequiredTitle": "Paiement requis",
+      "paymentRequiredBody": "Veuillez effectuer le paiement avant de demander la séance.",
+      "bookingFailedTitle": "Échec de la réservation",
+      "bookingFailedBody": "Impossible de réserver la séance. Veuillez réessayer.",
+      "bookingFailedPaidTitle": "Créneau pris après le paiement",
+      "bookingFailedPaidBody": "Cet horaire vient d'être réservé. Votre paiement par carte a été remboursé automatiquement — choisissez un autre créneau."
     }
   }
 }

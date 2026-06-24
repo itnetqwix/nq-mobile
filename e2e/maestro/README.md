@@ -16,14 +16,25 @@ Set `APP_ID` to your iOS bundle id or Android package from `app.json`.
 ## Run
 
 ```bash
+maestro test e2e/maestro/scheduled-booking-wizard.yaml
 maestro test e2e/maestro/scheduled-book-call-gameplan.yaml
 maestro test e2e/maestro/instant-book-accept-join-end.yaml
 maestro test e2e/maestro/wallet-topup-book-cancel.yaml
 ```
 
+### Scheduled booking wizard (`scheduled-booking-wizard.yaml`)
+
+End-to-end through all six wizard steps (datetime → duration → clips → promo → payment → confirm). Uses `testID` hooks on wizard steps (`schedule-step-*`, `wizard-*`). Requires:
+
+- Staging trainee with login credentials
+- At least one trainer with availability **2+ days out** (2-hour lead time)
+- Wallet balance covering the session **or** Stripe test card for PaymentSheet
+
+`scheduled-book-call-gameplan.yaml` runs the same wizard then optionally checks Upcoming; trainer confirm/join is still manual or two-device.
+
 `wallet-topup-book-cancel.yaml` covers trainee wallet top-up (when needed), wallet pay on instant book, and cancel/refund chip. Stripe PaymentSheet steps may require manual completion in test mode.
 
-Flows use visible labels where `testID` is not yet wired. Adjust tap text if your locale differs from English.
+Flows fall back to visible English labels where `testID` is not wired. Set device language to English for label-based steps.
 
 ## Two-device instant flow
 

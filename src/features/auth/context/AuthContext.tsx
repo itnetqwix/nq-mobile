@@ -13,6 +13,7 @@ import {
   selectAuthStatus,
   selectAuthUser,
 } from "../../../store/selectors";
+import { migrateGuestCapturedClips } from "../../capture/capturedClipsStorage";
 
 export type AuthUser = Record<string, unknown> | null;
 export type AuthStatus = "loading" | "signedOut" | "signedIn";
@@ -73,6 +74,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         throw err;
       }
+      const signedInUser = (result.payload as { user?: { _id?: string } } | undefined)?.user;
+      if (signedInUser?._id) {
+        void migrateGuestCapturedClips(String(signedInUser._id));
+      }
     },
     [dispatch]
   );
@@ -87,6 +92,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const result = await dispatch(completeSessionFromTokensThunk(tokens));
       if (completeSessionFromTokensThunk.rejected.match(result)) {
         throw new Error(String(result.payload ?? "Session failed."));
+      }
+      const userId = (result.payload as { user?: { _id?: string } } | undefined)?.user?._id;
+      if (userId) {
+        void migrateGuestCapturedClips(String(userId));
       }
     },
     [dispatch]

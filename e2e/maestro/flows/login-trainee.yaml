@@ -1,0 +1,14 @@
+# Reusable trainee login (no appId — invoked from parent flows).
+---
+- runFlow:
+    when:
+      visible: "Sign in"
+    commands:
+      - tapOn: "Email"
+      - inputText: ${TRAINEE_EMAIL}
+      - tapOn: "Password"
+      - inputText: ${TRAINEE_PASSWORD}
+      - tapOn: "Sign in"
+- extendedWaitUntil:
+    visible: "Book Expert"
+    timeout: 60000

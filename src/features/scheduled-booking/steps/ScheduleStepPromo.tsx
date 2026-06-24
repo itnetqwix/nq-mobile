@@ -72,7 +72,7 @@ export function ScheduleStepPromo({
       : t("scheduledBooking.promo.amountOff", { value: `$${p.discount_value}` }));
 
   return (
-    <View style={styles.root}>
+    <View testID="schedule-step-promo" style={styles.root}>
       <View style={styles.titleRow}>
         <Text style={styles.heroTitle}>{t("scheduledBooking.promo.title")}</Text>
         <View style={styles.optionalPill}>
@@ -182,7 +182,7 @@ export function ScheduleStepPromo({
         <Text style={shared.primaryBtnText}>{t("scheduledBooking.promo.continue")}</Text>
         <Ionicons name="arrow-forward" size={18} color={c.brandTextOn} />
       </Pressable>
-      <Pressable style={shared.secondaryBtn} onPress={onSkip}>
+      <Pressable testID="schedule-promo-skip" style={shared.secondaryBtn} onPress={onSkip}>
         <Text style={shared.secondaryBtnText}>{t("scheduledBooking.promo.skip")}</Text>
       </Pressable>
     </View>

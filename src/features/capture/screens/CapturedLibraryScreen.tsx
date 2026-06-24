@@ -13,6 +13,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useAuth } from "../../auth/context/AuthContext";
+import { useGuestMode } from "../../auth/hooks/useGuestMode";
+import { useRequireAuth } from "../../auth/hooks/useRequireAuth";
 import { LockerViewerModal } from "../../dashboard/components/locker/LockerViewerModal";
 import {
   CapturedShareSheet,
@@ -26,6 +28,7 @@ import {
   saveCapturedClip,
   backfillCapturedClipThumbnails,
   type CapturedClip,
+  capturedClipFileExists,
 } from "../capturedClipsStorage";
 import type * as ImagePicker from "expo-image-picker";
 import { promptImportCapturedVideo } from "../pickCapturedVideo";
@@ -49,6 +52,8 @@ export function CapturedLibraryScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<CaptureStackParamList>>();
   const { user } = useAuth();
+  const isGuest = useGuestMode();
+  const { requireAuth } = useRequireAuth();
   const userId = user?._id != null ? String(user._id) : null;
   const [clips, setClips] = useState<CapturedClip[]>([]);
   const [selectMode, setSelectMode] = useState(false);
@@ -160,9 +165,19 @@ export function CapturedLibraryScreen() {
   );
 
   const openViewer = useCallback((clip: CapturedClip) => {
-    const idx = clips.findIndex((row) => row.id === clip.id);
-    setViewerIndex(idx >= 0 ? idx : 0);
-    setViewerClip(clip);
+    void (async () => {
+      const exists = await capturedClipFileExists(clip.uri);
+      if (!exists) {
+        Alert.alert(
+          "Clip unavailable",
+          "This recording is no longer on your device. Remove it from the list and capture again."
+        );
+        return;
+      }
+      const idx = clips.findIndex((row) => row.id === clip.id);
+      setViewerIndex(idx >= 0 ? idx : 0);
+      setViewerClip(clip);
+    })();
   }, [clips]);
 
   const toggleSelect = (id: string) => {
@@ -216,7 +231,15 @@ export function CapturedLibraryScreen() {
 
   const navigateToUpload = (target: CapturedShareTarget, clipList: CapturedClip[]) => {
     if (clipList.length === 0) {
-      Alert.alert("Select a clip", "Tap a clip to preview, or use multi-select.");
+      Alert.alert("Select a clip", "Tap a clip to preview, or long-press to select multiple.");
+      return;
+    }
+    if (isGuest) {
+      requireAuth(undefined, {
+        intent: "capture_upload",
+        messageKey: "guest.signInToContinue",
+        screen: "SignUp",
+      });
       return;
     }
     haptics.tap();
@@ -270,18 +293,7 @@ export function CapturedLibraryScreen() {
             {isSelected && <Ionicons name="checkmark" size={12} color="#fff" />}
           </View>
         ) : (
-          <Pressable
-            style={styles.recordIconBtn}
-            onPress={(e) => {
-              e.stopPropagation?.();
-              void startRecording();
-            }}
-            disabled={recordingBusy}
-            accessibilityRole="button"
-            accessibilityLabel="Record new clip"
-          >
-            <Ionicons name="videocam" size={18} color={colors.brandNavy} />
-          </Pressable>
+          <View style={styles.recordIconSpacer} />
         )}
         <Pressable
           style={styles.thumb}
@@ -372,6 +384,14 @@ export function CapturedLibraryScreen() {
           </View>
         )}
       </View>
+
+      {selectMode && selected.size === 0 ? (
+        <View style={styles.selectHintBar}>
+          <Text style={styles.selectHintText}>
+            Long-press clips to select, then share or delete.
+          </Text>
+        </View>
+      ) : null}
 
       {selectMode && selected.size > 0 ? (
         <View style={styles.selectBar}>
@@ -591,16 +611,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   checkOn: { backgroundColor: colors.brandNavy, borderColor: colors.brandNavy },
-  recordIconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  recordIconSpacer: { width: 36 },
+  selectHintBar: {
+    marginHorizontal: space.md,
+    marginBottom: space.sm,
+    padding: space.sm,
+    borderRadius: radii.md,
     backgroundColor: "#eff6ff",
-    borderWidth: 1,
-    borderColor: "#bfdbfe",
-    alignItems: "center",
-    justifyContent: "center",
   },
+  selectHintText: { ...typography.bodySm, color: colors.brandNavy },
   thumb: {
     width: 48,
     height: 48,

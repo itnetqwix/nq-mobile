@@ -1177,7 +1177,8 @@
       "trainerLocalTime": "코치 현지 시간: {{time}}",
       "unavailable": "시간 부족",
       "coachRate": "코치 요금: {{rate}}/시간",
-      "next": "다음: 클립 첨부"
+      "next": "다음: 클립 첨부",
+      "pickAnotherTime": "다른 시간 선택"
     },
     "confirm": {
       "title": "검토 및 요청",
@@ -1210,6 +1211,24 @@
       "continue": "계속",
       "skip": "프로모 건너뛰기",
       "tapToApply": "탭하여 적용"
+    },
+    "alerts": {
+      "selectTimeTitle": "시간 선택",
+      "selectTimeBody": "세션 시작 시간을 선택하세요.",
+      "selectTimeGoBack": "돌아가서 세션 길이에 맞는 시작 시간을 선택하세요.",
+      "chooseTimeFirst": "먼저 세션 시간을 선택하세요.",
+      "slotUnavailableTitle": "예약 불가",
+      "slotUnavailableBody": "이 시간은 더 이상 이용할 수 없습니다. 다른 시간을 선택하세요.",
+      "noDurationsTitle": "시간 부족",
+      "noDurationsBody": "이 슬롯에는 세션 길이가 맞지 않습니다. 다른 시간을 선택하세요.",
+      "suggestionUnavailableTitle": "제안 시간 불가",
+      "suggestionUnavailableBody": "제안된 시간은 더 이상 비어 있지 않습니다. 다른 슬롯을 선택하세요.",
+      "paymentRequiredTitle": "결제 필요",
+      "paymentRequiredBody": "세션을 요청하기 전에 결제를 완료하세요.",
+      "bookingFailedTitle": "예약 실패",
+      "bookingFailedBody": "세션을 예약할 수 없습니다. 다시 시도하세요.",
+      "bookingFailedPaidTitle": "결제 후 슬롯 마감",
+      "bookingFailedPaidBody": "이 시간은 방금 예약되었습니다. 카드 결제는 자동으로 환불되었습니다 — 다른 시간을 선택하세요."
     }
   }
 }

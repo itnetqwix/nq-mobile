@@ -1,0 +1,72 @@
+# Scheduled wizard steps only (no launch/login — use from parent flows).
+---
+- tapOn: "Book Expert"
+- tapOn:
+    id: "book-expert-schedule"
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: "schedule-step-datetime"
+    timeout: 60000
+- tapOn:
+    id: "schedule-date-chip"
+    index: 2
+- extendedWaitUntil:
+    visible:
+      id: "schedule-time-slot"
+    timeout: 45000
+- tapOn:
+    id: "schedule-time-slot"
+    index: 0
+- tapOn:
+    id: "schedule-datetime-continue"
+- extendedWaitUntil:
+    visible:
+      id: "schedule-step-duration"
+    timeout: 20000
+- tapOn:
+    id: "schedule-duration-30"
+    optional: true
+- tapOn:
+    id: "schedule-duration-60"
+    optional: true
+- tapOn:
+    id: "schedule-duration-45"
+    optional: true
+- tapOn:
+    id: "schedule-duration-continue"
+- extendedWaitUntil:
+    visible:
+      id: "wizard-step-clips"
+    timeout: 20000
+- tapOn:
+    id: "wizard-clips-skip"
+- extendedWaitUntil:
+    visible:
+      id: "schedule-step-promo"
+    timeout: 20000
+- tapOn:
+    id: "schedule-promo-skip"
+- extendedWaitUntil:
+    visible:
+      id: "wizard-step-payment"
+    timeout: 60000
+- tapOn:
+    id: "wizard-payment-wallet"
+    optional: true
+- tapOn:
+    id: "wizard-payment-primary"
+    optional: true
+- tapOn:
+    id: "wizard-payment-card"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "schedule-step-confirm"
+    timeout: 180000
+- tapOn:
+    id: "schedule-confirm-submit"
+- extendedWaitUntil:
+    visible: "Session requested"
+    timeout: 90000
+- tapOn: "Done"

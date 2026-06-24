@@ -1,0 +1,15 @@
+# Full scheduled booking wizard: datetime → duration → clips → promo → payment → confirm.
+# Requires staging trainee, a trainer with future availability, and wallet balance or Stripe test card.
+appId: ${APP_ID}
+env:
+  TRAINEE_EMAIL: ${TRAINEE_EMAIL}
+  TRAINEE_PASSWORD: ${TRAINEE_PASSWORD}
+---
+- launchApp
+- runFlow:
+    file: flows/login-trainee.yaml
+    env:
+      TRAINEE_EMAIL: ${TRAINEE_EMAIL}
+      TRAINEE_PASSWORD: ${TRAINEE_PASSWORD}
+- runFlow:
+    file: flows/scheduled-booking-wizard-steps.yaml

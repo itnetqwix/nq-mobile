@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigation } from "@react-navigation/native";
 import {
   Alert,
   Pressable,
@@ -64,6 +65,7 @@ type SignUpStep = "accountType" | "category" | "profile" | "verify" | "password"
 const STEP_ORDER: SignUpStep[] = ["accountType", "category", "profile", "verify", "password"];
 
 export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
+  const parentNav = useNavigation();
   const { t } = useAppTranslation();
   const { signIn, completeSessionFromTokens } = useAuth();
   const { showLoader, hideLoader } = useLoader();
@@ -335,6 +337,10 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
     try {
       await completeSessionFromTokens(tokens);
       await promptEnableAppUnlock();
+      const parent = parentNav.getParent();
+      if (parent?.canGoBack()) {
+        parent.goBack();
+      }
     } finally {
       hideLoader();
     }

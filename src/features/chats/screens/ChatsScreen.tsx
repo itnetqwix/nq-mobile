@@ -53,6 +53,7 @@ import { useFloatingTabBarBottomInset } from "../../../navigation/useFloatingTab
 import type { MainTabScreenProps } from "../../../navigation/types";
 import { useChatRoomChrome } from "../hooks/useChatRoomChrome";
 import { ChatRoomScreen } from "./ChatRoomScreen";
+import { ScheduledMessagesSheet } from "../components/ScheduledMessagesSheet";
 import {
   getPresignedChatUploadUrl,
   uploadChatFileToS3,
@@ -61,13 +62,9 @@ import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import type { TFunction } from "i18next";
 
 async function fetchConversations(): Promise<any[]> {
-  try {
-    const res = await apiClient.get(API_ROUTES.chat.conversations);
-    const body = (res as any)?.data ?? res;
-    return body?.data ?? body?.result ?? [];
-  } catch {
-    return [];
-  }
+  const res = await apiClient.get(API_ROUTES.chat.conversations);
+  const body = (res as any)?.data ?? res;
+  return body?.data ?? body?.result ?? [];
 }
 
 function formatLastMessagePreview(raw: string, t: TFunction): string {
@@ -356,6 +353,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
   const queryClient = useQueryClient();
   const currentUserId = String((user as any)?._id ?? (user as any)?.id ?? "");
   const [search, setSearch] = useState("");
+  const [scheduledSheetOpen, setScheduledSheetOpen] = useState(false);
   const debouncedSearch = useDebouncedValue(search, SEARCH_LOCAL_DEBOUNCE_MS);
   const [activeChat, setActiveChat] = useState<{
     conversationId: string;
@@ -651,6 +649,15 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
           </Pressable>
         )}
         <Pressable
+          onPress={() => setScheduledSheetOpen(true)}
+          accessibilityLabel={t("chats.scheduledMessagesA11y", {
+            defaultValue: "Scheduled messages",
+          })}
+          hitSlop={8}
+        >
+          <Ionicons name="calendar-outline" size={22} color={c.brandNavy} />
+        </Pressable>
+        <Pressable
           onPress={() => navigation.navigate("Home", { screen: "ArchivedChats" })}
           accessibilityLabel={t("chats.archivedChatsA11y")}
           hitSlop={8}
@@ -751,7 +758,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
                       text: t("chats.archive"),
                       onPress: () => {
                         void archiveChatConversation(String(item._id)).then(() =>
-                          queryClient.invalidateQueries({ queryKey: ["conversations"] })
+                          queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations })
                         );
                       },
                     },
@@ -760,7 +767,7 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
                       style: "destructive",
                       onPress: () => {
                         void deleteChatConversation(String(item._id)).then(() =>
-                          queryClient.invalidateQueries({ queryKey: ["conversations"] })
+                          queryClient.invalidateQueries({ queryKey: queryKeys.chats.conversations })
                         );
                       },
                     },
@@ -1057,6 +1064,12 @@ export function ChatsScreen({ navigation }: MainTabScreenProps<"Chats">) {
           />
         </View>
       </Modal>
+
+      <ScheduledMessagesSheet
+        visible={scheduledSheetOpen}
+        onClose={() => setScheduledSheetOpen(false)}
+        currentUserId={currentUserId}
+      />
     </TabScreenShell>
   );
 }
