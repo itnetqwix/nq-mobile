@@ -5,6 +5,7 @@ import { CapturedLibraryScreen } from "../features/capture/screens/CapturedLibra
 import { CapturedClipUploadScreen } from "../features/capture/screens/CapturedClipUploadScreen";
 import type { CaptureShareTarget } from "../features/capture/clipUploadShareTarget";
 import type { CapturedClip } from "../features/capture/capturedClipsStorage";
+import { nestedStackScreenOptions } from "./stackTransitions";
 
 export type CaptureStackParamList = {
   CapturedLibrary: undefined;
@@ -24,7 +25,7 @@ export function CaptureNavigator() {
   return (
     <Stack.Navigator
       initialRouteName="CapturedLibrary"
-      screenOptions={{ headerShown: false }}
+      screenOptions={nestedStackScreenOptions()}
     >
       <Stack.Screen name="CapturedLibrary" component={CapturedLibraryScreen} />
       <Stack.Screen name="CaptureCamera" component={CaptureScreen} />

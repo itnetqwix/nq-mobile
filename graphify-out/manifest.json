@@ -2875,8 +2875,8 @@
     "semantic_hash": ""
   },
   "src/features/wallet/navigation/WalletNavigator.tsx": {
-    "mtime": 1781766644.4893224,
-    "ast_hash": "ae361fcf7e43b6a7d368745105e4d719",
+    "mtime": 1782300336.6914177,
+    "ast_hash": "9d5f6deacf3357cffffff3660f7fe61d",
     "semantic_hash": ""
   },
   "src/features/wallet/screens/AutoTopUpScreen.tsx": {
@@ -3430,8 +3430,8 @@
     "semantic_hash": ""
   },
   "src/navigation/AuthNavigator.tsx": {
-    "mtime": 1781801043.619285,
-    "ast_hash": "44d1454128d31520f101a07dc0daa49d",
+    "mtime": 1782300333.1449552,
+    "ast_hash": "a39169122680d3bf3d8c4378fe26e76c",
     "semantic_hash": ""
   },
   "src/navigation/DashboardDrawerContent.tsx": {
@@ -3440,9 +3440,9 @@
     "semantic_hash": ""
   },
   "src/navigation/DashboardDrawerShell.tsx": {
-    "mtime": 1780397889.2323394,
-    "ast_hash": "45bbee58f507f4e76a0383010893f157",
-    "semantic_hash": "45bbee58f507f4e76a0383010893f157"
+    "mtime": 1782300688.439635,
+    "ast_hash": "8b0a091681e822a2fed6ab293b590bfd",
+    "semantic_hash": ""
   },
   "src/navigation/DashboardHomeEntry.tsx": {
     "mtime": 1780391651.7584798,
@@ -3470,8 +3470,8 @@
     "semantic_hash": ""
   },
   "src/navigation/MainTabs.tsx": {
-    "mtime": 1782291038.9504516,
-    "ast_hash": "416ea1e15d4c97ed71df6dc47e72aee4",
+    "mtime": 1782300687.3263834,
+    "ast_hash": "a7aac99e661e62b15304d0c5a9544f52",
     "semantic_hash": ""
   },
   "src/navigation/MenuNavigator.tsx": {
@@ -3480,13 +3480,13 @@
     "semantic_hash": "246fe444bc14e9ea4867f61286906de4"
   },
   "src/navigation/OnboardingNavigator.tsx": {
-    "mtime": 1778912468.6288817,
-    "ast_hash": "d6c12475632e6d32450b71cc86c2b29d",
-    "semantic_hash": "d6c12475632e6d32450b71cc86c2b29d"
+    "mtime": 1782300338.276378,
+    "ast_hash": "3e818029be5f544af63466b6bf4bc736",
+    "semantic_hash": ""
   },
   "src/navigation/RootNavigator.tsx": {
-    "mtime": 1782297184.6564941,
-    "ast_hash": "a7e6f3a71350eabb52680f80d9ef09a7",
+    "mtime": 1782300328.0205505,
+    "ast_hash": "296f739c9e456428407a991646eb1a4c",
     "semantic_hash": ""
   },
   "src/navigation/StackSwipeBackShell.tsx": {
@@ -3505,9 +3505,9 @@
     "semantic_hash": "261af8b4297b10369841ee2d62d0372c"
   },
   "src/navigation/TrainerProfileSetupNavigator.tsx": {
-    "mtime": 1779515554.5521455,
-    "ast_hash": "b60d756139525a8b86077281ab8c87cc",
-    "semantic_hash": "b60d756139525a8b86077281ab8c87cc"
+    "mtime": 1782300339.9126337,
+    "ast_hash": "8bcfa62df6afff4ffc8f6abcc902382a",
+    "semantic_hash": ""
   },
   "src/navigation/activeNavState.ts": {
     "mtime": 1778955782.9644613,
@@ -3520,9 +3520,9 @@
     "semantic_hash": "40b66a609b924ef3a0865461316f47ea"
   },
   "src/navigation/mainTabHeaderOptions.tsx": {
-    "mtime": 1779706707.2129378,
-    "ast_hash": "aece5bfa8917d29c889783e2297ed054",
-    "semantic_hash": "aece5bfa8917d29c889783e2297ed054"
+    "mtime": 1782300321.2410302,
+    "ast_hash": "c3934cb7b0c7ad956661838b50e5fd1a",
+    "semantic_hash": ""
   },
   "src/navigation/navMatrix.ts": {
     "mtime": 1782298359.5712047,
@@ -3970,8 +3970,8 @@
     "semantic_hash": ""
   },
   "src/navigation/CaptureNavigator.tsx": {
-    "mtime": 1781612101.8612168,
-    "ast_hash": "1301797db77159298289195b7a0ee793",
+    "mtime": 1782300335.0260236,
+    "ast_hash": "de3507f830e363d12f42373f860d9e1e",
     "semantic_hash": ""
   },
   "docs/STORE_RELEASE.md": {
@@ -4630,13 +4630,18 @@
     "semantic_hash": ""
   },
   "src/features/content/LegalReconsentGate.tsx": {
-    "mtime": 1782299996.8916593,
-    "ast_hash": "1e4a3cbb994693ee5701d057d1ae5d80",
+    "mtime": 1782300788.4744112,
+    "ast_hash": "ff4d2ba7a92f02dd446ce83a6e307dd4",
     "semantic_hash": ""
   },
   "src/features/content/api/userLegalApi.ts": {
     "mtime": 1782299932.424827,
     "ast_hash": "99130ece2cca17ffcf25f8a84ac3b2bb",
+    "semantic_hash": ""
+  },
+  "src/navigation/stackTransitions.ts": {
+    "mtime": 1782300316.4600217,
+    "ast_hash": "0f36b6e0bbe348b8a4da586f27660e13",
     "semantic_hash": ""
   }
 }

@@ -20,6 +20,7 @@ export function DashboardDrawerShell() {
           backgroundColor: c.background,
         },
         overlayColor: c.scrim,
+        swipeEdgeWidth: 28,
       }}
     >
       <Drawer.Screen

@@ -55,7 +55,7 @@ export function MainTabs() {
           fontSize: 11,
         },
         tabBarHideOnKeyboard: true,
-        animation: "shift",
+        animation: "fade",
         tabBarButton: (props) => <HapticTabBarButton {...props} />,
       }}
     >

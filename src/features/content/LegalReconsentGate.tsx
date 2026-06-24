@@ -11,14 +11,14 @@ import {
 } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 
-import { useAuth } from "../../auth/context/AuthContext";
-import { LegalTermsAcceptance } from "../../auth/components/LegalTermsAcceptance";
-import { acceptLegalDocuments, pendingLegalSlugsFromManifest } from "../api/userLegalApi";
-import { fetchCmsManifest } from "../api/cmsApi";
-import { queryKeys } from "../../../lib/queryKeys";
-import { navigationRef } from "../../../navigation/navigationRef";
-import { useAppTranslation } from "../../../i18n/useAppTranslation";
-import { colors, radii, space } from "../../../theme";
+import { useAuth } from "../auth/context/AuthContext";
+import { LegalTermsAcceptance } from "../auth/components/LegalTermsAcceptance";
+import { acceptLegalDocuments, pendingLegalSlugsFromManifest } from "./api/userLegalApi";
+import { fetchCmsManifest } from "./api/cmsApi";
+import { queryKeys } from "../../lib/queryKeys";
+import { navigationRef } from "../../navigation/navigationRef";
+import { useAppTranslation } from "../../i18n/useAppTranslation";
+import { colors, radii, space } from "../../theme";
 
 function openLegal(slug: "terms" | "privacy") {
   if (!navigationRef.isReady()) return;
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800",
     letterSpacing: 1,
-    color: colors.brandPrimary,
+    color: colors.brand,
     marginBottom: space.sm,
   },
   title: {
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   button: {
-    backgroundColor: colors.brandPrimary,
+    backgroundColor: colors.brand,
     borderRadius: radii.md,
     paddingVertical: 14,
     alignItems: "center",

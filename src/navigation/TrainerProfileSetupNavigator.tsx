@@ -14,6 +14,7 @@ import type {
   TrainerDegree,
   TrainerWorkExperience,
 } from "../features/trainer-profile/types/trainerCredentials";
+import { nestedStackScreenOptions } from "./stackTransitions";
 
 export type TrainerProfileSetupStackParamList = {
   Certificates: undefined;
@@ -64,7 +65,7 @@ export function TrainerProfileSetupNavigator({ onComplete }: Props) {
   }
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={nestedStackScreenOptions()}>
       <Stack.Screen name="Certificates">
         {({ navigation }) => (
           <CertificatesSetupScreen

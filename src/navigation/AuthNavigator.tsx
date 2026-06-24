@@ -12,6 +12,7 @@ import { LegalDocumentScreen } from "../features/content/screens/LegalDocumentSc
 import type { RootStackParamList } from "./types";
 import type { AuthStackParamList } from "./types";
 import type { NavigatorScreenParams, RouteProp } from "@react-navigation/native";
+import { nestedStackScreenOptions } from "./stackTransitions";
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
@@ -48,11 +49,10 @@ export function AuthNavigator() {
   return (
     <Stack.Navigator
       initialRouteName={initialScreen}
-      screenOptions={{
-        headerShown: false,
+      screenOptions={nestedStackScreenOptions({
         headerTitleAlign: "center",
         headerShadowVisible: false,
-      }}
+      })}
     >
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="SignUp" component={SignUpScreen} />

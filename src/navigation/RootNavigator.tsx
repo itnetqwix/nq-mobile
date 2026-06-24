@@ -26,6 +26,11 @@ import { AuthNavigator } from "./AuthNavigator";
 import { DashboardDrawerShell } from "./DashboardDrawerShell";
 import { SystemStateScreen } from "../features/system-states/screens/SystemStateScreen";
 import type { RootStackParamList } from "./types";
+import {
+  rootFadeModalScreenOptions,
+  rootModalScreenOptions,
+  rootPushScreenOptions,
+} from "./stackTransitions";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -147,12 +152,7 @@ export function RootNavigator() {
     <>
       <Stack.Navigator
         key={signedIn ? "signedIn" : "guestBrowse"}
-        screenOptions={{
-          headerShown: false,
-          gestureEnabled: true,
-          gestureDirection: "horizontal",
-          animation: "slide_from_right",
-        }}
+        screenOptions={rootPushScreenOptions()}
       >
         {signedIn ? (
           <>
@@ -164,31 +164,17 @@ export function RootNavigator() {
             <Stack.Screen
               name="Meeting"
               component={MeetingRouter}
-              options={{
-                headerShown: false,
-                presentation: "fullScreenModal",
-                animation: "slide_from_bottom",
-                gestureEnabled: false,
-              }}
+              options={rootModalScreenOptions({ gestureEnabled: false })}
             />
             <Stack.Screen
               name="Auth"
               component={AuthNavigator}
-              options={{
-                presentation: "fullScreenModal",
-                animation: "slide_from_bottom",
-                headerShown: false,
-                gestureEnabled: true,
-              }}
+              options={rootModalScreenOptions()}
             />
             <Stack.Screen
               name="SystemState"
               component={SystemStateScreen}
-              options={{
-                presentation: "modal",
-                animation: "fade",
-                headerShown: false,
-              }}
+              options={rootFadeModalScreenOptions()}
             />
           </>
         ) : (
@@ -201,21 +187,12 @@ export function RootNavigator() {
             <Stack.Screen
               name="Auth"
               component={AuthNavigator}
-              options={{
-                presentation: "fullScreenModal",
-                animation: "slide_from_bottom",
-                headerShown: false,
-                gestureEnabled: true,
-              }}
+              options={rootModalScreenOptions()}
             />
             <Stack.Screen
               name="SystemState"
               component={SystemStateScreen}
-              options={{
-                presentation: "modal",
-                animation: "fade",
-                headerShown: false,
-              }}
+              options={rootFadeModalScreenOptions()}
             />
           </>
         )}

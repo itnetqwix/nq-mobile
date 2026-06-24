@@ -6,6 +6,7 @@ import { ProfileFaceScreen } from "../features/verification/screens/ProfileFaceS
 import { PendingReviewScreen } from "../features/verification/screens/PendingReviewScreen";
 import { getVerificationStatus } from "../features/verification/verificationApi";
 import { useAuth } from "../features/auth/context/AuthContext";
+import { nestedStackScreenOptions } from "./stackTransitions";
 
 export type OnboardingStackParamList = {
   Contact: undefined;
@@ -62,7 +63,7 @@ export function OnboardingNavigator({ onComplete }: Props) {
   }
 
   return (
-    <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
+    <Stack.Navigator initialRouteName={initialRoute} screenOptions={nestedStackScreenOptions()}>
       <Stack.Screen name="Contact">
         {({ navigation }) => (
           <VerifyContactScreen onDone={() => navigation.navigate("Profile")} />

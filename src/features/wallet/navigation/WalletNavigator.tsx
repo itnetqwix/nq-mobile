@@ -12,6 +12,7 @@ import { StripeConnectOnboardingScreen } from "../screens/StripeConnectOnboardin
 import { TrainerEarningsScreen } from "../screens/TrainerEarningsScreen";
 import { PointsActivityScreen } from "../../points/screens/PointsActivityScreen";
 import { TransactionsScreen } from "../../dashboard/screens/TransactionsScreen";
+import { nestedStackScreenOptions } from "../../../navigation/stackTransitions";
 
 export type WalletStackParamList = {
   WalletHome: undefined;
@@ -41,10 +42,9 @@ function WalletStackInner({
   return (
     <Stack.Navigator
       initialRouteName={initialRouteName ?? "WalletHome"}
-      screenOptions={{
-        headerShown: false,
+      screenOptions={nestedStackScreenOptions({
         contentStyle: { backgroundColor: c.background },
-      }}
+      })}
     >
       <Stack.Screen name="WalletHome" component={withShellNestedBack(WalletHomeScreen)} />
       <Stack.Screen
