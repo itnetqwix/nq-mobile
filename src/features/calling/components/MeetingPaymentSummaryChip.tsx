@@ -67,6 +67,12 @@ export function MeetingPaymentSummaryChip({
         value: fmtMoneyMinor(escrow.session_subtotal_minor),
       });
     }
+    if (Number(escrow.surge_minor) > 0) {
+      rows.push({
+        label: "Peak pricing",
+        value: fmtMoneyMinor(escrow.surge_minor),
+      });
+    }
     if (Number(escrow.trainee_platform_fee_minor) > 0) {
       rows.push({
         label: "Platform fee",

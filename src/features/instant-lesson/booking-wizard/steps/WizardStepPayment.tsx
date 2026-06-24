@@ -117,6 +117,7 @@ export function WizardStepPayment({
     quoteId?: string;
   } | null>(null);
   const [pricingQuote, setPricingQuote] = useState<PricingQuote | null>(null);
+  const [walletPricingQuote, setWalletPricingQuote] = useState<PricingQuote | null>(null);
 
   const hourlyRate = Number(
     (trainer as any)?.extraInfo?.hourly_rate ??
@@ -144,7 +145,8 @@ export function WizardStepPayment({
   );
 
   const totalToCharge =
-    chargeTotalDollars(pricingQuote) ?? (priceInfo?.amount ?? payableAmount);
+    chargeTotalDollars(wallet.canPayWithWallet ? walletPricingQuote ?? pricingQuote : pricingQuote) ??
+    (priceInfo?.amount ?? payableAmount);
   const wallet = useWalletPaymentOption(totalToCharge, true, billing.country);
   const savedCard = useDefaultSavedCard(payableAmount > 0);
   const canPayMixed =
@@ -248,6 +250,34 @@ export function WizardStepPayment({
     ]
   );
 
+  useEffect(() => {
+    if (payableAmount <= 0) return;
+    let cancelled = false;
+    const trainerId = String((trainer as any)?._id ?? (trainer as any)?.userInfo?._id ?? "");
+    void fetchSessionPricingQuote({
+      productType: bookingType === "instant" ? "instant_lesson" : "session_booking",
+      sessionSubtotalCents: Math.round(expectedPrice * 100),
+      trainerId,
+      promoDiscountCents: Math.round(promoDiscountAmount * 100),
+      promoSponsorType,
+      user: user as Record<string, unknown>,
+      paymentMethodHint: "wallet_us",
+    }).then((quote) => {
+      if (!cancelled) setWalletPricingQuote(quote);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    payableAmount,
+    expectedPrice,
+    promoDiscountAmount,
+    promoSponsorType,
+    bookingType,
+    trainer,
+    user,
+  ]);
+
   const createIntent = useCallback(() => {
     void setupCardPayment(expectedPrice);
   }, [setupCardPayment, expectedPrice]);
@@ -290,8 +320,8 @@ export function WizardStepPayment({
         chargingPrice: totalToCharge,
         paymentMethod: "wallet",
         pinSessionToken: token,
-        quoteId: pricingQuote?.quoteId ?? priceInfo?.quoteId,
-        pricingQuote,
+        quoteId: walletPricingQuote?.quoteId ?? pricingQuote?.quoteId ?? priceInfo?.quoteId,
+        pricingQuote: walletPricingQuote ?? pricingQuote,
       });
     } catch (e: unknown) {
       Alert.alert("Wallet payment", getApiErrorMessage(e, "Could not verify PIN."));
@@ -304,6 +334,7 @@ export function WizardStepPayment({
     completePayment,
     totalToCharge,
     pricingQuote,
+    walletPricingQuote,
     priceInfo,
   ]);
 
@@ -452,11 +483,12 @@ export function WizardStepPayment({
       {!isFree && payableAmount > 0 ? (
         <PricingBreakdownSummary
           sessionSubtotal={expectedPrice}
-          pricingQuote={pricingQuote}
+          pricingQuote={wallet.canPayWithWallet ? walletPricingQuote ?? pricingQuote : pricingQuote}
           chargeTotal={totalToCharge}
           currency={activeCurrency}
           promoDiscount={promoDiscountAmount > 0 ? promoDiscountAmount : undefined}
           promoLabel={promoLabel}
+          walletPortionDollars={canPayMixed ? wallet.available : undefined}
         />
       ) : null}
 

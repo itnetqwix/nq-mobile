@@ -55,6 +55,7 @@ export type PendingExtensionRequestSnapshot = {
   status: "pending" | "accepted" | "rejected" | "paid" | "cancelled" | "expired";
   minutes: number;
   amount: number;
+  trainerNetCents?: number;
   requestedAt: string;
   expiresAt: string | null;
   requestedBy: string;

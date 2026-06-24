@@ -103,7 +103,12 @@ export function TrainerExtensionRequestModal({ flow, traineeName }: Props) {
             <View style={styles.summaryCell}>
               <Text style={styles.summaryLabel}>You earn</Text>
               <Text style={styles.summaryValue}>
-                ${Number(request?.amount ?? 0).toFixed(2)}
+                $
+                {(
+                  (request?.trainerNetCents != null
+                    ? request.trainerNetCents / 100
+                    : Number(request?.amount ?? 0)) as number
+                ).toFixed(2)}
               </Text>
             </View>
           </View>

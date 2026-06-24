@@ -23,6 +23,9 @@ import {
 import { useCurrencyFormatter } from "../../../lib/intl";
 import { queryKeys } from "../../../lib/queryKeys";
 import { SessionTimelineCard } from "../../support/SessionTimelineCard";
+import { TrainerEarningsBreakdown } from "../../payments/TrainerEarningsBreakdown";
+import { useAuth } from "../../auth/context/AuthContext";
+import { AccountType } from "../../../constants/accountType";
 
 type Props = NativeStackScreenProps<MenuStackParamList, "TransactionDetail">;
 
@@ -68,6 +71,8 @@ type TimelineStepStatus = "completed" | "active" | "pending" | "failed";
 
 export function TransactionDetailScreen({ navigation, route }: Props) {
   const c = useThemeColors();
+  const { accountType } = useAuth();
+  const isTrainer = accountType === AccountType.TRAINER;
   const fmt = useCurrencyFormatter();
   const styles = useThemedStyles((palette) => StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: space.lg },
@@ -302,6 +307,25 @@ export function TransactionDetailScreen({ navigation, route }: Props) {
           <Ionicons name="copy-outline" size={18} color={c.iconPrimary} />
         </Pressable>
       </View>
+
+      {isTrainer && (data.trainer_earnings_breakdown || data.escrow) ? (
+        <TrainerEarningsBreakdown
+          data={
+            data.trainer_earnings_breakdown ??
+            (data.escrow
+              ? {
+                  sessionSubtotalCents: data.escrow.session_subtotal_minor,
+                  surgeCents: data.escrow.surge_minor,
+                  commissionRate: data.escrow.commission_rate,
+                  commissionCents: data.escrow.platform_fee_minor,
+                  trainerPlatformFeeCents: data.escrow.trainer_platform_fee_minor,
+                  trainerNetCents: data.escrow.trainer_net_minor,
+                  escrowStatus: data.escrow.status,
+                }
+              : null)
+          }
+        />
+      ) : null}
 
       {events.length > 0 ? (
         <>

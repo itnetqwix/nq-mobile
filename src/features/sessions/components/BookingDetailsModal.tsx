@@ -33,6 +33,7 @@ import {
 } from "../../../lib/sessions/sessionRatingUtils";
 import { colors, radii, space, typography } from "../../../theme";
 import { SessionBillSummary } from "./SessionBillSummary";
+import { TrainerEarningsBreakdown } from "../../payments/TrainerEarningsBreakdown";
 
 type Props = {
   visible: boolean;
@@ -312,19 +313,24 @@ export function BookingDetailsModal({
                 ) : null}
               </View>
             ) : (
-              /* Trainer sees a compact payment summary (no bill detail needed) */
               <Section title="Payment">
-                <Row label="Session amount" value={fmtMoney(merged.amount)} />
-                {escrow?.charge_total_minor != null ? (
-                  <Row label="Total charged" value={fmtMoney(escrow.charge_total_minor / 100)} />
-                ) : null}
+                <TrainerEarningsBreakdown
+                  data={
+                    detail?.trainer_earnings_breakdown ??
+                    (escrow
+                      ? {
+                          sessionSubtotalCents: escrow.session_subtotal_minor,
+                          surgeCents: escrow.surge_minor,
+                          commissionRate: escrow.commission_rate,
+                          commissionCents: escrow.platform_fee_minor,
+                          trainerPlatformFeeCents: escrow.trainer_platform_fee_minor,
+                          trainerNetCents: escrow.trainer_net_minor,
+                          escrowStatus: escrow.status,
+                        }
+                      : null)
+                  }
+                />
                 {merged.coupon_code ? <Row label="Coupon" value={merged.coupon_code} /> : null}
-                {escrow ? (
-                  <Row
-                    label="Escrow"
-                    value={formatEscrowStatusLabel(String(escrow.status)) ?? String(escrow.status ?? "—")}
-                  />
-                ) : null}
               </Section>
             )}
 

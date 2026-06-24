@@ -14,6 +14,8 @@ type Props = {
   promoDiscount?: number;
   promoLabel?: string;
   showSubtotalWhenNoFees?: boolean;
+  /** Mixed pay: wallet portion of charge total. */
+  walletPortionDollars?: number;
 };
 
 export function PricingBreakdownSummary({
@@ -24,6 +26,7 @@ export function PricingBreakdownSummary({
   promoDiscount,
   promoLabel,
   showSubtotalWhenNoFees = true,
+  walletPortionDollars,
 }: Props) {
   const styles = useStyles();
   const activeCurrency = useActiveCurrency(currency);
@@ -34,6 +37,17 @@ export function PricingBreakdownSummary({
     (chargeTotal != null ? chargeTotal : sessionSubtotal);
   const hasFees = fees.length > 0;
   const hasPromo = (promoDiscount ?? 0) > 0;
+  const walletPortion =
+    walletPortionDollars ??
+    (pricingQuote?.walletPortionCents != null
+      ? pricingQuote.walletPortionCents / 100
+      : undefined);
+  const cardPortion =
+    pricingQuote?.cardPortionCents != null
+      ? pricingQuote.cardPortionCents / 100
+      : walletPortion != null && total > 0
+        ? Math.max(0, total - walletPortion)
+        : undefined;
 
   return (
     <View style={styles.box}>
@@ -61,6 +75,18 @@ export function PricingBreakdownSummary({
           value={fmt(row.amountMinor / 100, { currency: activeCurrency })}
         />
       ))}
+      {walletPortion != null && walletPortion > 0 && cardPortion != null && cardPortion > 0 ? (
+        <>
+          <Line
+            label="Wallet portion"
+            value={fmt(walletPortion, { currency: activeCurrency })}
+          />
+          <Line
+            label="Card portion"
+            value={fmt(cardPortion, { currency: activeCurrency })}
+          />
+        </>
+      ) : null}
       <Line
         label="Total charged"
         value={total > 0 ? fmt(total, { currency: activeCurrency }) : "Free"}

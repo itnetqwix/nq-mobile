@@ -17,6 +17,7 @@ type Args = {
   promoSponsorType?: "platform" | "trainer";
   billingCountry?: string;
   billingState?: string;
+  scheduledAt?: string;
   /** When set, overrides country/state from the trainee profile. */
   user?: Record<string, unknown> | null;
   paymentMethodHint?: "card_domestic_us" | "wallet_us";
@@ -31,6 +32,7 @@ export async function fetchSessionPricingQuote({
   promoSponsorType,
   billingCountry,
   billingState,
+  scheduledAt,
   user,
   paymentMethodHint = "card_domestic_us",
 }: Args): Promise<PricingQuote> {
@@ -50,6 +52,7 @@ export async function fetchSessionPricingQuote({
     paymentMethodHint,
     promoDiscountCents,
     promoSponsorType,
+    scheduledAt,
     billingAddress: { country, state },
   });
   return unwrapApiData<PricingQuote>(res);

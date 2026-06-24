@@ -11,6 +11,10 @@ export type PricingQuote = {
   chargeTotalCents: number;
   breakdown: PricingBreakdownRow[];
   trainerNetCents?: number;
+  surgeCents?: number;
+  surgeLabel?: string;
+  walletPortionCents?: number;
+  cardPortionCents?: number;
 };
 
 export function chargeTotalDollars(quote: PricingQuote | null | undefined): number | null {

@@ -103,6 +103,10 @@ export function TrainerEarningsScreen() {
           Pending release:{" "}
           {fmt(earnings?.balances?.pending_release ?? 0, { currency: earnings?.currency })}
         </Text>
+        <Text style={styles.sub}>
+          Pending payout:{" "}
+          {fmt(earnings?.balances?.pending_payout ?? 0, { currency: earnings?.currency })}
+        </Text>
       </View>
 
       <EarningsTrendsCard />
