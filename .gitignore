@@ -49,3 +49,8 @@ credentials/play-store-service-account.json
 # Expo local modules — Gradle outputs (never commit)
 modules/*/android/build/
 modules/*/android/.gradle/
+
+# Store release binaries — upload to Play Console directly (GitHub limit 100 MB)
+releases/*.aab
+releases/*.apk
+!releases/README.md
