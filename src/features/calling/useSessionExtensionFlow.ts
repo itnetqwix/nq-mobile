@@ -421,10 +421,13 @@ export function useSessionExtensionFlow({
           const { error: payErr } = await presentPaymentSheet();
           if (payErr) {
             if (payErr.code === "Canceled") {
-              // Trainee dismissed sheet: cancel the request so timer resumes.
-              await cancelRequest("payment_sheet_cancelled");
-              return false;
-            }
+            setState((prev) => ({
+              ...prev,
+              phase: "awaiting_payment",
+              message: "Payment cancelled — you can try again before the timer runs out.",
+            }));
+            return false;
+          }
             throw new Error(payErr.message);
           }
           paymentIntentId = intent?.id ?? null;
