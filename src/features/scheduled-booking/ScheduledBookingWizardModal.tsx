@@ -44,10 +44,16 @@ export function ScheduledBookingWizardModal({ visible, trainer, onDismiss, onBoo
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.title}>Schedule with {w.trainerName}</Text>
+          {w.step !== "datetime" &&
+          w.step !== "duration" &&
+          w.step !== "confirm" &&
+          w.step !== "promo" ? (
+            <Text style={styles.title}>Schedule with {w.trainerName}</Text>
+          ) : null}
 
           {w.step === "datetime" && (
             <ScheduleStepDateTime
+              trainerName={w.trainerName}
               traineeTz={w.traineeTz}
               trainerTimezone={w.trainerTimezone}
               selectedDate={w.selectedDate}
@@ -59,6 +65,7 @@ export function ScheduledBookingWizardModal({ visible, trainer, onDismiss, onBoo
               errorMessage={dayMsg}
               smartSuggestions={w.smartScheduleSuggestions}
               smartSuggestionsLoading={w.smartScheduleLoading}
+              onApplySuggestion={w.applySmartSuggestion}
               onNext={w.goNext}
             />
           )}
@@ -67,6 +74,7 @@ export function ScheduledBookingWizardModal({ visible, trainer, onDismiss, onBoo
             <ScheduleStepDuration
               durationMinutes={w.durationMinutes}
               onDurationChange={w.setDurationMinutes}
+              availableDurations={w.availableDurations}
               hourlyRate={w.hourlyRate}
               expectedPrice={w.expectedPrice}
               durationPreviewQuote={w.durationPreviewQuote}
@@ -99,6 +107,7 @@ export function ScheduledBookingWizardModal({ visible, trainer, onDismiss, onBoo
               onRemovePromo={w.handleRemovePromo}
               visiblePromos={w.visiblePromos}
               expectedPrice={w.expectedPrice}
+              sessionTimeSummary={w.sessionTimeSummary}
               onNext={w.goNext}
               onSkip={w.goNext}
             />

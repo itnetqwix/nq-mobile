@@ -4,40 +4,32 @@ import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useTheme, useThemeColors } from "../theme";
+import { useThemeColors } from "../theme";
 import { useTabBarAnimatedOffset } from "./TabBarScrollContext";
 
-/** Height of the pill bar itself (excluding outer margins and safe area). */
-export const FLOATING_TAB_BAR_HEIGHT = 58;
-/** Gap between screen bottom safe area and the floating pill. */
-export const FLOATING_TAB_BAR_BOTTOM_GAP = 10;
-/** Horizontal inset from screen edges. */
-export const FLOATING_TAB_BAR_HORIZONTAL_INSET = 16;
+/** Height of the tab bar content row (excluding safe area). */
+export const FLOATING_TAB_BAR_HEIGHT = 56;
+/** Legacy constant — fixed bar sits flush on the bottom edge. */
+export const FLOATING_TAB_BAR_BOTTOM_GAP = 0;
+/** Legacy constant — fixed bar spans full width. */
+export const FLOATING_TAB_BAR_HORIZONTAL_INSET = 0;
 
 const SCROLL_CLEARANCE_BELOW_BAR = 8;
 
-/** Total scroll padding so list content clears the floating bar. */
+/** Scroll padding so list content clears the fixed tab bar. */
 export function floatingTabBarBottomInset(safeBottom: number): number {
-  return (
-    safeBottom +
-    FLOATING_TAB_BAR_BOTTOM_GAP +
-    FLOATING_TAB_BAR_HEIGHT +
-    SCROLL_CLEARANCE_BELOW_BAR
-  );
+  return safeBottom + FLOATING_TAB_BAR_HEIGHT + SCROLL_CLEARANCE_BELOW_BAR;
 }
 
 type Props = BottomTabBarProps;
 
 /**
- * Detached bottom tab bar: rounded pill floating above the home indicator,
- * with soft shadow — not edge-to-edge attached.
+ * Fixed bottom tab bar — edge-to-edge, attached to the screen bottom.
  */
 export function FloatingTabBar(props: Props) {
   const insets = useSafeAreaInsets();
-  const { scheme } = useTheme();
   const c = useThemeColors();
   const animatedHost = useTabBarAnimatedOffset();
-  const bottomPad = Math.max(insets.bottom, FLOATING_TAB_BAR_BOTTOM_GAP);
   const focusedRouteKey = props.state.routes[props.state.index]?.key;
   const focusedOptions = focusedRouteKey ? props.descriptors[focusedRouteKey]?.options : undefined;
   const tabBarStyle = focusedOptions?.tabBarStyle;
@@ -49,33 +41,16 @@ export function FloatingTabBar(props: Props) {
       pointerEvents="box-none"
       style={[
         styles.host,
-        { paddingBottom: bottomPad, paddingHorizontal: FLOATING_TAB_BAR_HORIZONTAL_INSET },
+        {
+          paddingBottom: insets.bottom,
+          backgroundColor: c.tabBar,
+          borderTopColor: c.tabBarBorder,
+        },
         animatedHost,
       ]}
     >
-      <View
-        style={[
-          styles.pill,
-          {
-            backgroundColor: c.tabBar,
-            borderColor: c.tabBarBorder,
-            ...Platform.select({
-              ios: {
-                shadowColor: scheme === "dark" ? "#000" : "#1e3a5f",
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: scheme === "dark" ? 0.45 : 0.12,
-                shadowRadius: 16,
-              },
-              android: { elevation: 12 },
-              default: {},
-            }),
-          },
-        ]}
-      >
-        <BottomTabBar
-          {...props}
-          style={styles.innerBar}
-        />
+      <View style={styles.bar}>
+        <BottomTabBar {...props} style={styles.innerBar} />
       </View>
     </Animated.View>
   );
@@ -87,11 +62,19 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: { elevation: 8 },
+      default: {},
+    }),
   },
-  pill: {
-    borderRadius: 28,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: "hidden",
+  bar: {
     minHeight: FLOATING_TAB_BAR_HEIGHT,
   },
   innerBar: {
@@ -100,7 +83,7 @@ const styles = StyleSheet.create({
     elevation: 0,
     shadowOpacity: 0,
     height: FLOATING_TAB_BAR_HEIGHT,
-    paddingTop: 6,
-    paddingBottom: 6,
+    paddingTop: 4,
+    paddingBottom: 4,
   },
 });

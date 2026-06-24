@@ -32,7 +32,6 @@ import {
 import { queryKeys } from "../../../lib/queryKeys";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { useAuth } from "../../auth/context/AuthContext";
-import { WeeklyAvailabilityPainter } from "../components/trainer/WeeklyAvailabilityPainter";
 import { FadeInView } from "../../../lib/motion/FadeInView";
 
 /** Same day order/casing as web `weekDays` in `nq-frontend-main/app/common/constants.js`. */
@@ -275,9 +274,6 @@ export function TrainerScheduleScreen() {
   });
 
   const [days, setDays] = useState<DayState[]>(buildDefaultDays);
-  const [mode, setMode] = useState<"painter" | "list">("painter");
-  /** True while the painter pan gesture is mid-drag; suspends outer scroll. */
-  const [isPainting, setIsPainting] = useState(false);
 
   useEffect(() => {
     if (Array.isArray(data)) setDays(mergeServerWithDefaults(data));
@@ -375,10 +371,6 @@ export function TrainerScheduleScreen() {
       <MorphRefreshHeader {...morph.headerProps} />
       <ScrollView
         contentContainerStyle={styles.content}
-        // While the trainer is mid-drag inside `WeeklyAvailabilityPainter`,
-        // we suspend the outer scroll so a downward sweep across cells
-        // doesn't accidentally scroll the page out from under them.
-        scrollEnabled={!isPainting}
         onScroll={morph.onMorphScroll}
         scrollEventThrottle={morph.scrollEventThrottle}
         refreshControl={
@@ -433,35 +425,12 @@ export function TrainerScheduleScreen() {
         </View>
         </FadeInView>
 
-        {mode === "list" ? (
-          <Pressable onPress={() => setMode("painter")} style={styles.modeLink}>
-            <Ionicons name="brush-outline" size={16} color={colors.brandNavy} />
-            <Text style={styles.modeLinkText}>Back to quick paint</Text>
-          </Pressable>
-        ) : (
-          <Pressable onPress={() => setMode("list")} style={styles.modeLink}>
-            <Ionicons name="list-outline" size={16} color={colors.brandNavy} />
-            <Text style={styles.modeLinkText}>Edit day by day</Text>
-          </Pressable>
-        )}
+        <Text style={styles.lead}>
+          Set your hours for each day of the week. Add one or more time ranges per day — trainees
+          book inside these windows.
+        </Text>
 
-        {mode === "painter" ? (
-          <FadeInView index={1}>
-          <View style={styles.dayCard}>
-            <Text style={styles.dayTitle}>Weekly availability</Text>
-            <Text style={styles.painterHint}>
-              Drag across the grid to mark when you're available. Changes repeat weekly.
-            </Text>
-            <WeeklyAvailabilityPainter
-              initialDays={days}
-              onChange={(next) => setDays(next as DayState[])}
-              onPaintingChange={setIsPainting}
-            />
-          </View>
-          </FadeInView>
-        ) : null}
-
-        {mode === "list" ? days.map((d, dayIdx) => (
+        {days.map((d, dayIdx) => (
           <View key={d.day} style={styles.dayCard}>
             <View style={styles.dayHeader}>
               <Text style={styles.dayTitle}>{d.day}</Text>
@@ -509,7 +478,7 @@ export function TrainerScheduleScreen() {
               ))
             )}
           </View>
-        )) : null}
+        ))}
 
         <Button
           label={dirty ? "Save schedule" : "Up to date"}

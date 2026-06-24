@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { radii, space, useStaticStyles, useThemeColors } from "../../../theme";
+import { radii, space, typography, useStaticStyles, useThemeColors } from "../../../theme";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { useSharedStepStyles } from "../../instant-lesson/booking-wizard/sharedStepStyles";
-import { SCHEDULED_DURATIONS } from "../constants";
+import { SCHEDULED_DURATIONS, SCHEDULED_BOOKING_BUFFER_MINUTES } from "../constants";
 import { PricingBreakdownSummary } from "../../payments/PricingBreakdownSummary";
 import type { PricingQuote } from "../../payments/pricingTypes";
 import { chargeTotalDollars } from "../../payments/pricingTypes";
@@ -11,6 +12,7 @@ import { chargeTotalDollars } from "../../payments/pricingTypes";
 type Props = {
   durationMinutes: number;
   onDurationChange: (minutes: number) => void;
+  availableDurations: number[];
   hourlyRate: number;
   expectedPrice: number;
   durationPreviewQuote?: PricingQuote | null;
@@ -22,6 +24,7 @@ type Props = {
 export function ScheduleStepDuration({
   durationMinutes,
   onDurationChange,
+  availableDurations,
   hourlyRate,
   expectedPrice,
   durationPreviewQuote,
@@ -29,28 +32,67 @@ export function ScheduleStepDuration({
   trainerTimeLabel,
   onNext,
 }: Props) {
+  const { t } = useAppTranslation();
   const c = useThemeColors();
   const shared = useSharedStepStyles();
   const styles = useStyles();
 
+  const canContinue = availableDurations.includes(durationMinutes);
+
   return (
-    <View style={shared.card}>
-      <Text style={shared.sectionTitle}>Session length</Text>
-      {sessionTimeSummary ? <Text style={shared.muted}>{sessionTimeSummary}</Text> : null}
-      {trainerTimeLabel ? (
-        <Text style={shared.mutedSmall}>Trainer time: {trainerTimeLabel}</Text>
+    <View style={styles.root}>
+      <Text style={styles.heroTitle}>{t("scheduledBooking.duration.title")}</Text>
+
+      {sessionTimeSummary ? (
+        <View style={styles.timeCard}>
+          <View style={styles.timeIcon}>
+            <Ionicons name="calendar-outline" size={20} color={c.brandNavy} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.timeLabel}>{t("scheduledBooking.duration.selectedTime")}</Text>
+            <Text style={styles.timeValue}>{sessionTimeSummary}</Text>
+            {trainerTimeLabel ? (
+              <Text style={styles.trainerTz}>
+                {t("scheduledBooking.duration.trainerLocalTime", { time: trainerTimeLabel })}
+              </Text>
+            ) : null}
+          </View>
+        </View>
       ) : null}
+
+      <Text style={styles.bufferNote}>
+        {t("scheduledBooking.duration.bufferNote", { buffer: SCHEDULED_BOOKING_BUFFER_MINUTES })}
+      </Text>
 
       <View style={styles.durationGrid}>
         {SCHEDULED_DURATIONS.map((min) => {
           const on = durationMinutes === min;
+          const enabled = availableDurations.includes(min);
           return (
             <Pressable
               key={min}
-              style={[styles.durationTile, on && styles.durationTileOn]}
-              onPress={() => onDurationChange(min)}
+              style={[
+                styles.durationTile,
+                on && enabled && styles.durationTileOn,
+                !enabled && styles.durationTileDisabled,
+              ]}
+              onPress={() => enabled && onDurationChange(min)}
+              disabled={!enabled}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on, disabled: !enabled }}
             >
-              <Text style={[styles.durationLabel, on && styles.durationLabelOn]}>{min} min</Text>
+              <Text
+                style={[
+                  styles.durationLabel,
+                  on && enabled && styles.durationLabelOn,
+                  !enabled && styles.durationLabelDisabled,
+                ]}
+              >
+                {min} min
+              </Text>
+              {!enabled ? (
+                <Text style={styles.unavailableHint}>{t("scheduledBooking.duration.unavailable")}</Text>
+              ) : null}
             </Pressable>
           );
         })}
@@ -70,11 +112,17 @@ export function ScheduleStepDuration({
         </View>
       )}
       {hourlyRate > 0 ? (
-        <Text style={shared.mutedSmall}>Coach rate: ${hourlyRate}/hr</Text>
+        <Text style={styles.rateNote}>
+          {t("scheduledBooking.duration.coachRate", { rate: `$${hourlyRate}` })}
+        </Text>
       ) : null}
 
-      <Pressable style={shared.primaryBtn} onPress={onNext}>
-        <Text style={shared.primaryBtnText}>Next: clips</Text>
+      <Pressable
+        style={[shared.primaryBtn, !canContinue && shared.btnDisabled]}
+        disabled={!canContinue}
+        onPress={onNext}
+      >
+        <Text style={shared.primaryBtnText}>{t("scheduledBooking.duration.next")}</Text>
         <Ionicons name="arrow-forward" size={18} color={c.brandTextOn} />
       </Pressable>
     </View>
@@ -84,33 +132,92 @@ export function ScheduleStepDuration({
 function useStyles() {
   return useStaticStyles((palette) =>
     StyleSheet.create({
+      root: { gap: space.md },
+      heroTitle: {
+        ...typography.titleMd,
+        color: palette.text,
+        fontWeight: "800",
+      },
+      timeCard: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: space.sm,
+        padding: space.md,
+        borderRadius: radii.lg,
+        backgroundColor: palette.surfaceElevated,
+        borderWidth: 2,
+        borderColor: palette.brandAccent + "44",
+      },
+      timeIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: palette.brandSubtle,
+        alignItems: "center",
+        justifyContent: "center",
+      },
+      timeLabel: {
+        ...typography.caption,
+        color: palette.textMuted,
+        fontWeight: "600",
+      },
+      timeValue: {
+        ...typography.bodySm,
+        color: palette.text,
+        fontWeight: "700",
+        marginTop: 2,
+      },
+      trainerTz: {
+        ...typography.caption,
+        color: palette.textSecondary,
+        marginTop: 4,
+      },
+      bufferNote: {
+        ...typography.caption,
+        color: palette.textMuted,
+        fontStyle: "italic",
+      },
       durationGrid: {
         flexDirection: "row",
         flexWrap: "wrap",
         gap: 8,
-        marginTop: space.sm,
       },
       durationTile: {
-        paddingVertical: 12,
+        paddingVertical: 14,
         paddingHorizontal: 16,
-        borderRadius: radii.md,
-        backgroundColor: palette.surfaceMuted,
-        borderWidth: 1,
+        borderRadius: radii.lg,
+        backgroundColor: palette.surfaceElevated,
+        borderWidth: 1.5,
         borderColor: palette.border,
         minWidth: "30%",
         alignItems: "center",
+        gap: 4,
       },
-      durationTileOn: { backgroundColor: palette.brandNavy, borderColor: palette.brandNavy },
-      durationLabel: { fontSize: 15, fontWeight: "700", color: palette.text },
+      durationTileOn: {
+        backgroundColor: palette.brandNavy,
+        borderColor: palette.brandNavy,
+      },
+      durationTileDisabled: {
+        opacity: 0.45,
+        backgroundColor: palette.surfaceMuted,
+      },
+      durationLabel: { fontSize: 16, fontWeight: "800", color: palette.text },
       durationLabelOn: { color: palette.brandTextOn },
+      durationLabelDisabled: { color: palette.textMuted },
+      unavailableHint: {
+        fontSize: 10,
+        fontWeight: "600",
+        color: palette.textMuted,
+        textAlign: "center",
+      },
       priceBox: {
-        marginTop: space.md,
         padding: space.md,
         borderRadius: radii.md,
         backgroundColor: palette.surfaceMuted,
       },
       priceLabel: { fontSize: 13, color: palette.textMuted, marginBottom: 4 },
       priceValue: { fontSize: 18, fontWeight: "700", color: palette.text },
+      rateNote: { ...typography.caption, color: palette.textMuted },
     })
   );
 }

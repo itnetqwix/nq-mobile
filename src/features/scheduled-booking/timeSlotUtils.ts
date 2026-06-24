@@ -1,4 +1,8 @@
 import { DateTime } from "luxon";
+import {
+  SCHEDULED_BOOKING_BUFFER_MINUTES,
+  SCHEDULED_MIN_LEAD_TIME_MINUTES,
+} from "./constants";
 
 export type SlotWindow = { start: DateTime; end: DateTime };
 
@@ -44,21 +48,33 @@ export function mergeSlotWindows(windows: SlotWindow[]): SlotWindow[] {
   return merged;
 }
 
-/** Build selectable start times (15-min grid) that fit `durationMinutes` inside a window. */
+/** Build selectable start times that fit duration + buffer inside a window. */
 export function buildStartCandidates(
   windows: SlotWindow[],
   durationMinutes: number,
-  incrementMinutes = 15
+  incrementMinutes = 15,
+  options?: {
+    bufferMinutes?: number;
+    minLeadMinutes?: number;
+    now?: DateTime;
+  }
 ): DateTime[] {
+  const bufferMinutes = options?.bufferMinutes ?? SCHEDULED_BOOKING_BUFFER_MINUTES;
+  const minLeadMinutes = options?.minLeadMinutes ?? SCHEDULED_MIN_LEAD_TIME_MINUTES;
+  const now = options?.now ?? DateTime.now();
+  const minStart = now.plus({ minutes: minLeadMinutes });
+
   const out: DateTime[] = [];
   const seen = new Set<string>();
   for (const w of windows) {
     let t = w.start;
-    while (t.plus({ minutes: durationMinutes }) <= w.end) {
-      const key = t.toISO()!;
-      if (!seen.has(key)) {
-        seen.add(key);
-        out.push(t);
+    while (t.plus({ minutes: durationMinutes + bufferMinutes }) <= w.end) {
+      if (t >= minStart) {
+        const key = t.toISO()!;
+        if (!seen.has(key)) {
+          seen.add(key);
+          out.push(t);
+        }
       }
       t = t.plus({ minutes: incrementMinutes });
     }
@@ -88,4 +104,45 @@ export function nextDays(count: number, zone: string): DateTime[] {
     d = d.plus({ days: 1 });
   }
   return days;
+}
+
+/** Map AI suggestion day labels (e.g. "Wednesday", "Jun 18") to a date within the next N days. */
+export function resolveSuggestionDateIso(
+  dayLabel: string,
+  zone: string,
+  horizonDays = 14
+): string | null {
+  const normalized = dayLabel.trim().toLowerCase();
+  if (!normalized) return null;
+  for (const d of nextDays(horizonDays, zone)) {
+    const formats = [
+      d.toFormat("cccc"),
+      d.toFormat("ccc"),
+      d.toFormat("MMM d"),
+      d.toFormat("MMMM d"),
+      d.toFormat("MMM d, yyyy"),
+      d.toISODate()!,
+    ];
+    if (formats.some((f) => f.toLowerCase() === normalized)) return d.toISODate()!;
+  }
+  return null;
+}
+
+export type TimePeriodGroup = "morning" | "afternoon" | "evening";
+
+export function groupStartCandidatesByPeriod(
+  candidates: DateTime[]
+): Record<TimePeriodGroup, DateTime[]> {
+  const groups: Record<TimePeriodGroup, DateTime[]> = {
+    morning: [],
+    afternoon: [],
+    evening: [],
+  };
+  for (const dt of candidates) {
+    const hour = dt.hour;
+    if (hour < 12) groups.morning.push(dt);
+    else if (hour < 17) groups.afternoon.push(dt);
+    else groups.evening.push(dt);
+  }
+  return groups;
 }

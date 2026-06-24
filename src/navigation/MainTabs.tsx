@@ -48,7 +48,7 @@ export function MainTabs() {
         lazy: true,
         tabBarActiveTintColor: c.tabBarActive,
         tabBarInactiveTintColor: c.tabBarInactive,
-        // Visual styling is handled by `FloatingTabBar` pill.
+        // Visual styling is handled by the fixed `FloatingTabBar`.
         tabBarStyle: { backgroundColor: "transparent", borderTopWidth: 0 },
         tabBarLabelStyle: {
           fontWeight: "600",

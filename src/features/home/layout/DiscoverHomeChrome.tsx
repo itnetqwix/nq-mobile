@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View, Platform } from "react-native";
 import { Skeleton } from "../../../components/ui";
 import { AccountType, type AccountTypeValue } from "../../../constants/accountType";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
@@ -21,7 +21,7 @@ import { useMarketplaceTopPadding } from "./marketplaceLayout";
 import { PublicSocialLinksRow } from "../../../components/social/PublicSocialLinksRow";
 import { hasPublicSocialLinks, getSocialLinksFromUser } from "../../../lib/social/socialLinks";
 
-const PROFILE_AVATAR_SIZE = 80;
+const PROFILE_AVATAR_SIZE = 96;
 
 type Props = {
   /** @deprecated Use profileName in the profile band. Kept for callers that still pass it. */
@@ -76,12 +76,10 @@ function RoleBadge({ label }: { label: string }) {
 
 const badgeStyles = StyleSheet.create({
   chip: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
     borderRadius: radii.pill,
     borderWidth: 1,
-    marginBottom: 6,
   },
   text: { fontWeight: "700", fontSize: 11, letterSpacing: 0.2 },
 });
@@ -234,7 +232,7 @@ function useMetaStyles() {
         flexWrap: "wrap",
         alignItems: "center",
         gap: space.xs,
-        marginTop: 4,
+        marginTop: space.sm,
       },
       pill: {
         flexDirection: "row",
@@ -275,6 +273,77 @@ function useMetaStyles() {
   );
 }
 
+function useChromeStyles() {
+  const c = useThemeColors();
+  return useThemedStyles((palette) =>
+    StyleSheet.create({
+      band: {
+        marginBottom: space.sm,
+        paddingBottom: space.sm,
+      },
+      profileCard: {
+        marginHorizontal: space.md,
+        marginBottom: space.md,
+        padding: space.md,
+        borderRadius: radii.xl,
+        backgroundColor: palette.surfaceElevated,
+        borderWidth: 1,
+        borderColor: palette.borderSubtle,
+        ...Platform.select({
+          ios: {
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.06,
+            shadowRadius: 8,
+          },
+          android: { elevation: 2 },
+          default: {},
+        }),
+      },
+      topRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: space.md,
+      },
+      avatarRing: {
+        padding: 3,
+        borderRadius: radii.pill,
+        borderWidth: 2,
+        borderColor: c.brandAccent,
+        backgroundColor: palette.surface,
+      },
+      profileCol: {
+        flex: 1,
+        minWidth: 0,
+        justifyContent: "center",
+      },
+      nameRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: space.xs,
+        minWidth: 0,
+      },
+      name: {
+        flexShrink: 1,
+        minWidth: 0,
+        fontWeight: "800",
+        letterSpacing: -0.35,
+      },
+      socialRow: {
+        marginTop: space.sm,
+      },
+      searchWrap: {
+        paddingHorizontal: space.md,
+        marginBottom: space.xs,
+      },
+      chipsWrap: {
+        paddingHorizontal: space.md,
+      },
+    })
+  );
+}
+
 /**
  * Marketplace header: profile band + search + category chips (scrolls with feed).
  */
@@ -305,6 +374,7 @@ export function DiscoverHomeChrome({
 }: Props) {
   const c = useThemeColors();
   const text = useScaledTypography();
+  const styles = useChromeStyles();
   useCompactA11yGuard();
   const { t } = useAppTranslation();
   const topPadding = useMarketplaceTopPadding(compactTop);
@@ -319,16 +389,21 @@ export function DiscoverHomeChrome({
       ? t("guest.exploringAsGuest")
       : t("traineeDiscover.roleTrainee");
 
+  const avatarNode = (
+    <HomeUserAvatar uri={profilePicture} name={displayName} size={PROFILE_AVATAR_SIZE} />
+  );
+
   const avatar = onPressProfile ? (
     <Pressable
       onPress={onPressProfile}
       accessibilityRole="button"
       accessibilityLabel={t("traineeDiscover.profileA11y")}
+      style={styles.avatarRing}
     >
-      <HomeUserAvatar uri={profilePicture} name={displayName} size={PROFILE_AVATAR_SIZE} />
+      {avatarNode}
     </Pressable>
   ) : (
-    <HomeUserAvatar uri={profilePicture} name={displayName} size={PROFILE_AVATAR_SIZE} />
+    <View style={styles.avatarRing}>{avatarNode}</View>
   );
 
   return (
@@ -341,95 +416,66 @@ export function DiscoverHomeChrome({
         },
       ]}
     >
-      <View style={styles.topRow}>
-        {avatar}
-        <View style={styles.profileCol}>
-          <View style={styles.nameRow}>
-            <Text style={[styles.name, text.titleMd, { color: c.text }]} numberOfLines={1}>
-              {displayName}
-            </Text>
-            {trailing}
-          </View>
-          <RoleBadge label={roleLabel} />
-          {isTrainer ? (
-            <TrainerProfileMeta
-              user={user}
-              onPressReviews={onPressReviews}
-              showAsOnline={showAsOnline}
-              onAvailabilityToggle={onAvailabilityToggle}
-            />
-          ) : (
-            <TraineeProfileMeta
-              subline={isGuest ? undefined : subline}
-              walletBalanceLabel={isGuest ? undefined : walletBalanceLabel}
-              onOpenWallet={isGuest ? undefined : onOpenWallet}
-            />
-          )}
-          {user && hasPublicSocialLinks(getSocialLinksFromUser(user)) ? (
-            <View style={styles.socialRow}>
-              <PublicSocialLinksRow user={user} size="sm" />
+      <View style={styles.profileCard}>
+        <View style={styles.topRow}>
+          {avatar}
+          <View style={styles.profileCol}>
+            <View style={styles.nameRow}>
+              <Text style={[styles.name, text.titleLg, { color: c.text }]} numberOfLines={2}>
+                {displayName}
+              </Text>
+              <RoleBadge label={roleLabel} />
+              {trailing}
             </View>
-          ) : null}
+            {isTrainer ? (
+              <TrainerProfileMeta
+                user={user}
+                onPressReviews={onPressReviews}
+                showAsOnline={showAsOnline}
+                onAvailabilityToggle={onAvailabilityToggle}
+              />
+            ) : (
+              <TraineeProfileMeta
+                subline={isGuest ? undefined : subline}
+                walletBalanceLabel={isGuest ? undefined : walletBalanceLabel}
+                onOpenWallet={isGuest ? undefined : onOpenWallet}
+              />
+            )}
+            {user && hasPublicSocialLinks(getSocialLinksFromUser(user)) ? (
+              <View style={styles.socialRow}>
+                <PublicSocialLinksRow user={user} size="sm" />
+              </View>
+            ) : null}
+          </View>
         </View>
       </View>
 
       {showSearch ? (
-        <HomeStickySearchBar
-          value={searchValue ?? ""}
-          onChangeText={onSearchChange ?? (() => {})}
-          onOpenFilters={onOpenFilters}
-          activeFilterCount={activeFilterCount}
-          embedded
-          voiceState={voiceState}
-          onVoicePress={onVoicePress}
-        />
+        <View style={styles.searchWrap}>
+          <HomeStickySearchBar
+            value={searchValue ?? ""}
+            onChangeText={onSearchChange ?? (() => {})}
+            onOpenFilters={onOpenFilters}
+            activeFilterCount={activeFilterCount}
+            embedded
+            voiceState={voiceState}
+            onVoicePress={onVoicePress}
+          />
+        </View>
       ) : null}
 
       {categoryChips && categoryChips.length > 0 && onSelectCategory ? (
-        <HomeCategoryChipsRow
-          items={categoryChips}
-          selectedId={selectedCategoryId ?? "__all__"}
-          onSelect={(id) => {
-            if (id === "__all__") onSelectCategory(null);
-            else onSelectCategory(id);
-          }}
-        />
+        <View style={styles.chipsWrap}>
+          <HomeCategoryChipsRow
+            items={categoryChips}
+            selectedId={selectedCategoryId ?? "__all__"}
+            onSelect={(id) => {
+              if (id === "__all__") onSelectCategory(null);
+              else onSelectCategory(id);
+            }}
+          />
+        </View>
       ) : null}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  band: {
-    marginBottom: space.sm,
-    paddingBottom: space.xs,
-  },
-  topRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    paddingHorizontal: space.md,
-    paddingBottom: space.sm,
-    gap: space.md,
-  },
-  profileCol: {
-    flex: 1,
-    minWidth: 0,
-    justifyContent: "center",
-    paddingTop: space.xxs,
-  },
-  nameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.xs,
-    minWidth: 0,
-  },
-  name: {
-    flex: 1,
-    minWidth: 0,
-    fontWeight: "800",
-    letterSpacing: -0.3,
-  },
-  socialRow: {
-    marginTop: space.xs,
-  },
-});

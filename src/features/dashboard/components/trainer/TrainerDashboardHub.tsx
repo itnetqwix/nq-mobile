@@ -121,13 +121,6 @@ function TrainerDashboardHubInner({
 
       <MiniFriendsSection onPressAll={() => onOpenSurface("friends" as any)} />
 
-      {recentTrainees.length > 0 ? (
-        <TrainerRecentTraineesSection
-          trainees={recentTrainees}
-          onSelectTrainee={onOpenStudents ? () => onOpenStudents() : undefined}
-        />
-      ) : null}
-
       <DashboardClipsPreviewSection onViewMore={onOpenClips} />
 
       <PerformanceTipsCard
@@ -139,6 +132,11 @@ function TrainerDashboardHubInner({
       <ReferFriendsBanner onPressInvite={() => onPressInvite?.()} />
 
       <TrainerLockerSection accountType={accountType} onOpenSurface={onOpenSurface} />
+
+      <TrainerRecentTraineesSection
+        trainees={recentTrainees}
+        onSelectTrainee={onOpenStudents ? () => onOpenStudents() : undefined}
+      />
     </View>
   );
 }

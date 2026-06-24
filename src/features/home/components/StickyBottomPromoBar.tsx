@@ -9,7 +9,6 @@ import { useCmsHomeSticky } from "../../content/hooks/useCmsHome";
 import { dismissedBanners } from "../../content/dismissedBanners";
 import { isReactNavigationDeepLink } from "../../content/lib/deepLinks";
 import {
-  FLOATING_TAB_BAR_BOTTOM_GAP,
   FLOATING_TAB_BAR_HEIGHT,
   floatingTabBarBottomInset,
 } from "../../../navigation/FloatingTabBar";
@@ -79,7 +78,7 @@ export function StickyBottomPromoBar({ guest, onDeepLink }: Props) {
   if (isLoading || !banner) return null;
 
   const stickyInsets = useMarketplaceStickyHostInsets();
-  const bottom = floatingTabBarBottomInset(insets.bottom) - FLOATING_TAB_BAR_HEIGHT - FLOATING_TAB_BAR_BOTTOM_GAP;
+  const bottom = floatingTabBarBottomInset(insets.bottom) - FLOATING_TAB_BAR_HEIGHT;
 
   return (
     <View

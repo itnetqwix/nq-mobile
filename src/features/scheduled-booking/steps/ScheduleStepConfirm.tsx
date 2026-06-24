@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-import { radii, space, useStaticStyles, useThemeColors } from "../../../theme";
+import { radii, space, typography, useStaticStyles, useThemeColors } from "../../../theme";
+import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { useSharedStepStyles } from "../../instant-lesson/booking-wizard/sharedStepStyles";
 import { PricingBreakdownSummary } from "../../payments/PricingBreakdownSummary";
 import type { PricingQuote } from "../../payments/pricingTypes";
@@ -47,34 +48,60 @@ export function ScheduleStepConfirm({
   isSubmitting,
   onSubmit,
 }: Props) {
+  const { t } = useAppTranslation();
   const c = useThemeColors();
   const shared = useSharedStepStyles();
   const styles = useStyles();
 
+  const clipsLabel =
+    selectedClipIds.length === 0
+      ? t("scheduledBooking.confirm.clipsNone")
+      : t("scheduledBooking.confirm.clipsCount", { count: selectedClipIds.length });
+
   return (
-    <View style={shared.card}>
-      <Text style={shared.sectionTitle}>Review & request</Text>
+    <View style={styles.root}>
+      <Text style={styles.heroTitle}>{t("scheduledBooking.confirm.title")}</Text>
+
       <View style={styles.summaryBox}>
-        <Row label="Coach" value={trainerName} />
-        <Row label="When" value={sessionTimeSummary} />
-        {trainerTimeLabel ? <Row label="Trainer time" value={trainerTimeLabel} /> : null}
-        <Row label="Duration" value={`${durationMinutes} minutes`} />
-        <Row
-          label="Clips"
-          value={selectedClipIds.length === 0 ? "None" : `${selectedClipIds.length} selected`}
+        <SummaryRow icon="person-outline" label={t("scheduledBooking.confirm.coach")} value={trainerName} />
+        <SummaryRow icon="calendar-outline" label={t("scheduledBooking.confirm.when")} value={sessionTimeSummary} />
+        {trainerTimeLabel ? (
+          <SummaryRow
+            icon="globe-outline"
+            label={t("scheduledBooking.confirm.trainerTime")}
+            value={trainerTimeLabel}
+          />
+        ) : null}
+        <SummaryRow
+          icon="time-outline"
+          label={t("scheduledBooking.confirm.duration")}
+          value={t("scheduledBooking.confirm.durationValue", { minutes: durationMinutes })}
         />
+        <SummaryRow icon="videocam-outline" label={t("scheduledBooking.confirm.clips")} value={clipsLabel} />
         {promoResult?.valid && (promoResult.discount_amount ?? 0) > 0 ? (
           <>
-            <Row label="Subtotal" value={`$${expectedPrice.toFixed(2)}`} />
-            <Row
-              label="Discount"
+            <SummaryRow
+              icon="pricetag-outline"
+              label={t("scheduledBooking.confirm.subtotal")}
+              value={`$${expectedPrice.toFixed(2)}`}
+            />
+            <SummaryRow
+              icon="gift-outline"
+              label={t("scheduledBooking.confirm.discount")}
               value={`-$${(promoResult.discount_amount ?? 0).toFixed(2)}`}
-              valueStyle={{ color: c.success }}
+              valueColor={c.success}
             />
           </>
         ) : null}
-        {couponCode.trim() ? <Row label="Promo" value={couponCode.trim()} /> : null}
+        {couponCode.trim() ? (
+          <SummaryRow
+            icon="ticket-outline"
+            label={t("scheduledBooking.confirm.promo")}
+            value={couponCode.trim()}
+          />
+        ) : null}
       </View>
+
       <PricingBreakdownSummary
         sessionSubtotal={expectedPrice}
         pricingQuote={pricingQuote}
@@ -90,10 +117,12 @@ export function ScheduleStepConfirm({
         }
         promoLabel={promoLabel ?? promoResult?.display_label}
       />
-      <Text style={shared.muted}>
-        Your coach must confirm this request before the session is scheduled. You will see it as
-        awaiting confirmation in Upcoming.
-      </Text>
+
+      <View style={styles.pendingBanner}>
+        <Ionicons name="information-circle-outline" size={20} color={c.brandNavy} />
+        <Text style={styles.pendingText}>{t("scheduledBooking.confirm.pendingNote")}</Text>
+      </View>
+
       <Pressable
         style={[shared.primaryBtn, isSubmitting && shared.btnDisabled]}
         disabled={isSubmitting}
@@ -104,7 +133,7 @@ export function ScheduleStepConfirm({
         ) : (
           <>
             <Ionicons name="calendar-outline" size={18} color={c.brandTextOn} />
-            <Text style={shared.primaryBtnText}>Request session</Text>
+            <Text style={shared.primaryBtnText}>{t("scheduledBooking.confirm.submit")}</Text>
           </>
         )}
       </Pressable>
@@ -112,22 +141,26 @@ export function ScheduleStepConfirm({
   );
 }
 
-function Row({
+function SummaryRow({
+  icon,
   label,
   value,
-  bold,
-  valueStyle,
+  valueColor,
 }: {
+  icon: keyof typeof Ionicons.glyphMap;
   label: string;
   value: string;
-  bold?: boolean;
-  valueStyle?: object;
+  valueColor?: string;
 }) {
+  const c = useThemeColors();
   const styles = useStyles();
   return (
     <View style={styles.summaryLine}>
+      <View style={styles.summaryIcon}>
+        <Ionicons name={icon} size={16} color={c.textSecondary} />
+      </View>
       <Text style={styles.summaryKey}>{label}</Text>
-      <Text style={[styles.summaryValue, bold && styles.bold, valueStyle]}>{value}</Text>
+      <Text style={[styles.summaryValue, valueColor ? { color: valueColor } : null]}>{value}</Text>
     </View>
   );
 }
@@ -135,16 +168,58 @@ function Row({
 function useStyles() {
   return useStaticStyles((palette) =>
     StyleSheet.create({
+      root: { gap: space.md },
+      heroTitle: {
+        ...typography.titleMd,
+        color: palette.text,
+        fontWeight: "800",
+      },
       summaryBox: {
-        backgroundColor: palette.surfaceMuted,
-        borderRadius: radii.md,
+        backgroundColor: palette.surfaceElevated,
+        borderRadius: radii.lg,
         padding: space.md,
+        gap: 12,
+        borderWidth: 1,
+        borderColor: palette.border,
+      },
+      summaryLine: {
+        flexDirection: "row",
+        alignItems: "flex-start",
         gap: 8,
       },
-      summaryLine: { flexDirection: "row", gap: 12 },
-      summaryKey: { fontSize: 15, fontWeight: "700", color: palette.iconPrimary, width: 100 },
-      summaryValue: { flex: 1, fontSize: 15, color: palette.text },
-      bold: { fontWeight: "700" },
+      summaryIcon: {
+        width: 22,
+        marginTop: 2,
+        alignItems: "center",
+      },
+      summaryKey: {
+        fontSize: 14,
+        fontWeight: "600",
+        color: palette.textMuted,
+        width: 88,
+      },
+      summaryValue: {
+        flex: 1,
+        fontSize: 15,
+        fontWeight: "600",
+        color: palette.text,
+        lineHeight: 20,
+      },
+      pendingBanner: {
+        flexDirection: "row",
+        gap: space.sm,
+        padding: space.md,
+        borderRadius: radii.lg,
+        backgroundColor: palette.brandSubtle,
+        borderWidth: 1,
+        borderColor: palette.brandAccent + "44",
+      },
+      pendingText: {
+        flex: 1,
+        ...typography.bodySm,
+        color: palette.brandNavy,
+        lineHeight: 20,
+      },
     })
   );
 }
