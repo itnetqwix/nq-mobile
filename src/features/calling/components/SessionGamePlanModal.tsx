@@ -337,7 +337,7 @@ export function SessionGamePlanModal({
 
       if (publish && payloadItems.length > 0) {
         setSaveStep("pdf");
-        if (isPdfPrintAvailable()) {
+        if (!serverStitchFallback && isPdfPrintAvailable()) {
           try {
             const { uri: pdfUri } = await buildPlanPdf();
             let pdfBytes = 0;

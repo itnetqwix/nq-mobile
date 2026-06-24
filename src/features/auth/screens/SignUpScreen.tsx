@@ -32,6 +32,13 @@ import { PasswordRequirements } from "../components/PasswordRequirements";
 import { AuthEscapeLink } from "../components/AuthEscapeLink";
 import { AuthModalChrome } from "../components/AuthModalChrome";
 import { SignupInlineOtp } from "../components/SignupInlineOtp";
+import {
+  PhoneCountryInput,
+  DEFAULT_PHONE_COUNTRY,
+  formatE164Phone,
+  isValidNationalPhone,
+} from "../components/PhoneCountryInput";
+import { splitE164Phone, type PhoneCountry } from "../../../lib/phone/countryDialCodes";
 import { LegalTermsAcceptance } from "../components/LegalTermsAcceptance";
 import { SocialAuthButtons } from "../components/SocialAuthButtons";
 import { useAuth } from "../context/AuthContext";
@@ -71,7 +78,12 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
   const [step, setStep] = useState<SignUpStep>(isSsoSignup ? "accountType" : "accountType");
   const [fullname, setFullname] = useState("");
   const [email, setEmail] = useState(route.params?.prefillEmail ?? "");
-  const [mobile, setMobile] = useState("");
+  const [phoneCountry, setPhoneCountry] = useState<PhoneCountry>(DEFAULT_PHONE_COUNTRY);
+  const [phoneNational, setPhoneNational] = useState("");
+  const mobile = useMemo(
+    () => formatE164Phone(phoneCountry.dial, phoneNational),
+    [phoneCountry.dial, phoneNational]
+  );
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -119,7 +131,11 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
       if (draft.step) setStep(draft.step as SignUpStep);
       if (draft.fullname) setFullname(draft.fullname);
       if (draft.email) setEmail(draft.email);
-      if (draft.mobile) setMobile(draft.mobile);
+      if (draft.mobile) {
+        const split = splitE164Phone(draft.mobile);
+        setPhoneCountry(split.country);
+        setPhoneNational(split.national);
+      }
       if (draft.accountType) setAccountType(draft.accountType);
       if (draft.category !== undefined) setCategory(draft.category);
       if (draft.emailVerified) setEmailVerified(true);
@@ -227,7 +243,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
       return t("auth.fullNameInvalid");
     }
     if (!EMAIL_RE.test(email.trim())) return t("auth.emailInvalidShort");
-    if (!mobile.trim() || mobile.replace(/\D/g, "").length < 10) {
+    if (!isValidNationalPhone(phoneCountry, phoneNational)) {
       return t("auth.phoneInvalid");
     }
     return null;
@@ -260,7 +276,7 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
     fullname: fullname.trim(),
     email: email.trim(),
     password: usePassword,
-    mobile_no: mobile.trim(),
+    mobile_no: mobile,
     account_type: accountType,
     category: isTrainerAccount ? (category ?? undefined) : undefined,
     tcpa,
@@ -458,14 +474,18 @@ export function SignUpScreen({ navigation, route }: AuthScreenProps<"SignUp">) {
                 </Text>
               </View>
             ) : null}
-            <FormField
+            <PhoneCountryInput
               label={t("auth.phone")}
-              value={mobile}
-              onChangeText={(text) => {
-                setMobile(text);
+              country={phoneCountry}
+              nationalNumber={phoneNational}
+              onChangeCountry={(next) => {
+                setPhoneCountry(next);
                 setPhoneVerified(false);
               }}
-              keyboardType="phone-pad"
+              onChangeNational={(text) => {
+                setPhoneNational(text);
+                setPhoneVerified(false);
+              }}
               required
             />
             <Button label={t("auth.continue")} size="lg" onPress={onContinueFromProfile} />

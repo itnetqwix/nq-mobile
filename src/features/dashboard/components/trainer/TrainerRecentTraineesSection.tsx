@@ -72,7 +72,7 @@ function useStyles() {
   return useThemedStyles((palette) =>
     StyleSheet.create({
       wrap: {
-        marginBottom: space.sm,
+        marginBottom: 0,
         paddingHorizontal: space.md,
       },
       headerRow: {

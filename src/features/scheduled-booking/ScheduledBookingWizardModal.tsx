@@ -80,6 +80,7 @@ export function ScheduledBookingWizardModal({ visible, trainer, onDismiss, onBoo
               durationPreviewQuote={w.durationPreviewQuote}
               sessionTimeSummary={w.sessionTimeSummary}
               trainerTimeLabel={w.trainerTimeLabel}
+              onPickAnotherTime={w.returnToDateTime}
               onNext={w.goNext}
             />
           )}
@@ -128,7 +129,7 @@ export function ScheduledBookingWizardModal({ visible, trainer, onDismiss, onBoo
               userStripeId={w.userStripeId}
               bookingType="scheduled"
               onPaymentComplete={w.handlePaymentComplete}
-              onNext={w.goNext}
+              onNext={w.advanceFromPayment}
               onAddFunds={(shortfall) => {
                 onDismiss();
                 navigateToWalletTopUp(shortfall);

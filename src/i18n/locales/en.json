@@ -1323,7 +1323,8 @@
       "trainerLocalTime": "Coach's local time: {{time}}",
       "unavailable": "Not enough time",
       "coachRate": "Coach rate: {{rate}}/hr",
-      "next": "Next: attach clips"
+      "next": "Next: attach clips",
+      "pickAnotherTime": "Pick another time"
     },
     "confirm": {
       "title": "Review & request",
@@ -1356,6 +1357,24 @@
       "continue": "Continue",
       "skip": "Skip promo",
       "tapToApply": "Tap to apply"
+    },
+    "alerts": {
+      "selectTimeTitle": "Select a time",
+      "selectTimeBody": "Choose an available start time for your session.",
+      "selectTimeGoBack": "Go back and choose a start time that fits your session length.",
+      "chooseTimeFirst": "Choose a session time first.",
+      "slotUnavailableTitle": "Time unavailable",
+      "slotUnavailableBody": "This time is no longer available. Please choose a different slot.",
+      "noDurationsTitle": "Not enough time",
+      "noDurationsBody": "This slot cannot fit any session length. Pick another time.",
+      "suggestionUnavailableTitle": "Suggestion not available",
+      "suggestionUnavailableBody": "That suggested time is not open anymore. Pick another slot.",
+      "paymentRequiredTitle": "Payment required",
+      "paymentRequiredBody": "Please complete payment before requesting the session.",
+      "bookingFailedTitle": "Booking failed",
+      "bookingFailedBody": "Could not book the session. Please try again.",
+      "bookingFailedPaidTitle": "Slot taken after payment",
+      "bookingFailedPaidBody": "Your payment went through but this time was just taken. Choose another slot — contact support if you need a refund."
     }
   },
   "notifications": {

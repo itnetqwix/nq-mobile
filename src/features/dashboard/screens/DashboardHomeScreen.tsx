@@ -59,6 +59,7 @@ import {
 } from "../components/home";
 import { TraineePendingRequestsBanner } from "../components/trainee/TraineePendingRequestsBanner";
 import { TrainerDashboardHub } from "../components/trainer/TrainerDashboardHub";
+import { TrainerRecentEnthusiastsStickyBar } from "../components/trainer/TrainerRecentEnthusiastsStickyBar";
 import AIFloatingButton from "../../ai/AIFloatingButton";
 import AIAssistantScreen from "../../ai/AIAssistantScreen";
 import { useSessionBooking } from "../../sessions/SessionBookingContext";
@@ -375,7 +376,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
   const gutter = useHorizontalGutter("md");
   const isTrainee = accountType === AccountType.TRAINEE;
   const marketplaceScrollBottom = useMarketplaceScrollPadding({
-    extra: isTrainee ? 0 : space.lg,
+    extra: isTrainee ? 0 : 112,
   });
   const marketplaceContentWidth = useMarketplaceContentWidth();
   const homeScroll = useHomeScrollHandler();
@@ -866,7 +867,10 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
             }
           />
         </ScrollView>
-        <StickyBottomPromoBar />
+        <TrainerRecentEnthusiastsStickyBar
+          trainees={recentTrainees}
+          onSelectTrainee={() => openFeature("students")}
+        />
       </TabScreenShell>
     )}
 

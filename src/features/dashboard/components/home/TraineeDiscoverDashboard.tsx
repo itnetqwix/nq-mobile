@@ -374,6 +374,7 @@ export function TraineeDiscoverDashboard({
         </View>
       </View>
 
+      {!isGuest ? (
       <View style={styles.filterChipRow}>
         <Pressable
           style={[styles.filterChip, browseFilters.onlineOnly && styles.filterChipOn]}
@@ -422,6 +423,7 @@ export function TraineeDiscoverDashboard({
           </Pressable>
         ) : null}
       </View>
+      ) : null}
 
       {isLoading ? (
         <SkeletonGroup
@@ -509,12 +511,16 @@ export function TraineeDiscoverDashboard({
   const marketplaceScrollContent = (
     <>
       {leadingContent}
-      <HomeHeroCarousel
-        guest={isGuest}
-        onDeepLink={onDeepLink}
-        contentWidth={marketplaceContentWidth}
-      />
-      <HomeOffersCarousel guest={isGuest} onDeepLink={onDeepLink} />
+      {!isGuest ? (
+        <>
+          <HomeHeroCarousel
+            guest={isGuest}
+            onDeepLink={onDeepLink}
+            contentWidth={marketplaceContentWidth}
+          />
+          <HomeOffersCarousel guest={isGuest} onDeepLink={onDeepLink} />
+        </>
+      ) : null}
       <View style={styles.root}>{discoverBody}</View>
       {footer ? <View style={styles.footerWrap}>{footer}</View> : null}
     </>
@@ -550,13 +556,14 @@ export function TraineeDiscoverDashboard({
           onOpenWallet={!isGuest ? onOpenWallet : undefined}
           searchValue={search}
           onSearchChange={setSearch}
-          onOpenFilters={() => setFiltersOpen(true)}
-          activeFilterCount={activeFilterCount}
-          categoryChips={!searchActive ? categoryStripItems : undefined}
+          onOpenFilters={isGuest ? undefined : () => setFiltersOpen(true)}
+          activeFilterCount={isGuest ? 0 : activeFilterCount}
+          categoryChips={!isGuest && !searchActive ? categoryStripItems : undefined}
           selectedCategoryId={selectedCategory ?? "__all__"}
-          onSelectCategory={(id) => setSelectedCategory(id)}
-          voiceState={voice.state}
-          onVoicePress={toggleVoice}
+          onSelectCategory={isGuest ? undefined : (id) => setSelectedCategory(id)}
+          voiceState={isGuest ? undefined : voice.state}
+          onVoicePress={isGuest ? undefined : toggleVoice}
+          showSearch
         />
         {search.trim().length > 0 && search.trim().length < 2 ? (
           <Text
@@ -573,7 +580,7 @@ export function TraineeDiscoverDashboard({
         ) : null}
         {marketplaceScrollContent}
       </ScrollView>
-      <StickyBottomPromoBar guest={isGuest} onDeepLink={onDeepLink} />
+      {!isGuest ? <StickyBottomPromoBar guest={isGuest} onDeepLink={onDeepLink} /> : null}
     </View>
   );
 }

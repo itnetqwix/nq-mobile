@@ -13,6 +13,8 @@ export type NativeMediaSurfaceProps = {
   height: number;
   /** When false, video pauses (e.g. off-screen gallery page). */
   isActive?: boolean;
+  /** When true, video waits for user tap before playing (capture library viewer). */
+  startPaused?: boolean;
   /**
    * `internal` — this component shows the branded loader.
    * `parent` — parent shows loader via `onLoadingChange` (no duplicate overlay).
@@ -39,6 +41,7 @@ export function NativeMediaSurface({
   width,
   height,
   isActive = true,
+  startPaused = false,
   loadingMode = "internal",
   onLoadingChange,
   useNativeVideoControls = false,
@@ -52,7 +55,7 @@ export function NativeMediaSurface({
   const [imageLoading, setImageLoading] = useState(mode === "image");
   const [videoInitialLoading, setVideoInitialLoading] = useState(mode === "video");
   const [isBuffering, setIsBuffering] = useState(false);
-  const [userPaused, setUserPaused] = useState(false);
+  const [userPaused, setUserPaused] = useState(startPaused);
   const [progressSeconds, setProgressSeconds] = useState(0);
   const [durationSeconds, setDurationSeconds] = useState(0);
 
@@ -71,10 +74,10 @@ export function NativeMediaSurface({
     setImageLoading(mode === "image");
     setVideoInitialLoading(mode === "video");
     setIsBuffering(false);
-    setUserPaused(false);
+    setUserPaused(startPaused);
     setProgressSeconds(0);
     setDurationSeconds(0);
-  }, [uri, mode]);
+  }, [uri, mode, startPaused]);
 
   useEffect(() => {
     const loading =
@@ -102,13 +105,13 @@ export function NativeMediaSurface({
     if (mode === "image") setImageLoading(false);
     else {
       setVideoInitialLoading(false);
-      if (isActive) {
+      if (isActive && !startPaused) {
         setUserPaused(false);
         void videoRef.current?.playAsync().catch(() => undefined);
       }
     }
     onReady?.();
-  }, [mode, onReady, isActive]);
+  }, [mode, onReady, isActive, startPaused]);
 
   const onPlaybackStatus = useCallback(
     (status: AVPlaybackStatus) => {

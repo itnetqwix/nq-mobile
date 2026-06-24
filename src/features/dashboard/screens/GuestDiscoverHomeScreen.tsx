@@ -32,12 +32,12 @@ export function GuestDiscoverHomeScreen() {
       ),
       headerRight: () => (
         <Pressable
-          onPress={() => openAuth("Login")}
+          onPress={() => openAuth("SignUp")}
           style={({ pressed }) => [styles.headerBtn, pressed && { opacity: 0.85 }]}
           accessibilityRole="button"
         >
           <Text style={[styles.headerBtnText, { color: c.brandAccent }]}>
-            {t("auth.signIn")}
+            {t("auth.createAccount")}
           </Text>
         </Pressable>
       ),
@@ -70,66 +70,61 @@ export function GuestDiscoverHomeScreen() {
         }
       />
       <TraineeDiscoverDashboard
-          isGuest
-          leadingContent={
-            <View style={[styles.banner, { backgroundColor: c.brandAccentSubtle, borderColor: c.brandAccent }]}>
-              <Text style={[typography.titleSm, { color: c.brandNavy }]}>
-                {t("guest.exploreBannerTitle")}
-              </Text>
-              <Text style={[styles.bannerBody, { color: c.textSecondary }]}>
-                {t("guest.exploreBannerBody")}
-              </Text>
-              <View style={styles.bannerActions}>
-                <Pressable
-                  onPress={() => openAuth("SignUp")}
-                  style={[styles.bannerPrimary, { backgroundColor: c.brandAccent }]}
-                >
-                  <Text style={styles.bannerPrimaryText}>{t("auth.createAccount")}</Text>
-                </Pressable>
-                <Pressable onPress={() => openAuth("Login")} style={styles.bannerLink}>
-                  <Text style={[styles.bannerLinkText, { color: c.brandAccent }]}>
-                    {t("auth.signIn")}
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          }
-          contentContainerStyle={[
-            gutter,
-            {
-              paddingTop: space.xs,
-              paddingBottom: scrollBottomPad,
-            },
-          ]}
-          name={t("guest.explorerName")}
-          accountType={AccountType.TRAINEE}
-          user={null}
-          onSettings={() => openAuth("Login")}
-          onViewTrainer={setProfileTrainer}
-          onInstantBook={(trainer) =>
-            requireAuth(undefined, {
-              intent: "book",
-              messageKey: "guest.signInToBook",
-              trainer,
-              bookMode: "instant",
-            })
-          }
-          onScheduleBook={(trainer) =>
-            requireAuth(undefined, {
-              intent: "book",
-              messageKey: "guest.signInToBook",
-              trainer,
-              bookMode: "schedule",
-            })
-          }
-          onToggleFavoriteGuest={() =>
-            requireAuth(undefined, {
-              intent: "favorite",
-              messageKey: "guest.signInToContinue",
-              screen: "SignUp",
-            })
-          }
-        />
+        isGuest
+        leadingContent={
+          <View style={[styles.banner, { backgroundColor: c.surfaceElevated, borderColor: c.border }]}>
+            <Text style={[typography.body, { color: c.text, fontWeight: "700" }]}>
+              {t("guest.exploreBannerTitle")}
+            </Text>
+            <Text style={[styles.bannerBody, { color: c.textSecondary }]}>
+              {t("guest.exploreBannerBodyShort", {
+                defaultValue: "Browse coaches, then sign up to book sessions.",
+              })}
+            </Text>
+            <Pressable
+              onPress={() => openAuth("SignUp")}
+              style={[styles.bannerPrimary, { backgroundColor: c.brandAccent }]}
+            >
+              <Text style={styles.bannerPrimaryText}>{t("auth.createAccount")}</Text>
+            </Pressable>
+          </View>
+        }
+        contentContainerStyle={[
+          gutter,
+          {
+            paddingTop: space.xs,
+            paddingBottom: scrollBottomPad,
+          },
+        ]}
+        name={t("guest.explorerName")}
+        accountType={AccountType.TRAINEE}
+        user={null}
+        onSettings={() => openAuth("Login")}
+        onViewTrainer={setProfileTrainer}
+        onInstantBook={(trainer) =>
+          requireAuth(undefined, {
+            intent: "book",
+            messageKey: "guest.signInToBook",
+            trainer,
+            bookMode: "instant",
+          })
+        }
+        onScheduleBook={(trainer) =>
+          requireAuth(undefined, {
+            intent: "book",
+            messageKey: "guest.signInToBook",
+            trainer,
+            bookMode: "schedule",
+          })
+        }
+        onToggleFavoriteGuest={() =>
+          requireAuth(undefined, {
+            intent: "favorite",
+            messageKey: "guest.signInToContinue",
+            screen: "SignUp",
+          })
+        }
+      />
     </>
   );
 }
@@ -142,25 +137,18 @@ const styles = StyleSheet.create({
     padding: space.md,
     borderRadius: radii.lg,
     borderWidth: 1,
+    gap: space.xs,
   },
   bannerBody: {
     ...typography.bodySm,
-    marginTop: space.xs,
     lineHeight: 20,
   },
-  bannerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: space.sm,
-    marginTop: space.sm,
-  },
   bannerPrimary: {
+    alignSelf: "flex-start",
+    marginTop: space.sm,
     paddingHorizontal: space.md,
     paddingVertical: 10,
     borderRadius: 999,
   },
   bannerPrimaryText: { color: "#fff", fontWeight: "700" },
-  bannerLink: { paddingVertical: 8 },
-  bannerLinkText: { fontWeight: "600" },
 });

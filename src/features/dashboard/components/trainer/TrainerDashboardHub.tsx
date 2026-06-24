@@ -14,7 +14,6 @@ import { PerformanceTipsCard } from "./PerformanceTipsCard";
 import { FriendRequestTilesSkeleton } from "../../../../components/ui";
 import { TrainerFriendRequestsSection } from "./TrainerFriendRequestsSection";
 import { TrainerLockerSection } from "./TrainerLockerSection";
-import { TrainerRecentTraineesSection } from "./TrainerRecentTraineesSection";
 import { MiniFriendsSection } from "../shared/MiniFriendsSection";
 import { DashboardClipsPreviewSection } from "../shared/DashboardClipsPreviewSection";
 import { ReferFriendsBanner } from "../shared/ReferFriendsBanner";
@@ -132,11 +131,6 @@ function TrainerDashboardHubInner({
       <ReferFriendsBanner onPressInvite={() => onPressInvite?.()} />
 
       <TrainerLockerSection accountType={accountType} onOpenSurface={onOpenSurface} />
-
-      <TrainerRecentTraineesSection
-        trainees={recentTrainees}
-        onSelectTrainee={onOpenStudents ? () => onOpenStudents() : undefined}
-      />
     </View>
   );
 }

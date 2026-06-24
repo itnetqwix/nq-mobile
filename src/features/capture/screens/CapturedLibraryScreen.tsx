@@ -28,6 +28,8 @@ import {
   type CapturedClip,
 } from "../capturedClipsStorage";
 import type * as ImagePicker from "expo-image-picker";
+import { promptImportCapturedVideo } from "../pickCapturedVideo";
+import * as VideoThumbnails from "expo-video-thumbnails";
 import { floatingTabBarBottomInset } from "../../../navigation/FloatingTabBar";
 import type { CaptureStackParamList } from "../../../navigation/CaptureNavigator";
 import { FLASHLIST_PERF_DEFAULTS } from "../../../lib/lists/flatListPerf";
@@ -87,6 +89,24 @@ export function CapturedLibraryScreen() {
     },
     []
   );
+
+  const onImportVideo = useCallback(() => {
+    promptImportCapturedVideo((asset) => {
+      void (async () => {
+        let thumbUri: string | null = null;
+        try {
+          const thumb = await VideoThumbnails.getThumbnailAsync(asset.uri, { time: 500 });
+          thumbUri = thumb.uri;
+        } catch {
+          /* no thumb */
+        }
+        setPendingAsset(asset);
+        setPendingThumbUri(thumbUri);
+        setDefaultLabel(defaultClipLabel());
+        setLabelModalVisible(true);
+      })();
+    });
+  }, []);
 
   const { startRecording, busy: recordingBusy } = useInlineClipRecording({
     onCaptured: onInlineCaptured,
@@ -328,16 +348,28 @@ export function CapturedLibraryScreen() {
             <Text style={styles.cancelText}>Cancel</Text>
           </Pressable>
         ) : (
-          <Pressable
-            style={styles.headerAction}
-            onPress={() => {
-              haptics.tap();
-              setSelectMode(true);
-            }}
-            disabled={clips.length === 0}
-          >
-            <Ionicons name="checkbox-outline" size={22} color={colors.brandNavy} />
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable
+              style={styles.headerAction}
+              onPress={onImportVideo}
+              accessibilityRole="button"
+              accessibilityLabel="Import video"
+            >
+              <Ionicons name="cloud-upload-outline" size={22} color={colors.brandNavy} />
+            </Pressable>
+            <Pressable
+              style={styles.headerAction}
+              onPress={() => {
+                haptics.tap();
+                setSelectMode(true);
+              }}
+              disabled={clips.length === 0}
+              accessibilityRole="button"
+              accessibilityLabel="Select clips"
+            >
+              <Ionicons name="checkbox-outline" size={22} color={colors.brandNavy} />
+            </Pressable>
+          </View>
         )}
       </View>
 
@@ -390,8 +422,12 @@ export function CapturedLibraryScreen() {
           </Pressable>
           <Text style={styles.emptyTitle}>No captured clips yet</Text>
           <Text style={styles.emptySub}>
-            Tap the camera on the left or the record button below to capture your first clip.
+            Record a new clip, or import from your gallery, iCloud, or Google Drive.
           </Text>
+          <Pressable style={styles.emptyImportBtn} onPress={onImportVideo}>
+            <Ionicons name="cloud-upload-outline" size={18} color={colors.brandNavy} />
+            <Text style={styles.emptyImportText}>Import video</Text>
+          </Pressable>
         </View>
       ) : (
         <>
@@ -432,6 +468,7 @@ export function CapturedLibraryScreen() {
 
       <LockerViewerModal
         visible={!!viewerClip && !selectMode}
+        videoStartPaused
         onClose={() => setViewerClip(null)}
         uri={viewerClip?.uri ?? ""}
         title={viewerClip?.label?.trim() || "Captured clip"}
@@ -488,6 +525,7 @@ const styles = StyleSheet.create({
   backBtn: { padding: 4, width: 32 },
   title: { flex: 1, ...typography.subtitle, marginLeft: space.sm },
   headerAction: { padding: 6 },
+  headerActions: { flexDirection: "row", alignItems: "center" },
   cancelText: { color: colors.brandNavy, fontWeight: "600", fontSize: 15 },
   selectBar: {
     paddingHorizontal: space.md,
@@ -604,6 +642,18 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
   emptySub: { fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20 },
+  emptyImportBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: space.md,
+    paddingHorizontal: space.md,
+    paddingVertical: 10,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.brandNavy,
+  },
+  emptyImportText: { color: colors.brandNavy, fontWeight: "700" },
   fab: {
     position: "absolute",
     width: 64,

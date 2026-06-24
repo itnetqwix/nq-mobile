@@ -59,6 +59,8 @@ type Props = {
   shareAccessibilityLabel?: string;
   onShareFriends?: () => void;
   shareFriendsAccessibilityLabel?: string;
+  /** Capture library: require explicit play tap instead of auto-playing on open. */
+  videoStartPaused?: boolean;
 };
 
 export function LockerViewerModal({
@@ -82,6 +84,7 @@ export function LockerViewerModal({
   shareAccessibilityLabel = "Share",
   onShareFriends,
   shareFriendsAccessibilityLabel = "Share with friends",
+  videoStartPaused = false,
 }: Props) {
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
@@ -433,6 +436,7 @@ export function LockerViewerModal({
                     width={screenWidth}
                     height={mediaHeight}
                     isActive={visible && activeIndex === pageIndex}
+                    startPaused={videoStartPaused}
                     loadingMode="parent"
                     loadingOverlayVariant="minimal"
                     onLoadingChange={pageIndex === activeIndex ? setLoading : undefined}
@@ -458,6 +462,7 @@ export function LockerViewerModal({
               width={screenWidth}
               height={mediaHeight}
               isActive={visible}
+              startPaused={videoStartPaused}
               loadingMode="parent"
               loadingOverlayVariant="minimal"
               onLoadingChange={setLoading}

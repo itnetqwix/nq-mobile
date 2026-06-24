@@ -62,8 +62,12 @@ export async function saveScreenshotToReport(payload: {
   title: string;
   topic: string;
   reportData: Array<{ imageUrl: string; title?: string; description?: string }>;
+  publish?: boolean;
 }) {
-  return postWithRetry(API_ROUTES.report.create, payload);
+  return postWithRetry(API_ROUTES.report.create, {
+    ...payload,
+    publish: payload.publish ?? false,
+  });
 }
 
 export async function saveSessionGamePlan(payload: {

@@ -19,6 +19,7 @@ type Props = {
   sessionTimeSummary: string;
   trainerTimeLabel: string | null;
   onNext: () => void;
+  onPickAnotherTime?: () => void;
 };
 
 export function ScheduleStepDuration({
@@ -31,6 +32,7 @@ export function ScheduleStepDuration({
   sessionTimeSummary,
   trainerTimeLabel,
   onNext,
+  onPickAnotherTime,
 }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
@@ -38,10 +40,26 @@ export function ScheduleStepDuration({
   const styles = useStyles();
 
   const canContinue = availableDurations.includes(durationMinutes);
+  const noDurations = availableDurations.length === 0;
 
   return (
     <View style={styles.root}>
       <Text style={styles.heroTitle}>{t("scheduledBooking.duration.title")}</Text>
+
+      {noDurations ? (
+        <View style={styles.emptyCard}>
+          <Ionicons name="time-outline" size={32} color={c.textMuted} />
+          <Text style={styles.emptyTitle}>{t("scheduledBooking.alerts.noDurationsTitle")}</Text>
+          <Text style={styles.emptySub}>{t("scheduledBooking.alerts.noDurationsBody")}</Text>
+          {onPickAnotherTime ? (
+            <Pressable style={styles.pickAnotherBtn} onPress={onPickAnotherTime}>
+              <Text style={styles.pickAnotherText}>
+                {t("scheduledBooking.duration.pickAnotherTime")}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
 
       {sessionTimeSummary ? (
         <View style={styles.timeCard}>
@@ -118,8 +136,8 @@ export function ScheduleStepDuration({
       ) : null}
 
       <Pressable
-        style={[shared.primaryBtn, !canContinue && shared.btnDisabled]}
-        disabled={!canContinue}
+        style={[shared.primaryBtn, (!canContinue || noDurations) && shared.btnDisabled]}
+        disabled={!canContinue || noDurations}
         onPress={onNext}
       >
         <Text style={shared.primaryBtnText}>{t("scheduledBooking.duration.next")}</Text>
@@ -218,6 +236,39 @@ function useStyles() {
       priceLabel: { fontSize: 13, color: palette.textMuted, marginBottom: 4 },
       priceValue: { fontSize: 18, fontWeight: "700", color: palette.text },
       rateNote: { ...typography.caption, color: palette.textMuted },
+      emptyCard: {
+        alignItems: "center",
+        padding: space.lg,
+        borderRadius: radii.lg,
+        backgroundColor: palette.surfaceMuted,
+        borderWidth: 1,
+        borderColor: palette.border,
+        gap: space.sm,
+      },
+      emptyTitle: {
+        ...typography.titleSm,
+        fontWeight: "700",
+        color: palette.text,
+        textAlign: "center",
+      },
+      emptySub: {
+        ...typography.bodySm,
+        color: palette.textMuted,
+        textAlign: "center",
+        lineHeight: 20,
+      },
+      pickAnotherBtn: {
+        marginTop: space.sm,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: radii.pill,
+        backgroundColor: palette.brandNavy,
+      },
+      pickAnotherText: {
+        color: palette.brandTextOn,
+        fontWeight: "700",
+        fontSize: 14,
+      },
     })
   );
 }

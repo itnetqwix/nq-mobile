@@ -51,6 +51,7 @@ import {
 import { fetchSessionPricingQuote } from "../payments/fetchSessionPricingQuote";
 import type { PricingQuote } from "../payments/pricingTypes";
 import { fetchSmartSchedule, type SmartScheduleSuggestion } from "../ai/smartScheduleApi";
+import { pickAvailableDurations, isSlotConflictMessage } from "./scheduledBookingFlow";
 import { resolveTraineeTimeZone } from "../../lib/user/resolveTraineeTimeZone";
 import { postReferralPreviewCheckout } from "../referral/api/referralApi";
 import { useAppTranslation } from "../../i18n/useAppTranslation";
@@ -178,6 +179,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     },
     enabled: visible && !!tid && !!bookedDateIso,
     staleTime: 30_000,
+    refetchInterval: visible && step === "datetime" ? 60_000 : false,
   });
 
   const clipsQuery = useQuery({
@@ -242,15 +244,10 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     return selectedStart.plus({ minutes: durationMinutes });
   }, [selectedStart, durationMinutes]);
 
-  const availableDurations = useMemo(() => {
-    if (!selectedStartIso) return [...SCHEDULED_DURATIONS];
-    const now = DateTime.now().setZone(traineeTz);
-    return SCHEDULED_DURATIONS.filter((min) =>
-      buildStartCandidates(slotWindows, min, 15, { now }).some(
-        (c) => c.toISO() === selectedStartIso
-      )
-    );
-  }, [selectedStartIso, slotWindows, traineeTz]);
+  const availableDurations = useMemo(
+    () => pickAvailableDurations(slotWindows, selectedStartIso, traineeTz),
+    [selectedStartIso, slotWindows, traineeTz]
+  );
 
   useEffect(() => {
     if (!availableDurations.includes(durationMinutes as (typeof SCHEDULED_DURATIONS)[number])) {
@@ -261,7 +258,10 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
 
   const validateCurrentSlot = useCallback(async () => {
     if (!tid || !selectedStart || !sessionEnd) {
-      return { ok: false as const, message: "Choose a session time first." };
+      return {
+        ok: false as const,
+        message: t("scheduledBooking.alerts.chooseTimeFirst"),
+      };
     }
     const slotCheck = await validateSlotRange({
       trainerId: tid,
@@ -274,12 +274,41 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
       return {
         ok: false as const,
         message:
-          slotCheck.message ??
-          "This time is no longer available. Please choose a different slot.",
+          slotCheck.message ?? t("scheduledBooking.alerts.slotUnavailableBody"),
       };
     }
     return { ok: true as const };
-  }, [tid, selectedStart, sessionEnd, bookedDateIso, traineeTz]);
+  }, [tid, selectedStart, sessionEnd, bookedDateIso, traineeTz, t]);
+
+  const handleSlotUnavailable = useCallback(
+    (message?: string, options?: { titleKey?: string; bodyKey?: string }) => {
+      Alert.alert(
+        t(options?.titleKey ?? "scheduledBooking.alerts.slotUnavailableTitle"),
+        options?.bodyKey
+          ? t(options.bodyKey)
+          : message ?? t("scheduledBooking.alerts.slotUnavailableBody")
+      );
+      setSelectedStartIso(null);
+      setStep("datetime");
+      void dayAvailabilityQuery.refetch();
+    },
+    [t, dayAvailabilityQuery]
+  );
+
+  const returnToDateTime = useCallback(() => {
+    setStep("datetime");
+  }, []);
+
+  const advanceFromPayment = useCallback(() => {
+    void (async () => {
+      const slotOk = await validateCurrentSlot();
+      if (!slotOk.ok) {
+        handleSlotUnavailable(slotOk.message);
+        return;
+      }
+      setStep("confirm");
+    })();
+  }, [validateCurrentSlot, handleSlotUnavailable]);
 
   const expectedPrice = useMemo(
     () => Number(((hourlyRate / 60) * durationMinutes).toFixed(2)),
@@ -504,21 +533,38 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     void (async () => {
       if (step === "datetime") {
         if (!selectedStart) {
-          Alert.alert("Select a time", "Choose an available start time for your session.");
+          Alert.alert(
+            t("scheduledBooking.alerts.selectTimeTitle"),
+            t("scheduledBooking.alerts.selectTimeBody")
+          );
           return;
         }
       }
       if (step === "duration") {
         if (!selectedStart) {
-          Alert.alert("Select a time", "Go back and choose a start time that fits your session length.");
+          Alert.alert(
+            t("scheduledBooking.alerts.selectTimeTitle"),
+            t("scheduledBooking.alerts.selectTimeGoBack")
+          );
+          return;
+        }
+        if (!availableDurations.length) {
+          Alert.alert(
+            t("scheduledBooking.alerts.noDurationsTitle"),
+            t("scheduledBooking.alerts.noDurationsBody")
+          );
           return;
         }
         const slotOk = await validateCurrentSlot();
         if (!slotOk.ok) {
-          Alert.alert("Time unavailable", slotOk.message);
-          setSelectedStartIso(null);
-          setStep("datetime");
-          void dayAvailabilityQuery.refetch();
+          handleSlotUnavailable(slotOk.message);
+          return;
+        }
+      }
+      if (step === "clips") {
+        const slotOk = await validateCurrentSlot();
+        if (!slotOk.ok) {
+          handleSlotUnavailable(slotOk.message);
           return;
         }
       }
@@ -527,6 +573,11 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
         const skipPayment =
           hourlyRate <= 0 || expectedPrice <= 0 || payableAmount <= 0;
         if (skipPayment) {
+          const slotOk = await validateCurrentSlot();
+          if (!slotOk.ok) {
+            handleSlotUnavailable(slotOk.message);
+            return;
+          }
           setChargingPrice(0);
           setStep("confirm");
           return;
@@ -535,10 +586,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
         if (nextStep === "payment") {
           const slotOk = await validateCurrentSlot();
           if (!slotOk.ok) {
-            Alert.alert("Time unavailable", slotOk.message);
-            setSelectedStartIso(null);
-            setStep("datetime");
-            void dayAvailabilityQuery.refetch();
+            handleSlotUnavailable(slotOk.message);
             return;
           }
           const quoteTotal = chargeTotalDollars(pricingQuote) ?? payableAmount;
@@ -554,13 +602,15 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
   }, [
     step,
     selectedStart,
+    availableDurations.length,
     validateCoupon,
     hourlyRate,
     expectedPrice,
     payableAmount,
     pricingQuote,
     validateCurrentSlot,
-    dayAvailabilityQuery,
+    handleSlotUnavailable,
+    t,
   ]);
 
   const goBack = useCallback(() => {
@@ -703,7 +753,19 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
       );
     },
     onError: (err: unknown) => {
-      Alert.alert("Booking failed", getApiErrorMessage(err, "Could not book the session."));
+      const msg = getApiErrorMessage(err, t("scheduledBooking.alerts.bookingFailedBody"));
+      const paid =
+        Boolean(paymentIntentId) ||
+        paymentMethod === "wallet" ||
+        paymentMethod === "mixed";
+      if (paid && isSlotConflictMessage(msg)) {
+        handleSlotUnavailable(msg, {
+          titleKey: "scheduledBooking.alerts.bookingFailedPaidTitle",
+          bodyKey: "scheduledBooking.alerts.bookingFailedPaidBody",
+        });
+        return;
+      }
+      Alert.alert(t("scheduledBooking.alerts.bookingFailedTitle"), msg);
     },
   });
 
@@ -711,9 +773,18 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     if (!validateCoupon()) return;
     const requiresPayment = hourlyRate > 0 && expectedPrice > 0;
     const promoMadeFree = requiresPayment && chargingPrice === 0 && !paymentIntentId;
-    if (requiresPayment && !paymentIntentId && !promoMadeFree && paymentMethod !== "wallet" && paymentMethod !== "mixed") {
+    if (
+      requiresPayment &&
+      !paymentIntentId &&
+      !promoMadeFree &&
+      paymentMethod !== "wallet" &&
+      paymentMethod !== "mixed"
+    ) {
       if (payableAmount > 0) {
-        Alert.alert("Payment required", "Please complete payment before requesting the session.");
+        Alert.alert(
+          t("scheduledBooking.alerts.paymentRequiredTitle"),
+          t("scheduledBooking.alerts.paymentRequiredBody")
+        );
         return;
       }
     }
@@ -727,7 +798,16 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     chargingPrice,
     payableAmount,
     paymentMethod,
+    t,
   ]);
+
+  useEffect(() => {
+    if (!visible || step !== "confirm") return;
+    void (async () => {
+      const slotOk = await validateCurrentSlot();
+      if (!slotOk.ok) handleSlotUnavailable(slotOk.message);
+    })();
+  }, [visible, step, validateCurrentSlot, handleSlotUnavailable]);
 
   const trainerTimeLabel = useMemo(() => {
     if (!selectedStart || !trainerTimezone) return null;
@@ -741,38 +821,56 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
 
   const applySmartSuggestion = useCallback(
     (suggestion: SmartScheduleSuggestion) => {
-      const dateIso = resolveSuggestionDateIso(suggestion.day, traineeTz);
-      if (!dateIso) {
-        Alert.alert(
-          t("scheduledBooking.datetime.suggestionInvalidTitle"),
-          t("scheduledBooking.datetime.suggestionInvalidBody")
-        );
-        return;
-      }
-      const dt = parseSlotTimeOnDate(dateIso, suggestion.time, traineeTz);
-      if (!dt) {
-        Alert.alert(
-          t("scheduledBooking.datetime.suggestionInvalidTitle"),
-          t("scheduledBooking.datetime.suggestionInvalidBody")
-        );
-        return;
-      }
-      const minStart = DateTime.now()
-        .setZone(traineeTz)
-        .plus({ minutes: SCHEDULED_MIN_LEAD_TIME_MINUTES });
-      if (dt < minStart) {
-        Alert.alert(
-          t("scheduledBooking.datetime.suggestionTooSoonTitle"),
-          t("scheduledBooking.datetime.suggestionTooSoonBody", {
-            hours: SCHEDULED_MIN_LEAD_TIME_MINUTES / 60,
-          })
-        );
-        return;
-      }
-      setSelectedDate(dateIso);
-      setSelectedStartIso(dt.toISO());
+      void (async () => {
+        const dateIso = resolveSuggestionDateIso(suggestion.day, traineeTz);
+        if (!dateIso) {
+          Alert.alert(
+            t("scheduledBooking.datetime.suggestionInvalidTitle"),
+            t("scheduledBooking.datetime.suggestionInvalidBody")
+          );
+          return;
+        }
+        const dt = parseSlotTimeOnDate(dateIso, suggestion.time, traineeTz);
+        if (!dt) {
+          Alert.alert(
+            t("scheduledBooking.datetime.suggestionInvalidTitle"),
+            t("scheduledBooking.datetime.suggestionInvalidBody")
+          );
+          return;
+        }
+        const minStart = DateTime.now()
+          .setZone(traineeTz)
+          .plus({ minutes: SCHEDULED_MIN_LEAD_TIME_MINUTES });
+        if (dt < minStart) {
+          Alert.alert(
+            t("scheduledBooking.datetime.suggestionTooSoonTitle"),
+            t("scheduledBooking.datetime.suggestionTooSoonBody", {
+              hours: SCHEDULED_MIN_LEAD_TIME_MINUTES / 60,
+            })
+          );
+          return;
+        }
+        if (!tid) return;
+        const probeEnd = dt.plus({ minutes: SCHEDULED_DURATIONS[0]! });
+        const slotCheck = await validateSlotRange({
+          trainerId: tid,
+          bookedDateIso: dateIso,
+          traineeTimeZone: traineeTz,
+          from: toHHmm(dt),
+          to: toHHmm(probeEnd),
+        });
+        if (slotCheck.isAvailable === false) {
+          Alert.alert(
+            t("scheduledBooking.alerts.suggestionUnavailableTitle"),
+            slotCheck.message ?? t("scheduledBooking.alerts.suggestionUnavailableBody")
+          );
+          return;
+        }
+        setSelectedDate(dateIso);
+        setSelectedStartIso(dt.toISO());
+      })();
     },
-    [traineeTz, t]
+    [traineeTz, t, tid]
   );
 
   return {
@@ -820,6 +918,8 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     visiblePromos,
     goNext,
     goBack,
+    returnToDateTime,
+    advanceFromPayment,
     handlePaymentComplete,
     handleSubmit,
     submitIsPending: submitMutation.isPending,
