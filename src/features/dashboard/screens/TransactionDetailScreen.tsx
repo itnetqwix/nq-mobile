@@ -24,6 +24,7 @@ import { useCurrencyFormatter } from "../../../lib/intl";
 import { queryKeys } from "../../../lib/queryKeys";
 import { SessionTimelineCard } from "../../support/SessionTimelineCard";
 import { TrainerEarningsBreakdown } from "../../payments/TrainerEarningsBreakdown";
+import { TraineeChargeBreakdown } from "../../payments/TraineeChargeBreakdown";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
 
@@ -354,6 +355,20 @@ export function TransactionDetailScreen({ navigation, route }: Props) {
               : null)
           }
           holds={data.escrow_holds}
+          currency={data?.amounts?.currency ?? data?.payment_summary?.currency}
+        />
+      ) : null}
+
+      {!isTrainer && data.payment_summary ? (
+        <TraineeChargeBreakdown
+          data={{
+            sessionSubtotalMinor: data.payment_summary.sessionSubtotalMinor,
+            surgeMinor: data.payment_summary.surgeMinor,
+            traineePlatformFeeMinor: data.payment_summary.traineePlatformFeeMinor,
+            processingFeeMinor: data.payment_summary.processingFeeMinor,
+            taxMinor: data.payment_summary.taxMinor,
+            chargeTotalMinor: data.payment_summary.chargeTotalMinor,
+          }}
           currency={data?.amounts?.currency ?? data?.payment_summary?.currency}
         />
       ) : null}

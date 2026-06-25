@@ -2065,8 +2065,8 @@
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/TransactionDetailScreen.tsx": {
-    "mtime": 1782366136.4051943,
-    "ast_hash": "b897cbbbd0e5a17ef83e7c95e055d2f8",
+    "mtime": 1782366742.3207662,
+    "ast_hash": "eefdf3b7919f100bbcaf028140b10c66",
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/TransactionsScreen.tsx": {
@@ -4665,8 +4665,13 @@
     "semantic_hash": ""
   },
   "docs/PAYMENT_FLOW_SIMPLE_GUIDE.md": {
-    "mtime": 1782366177.969964,
-    "ast_hash": "9bf9c7ac1369831dda0950020e942a6a",
+    "mtime": 1782366775.0235775,
+    "ast_hash": "963cddeea9df065bb333f13c7175bd5f",
+    "semantic_hash": ""
+  },
+  "src/features/payments/TraineeChargeBreakdown.tsx": {
+    "mtime": 1782366735.9358673,
+    "ast_hash": "b5566d588e658efa9782978fc2dcf00f",
     "semantic_hash": ""
   }
 }

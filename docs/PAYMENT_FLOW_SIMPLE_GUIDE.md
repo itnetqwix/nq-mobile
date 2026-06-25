@@ -527,4 +527,35 @@ Yes — cards are handled by **Stripe**, not stored directly on NetQwix servers.
 
 ---
 
+## Admin: dynamic fees (for operations team)
+
+All of these live in **Admin → Pricing & fees** (`/apps/pricing`). Changes apply to **new checkouts only** — existing escrow holds keep their saved snapshot.
+
+| Fee type | Where to edit | Who it affects |
+|----------|---------------|----------------|
+| **Commission %** | Rates & fees → core rates | Trainer payout (per-trainer override in Manage Trainers) |
+| **Platform fees** | Rates & fees → trainee + coach platform fee | Trainee checkout + trainer deduction |
+| **Processing / transaction fees** | Rates & fees → Advanced → payment processing grid (bps + fixed ¢ per method) | Trainee when “pass processing to trainee” is on |
+| **Surge / peak pricing** | Surge & peak tab — time windows + demand rules | Trainee session price; trainer earns on surged subtotal |
+| **Tax** | Rates & fees → estimated sales tax grid **or** enable Stripe Tax toggle | Trainee checkout total |
+| **Per-product overrides** | Rates & fees → Advanced → product fees | Instant lesson, extension, storage, etc. |
+
+**Company benefit:** Ops can tune margin without a deploy — e.g. raise commission in a market, absorb processing during promos, or adjust TX tax after a CPA review. Use **Profit check** tab before saving.
+
+---
+
+## Remaining edge cases & roadmap
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Mixed wallet + card pay | Fixed | Two escrow holds; proportional fees; full refund on cancel |
+| Transaction detail totals | Fixed | Shows total paid vs session price + fee breakdown |
+| Multi-hold trainer earnings | Fixed | Aggregates booking + extension legs |
+| Admin tax rates | **Now editable** | Was hardcoded; DB-backed when Stripe Tax is off |
+| Unrated session → funds stuck | Open | No auto-release after N days if ratings missing |
+| GB/EU regions | Open | Wallet config exists; admin pricing is US/CA only |
+| Legacy bookings without escrow | Fallback | List/detail use `amount` field when no holds |
+
+---
+
 *Questions about a specific charge? Use **Transactions** in the app or contact NetQwix support with the session date and trainer name.*
