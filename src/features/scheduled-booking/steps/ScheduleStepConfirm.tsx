@@ -1,12 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { radii, space, typography, useStaticStyles, useThemeColors } from "../../../theme";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
-import { useSharedStepStyles } from "../../instant-lesson/booking-wizard/sharedStepStyles";
 import { PricingBreakdownSummary } from "../../payments/PricingBreakdownSummary";
 import type { PricingQuote } from "../../payments/pricingTypes";
 import { chargeTotalDollars } from "../../payments/pricingTypes";
+import {
+  ScheduleActionFooter,
+  ScheduleInfoChip,
+  ScheduleStepHero,
+} from "../components/ScheduleStepChrome";
 
 type PromoResult = {
   valid: boolean;
@@ -50,7 +54,6 @@ export function ScheduleStepConfirm({
 }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
-  const shared = useSharedStepStyles();
   const styles = useStyles();
 
   const clipsLabel =
@@ -60,26 +63,36 @@ export function ScheduleStepConfirm({
 
   return (
     <View testID="schedule-step-confirm" style={styles.root}>
-      <Text style={styles.heroTitle}>{t("scheduledBooking.confirm.title")}</Text>
+      <ScheduleStepHero
+        title={t("scheduledBooking.confirm.title")}
+        subtitle={t("scheduledBooking.confirm.subtitle")}
+      />
 
       <View style={styles.summaryBox}>
         <SummaryRow icon="person-outline" label={t("scheduledBooking.confirm.coach")} value={trainerName} />
+        <View style={styles.divider} />
         <SummaryRow icon="calendar-outline" label={t("scheduledBooking.confirm.when")} value={sessionTimeSummary} />
         {trainerTimeLabel ? (
-          <SummaryRow
-            icon="globe-outline"
-            label={t("scheduledBooking.confirm.trainerTime")}
-            value={trainerTimeLabel}
-          />
+          <>
+            <View style={styles.divider} />
+            <SummaryRow
+              icon="globe-outline"
+              label={t("scheduledBooking.confirm.trainerTime")}
+              value={trainerTimeLabel}
+            />
+          </>
         ) : null}
+        <View style={styles.divider} />
         <SummaryRow
           icon="time-outline"
           label={t("scheduledBooking.confirm.duration")}
           value={t("scheduledBooking.confirm.durationValue", { minutes: durationMinutes })}
         />
+        <View style={styles.divider} />
         <SummaryRow icon="videocam-outline" label={t("scheduledBooking.confirm.clips")} value={clipsLabel} />
         {promoResult?.valid && (promoResult.discount_amount ?? 0) > 0 ? (
           <>
+            <View style={styles.divider} />
             <SummaryRow
               icon="pricetag-outline"
               label={t("scheduledBooking.confirm.subtotal")}
@@ -94,11 +107,14 @@ export function ScheduleStepConfirm({
           </>
         ) : null}
         {couponCode.trim() ? (
-          <SummaryRow
-            icon="ticket-outline"
-            label={t("scheduledBooking.confirm.promo")}
-            value={couponCode.trim()}
-          />
+          <>
+            <View style={styles.divider} />
+            <SummaryRow
+              icon="ticket-outline"
+              label={t("scheduledBooking.confirm.promo")}
+              value={couponCode.trim()}
+            />
+          </>
         ) : null}
       </View>
 
@@ -118,26 +134,18 @@ export function ScheduleStepConfirm({
         promoLabel={promoLabel ?? promoResult?.display_label}
       />
 
-      <View style={styles.pendingBanner}>
-        <Ionicons name="information-circle-outline" size={20} color={c.brandNavy} />
-        <Text style={styles.pendingText}>{t("scheduledBooking.confirm.pendingNote")}</Text>
-      </View>
+      <ScheduleInfoChip
+        icon="information-circle-outline"
+        message={t("scheduledBooking.confirm.pendingNote")}
+      />
 
-      <Pressable
+      <ScheduleActionFooter
         testID="schedule-confirm-submit"
-        style={[shared.primaryBtn, isSubmitting && shared.btnDisabled]}
-        disabled={isSubmitting}
+        label={t("scheduledBooking.confirm.submit")}
         onPress={onSubmit}
-      >
-        {isSubmitting ? (
-          <ActivityIndicator color={c.brandTextOn} />
-        ) : (
-          <>
-            <Ionicons name="calendar-outline" size={18} color={c.brandTextOn} />
-            <Text style={shared.primaryBtnText}>{t("scheduledBooking.confirm.submit")}</Text>
-          </>
-        )}
-      </Pressable>
+        disabled={isSubmitting}
+        loading={isSubmitting}
+      />
     </View>
   );
 }
@@ -158,7 +166,7 @@ function SummaryRow({
   return (
     <View style={styles.summaryLine}>
       <View style={styles.summaryIcon}>
-        <Ionicons name={icon} size={16} color={c.textSecondary} />
+        <Ionicons name={icon} size={16} color={c.brandNavy} />
       </View>
       <Text style={styles.summaryKey}>{label}</Text>
       <Text style={[styles.summaryValue, valueColor ? { color: valueColor } : null]}>{value}</Text>
@@ -169,19 +177,19 @@ function SummaryRow({
 function useStyles() {
   return useStaticStyles((palette) =>
     StyleSheet.create({
-      root: { gap: space.md },
-      heroTitle: {
-        ...typography.titleMd,
-        color: palette.text,
-        fontWeight: "800",
-      },
+      root: { gap: space.lg, paddingBottom: space.md },
       summaryBox: {
         backgroundColor: palette.surfaceElevated,
         borderRadius: radii.lg,
         padding: space.md,
-        gap: 12,
+        gap: 0,
         borderWidth: 1,
         borderColor: palette.border,
+      },
+      divider: {
+        height: StyleSheet.hairlineWidth,
+        backgroundColor: palette.border,
+        marginVertical: 10,
       },
       summaryLine: {
         flexDirection: "row",
@@ -194,31 +202,16 @@ function useStyles() {
         alignItems: "center",
       },
       summaryKey: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: "600",
         color: palette.textMuted,
-        width: 88,
+        width: 84,
       },
       summaryValue: {
         flex: 1,
         fontSize: 15,
-        fontWeight: "600",
+        fontWeight: "700",
         color: palette.text,
-        lineHeight: 20,
-      },
-      pendingBanner: {
-        flexDirection: "row",
-        gap: space.sm,
-        padding: space.md,
-        borderRadius: radii.lg,
-        backgroundColor: palette.brandSubtle,
-        borderWidth: 1,
-        borderColor: palette.brandAccent + "44",
-      },
-      pendingText: {
-        flex: 1,
-        ...typography.bodySm,
-        color: palette.brandNavy,
         lineHeight: 20,
       },
     })

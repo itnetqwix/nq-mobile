@@ -13,7 +13,6 @@ import { AuthScreenLayout } from "../components/AuthScreenLayout";
 import { SocialAuthButtons } from "../components/SocialAuthButtons";
 import { HomeBannerStrip } from "../../content/components/HomeBannerStrip";
 import type { AuthScreenProps } from "../../../navigation/types";
-import { exitAuthAsGuest } from "../lib/exitAuthAsGuest";
 import { promptEnableAppUnlock } from "../security/appUnlock";
 import { peekLastAuthMethod, setLastAuthMethod } from "../lib/lastAuthMethod";
 
@@ -177,22 +176,11 @@ export function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
               <Text style={styles.guestLink}>{t("auth.createAccount")}</Text>
             </Pressable>
           </View>
-          <Pressable
-            onPress={() => exitAuthAsGuest(navigation)}
-            style={styles.guestRow}
-            accessibilityRole="link"
-            accessibilityLabel={t("auth.continueAsGuest")}
-          >
-            <Ionicons name="compass-outline" size={16} color={c.brandAccent} />
-            <Text style={styles.guestText}>{t("auth.continueAsGuestPrefix")}</Text>
-            <Text style={styles.guestLink}>{t("auth.continueAsGuest")}</Text>
-          </Pressable>
         </>
       }
     >
       <Stack gap="md">
         <HomeBannerStrip
-          guest
           onDeepLink={(url) => {
             try {
               if (url.includes("wake-up")) {

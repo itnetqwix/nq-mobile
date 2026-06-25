@@ -6,10 +6,8 @@ import { PlatformPayButton, PlatformPay } from "@stripe/stripe-react-native";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -17,7 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NetQwixLoader } from "../../../components/brand/NetQwixLoader";
-import { Button, Card } from "../../../components/ui";
+import { Button, Card, KeyboardAwareScrollScreen } from "../../../components/ui";
 import { AccountType } from "../../../constants/accountType";
 import { useAuth } from "../../auth/context/AuthContext";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
@@ -243,12 +241,45 @@ export function WalletTopUpScreen({ navigation, route }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={insets.top + 56}
-    >
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+    <View style={styles.root}>
+      <KeyboardAwareScrollScreen
+        style={styles.root}
+        contentContainerStyle={styles.scroll}
+        keyboardVerticalOffset={insets.top + 56}
+        closedBottomInset={space.xl}
+        footer={
+          <>
+            <Button
+              label={
+                phase === "presenting"
+                  ? t("wallet.openingPayment")
+                  : phase === "confirming"
+                    ? t("wallet.confirming")
+                    : t("wallet.continueToPayment")
+              }
+              onPress={handleSubmit}
+              fullWidth
+              disabled={busy}
+              loading={busy}
+              size="lg"
+              testID="wallet-topup-submit"
+            />
+            {nativePaySupported && !busy ? (
+              <PlatformPayButton
+                type={PlatformPay.ButtonType.TopUp}
+                onPress={handleNativePay}
+                appearance={PlatformPay.ButtonStyle.Black}
+                style={{
+                  width: "100%",
+                  height: Platform.OS === "ios" ? 44 : 48,
+                  borderRadius: 12,
+                  marginTop: space.sm,
+                }}
+              />
+            ) : null}
+          </>
+        }
+      >
         <View style={styles.hero}>
           <View style={styles.heroIcon}>
             <Ionicons name="card-outline" size={24} color={c.iconPrimary} />
@@ -325,38 +356,7 @@ export function WalletTopUpScreen({ navigation, route }: Props) {
             })}
           </Text>
         </View>
-
-        <Button
-          label={
-            phase === "presenting"
-              ? t("wallet.openingPayment")
-              : phase === "confirming"
-                ? t("wallet.confirming")
-                : t("wallet.continueToPayment")
-          }
-          onPress={handleSubmit}
-          fullWidth
-          disabled={busy}
-          loading={busy}
-          style={{ marginTop: space.lg }}
-          size="lg"
-          testID="wallet-topup-submit"
-        />
-
-        {nativePaySupported && !busy ? (
-          <PlatformPayButton
-            type={PlatformPay.ButtonType.TopUp}
-            onPress={handleNativePay}
-            appearance={PlatformPay.ButtonStyle.Black}
-            style={{
-              width: "100%",
-              height: Platform.OS === "ios" ? 44 : 48,
-              borderRadius: 12,
-              marginTop: space.sm,
-            }}
-          />
-        ) : null}
-      </ScrollView>
+      </KeyboardAwareScrollScreen>
 
       {busy && (
         <View style={styles.overlay} pointerEvents="auto">
@@ -369,6 +369,6 @@ export function WalletTopUpScreen({ navigation, route }: Props) {
           />
         </View>
       )}
-    </KeyboardAvoidingView>
+    </View>
   );
 }

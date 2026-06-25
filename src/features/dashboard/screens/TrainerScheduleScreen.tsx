@@ -18,11 +18,14 @@ import {
   Button,
   HelpBubble,
   MorphRefreshHeader,
+  SegmentedControl,
   TimeZoneSearchModal,
   TrainerScheduleSkeleton,
 } from "../../../components/ui";
 import { useMorphRefreshBundle } from "../../../lib/refresh/useMorphRefreshBundle";
+import { invalidateTrainerSchedule } from "../../../lib/queryInvalidation";
 import { colors, radii, space, typography } from "../../../theme";
+import { useFloatingTabBarBottomInset } from "../../../navigation/useFloatingTabBarBottomInset";
 import {
   fetchTrainerSlots,
   postTrainerSlots,
@@ -33,6 +36,11 @@ import { queryKeys } from "../../../lib/queryKeys";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { useAuth } from "../../auth/context/AuthContext";
 import { FadeInView } from "../../../lib/motion/FadeInView";
+import {
+  WeeklyAvailabilityPainter,
+  type PainterDay,
+} from "../components/trainer/WeeklyAvailabilityPainter";
+import { SCHEDULE_BOOKING_HORIZON_DAYS } from "../../scheduled-booking/constants";
 
 /** Same day order/casing as web `weekDays` in `nq-frontend-main/app/common/constants.js`. */
 const WEEKDAYS = [
@@ -226,6 +234,9 @@ export function TrainerScheduleScreen() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { user, accountType, refreshUser, patchUser } = useAuth();
+  const bottomPad = useFloatingTabBarBottomInset(space.md);
+  const [editMode, setEditMode] = useState<"grid" | "list">("grid");
+  const [isPainting, setIsPainting] = useState(false);
 
   const defaultTz = "America/New_York";
   const [profileTz, setProfileTz] = useState(defaultTz);
@@ -351,12 +362,22 @@ export function TrainerScheduleScreen() {
       await postTrainerSlots(filtered);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.trainer.schedule });
+      invalidateTrainerSchedule(queryClient);
+      queryClient.invalidateQueries({ queryKey: queryKeys.trainer.slots });
       queryClient.invalidateQueries({ queryKey: queryKeys.trainer.availabilityAll });
-      Alert.alert("Availability saved", "Your weekly availability is now live for bookings.");
+      queryClient.invalidateQueries({
+        predicate: (q) => q.queryKey[0] === "scheduledCheckSlot",
+      });
+      Alert.alert(
+        t("trainerAvailability.savedTitle"),
+        t("trainerAvailability.savedBody")
+      );
     },
     onError: (err: any) => {
-      Alert.alert("Could not save", err?.message ?? "Please try again.");
+      Alert.alert(
+        t("trainerAvailability.saveErrorTitle"),
+        err?.message ?? t("common.error")
+      );
     },
   });
 
@@ -370,7 +391,8 @@ export function TrainerScheduleScreen() {
     <View style={styles.root}>
       <MorphRefreshHeader {...morph.headerProps} />
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: bottomPad }]}
+        scrollEnabled={!isPainting}
         onScroll={morph.onMorphScroll}
         scrollEventThrottle={morph.scrollEventThrottle}
         refreshControl={
@@ -426,11 +448,30 @@ export function TrainerScheduleScreen() {
         </FadeInView>
 
         <Text style={styles.lead}>
-          Set your hours for each day of the week. Add one or more time ranges per day — trainees
-          book inside these windows.
+          {t("trainerAvailability.weeklyLead", {
+            defaultValue:
+              "Paint or list your hours for each day. Trainees book inside these windows for the next {{days}} days.",
+            days: SCHEDULE_BOOKING_HORIZON_DAYS,
+          })}
         </Text>
 
-        {days.map((d, dayIdx) => (
+        <SegmentedControl
+          options={[
+            { key: "grid", label: t("trainerAvailability.editModeGrid", { defaultValue: "Paint grid" }) },
+            { key: "list", label: t("trainerAvailability.editModeList", { defaultValue: "List editor" }) },
+          ]}
+          value={editMode}
+          onChange={setEditMode}
+        />
+
+        {editMode === "grid" ? (
+          <WeeklyAvailabilityPainter
+            initialDays={days as PainterDay[]}
+            onChange={(next) => setDays(next as DayState[])}
+            onPaintingChange={setIsPainting}
+          />
+        ) : (
+          days.map((d, dayIdx) => (
           <View key={d.day} style={styles.dayCard}>
             <View style={styles.dayHeader}>
               <Text style={styles.dayTitle}>{d.day}</Text>
@@ -478,10 +519,11 @@ export function TrainerScheduleScreen() {
               ))
             )}
           </View>
-        ))}
+        ))
+        )}
 
         <Button
-          label={dirty ? "Save schedule" : "Up to date"}
+          label={dirty ? t("trainerAvailability.saveSchedule") : t("trainerAvailability.upToDate")}
           leftIcon="save-outline"
           loading={saveMutation.isPending}
           disabled={!dirty || saveMutation.isPending}

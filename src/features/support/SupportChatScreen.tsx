@@ -28,7 +28,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   FlatList,
   Keyboard,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   StyleSheet,
@@ -37,7 +36,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { KeyboardStickyComposerLayout } from "../../components/ui";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/context/AuthContext";
 import { postWriteUs } from "../home/api/homeApi";
@@ -117,7 +116,6 @@ async function persistTranscript(messages: Message[]): Promise<void> {
 export function SupportChatScreen() {
   const { t } = useTranslation();
   const c = useThemeColors();
-  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -259,9 +257,62 @@ export function SupportChatScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: c.background }]}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      <KeyboardStickyComposerLayout
+        composer={
+          <View
+            style={[
+              styles.composer,
+              {
+                backgroundColor: c.surfaceElevated,
+                borderTopColor: c.border,
+              },
+            ]}
+          >
+            <Pressable
+              onPress={() =>
+                navigation.navigate("ReportIssue", { prefillSubject: "Live chat follow-up" })
+              }
+              hitSlop={10}
+              style={[styles.reportBtn, { backgroundColor: c.surface, borderColor: c.border }]}
+              accessibilityRole="button"
+              accessibilityLabel={t("support.openReportA11y", {
+                defaultValue: "Open Report a problem to send diagnostics",
+              })}
+            >
+              <Ionicons name="alert-circle-outline" size={18} color={c.brandAccent} />
+            </Pressable>
+
+            <TextInput
+              value={text}
+              onChangeText={setText}
+              placeholder={t("support.placeholder", { defaultValue: "Message support…" })}
+              placeholderTextColor={c.textMuted}
+              multiline
+              style={[
+                styles.input,
+                { color: c.text, backgroundColor: c.surface, borderColor: c.inputBorder },
+              ]}
+              editable={!sending}
+              maxLength={2000}
+            />
+
+            <Pressable
+              onPress={() => void send()}
+              disabled={!text.trim() || sending}
+              style={[
+                styles.sendBtn,
+                {
+                  backgroundColor:
+                    !text.trim() || sending ? c.neutral300 : c.brandAccent,
+                },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={t("support.send", { defaultValue: "Send to support" })}
+            >
+              <Ionicons name="send" size={16} color="#fff" />
+            </Pressable>
+          </View>
+        }
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
           <FlatList
@@ -278,62 +329,7 @@ export function SupportChatScreen() {
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
           />
         </TouchableWithoutFeedback>
-
-        <View
-          style={[
-            styles.composer,
-            {
-              backgroundColor: c.surfaceElevated,
-              borderTopColor: c.border,
-              paddingBottom: Math.max(insets.bottom, space.sm),
-            },
-          ]}
-        >
-          <Pressable
-            onPress={() =>
-              navigation.navigate("ReportIssue", { prefillSubject: "Live chat follow-up" })
-            }
-            hitSlop={10}
-            style={[styles.reportBtn, { backgroundColor: c.surface, borderColor: c.border }]}
-            accessibilityRole="button"
-            accessibilityLabel={t("support.openReportA11y", {
-              defaultValue: "Open Report a problem to send diagnostics",
-            })}
-          >
-            <Ionicons name="alert-circle-outline" size={18} color={c.brandAccent} />
-          </Pressable>
-
-          <TextInput
-            value={text}
-            onChangeText={setText}
-            placeholder={t("support.placeholder", { defaultValue: "Message support…" })}
-            placeholderTextColor={c.textMuted}
-            multiline
-            style={[
-              styles.input,
-              { color: c.text, backgroundColor: c.surface, borderColor: c.inputBorder },
-            ]}
-            editable={!sending}
-            maxLength={2000}
-          />
-
-          <Pressable
-            onPress={() => void send()}
-            disabled={!text.trim() || sending}
-            style={[
-              styles.sendBtn,
-              {
-                backgroundColor:
-                  !text.trim() || sending ? c.neutral300 : c.brandAccent,
-              },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={t("support.send", { defaultValue: "Send to support" })}
-          >
-            <Ionicons name="send" size={16} color="#fff" />
-          </Pressable>
-        </View>
-      </KeyboardAvoidingView>
+      </KeyboardStickyComposerLayout>
     </View>
   );
 }

@@ -11,7 +11,12 @@ import {
 } from "react-native";
 import { radii, space, typography, useStaticStyles, useThemeColors } from "../../../theme";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
-import { useSharedStepStyles } from "../../instant-lesson/booking-wizard/sharedStepStyles";
+import {
+  ScheduleActionFooter,
+  ScheduleSection,
+  ScheduleSessionSummary,
+  ScheduleStepHero,
+} from "../components/ScheduleStepChrome";
 
 type PromoResult = {
   valid: boolean;
@@ -60,7 +65,6 @@ export function ScheduleStepPromo({
 }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
-  const shared = useSharedStepStyles();
   const styles = useStyles();
 
   const appliedTotal = (promoResult?.final_amount ?? expectedPrice).toFixed(2);
@@ -73,84 +77,78 @@ export function ScheduleStepPromo({
 
   return (
     <View testID="schedule-step-promo" style={styles.root}>
-      <View style={styles.titleRow}>
-        <Text style={styles.heroTitle}>{t("scheduledBooking.promo.title")}</Text>
-        <View style={styles.optionalPill}>
-          <Text style={styles.optionalText}>{t("scheduledBooking.promo.optional")}</Text>
-        </View>
-      </View>
+      <ScheduleStepHero
+        title={t("scheduledBooking.promo.title")}
+        subtitle={t("scheduledBooking.promo.subtitle")}
+        badge={t("scheduledBooking.promo.optional")}
+      />
 
       {sessionTimeSummary ? (
-        <View style={styles.sessionCard}>
-          <Ionicons name="calendar-outline" size={18} color={c.brandNavy} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.sessionLabel}>{sessionTimeSummary}</Text>
-            <Text style={styles.sessionSubtotal}>
-              {t("scheduledBooking.promo.sessionSubtotal")}: ${expectedPrice.toFixed(2)}
-            </Text>
-          </View>
-        </View>
+        <ScheduleSessionSummary
+          icon="calendar-outline"
+          value={sessionTimeSummary}
+          hint={`${t("scheduledBooking.promo.sessionSubtotal")}: $${expectedPrice.toFixed(2)}`}
+        />
       ) : (
-        <View style={styles.sessionCard}>
-          <Ionicons name="cash-outline" size={18} color={c.brandNavy} />
-          <Text style={styles.sessionSubtotal}>
-            {t("scheduledBooking.promo.sessionSubtotal")}: ${expectedPrice.toFixed(2)}
-          </Text>
-        </View>
+        <ScheduleSessionSummary
+          icon="cash-outline"
+          value={`${t("scheduledBooking.promo.sessionSubtotal")}: $${expectedPrice.toFixed(2)}`}
+        />
       )}
 
-      <View style={styles.inputCard}>
-        <View style={styles.promoRow}>
-          <TextInput
-            value={couponCode}
-            onChangeText={(text) => {
-              onCouponCodeChange(text);
-              onCouponErrorClear();
-            }}
-            editable={!promoResult}
-            placeholder={t("scheduledBooking.promo.placeholder")}
-            placeholderTextColor={c.textMuted}
-            style={[styles.input, couponError ? styles.inputError : null]}
-            autoCapitalize="characters"
-            accessibilityLabel={t("scheduledBooking.promo.placeholder")}
-          />
-          {promoResult ? (
-            <Pressable style={styles.applyBtn} onPress={onRemovePromo}>
-              <Text style={styles.applyBtnText}>{t("scheduledBooking.promo.remove")}</Text>
-            </Pressable>
-          ) : (
-            <Pressable
-              style={[styles.applyBtn, promoValidating && styles.applyBtnDisabled]}
-              onPress={() => onApplyPromo()}
-              disabled={promoValidating}
-            >
-              {promoValidating ? (
-                <ActivityIndicator color={c.brandTextOn} size="small" />
-              ) : (
-                <Text style={styles.applyBtnText}>{t("scheduledBooking.promo.apply")}</Text>
-              )}
-            </Pressable>
-          )}
-        </View>
-        {couponError ? <Text style={styles.errorText}>{couponError}</Text> : null}
-        {promoResult?.valid ? (
-          <View style={styles.successRow}>
-            <Ionicons name="checkmark-circle" size={18} color={c.success} />
-            <Text style={styles.successText}>
-              {promoResult.display_label
-                ? t("scheduledBooking.promo.appliedWithLabel", {
-                    total: `$${appliedTotal}`,
-                    label: promoResult.display_label,
-                  })
-                : t("scheduledBooking.promo.applied", { total: `$${appliedTotal}` })}
-            </Text>
+      <ScheduleSection title={t("scheduledBooking.promo.enterCode")}>
+        <View style={styles.inputCard}>
+          <View style={styles.promoRow}>
+            <TextInput
+              value={couponCode}
+              onChangeText={(text) => {
+                onCouponCodeChange(text);
+                onCouponErrorClear();
+              }}
+              editable={!promoResult}
+              placeholder={t("scheduledBooking.promo.placeholder")}
+              placeholderTextColor={c.textMuted}
+              style={[styles.input, couponError ? styles.inputError : null]}
+              autoCapitalize="characters"
+              accessibilityLabel={t("scheduledBooking.promo.placeholder")}
+            />
+            {promoResult ? (
+              <Pressable style={styles.applyBtn} onPress={onRemovePromo}>
+                <Text style={styles.applyBtnText}>{t("scheduledBooking.promo.remove")}</Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                style={[styles.applyBtn, promoValidating && styles.applyBtnDisabled]}
+                onPress={() => onApplyPromo()}
+                disabled={promoValidating}
+              >
+                {promoValidating ? (
+                  <ActivityIndicator color={c.brandTextOn} size="small" />
+                ) : (
+                  <Text style={styles.applyBtnText}>{t("scheduledBooking.promo.apply")}</Text>
+                )}
+              </Pressable>
+            )}
           </View>
-        ) : null}
-      </View>
+          {couponError ? <Text style={styles.errorText}>{couponError}</Text> : null}
+          {promoResult?.valid ? (
+            <View style={styles.successRow}>
+              <Ionicons name="checkmark-circle" size={18} color={c.success} />
+              <Text style={styles.successText}>
+                {promoResult.display_label
+                  ? t("scheduledBooking.promo.appliedWithLabel", {
+                      total: `$${appliedTotal}`,
+                      label: promoResult.display_label,
+                    })
+                  : t("scheduledBooking.promo.applied", { total: `$${appliedTotal}` })}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      </ScheduleSection>
 
       {visiblePromos.length > 0 ? (
-        <View style={styles.offersSection}>
-          <Text style={styles.offersTitle}>{t("scheduledBooking.promo.availableTitle")}</Text>
+        <ScheduleSection title={t("scheduledBooking.promo.availableTitle")}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.promoList}>
             {visiblePromos.map((p) => {
               const selected = couponCode.trim().toUpperCase() === p.code.toUpperCase();
@@ -175,15 +173,17 @@ export function ScheduleStepPromo({
               );
             })}
           </ScrollView>
-        </View>
+        </ScheduleSection>
       ) : null}
 
-      <Pressable style={shared.primaryBtn} onPress={onNext}>
-        <Text style={shared.primaryBtnText}>{t("scheduledBooking.promo.continue")}</Text>
-        <Ionicons name="arrow-forward" size={18} color={c.brandTextOn} />
-      </Pressable>
-      <Pressable testID="schedule-promo-skip" style={shared.secondaryBtn} onPress={onSkip}>
-        <Text style={shared.secondaryBtnText}>{t("scheduledBooking.promo.skip")}</Text>
+      <ScheduleActionFooter
+        testID="schedule-promo-continue"
+        label={t("scheduledBooking.promo.continue")}
+        onPress={onNext}
+      />
+
+      <Pressable testID="schedule-promo-skip" style={styles.skipBtn} onPress={onSkip}>
+        <Text style={styles.skipText}>{t("scheduledBooking.promo.skip")}</Text>
       </Pressable>
     </View>
   );
@@ -192,51 +192,7 @@ export function ScheduleStepPromo({
 function useStyles() {
   return useStaticStyles((palette) =>
     StyleSheet.create({
-      root: { gap: space.md },
-      titleRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: space.sm,
-        flexWrap: "wrap",
-      },
-      heroTitle: {
-        ...typography.titleMd,
-        color: palette.text,
-        fontWeight: "800",
-      },
-      optionalPill: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: radii.pill,
-        backgroundColor: palette.surfaceMuted,
-        borderWidth: 1,
-        borderColor: palette.border,
-      },
-      optionalText: {
-        ...typography.caption,
-        color: palette.textMuted,
-        fontWeight: "700",
-      },
-      sessionCard: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: space.sm,
-        padding: space.md,
-        borderRadius: radii.lg,
-        backgroundColor: palette.surfaceElevated,
-        borderWidth: 1,
-        borderColor: palette.border,
-      },
-      sessionLabel: {
-        ...typography.bodySm,
-        color: palette.text,
-        fontWeight: "600",
-      },
-      sessionSubtotal: {
-        ...typography.bodySm,
-        color: palette.text,
-        fontWeight: "700",
-      },
+      root: { gap: space.lg, paddingBottom: space.md },
       inputCard: {
         padding: space.md,
         borderRadius: radii.lg,
@@ -271,12 +227,6 @@ function useStyles() {
       errorText: { color: palette.danger, fontSize: 13 },
       successRow: { flexDirection: "row", alignItems: "center", gap: 6 },
       successText: { color: palette.success, fontWeight: "600", flex: 1 },
-      offersSection: { gap: space.xs },
-      offersTitle: {
-        ...typography.label,
-        color: palette.text,
-        fontWeight: "700",
-      },
       promoList: { gap: 8, paddingVertical: space.xs },
       promoChip: {
         paddingVertical: 12,
@@ -295,6 +245,15 @@ function useStyles() {
       promoChipCodeOn: { color: palette.brandTextOn },
       promoChipLabel: { fontSize: 12, color: palette.textMuted, marginTop: 4 },
       promoChipLabelOn: { color: palette.brandTextOn + "CC" },
+      skipBtn: {
+        alignItems: "center",
+        paddingVertical: space.sm,
+      },
+      skipText: {
+        ...typography.bodySm,
+        color: palette.textMuted,
+        fontWeight: "600",
+      },
     })
   );
 }

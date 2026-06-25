@@ -3,7 +3,6 @@ import {
   Alert,
   Linking,
   Pressable,
-  ScrollView,
   Share,
   StyleSheet,
   Text,
@@ -13,7 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { Banner, Button, Skeleton } from "../../../components/ui";
+import { Banner, Button, KeyboardAwareScrollScreen, Skeleton } from "../../../components/ui";
 import {
   radii,
   space,
@@ -21,7 +20,6 @@ import {
   useThemeColors,
   useThemedStyles,
 } from "../../../theme";
-import { useFloatingTabBarBottomInset } from "../../../navigation/useFloatingTabBarBottomInset";
 import { fetchMyReferrals } from "../../home/api/homeApi";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
@@ -83,7 +81,6 @@ export function InviteFriendsScreen() {
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const styles = useInviteStyles();
-  const bottomPad = useFloatingTabBarBottomInset(space.md);
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [text, setText] = useState("");
@@ -306,11 +303,7 @@ export function InviteFriendsScreen() {
   };
 
   return (
-    <ScrollView
-      style={styles.root}
-      contentContainerStyle={[styles.content, { paddingBottom: bottomPad }]}
-      keyboardShouldPersistTaps="handled"
-    >
+    <KeyboardAwareScrollScreen style={styles.root} contentContainerStyle={styles.content}>
       {/* Hero card with perk callout */}
       <View style={styles.hero}>
         <View style={[styles.heroIconWrap, { backgroundColor: c.brandSubtle }]}>
@@ -589,7 +582,7 @@ export function InviteFriendsScreen() {
           </Text>
         ) : null}
       </View>
-    </ScrollView>
+    </KeyboardAwareScrollScreen>
   );
 }
 
@@ -809,7 +802,7 @@ function useInviteStyles() {
   return useThemedStyles((palette) =>
     StyleSheet.create({
       root: { flex: 1, backgroundColor: palette.background },
-      content: { padding: space.md, paddingBottom: space.xl, gap: space.md },
+      content: { padding: space.md, gap: space.md },
       hero: {
         backgroundColor: palette.surfaceElevated,
         borderRadius: radii.lg,

@@ -10,15 +10,18 @@
     "slides": {
       "leap": {
         "title": "Da el salto",
-        "body": "Mejora tu juego con coaching 1:1 en vivo — la misma ventaja que usan los pros, para cada atleta."
+        "body": "Mejora tu juego con coaching 1:1 en vivo — la misma ventaja que usan los pros, para cada atleta.",
+        "badge": "Coaching en vivo"
       },
       "coaches": {
         "title": "Encuentra tu entrenador",
-        "body": "Explora expertos verificados por deporte, nivel y horario. Guarda favoritos y reserva cuando quieras."
+        "body": "Explora expertos verificados por deporte, nivel y horario. Guarda favoritos y reserva cuando quieras.",
+        "badge": "Expertos verificados"
       },
       "live": {
         "title": "Entrena en vivo, donde sea",
-        "body": "Sesiones por video, clips y planes de juego en un solo locker — desde la cancha o desde casa."
+        "body": "Sesiones por video, clips y planes de juego en un solo locker — desde la cancha o desde casa.",
+        "badge": "Todo en uno"
       }
     }
   },

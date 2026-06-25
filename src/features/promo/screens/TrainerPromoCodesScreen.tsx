@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   Alert,
-  Modal,
   Pressable,
   ScrollView,
   Share,
@@ -24,6 +23,7 @@ import {
   ScreenContainer,
   SkeletonGroup,
 } from "../../../components/ui";
+import { KeyboardFormModal } from "../../../components/ui/KeyboardFormModal";
 import {
   FLASHLIST_PERF_DEFAULTS,
 } from "../../../lib/lists/flatListPerf";
@@ -263,141 +263,145 @@ export function TrainerPromoCodesScreen() {
         }
       </MorphRefreshScrollSurface>
 
-      <Modal visible={formOpen} animationType="slide" presentationStyle="pageSheet">
-        <View style={styles.modalShell}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>
-              {editRow ? t("trainerPromo.editTitle") : t("trainerPromo.createTitle")}
-            </Text>
-            <Pressable onPress={() => setFormOpen(false)} hitSlop={12}>
-              <Ionicons name="close" size={28} color={c.text} />
-            </Pressable>
-          </View>
-          <ScrollView contentContainerStyle={styles.modalScroll} keyboardShouldPersistTaps="handled">
-            <Text style={styles.fieldHint}>{t("trainerPromo.fundingNote")}</Text>
-            <Field label={t("trainerPromo.fields.code")}>
-              <TextInput
-                style={styles.input}
-                value={form.code}
-                onChangeText={(v) => setField("code", v.toUpperCase())}
-                editable={!editRow}
-                autoCapitalize="characters"
-                placeholder="COACH20"
-              />
-              {!editRow ? (
-                <Pressable onPress={() => setField("code", generateCoachCode())}>
-                  <Text style={styles.link}>{t("trainerPromo.generate")}</Text>
-                </Pressable>
-              ) : null}
-            </Field>
-            <Field label={t("trainerPromo.fields.label")}>
-              <TextInput
-                style={styles.input}
-                value={form.display_label}
-                onChangeText={(v) => setField("display_label", v)}
-                placeholder={t("trainerPromo.fields.labelPlaceholder")}
-              />
-            </Field>
-            <View style={styles.row2}>
-              <View style={styles.half}>
-                <Field label={t("trainerPromo.fields.type")}>
-                  <View style={styles.segmentRow}>
-                    {(["percentage", "fixed_amount"] as const).map((dt) => (
-                      <Pressable
-                        key={dt}
-                        style={[styles.segment, form.discount_type === dt && styles.segmentOn]}
-                        onPress={() => setField("discount_type", dt)}
-                      >
-                        <Text
-                          style={[
-                            styles.segmentText,
-                            form.discount_type === dt && styles.segmentTextOn,
-                          ]}
-                        >
-                          {dt === "percentage"
-                            ? t("trainerPromo.fields.percent")
-                            : t("trainerPromo.fields.fixed")}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                </Field>
-              </View>
-              <View style={styles.half}>
-                <Field label={t("trainerPromo.fields.value")}>
-                  <TextInput
-                    style={styles.input}
-                    keyboardType="decimal-pad"
-                    value={String(form.discount_value)}
-                    onChangeText={(v) => setField("discount_value", Number(v) || 0)}
-                  />
-                </Field>
-              </View>
-            </View>
-            <View style={styles.row2}>
-              <View style={styles.half}>
-                <Field label={t("trainerPromo.fields.start")}>
-                  <TextInput
-                    style={styles.input}
-                    value={form.start_date}
-                    onChangeText={(v) => setField("start_date", v)}
-                    placeholder="YYYY-MM-DD"
-                  />
-                </Field>
-              </View>
-              <View style={styles.half}>
-                <Field label={t("trainerPromo.fields.end")}>
-                  <TextInput
-                    style={styles.input}
-                    value={form.end_date}
-                    onChangeText={(v) => setField("end_date", v)}
-                    placeholder="YYYY-MM-DD"
-                  />
-                </Field>
-              </View>
-            </View>
-            <View style={styles.row2}>
-              <View style={styles.half}>
-                <Field label={t("trainerPromo.fields.usageLimit")}>
-                  <TextInput
-                    style={styles.input}
-                    keyboardType="number-pad"
-                    value={String(form.usage_limit ?? 0)}
-                    onChangeText={(v) => setField("usage_limit", Number(v) || 0)}
-                  />
-                </Field>
-              </View>
-              <View style={styles.half}>
-                <Field label={t("trainerPromo.fields.perUser")}>
-                  <TextInput
-                    style={styles.input}
-                    keyboardType="number-pad"
-                    value={String(form.per_user_limit ?? 1)}
-                    onChangeText={(v) => setField("per_user_limit", Number(v) || 0)}
-                  />
-                </Field>
-              </View>
-            </View>
-            <View style={styles.switchRow}>
-              <Text style={styles.switchLabel}>{t("trainerPromo.fields.visible")}</Text>
-              <Switch
-                value={!!form.is_visible}
-                onValueChange={(v) => setField("is_visible", v)}
-              />
-            </View>
-            <View style={styles.switchRow}>
-              <Text style={styles.switchLabel}>{t("trainerPromo.fields.active")}</Text>
-              <Switch value={!!form.is_active} onValueChange={(v) => setField("is_active", v)} />
-            </View>
-            <Button
-              label={editRow ? t("trainerPromo.save") : t("trainerPromo.create")}
-              onPress={() => saveMutation.mutate()}
-              loading={saveMutation.isPending}
-              style={{ marginTop: space.md }}
-            />
-          </ScrollView>
+      <KeyboardFormModal
+        visible={formOpen}
+        onClose={() => setFormOpen(false)}
+        style={{ backgroundColor: c.surface }}
+        contentContainerStyle={styles.modalScroll}
+        footer={
+          <Button
+            label={editRow ? t("trainerPromo.save") : t("trainerPromo.create")}
+            onPress={() => saveMutation.mutate()}
+            loading={saveMutation.isPending}
+            fullWidth
+            size="lg"
+          />
+        }
+      >
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>
+            {editRow ? t("trainerPromo.editTitle") : t("trainerPromo.createTitle")}
+          </Text>
+          <Pressable onPress={() => setFormOpen(false)} hitSlop={12}>
+            <Ionicons name="close" size={28} color={c.text} />
+          </Pressable>
         </View>
-      </Modal>
+        <Text style={styles.fieldHint}>{t("trainerPromo.fundingNote")}</Text>
+        <Field label={t("trainerPromo.fields.code")}>
+          <TextInput
+            style={styles.input}
+            value={form.code}
+            onChangeText={(v) => setField("code", v.toUpperCase())}
+            editable={!editRow}
+            autoCapitalize="characters"
+            placeholder="COACH20"
+          />
+          {!editRow ? (
+            <Pressable onPress={() => setField("code", generateCoachCode())}>
+              <Text style={styles.link}>{t("trainerPromo.generate")}</Text>
+            </Pressable>
+          ) : null}
+        </Field>
+        <Field label={t("trainerPromo.fields.label")}>
+          <TextInput
+            style={styles.input}
+            value={form.display_label}
+            onChangeText={(v) => setField("display_label", v)}
+            placeholder={t("trainerPromo.fields.labelPlaceholder")}
+          />
+        </Field>
+        <View style={styles.row2}>
+          <View style={styles.half}>
+            <Field label={t("trainerPromo.fields.type")}>
+              <View style={styles.segmentRow}>
+                {(["percentage", "fixed_amount"] as const).map((dt) => (
+                  <Pressable
+                    key={dt}
+                    style={[styles.segment, form.discount_type === dt && styles.segmentOn]}
+                    onPress={() => setField("discount_type", dt)}
+                  >
+                    <Text
+                      style={[
+                        styles.segmentText,
+                        form.discount_type === dt && styles.segmentTextOn,
+                      ]}
+                    >
+                      {dt === "percentage"
+                        ? t("trainerPromo.fields.percent")
+                        : t("trainerPromo.fields.fixed")}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </Field>
+          </View>
+          <View style={styles.half}>
+            <Field label={t("trainerPromo.fields.value")}>
+              <TextInput
+                style={styles.input}
+                keyboardType="decimal-pad"
+                value={String(form.discount_value)}
+                onChangeText={(v) => setField("discount_value", Number(v) || 0)}
+              />
+            </Field>
+          </View>
+        </View>
+        <View style={styles.row2}>
+          <View style={styles.half}>
+            <Field label={t("trainerPromo.fields.start")}>
+              <TextInput
+                style={styles.input}
+                value={form.start_date}
+                onChangeText={(v) => setField("start_date", v)}
+                placeholder="YYYY-MM-DD"
+              />
+            </Field>
+          </View>
+          <View style={styles.half}>
+            <Field label={t("trainerPromo.fields.end")}>
+              <TextInput
+                style={styles.input}
+                value={form.end_date}
+                onChangeText={(v) => setField("end_date", v)}
+                placeholder="YYYY-MM-DD"
+              />
+            </Field>
+          </View>
+        </View>
+        <View style={styles.row2}>
+          <View style={styles.half}>
+            <Field label={t("trainerPromo.fields.usageLimit")}>
+              <TextInput
+                style={styles.input}
+                keyboardType="number-pad"
+                value={String(form.usage_limit ?? 0)}
+                onChangeText={(v) => setField("usage_limit", Number(v) || 0)}
+              />
+            </Field>
+          </View>
+          <View style={styles.half}>
+            <Field label={t("trainerPromo.fields.perUser")}>
+              <TextInput
+                style={styles.input}
+                keyboardType="number-pad"
+                value={String(form.per_user_limit ?? 1)}
+                onChangeText={(v) => setField("per_user_limit", Number(v) || 0)}
+              />
+            </Field>
+          </View>
+        </View>
+        <View style={styles.switchRow}>
+          <Text style={styles.switchLabel}>{t("trainerPromo.fields.visible")}</Text>
+          <Switch
+            value={!!form.is_visible}
+            onValueChange={(v) => setField("is_visible", v)}
+          />
+        </View>
+        <View style={styles.switchRow}>
+          <Text style={styles.switchLabel}>{t("trainerPromo.fields.active")}</Text>
+          <Switch value={!!form.is_active} onValueChange={(v) => setField("is_active", v)} />
+        </View>
+      </KeyboardFormModal>
     </ScreenContainer>
   );
 }
@@ -515,7 +519,6 @@ function useStyles() {
       actions: { flexDirection: "row", marginTop: space.md, gap: space.md },
       actionBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
       actionText: { ...typography.bodySmall, color: palette.text },
-      modalShell: { flex: 1, backgroundColor: palette.surface },
       modalHeader: {
         flexDirection: "row",
         alignItems: "center",
@@ -525,7 +528,7 @@ function useStyles() {
         borderBottomColor: palette.border,
       },
       modalTitle: { fontSize: 18, fontWeight: "700", color: palette.text },
-      modalScroll: { padding: space.md, paddingBottom: space.xxl },
+      modalScroll: { padding: space.md, paddingBottom: space.md },
       fieldHint: { ...typography.bodySmall, color: palette.textMuted, marginBottom: space.md },
       field: { marginBottom: space.md },
       fieldLabel: { ...typography.caption, color: palette.textMuted, marginBottom: 6 },

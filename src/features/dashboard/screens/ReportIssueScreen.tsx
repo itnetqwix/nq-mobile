@@ -7,8 +7,6 @@ import type { MenuStackParamList } from "../../../navigation/types";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -22,6 +20,7 @@ import {
   EmptyState,
   FormField,
   ImageWithSkeleton,
+  KeyboardAwareScrollScreen,
   MorphRefreshScrollSurface,
   Pill,
   ScreenLoadingState,
@@ -393,11 +392,19 @@ export function ReportIssueScreen() {
     const peerName = peer?.fullname ?? peer?.email ?? "Other party";
 
     return (
-      <KeyboardAvoidingView
+      <KeyboardAwareScrollScreen
         style={{ flex: 1, backgroundColor: c.surface }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        contentContainerStyle={styles.formContent}
+        footer={
+          <Button
+            label="Submit report"
+            onPress={submit}
+            disabled={submitting}
+            loading={submitting}
+            size="lg"
+          />
+        }
       >
-        <ScrollView contentContainerStyle={styles.formContent} keyboardShouldPersistTaps="handled">
           <Pressable style={styles.backRow} onPress={() => { setMode("list"); setSelected(null); }} hitSlop={10}>
             <Ionicons name="chevron-back" size={20} color={c.iconPrimary} />
             <Text style={styles.backLabel}>Choose a different session</Text>
@@ -464,16 +471,8 @@ export function ReportIssueScreen() {
               inputStyle={styles.textarea}
             />
 
-            <Button
-              label="Submit report"
-              onPress={submit}
-              disabled={submitting}
-              loading={submitting}
-              style={{ marginTop: space.sm }}
-            />
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollScreen>
     );
   }
 

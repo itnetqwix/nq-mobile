@@ -20,17 +20,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Switch,
   Text,
   TextInput,
   View,
 } from "react-native";
-import { Button, Card } from "../../../components/ui";
+import { Button, Card, KeyboardAwareScrollScreen } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { queryKeys } from "../../../lib/queryKeys";
 import { useCurrencyFormatter } from "../../../lib/intl";
@@ -168,11 +165,36 @@ export function AutoTopUpScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
+    <KeyboardAwareScrollScreen
       style={styles.root}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      contentContainerStyle={styles.content}
+      closedBottomInset={space.xl}
+      footer={
+        <View style={styles.actions}>
+          <Button
+            label={
+              ruleLoading
+                ? t("common.loading")
+                : t("wallet.autoTopUp.save", { defaultValue: "Save changes" })
+            }
+            onPress={handleSave}
+            disabled={saveMut.isPending || !defaultMethod}
+            loading={saveMut.isPending}
+            fullWidth
+            size="lg"
+          />
+          {rule?.enabled ? (
+            <Button
+              label={t("wallet.autoTopUp.disable", { defaultValue: "Turn off auto top-up" })}
+              variant="secondary"
+              onPress={() => disableMut.mutate()}
+              disabled={disableMut.isPending}
+              fullWidth
+            />
+          ) : null}
+        </View>
+      }
     >
-      <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>{t("wallet.autoTopUp.title", { defaultValue: "Auto top-up" })}</Text>
         <Text style={styles.sub}>
           {t("wallet.autoTopUp.intro", {
@@ -297,32 +319,7 @@ export function AutoTopUpScreen() {
             </Text>
           </Card>
         ) : null}
-
-        <View style={styles.actions}>
-          <Button
-            label={
-              ruleLoading
-                ? t("common.loading")
-                : t("wallet.autoTopUp.save", { defaultValue: "Save changes" })
-            }
-            onPress={handleSave}
-            disabled={saveMut.isPending || !defaultMethod}
-            loading={saveMut.isPending}
-            fullWidth
-            size="lg"
-          />
-          {rule?.enabled ? (
-            <Button
-              label={t("wallet.autoTopUp.disable", { defaultValue: "Turn off auto top-up" })}
-              variant="secondary"
-              onPress={() => disableMut.mutate()}
-              disabled={disableMut.isPending}
-              fullWidth
-            />
-          ) : null}
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScrollScreen>
   );
 }
 

@@ -10,7 +10,6 @@ import {
   Animated,
   Image,
   Keyboard,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -27,7 +26,7 @@ import {
   FLASHLIST_PERF_DEFAULTS,
 } from "../../../lib/lists/flatListPerf";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChatMessageListSkeleton } from "../../../components/ui";
+import { ChatMessageListSkeleton, KeyboardStickyComposerLayout } from "../../../components/ui";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
@@ -1593,9 +1592,6 @@ export function ChatRoomScreen({
   const partnerName = partner?.fullname ?? "Chat";
   const partnerAvatar = getS3ImageUrl(partner?.profile_picture);
   const showPolicyBanner = !isGroup && !!(chatPolicy && !chatPolicy.hasPaidSession);
-  const composerBottomInset = Math.max(insets.bottom, space.sm);
-  const chatHeaderHeight = insets.top + 60;
-  const keyboardVerticalOffset = chatHeaderHeight;
 
   const sharedMedia = chatMediaItems;
 
@@ -1697,11 +1693,140 @@ export function ChatRoomScreen({
         </Pressable>
       </View>
 
-      {/* Chat policy banner */}
-      <KeyboardAvoidingView
+      <KeyboardStickyComposerLayout
         style={styles.keyboardWrap}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? keyboardVerticalOffset : 0}
+        composer={
+          <View style={styles.composer}>
+            {replyTo ? (
+              <View style={styles.replyBar}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.replyBarLabel}>Replying to</Text>
+                  <Text style={styles.replyBarText} numberOfLines={1}>
+                    {chatE2E.decryptForDisplay(replyTo.content)}
+                  </Text>
+                </View>
+                <Pressable onPress={() => setReplyTo(null)} hitSlop={8}>
+                  <Ionicons name="close-circle" size={22} color={themeColors.textMuted} />
+                </Pressable>
+              </View>
+            ) : null}
+            {showEmoji && !recording && (
+              <View style={styles.emojiTray}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyboardShouldPersistTaps="always"
+                  contentContainerStyle={styles.emojiScroll}
+                >
+                  {EMOJI_LIST.map((e) => (
+                    <Pressable key={e} onPress={() => insertEmoji(e)} style={styles.emojiBtn}>
+                      <Text style={styles.emojiText}>{e}</Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
+            {recording ? (
+              <View style={styles.recordBar}>
+                <Animated.View style={[styles.recordDot, { transform: [{ scale: pulseAnim }] }]} />
+                <Text style={styles.recordTime}>{formatDuration(recordSecs * 1000)}</Text>
+                <Text style={styles.recordLabel}>Recording...</Text>
+                <View style={{ flex: 1 }} />
+                <Pressable onPress={cancelRecording} hitSlop={10} style={styles.recordCancel}>
+                  <Ionicons name="trash-outline" size={22} color={themeColors.danger} />
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    haptics.press();
+                    void finishRecording();
+                  }}
+                  hitSlop={10}
+                  style={styles.recordSend}
+                >
+                  <Ionicons name="send" size={20} color={themeColors.brandTextOn} />
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.inputBar}>
+                {rateLimited ? (
+                  <View style={styles.limitedBar}>
+                    <Ionicons name="lock-closed-outline" size={18} color={themeColors.textMuted} />
+                    <Text style={styles.limitedText}>Book a lesson to continue chatting</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Pressable
+                      onPress={() => {
+                        haptics.tap();
+                        setShowAttach(true);
+                      }}
+                      hitSlop={8}
+                      style={styles.iconBtn}
+                    >
+                      <Ionicons name="add-circle-outline" size={26} color={themeColors.brandNavy} />
+                    </Pressable>
+                    <Pressable
+                      onPress={() => {
+                        haptics.select();
+                        if (showEmoji) {
+                          setShowEmoji(false);
+                        } else {
+                          Keyboard.dismiss();
+                          setShowEmoji(true);
+                        }
+                      }}
+                      hitSlop={8}
+                      style={styles.iconBtn}
+                    >
+                      <Ionicons
+                        name={showEmoji ? "happy" : "happy-outline"}
+                        size={24}
+                        color={showEmoji ? themeColors.brandNavy : themeColors.textMuted}
+                      />
+                    </Pressable>
+                    <TextInput
+                      style={styles.textInput}
+                      value={text}
+                      onChangeText={handleTextChange}
+                      placeholder="Message..."
+                      placeholderTextColor={themeColors.textMuted}
+                      multiline
+                      maxLength={2000}
+                      onFocus={() => setShowEmoji(false)}
+                    />
+                    {text.trim() ? (
+                      <Pressable
+                        style={styles.sendBtn}
+                        onPress={() => {
+                          haptics.press();
+                          void sendMessage();
+                        }}
+                        disabled={isSendingMessage}
+                      >
+                        {isSendingMessage ? (
+                          <ActivityIndicator size={16} color={themeColors.brandTextOn} />
+                        ) : (
+                          <Ionicons name="send" size={18} color={themeColors.brandTextOn} />
+                        )}
+                      </Pressable>
+                    ) : (
+                      <Pressable
+                        style={styles.iconBtn}
+                        onPress={() => {
+                          haptics.tap();
+                          void startRecording();
+                        }}
+                      >
+                        <Ionicons name="mic-outline" size={26} color={themeColors.brandNavy} />
+                      </Pressable>
+                    )}
+                  </>
+                )}
+              </View>
+            )}
+          </View>
+        }
       >
         {showPolicyBanner && (
           <View style={styles.policyBanner}>
@@ -1748,138 +1873,7 @@ export function ChatRoomScreen({
             />
           </TouchableWithoutFeedback>
         )}
-
-        <View style={styles.composer}>
-          {replyTo ? (
-            <View style={styles.replyBar}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.replyBarLabel}>Replying to</Text>
-                <Text style={styles.replyBarText} numberOfLines={1}>
-                  {chatE2E.decryptForDisplay(replyTo.content)}
-                </Text>
-              </View>
-              <Pressable onPress={() => setReplyTo(null)} hitSlop={8}>
-                <Ionicons name="close-circle" size={22} color={themeColors.textMuted} />
-              </Pressable>
-            </View>
-          ) : null}
-          {showEmoji && !recording && (
-            <View style={styles.emojiTray}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyboardShouldPersistTaps="always"
-                contentContainerStyle={styles.emojiScroll}
-              >
-                {EMOJI_LIST.map((e) => (
-                  <Pressable key={e} onPress={() => insertEmoji(e)} style={styles.emojiBtn}>
-                    <Text style={styles.emojiText}>{e}</Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
-            </View>
-          )}
-
-          {recording ? (
-            <View style={[styles.recordBar, { paddingBottom: composerBottomInset }]}>
-              <Animated.View style={[styles.recordDot, { transform: [{ scale: pulseAnim }] }]} />
-              <Text style={styles.recordTime}>{formatDuration(recordSecs * 1000)}</Text>
-              <Text style={styles.recordLabel}>Recording...</Text>
-              <View style={{ flex: 1 }} />
-              <Pressable onPress={cancelRecording} hitSlop={10} style={styles.recordCancel}>
-                <Ionicons name="trash-outline" size={22} color={themeColors.danger} />
-              </Pressable>
-              <Pressable
-                onPress={() => {
-                  haptics.press();
-                  void finishRecording();
-                }}
-                hitSlop={10}
-                style={styles.recordSend}
-              >
-                <Ionicons name="send" size={20} color={themeColors.brandTextOn} />
-              </Pressable>
-            </View>
-          ) : (
-            <View style={[styles.inputBar, { paddingBottom: composerBottomInset }]}>
-              {rateLimited ? (
-                <View style={styles.limitedBar}>
-                  <Ionicons name="lock-closed-outline" size={18} color={themeColors.textMuted} />
-                  <Text style={styles.limitedText}>Book a lesson to continue chatting</Text>
-                </View>
-              ) : (
-                <>
-                  <Pressable
-                    onPress={() => {
-                      haptics.tap();
-                      setShowAttach(true);
-                    }}
-                    hitSlop={8}
-                    style={styles.iconBtn}
-                  >
-                    <Ionicons name="add-circle-outline" size={26} color={themeColors.brandNavy} />
-                  </Pressable>
-                  <Pressable
-                    onPress={() => {
-                      haptics.select();
-                      if (showEmoji) {
-                        setShowEmoji(false);
-                      } else {
-                        Keyboard.dismiss();
-                        setShowEmoji(true);
-                      }
-                    }}
-                    hitSlop={8}
-                    style={styles.iconBtn}
-                  >
-                    <Ionicons
-                      name={showEmoji ? "happy" : "happy-outline"}
-                      size={24}
-                      color={showEmoji ? themeColors.brandNavy : themeColors.textMuted}
-                    />
-                  </Pressable>
-                  <TextInput
-                    style={styles.textInput}
-                    value={text}
-                    onChangeText={handleTextChange}
-                    placeholder="Message..."
-                    placeholderTextColor={themeColors.textMuted}
-                    multiline
-                    maxLength={2000}
-                    onFocus={() => setShowEmoji(false)}
-                  />
-                  {text.trim() ? (
-                    <Pressable
-                      style={styles.sendBtn}
-                      onPress={() => {
-                        haptics.press();
-                        void sendMessage();
-                      }}
-                      disabled={isSendingMessage}
-                    >
-                      {isSendingMessage ? (
-                        <ActivityIndicator size={16} color={themeColors.brandTextOn} />
-                      ) : (
-                        <Ionicons name="send" size={18} color={themeColors.brandTextOn} />
-                      )}
-                    </Pressable>
-                  ) : (
-                    <Pressable
-                      style={styles.iconBtn}
-                      onPress={() => {
-                        haptics.tap();
-                        void startRecording();
-                      }}
-                    >
-                      <Ionicons name="mic-outline" size={26} color={themeColors.brandNavy} />
-                    </Pressable>
-                  )}
-                </>
-              )}
-            </View>
-          )}
-        </View>
-      </KeyboardAvoidingView>
+      </KeyboardStickyComposerLayout>
 
       <Modal visible={!!editTarget} transparent animationType="fade" onRequestClose={() => setEditTarget(null)}>
         <View style={styles.editModalBackdrop}>

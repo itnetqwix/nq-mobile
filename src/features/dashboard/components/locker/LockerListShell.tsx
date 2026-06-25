@@ -51,7 +51,7 @@ export function LockerListShell({
   const c = useThemeColors();
   const insets = useSafeAreaInsets();
   const morph = useMorphRefreshBundle(onRefresh, refreshing);
-  const bottomPad = useFloatingTabBarBottomInset(listFooter ? 0 : space.md);
+  const bottomPad = useFloatingTabBarBottomInset(listFooter ? space.xs : space.md);
   const topPad = applyTopSafeArea ? Math.max(insets.top, space.sm) : 0;
   const styles = useThemedStyles((palette) =>
     StyleSheet.create({
@@ -69,7 +69,6 @@ export function LockerListShell({
         paddingHorizontal: space.md,
         paddingTop: space.md,
         gap: space.md,
-        flexGrow: 1,
       },
       skeletonWrap: {
         flex: 1,

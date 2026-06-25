@@ -87,6 +87,12 @@ export function BrandBootScreen({ message }: Props) {
       <Animated.View style={[styles.stack, stackStyle]}>
         <Animated.View style={logoStyle}>
           <Image
+            source={brandImages.netqwixPin}
+            style={styles.pin}
+            contentFit="contain"
+            accessibilityLabel="NetQwix"
+          />
+          <Image
             source={brandImages.netqwixWordmark}
             style={styles.logo}
             contentFit="contain"
@@ -125,6 +131,11 @@ const styles = StyleSheet.create({
   stack: {
     alignItems: "center",
     maxWidth: 300,
+  },
+  pin: {
+    width: 56,
+    height: 56,
+    marginBottom: 10,
   },
   logo: {
     width: LOGO_W,

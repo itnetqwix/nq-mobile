@@ -72,8 +72,8 @@ export function LockerBrandFooter() {
   return (
     <View style={styles.wrap} accessibilityRole="text">
       <View style={styles.art}>
-        <PulseOrb delayMs={0} size={120} color={orbColor} />
-        <PulseOrb delayMs={700} size={88} color={orbColor} />
+        <PulseOrb delayMs={0} size={88} color={orbColor} />
+        <PulseOrb delayMs={700} size={64} color={orbColor} />
         <View style={styles.iconBadge}>
           <Ionicons name="shield-checkmark" size={22} color={styles.iconColor.color} />
         </View>
@@ -95,16 +95,15 @@ function useStyles() {
     StyleSheet.create({
       wrap: {
         alignItems: "center",
-        paddingTop: space.lg,
-        paddingBottom: space.md,
-        marginTop: space.sm,
+        paddingTop: space.md,
+        paddingBottom: space.sm,
       },
       art: {
-        width: 132,
-        height: 132,
+        width: 96,
+        height: 96,
         alignItems: "center",
         justifyContent: "center",
-        marginBottom: space.sm,
+        marginBottom: space.xs,
       },
       iconBadge: {
         width: 48,

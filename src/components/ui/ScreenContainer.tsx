@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -11,6 +11,12 @@ import {
   type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  computeScrollKeyboardPadding,
+  keyboardAvoidingBehavior,
+  keyboardScrollExtraInset,
+  useKeyboardSheetInsets,
+} from "../../lib/keyboard";
 import { useMorphRefreshBundle } from "../../lib/refresh/useMorphRefreshBundle";
 import { space, useThemeColors } from "../../theme";
 import { floatingTabBarBottomInset } from "../../navigation/FloatingTabBar";
@@ -35,6 +41,8 @@ export type ScreenContainerProps = {
   style?: ViewStyle;
   /** Extra bottom padding for floating MainTabs pill (~76px + safe area). */
   clearFloatingTabBar?: boolean;
+  /** Pinned footer outside scroll (submit buttons) — stays above keyboard. */
+  footer?: React.ReactNode;
   children?: React.ReactNode;
 };
 
@@ -55,10 +63,12 @@ export function ScreenContainer({
   contentStyle,
   style,
   clearFloatingTabBar = false,
+  footer,
   children,
 }: ScreenContainerProps) {
   const c = useThemeColors();
   const insets = useSafeAreaInsets();
+  const { keyboardOpen, keyboardHeight } = useKeyboardSheetInsets();
   const padValue = padding === 0 ? 0 : space[padding];
   const tabBarPad = clearFloatingTabBar ? floatingTabBarBottomInset(insets.bottom) : 0;
 
@@ -67,16 +77,39 @@ export function ScreenContainer({
   }, [onRefresh]);
   const morph = useMorphRefreshBundle(morphOnRefresh, !!(refreshing && onRefresh));
 
+  const scrollBottomPad = useMemo(() => {
+    const closedBottom = padValue + tabBarPad + (applyBottomInset ? insets.bottom : 0);
+    return (
+      computeScrollKeyboardPadding({
+        keyboardOpen,
+        keyboardHeight,
+        safeBottom: insets.bottom,
+        closedBottomPad: closedBottom,
+        footerSlot: footer ? 88 : 0,
+      }) +
+      keyboardScrollExtraInset(keyboardOpen, keyboardHeight)
+    );
+  }, [
+    applyBottomInset,
+    footer,
+    insets.bottom,
+    keyboardHeight,
+    keyboardOpen,
+    padValue,
+    tabBarPad,
+  ]);
+
   const containerStyle: ViewStyle = {
     flex: 1,
     backgroundColor: background ?? c.surface,
     paddingTop: applyTopInset ? insets.top : 0,
-    paddingBottom: applyBottomInset && !clearFloatingTabBar ? insets.bottom : 0,
+    paddingBottom:
+      applyBottomInset && !clearFloatingTabBar && !footer && !keyboardOpen ? insets.bottom : 0,
   };
 
   const innerPadding: ViewStyle = {
     paddingTop: padValue,
-    paddingBottom: padValue + tabBarPad,
+    paddingBottom: scroll ? scrollBottomPad : padValue + tabBarPad,
     paddingLeft: padValue + insets.left,
     paddingRight: padValue + insets.right,
   };
@@ -87,6 +120,8 @@ export function ScreenContainer({
       <ScrollView
         contentContainerStyle={[styles.scrollContent, innerPadding, contentStyle]}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
         onScroll={onRefresh ? morph.onMorphScroll : undefined}
         scrollEventThrottle={onRefresh ? morph.scrollEventThrottle : undefined}
         refreshControl={
@@ -108,10 +143,7 @@ export function ScreenContainer({
   );
 
   return (
-    <KeyboardAvoidingView
-      style={[containerStyle, style]}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
+    <KeyboardAvoidingView style={[containerStyle, style]} behavior={keyboardAvoidingBehavior()}>
       {dismissKeyboardOnTap ? (
         <Pressable style={styles.flex} onPress={Keyboard.dismiss}>
           {body}
@@ -119,6 +151,11 @@ export function ScreenContainer({
       ) : (
         body
       )}
+      {footer ? (
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, space.sm) }]}>
+          {footer}
+        </View>
+      ) : null}
     </KeyboardAvoidingView>
   );
 }
@@ -126,4 +163,10 @@ export function ScreenContainer({
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   scrollContent: { flexGrow: 1 },
+  footer: {
+    paddingHorizontal: space.md,
+    paddingTop: space.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(0,0,0,0.08)",
+  },
 });

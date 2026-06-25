@@ -16,7 +16,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { useQuery } from "@tanstack/react-query";
@@ -38,9 +37,11 @@ import { apiClient } from "../../../../api/client";
 import { API_ROUTES } from "../../../../config/apiRoutes";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../../theme";
 import { Button } from "../../../../components/ui";
-import { floatingTabBarBottomInset } from "../../../../navigation/FloatingTabBar";
+import { FLOATING_TAB_BAR_HEIGHT } from "../../../../navigation/FloatingTabBar";
+import { keyboardAvoidingBehavior } from "../../../../lib/keyboard";
 import { useAppTranslation } from "../../../../i18n/useAppTranslation";
 import { haptics } from "../../../../lib/haptics";
+import { useKeyboardSheetInsets } from "../../../../lib/keyboard/useKeyboardSheetInsets";
 import {
   SHARE_BACKEND_NEW_USERS,
   SHARE_EMAIL,
@@ -167,8 +168,7 @@ export function ClipUploadModal({
   const [batchProgress, setBatchProgress] = useState<BatchUploadProgress | null>(null);
   const [categoryAccordionOpen, setCategoryAccordionOpen] = useState(true);
   const [subcategoryAccordionOpen, setSubcategoryAccordionOpen] = useState(false);
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const { keyboardOpen, keyboardHeight } = useKeyboardSheetInsets();
   const scrollRef = useRef<ScrollView>(null);
 
   const batchVideos = useMemo(() => {
@@ -366,23 +366,6 @@ export function ClipUploadModal({
       cancelled = true;
     };
   }, [visible, initialVideo?.uri, initialVideo?.durationSecs, initialVideo?.fileName, initialVideo?.fileSizeBytes, initialVideo?.mimeType, initialVideo?.title, initialVideo?.thumbUri, showPrepareStep, t]);
-
-  useEffect(() => {
-    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-    const onShow = Keyboard.addListener(showEvent, (e) => {
-      setKeyboardOpen(true);
-      setKeyboardHeight(e.endCoordinates.height);
-    });
-    const onHide = Keyboard.addListener(hideEvent, () => {
-      setKeyboardOpen(false);
-      setKeyboardHeight(0);
-    });
-    return () => {
-      onShow.remove();
-      onHide.remove();
-    };
-  }, []);
 
   const scrollEmailIntoView = useCallback(() => {
     requestAnimationFrame(() => {
@@ -820,29 +803,20 @@ export function ClipUploadModal({
     else onClose();
   };
 
-  const tabBarClearance = renderAsScreen
-    ? floatingTabBarBottomInset(insets.bottom)
-    : 0;
   const footerBottomPad = keyboardOpen
-    ? space.sm
+    ? Math.max(insets.bottom, space.xs)
     : renderAsScreen
-      ? tabBarClearance
+      ? insets.bottom + FLOATING_TAB_BAR_HEIGHT
       : Math.max(insets.bottom, space.md);
-  /** Room for fixed footer + keyboard so the email field stays visible while typing. */
-  const FOOTER_SCROLL_CLEARANCE = 132;
-  const scrollBottomPad =
-    space.lg +
-    (keyboardOpen
-      ? keyboardHeight + FOOTER_SCROLL_CLEARANCE
-      : renderAsScreen
-        ? tabBarClearance
-        : 0);
+  /** Room for the fixed footer — keyboard lift is handled by KeyboardAvoidingView only. */
+  const FOOTER_SCROLL_CLEARANCE = 96;
+  const scrollBottomPad = space.md + FOOTER_SCROLL_CLEARANCE;
   const keyboardVerticalOffset = renderAsScreen ? 0 : insets.top + 8;
 
   const shell = (
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={keyboardAvoidingBehavior()}
         keyboardVerticalOffset={keyboardVerticalOffset}
       >
         <View style={[styles.header, { paddingTop: Math.max(insets.top, space.md) }]}>
@@ -868,15 +842,14 @@ export function ClipUploadModal({
           </Pressable>
         </View>
 
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-          <ScrollView
-            ref={scrollRef}
-            style={styles.flex}
-            contentContainerStyle={[styles.body, { paddingBottom: scrollBottomPad }]}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            showsVerticalScrollIndicator={false}
-          >
+        <ScrollView
+          ref={scrollRef}
+          style={styles.flex}
+          contentContainerStyle={[styles.body, { paddingBottom: scrollBottomPad }]}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+        >
           {!initialVideo && initialVideos.length === 0 && (
             <Pressable
               style={({ pressed }) => [styles.pickBtn, pressed && { opacity: 0.9 }]}
@@ -1232,8 +1205,7 @@ export function ClipUploadModal({
             </View>
           )}
           </View>
-          </ScrollView>
-        </TouchableWithoutFeedback>
+        </ScrollView>
 
         <View
           style={[

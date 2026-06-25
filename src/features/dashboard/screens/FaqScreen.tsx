@@ -5,7 +5,6 @@ import {
   LayoutAnimation,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,7 +12,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Button, FormField } from "../../../components/ui";
+import { Button, FormField, KeyboardAwareScrollScreen } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
 import { postWriteUs } from "../../home/api/homeApi";
@@ -120,7 +119,7 @@ export function FaqScreen() {
   };
 
   return (
-    <ScrollView style={styles.root} contentContainerStyle={styles.content}>
+    <KeyboardAwareScrollScreen style={styles.root} contentContainerStyle={styles.content}>
       <Text style={styles.heroTitle}>{t("faq.heroTitle")}</Text>
       <Text style={styles.heroSub}>{t("faq.heroSub")}</Text>
 
@@ -203,7 +202,7 @@ export function FaqScreen() {
         />
         <Button title={t("faq.sendQuestion")} onPress={() => void submit()} loading={submitting} />
       </View>
-    </ScrollView>
+    </KeyboardAwareScrollScreen>
   );
 }
 

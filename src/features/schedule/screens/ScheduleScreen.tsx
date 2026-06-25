@@ -27,6 +27,7 @@ import { floatingTabBarBottomInset } from "../../../navigation/FloatingTabBar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CoachMark } from "../../onboarding";
 import { useHomeScrollHandler } from "../../home/hooks/useHomeScrollHandler";
+import { TrainerAvailabilityCalendarPreview } from "../../dashboard/components/trainer/TrainerAvailabilityCalendarPreview";
 
 const WEEK_ORDER = [
   "monday",
@@ -59,9 +60,14 @@ type DaySection = {
 
 function TrainerSchedule() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const homeScroll = useHomeScrollHandler();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const insets = useSafeAreaInsets();
+  const trainerTz =
+    typeof user?.time_zone === "string" && user.time_zone.trim()
+      ? user.time_zone.trim()
+      : "America/New_York";
   const listPadBottom = useMemo(
     () => floatingTabBarBottomInset(insets.bottom) + space.md,
     [insets.bottom]
@@ -129,6 +135,17 @@ function TrainerSchedule() {
 
       <MorphRefreshHeader {...morph.headerProps} />
       <SectionList
+        ListHeaderComponent={
+          <View style={styles.calendarSection}>
+            <TrainerAvailabilityCalendarPreview
+              inventory={Array.isArray(inventory) ? inventory : []}
+              trainerTz={trainerTz}
+            />
+            {sections.length > 0 ? (
+              <Text style={styles.weeklyHeading}>{t("schedule.weeklyPattern")}</Text>
+            ) : null}
+          </View>
+        }
         sections={sections}
         keyExtractor={(item, index) => `${item.start_time}-${item.end_time}-${index}`}
         onScroll={onScheduleScroll}
@@ -253,6 +270,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   slotTime: { flex: 1, ...typography.subtitle, color: colors.textSecondary },
+
+  calendarSection: { gap: space.md, marginBottom: space.sm },
+  weeklyHeading: { ...typography.subtitle, color: colors.text, marginTop: space.xs },
 
   segmentBody: { flex: 1 },
 });

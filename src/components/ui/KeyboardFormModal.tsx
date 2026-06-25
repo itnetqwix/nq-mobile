@@ -2,7 +2,7 @@
  * Keyboard-safe modal shell for forms with TextInput fields.
  * Use for any Modal + TextInput combo to prevent the keyboard from covering inputs/actions.
  */
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -17,6 +17,12 @@ import {
   type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  computeScrollKeyboardPadding,
+  keyboardAvoidingBehavior,
+  keyboardScrollExtraInset,
+  useKeyboardSheetInsets,
+} from "../../lib/keyboard";
 import { space } from "../../theme";
 
 export type KeyboardFormModalProps = {
@@ -49,8 +55,30 @@ export function KeyboardFormModal({
   style,
 }: KeyboardFormModalProps) {
   const insets = useSafeAreaInsets();
-  const bottomPad = scrollBottomPadding ?? insets.bottom + 96;
+  const { keyboardOpen, keyboardHeight } = useKeyboardSheetInsets();
   const kavOffset = keyboardVerticalOffset ?? insets.top + 8;
+  const footerSlot = footer ? 88 : 0;
+
+  const bottomPad = useMemo(() => {
+    if (scrollBottomPadding != null && !keyboardOpen) return scrollBottomPadding;
+    const closed = scrollBottomPadding ?? insets.bottom + 96;
+    return (
+      computeScrollKeyboardPadding({
+        keyboardOpen,
+        keyboardHeight,
+        safeBottom: insets.bottom,
+        closedBottomPad: footer ? space.md : closed,
+        footerSlot,
+      }) + keyboardScrollExtraInset(keyboardOpen, keyboardHeight)
+    );
+  }, [
+    footer,
+    footerSlot,
+    insets.bottom,
+    keyboardHeight,
+    keyboardOpen,
+    scrollBottomPadding,
+  ]);
 
   return (
     <Modal
@@ -62,16 +90,18 @@ export function KeyboardFormModal({
     >
       <KeyboardAvoidingView
         style={[styles.flex, style]}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={keyboardAvoidingBehavior()}
         keyboardVerticalOffset={kavOffset}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
           <ScrollView
+            style={styles.flex}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
             contentContainerStyle={[
               styles.scrollContent,
-              { paddingBottom: footer ? space.md : bottomPad },
+              { paddingBottom: bottomPad },
               contentContainerStyle,
             ]}
             showsVerticalScrollIndicator={false}

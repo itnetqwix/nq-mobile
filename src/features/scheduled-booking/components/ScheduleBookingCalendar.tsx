@@ -155,9 +155,16 @@ export function ScheduleBookingCalendar({
         ))}
       </View>
 
-      <Text style={styles.horizonNote}>
-        {t("scheduledBooking.calendar.horizonNote", { days: horizonDays })}
-      </Text>
+      <View style={styles.legendRow}>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, styles.legendDotAvailable]} />
+          <Text style={styles.legendText}>{t("scheduledBooking.calendar.legendAvailable")}</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, styles.legendDotUnavailable]} />
+          <Text style={styles.legendText}>{t("scheduledBooking.calendar.legendUnavailable")}</Text>
+        </View>
+      </View>
     </View>
   );
 }
@@ -215,9 +222,9 @@ function useStyles() {
         flex: 1,
         alignItems: "center",
         justifyContent: "center",
-        paddingVertical: 4,
+        paddingVertical: 6,
         borderRadius: radii.md,
-        minHeight: 42,
+        minHeight: 46,
       },
       dayCellOutside: { opacity: 0.25 },
       dayCellOn: {
@@ -263,11 +270,28 @@ function useStyles() {
         color: palette.success,
         marginTop: 1,
       },
-      horizonNote: {
+      legendRow: {
+        flexDirection: "row",
+        justifyContent: "center",
+        gap: space.lg,
+        marginTop: space.xs,
+      },
+      legendItem: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+      },
+      legendDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+      },
+      legendDotAvailable: { backgroundColor: palette.success },
+      legendDotUnavailable: { backgroundColor: palette.border },
+      legendText: {
         ...typography.caption,
         color: palette.textMuted,
-        textAlign: "center",
-        marginTop: space.xs,
+        fontSize: 11,
       },
     })
   );

@@ -4,7 +4,6 @@ import {
   Alert,
   FlatList,
   Keyboard,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   StyleSheet,
@@ -17,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useThemeColors, space, radii, typography } from "../../theme";
+import { KeyboardStickyComposerLayout } from "../../components/ui";
 import { apiClient } from "../../api/client";
 import { API_ROUTES } from "../../config/apiRoutes";
 import { useAuth } from "../auth/context/AuthContext";
@@ -453,10 +453,74 @@ export default function AIAssistantScreen({ onClose }: { onClose?: () => void })
         </Pressable>
       </View>
 
-      <KeyboardAvoidingView
+      <KeyboardStickyComposerLayout
         style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={0}
+        composer={
+          <View
+            style={[
+              styles.inputBar,
+              {
+                backgroundColor: colors.surface,
+                borderTopColor: colors.border,
+              },
+            ]}
+          >
+            <TextInput
+              style={[
+                styles.textInput,
+                {
+                  backgroundColor: colors.input,
+                  borderColor: colors.inputBorder,
+                  color: colors.text,
+                },
+              ]}
+              placeholder={t("ai.placeholder", { defaultValue: "Ask me anything…" })}
+              placeholderTextColor={colors.textMuted}
+              value={inputText}
+              onChangeText={setInputText}
+              multiline
+              maxLength={500}
+              editable={!loading}
+              onSubmitEditing={() => sendMessage(inputText)}
+              returnKeyType="send"
+              blurOnSubmit
+            />
+            <Pressable
+              onPress={onVoicePress}
+              disabled={loading || voice.state === "processing"}
+              style={[
+                styles.voiceButton,
+                {
+                  backgroundColor:
+                    voice.state === "recording" ? colors.dangerSubtle : colors.surfaceMuted,
+                  borderColor: voiceTint,
+                },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={voiceA11y}
+            >
+              {voice.state === "processing" ? (
+                <ActivityIndicator size="small" color={voiceTint} />
+              ) : (
+                <Ionicons name={voiceIcon} size={18} color={voiceTint} />
+              )}
+            </Pressable>
+            <Pressable
+              onPress={() => sendMessage(inputText)}
+              disabled={!inputText.trim() || loading}
+              style={[
+                styles.sendButton,
+                {
+                  backgroundColor: inputText.trim() && !loading ? colors.brand : colors.neutral300,
+                },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={t("ai.send", { defaultValue: "Send message" })}
+            >
+              <Ionicons name="send" size={18} color={inputText.trim() && !loading ? "#fff" : colors.textMuted} />
+            </Pressable>
+          </View>
+        }
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
           <FlatList
@@ -484,73 +548,7 @@ export default function AIAssistantScreen({ onClose }: { onClose?: () => void })
             }
           />
         </TouchableWithoutFeedback>
-
-        <View
-          style={[
-            styles.inputBar,
-            {
-              backgroundColor: colors.surface,
-              borderTopColor: colors.border,
-              paddingBottom: Math.max(insets.bottom, 8),
-            },
-          ]}
-        >
-          <TextInput
-            style={[
-              styles.textInput,
-              {
-                backgroundColor: colors.input,
-                borderColor: colors.inputBorder,
-                color: colors.text,
-              },
-            ]}
-            placeholder={t("ai.placeholder", { defaultValue: "Ask me anything…" })}
-            placeholderTextColor={colors.textMuted}
-            value={inputText}
-            onChangeText={setInputText}
-            multiline
-            maxLength={500}
-            editable={!loading}
-            onSubmitEditing={() => sendMessage(inputText)}
-            returnKeyType="send"
-            blurOnSubmit
-          />
-          <Pressable
-            onPress={onVoicePress}
-            disabled={loading || voice.state === "processing"}
-            style={[
-              styles.voiceButton,
-              {
-                backgroundColor:
-                  voice.state === "recording" ? colors.dangerSubtle : colors.surfaceMuted,
-                borderColor: voiceTint,
-              },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={voiceA11y}
-          >
-            {voice.state === "processing" ? (
-              <ActivityIndicator size="small" color={voiceTint} />
-            ) : (
-              <Ionicons name={voiceIcon} size={18} color={voiceTint} />
-            )}
-          </Pressable>
-          <Pressable
-            onPress={() => sendMessage(inputText)}
-            disabled={!inputText.trim() || loading}
-            style={[
-              styles.sendButton,
-              {
-                backgroundColor: inputText.trim() && !loading ? colors.brand : colors.neutral300,
-              },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={t("ai.send", { defaultValue: "Send message" })}
-          >
-            <Ionicons name="send" size={18} color={inputText.trim() && !loading ? "#fff" : colors.textMuted} />
-          </Pressable>
-        </View>
-      </KeyboardAvoidingView>
+      </KeyboardStickyComposerLayout>
     </View>
   );
 }

@@ -3,11 +3,17 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { radii, space, typography, useStaticStyles, useThemeColors } from "../../../theme";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
-import { useSharedStepStyles } from "../../instant-lesson/booking-wizard/sharedStepStyles";
-import { SCHEDULED_DURATIONS, SCHEDULED_BOOKING_BUFFER_MINUTES } from "../constants";
 import { PricingBreakdownSummary } from "../../payments/PricingBreakdownSummary";
 import type { PricingQuote } from "../../payments/pricingTypes";
 import { chargeTotalDollars } from "../../payments/pricingTypes";
+import {
+  ScheduleActionFooter,
+  ScheduleInfoChip,
+  ScheduleSection,
+  ScheduleSessionSummary,
+  ScheduleStepHero,
+} from "../components/ScheduleStepChrome";
+import { SCHEDULED_DURATIONS, SCHEDULED_BOOKING_BUFFER_MINUTES } from "../constants";
 
 type Props = {
   durationMinutes: number;
@@ -36,7 +42,6 @@ export function ScheduleStepDuration({
 }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
-  const shared = useSharedStepStyles();
   const styles = useStyles();
 
   const canContinue = availableDurations.includes(durationMinutes);
@@ -44,7 +49,22 @@ export function ScheduleStepDuration({
 
   return (
     <View testID="schedule-step-duration" style={styles.root}>
-      <Text style={styles.heroTitle}>{t("scheduledBooking.duration.title")}</Text>
+      <ScheduleStepHero
+        title={t("scheduledBooking.duration.title")}
+        subtitle={t("scheduledBooking.duration.subtitle")}
+      />
+
+      {sessionTimeSummary ? (
+        <ScheduleSessionSummary
+          label={t("scheduledBooking.duration.selectedTime")}
+          value={sessionTimeSummary}
+          hint={
+            trainerTimeLabel
+              ? t("scheduledBooking.duration.trainerLocalTime", { time: trainerTimeLabel })
+              : undefined
+          }
+        />
+      ) : null}
 
       {noDurations ? (
         <View style={styles.emptyCard}>
@@ -59,92 +79,79 @@ export function ScheduleStepDuration({
             </Pressable>
           ) : null}
         </View>
-      ) : null}
-
-      {sessionTimeSummary ? (
-        <View style={styles.timeCard}>
-          <View style={styles.timeIcon}>
-            <Ionicons name="calendar-outline" size={20} color={c.brandNavy} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.timeLabel}>{t("scheduledBooking.duration.selectedTime")}</Text>
-            <Text style={styles.timeValue}>{sessionTimeSummary}</Text>
-            {trainerTimeLabel ? (
-              <Text style={styles.trainerTz}>
-                {t("scheduledBooking.duration.trainerLocalTime", { time: trainerTimeLabel })}
-              </Text>
-            ) : null}
-          </View>
-        </View>
-      ) : null}
-
-      <Text style={styles.bufferNote}>
-        {t("scheduledBooking.duration.bufferNote", { buffer: SCHEDULED_BOOKING_BUFFER_MINUTES })}
-      </Text>
-
-      <View style={styles.durationGrid}>
-        {SCHEDULED_DURATIONS.map((min) => {
-          const on = durationMinutes === min;
-          const enabled = availableDurations.includes(min);
-          return (
-            <Pressable
-              key={min}
-              testID={`schedule-duration-${min}`}
-              style={[
-                styles.durationTile,
-                on && enabled && styles.durationTileOn,
-                !enabled && styles.durationTileDisabled,
-              ]}
-              onPress={() => enabled && onDurationChange(min)}
-              disabled={!enabled}
-              accessibilityRole="button"
-              accessibilityState={{ selected: on, disabled: !enabled }}
-            >
-              <Text
-                style={[
-                  styles.durationLabel,
-                  on && enabled && styles.durationLabelOn,
-                  !enabled && styles.durationLabelDisabled,
-                ]}
-              >
-                {min} min
-              </Text>
-              {!enabled ? (
-                <Text style={styles.unavailableHint}>{t("scheduledBooking.duration.unavailable")}</Text>
-              ) : null}
-            </Pressable>
-          );
-        })}
-      </View>
-
-      {hourlyRate > 0 ? (
-        <PricingBreakdownSummary
-          sessionSubtotal={expectedPrice}
-          pricingQuote={durationPreviewQuote}
-          chargeTotal={chargeTotalDollars(durationPreviewQuote) ?? expectedPrice}
-          showSubtotalWhenNoFees
-        />
       ) : (
-        <View style={styles.priceBox}>
-          <Text style={styles.priceLabel}>Estimated price</Text>
-          <Text style={styles.priceValue}>Free</Text>
-        </View>
-      )}
-      {hourlyRate > 0 ? (
-        <Text style={styles.rateNote}>
-          {t("scheduledBooking.duration.coachRate", { rate: `$${hourlyRate}` })}
-        </Text>
-      ) : null}
+        <>
+          <ScheduleSection title={t("scheduledBooking.duration.sessionLength")}>
+            <View style={styles.durationGrid}>
+              {SCHEDULED_DURATIONS.map((min) => {
+                const on = durationMinutes === min;
+                const enabled = availableDurations.includes(min);
+                return (
+                  <Pressable
+                    key={min}
+                    testID={`schedule-duration-${min}`}
+                    style={[
+                      styles.durationTile,
+                      on && enabled && styles.durationTileOn,
+                      !enabled && styles.durationTileDisabled,
+                    ]}
+                    onPress={() => enabled && onDurationChange(min)}
+                    disabled={!enabled}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on, disabled: !enabled }}
+                  >
+                    <Text
+                      style={[
+                        styles.durationLabel,
+                        on && enabled && styles.durationLabelOn,
+                        !enabled && styles.durationLabelDisabled,
+                      ]}
+                    >
+                      {min} min
+                    </Text>
+                    {!enabled ? (
+                      <Text style={styles.unavailableHint}>
+                        {t("scheduledBooking.duration.unavailable")}
+                      </Text>
+                    ) : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+          </ScheduleSection>
 
-      <Pressable
+          {hourlyRate > 0 ? (
+            <PricingBreakdownSummary
+              sessionSubtotal={expectedPrice}
+              pricingQuote={durationPreviewQuote}
+              chargeTotal={chargeTotalDollars(durationPreviewQuote) ?? expectedPrice}
+              showSubtotalWhenNoFees
+            />
+          ) : (
+            <View style={styles.priceBox}>
+              <Text style={styles.priceLabel}>Estimated price</Text>
+              <Text style={styles.priceValue}>Free</Text>
+            </View>
+          )}
+
+          {hourlyRate > 0 ? (
+            <ScheduleInfoChip
+              icon="cash-outline"
+              message={t("scheduledBooking.duration.coachRate", { rate: `$${hourlyRate}` })}
+            />
+          ) : null}
+        </>
+      )}
+
+      <ScheduleActionFooter
         testID="schedule-duration-continue"
-        style={[shared.primaryBtn, (!canContinue || noDurations) && shared.btnDisabled]}
-        disabled={!canContinue || noDurations}
+        label={t("scheduledBooking.duration.next")}
         onPress={onNext}
-      >
-        <Text style={shared.primaryBtnText}>{t("scheduledBooking.duration.next")}</Text>
-        <Ionicons name="arrow-forward" size={18} color={c.brandTextOn} />
-      </Pressable>
+        disabled={!canContinue || noDurations}
+        finePrint={t("scheduledBooking.duration.bufferNote", {
+          buffer: SCHEDULED_BOOKING_BUFFER_MINUTES,
+        })}
+      />
     </View>
   );
 }
@@ -152,64 +159,21 @@ export function ScheduleStepDuration({
 function useStyles() {
   return useStaticStyles((palette) =>
     StyleSheet.create({
-      root: { gap: space.md },
-      heroTitle: {
-        ...typography.titleMd,
-        color: palette.text,
-        fontWeight: "800",
-      },
-      timeCard: {
-        flexDirection: "row",
-        alignItems: "flex-start",
-        gap: space.sm,
-        padding: space.md,
-        borderRadius: radii.lg,
-        backgroundColor: palette.surfaceElevated,
-        borderWidth: 2,
-        borderColor: palette.brandAccent + "44",
-      },
-      timeIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: palette.brandSubtle,
-        alignItems: "center",
-        justifyContent: "center",
-      },
-      timeLabel: {
-        ...typography.caption,
-        color: palette.textMuted,
-        fontWeight: "600",
-      },
-      timeValue: {
-        ...typography.bodySm,
-        color: palette.text,
-        fontWeight: "700",
-        marginTop: 2,
-      },
-      trainerTz: {
-        ...typography.caption,
-        color: palette.textSecondary,
-        marginTop: 4,
-      },
-      bufferNote: {
-        ...typography.caption,
-        color: palette.textMuted,
-        fontStyle: "italic",
-      },
+      root: { gap: space.lg, paddingBottom: space.md },
       durationGrid: {
         flexDirection: "row",
         flexWrap: "wrap",
-        gap: 8,
+        gap: space.sm,
       },
       durationTile: {
-        paddingVertical: 14,
-        paddingHorizontal: 16,
+        flex: 1,
+        minWidth: "28%",
+        paddingVertical: 16,
+        paddingHorizontal: 12,
         borderRadius: radii.lg,
         backgroundColor: palette.surfaceElevated,
         borderWidth: 1.5,
         borderColor: palette.border,
-        minWidth: "30%",
         alignItems: "center",
         gap: 4,
       },
@@ -232,12 +196,13 @@ function useStyles() {
       },
       priceBox: {
         padding: space.md,
-        borderRadius: radii.md,
+        borderRadius: radii.lg,
         backgroundColor: palette.surfaceMuted,
+        borderWidth: 1,
+        borderColor: palette.border,
       },
       priceLabel: { fontSize: 13, color: palette.textMuted, marginBottom: 4 },
       priceValue: { fontSize: 18, fontWeight: "700", color: palette.text },
-      rateNote: { ...typography.caption, color: palette.textMuted },
       emptyCard: {
         alignItems: "center",
         padding: space.lg,

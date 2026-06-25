@@ -4,15 +4,12 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import React, { useState } from "react";
 import {
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { Button, FormField } from "../../../components/ui";
+import { Button, FormField, KeyboardAwareScrollScreen } from "../../../components/ui";
 import { radii, space, typography, useThemeColors, useThemedStyles } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
 import { postWriteUs } from "../../home/api/homeApi";
@@ -70,11 +67,7 @@ export function ContactUsScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <ScrollView style={styles.root} contentContainerStyle={styles.content}>
+    <KeyboardAwareScrollScreen style={styles.root} contentContainerStyle={styles.content}>
         <View style={styles.heroCard}>
           <Ionicons name="mail-outline" size={36} color={c.iconPrimary} />
           <Text style={styles.heroTitle}>{t("support.heroTitle")}</Text>
@@ -162,8 +155,7 @@ export function ContactUsScreen() {
             <Text style={styles.infoText}>www.netqwix.com</Text>
           </View>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScrollScreen>
   );
 }
 

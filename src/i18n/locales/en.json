@@ -1,7 +1,29 @@
 {
   "splash": {
     "tagline": "Live coaching, anywhere",
-    "preparing": "Loading"
+    "preparing": "Getting things ready…"
+  },
+  "intro": {
+    "skip": "Skip",
+    "next": "Continue",
+    "getStarted": "Get started",
+    "slides": {
+      "leap": {
+        "title": "Level up your game",
+        "body": "Get 1-on-1 coaching from verified experts — the same edge pros use, built for every athlete.",
+        "badge": "Live coaching"
+      },
+      "coaches": {
+        "title": "Find your perfect coach",
+        "body": "Browse by sport, skill level, and schedule. Save favorites and book instant or planned sessions.",
+        "badge": "Verified experts"
+      },
+      "live": {
+        "title": "Train live, anywhere",
+        "body": "HD video sessions, shared clips, and game plans in your locker — court, field, or living room.",
+        "badge": "All-in-one"
+      }
+    }
   },
   "common": {
     "cancel": "Cancel",
@@ -240,7 +262,7 @@
     "email": "Email",
     "accountType": "Account type",
     "editProfile": "Edit profile",
-    "mySchedule": "Schedule",
+    "mySchedule": "My Schedule",
     "coachPromoCodes": "Promo codes",
     "coachPromoCodesSubtitle": "Discounts for your sessions (from your payout)",
     "themeMatchSystem": "Match system",
@@ -680,6 +702,14 @@
     "timezoneTitle": "Availability timezone",
     "timezoneSubtitle": "Weekly hours are stored with this zone on your profile.",
     "saveTimezone": "Save timezone",
+    "saveSchedule": "Save Schedule",
+    "upToDate": "Up to date",
+    "savedTitle": "Availability saved",
+    "savedBody": "Your weekly availability is now live for bookings.",
+    "saveErrorTitle": "Could not save",
+    "weeklyLead": "Paint or list your hours for each day. Trainees book inside these windows for the next {{days}} days.",
+    "editModeGrid": "Paint grid",
+    "editModeList": "List editor",
     "timezoneSaved": "Timezone updated",
     "timezoneSavedBody": "Your profile timezone is saved.",
     "timezoneError": "Could not save timezone."
@@ -1314,7 +1344,11 @@
     "calendarDescription": "Your scheduled NetQwix session. Open the NetQwix app a few minutes before the start time to join.",
     "datetime": {
       "title": "When works for you?",
+      "subtitle": "Pick a session length, day, and time that fits your schedule.",
       "durationFirst": "Session length",
+      "flowDuration": "Length",
+      "flowDay": "Day",
+      "flowTime": "Time",
       "leadBanner": "Sessions must start at least {{hours}} hours from now so your coach can prepare.",
       "earliestLabel": "Earliest you can book",
       "pickDate": "Choose a day",
@@ -1330,10 +1364,11 @@
       "emptyTitle": "No open times this day",
       "emptySub": "Try another date — your coach may have availability on nearby days.",
       "loading": "Loading availability…",
+      "smartLoading": "Finding suggested times…",
       "selectedLabel": "Selected start",
       "continue": "Continue",
-      "smartTitle": "Suggested times",
-      "smartSub": "Based on this coach's schedule",
+      "smartTitle": "Suggested for you",
+      "smartSub": "Tap a card to apply coach availability",
       "applySuggestion": "Use this suggested time",
       "suggestionInvalidTitle": "Couldn't use suggestion",
       "suggestionInvalidBody": "We couldn't match that suggestion to an open slot. Pick a time manually.",
@@ -1350,10 +1385,14 @@
       "sun": "S",
       "prevMonth": "Previous month",
       "nextMonth": "Next month",
-      "horizonNote": "Showing availability for the next {{days}} days"
+      "horizonNote": "Showing availability for the next {{days}} days",
+      "legendAvailable": "Open",
+      "legendUnavailable": "Full"
     },
     "duration": {
       "title": "How long?",
+      "subtitle": "Choose a length that fits the time slot you picked.",
+      "sessionLength": "Session length",
       "bufferNote": "We leave {{buffer}} minutes between bookings on the coach's calendar.",
       "selectedTime": "Your time slot",
       "trainerLocalTime": "Coach's local time: {{time}}",
@@ -1364,6 +1403,7 @@
     },
     "confirm": {
       "title": "Review & request",
+      "subtitle": "Double-check the details before sending your request.",
       "coach": "Coach",
       "when": "When",
       "trainerTime": "Coach local",
@@ -1380,6 +1420,8 @@
     },
     "promo": {
       "title": "Promo code",
+      "subtitle": "Save on this session with a coach or platform offer.",
+      "enterCode": "Enter a code",
       "optional": "Optional",
       "placeholder": "Enter promo code",
       "apply": "Apply",
@@ -1794,7 +1836,7 @@
     "settings": "Settings",
     "wallet": "Wallet",
     "transactions": "Transactions",
-    "trainerSchedule": "My schedule",
+    "trainerSchedule": "My Schedule",
     "trainerPromoCodes": "Promo codes",
     "editProfile": "Edit profile",
     "reportIssue": "Report an issue",
@@ -1856,13 +1898,16 @@
     "upcoming": "Upcoming",
     "past": "Past",
     "empty": "No sessions scheduled",
-    "mySchedule": "Schedule",
-    "editSchedule": "Edit schedule",
+    "mySchedule": "My Schedule",
+    "editSchedule": "Edit Schedule",
     "available": "Available",
     "noWeeklySlots": "No weekly slots yet",
-    "noWeeklySlotsDescription": "Tap 'Edit schedule' to set your weekly availability.",
+    "noWeeklySlotsDescription": "Tap Edit Schedule to set your weekly availability.",
     "mySessions": "My sessions",
     "availability": "Availability",
+    "horizonPreview": "Trainees can book you on highlighted days for the next {{days}} days (based on your weekly hours).",
+    "noSlotsThisDay": "No weekly hours on this weekday — edit your schedule to open it.",
+    "weeklyPattern": "Weekly pattern",
     "dayFallback": "Day",
     "timeRange": "{{start}} – {{end}}",
     "timePlaceholder": "—",

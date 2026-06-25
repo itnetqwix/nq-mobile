@@ -43,12 +43,8 @@ function MainWithAppUnlock() {
   );
 }
 
-/** Guest browse — same dashboard shell, no biometric gate or auth-only overlays. */
-function GuestBrowseShell() {
-  return <DashboardDrawerShell />;
-}
-
-function GuestBrowseWithIntro() {
+/** Splash → intro (first launch) → login/sign-up. No guest browse. */
+function UnsignedEntryFlow() {
   const [introDone, setIntroDone] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -62,7 +58,7 @@ function GuestBrowseWithIntro() {
         variant="fullscreen"
         motion="quick"
         backdrop="solid"
-        showTips
+        showTips={false}
       />
     );
   }
@@ -78,7 +74,7 @@ function GuestBrowseWithIntro() {
     );
   }
 
-  return <GuestBrowseShell />;
+  return <AuthNavigator />;
 }
 
 export function RootNavigator() {
@@ -160,7 +156,7 @@ export function RootNavigator() {
   return (
     <>
       <Stack.Navigator
-        key={signedIn ? "signedIn" : "guestBrowse"}
+        key={signedIn ? "signedIn" : "unsigned"}
         screenOptions={rootPushScreenOptions()}
       >
         {signedIn ? (
@@ -190,7 +186,7 @@ export function RootNavigator() {
           <>
             <Stack.Screen
               name="Main"
-              component={GuestBrowseWithIntro}
+              component={UnsignedEntryFlow}
               options={{ headerShown: false, title: "" }}
             />
             <Stack.Screen

@@ -1,7 +1,8 @@
 import React from "react";
-import { Modal, ScrollView, StyleSheet, Text, View } from "react-native";
+import { KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, space } from "../../theme";
+import { keyboardAvoidingBehavior, useKeyboardScrollPadding } from "../../lib/keyboard";
 import { WizardHeader } from "../instant-lesson/booking-wizard/WizardHeader";
 import { WizardStepClips } from "../instant-lesson/booking-wizard/steps/WizardStepClips";
 import { WizardStepPayment } from "../instant-lesson/booking-wizard/steps/WizardStepPayment";
@@ -21,6 +22,7 @@ type Props = {
 
 export function ScheduledBookingWizardModal({ visible, trainer, onDismiss, onBooked }: Props) {
   const insets = useSafeAreaInsets();
+  const scrollBottomPad = useKeyboardScrollPadding(space.xl);
   const w = useScheduledBookingWizard({ visible, trainer, onDismiss, onBooked });
 
   if (!trainer) return null;
@@ -33,20 +35,27 @@ export function ScheduledBookingWizardModal({ visible, trainer, onDismiss, onBoo
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onDismiss}>
       <View
         testID="scheduled-booking-wizard"
-        style={[styles.shell, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 12 }]}
+        style={[styles.shell, { paddingTop: insets.top + 8 }]}
       >
-        <WizardHeader
-          step={w.step as any}
-          stepNum={w.stepNum}
-          totalSteps={w.totalSteps}
-          onGoBack={w.goBack}
-        />
-
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={keyboardAvoidingBehavior()}
+          keyboardVerticalOffset={insets.top + 8}
         >
+          <WizardHeader
+            step={w.step as any}
+            stepNum={w.stepNum}
+            totalSteps={w.totalSteps}
+            onGoBack={w.goBack}
+          />
+
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPad }]}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+          >
           {w.step !== "datetime" &&
           w.step !== "duration" &&
           w.step !== "confirm" &&
@@ -166,7 +175,8 @@ export function ScheduledBookingWizardModal({ visible, trainer, onDismiss, onBoo
               onSubmit={w.handleSubmit}
             />
           )}
-        </ScrollView>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );
@@ -174,6 +184,7 @@ export function ScheduledBookingWizardModal({ visible, trainer, onDismiss, onBoo
 
 const styles = StyleSheet.create({
   shell: { flex: 1, backgroundColor: colors.surface },
+  flex: { flex: 1 },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: space.md, paddingBottom: space.xl },
   title: {
