@@ -183,6 +183,19 @@ export function WizardStepPayment({
         });
         setPricingQuote(quote);
 
+        const isMixedCardLeg =
+          amountDollars < expectedPrice &&
+          wallet.available > 0 &&
+          payableAmount > 0 &&
+          quote?.chargeTotalCents != null;
+        const chargePortionCents = isMixedCardLeg
+          ? Math.max(
+              0,
+              quote.chargeTotalCents -
+                Math.round(quote.chargeTotalCents * (wallet.available / payableAmount))
+            )
+          : undefined;
+
         const res = await apiClient.post(API_ROUTES.transaction.createPaymentIntent, {
           amount: amountDollars,
           destination: trainerStripeId,
@@ -193,6 +206,7 @@ export function WizardStepPayment({
           trainer_id: trainerId,
           quoteId: quote?.quoteId,
           billingAddress: { country: billing.country, state: billing.state },
+          ...(chargePortionCents != null ? { chargePortionCents } : {}),
         });
         const data = unwrapApiData<{
           skip?: boolean;
@@ -206,9 +220,11 @@ export function WizardStepPayment({
         const clientSecret = data?.client_secret;
         if (!clientSecret) throw new Error("No client secret returned.");
         const chargeTotal =
-          amountDollars === expectedPrice && quote?.chargeTotalCents != null
-            ? quote.chargeTotalCents / 100
-            : amountDollars;
+          chargePortionCents != null
+            ? chargePortionCents / 100
+            : amountDollars === expectedPrice && quote?.chargeTotalCents != null
+              ? quote.chargeTotalCents / 100
+              : amountDollars;
         setPriceInfo({
           amount: chargeTotal,
           skip: false,
@@ -248,6 +264,8 @@ export function WizardStepPayment({
       trainer,
       promoDiscountAmount,
       promoSponsorType,
+      wallet.available,
+      payableAmount,
     ]
   );
 

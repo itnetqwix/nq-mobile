@@ -88,6 +88,7 @@ export function TransactionDetailScreen({ navigation, route }: Props) {
   },
   amountLabel: { color: "rgba(255,255,255,0.75)", fontSize: 14 },
   amountValue: { color: "#fff", fontSize: 32, fontWeight: "700" },
+  amountSub: { color: "rgba(255,255,255,0.7)", fontSize: 13, marginTop: -4 },
   sectionTitle: { ...typography.subtitle, fontWeight: "700", color: palette.text, marginTop: space.sm },
   card: {
     backgroundColor: palette.surfaceElevated,
@@ -216,12 +217,29 @@ export function TransactionDetailScreen({ navigation, route }: Props) {
 
   const supportBookingId =
     data?.support?.booking_id ?? bookingId ?? data?.booking_id ?? undefined;
+
+  const chargeTotal =
+    data?.amounts?.charge_total ??
+    data?.summary?.charge_total ??
+    data?.payment_summary?.displayAmountTrainee;
+  const sessionSubtotal =
+    data?.amounts?.session_subtotal ?? data?.summary?.session_subtotal;
   const amount =
     data?.amounts?.amount ??
     data?.summary?.amount ??
-  undefined;
+    (isTrainer
+      ? data?.amounts?.trainer_net ?? data?.summary?.trainer_net
+      : chargeTotal);
   const status = data?.status ?? data?.summary?.status;
-  const paymentMethod = data?.payment?.method;
+  const paymentMethod =
+    data?.payment?.method_label ??
+    data?.payment_summary?.methodLabel ??
+    data?.payment?.method;
+  const showSessionSubtotal =
+    !isTrainer &&
+    typeof sessionSubtotal === "number" &&
+    typeof chargeTotal === "number" &&
+    Math.abs(sessionSubtotal - chargeTotal) > 0.009;
 
   const copyId = async () => {
     const id = data?.payment?.transaction_id ?? supportBookingId;
@@ -262,12 +280,22 @@ export function TransactionDetailScreen({ navigation, route }: Props) {
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.summaryCard}>
-        <Text style={styles.amountLabel}>Amount</Text>
+        <Text style={styles.amountLabel}>
+          {isTrainer ? "You earn" : "Total paid"}
+        </Text>
         <Text style={styles.amountValue}>
           {fmt(typeof amount === "number" ? amount : Number(amount ?? 0), {
-            currency: data?.currency ?? data?.amounts?.currency,
+            currency: data?.currency ?? data?.amounts?.currency ?? data?.payment_summary?.currency,
           })}
         </Text>
+        {showSessionSubtotal ? (
+          <Text style={styles.amountSub}>
+            Session price{" "}
+            {fmt(sessionSubtotal!, {
+              currency: data?.currency ?? data?.amounts?.currency ?? data?.payment_summary?.currency,
+            })}
+          </Text>
+        ) : null}
         {status ? <Pill label={String(status)} tone="neutral" /> : null}
       </View>
 
@@ -321,9 +349,12 @@ export function TransactionDetailScreen({ navigation, route }: Props) {
                   trainerPlatformFeeCents: data.escrow.trainer_platform_fee_minor,
                   trainerNetCents: data.escrow.trainer_net_minor,
                   escrowStatus: data.escrow.status,
+                  holdCount: data.escrow.hold_count,
                 }
               : null)
           }
+          holds={data.escrow_holds}
+          currency={data?.amounts?.currency ?? data?.payment_summary?.currency}
         />
       ) : null}
 

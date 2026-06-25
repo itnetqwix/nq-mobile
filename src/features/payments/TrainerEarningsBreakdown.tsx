@@ -11,10 +11,20 @@ export type TrainerEarningsData = {
   trainerPlatformFeeCents?: number;
   trainerNetCents?: number;
   escrowStatus?: string | null;
+  holdCount?: number;
+};
+
+export type TrainerEarningsHoldLeg = {
+  kind?: string;
+  chargeTotalMinor?: number;
+  trainerNetMinor?: number;
+  status?: string;
+  funding_source?: string;
 };
 
 type Props = {
   data?: TrainerEarningsData | null;
+  holds?: TrainerEarningsHoldLeg[] | null;
   currency?: string;
   compact?: boolean;
 };
@@ -25,7 +35,7 @@ function centsToDollars(cents: unknown): number | null {
   return n / 100;
 }
 
-export function TrainerEarningsBreakdown({ data, currency = "USD", compact }: Props) {
+export function TrainerEarningsBreakdown({ data, holds, currency = "USD", compact }: Props) {
   const styles = useStyles();
   const fmt = useCurrencyFormatter();
   const activeCurrency = useActiveCurrency(currency);
@@ -76,7 +86,33 @@ export function TrainerEarningsBreakdown({ data, currency = "USD", compact }: Pr
         />
       ) : null}
       {data.escrowStatus ? (
-        <Text style={styles.hint}>Escrow: {String(data.escrowStatus)}</Text>
+        <Text style={styles.hint}>
+          Escrow: {String(data.escrowStatus)}
+          {data.holdCount && data.holdCount > 1 ? ` · ${data.holdCount} payments` : ""}
+        </Text>
+      ) : null}
+      {holds && holds.length > 1 ? (
+        <View style={styles.legs}>
+          {holds.map((leg, idx) => {
+            const legNet = centsToDollars(leg.trainerNetMinor);
+            const legLabel =
+              leg.kind === "extension"
+                ? `Extension ${idx + 1}`
+                : leg.funding_source === "wallet"
+                  ? "Wallet leg"
+                  : leg.funding_source === "mixed"
+                    ? "Card leg"
+                    : `Payment ${idx + 1}`;
+            if (legNet == null) return null;
+            return (
+              <Line
+                key={`${leg.kind}-${idx}`}
+                label={legLabel}
+                value={fmt(legNet, { currency: activeCurrency })}
+              />
+            );
+          })}
+        </View>
       ) : null}
     </View>
   );
@@ -119,6 +155,13 @@ function useStyles() {
       bold: { fontWeight: "700", color: palette.success },
       accent: { color: palette.warning },
       hint: { fontSize: 11, color: palette.textMuted, marginTop: 4 },
+      legs: {
+        marginTop: space.sm,
+        paddingTop: space.sm,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: palette.border,
+        gap: 6,
+      },
     })
   );
 }

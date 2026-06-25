@@ -103,6 +103,11 @@ function formatBookedDate(d?: string): string {
 }
 
 function bookingAmountDisplay(booking: any, isTrainer: boolean): string {
+  const summary = booking?.payment_summary;
+  if (summary) {
+    const amt = isTrainer ? summary.displayAmountTrainer : summary.displayAmountTrainee;
+    return formatCurrency(amt, { currency: summary.currency ?? booking?.currency });
+  }
   const amount = Number(booking?.amount ?? 0);
   const fee = Number(booking?.application_fee_amount ?? 0);
   const net = isTrainer ? amount - fee : amount;
