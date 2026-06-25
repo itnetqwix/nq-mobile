@@ -7,6 +7,9 @@ export const SCHEDULED_MIN_LEAD_TIME_MINUTES = 120;
 /** Soft hold while completing payment (matches backend). */
 export const SCHEDULED_SLOT_HOLD_MINUTES = 10;
 
+/** How far ahead trainees can browse scheduled slots (days from today). */
+export const SCHEDULE_BOOKING_HORIZON_DAYS = 60;
+
 export type ScheduledDurationMinutes = (typeof SCHEDULED_DURATIONS)[number];
 
 export const SCHEDULED_WIZARD_STEPS = [

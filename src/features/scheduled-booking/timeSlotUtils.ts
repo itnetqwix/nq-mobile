@@ -1,6 +1,7 @@
 import { DateTime } from "luxon";
 import {
   SCHEDULED_BOOKING_BUFFER_MINUTES,
+  SCHEDULE_BOOKING_HORIZON_DAYS,
   SCHEDULED_MIN_LEAD_TIME_MINUTES,
 } from "./constants";
 
@@ -106,11 +107,74 @@ export function nextDays(count: number, zone: string): DateTime[] {
   return days;
 }
 
+export type CalendarMonthCell = {
+  iso: string;
+  dt: DateTime;
+  inMonth: boolean;
+  isPast: boolean;
+  isBeyondHorizon: boolean;
+  isBookable: boolean;
+};
+
+/** Monday-start month grid (6 weeks) for booking calendar UI. */
+export function buildCalendarMonthGrid(
+  monthAnchor: DateTime,
+  zone: string,
+  horizonDays = SCHEDULE_BOOKING_HORIZON_DAYS
+): { weeks: CalendarMonthCell[][]; bookableDays: string[] } {
+  const monthStart = monthAnchor.setZone(zone).startOf("month");
+  const today = DateTime.now().setZone(zone).startOf("day");
+  const horizonEnd = today.plus({ days: Math.max(0, horizonDays - 1) });
+  const gridStart = monthStart.minus({ days: monthStart.weekday - 1 });
+
+  const weeks: CalendarMonthCell[][] = [];
+  const bookableDays: string[] = [];
+  let cursor = gridStart;
+
+  for (let w = 0; w < 6; w++) {
+    const row: CalendarMonthCell[] = [];
+    for (let d = 0; d < 7; d++) {
+      const iso = cursor.toISODate()!;
+      const inMonth = cursor.month === monthStart.month && cursor.year === monthStart.year;
+      const isPast = cursor < today;
+      const isBeyondHorizon = cursor > horizonEnd;
+      const isBookable = inMonth && !isPast && !isBeyondHorizon;
+      const cell: CalendarMonthCell = {
+        iso,
+        dt: cursor,
+        inMonth,
+        isPast,
+        isBeyondHorizon,
+        isBookable,
+      };
+      row.push(cell);
+      if (isBookable) bookableDays.push(iso);
+      cursor = cursor.plus({ days: 1 });
+    }
+    weeks.push(row);
+  }
+
+  return { weeks, bookableDays };
+}
+
+export function countStartCandidatesForDay(
+  slots: Array<{ start: string; end: string }>,
+  dateIso: string,
+  zone: string,
+  durationMinutes: number,
+  now = DateTime.now()
+): number {
+  const windows = windowsFromApiSlots(slots, dateIso, zone);
+  return buildStartCandidates(windows, durationMinutes, 15, {
+    now: now.setZone(zone),
+  }).length;
+}
+
 /** Map AI suggestion day labels (e.g. "Wednesday", "Jun 18") to a date within the next N days. */
 export function resolveSuggestionDateIso(
   dayLabel: string,
   zone: string,
-  horizonDays = 14
+  horizonDays = SCHEDULE_BOOKING_HORIZON_DAYS
 ): string | null {
   const normalized = dayLabel.trim().toLowerCase();
   if (!normalized) return null;

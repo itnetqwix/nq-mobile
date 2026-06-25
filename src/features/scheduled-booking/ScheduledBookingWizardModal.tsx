@@ -56,11 +56,15 @@ export function ScheduledBookingWizardModal({ visible, trainer, onDismiss, onBoo
 
           {w.step === "datetime" && (
             <ScheduleStepDateTime
+              trainerId={w.trainerId}
               trainerName={w.trainerName}
               traineeTz={w.traineeTz}
               trainerTimezone={w.trainerTimezone}
               selectedDate={w.selectedDate}
               onSelectDate={w.setSelectedDate}
+              durationMinutes={w.durationMinutes}
+              onDurationChange={w.setDurationMinutes}
+              availableDurations={w.durationsForPicker}
               startCandidates={w.startCandidates}
               selectedStartIso={w.selectedStartIso}
               onSelectStart={w.setSelectedStartIso}

@@ -1,5 +1,6 @@
 import { DateTime } from "luxon";
 import {
+  buildCalendarMonthGrid,
   buildStartCandidates,
   groupStartCandidatesByPeriod,
   mergeSlotWindows,
@@ -65,5 +66,16 @@ describe("timeSlotUtils", () => {
     const target = DateTime.now().setZone(zone).plus({ days: 3 });
     const label = target.toFormat("MMM d");
     expect(resolveSuggestionDateIso(label, zone, 14)).toBe(target.toISODate());
+  });
+
+  it("builds a 6-week Monday-start month grid with bookable days in horizon", () => {
+    const anchor = DateTime.fromISO("2026-06-15", { zone });
+    const { weeks, bookableDays } = buildCalendarMonthGrid(anchor, zone, 60);
+    expect(weeks).toHaveLength(6);
+    expect(weeks[0]).toHaveLength(7);
+    expect(bookableDays.length).toBeGreaterThan(0);
+    expect(bookableDays.every((iso) => iso >= DateTime.now().setZone(zone).toISODate()!)).toBe(
+      true
+    );
   });
 });

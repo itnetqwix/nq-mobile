@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import * as VideoThumbnails from "expo-video-thumbnails";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -168,6 +168,7 @@ export function ClipUploadModal({
   const [categoryAccordionOpen, setCategoryAccordionOpen] = useState(true);
   const [subcategoryAccordionOpen, setSubcategoryAccordionOpen] = useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
 
   const batchVideos = useMemo(() => {
@@ -369,13 +370,32 @@ export function ClipUploadModal({
   useEffect(() => {
     const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
     const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-    const onShow = Keyboard.addListener(showEvent, () => setKeyboardOpen(true));
-    const onHide = Keyboard.addListener(hideEvent, () => setKeyboardOpen(false));
+    const onShow = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardOpen(true);
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const onHide = Keyboard.addListener(hideEvent, () => {
+      setKeyboardOpen(false);
+      setKeyboardHeight(0);
+    });
     return () => {
       onShow.remove();
       onHide.remove();
     };
   }, []);
+
+  const scrollEmailIntoView = useCallback(() => {
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }, Platform.OS === "ios" ? 120 : 280);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!keyboardOpen || shareTarget !== SHARE_EMAIL) return;
+    scrollEmailIntoView();
+  }, [keyboardOpen, shareTarget, keyboardHeight, scrollEmailIntoView]);
 
   useEffect(() => {
     if (!visible || !isTrainer || !profileCategory || !taxonomy) return;
@@ -808,13 +828,22 @@ export function ClipUploadModal({
     : renderAsScreen
       ? tabBarClearance
       : Math.max(insets.bottom, space.md);
-  const scrollBottomPad = space.lg;
+  /** Room for fixed footer + keyboard so the email field stays visible while typing. */
+  const FOOTER_SCROLL_CLEARANCE = 132;
+  const scrollBottomPad =
+    space.lg +
+    (keyboardOpen
+      ? keyboardHeight + FOOTER_SCROLL_CLEARANCE
+      : renderAsScreen
+        ? tabBarClearance
+        : 0);
+  const keyboardVerticalOffset = renderAsScreen ? 0 : insets.top + 8;
 
   const shell = (
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={renderAsScreen ? insets.top + 56 : insets.top + 8}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={keyboardVerticalOffset}
       >
         <View style={[styles.header, { paddingTop: Math.max(insets.top, space.md) }]}>
           {renderAsScreen ? (
@@ -842,9 +871,11 @@ export function ClipUploadModal({
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
           <ScrollView
             ref={scrollRef}
+            style={styles.flex}
             contentContainerStyle={[styles.body, { paddingBottom: scrollBottomPad }]}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
+            showsVerticalScrollIndicator={false}
           >
           {!initialVideo && initialVideos.length === 0 && (
             <Pressable
@@ -1135,11 +1166,7 @@ export function ClipUploadModal({
                 returnKeyType="done"
                 blurOnSubmit
                 onSubmitEditing={Keyboard.dismiss}
-                onFocus={() => {
-                  requestAnimationFrame(() => {
-                    scrollRef.current?.scrollToEnd({ animated: true });
-                  });
-                }}
+                onFocus={scrollEmailIntoView}
                 editable={!uploadBusy}
               />
               {parsedEmails.length > 0 ? (

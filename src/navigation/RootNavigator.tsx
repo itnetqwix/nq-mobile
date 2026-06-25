@@ -1,5 +1,6 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React, { useEffect, useState } from "react";
+import { NetQwixLoader } from "../components/brand/NetQwixLoader";
 import { AppUnlockGate } from "../features/auth/components/AppUnlockGate";
 import { useAuth } from "../features/auth/context/AuthContext";
 import { OnboardingNavigator } from "./OnboardingNavigator";
@@ -55,7 +56,15 @@ function GuestBrowseWithIntro() {
   }, []);
 
   if (introDone === null) {
-    return null;
+    return (
+      <NetQwixLoader
+        message="Loading…"
+        variant="fullscreen"
+        motion="quick"
+        backdrop="solid"
+        showTips
+      />
+    );
   }
 
   if (!introDone) {

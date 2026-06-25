@@ -25,7 +25,12 @@ import { useHorizontalGutter } from "../../../lib/layout/useHorizontalGutter";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
 import { useAuth } from "../../auth/context/AuthContext";
+import { useTrainerOnlineLookup } from "../hooks/useTrainerOnlineLookup";
 import { useOnlinePresence } from "../../socket/useOnlinePresence";
+import {
+  isCommunityMemberLive,
+  isCommunityTrainer,
+} from "../lib/communityMemberPresence";
 import {
   fetchFriends,
   fetchFriendRequests,
@@ -109,6 +114,7 @@ function MemberCard({
   user,
   status,
   index,
+  showOnline,
   onAction,
   onMessage,
   actionBusy,
@@ -117,20 +123,19 @@ function MemberCard({
   user: any;
   status: FriendStatus;
   index: number;
+  showOnline: boolean;
   onAction: (userId: string, action: string) => void;
   onMessage: (userId: string, name: string, picture?: string) => void;
   actionBusy: boolean;
   messageBusy: boolean;
 }) {
   const { t } = useAppTranslation();
-  const { isOnline } = useOnlinePresence();
   const styles = useMemberStyles();
   const c = useThemeColors();
   const name = user?.fullname || user?.fullName || t("community.memberDefault");
   const role = String(user?.account_type || user?.accountType || "");
   const userId = String(user?._id ?? "");
-  const showOnline = isOnline(userId) || !!user?.is_online;
-  const isTrainer = role === "Trainer";
+  const isTrainer = isCommunityTrainer(user);
 
   return (
     <FadeInView index={index}>
@@ -149,6 +154,13 @@ function MemberCard({
                 {isTrainer ? t("community.roleTrainer", { defaultValue: "Expert" }) : t("community.roleTrainee", { defaultValue: "Enthusiast" })}
               </Text>
             </View>
+          ) : null}
+          {showOnline ? (
+            <Text style={styles.liveStatus} numberOfLines={1}>
+              {isTrainer
+                ? t("community.trainerAvailable", { defaultValue: "Available for instant lesson" })
+                : t("community.memberActive", { defaultValue: "Active in app" })}
+            </Text>
           ) : null}
         </View>
         <View style={styles.actions}>
@@ -216,7 +228,17 @@ export function CommunityScreen() {
   const { user } = useAuth();
   const { emitNotification } = useNotifications();
   const queryClient = useQueryClient();
-  const { isOnline } = useOnlinePresence();
+  const { isTrainerOnline } = useTrainerOnlineLookup();
+  const { isOnline: isSocketOnline } = useOnlinePresence();
+
+  const isMemberLive = useCallback(
+    (user: any) =>
+      isCommunityMemberLive(String(user?._id ?? ""), user, {
+        isTrainerOnline,
+        isSocketOnline,
+      }),
+    [isTrainerOnline, isSocketOnline]
+  );
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<CommunityFilter>("all");
   const trimmedSearch = useDebouncedValue(search.trim(), SEARCH_API_DEBOUNCE_MS);
@@ -310,12 +332,12 @@ export function CommunityScreen() {
     } else if (filter === "trainees") {
       rows = rows.filter((m) => String(m.account_type ?? m.accountType) === "Trainee");
     } else if (filter === "online") {
-      rows = rows.filter((m) => isOnline(String(m._id)) || !!m.is_online);
+      rows = rows.filter((m) => isMemberLive(m));
     } else if (filter === "friends") {
       rows = rows.filter((m) => friendIds.has(String(m._id)));
     }
     return rows;
-  }, [members, currentUserId, filter, friendIds, isOnline]);
+  }, [members, currentUserId, filter, friendIds, isMemberLive]);
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.friends.all });
@@ -461,27 +483,38 @@ export function CommunityScreen() {
         </Text>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[styles.filterRow, gutter]}
-      >
-        {FILTERS.map((f) => {
-          const on = filter === f.key;
-          return (
-            <Pressable
-              key={f.key}
-              style={[styles.filterChip, on && styles.filterChipOn]}
-              onPress={() => setFilter(f.key)}
-            >
-              <Ionicons name={f.icon} size={14} color={on ? c.brandNavy : c.textMuted} />
-              <Text style={[styles.filterLabel, on && styles.filterLabelOn]}>
-                {t(f.labelKey, { defaultValue: f.key })}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+      <View style={styles.filterHost}>
+        <ScrollView
+          horizontal
+          style={styles.filterScroll}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={[styles.filterRow, gutter]}
+          keyboardShouldPersistTaps="handled"
+        >
+          {FILTERS.map((f) => {
+            const on = filter === f.key;
+            const isLiveFilter = f.key === "online";
+            return (
+              <Pressable
+                key={f.key}
+                style={[styles.filterChip, on && styles.filterChipOn]}
+                onPress={() => setFilter(f.key)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}
+              >
+                {isLiveFilter ? (
+                  <View style={[styles.liveFilterDot, on && styles.liveFilterDotOn]} />
+                ) : (
+                  <Ionicons name={f.icon} size={14} color={on ? c.brandNavy : c.textMuted} />
+                )}
+                <Text style={[styles.filterLabel, on && styles.filterLabelOn]}>
+                  {t(f.labelKey, { defaultValue: f.key })}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
 
       <MorphRefreshScrollSurface
         style={{ flex: 1 }}
@@ -498,6 +531,7 @@ export function CommunityScreen() {
                 user={item}
                 index={index}
                 status={getStatus(String(item._id))}
+                showOnline={isMemberLive(item)}
                 onAction={handleAction}
                 onMessage={handleMessage}
                 actionBusy={actionBusy}
@@ -514,7 +548,12 @@ export function CommunityScreen() {
                 icon="people-outline"
                 title={t("community.emptyTitle")}
                 description={
-                  trimmedSearch
+                  filter === "online"
+                    ? t("community.emptyOnlineDescription", {
+                        defaultValue:
+                          "No experts are available for instant lessons right now, and no enthusiasts are active in the app.",
+                      })
+                    : trimmedSearch
                     ? t("community.emptySearchDescription", { query: trimmedSearch })
                     : t("community.emptyDescription")
                 }
@@ -558,7 +597,17 @@ function useScreenStyles() {
         color: palette.textMuted,
         marginLeft: space.xs,
       },
+      filterHost: {
+        flexGrow: 0,
+        flexShrink: 0,
+      },
+      filterScroll: {
+        flexGrow: 0,
+        flexShrink: 0,
+      },
       filterRow: {
+        flexDirection: "row",
+        alignItems: "center",
         gap: space.sm,
         paddingBottom: space.sm,
       },
@@ -585,6 +634,15 @@ function useScreenStyles() {
       filterLabelOn: {
         color: palette.brandNavy,
         fontWeight: "700",
+      },
+      liveFilterDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: palette.textMuted,
+      },
+      liveFilterDotOn: {
+        backgroundColor: palette.success,
       },
     })
   );
@@ -628,6 +686,12 @@ function useMemberStyles() {
       roleText: { ...typography.caption, fontWeight: "700", fontSize: 11 },
       roleTrainerText: { color: palette.brandNavy },
       roleTraineeText: { color: palette.success },
+      liveStatus: {
+        ...typography.caption,
+        color: palette.success,
+        fontWeight: "600",
+        fontSize: 11,
+      },
       actions: { flexDirection: "row", alignItems: "center", gap: space.xs },
       primaryBtn: {
         width: 40,

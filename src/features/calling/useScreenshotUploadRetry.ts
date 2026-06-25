@@ -1,12 +1,17 @@
 import { useEffect, useRef } from "react";
-import NetInfo, { type NetInfoState } from "@react-native-community/netinfo";
 
+import { getSafeNetInfo } from "../../lib/network/netInfoBootstrap";
 import { isNetworkOnline, useNetworkOnline } from "../../lib/networkStatusStore";
 import { flushScreenshotUploadQueue } from "./screenshotUploadQueue";
 
 type FlushOptions = {
   sessionId?: string;
   onUploaded?: (imageKey: string) => void;
+};
+
+type NetInfoState = {
+  isConnected: boolean | null;
+  isInternetReachable: boolean | null;
 };
 
 function isConnectedState(state: NetInfoState): boolean {
@@ -53,6 +58,8 @@ export function useScreenshotUploadRetry(
 
   useEffect(() => {
     if (!enabled) return;
+    const NetInfo = getSafeNetInfo();
+    if (!NetInfo) return;
     const unsub = NetInfo.addEventListener((state) => {
       if (isConnectedState(state)) {
         flush();

@@ -9,6 +9,7 @@ import App from "./App";
 // Harmless in dev; clear Metro cache if it persists after app code fixes.
 LogBox.ignoreLogs([
   "forwardRef render functions accept exactly two parameters",
+  "[nq-mobile] forwardRef arity=1",
   "VirtualizedLists should never be nested inside plain ScrollViews",
   "Cannot find native module 'ExpoNetwork'",
   "Failed to get NitroModules",
@@ -21,6 +22,18 @@ LogBox.ignoreLogs([
 if (__DEV__) {
   const originalConsoleError = console.error;
   console.error = (...args: unknown[]) => {
+    const joined = args
+      .map((a) => (typeof a === "string" ? a : ""))
+      .join(" ");
+    if (
+      joined.includes("forwardRef render functions accept exactly two parameters") ||
+      joined.includes("[nq-mobile] forwardRef arity=1") ||
+      joined.includes("VirtualizedLists should never be nested") ||
+      joined.includes("Failed to get NitroModules") ||
+      (joined.includes("NativeEventEmitter") && joined.includes("non-null argument"))
+    ) {
+      return;
+    }
     const first = args[0];
     if (
       typeof first === "string" &&

@@ -1,7 +1,14 @@
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import { AccountType } from "../constants/accountType";
-import { store } from "../store/store";
+import type { RootState } from "../store/store";
 import { queryKeys } from "./queryKeys";
+
+/** Lazy read avoids store ↔ queryInvalidation require cycle at module init. */
+function readAuthAccountType(): RootState["auth"]["accountType"] {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { store } = require("../store/store") as typeof import("../store/store");
+  return store.getState().auth.accountType;
+}
 
 /** Coalesce bursty `userStatus` / `onlineUser` socket broadcasts into one refetch wave. */
 const PRESENCE_INVALIDATION_DEBOUNCE_MS = 30_000;
@@ -192,7 +199,7 @@ export function invalidateOnPresenceSocketEvent(
     presenceInvalidateClient = null;
     if (!client) return;
 
-    const accountType = store.getState().auth.accountType;
+    const accountType = readAuthAccountType();
     if (accountType === AccountType.TRAINEE) {
       invalidateQueryIfStale(client, queryKeys.presence.bookExpertOnline);
       return;
@@ -270,7 +277,7 @@ export function invalidateOnSocketReconnect(queryClient: QueryClient): void {
 
   invalidateQueryIfStale(queryClient, queryKeys.sessions.upcoming);
 
-  const accountType = store.getState().auth.accountType;
+  const accountType = readAuthAccountType();
   if (accountType === AccountType.TRAINEE) {
     invalidateQueryIfStale(queryClient, queryKeys.presence.bookExpertOnline);
     invalidateQueryIfStale(queryClient, queryKeys.trainee.favorites);

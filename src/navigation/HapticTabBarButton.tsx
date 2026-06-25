@@ -1,13 +1,19 @@
 import type { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
+import { PlatformPressable } from "@react-navigation/elements";
 import React from "react";
-import { Pressable, type GestureResponderEvent } from "react-native";
+import type { GestureResponderEvent } from "react-native";
 import { haptics } from "../lib/haptics";
 
-/** Bottom-tab button that fires a light tap haptic before navigation. */
-export function HapticTabBarButton(props: BottomTabBarButtonProps) {
-  const { onPress, ...rest } = props;
+/**
+ * Tab bar button with haptic feedback — must use PlatformPressable (same as
+ * React Navigation default) so refs / press handling stay compatible.
+ */
+export function HapticTabBarButton({
+  onPress,
+  ...rest
+}: BottomTabBarButtonProps) {
   return (
-    <Pressable
+    <PlatformPressable
       {...rest}
       onPress={(event: GestureResponderEvent) => {
         haptics.tap();

@@ -207,8 +207,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     return windowsFromApiSlots(slots, bookedDateIso, traineeTz);
   }, [dayAvailabilityQuery.data?.availableSlots, bookedDateIso, traineeTz]);
 
-  const candidateDurationMinutes =
-    step === "datetime" ? SCHEDULED_DURATIONS[0]! : durationMinutes;
+  const candidateDurationMinutes = durationMinutes;
 
   const startCandidates = useMemo(
     () =>
@@ -217,6 +216,25 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
       }),
     [slotWindows, candidateDurationMinutes, traineeTz]
   );
+
+  const dayAvailableDurations = useMemo(() => {
+    const now = DateTime.now().setZone(traineeTz);
+    return SCHEDULED_DURATIONS.filter(
+      (d) => buildStartCandidates(slotWindows, d, 15, { now }).length > 0
+    );
+  }, [slotWindows, traineeTz]);
+
+  const slotAvailableDurations = useMemo(
+    () => pickAvailableDurations(slotWindows, selectedStartIso, traineeTz),
+    [selectedStartIso, slotWindows, traineeTz]
+  );
+
+  const durationsForPicker =
+    step === "datetime" && !selectedStartIso
+      ? dayAvailableDurations
+      : selectedStartIso
+        ? slotAvailableDurations
+        : dayAvailableDurations;
 
   useEffect(() => {
     if (!selectedStartIso) return;
@@ -250,11 +268,13 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
   );
 
   useEffect(() => {
-    if (!availableDurations.includes(durationMinutes as (typeof SCHEDULED_DURATIONS)[number])) {
-      const fallback = availableDurations[0];
+    const pool =
+      step === "datetime" && !selectedStartIso ? dayAvailableDurations : availableDurations;
+    if (!pool.includes(durationMinutes as (typeof SCHEDULED_DURATIONS)[number])) {
+      const fallback = pool[0];
       if (fallback != null) setDurationMinutesState(fallback);
     }
-  }, [availableDurations, durationMinutes]);
+  }, [availableDurations, dayAvailableDurations, durationMinutes, step, selectedStartIso]);
 
   const validateCurrentSlot = useCallback(async () => {
     if (!tid || !selectedStart || !sessionEnd) {
@@ -880,7 +900,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
           return;
         }
         if (!tid) return;
-        const probeEnd = dt.plus({ minutes: SCHEDULED_DURATIONS[0]! });
+        const probeEnd = dt.plus({ minutes: durationMinutes });
         const slotCheck = await validateSlotRange({
           trainerId: tid,
           bookedDateIso: dateIso,
@@ -899,7 +919,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
         setSelectedStartIso(dt.toISO());
       })();
     },
-    [traineeTz, t, tid]
+    [traineeTz, t, tid, durationMinutes]
   );
 
   return {
@@ -962,6 +982,8 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     smartScheduleSuggestions: smartScheduleQuery.data?.suggestions ?? [],
     smartScheduleLoading: smartScheduleQuery.isLoading,
     availableDurations,
+    durationsForPicker,
+    trainerId: tid,
     applySmartSuggestion,
     parseSlotTimeOnDate: (label: string) => parseSlotTimeOnDate(bookedDateIso, label, traineeTz),
   };

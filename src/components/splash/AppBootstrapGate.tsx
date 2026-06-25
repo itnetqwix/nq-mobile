@@ -10,7 +10,6 @@ import { useAppSelector } from "../../store/hooks";
 import { selectAuthStatus } from "../../store/selectors";
 import { AppSplashScreen } from "./AppSplashScreen";
 import {
-  SPLASH_EXIT_ANIMATION_MS,
   SPLASH_MAX_WAIT_MS,
   SPLASH_MIN_DISPLAY_MS,
 } from "./splashConstants";
@@ -19,7 +18,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {
   /* Expo Go / web may not support native splash control */
 });
 
-type BootstrapPhase = "splash" | "exiting" | "ready";
+type BootstrapPhase = "splash" | "ready";
 
 type Props = {
   children: React.ReactNode;
@@ -80,7 +79,7 @@ export function AppBootstrapGate({ children, appInitReady = true }: Props) {
   const beginExit = useCallback(() => {
     if (finishTriggered.current) return;
     finishTriggered.current = true;
-    setPhase("exiting");
+    setPhase("ready");
   }, []);
 
   useEffect(() => {
@@ -97,19 +96,13 @@ export function AppBootstrapGate({ children, appInitReady = true }: Props) {
     return () => clearTimeout(failsafe);
   }, [beginExit]);
 
-  useEffect(() => {
-    if (phase !== "exiting") return;
-    const timer = setTimeout(() => setPhase("ready"), SPLASH_EXIT_ANIMATION_MS);
-    return () => clearTimeout(timer);
-  }, [phase]);
-
   if (phase === "ready") {
     return <>{children}</>;
   }
 
   return (
     <View style={styles.shell}>
-      <AppSplashScreen exiting={phase === "exiting"} />
+      <AppSplashScreen />
     </View>
   );
 }
