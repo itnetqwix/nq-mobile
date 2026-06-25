@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { radii, space, typography, useThemeColors } from "../../../theme";
@@ -42,6 +43,22 @@ function resolveCtas(banner: HomeBanner): BannerCta[] {
     return [{ label: banner.cta_label, url: banner.cta_url, variant: "primary" }];
   }
   return [];
+}
+
+function bannerImageHeight(banner: HomeBanner): number {
+  const h = banner.image_height;
+  if (typeof h === "number" && Number.isFinite(h)) {
+    return Math.min(320, Math.max(64, Math.round(h)));
+  }
+  return 140;
+}
+
+function bannerOverlayOpacity(banner: HomeBanner): number {
+  const o = banner.overlay_opacity;
+  if (typeof o === "number" && Number.isFinite(o)) {
+    return Math.min(1, Math.max(0, o));
+  }
+  return 0.45;
 }
 
 export function HomeBannerCarousel({ guest, onDeepLink }: Props) {
@@ -103,6 +120,14 @@ export function HomeBannerCarousel({ guest, onDeepLink }: Props) {
         {visible.map((banner) => {
           const palette = severityPalette(c, banner.severity);
           const ctas = resolveCtas(banner);
+          const imageHeight = bannerImageHeight(banner);
+          const imageFit = banner.image_fit === "contain" ? "contain" : "cover";
+          const textAlign = banner.text_align === "center" ? "center" : "left";
+          const overlay = bannerOverlayOpacity(banner);
+          const hasBgImage = Boolean(banner.background_image_url);
+          const cardBg =
+            banner.background_color?.trim() ||
+            (hasBgImage ? "#1a1a1a" : palette.bg);
           return (
             <View
               key={String(banner._id)}
@@ -110,22 +135,53 @@ export function HomeBannerCarousel({ guest, onDeepLink }: Props) {
                 styles.card,
                 {
                   width: cardWidth,
-                  backgroundColor: palette.bg,
+                  backgroundColor: cardBg,
                   borderColor: palette.border,
+                  minHeight:
+                    hasBgImage && !banner.image_url ? imageHeight : undefined,
                 },
               ]}
             >
+              {hasBgImage ? (
+                <>
+                  <Image
+                    source={{ uri: banner.background_image_url! }}
+                    style={StyleSheet.absoluteFill}
+                    contentFit={imageFit}
+                  />
+                  <View
+                    style={[
+                      StyleSheet.absoluteFill,
+                      { backgroundColor: `rgba(0,0,0,${overlay})` },
+                    ]}
+                    pointerEvents="none"
+                  />
+                </>
+              ) : null}
               {banner.image_url ? (
                 <ImageWithSkeleton
                   uri={banner.image_url}
                   width={cardWidth}
-                  height={140}
+                  height={imageHeight}
                   borderRadius={0}
+                  resizeMode={imageFit}
                 />
               ) : null}
-              <View style={styles.cardBody}>
-                <View style={styles.titleRow}>
-                  <Text style={[styles.title, { color: palette.fg }]} numberOfLines={2}>
+              <View
+                style={[
+                  styles.cardBody,
+                  hasBgImage && styles.cardBodyOverBg,
+                  textAlign === "center" && styles.cardBodyCenter,
+                ]}
+              >
+                <View style={[styles.titleRow, textAlign === "center" && styles.rowCenter]}>
+                  <Text
+                    style={[
+                      styles.title,
+                      { color: hasBgImage ? "#fff" : palette.fg, textAlign },
+                    ]}
+                    numberOfLines={2}
+                  >
                     {banner.title}
                   </Text>
                   {banner.dismissible ? (
@@ -136,17 +192,35 @@ export function HomeBannerCarousel({ guest, onDeepLink }: Props) {
                         defaultValue: "Dismiss banner",
                       })}
                     >
-                      <Ionicons name="close" size={18} color={palette.fg} />
+                      <Ionicons
+                        name="close"
+                        size={18}
+                        color={hasBgImage ? "#fff" : palette.fg}
+                      />
                     </Pressable>
                   ) : null}
                 </View>
                 {banner.body ? (
-                  <Text style={[styles.body, { color: palette.fg }]} numberOfLines={3}>
+                  <Text
+                    style={[
+                      styles.body,
+                      {
+                        color: hasBgImage ? "rgba(255,255,255,0.92)" : palette.fg,
+                        textAlign,
+                      },
+                    ]}
+                    numberOfLines={3}
+                  >
                     {banner.body}
                   </Text>
                 ) : null}
                 {ctas.length > 0 ? (
-                  <View style={styles.ctaRow}>
+                  <View
+                    style={[
+                      styles.ctaRow,
+                      textAlign === "center" && styles.rowCenter,
+                    ]}
+                  >
                     {ctas.map((cta) => (
                       <Pressable
                         key={`${cta.label}-${cta.url}`}
@@ -194,6 +268,19 @@ const styles = StyleSheet.create({
     borderRadius: radii.xl,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: "hidden",
+    position: "relative",
+  },
+  cardBodyOverBg: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  cardBodyCenter: {
+    alignItems: "center",
+  },
+  rowCenter: {
+    justifyContent: "center",
   },
   heroImage: {
     width: "100%",

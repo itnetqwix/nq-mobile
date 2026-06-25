@@ -40,6 +40,12 @@ export type HomeBanner = {
   title: string;
   body: string;
   image_url?: string | null;
+  background_image_url?: string | null;
+  background_color?: string | null;
+  image_height?: number;
+  image_fit?: "cover" | "contain";
+  text_align?: "left" | "center";
+  overlay_opacity?: number;
   audience: Array<"guest" | "trainer" | "trainee" | "all">;
   severity: "info" | "promo" | "maintenance" | "critical" | "success";
   placement?: BannerPlacement;

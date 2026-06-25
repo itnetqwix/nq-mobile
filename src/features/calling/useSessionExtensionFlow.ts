@@ -345,11 +345,12 @@ export function useSessionExtensionFlow({
   /** Trainee pays via card or wallet for the currently accepted request. */
   const payAndConfirm = useCallback(
     async (options: {
-      method: "card" | "wallet";
+      method: "card" | "wallet" | "mixed";
       customer?: string;
       pinSessionToken?: string | null;
       quoteId?: string;
       chargeTotalCents?: number;
+      walletAmountDollars?: number;
       billingAddress?: { country: string; state?: string };
     }) => {
       const req = state.request;
@@ -378,7 +379,7 @@ export function useSessionExtensionFlow({
               setState((prev) => ({
                 ...prev,
                 phase: "awaiting_payment",
-                message: "Wallet balance too low; please pay with card.",
+                message: "Wallet balance too low; please pay with card or use wallet + card.",
               }));
               return false;
             }
@@ -391,11 +392,15 @@ export function useSessionExtensionFlow({
             pin_session_token: options.pinSessionToken ?? null,
             quoteId: options.quoteId,
           });
-          // SESSION_EXTENSION_APPLIED socket event will flip us to "applied".
           return true;
         }
 
-        // Card path: create PI, present sheet, confirm.
+        const walletPartDollars =
+          options.method === "mixed"
+            ? Number(options.walletAmountDollars ?? 0)
+            : 0;
+        const totalDollars = chargeMinor / 100;
+
         const intent = await createSessionExtensionPaymentIntent({
           sessionId,
           minutes: req.minutes,
@@ -403,34 +408,38 @@ export function useSessionExtensionFlow({
           customer: options.customer,
           quoteId: options.quoteId,
           billingAddress: options.billingAddress,
+          wallet_amount: walletPartDollars > 0 ? walletPartDollars : undefined,
         });
 
         let paymentIntentId: string | null = null;
         if (intent?.skip) {
           // Zero-amount: server allowed confirm with no payment.
-        } else {
+        } else if (options.method === "card" || options.method === "mixed") {
           const clientSecret = intent?.client_secret;
-          if (!clientSecret) {
+          if (!clientSecret && (options.method === "card" || walletPartDollars < totalDollars)) {
             throw new Error("Stripe didn't return a client secret.");
           }
-          const { error: initErr } = await initPaymentSheet({
-            paymentIntentClientSecret: clientSecret,
-            merchantDisplayName: "NetQwix",
-          });
-          if (initErr) throw new Error(initErr.message);
-          const { error: payErr } = await presentPaymentSheet();
-          if (payErr) {
-            if (payErr.code === "Canceled") {
-            setState((prev) => ({
-              ...prev,
-              phase: "awaiting_payment",
-              message: "Payment cancelled — you can try again before the timer runs out.",
-            }));
-            return false;
+          if (clientSecret) {
+            const { error: initErr } = await initPaymentSheet({
+              paymentIntentClientSecret: clientSecret,
+              merchantDisplayName: "NetQwix",
+            });
+            if (initErr) throw new Error(initErr.message);
+            const { error: payErr } = await presentPaymentSheet();
+            if (payErr) {
+              if (payErr.code === "Canceled") {
+                setState((prev) => ({
+                  ...prev,
+                  phase: "awaiting_payment",
+                  message:
+                    "Payment cancelled — you can try again before the timer runs out.",
+                }));
+                return false;
+              }
+              throw new Error(payErr.message);
+            }
+            paymentIntentId = intent?.id ?? null;
           }
-            throw new Error(payErr.message);
-          }
-          paymentIntentId = intent?.id ?? null;
         }
 
         await confirmSessionExtension({
@@ -438,7 +447,15 @@ export function useSessionExtensionFlow({
           minutes: req.minutes,
           requestId: req.requestId,
           payment_intent_id: paymentIntentId,
-          payment_method: paymentIntentId ? "card" : undefined,
+          payment_method:
+            options.method === "mixed"
+              ? "mixed"
+              : paymentIntentId
+                ? "card"
+                : undefined,
+          wallet_amount: options.method === "mixed" ? walletPartDollars : undefined,
+          pin_session_token:
+            options.method === "mixed" ? options.pinSessionToken ?? null : undefined,
           quoteId: options.quoteId,
         });
         return true;

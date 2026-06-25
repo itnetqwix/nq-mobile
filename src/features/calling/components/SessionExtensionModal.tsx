@@ -298,6 +298,35 @@ export function SessionExtensionModal({
     }
 
     if (paymentMethod === "wallet" && extensionChargeMinor > 0) {
+      const availableDollars = wallet.available ?? 0;
+      const chargeDollars = extensionChargeMinor / 100;
+
+      if (!wallet.canPayWithWallet && availableDollars > 0 && availableDollars < chargeDollars) {
+        let token = pinSessionToken ?? wallet.storedPinToken ?? undefined;
+        const gate = await resolveWalletPinSessionForPayment(wallet, pin, token, {
+          onSetupPin: navigateToWalletSecurity,
+        });
+        if (!gate.ok) return;
+        token = gate.token;
+        if (token && token !== pinSessionToken) {
+          setPinSessionToken(token);
+          setPin("");
+        }
+        await payAndConfirm({
+          method: "mixed",
+          walletAmountDollars: availableDollars,
+          pinSessionToken: token,
+          customer: userStripeId || undefined,
+          quoteId: quote?.pricingQuote?.quoteId,
+          chargeTotalCents: extensionChargeMinor,
+          billingAddress: {
+            country: billingAddress.country,
+            state: billingAddress.state,
+          },
+        });
+        return;
+      }
+
       if (!wallet.canPayWithWallet) {
         if (onAddFunds && wallet.shortfall > 0) {
           Alert.alert(

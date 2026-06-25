@@ -548,13 +548,17 @@ All of these live in **Admin → Pricing & fees** (`/apps/pricing`). Changes app
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Mixed wallet + card pay | Fixed | Two escrow holds; proportional fees; full refund on cancel |
-| Transaction detail totals | Fixed | Shows total paid vs session price + fee breakdown |
-| Multi-hold trainer earnings | Fixed | Aggregates booking + extension legs |
-| Admin tax rates | **Now editable** | Was hardcoded; DB-backed when Stripe Tax is off |
-| Unrated session → funds stuck | Open | No auto-release after N days if ratings missing |
-| GB/EU regions | Open | Wallet config exists; admin pricing is US/CA only |
-| Legacy bookings without escrow | Fallback | List/detail use `amount` field when no holds |
+| Mixed wallet + card pay | **Done** | Bookings + extensions; two escrow holds; proportional fees |
+| Transaction detail totals | **Done** | Total paid vs session price + fee breakdown |
+| Multi-hold trainer earnings | **Done** | Aggregates booking + extension legs |
+| Admin tax rates | **Done** | Editable when Stripe Tax is off |
+| Unrated session auto-release | **Done** | Configurable grace days in Admin → Rates → Escrow policy |
+| Rating reminders | **Done** | Daily push after N days (configurable) |
+| GB/EU pricing regions | **Done** | Admin tabs + quote engine (enable wallet via env) |
+| Legacy escrow backfill | **Done** | Finance → Preview / Backfill legacy escrow |
+| Extension mixed pay | **Done** | Wallet + card supported in-call |
+
+**Deploy order:** ship **backend** first, then **admin**, then **mobile** so APIs and policy config are live before clients rely on them.
 
 ---
 

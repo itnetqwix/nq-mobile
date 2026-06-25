@@ -40,8 +40,8 @@
     "semantic_hash": "6d51d67e46e2ed85073ef89d33a3062c"
   },
   "src/app/AppRoot.tsx": {
-    "mtime": 1782304825.54155,
-    "ast_hash": "c3e3b4900e28f7cf10db9bd0eed87f47",
+    "mtime": 1782368520.7396438,
+    "ast_hash": "5848f4e6b4e79e11311b360c2fa22620",
     "semantic_hash": ""
   },
   "src/app/ThemedNavigationContainer.tsx": {
@@ -65,8 +65,8 @@
     "semantic_hash": "f632fd6a9b09343621000ea75251818f"
   },
   "src/components/brand/NetqwixLogo.tsx": {
-    "mtime": 1780907095.4418151,
-    "ast_hash": "7753ea73685a8e5a854a3f809b85f03c",
+    "mtime": 1782368523.00785,
+    "ast_hash": "adca420db9f78584ab43af1312088658",
     "semantic_hash": ""
   },
   "src/components/brand/NetqwixMark.tsx": {
@@ -975,8 +975,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/components/SessionExtensionModal.tsx": {
-    "mtime": 1781951652.4472282,
-    "ast_hash": "2769a10d8e923f893296134e9e7dbacb",
+    "mtime": 1782368251.872814,
+    "ast_hash": "4288e7ee3e9b7f7639d87d52e7b6bb3d",
     "semantic_hash": ""
   },
   "src/features/calling/components/SessionGamePlanModal.tsx": {
@@ -1205,8 +1205,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/sessionExtensionApi.ts": {
-    "mtime": 1782284329.7393038,
-    "ast_hash": "622bdb5a29bd29245686e6dc2cd713b1",
+    "mtime": 1782368205.5479875,
+    "ast_hash": "b6fa818d2c301111f72715f459bfdac6",
     "semantic_hash": ""
   },
   "src/features/calling/sessionLiveApi.ts": {
@@ -1290,8 +1290,8 @@
     "semantic_hash": "36a77cfc38ee141fdf545ca9a97325da"
   },
   "src/features/calling/useSessionExtensionFlow.ts": {
-    "mtime": 1782287776.6059687,
-    "ast_hash": "5e73823bc3ff4bcf6f6360c4aa3feb6a",
+    "mtime": 1782368221.952809,
+    "ast_hash": "a61ccf65fdcd40973343573ceda021ff",
     "semantic_hash": ""
   },
   "src/features/calling/useSessionPresence.ts": {
@@ -1520,14 +1520,14 @@
     "semantic_hash": ""
   },
   "src/features/content/api/contentApi.ts": {
-    "mtime": 1780636428.826112,
-    "ast_hash": "8b242374c854080e9e02e9978c3e89bd",
-    "semantic_hash": "8b242374c854080e9e02e9978c3e89bd"
+    "mtime": 1782368629.0973248,
+    "ast_hash": "e99debce37326777c4723fe88ca24a63",
+    "semantic_hash": ""
   },
   "src/features/content/components/HomeBannerCarousel.tsx": {
-    "mtime": 1780638494.7937922,
-    "ast_hash": "7f175946b09786ee61a8f07ce3d4f3d3",
-    "semantic_hash": "7f175946b09786ee61a8f07ce3d4f3d3"
+    "mtime": 1782368651.9057026,
+    "ast_hash": "f5af1a5d63040fa98cc1d846fc8c2c0b",
+    "semantic_hash": ""
   },
   "src/features/content/components/HomeBannerStrip.tsx": {
     "mtime": 1780636428.823726,
@@ -4665,8 +4665,8 @@
     "semantic_hash": ""
   },
   "docs/PAYMENT_FLOW_SIMPLE_GUIDE.md": {
-    "mtime": 1782366775.0235775,
-    "ast_hash": "963cddeea9df065bb333f13c7175bd5f",
+    "mtime": 1782368114.3836322,
+    "ast_hash": "ea74ed321f0b6991d5d0ed49ab7f6321",
     "semantic_hash": ""
   },
   "src/features/payments/TraineeChargeBreakdown.tsx": {

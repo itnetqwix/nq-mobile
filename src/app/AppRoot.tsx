@@ -79,7 +79,8 @@ function SystemStateHooks() {
 
 export function AppRoot() {
   const [localeReady, setLocaleReady] = useState(false);
-  const [fontsLoaded] = useFonts(poppinsFontMap);
+  const [fontsLoaded, fontError] = useFonts(poppinsFontMap);
+  const fontsReady = fontsLoaded || !!fontError;
   const queryClient = useMemo(() => createPersistedQueryClient(), []);
 
   useEffect(() => {
@@ -131,7 +132,7 @@ export function AppRoot() {
     <GestureHandlerRootView style={styles.flex}>
       <StoreProvider>
       <SafeAreaProvider>
-      <AppBootstrapGate appInitReady={localeReady && fontsLoaded}>
+      <AppBootstrapGate appInitReady={localeReady && fontsReady}>
         <StripeProvider
           publishableKey={STRIPE_PUBLISHABLE_KEY || "pk_test_placeholder"}
           merchantIdentifier={

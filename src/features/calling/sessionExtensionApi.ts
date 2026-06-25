@@ -200,6 +200,7 @@ export async function createSessionExtensionPaymentIntent(payload: {
   couponCode?: string;
   quoteId?: string;
   billingAddress?: { country: string; state?: string };
+  wallet_amount?: number;
 }): Promise<{
   skip?: boolean;
   client_secret?: string;
@@ -221,11 +222,19 @@ export async function confirmSessionExtension(payload: {
   minutes: number;
   requestId?: string;
   payment_intent_id?: string | null;
-  payment_method?: "wallet" | "card";
+  payment_method?: "wallet" | "card" | "mixed";
+  wallet_amount?: number;
   pin_session_token?: string | null;
   quoteId?: string;
 }): Promise<unknown> {
-  const idemKey = payload.payment_intent_id
+  const idemKey =
+    payload.payment_method === "mixed" && payload.payment_intent_id
+      ? stableIdempotencyKey(
+          "ext-confirm-mixed",
+          payload.sessionId,
+          payload.payment_intent_id
+        )
+      : payload.payment_intent_id
     ? stableIdempotencyKey(
         "ext-confirm",
         payload.sessionId,
@@ -247,6 +256,7 @@ export async function confirmSessionExtension(payload: {
     {
       ...payload,
       quote_id: payload.quoteId,
+      wallet_amount: payload.wallet_amount,
     },
     { headers: idempotencyHeaders(idemKey) }
   );

@@ -975,8 +975,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/components/SessionExtensionModal.tsx": {
-    "mtime": 1781951652.4472282,
-    "ast_hash": "2769a10d8e923f893296134e9e7dbacb",
+    "mtime": 1782368251.872814,
+    "ast_hash": "4288e7ee3e9b7f7639d87d52e7b6bb3d",
     "semantic_hash": ""
   },
   "src/features/calling/components/SessionGamePlanModal.tsx": {
@@ -1205,8 +1205,8 @@
     "semantic_hash": ""
   },
   "src/features/calling/sessionExtensionApi.ts": {
-    "mtime": 1782284329.7393038,
-    "ast_hash": "622bdb5a29bd29245686e6dc2cd713b1",
+    "mtime": 1782368205.5479875,
+    "ast_hash": "b6fa818d2c301111f72715f459bfdac6",
     "semantic_hash": ""
   },
   "src/features/calling/sessionLiveApi.ts": {
@@ -1290,8 +1290,8 @@
     "semantic_hash": "36a77cfc38ee141fdf545ca9a97325da"
   },
   "src/features/calling/useSessionExtensionFlow.ts": {
-    "mtime": 1782287776.6059687,
-    "ast_hash": "5e73823bc3ff4bcf6f6360c4aa3feb6a",
+    "mtime": 1782368221.952809,
+    "ast_hash": "a61ccf65fdcd40973343573ceda021ff",
     "semantic_hash": ""
   },
   "src/features/calling/useSessionPresence.ts": {
@@ -2065,8 +2065,8 @@
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/TransactionDetailScreen.tsx": {
-    "mtime": 1782366136.4051943,
-    "ast_hash": "b897cbbbd0e5a17ef83e7c95e055d2f8",
+    "mtime": 1782366742.3207662,
+    "ast_hash": "eefdf3b7919f100bbcaf028140b10c66",
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/TransactionsScreen.tsx": {
@@ -4665,8 +4665,13 @@
     "semantic_hash": ""
   },
   "docs/PAYMENT_FLOW_SIMPLE_GUIDE.md": {
-    "mtime": 1782366177.969964,
-    "ast_hash": "9bf9c7ac1369831dda0950020e942a6a",
+    "mtime": 1782368114.3836322,
+    "ast_hash": "ea74ed321f0b6991d5d0ed49ab7f6321",
+    "semantic_hash": ""
+  },
+  "src/features/payments/TraineeChargeBreakdown.tsx": {
+    "mtime": 1782366735.9358673,
+    "ast_hash": "b5566d588e658efa9782978fc2dcf00f",
     "semantic_hash": ""
   }
 }
