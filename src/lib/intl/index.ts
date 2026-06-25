@@ -7,6 +7,8 @@
  */
 
 export {
+  APP_DISPLAY_CURRENCY,
+  APP_DISPLAY_LOCALE,
   formatCurrency,
   formatCurrencyMinor,
   formatNumber,

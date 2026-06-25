@@ -93,8 +93,8 @@ export function ScheduleBookingCalendar({
       </View>
 
       <View style={styles.weekdayRow}>
-        {weekdayLabels.map((label) => (
-          <Text key={label} style={styles.weekdayLabel}>
+        {weekdayLabels.map((label, index) => (
+          <Text key={WEEKDAY_KEYS[index]} style={styles.weekdayLabel}>
             {label}
           </Text>
         ))}

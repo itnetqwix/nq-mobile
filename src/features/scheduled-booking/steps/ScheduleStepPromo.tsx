@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { radii, space, typography, useStaticStyles, useThemeColors } from "../../../theme";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import { useActiveCurrency, useCurrencyFormatter } from "../../../lib/intl";
 import {
   ScheduleActionFooter,
   ScheduleSection,
@@ -46,6 +47,7 @@ type Props = {
   sessionTimeSummary?: string;
   onNext: () => void;
   onSkip: () => void;
+  stepTransitioning?: boolean;
 };
 
 export function ScheduleStepPromo({
@@ -62,18 +64,23 @@ export function ScheduleStepPromo({
   sessionTimeSummary,
   onNext,
   onSkip,
+  stepTransitioning = false,
 }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const styles = useStyles();
+  const fmt = useCurrencyFormatter();
+  const currency = useActiveCurrency();
 
-  const appliedTotal = (promoResult?.final_amount ?? expectedPrice).toFixed(2);
+  const appliedTotal = promoResult?.final_amount ?? expectedPrice;
 
   const promoChipLabel = (p: VisiblePromo) =>
     p.display_label ||
     (p.discount_type === "percentage"
       ? t("scheduledBooking.promo.percentOff", { value: p.discount_value })
-      : t("scheduledBooking.promo.amountOff", { value: `$${p.discount_value}` }));
+      : t("scheduledBooking.promo.amountOff", {
+          value: fmt(p.discount_value, { currency }),
+        }));
 
   return (
     <View testID="schedule-step-promo" style={styles.root}>
@@ -87,12 +94,12 @@ export function ScheduleStepPromo({
         <ScheduleSessionSummary
           icon="calendar-outline"
           value={sessionTimeSummary}
-          hint={`${t("scheduledBooking.promo.sessionSubtotal")}: $${expectedPrice.toFixed(2)}`}
+          hint={`${t("scheduledBooking.promo.sessionSubtotal")}: ${fmt(expectedPrice, { currency })}`}
         />
       ) : (
         <ScheduleSessionSummary
           icon="cash-outline"
-          value={`${t("scheduledBooking.promo.sessionSubtotal")}: $${expectedPrice.toFixed(2)}`}
+          value={`${t("scheduledBooking.promo.sessionSubtotal")}: ${fmt(expectedPrice, { currency })}`}
         />
       )}
 
@@ -135,12 +142,14 @@ export function ScheduleStepPromo({
             <View style={styles.successRow}>
               <Ionicons name="checkmark-circle" size={18} color={c.success} />
               <Text style={styles.successText}>
-                {promoResult.display_label
-                  ? t("scheduledBooking.promo.appliedWithLabel", {
-                      total: `$${appliedTotal}`,
-                      label: promoResult.display_label,
-                    })
-                  : t("scheduledBooking.promo.applied", { total: `$${appliedTotal}` })}
+              {promoResult.display_label
+                ? t("scheduledBooking.promo.appliedWithLabel", {
+                    total: fmt(appliedTotal, { currency }),
+                    label: promoResult.display_label,
+                  })
+                : t("scheduledBooking.promo.applied", {
+                    total: fmt(appliedTotal, { currency }),
+                  })}
               </Text>
             </View>
           ) : null}
@@ -180,9 +189,15 @@ export function ScheduleStepPromo({
         testID="schedule-promo-continue"
         label={t("scheduledBooking.promo.continue")}
         onPress={onNext}
+        loading={stepTransitioning}
       />
 
-      <Pressable testID="schedule-promo-skip" style={styles.skipBtn} onPress={onSkip}>
+      <Pressable
+        testID="schedule-promo-skip"
+        style={styles.skipBtn}
+        onPress={onSkip}
+        disabled={stepTransitioning || promoValidating}
+      >
         <Text style={styles.skipText}>{t("scheduledBooking.promo.skip")}</Text>
       </Pressable>
     </View>

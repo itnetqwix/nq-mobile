@@ -83,6 +83,7 @@ export function ScheduledBookingWizardModal({ visible, trainer, onDismiss, onBoo
               smartSuggestionsLoading={w.smartScheduleLoading}
               onApplySuggestion={w.applySmartSuggestion}
               onNext={w.goNext}
+              stepTransitioning={w.stepTransitioning}
             />
           )}
 
@@ -98,6 +99,7 @@ export function ScheduledBookingWizardModal({ visible, trainer, onDismiss, onBoo
               trainerTimeLabel={w.trainerTimeLabel}
               onPickAnotherTime={w.returnToDateTime}
               onNext={w.goNext}
+              stepTransitioning={w.stepTransitioning}
             />
           )}
 
@@ -127,6 +129,7 @@ export function ScheduledBookingWizardModal({ visible, trainer, onDismiss, onBoo
               sessionTimeSummary={w.sessionTimeSummary}
               onNext={w.goNext}
               onSkip={w.goNext}
+              stepTransitioning={w.stepTransitioning}
             />
           )}
 

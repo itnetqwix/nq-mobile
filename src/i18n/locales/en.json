@@ -580,6 +580,55 @@
     "openArchivedA11y": "Open archived chat with {{name}}",
     "unarchiveA11y": "Unarchive chat with {{name}}"
   },
+  "pricing": {
+    "breakdown": {
+      "sessionSubtotal": "Session subtotal",
+      "discount": "Discount",
+      "walletPortion": "Wallet portion",
+      "cardPortion": "Card portion",
+      "totalCharged": "Total charged",
+      "free": "Free",
+      "feesHint": "Tap the info icon next to any line to see what it covers."
+    },
+    "chargeInfo": {
+      "sessionSubtotal": {
+        "title": "Session subtotal",
+        "body": "The coach's rate for the time you booked, before promos, platform fees, processing, or taxes."
+      },
+      "promoDiscount": {
+        "title": "Promo discount",
+        "body": "A limited-time reduction from a coach or platform promo code. It lowers what you pay before fees are calculated."
+      },
+      "platformFee": {
+        "title": "Platform fee",
+        "body": "Helps run NetQwix — scheduling, secure video, support, and keeping coaches and trainees connected."
+      },
+      "processingFee": {
+        "title": "Processing fee",
+        "body": "Covers card and payment-network costs so your checkout is secure and reliable."
+      },
+      "tax": {
+        "title": "Tax",
+        "body": "Sales tax or VAT required for your billing location, collected and remitted where applicable."
+      },
+      "surgeFee": {
+        "title": "Peak pricing",
+        "body": "An optional adjustment during high-demand windows so coaches can offer more availability when it's busiest."
+      },
+      "walletPortion": {
+        "title": "Wallet portion",
+        "body": "The part of this checkout paid from your NetQwix wallet balance instead of your card."
+      },
+      "cardPortion": {
+        "title": "Card portion",
+        "body": "The remaining amount charged to your card when you split payment with your wallet."
+      },
+      "totalCharged": {
+        "title": "Total charged",
+        "body": "The full amount you authorize at checkout, including session price, fees, taxes, and any promo savings."
+      }
+    }
+  },
   "wallet": {
     "title": "Wallet",
     "addFunds": "Add funds",
@@ -1377,12 +1426,12 @@
     },
     "calendar": {
       "mon": "M",
-      "tue": "T",
+      "tue": "Tu",
       "wed": "W",
-      "thu": "T",
+      "thu": "Th",
       "fri": "F",
-      "sat": "S",
-      "sun": "S",
+      "sat": "Sa",
+      "sun": "Su",
       "prevMonth": "Previous month",
       "nextMonth": "Next month",
       "horizonNote": "Showing availability for the next {{days}} days",

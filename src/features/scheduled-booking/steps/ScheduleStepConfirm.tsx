@@ -3,6 +3,7 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { radii, space, typography, useStaticStyles, useThemeColors } from "../../../theme";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import { useActiveCurrency, useCurrencyFormatter } from "../../../lib/intl";
 import { PricingBreakdownSummary } from "../../payments/PricingBreakdownSummary";
 import type { PricingQuote } from "../../payments/pricingTypes";
 import { chargeTotalDollars } from "../../payments/pricingTypes";
@@ -55,6 +56,8 @@ export function ScheduleStepConfirm({
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const styles = useStyles();
+  const fmt = useCurrencyFormatter();
+  const currency = useActiveCurrency();
 
   const clipsLabel =
     selectedClipIds.length === 0
@@ -96,12 +99,12 @@ export function ScheduleStepConfirm({
             <SummaryRow
               icon="pricetag-outline"
               label={t("scheduledBooking.confirm.subtotal")}
-              value={`$${expectedPrice.toFixed(2)}`}
+              value={fmt(expectedPrice, { currency })}
             />
             <SummaryRow
               icon="gift-outline"
               label={t("scheduledBooking.confirm.discount")}
-              value={`-$${(promoResult.discount_amount ?? 0).toFixed(2)}`}
+              value={`-${fmt(promoResult.discount_amount ?? 0, { currency })}`}
               valueColor={c.success}
             />
           </>

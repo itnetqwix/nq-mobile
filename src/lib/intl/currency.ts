@@ -24,8 +24,12 @@
 
 import * as Localization from "expo-localization";
 import i18n from "i18next";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
+
+/** NetQwix currently prices and displays trainee checkout in USD. */
+export const APP_DISPLAY_CURRENCY = "USD";
+export const APP_DISPLAY_LOCALE = "en-US";
 
 /**
  * BCP-47 → ISO-4217 currency map for our supported locales.
@@ -299,12 +303,14 @@ export function useCurrencyFormatter(): (
   amount: number | null | undefined,
   options?: FormatCurrencyOptions
 ) => string {
-  const { i18n: inst } = useTranslation();
-  const language = inst.language;
   return useCallback(
     (amount: number | null | undefined, options: FormatCurrencyOptions = {}) =>
-      formatCurrency(amount, { ...options, locale: options.locale ?? resolveFormattingLocale(language) }),
-    [language]
+      formatCurrency(amount, {
+        ...options,
+        currency: options.currency ?? APP_DISPLAY_CURRENCY,
+        locale: options.locale ?? APP_DISPLAY_LOCALE,
+      }),
+    []
   );
 }
 
@@ -313,13 +319,8 @@ export function useCurrencyFormatter(): (
  * surfaces that need to *display* the code itself or pass it back to the
  * server (top-up creation, withdraw requests).
  */
-export function useActiveCurrency(serverCurrency?: string | null): string {
-  const { i18n: inst } = useTranslation();
-  const language = inst.language;
-  return useMemo(() => {
-    if (serverCurrency) return serverCurrency.toUpperCase();
-    return getCurrencyForLocale(resolveFormattingLocale(language));
-  }, [serverCurrency, language]);
+export function useActiveCurrency(_serverCurrency?: string | null): string {
+  return APP_DISPLAY_CURRENCY;
 }
 
 /**

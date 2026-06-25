@@ -3,6 +3,7 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { radii, space, typography, useStaticStyles, useThemeColors } from "../../../theme";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import { useActiveCurrency, useCurrencyFormatter } from "../../../lib/intl";
 import { PricingBreakdownSummary } from "../../payments/PricingBreakdownSummary";
 import type { PricingQuote } from "../../payments/pricingTypes";
 import { chargeTotalDollars } from "../../payments/pricingTypes";
@@ -26,6 +27,7 @@ type Props = {
   trainerTimeLabel: string | null;
   onNext: () => void;
   onPickAnotherTime?: () => void;
+  stepTransitioning?: boolean;
 };
 
 export function ScheduleStepDuration({
@@ -39,10 +41,13 @@ export function ScheduleStepDuration({
   trainerTimeLabel,
   onNext,
   onPickAnotherTime,
+  stepTransitioning = false,
 }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const styles = useStyles();
+  const fmt = useCurrencyFormatter();
+  const currency = useActiveCurrency();
 
   const canContinue = availableDurations.includes(durationMinutes);
   const noDurations = availableDurations.length === 0;
@@ -137,7 +142,9 @@ export function ScheduleStepDuration({
           {hourlyRate > 0 ? (
             <ScheduleInfoChip
               icon="cash-outline"
-              message={t("scheduledBooking.duration.coachRate", { rate: `$${hourlyRate}` })}
+              message={t("scheduledBooking.duration.coachRate", {
+                rate: fmt(hourlyRate, { currency, maximumFractionDigits: 0 }),
+              })}
             />
           ) : null}
         </>
@@ -148,6 +155,7 @@ export function ScheduleStepDuration({
         label={t("scheduledBooking.duration.next")}
         onPress={onNext}
         disabled={!canContinue || noDurations}
+        loading={stepTransitioning}
         finePrint={t("scheduledBooking.duration.bufferNote", {
           buffer: SCHEDULED_BOOKING_BUFFER_MINUTES,
         })}

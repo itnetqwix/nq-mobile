@@ -12,8 +12,11 @@ import {
 } from "react-native";
 import { apiClient } from "../../../../api/client";
 import { API_ROUTES } from "../../../../config/apiRoutes";
-import { unwrapApiData } from "../../../../lib/http/unwrapApiData";
 import { getApiErrorMessage } from "../../../../lib/http/getApiErrorMessage";
+import {
+  parseCreatePaymentIntentResponse,
+  resolvePaymentIntentBookingType,
+} from "../../../../lib/payments/parseCreatePaymentIntentResponse";
 import { radii, space, useStaticStyles, useThemeColors } from "../../../../theme";
 import { useAuth } from "../../../auth/context/AuthContext";
 import { fetchSessionPricingQuote } from "../../../payments/fetchSessionPricingQuote";
@@ -106,7 +109,9 @@ export function WizardStepPayment({
   /** Server-side payment intent is denominated in this currency; trainee
    *  locale picks the symbol if the server didn't return one explicitly. */
   const activeCurrency = useActiveCurrency();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [setupError, setSetupError] = useState<string | null>(null);
+  const [paying, setPaying] = useState(false);
   const [paymentReady, setPaymentReady] = useState(false);
   const [pin, setPin] = useState("");
   const [pinSessionToken, setPinSessionToken] = useState<string | undefined>();
@@ -167,9 +172,13 @@ export function WizardStepPayment({
       if (shouldSkipPaymentIntent(payableAmount, expectedPrice) || amountDollars <= 0) {
         setPriceInfo({ amount: 0, skip: true });
         setPaymentReady(true);
+        setSetupError(null);
+        setLoading(false);
         return { skip: true };
       }
       setLoading(true);
+      setSetupError(null);
+      setPaymentReady(false);
       try {
         const trainerId = String((trainer as any)?._id ?? (trainer as any)?.userInfo?._id ?? "");
         const quote = await fetchSessionPricingQuote({
@@ -184,7 +193,7 @@ export function WizardStepPayment({
         setPricingQuote(quote);
 
         const isMixedCardLeg =
-          amountDollars < expectedPrice &&
+          amountDollars < payableAmount &&
           wallet.available > 0 &&
           payableAmount > 0 &&
           quote?.chargeTotalCents != null;
@@ -198,31 +207,29 @@ export function WizardStepPayment({
 
         const res = await apiClient.post(API_ROUTES.transaction.createPaymentIntent, {
           amount: amountDollars,
-          destination: trainerStripeId,
+          destination: trainerStripeId || undefined,
           commission,
-          customer: userStripeId,
-          couponCode: couponCode.trim().toLowerCase() || undefined,
-          _bookingType: bookingType,
+          couponCode: quote?.quoteId ? undefined : couponCode.trim().toLowerCase() || undefined,
+          _bookingType: resolvePaymentIntentBookingType(bookingType),
           trainer_id: trainerId,
           quoteId: quote?.quoteId,
           billingAddress: { country: billing.country, state: billing.state },
           ...(chargePortionCents != null ? { chargePortionCents } : {}),
         });
-        const data = unwrapApiData<{
-          skip?: boolean;
-          client_secret?: string;
-        }>(res);
-        if (data?.skip) {
-          setPriceInfo({ amount: 0, skip: true });
+        const parsed = parseCreatePaymentIntentResponse(res);
+        if (parsed.skip) {
+          setPriceInfo({ amount: 0, skip: true, quoteId: quote?.quoteId });
           setPaymentReady(true);
           return { skip: true, quoteId: quote?.quoteId };
         }
-        const clientSecret = data?.client_secret;
-        if (!clientSecret) throw new Error("No client secret returned.");
+        const clientSecret = parsed.client_secret;
+        if (!clientSecret) {
+          throw new Error("Payment could not be started. Please try again.");
+        }
         const chargeTotal =
           chargePortionCents != null
             ? chargePortionCents / 100
-            : amountDollars === expectedPrice && quote?.chargeTotalCents != null
+            : amountDollars === payableAmount && quote?.chargeTotalCents != null
               ? quote.chargeTotalCents / 100
               : amountDollars;
         setPriceInfo({
@@ -237,13 +244,14 @@ export function WizardStepPayment({
           merchantDisplayName: "NetQwix",
         });
         if (error) {
-          Alert.alert("Payment setup error", error.message);
-          return null;
+          throw new Error(error.message);
         }
         setPaymentReady(true);
         return { clientSecret, quoteId: quote?.quoteId };
       } catch (e: unknown) {
-        Alert.alert("Payment error", getApiErrorMessage(e, "Could not set up payment."));
+        const message = getApiErrorMessage(e, "Could not set up payment.");
+        setSetupError(message);
+        setPaymentReady(false);
         return null;
       } finally {
         setLoading(false);
@@ -254,7 +262,6 @@ export function WizardStepPayment({
       expectedPrice,
       trainerStripeId,
       commission,
-      userStripeId,
       couponCode,
       initPaymentSheet,
       bookingType,
@@ -265,7 +272,6 @@ export function WizardStepPayment({
       promoDiscountAmount,
       promoSponsorType,
       wallet.available,
-      payableAmount,
     ]
   );
 
@@ -297,13 +303,14 @@ export function WizardStepPayment({
     user,
   ]);
 
-  const createIntent = useCallback(() => {
-    void setupCardPayment(expectedPrice);
-  }, [setupCardPayment, expectedPrice]);
+  const bootstrapPayment = useCallback(() => {
+    const chargeBase = payableAmount > 0 ? payableAmount : expectedPrice;
+    void setupCardPayment(chargeBase);
+  }, [setupCardPayment, payableAmount, expectedPrice]);
 
   useEffect(() => {
-    createIntent();
-  }, [createIntent]);
+    bootstrapPayment();
+  }, [bootstrapPayment]);
 
   useEffect(() => {
     if (wallet.storedPinToken && !pinSessionToken) {
@@ -320,6 +327,7 @@ export function WizardStepPayment({
   );
 
   const handleWalletPay = useCallback(async () => {
+    setPaying(true);
     try {
       await wallet.refetchBalance();
       const gate = await resolveWalletPinSessionForPayment(
@@ -344,6 +352,8 @@ export function WizardStepPayment({
       });
     } catch (e: unknown) {
       Alert.alert("Wallet payment", getApiErrorMessage(e, "Could not verify PIN."));
+    } finally {
+      setPaying(false);
     }
   }, [
     wallet,
@@ -358,6 +368,7 @@ export function WizardStepPayment({
   ]);
 
   const handleMixedPay = useCallback(async () => {
+    setPaying(true);
     try {
       await wallet.refetchBalance();
       const mixedPinWallet = {
@@ -416,6 +427,8 @@ export function WizardStepPayment({
       });
     } catch (e: unknown) {
       Alert.alert("Payment", getApiErrorMessage(e, "Could not complete mixed payment."));
+    } finally {
+      setPaying(false);
     }
   }, [
     wallet,
@@ -436,22 +449,27 @@ export function WizardStepPayment({
       completePayment({ paymentIntentId: null, chargingPrice: 0 });
       return;
     }
-    const { error } = await presentPaymentSheet();
-    if (error) {
-      if (error.code !== "Canceled") {
-        Alert.alert("Payment failed", error.message);
+    setPaying(true);
+    try {
+      const { error } = await presentPaymentSheet();
+      if (error) {
+        if (error.code !== "Canceled") {
+          Alert.alert("Payment failed", error.message);
+        }
+        return;
       }
-      return;
+      const intentId = priceInfo?.clientSecret?.split("_secret_")[0] ?? null;
+      completePayment({
+        paymentIntentId: intentId,
+        chargingPrice: totalToCharge,
+        paymentMethod: "card",
+        quoteId: pricingQuote?.quoteId ?? priceInfo?.quoteId,
+        pricingQuote,
+      });
+    } finally {
+      setPaying(false);
     }
-    const intentId = priceInfo?.clientSecret?.split("_secret_")[0] ?? null;
-    completePayment({
-      paymentIntentId: intentId,
-      chargingPrice: totalToCharge,
-      paymentMethod: "card",
-      quoteId: pricingQuote?.quoteId ?? priceInfo?.quoteId,
-      pricingQuote,
-    });
-  }, [priceInfo, presentPaymentSheet, completePayment, totalToCharge, pricingQuote]);
+  }, [priceInfo, presentPaymentSheet, completePayment, totalToCharge, pricingQuote, payableAmount]);
 
   const isFree = payableAmount <= 0 || priceInfo?.skip === true;
   const hasDiscount =
@@ -513,16 +531,26 @@ export function WizardStepPayment({
 
       {loading && (
         <View style={styles.loadingBox}>
-          <ActivityIndicator color={c.iconPrimary} />
-          <Text style={sharedStepStyles.muted}>Setting up payment...</Text>
+          <ActivityIndicator color={c.iconPrimary} size="large" />
+          <Text style={sharedStepStyles.muted}>Preparing secure checkout…</Text>
         </View>
       )}
+
+      {!loading && setupError ? (
+        <View style={styles.errorBox}>
+          <Ionicons name="alert-circle-outline" size={22} color={c.danger} />
+          <Text style={styles.errorText}>{setupError}</Text>
+          <Pressable style={sharedStepStyles.primaryBtn} onPress={bootstrapPayment}>
+            <Text style={sharedStepStyles.primaryBtnText}>Try again</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       {!loading && payableAmount > 0 && !isFree ? (
         <SavedCardHint label={savedCard.label} loading={savedCard.isLoading} />
       ) : null}
 
-      {!loading && wallet.walletPayEnabled && !isFree && wallet.canPayWithWallet ? (
+      {!loading && !setupError && wallet.walletPayEnabled && !isFree && wallet.canPayWithWallet ? (
         <>
           {wallet.needsPinSetup ? (
             <WalletPinSetupBanner onSetupPin={onSetupPin} />
@@ -542,31 +570,43 @@ export function WizardStepPayment({
           </Text>
           <Pressable
             testID="wizard-payment-wallet"
-            style={sharedStepStyles.primaryBtn}
+            style={[sharedStepStyles.primaryBtn, paying && sharedStepStyles.btnDisabled]}
             onPress={handleWalletPay}
-            disabled={wallet.needsPinSetup}
+            disabled={wallet.needsPinSetup || paying}
           >
-            <Ionicons name="wallet-outline" size={18} color={c.brandTextOn} />
-            <Text style={sharedStepStyles.primaryBtnText}>
-              Pay {fmt(totalToCharge, { currency: activeCurrency })} with wallet (
-              {fmt(wallet.available, { currency: activeCurrency })} available)
-            </Text>
+            {paying ? (
+              <ActivityIndicator color={c.brandTextOn} />
+            ) : (
+              <>
+                <Ionicons name="wallet-outline" size={18} color={c.brandTextOn} />
+                <Text style={sharedStepStyles.primaryBtnText}>
+                  Pay {fmt(totalToCharge, { currency: activeCurrency })} with wallet (
+                  {fmt(wallet.available, { currency: activeCurrency })} available)
+                </Text>
+              </>
+            )}
           </Pressable>
           <Pressable
             testID="wizard-payment-card"
-            style={[sharedStepStyles.primaryBtn, styles.cardBtn]}
-            disabled={!paymentReady}
+            style={[sharedStepStyles.primaryBtn, styles.cardBtn, (!paymentReady || paying) && sharedStepStyles.btnDisabled]}
+            disabled={!paymentReady || paying}
             onPress={handlePay}
           >
-            <Ionicons name="card-outline" size={18} color={c.iconPrimary} />
-            <Text style={[sharedStepStyles.primaryBtnText, { color: c.iconPrimary }]}>
-              Pay with card
-            </Text>
+            {paying ? (
+              <ActivityIndicator color={c.iconPrimary} />
+            ) : (
+              <>
+                <Ionicons name="card-outline" size={18} color={c.iconPrimary} />
+                <Text style={[sharedStepStyles.primaryBtnText, { color: c.iconPrimary }]}>
+                  Pay with card
+                </Text>
+              </>
+            )}
           </Pressable>
         </>
       ) : null}
 
-      {!loading && canPayMixed ? (
+      {!loading && !setupError && canPayMixed ? (
         <>
           {wallet.needsPinSetup ? (
             <WalletPinSetupBanner onSetupPin={onSetupPin} />
@@ -586,20 +626,26 @@ export function WizardStepPayment({
           </Text>
           <Pressable
             testID="wizard-payment-mixed"
-            style={sharedStepStyles.primaryBtn}
-            disabled={loading || wallet.needsPinSetup}
+            style={[sharedStepStyles.primaryBtn, (loading || paying || wallet.needsPinSetup) && sharedStepStyles.btnDisabled]}
+            disabled={loading || paying || wallet.needsPinSetup}
             onPress={handleMixedPay}
           >
-            <Ionicons name="wallet-outline" size={18} color={c.brandTextOn} />
-            <Text style={sharedStepStyles.primaryBtnText}>
-              Pay {fmt(wallet.available, { currency: activeCurrency })} wallet +{" "}
-              {fmt(wallet.shortfall, { currency: activeCurrency })} card
-            </Text>
+            {paying ? (
+              <ActivityIndicator color={c.brandTextOn} />
+            ) : (
+              <>
+                <Ionicons name="wallet-outline" size={18} color={c.brandTextOn} />
+                <Text style={sharedStepStyles.primaryBtnText}>
+                  Pay {fmt(wallet.available, { currency: activeCurrency })} wallet +{" "}
+                  {fmt(wallet.shortfall, { currency: activeCurrency })} card
+                </Text>
+              </>
+            )}
           </Pressable>
         </>
       ) : null}
 
-      {!loading && wallet.walletPayEnabled && !isFree && !wallet.canPayWithWallet && wallet.shortfall > 0 && !canPayMixed ? (
+      {!loading && !setupError && wallet.walletPayEnabled && !isFree && !wallet.canPayWithWallet && wallet.shortfall > 0 && !canPayMixed ? (
         <View style={styles.shortfallBox}>
           <Text style={sharedStepStyles.muted}>
             Need {fmt(wallet.shortfall, { currency: activeCurrency })} more in your wallet.
@@ -612,45 +658,51 @@ export function WizardStepPayment({
         </View>
       ) : null}
 
-      {!loading && (
+      {!loading && !setupError && (
         <Pressable
           testID="wizard-payment-primary"
           style={[
             sharedStepStyles.primaryBtn,
-            (!paymentReady && !isFree && !(wallet.canPayWithWallet && wallet.walletPayEnabled)) &&
+            ((!paymentReady && !isFree && !(wallet.canPayWithWallet && wallet.walletPayEnabled)) ||
+              paying) &&
               sharedStepStyles.btnDisabled,
             wallet.canPayWithWallet && wallet.walletPayEnabled && !isFree && styles.cardBtn,
           ]}
-          disabled={!paymentReady && !isFree && !(wallet.canPayWithWallet && wallet.walletPayEnabled)}
+          disabled={
+            paying ||
+            (!paymentReady && !isFree && !(wallet.canPayWithWallet && wallet.walletPayEnabled))
+          }
           onPress={handlePay}
         >
-          <Ionicons
-            name={isFree ? "checkmark-circle" : "card-outline"}
-            size={18}
-            color={wallet.canPayWithWallet && !isFree ? c.iconPrimary : c.brandTextOn}
-          />
-          <Text
-            style={[
-              sharedStepStyles.primaryBtnText,
-              wallet.canPayWithWallet && !isFree && { color: c.iconPrimary },
-            ]}
-          >
-            {isFree
-              ? "Continue (free)"
-              : wallet.canPayWithWallet && wallet.walletPayEnabled
-                ? "Pay with card"
-                : `Pay ${fmt(payableAmount, { currency: activeCurrency })}`}
-          </Text>
+          {paying ? (
+            <ActivityIndicator
+              color={wallet.canPayWithWallet && !isFree ? c.iconPrimary : c.brandTextOn}
+            />
+          ) : (
+            <>
+              <Ionicons
+                name={isFree ? "checkmark-circle" : "card-outline"}
+                size={18}
+                color={wallet.canPayWithWallet && !isFree ? c.iconPrimary : c.brandTextOn}
+              />
+              <Text
+                style={[
+                  sharedStepStyles.primaryBtnText,
+                  wallet.canPayWithWallet && !isFree && { color: c.iconPrimary },
+                ]}
+              >
+                {isFree
+                  ? "Continue (free)"
+                  : wallet.canPayWithWallet && wallet.walletPayEnabled
+                    ? "Pay with card"
+                    : `Pay ${fmt(payableAmount, { currency: activeCurrency })}`}
+              </Text>
+            </>
+          )}
         </Pressable>
       )}
 
-      {/**
-       * Apple Pay / Google Pay sits *below* the card CTA so it doesn't
-       * out-compete the primary action for shoppers that don't have a
-       * platform wallet set up. The button hides itself when unsupported,
-       * so users on plain Android phones / web don't see an empty row.
-       */}
-      {!loading && !isFree && priceInfo?.clientSecret ? (
+      {!loading && !setupError && !isFree && priceInfo?.clientSecret ? (
         <PlatformPayButtonRow
           clientSecret={priceInfo.clientSecret}
           amount={totalToCharge}
@@ -698,7 +750,21 @@ function usePaymentStyles() {
       loadingBox: {
         alignItems: "center",
         gap: 8,
-        paddingVertical: space.md,
+        paddingVertical: space.lg,
+      },
+      errorBox: {
+        alignItems: "center",
+        gap: space.sm,
+        padding: space.md,
+        borderRadius: radii.md,
+        backgroundColor: palette.surfaceMuted,
+        borderWidth: 1,
+        borderColor: palette.danger + "44",
+      },
+      errorText: {
+        color: palette.text,
+        textAlign: "center",
+        lineHeight: 20,
       },
       cardBtn: {
         backgroundColor: palette.surfaceElevated,

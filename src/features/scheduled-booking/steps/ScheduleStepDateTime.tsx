@@ -53,6 +53,7 @@ type Props = {
   smartSuggestionsLoading?: boolean;
   onApplySuggestion?: (suggestion: SmartScheduleSuggestion) => void;
   onNext: () => void;
+  stepTransitioning?: boolean;
 };
 
 const PERIOD_ICONS: Record<TimeOfDayGroup, keyof typeof Ionicons.glyphMap> = {
@@ -80,6 +81,7 @@ export function ScheduleStepDateTime({
   smartSuggestionsLoading = false,
   onApplySuggestion,
   onNext,
+  stepTransitioning = false,
 }: Props) {
   const { t } = useAppTranslation();
   const c = useThemeColors();
@@ -333,6 +335,7 @@ export function ScheduleStepDateTime({
         label={t("scheduledBooking.datetime.continue")}
         onPress={onNext}
         disabled={!canContinue}
+        loading={stepTransitioning}
         finePrint={t("scheduledBooking.datetime.bufferNote", {
           buffer: SCHEDULED_BOOKING_BUFFER_MINUTES,
         })}

@@ -106,6 +106,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
   const [pricingQuote, setPricingQuote] = useState<PricingQuote | null>(null);
   const [durationPreviewQuote, setDurationPreviewQuote] = useState<PricingQuote | null>(null);
   const [trainerTimezone, setTrainerTimezone] = useState<string | null>(null);
+  const [stepTransitioning, setStepTransitioning] = useState(false);
 
   const tid = trainerIdOf(trainer);
   const smartScheduleQuery = useQuery({
@@ -576,6 +577,8 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
   const goNext = useCallback(() => {
     const i = scheduledStepIndex(step);
     void (async () => {
+      setStepTransitioning(true);
+      try {
       if (step === "datetime") {
         if (!selectedStart) {
           Alert.alert(
@@ -646,6 +649,9 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
         }
       }
       if (i < SCHEDULED_WIZARD_STEPS.length - 1) setStep(SCHEDULED_WIZARD_STEPS[i + 1]!);
+      } finally {
+        setStepTransitioning(false);
+      }
     })();
   }, [
     step,
@@ -967,6 +973,7 @@ export function useScheduledBookingWizard({ visible, trainer, onDismiss, onBooke
     visiblePromos,
     goNext,
     goBack,
+    stepTransitioning,
     returnToDateTime,
     advanceFromPayment,
     handlePaymentComplete,

@@ -380,8 +380,8 @@
     "semantic_hash": "916ca154654a6abc299d88c18aae985a"
   },
   "src/features/ai/AIAssistantScreen.tsx": {
-    "mtime": 1782384151.964078,
-    "ast_hash": "4580988fd8ee9567a36a5b58bc6e2c5e",
+    "mtime": 1782384249.852202,
+    "ast_hash": "4a4061115ed2ca3f8f72d4e5a95b4c5b",
     "semantic_hash": ""
   },
   "src/features/ai/AIFloatingButton.tsx": {
@@ -2190,9 +2190,9 @@
     "semantic_hash": ""
   },
   "src/features/instant-lesson/booking-wizard/WizardHeader.tsx": {
-    "mtime": 1778617554.4688158,
-    "ast_hash": "851ff3d061b8934b186e806e6e49c913",
-    "semantic_hash": "851ff3d061b8934b186e806e6e49c913"
+    "mtime": 1782384699.1127446,
+    "ast_hash": "a965a27eef74e9d5faba25e81b6fe30d",
+    "semantic_hash": ""
   },
   "src/features/instant-lesson/booking-wizard/WizardTitleBlock.tsx": {
     "mtime": 1781185847.486377,
@@ -2240,8 +2240,8 @@
     "semantic_hash": "12cf85068b4de9aadfc14b00aea1e71d"
   },
   "src/features/instant-lesson/booking-wizard/steps/WizardStepPayment.tsx": {
-    "mtime": 1782365312.719945,
-    "ast_hash": "5808f9a9af66810701c84ac1c303b629",
+    "mtime": 1782386283.4665577,
+    "ast_hash": "0a0ecb87d502cf20b4fcf77ccba1dedb",
     "semantic_hash": ""
   },
   "src/features/instant-lesson/booking-wizard/types.ts": {
@@ -2510,8 +2510,8 @@
     "semantic_hash": ""
   },
   "src/features/scheduled-booking/ScheduledBookingWizardModal.tsx": {
-    "mtime": 1782384209.498093,
-    "ast_hash": "58af64a671e1311d1ddd13998c774856",
+    "mtime": 1782386327.9316745,
+    "ast_hash": "12d0329228bb8c17e8bfd691e5525575",
     "semantic_hash": ""
   },
   "src/features/scheduled-booking/constants.ts": {
@@ -2525,23 +2525,23 @@
     "semantic_hash": ""
   },
   "src/features/scheduled-booking/steps/ScheduleStepConfirm.tsx": {
-    "mtime": 1782297029.4234462,
-    "ast_hash": "763a01d67f1227b85f10a2b8ffc477f5",
+    "mtime": 1782384693.092005,
+    "ast_hash": "ea59182265171807388747728175cd42",
     "semantic_hash": ""
   },
   "src/features/scheduled-booking/steps/ScheduleStepDateTime.tsx": {
-    "mtime": 1782374020.6539214,
-    "ast_hash": "10cc36ca804404b0441fd0f055a74fc2",
+    "mtime": 1782386317.5000231,
+    "ast_hash": "f2e1e11c48508159c049231d480fde5e",
     "semantic_hash": ""
   },
   "src/features/scheduled-booking/steps/ScheduleStepDuration.tsx": {
-    "mtime": 1782297025.3936007,
-    "ast_hash": "65284f3f229e00137197ffe7bc260764",
+    "mtime": 1782386322.1686099,
+    "ast_hash": "40703977d68920710be6b3174584a3b3",
     "semantic_hash": ""
   },
   "src/features/scheduled-booking/steps/ScheduleStepPromo.tsx": {
-    "mtime": 1782297027.353359,
-    "ast_hash": "42be618ce5c305007e2eb96565510666",
+    "mtime": 1782386326.7806482,
+    "ast_hash": "b4fef54b59cb45755c7a369fe2b825f1",
     "semantic_hash": ""
   },
   "src/features/scheduled-booking/timeSlotUtils.ts": {
@@ -2555,8 +2555,8 @@
     "semantic_hash": "384bdbb2c671734f662e2481ea30c12b"
   },
   "src/features/scheduled-booking/useScheduledBookingWizard.ts": {
-    "mtime": 1782374064.2587838,
-    "ast_hash": "723267f42dd12a8134c4c36dde35cfa0",
+    "mtime": 1782386304.7195566,
+    "ast_hash": "d9ddd10b9a9689202c48ae2bacfe0140",
     "semantic_hash": ""
   },
   "src/features/sessions/SessionActionModal.tsx": {
@@ -3000,8 +3000,8 @@
     "semantic_hash": ""
   },
   "src/i18n/locales/en.json": {
-    "mtime": 1782381679.725452,
-    "ast_hash": "251018e0cfb383b987212f3f922aa229",
+    "mtime": 1782384710.1524446,
+    "ast_hash": "5c81d7a437aa6eee815ea3a1ec36b6d9",
     "semantic_hash": ""
   },
   "src/i18n/locales/es.json": {
@@ -4700,8 +4700,8 @@
     "semantic_hash": ""
   },
   "src/features/scheduled-booking/components/ScheduleBookingCalendar.tsx": {
-    "mtime": 1782373956.4880638,
-    "ast_hash": "001cf3a6ba0167b8df1afa32862a59fd",
+    "mtime": 1782384637.7422187,
+    "ast_hash": "e83afcc66497abc73ac6ffe1aae8a454",
     "semantic_hash": ""
   },
   "src/features/scheduled-booking/hooks/useMonthAvailabilityMap.ts": {
@@ -4752,6 +4752,26 @@
   "src/lib/keyboard/useKeyboardScrollPadding.ts": {
     "mtime": 1782384091.5662434,
     "ast_hash": "2c00f4dc5200d41a2d0d504dd442a477",
+    "semantic_hash": ""
+  },
+  "src/features/scheduled-booking/components/ScheduleStepChrome.tsx": {
+    "mtime": 1782384586.1755283,
+    "ast_hash": "89cc4f54f7ff6c38e90bde0282f1c7e1",
+    "semantic_hash": ""
+  },
+  "src/features/scheduled-booking/lib/groupTimeSlots.ts": {
+    "mtime": 1782384558.7958965,
+    "ast_hash": "d71c0910aadfbb2d932dba93598a154d",
+    "semantic_hash": ""
+  },
+  "src/lib/payments/__tests__/parseCreatePaymentIntentResponse.test.ts": {
+    "mtime": 1782386340.6533735,
+    "ast_hash": "549648a842d10924e4c0191f2d336cb8",
+    "semantic_hash": ""
+  },
+  "src/lib/payments/parseCreatePaymentIntentResponse.ts": {
+    "mtime": 1782386203.3977373,
+    "ast_hash": "79d05c0a6fe4b74923875198fbc6805a",
     "semantic_hash": ""
   }
 }
