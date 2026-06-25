@@ -28,6 +28,7 @@ import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { lockerMutated } from "../../../store/actions/cacheInvalidation";
 import { useAppDispatch } from "../../../store/hooks";
 import { LockerListShell } from "../components/locker/LockerListShell";
+import { LockerBrandFooter } from "../components/locker/LockerBrandFooter";
 import { LockerViewerModal, type LockerViewerMode, type LockerViewerPlaylistItem } from "../components/locker/LockerViewerModal";
 import { ClipUploadModal } from "../components/locker/ClipUploadModal";
 import { LibrarySubmissionSheet } from "../../clips/components/LibrarySubmissionSheet";
@@ -765,6 +766,7 @@ export function ClipsScreen() {
         toolbar={toolbar}
         applyTopSafeArea={false}
         renderSkeletonRow={() => <ClipSectionSkeleton rows={3} />}
+        listFooter={<LockerBrandFooter />}
       >
         {tab === "mine" && shareMode ? (
           <View style={styles.shareBar}>

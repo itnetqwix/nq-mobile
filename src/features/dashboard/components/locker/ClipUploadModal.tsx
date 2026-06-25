@@ -167,7 +167,7 @@ export function ClipUploadModal({
   const [batchProgress, setBatchProgress] = useState<BatchUploadProgress | null>(null);
   const [categoryAccordionOpen, setCategoryAccordionOpen] = useState(true);
   const [subcategoryAccordionOpen, setSubcategoryAccordionOpen] = useState(false);
-  const [keyboardInset, setKeyboardInset] = useState(0);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
   const batchVideos = useMemo(() => {
@@ -369,10 +369,8 @@ export function ClipUploadModal({
   useEffect(() => {
     const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
     const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-    const onShow = Keyboard.addListener(showEvent, (e) => {
-      setKeyboardInset(e.endCoordinates.height);
-    });
-    const onHide = Keyboard.addListener(hideEvent, () => setKeyboardInset(0));
+    const onShow = Keyboard.addListener(showEvent, () => setKeyboardOpen(true));
+    const onHide = Keyboard.addListener(hideEvent, () => setKeyboardOpen(false));
     return () => {
       onShow.remove();
       onHide.remove();
@@ -802,16 +800,21 @@ export function ClipUploadModal({
     else onClose();
   };
 
-  const footerBottomPad = renderAsScreen
-    ? floatingTabBarBottomInset(insets.bottom) + space.sm
-    : Math.max(insets.bottom, space.md);
-  const scrollBottomPad = footerBottomPad + 100 + (keyboardInset > 0 ? keyboardInset : 0);
+  const tabBarClearance = renderAsScreen
+    ? floatingTabBarBottomInset(insets.bottom)
+    : 0;
+  const footerBottomPad = keyboardOpen
+    ? space.sm
+    : renderAsScreen
+      ? tabBarClearance
+      : Math.max(insets.bottom, space.md);
+  const scrollBottomPad = space.lg;
 
   const shell = (
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={renderAsScreen ? insets.top + 64 : insets.top + 8}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={renderAsScreen ? insets.top + 56 : insets.top + 8}
       >
         <View style={[styles.header, { paddingTop: Math.max(insets.top, space.md) }]}>
           {renderAsScreen ? (

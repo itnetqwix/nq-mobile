@@ -16,6 +16,7 @@ import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { isLikelyAudio, isLikelyPdf } from "../../../lib/clipMediaUrl";
 import { postReportsGetAll } from "../../home/api/homeApi";
 import { LockerListShell } from "../components/locker/LockerListShell";
+import { LockerBrandFooter } from "../components/locker/LockerBrandFooter";
 import { LockerViewerModal, type LockerViewerMode } from "../components/locker/LockerViewerModal";
 import { SessionGamePlanModal } from "../../calling/components/SessionGamePlanModal";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
@@ -254,6 +255,7 @@ export function GamePlansScreen() {
         onRefresh={onRefresh}
         applyTopSafeArea={false}
         renderSkeletonRow={() => <GamePlanCardSkeleton />}
+        listFooter={<LockerBrandFooter />}
       >
         {reportSections.length === 0 ? (
           <EmptyState

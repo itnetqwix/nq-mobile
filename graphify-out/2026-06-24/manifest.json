@@ -40,8 +40,8 @@
     "semantic_hash": "6d51d67e46e2ed85073ef89d33a3062c"
   },
   "src/app/AppRoot.tsx": {
-    "mtime": 1782300000.148118,
-    "ast_hash": "43bcbb70d149a5a1b597a0ce3f764c6a",
+    "mtime": 1782304825.54155,
+    "ast_hash": "c3e3b4900e28f7cf10db9bd0eed87f47",
     "semantic_hash": ""
   },
   "src/app/ThemedNavigationContainer.tsx": {
@@ -1705,8 +1705,8 @@
     "semantic_hash": "627bd09677c9eef9a5c8d23a485b8fff"
   },
   "src/features/dashboard/components/locker/ClipUploadModal.tsx": {
-    "mtime": 1782297206.1177037,
-    "ast_hash": "a096f9b97d946bd261b0d85b565c252f",
+    "mtime": 1782304881.1942904,
+    "ast_hash": "7ab78a683e843ceba817e2bdbe755df1",
     "semantic_hash": ""
   },
   "src/features/dashboard/components/locker/ClipUploadPrepareModal.tsx": {
@@ -1835,8 +1835,8 @@
     "semantic_hash": "ddfcd370c44bf623fb9516b09261f5b2"
   },
   "src/features/dashboard/components/trainer/TrainerRecentTraineesSection.tsx": {
-    "mtime": 1782303318.1747818,
-    "ast_hash": "b95aa29e43d92bc8faf0135e389aff21",
+    "mtime": 1782304806.6539774,
+    "ast_hash": "8c6aed02a9f133fdc71d2a53f5751201",
     "semantic_hash": ""
   },
   "src/features/dashboard/components/trainer/TrainerReviewsSheet.tsx": {
@@ -1960,8 +1960,8 @@
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/ClipsScreen.tsx": {
-    "mtime": 1782303358.928152,
-    "ast_hash": "d0a66a2ab8c55b11bc865acee56fca40",
+    "mtime": 1782304857.6732652,
+    "ast_hash": "586049305a43326f257ef5d8383be567",
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/CommunityScreen.tsx": {
@@ -3000,8 +3000,8 @@
     "semantic_hash": ""
   },
   "src/i18n/locales/en.json": {
-    "mtime": 1782303343.4341946,
-    "ast_hash": "c5e4c8bf52cdf3490d7af188a82e4087",
+    "mtime": 1782304862.3797863,
+    "ast_hash": "48d4af6e39fca3468fff1c6c90a6d182",
     "semantic_hash": ""
   },
   "src/i18n/locales/es.json": {
@@ -3665,9 +3665,9 @@
     "semantic_hash": "bdee6b234ed27d9b7055c9a2d4d499b7"
   },
   "src/theme/typography.ts": {
-    "mtime": 1779896677.8359635,
-    "ast_hash": "dbb5c81533d0a2acb05bcd49e2e0690b",
-    "semantic_hash": "dbb5c81533d0a2acb05bcd49e2e0690b"
+    "mtime": 1782304803.3838081,
+    "ast_hash": "0b62fde26ac825c1ab80346285e22aa7",
+    "semantic_hash": ""
   },
   "src/theme/useStaticStyles.ts": {
     "mtime": 1779045168.1909215,
@@ -3780,8 +3780,8 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1782299281.9683726,
-    "ast_hash": "b3f92fee579afc198830ce5107bdf5a3",
+    "mtime": 1782304770.578451,
+    "ast_hash": "f7342d566456f4d26faeeed89fde9899",
     "semantic_hash": ""
   },
   "scripts/android-dev-env.sh": {
@@ -4652,6 +4652,11 @@
   "src/lib/clips/traineeClipGroups.ts": {
     "mtime": 1782303309.190824,
     "ast_hash": "f49426b9f942f99cdbfcf9d08592ba1c",
+    "semantic_hash": ""
+  },
+  "src/theme/fonts.ts": {
+    "mtime": 1782304792.264453,
+    "ast_hash": "44836e0a4f2be65efd9793ae8d242a2b",
     "semantic_hash": ""
   }
 }

@@ -9,6 +9,7 @@ import { radii, space, typography, useThemeColors, useThemedStyles } from "../..
 import { getClipPlaybackUrl, isLikelyPdf } from "../../../lib/clipMediaUrl";
 import { postGetAllSavedSessions } from "../../home/api/homeApi";
 import { LockerListShell } from "../components/locker/LockerListShell";
+import { LockerBrandFooter } from "../components/locker/LockerBrandFooter";
 import { LockerViewerModal, type LockerViewerMode } from "../components/locker/LockerViewerModal";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
@@ -84,6 +85,7 @@ export function SavedLessonsScreen() {
         onRetry={() => void savedQ.refetch()}
         refreshing={savedQ.isRefetching}
         onRefresh={onRefresh}
+        listFooter={<LockerBrandFooter />}
       >
         {(savedQ.data ?? []).length === 0 ? (
           <EmptyState

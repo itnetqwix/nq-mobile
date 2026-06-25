@@ -1705,8 +1705,8 @@
     "semantic_hash": "627bd09677c9eef9a5c8d23a485b8fff"
   },
   "src/features/dashboard/components/locker/ClipUploadModal.tsx": {
-    "mtime": 1782304881.1942904,
-    "ast_hash": "7ab78a683e843ceba817e2bdbe755df1",
+    "mtime": 1782305448.099707,
+    "ast_hash": "2a79db317e327b6ef64b544f6822fa3e",
     "semantic_hash": ""
   },
   "src/features/dashboard/components/locker/ClipUploadPrepareModal.tsx": {
@@ -1720,8 +1720,8 @@
     "semantic_hash": "f269d71d4ab74bb29f30e1e73ed31c5b"
   },
   "src/features/dashboard/components/locker/LockerListShell.tsx": {
-    "mtime": 1781441678.6936235,
-    "ast_hash": "83624a35a940f427d95dba0b7d4ec93a",
+    "mtime": 1782305413.8760014,
+    "ast_hash": "d0ef33b68a89b1c7b36222010a116d50",
     "semantic_hash": ""
   },
   "src/features/dashboard/components/locker/LockerViewerModal.tsx": {
@@ -1960,13 +1960,13 @@
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/ClipsScreen.tsx": {
-    "mtime": 1782304857.6732652,
-    "ast_hash": "586049305a43326f257ef5d8383be567",
+    "mtime": 1782305426.354627,
+    "ast_hash": "f4ef0d3f5700da146e8736d33bff6bad",
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/CommunityScreen.tsx": {
-    "mtime": 1781435814.1103482,
-    "ast_hash": "6e1b093c57376d8e73c4ab5815c33702",
+    "mtime": 1782305508.8586814,
+    "ast_hash": "f422e6a89c5e56c819f2d8f1984ff593",
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/ContactUsScreen.tsx": {
@@ -1995,8 +1995,8 @@
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/GamePlansScreen.tsx": {
-    "mtime": 1782298481.344348,
-    "ast_hash": "ee4449b76ee4834a25e84fcf81798023",
+    "mtime": 1782305433.7882226,
+    "ast_hash": "eb77bceb816fff7ee68ef3467a658126",
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/GuestDiscoverHomeScreen.tsx": {
@@ -2040,8 +2040,8 @@
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/SavedLessonsScreen.tsx": {
-    "mtime": 1781766664.5810668,
-    "ast_hash": "a61aec28c8e38f84a9f1ee7549837923",
+    "mtime": 1782305435.4359522,
+    "ast_hash": "44bb51f911e0289b281ba84b60facabc",
     "semantic_hash": ""
   },
   "src/features/dashboard/screens/SettingsScreen.tsx": {
@@ -3000,8 +3000,8 @@
     "semantic_hash": ""
   },
   "src/i18n/locales/en.json": {
-    "mtime": 1782304862.3797863,
-    "ast_hash": "48d4af6e39fca3468fff1c6c90a6d182",
+    "mtime": 1782305519.612258,
+    "ast_hash": "0a32c56f3785c82dff82caa8f5028812",
     "semantic_hash": ""
   },
   "src/i18n/locales/es.json": {
@@ -4657,6 +4657,11 @@
   "src/theme/fonts.ts": {
     "mtime": 1782304792.264453,
     "ast_hash": "44836e0a4f2be65efd9793ae8d242a2b",
+    "semantic_hash": ""
+  },
+  "src/features/dashboard/components/locker/LockerBrandFooter.tsx": {
+    "mtime": 1782305423.54483,
+    "ast_hash": "3a9fddd15cb29b3b1ba4d8afd05239ae",
     "semantic_hash": ""
   }
 }

@@ -27,6 +27,8 @@ type Props = {
   skeletonRows?: number;
   /** Override the per-row skeleton — defaults to `ClipCardSkeleton`. */
   renderSkeletonRow?: SkeletonGroupProps["renderRow"];
+  /** Optional branded footer (reduces default bottom padding). */
+  listFooter?: React.ReactNode;
   /** When false, skip top safe-area padding (parent stack header already applies insets). */
   applyTopSafeArea?: boolean;
 };
@@ -43,12 +45,13 @@ export function LockerListShell({
   contentStyle,
   skeletonRows = 3,
   renderSkeletonRow,
+  listFooter,
   applyTopSafeArea = true,
 }: Props) {
   const c = useThemeColors();
   const insets = useSafeAreaInsets();
   const morph = useMorphRefreshBundle(onRefresh, refreshing);
-  const bottomPad = useFloatingTabBarBottomInset(space.md);
+  const bottomPad = useFloatingTabBarBottomInset(listFooter ? 0 : space.md);
   const topPad = applyTopSafeArea ? Math.max(insets.top, space.sm) : 0;
   const styles = useThemedStyles((palette) =>
     StyleSheet.create({
@@ -136,6 +139,7 @@ export function LockerListShell({
         }
       >
         {children}
+        {listFooter}
       </ScrollView>
     </View>
   );
