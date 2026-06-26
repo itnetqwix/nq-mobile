@@ -1,5 +1,6 @@
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
+import { LEGAL_RECONSENT_SLUGS, type CmsLegalSlug } from "./cmsApi";
 
 export type LegalAcceptanceStatus = {
   required: Array<{ slug: string; version: number }>;
@@ -31,7 +32,7 @@ export async function acceptLegalDocuments(): Promise<LegalAcceptanceStatus | nu
 
 export function readUserLegalVersion(
   user: Record<string, unknown> | null | undefined,
-  slug: "terms" | "privacy"
+  slug: CmsLegalSlug
 ): number {
   const acceptances = user?.legal_acceptances as
     | Record<string, { version?: number }>
@@ -43,9 +44,9 @@ export function readUserLegalVersion(
 export function pendingLegalSlugsFromManifest(
   user: Record<string, unknown> | null | undefined,
   manifestLegal: Array<{ slug: string; version: number }> | undefined
-): Array<"terms" | "privacy"> {
-  const pending: Array<"terms" | "privacy"> = [];
-  for (const slug of ["terms", "privacy"] as const) {
+): CmsLegalSlug[] {
+  const pending: CmsLegalSlug[] = [];
+  for (const slug of LEGAL_RECONSENT_SLUGS) {
     const required = manifestLegal?.find((l) => l.slug === slug)?.version ?? 0;
     const accepted = readUserLegalVersion(user, slug);
     if (required > 0 && accepted < required) pending.push(slug);

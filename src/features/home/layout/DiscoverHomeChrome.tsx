@@ -21,7 +21,19 @@ import { useMarketplaceTopPadding } from "./marketplaceLayout";
 import { PublicSocialLinksRow } from "../../../components/social/PublicSocialLinksRow";
 import { hasPublicSocialLinks, getSocialLinksFromUser } from "../../../lib/social/socialLinks";
 
-const PROFILE_AVATAR_SIZE = 96;
+const PROFILE_AVATAR_SIZE = 88;
+
+/** Time-aware greeting eyebrow shown above the member name. */
+function useTimeGreeting(isGuest: boolean): string {
+  const { t } = useAppTranslation();
+  if (isGuest) {
+    return t("discoverHome.greetingGuest", { defaultValue: "Welcome to NetQwix" });
+  }
+  const hour = new Date().getHours();
+  if (hour < 12) return t("discoverHome.greetingMorning", { defaultValue: "Good morning" });
+  if (hour < 17) return t("discoverHome.greetingAfternoon", { defaultValue: "Good afternoon" });
+  return t("discoverHome.greetingEvening", { defaultValue: "Good evening" });
+}
 
 type Props = {
   /** @deprecated Use profileName in the profile band. Kept for callers that still pass it. */
@@ -214,10 +226,10 @@ function TraineeProfileMeta({
           accessibilityLabel={t("traineeDiscover.walletA11y")}
         >
           <Ionicons name="wallet-outline" size={14} color={c.brandNavy} />
-          <Text style={[styles.walletValue, text.caption, { color: c.text }]} numberOfLines={1}>
+          <Text style={[styles.walletValue, text.caption, { color: c.brandNavy }]} numberOfLines={1}>
             {walletBalanceLabel}
           </Text>
-          <Ionicons name="chevron-forward" size={14} color={c.textMuted} />
+          <Ionicons name="chevron-forward" size={14} color={c.brandNavy} />
         </Pressable>
       ) : null}
     </View>
@@ -265,10 +277,10 @@ function useMetaStyles() {
       },
       sublineText: { fontWeight: "600" },
       walletPill: {
-        backgroundColor: palette.surfaceElevated,
-        borderColor: palette.border,
+        backgroundColor: palette.brandSubtle,
+        borderColor: palette.brandSubtle,
       },
-      walletValue: { fontWeight: "700", flexShrink: 1 },
+      walletValue: { fontWeight: "800", flexShrink: 1 },
     })
   );
 }
@@ -305,6 +317,9 @@ function useChromeStyles() {
         alignItems: "center",
         gap: space.md,
       },
+      avatarWrap: {
+        position: "relative",
+      },
       avatarRing: {
         padding: 3,
         borderRadius: radii.pill,
@@ -312,10 +327,24 @@ function useChromeStyles() {
         borderColor: c.brandAccent,
         backgroundColor: palette.surface,
       },
+      statusDot: {
+        position: "absolute",
+        right: 2,
+        bottom: 2,
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        borderWidth: 3,
+        borderColor: palette.surfaceElevated,
+      },
       profileCol: {
         flex: 1,
         minWidth: 0,
         justifyContent: "center",
+      },
+      greeting: {
+        fontWeight: "600",
+        marginBottom: 2,
       },
       nameRow: {
         flexDirection: "row",
@@ -383,14 +412,26 @@ export function DiscoverHomeChrome({
   const isGuest = role === "guest";
 
   const displayName = profileName?.trim() || t("dashboardHome.userDefault", { defaultValue: "Member" });
+  const greeting = useTimeGreeting(isGuest);
   const roleLabel = isTrainer
     ? t("trainerDashboard.roleTrainer")
     : isGuest
       ? t("guest.exploringAsGuest")
       : t("traineeDiscover.roleTrainee");
 
+  // Only trainers managing their own availability get a live status indicator.
+  const showStatusDot = isTrainer && onAvailabilityToggle != null;
+  const statusColor = showAsOnline ? c.success : c.textMuted;
+
   const avatarNode = (
-    <HomeUserAvatar uri={profilePicture} name={displayName} size={PROFILE_AVATAR_SIZE} />
+    <View style={styles.avatarWrap}>
+      <View style={styles.avatarRing}>
+        <HomeUserAvatar uri={profilePicture} name={displayName} size={PROFILE_AVATAR_SIZE} />
+      </View>
+      {showStatusDot ? (
+        <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+      ) : null}
+    </View>
   );
 
   const avatar = onPressProfile ? (
@@ -398,12 +439,11 @@ export function DiscoverHomeChrome({
       onPress={onPressProfile}
       accessibilityRole="button"
       accessibilityLabel={t("traineeDiscover.profileA11y")}
-      style={styles.avatarRing}
     >
       {avatarNode}
     </Pressable>
   ) : (
-    <View style={styles.avatarRing}>{avatarNode}</View>
+    avatarNode
   );
 
   return (
@@ -420,8 +460,14 @@ export function DiscoverHomeChrome({
         <View style={styles.topRow}>
           {avatar}
           <View style={styles.profileCol}>
+            <Text
+              style={[styles.greeting, text.caption, { color: c.textMuted }]}
+              numberOfLines={1}
+            >
+              {greeting}
+            </Text>
             <View style={styles.nameRow}>
-              <Text style={[styles.name, text.titleLg, { color: c.text }]} numberOfLines={2}>
+              <Text style={[styles.name, text.titleLg, { color: c.text }]} numberOfLines={1}>
                 {displayName}
               </Text>
               <RoleBadge label={roleLabel} />

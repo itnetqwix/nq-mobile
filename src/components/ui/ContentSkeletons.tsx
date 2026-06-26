@@ -634,16 +634,11 @@ export function GamePlanCardSkeleton() {
         { backgroundColor: c.surfaceElevated, borderColor: c.border },
       ]}
     >
-      {/* thumbnail area */}
-      <Skeleton width="100%" height={120} radius={radii.md} />
-      <View style={{ padding: space.sm, gap: 8 }}>
-        {/* title */}
-        <Skeleton width="75%" height={14} />
-        {/* badge row */}
-        <View style={{ flexDirection: "row", gap: 6, marginTop: 4 }}>
-          <Skeleton width={64} height={22} radius={radii.pill} />
-          <Skeleton width={80} height={22} radius={radii.pill} />
-        </View>
+      <Skeleton width="100%" height={152} radius={0} />
+      <View style={{ padding: space.md, gap: 8 }}>
+        <Skeleton width="85%" height={18} />
+        <Skeleton width="50%" height={14} />
+        <Skeleton width="40%" height={14} />
       </View>
     </View>
   );

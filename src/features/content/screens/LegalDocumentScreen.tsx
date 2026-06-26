@@ -9,6 +9,7 @@ import { queryKeys } from "../../../lib/queryKeys";
 import type { AuthStackParamList, HomeStackParamList } from "../../../navigation/types";
 import { space, useThemeColors } from "../../../theme";
 import { fetchCmsLegal, type CmsLegalSlug } from "../api/cmsApi";
+import { buildLegalDocumentHtml } from "../legalDocumentHtml";
 import {
   legalUrlForSlug,
   type LegalUrlSlug,
@@ -17,17 +18,6 @@ import {
 type Props =
   | NativeStackScreenProps<HomeStackParamList, "LegalDocument">
   | NativeStackScreenProps<AuthStackParamList, "LegalDocument">;
-
-function htmlShell(title: string, body: string, textColor: string) {
-  return `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body{font-family:-apple-system,sans-serif;padding:16px 18px;color:${textColor};line-height:1.65;font-size:15px}
-    h1{font-size:22px;margin:0 0 16px} h2{font-size:17px;margin:20px 0 8px} h3{font-size:15px;margin:16px 0 6px}
-    p{margin:0 0 12px} ul,ol{margin:0 0 12px;padding-left:20px} li{margin-bottom:6px}
-    a{color:#000080;text-decoration:underline}
-  </style></head>
-  <body><h1>${title}</h1>${body}</body></html>`;
-}
 
 export function LegalDocumentScreen({ route, navigation }: Props) {
   const slug = route.params.slug as CmsLegalSlug;
@@ -74,7 +64,16 @@ export function LegalDocumentScreen({ route, navigation }: Props) {
     <ScreenContainer scroll={false} padding={0}>
       <WebView
         source={{
-          html: htmlShell(data.title, data.body_html, c.text),
+          html: buildLegalDocumentHtml({
+            title: data.title,
+            bodyHtml: data.body_html,
+            textColor: c.text,
+            mutedColor: c.textMuted,
+            linkColor: c.brandNavy,
+            bgColor: c.surface,
+            version: data.version,
+            publishedAt: data.published_at,
+          }),
         }}
         style={styles.web}
       />

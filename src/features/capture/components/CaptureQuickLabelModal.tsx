@@ -42,6 +42,7 @@ export function CaptureQuickLabelModal({
       onClose={busy ? () => {} : onCancel}
       presentationStyle="pageSheet"
       scrollBottomPadding={insets.bottom + 24}
+      contentContainerStyle={styles.content}
       footer={
         <View style={styles.actions}>
           <Pressable style={styles.secondaryBtn} onPress={onCancel} disabled={busy}>
@@ -58,15 +59,18 @@ export function CaptureQuickLabelModal({
         </View>
       }
     >
+      <View style={styles.iconBadge}>
+        <Ionicons name="film-outline" size={26} color={colors.brandNavy} />
+      </View>
       <Text style={styles.title}>Name this clip</Text>
       <Text style={styles.sub}>
-        Add a quick label, then record more or upload later from your library.
+        Give your clip a title so you can find it later. Leave it blank to use the date.
       </Text>
       <TextInput
         style={styles.input}
         value={label}
         onChangeText={setLabel}
-        placeholder="Clip label"
+        placeholder="Type a clip title…"
         placeholderTextColor="#9ca3af"
         autoFocus
         editable={!busy}
@@ -78,23 +82,48 @@ export function CaptureQuickLabelModal({
 }
 
 const styles = StyleSheet.create({
-  title: { ...typography.titleSm, color: "#111827", fontWeight: "800" },
+  content: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingTop: space.lg,
+  },
+  iconBadge: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#eff6ff",
+    borderWidth: 1,
+    borderColor: "#dbeafe",
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+    marginBottom: space.md,
+  },
+  title: {
+    ...typography.titleSm,
+    color: "#111827",
+    fontWeight: "800",
+    fontSize: 20,
+    textAlign: "center",
+  },
   sub: {
     ...typography.bodySm,
     color: "#6b7280",
     lineHeight: 20,
-    marginBottom: space.sm,
+    marginTop: 6,
+    marginBottom: space.lg,
+    textAlign: "center",
   },
   input: {
     borderWidth: 1,
     borderColor: "#e5e7eb",
     borderRadius: radii.md,
     paddingHorizontal: space.md,
-    paddingVertical: 12,
+    paddingVertical: 14,
     fontSize: 16,
     color: "#111827",
     backgroundColor: "#f9fafb",
-    minHeight: 48,
+    minHeight: 52,
   },
   actions: { flexDirection: "row", gap: space.sm },
   secondaryBtn: {

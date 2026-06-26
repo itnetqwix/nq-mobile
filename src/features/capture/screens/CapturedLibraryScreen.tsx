@@ -39,15 +39,6 @@ import { FLASHLIST_PERF_DEFAULTS } from "../../../lib/lists/flatListPerf";
 import { haptics } from "../../../lib/haptics";
 import { colors, radii, space, typography } from "../../../theme";
 
-function defaultClipLabel(): string {
-  return `Clip ${new Date().toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })}`;
-}
-
 export function CapturedLibraryScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<CaptureStackParamList>>();
@@ -61,11 +52,12 @@ export function CapturedLibraryScreen() {
   const [viewerClip, setViewerClip] = useState<CapturedClip | null>(null);
   const [viewerIndex, setViewerIndex] = useState(0);
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
+  const [shareClip, setShareClip] = useState<CapturedClip | null>(null);
   const [labelModalVisible, setLabelModalVisible] = useState(false);
   const [saving, setSaving] = useState(false);
   const [pendingThumbUri, setPendingThumbUri] = useState<string | null>(null);
   const [pendingAsset, setPendingAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
-  const [defaultLabel, setDefaultLabel] = useState(defaultClipLabel());
+  const [defaultLabel, setDefaultLabel] = useState("");
 
   const load = useCallback(async () => {
     const c = await backfillCapturedClipThumbnails(userId);
@@ -89,7 +81,7 @@ export function CapturedLibraryScreen() {
     (capture: { asset: ImagePicker.ImagePickerAsset; thumbUri: string | null }) => {
       setPendingAsset(capture.asset);
       setPendingThumbUri(capture.thumbUri);
-      setDefaultLabel(defaultClipLabel());
+      setDefaultLabel("");
       setLabelModalVisible(true);
     },
     []
@@ -107,7 +99,7 @@ export function CapturedLibraryScreen() {
         }
         setPendingAsset(asset);
         setPendingThumbUri(thumbUri);
-        setDefaultLabel(defaultClipLabel());
+        setDefaultLabel("");
         setLabelModalVisible(true);
       })();
     });
@@ -225,6 +217,7 @@ export function CapturedLibraryScreen() {
 
   const pickClipsForShare = (): CapturedClip[] => {
     if (selectMode && selectedClips.length > 0) return selectedClips;
+    if (shareClip) return [shareClip];
     if (viewerClip) return [viewerClip];
     return [];
   };
@@ -249,6 +242,7 @@ export function CapturedLibraryScreen() {
       showPrepareStep: clipList.length === 1,
     });
     setShareSheetVisible(false);
+    setShareClip(null);
     exitSelectMode();
   };
 
@@ -258,7 +252,7 @@ export function CapturedLibraryScreen() {
 
   const openUploadForClip = (clip: CapturedClip) => {
     haptics.tap();
-    setViewerClip(clip);
+    setShareClip(clip);
     setShareSheetVisible(true);
   };
 
@@ -287,30 +281,32 @@ export function CapturedLibraryScreen() {
           if (!selectMode) setSelectMode(true);
           toggleSelect(item.id);
         }}
+        accessibilityRole="button"
+        accessibilityLabel={selectMode ? "Toggle selection" : "Play clip"}
       >
         {selectMode ? (
           <View style={[styles.check, isSelected && styles.checkOn]}>
             {isSelected && <Ionicons name="checkmark" size={12} color="#fff" />}
           </View>
         ) : (
-          <View style={styles.recordIconSpacer} />
+          <Pressable
+            style={({ pressed }) => [styles.shareArrow, pressed && styles.shareArrowPressed]}
+            onPress={() => openUploadForClip(item)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Open sharing options"
+          >
+            <Ionicons name="chevron-forward" size={18} color={colors.brandNavy} />
+          </Pressable>
         )}
-        <Pressable
-          style={styles.thumb}
-          onPress={() => {
-            if (selectMode) return;
-            haptics.tap();
-            openViewer(item);
-          }}
-          disabled={selectMode}
-        >
+        <View style={styles.thumb}>
           {item.thumbUri ? (
             <Image source={{ uri: item.thumbUri }} style={styles.thumbImage} resizeMode="cover" />
           ) : null}
           <View style={styles.thumbPlay}>
             <Ionicons name="play" size={16} color="#fff" />
           </View>
-        </Pressable>
+        </View>
         <View style={styles.clipMeta}>
           <Text style={styles.clipDate} numberOfLines={1}>
             {item.label?.trim() ||
@@ -326,13 +322,7 @@ export function CapturedLibraryScreen() {
           ) : null}
         </View>
         {!selectMode ? (
-          <Pressable
-            hitSlop={10}
-            onPress={() => openUploadForClip(item)}
-            accessibilityLabel="Share clip"
-          >
-            <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
-          </Pressable>
+          <Ionicons name="play-circle-outline" size={22} color="#cbd5e1" />
         ) : null}
       </Pressable>
     );
@@ -431,22 +421,39 @@ export function CapturedLibraryScreen() {
 
       {clips.length === 0 ? (
         <View style={styles.empty}>
+          <View style={styles.emptyIconWrap}>
+            <Ionicons name="videocam" size={44} color={colors.brandNavy} />
+          </View>
+          <Text style={styles.emptyTitle}>Capture your first clip</Text>
+          <Text style={styles.emptySub}>
+            Record technique, drills, or progress — then keep them private or share with
+            friends and coaches in a tap.
+          </Text>
+          <View style={styles.emptyFeatures}>
+            <View style={styles.emptyFeatureRow}>
+              <Ionicons name="lock-closed-outline" size={16} color="#16a34a" />
+              <Text style={styles.emptyFeatureText}>Saved privately on your device</Text>
+            </View>
+            <View style={styles.emptyFeatureRow}>
+              <Ionicons name="cloud-upload-outline" size={16} color={colors.brandNavy} />
+              <Text style={styles.emptyFeatureText}>Import existing videos anytime</Text>
+            </View>
+          </View>
           <Pressable
-            style={styles.emptyRecordBtn}
+            style={({ pressed }) => [styles.emptyPrimaryBtn, pressed && { opacity: 0.9 }]}
             onPress={() => void startRecording()}
             disabled={recordingBusy}
             accessibilityRole="button"
             accessibilityLabel="Record your first clip"
           >
-            <Ionicons name="videocam-outline" size={32} color={colors.brandNavy} />
+            <Ionicons name="videocam" size={20} color="#fff" />
+            <Text style={styles.emptyPrimaryText}>
+              {recordingBusy ? "Opening camera…" : "Record a clip"}
+            </Text>
           </Pressable>
-          <Text style={styles.emptyTitle}>No captured clips yet</Text>
-          <Text style={styles.emptySub}>
-            Record a new clip, or import from your gallery, iCloud, or Google Drive.
-          </Text>
           <Pressable style={styles.emptyImportBtn} onPress={onImportVideo}>
             <Ionicons name="cloud-upload-outline" size={18} color={colors.brandNavy} />
-            <Text style={styles.emptyImportText}>Import video</Text>
+            <Text style={styles.emptyImportText}>Import from gallery</Text>
           </Pressable>
         </View>
       ) : (
@@ -463,15 +470,17 @@ export function CapturedLibraryScreen() {
         </>
       )}
 
-      <Pressable
-        style={[styles.fab, { bottom: fabBottom, left: space.lg }]}
-        onPress={() => void startRecording()}
-        disabled={recordingBusy}
-        accessibilityRole="button"
-        accessibilityLabel="Record new clip"
-      >
-        <Ionicons name="videocam" size={28} color="#fff" />
-      </Pressable>
+      {clips.length > 0 ? (
+        <Pressable
+          style={[styles.fab, { bottom: fabBottom, left: space.lg }]}
+          onPress={() => void startRecording()}
+          disabled={recordingBusy}
+          accessibilityRole="button"
+          accessibilityLabel="Record new clip"
+        >
+          <Ionicons name="videocam" size={28} color="#fff" />
+        </Pressable>
+      ) : null}
 
       <CaptureQuickLabelModal
         visible={labelModalVisible}
@@ -524,7 +533,10 @@ export function CapturedLibraryScreen() {
 
       <CapturedShareSheet
         visible={shareSheetVisible}
-        onClose={() => setShareSheetVisible(false)}
+        onClose={() => {
+          setShareSheetVisible(false);
+          setShareClip(null);
+        }}
         onSelect={openShareTarget}
       />
     </View>
@@ -611,7 +623,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   checkOn: { backgroundColor: colors.brandNavy, borderColor: colors.brandNavy },
-  recordIconSpacer: { width: 36 },
+  shareArrow: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#eff6ff",
+    borderWidth: 1,
+    borderColor: "#dbeafe",
+  },
+  shareArrowPressed: { backgroundColor: "#dbeafe" },
   selectHintBar: {
     marginHorizontal: space.md,
     marginBottom: space.sm,
@@ -621,17 +643,16 @@ const styles = StyleSheet.create({
   },
   selectHintText: { ...typography.bodySm, color: colors.brandNavy },
   thumb: {
-    width: 48,
-    height: 48,
-    borderRadius: radii.sm,
+    width: 56,
+    height: 56,
+    marginLeft: space.xs,
+    borderRadius: radii.md,
     backgroundColor: "#1e293b",
     overflow: "hidden",
     position: "relative",
   },
   thumbImage: {
     ...StyleSheet.absoluteFillObject,
-    width: 48,
-    height: 48,
   },
   thumbPlay: {
     ...StyleSheet.absoluteFillObject,
@@ -644,32 +665,78 @@ const styles = StyleSheet.create({
   clipDur: { fontSize: 12, color: "#6b7280", marginTop: 2 },
   empty: {
     flex: 1,
-    alignItems: "flex-start",
+    alignItems: "center",
     justifyContent: "center",
-    gap: space.md,
-    padding: space.xl,
+    gap: space.sm,
+    paddingHorizontal: space.xl,
   },
-  emptyRecordBtn: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+  emptyIconWrap: {
+    width: 104,
+    height: 104,
+    borderRadius: 52,
     backgroundColor: "#eff6ff",
     borderWidth: 2,
     borderColor: "#bfdbfe",
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: space.sm,
   },
-  emptyTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
-  emptySub: { fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20 },
+  emptyTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#111827",
+    textAlign: "center",
+    letterSpacing: -0.3,
+  },
+  emptySub: {
+    fontSize: 14,
+    color: "#6b7280",
+    textAlign: "center",
+    lineHeight: 21,
+    maxWidth: 320,
+  },
+  emptyFeatures: {
+    gap: 8,
+    marginTop: space.sm,
+    marginBottom: space.md,
+    alignItems: "center",
+  },
+  emptyFeatureRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  emptyFeatureText: { fontSize: 13, color: "#475569", fontWeight: "500" },
+  emptyPrimaryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    alignSelf: "stretch",
+    maxWidth: 320,
+    paddingVertical: 15,
+    borderRadius: radii.pill,
+    backgroundColor: colors.brandNavy,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  emptyPrimaryText: { color: "#fff", fontWeight: "800", fontSize: 16 },
   emptyImportBtn: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 6,
-    marginTop: space.md,
+    marginTop: space.xs,
+    alignSelf: "stretch",
+    maxWidth: 320,
     paddingHorizontal: space.md,
-    paddingVertical: 10,
+    paddingVertical: 13,
     borderRadius: radii.pill,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.brandNavy,
   },
   emptyImportText: { color: colors.brandNavy, fontWeight: "700" },

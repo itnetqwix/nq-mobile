@@ -1,4 +1,10 @@
-export type AuthIntent = "book" | "favorite" | "chat" | "schedule" | "generic";
+export type AuthIntent =
+  | "book"
+  | "favorite"
+  | "chat"
+  | "schedule"
+  | "capture_upload"
+  | "generic";
 
 export type AuthScreenParams = {
   intent?: AuthIntent;

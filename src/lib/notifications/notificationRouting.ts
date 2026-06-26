@@ -21,6 +21,7 @@ export function buildNotificationRoute(item: {
 }): NotificationRoute | null {
   const data = item.data ?? {};
   const kind = String(data.kind ?? "").toLowerCase();
+  const category = String(data.category ?? "").toLowerCase();
   const title = String(item.title ?? "").toLowerCase();
   const booking = (item.bookingInfo ?? item.booking_info ?? null) as Record<
     string,
@@ -49,7 +50,12 @@ export function buildNotificationRoute(item: {
     if (lessonId) return { kind: "meeting", lessonId };
   }
 
-  if (kind === "game_plan" || kind === "gameplan" || title.includes("game plan")) {
+  if (
+    kind === "game_plan" ||
+    category === "game_plan" ||
+    kind === "gameplan" ||
+    title.includes("game plan")
+  ) {
     return { kind: "shell", surfaceId: "gamePlans" };
   }
 

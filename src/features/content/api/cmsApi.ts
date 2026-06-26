@@ -5,6 +5,14 @@ import { API_ROUTES } from "../../../config/apiRoutes";
 
 export type CmsLegalSlug = "terms" | "privacy" | "cancellation" | "refund";
 
+/** Slugs that require in-app re-consent when CMS version bumps (mirrors backend). */
+export const LEGAL_RECONSENT_SLUGS: CmsLegalSlug[] = [
+  "terms",
+  "privacy",
+  "cancellation",
+  "refund",
+];
+
 export type CmsLegalDocument = {
   slug: CmsLegalSlug;
   title: string;

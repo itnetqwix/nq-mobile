@@ -6,21 +6,21 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   View,
 } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 
 import { useAuth } from "../auth/context/AuthContext";
-import { LegalTermsAcceptance } from "../auth/components/LegalTermsAcceptance";
 import { acceptLegalDocuments, pendingLegalSlugsFromManifest } from "./api/userLegalApi";
-import { fetchCmsManifest } from "./api/cmsApi";
+import { fetchCmsManifest, type CmsLegalSlug } from "./api/cmsApi";
 import { queryKeys } from "../../lib/queryKeys";
 import { navigationRef } from "../../navigation/navigationRef";
 import { useAppTranslation } from "../../i18n/useAppTranslation";
 import { colors, radii, space } from "../../theme";
 
-function openLegal(slug: "terms" | "privacy") {
+function openLegal(slug: CmsLegalSlug) {
   if (!navigationRef.isReady()) return;
   navigationRef.navigate(
     "Main" as never,
@@ -35,6 +35,45 @@ function openLegal(slug: "terms" | "privacy") {
       },
     } as never
   );
+}
+
+function reconsentTitle(
+  pending: CmsLegalSlug[],
+  t: (key: string, opts?: Record<string, unknown>) => string
+): string {
+  if (pending.length >= 3) {
+    return t("legal.reconsent.titleMultiple", {
+      defaultValue: "We've updated our legal policies",
+    });
+  }
+  if (pending.length === 2) {
+    const labels = pending.map((slug) => slugLabel(slug, t)).join(" & ");
+    return t("legal.reconsent.titlePair", {
+      defaultValue: "We've updated our {{labels}}",
+      labels,
+    });
+  }
+  const slug = pending[0];
+  if (!slug) return t("legal.reconsent.titleMultiple");
+  if (slug === "privacy") return t("legal.reconsent.titlePrivacy");
+  if (slug === "terms") return t("legal.reconsent.titleTerms");
+  if (slug === "cancellation") return t("legal.reconsent.titleCancellation");
+  return t("legal.reconsent.titleRefund");
+}
+
+function slugLabel(slug: CmsLegalSlug, t: (key: string) => string): string {
+  switch (slug) {
+    case "privacy":
+      return t("settings.privacyPolicy");
+    case "terms":
+      return t("settings.termsConditions");
+    case "cancellation":
+      return t("settings.cancellationPolicy");
+    case "refund":
+      return t("settings.refundPolicy");
+    default:
+      return slug;
+  }
 }
 
 export function LegalReconsentGate() {
@@ -79,12 +118,7 @@ export function LegalReconsentGate() {
 
   if (!visible) return null;
 
-  const title =
-    pendingSlugs.length === 2
-      ? t("legal.reconsent.titleBoth")
-      : pendingSlugs[0] === "privacy"
-        ? t("legal.reconsent.titlePrivacy")
-        : t("legal.reconsent.titleTerms");
+  const title = reconsentTitle(pendingSlugs, t);
 
   return (
     <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={() => {}}>
@@ -95,23 +129,29 @@ export function LegalReconsentGate() {
           <Text style={styles.body}>{t("legal.reconsent.body")}</Text>
 
           <View style={styles.links}>
-            {pendingSlugs.includes("terms") ? (
-              <Pressable onPress={() => openLegal("terms")}>
-                <Text style={styles.link}>{t("auth.termsConditions")} →</Text>
+            {pendingSlugs.map((slug) => (
+              <Pressable key={slug} onPress={() => openLegal(slug)} style={styles.linkRow}>
+                <Text style={styles.link}>{slugLabel(slug, t)} →</Text>
               </Pressable>
-            ) : null}
-            {pendingSlugs.includes("privacy") ? (
-              <Pressable onPress={() => openLegal("privacy")}>
-                <Text style={styles.link}>{t("auth.privacyPolicy")} →</Text>
-              </Pressable>
-            ) : null}
+            ))}
           </View>
 
-          <LegalTermsAcceptance
-            value={accepted}
-            onValueChange={setAccepted}
-            onOpenLegal={openLegal}
-          />
+          <View style={styles.acceptRow}>
+            <Switch
+              value={accepted}
+              onValueChange={setAccepted}
+              accessibilityLabel={t("legal.reconsent.acceptA11y", {
+                defaultValue: "Accept updated policies",
+              })}
+            />
+            <Text style={styles.acceptText}>
+              {t("legal.reconsent.acceptLabel", {
+                defaultValue:
+                  "I have read and agree to the updated policies listed above.",
+              })}
+              <Text style={styles.required}> *</Text>
+            </Text>
+          </View>
         </ScrollView>
 
         <View style={styles.footer}>
@@ -163,12 +203,31 @@ const styles = StyleSheet.create({
   },
   links: {
     gap: space.sm,
-    marginBottom: space.md,
+    marginBottom: space.lg,
+  },
+  linkRow: {
+    paddingVertical: 4,
   },
   link: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "600",
     color: colors.brandAccent,
+  },
+  acceptRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: space.sm,
+    marginTop: space.sm,
+  },
+  acceptText: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.textMuted,
+    lineHeight: 20,
+  },
+  required: {
+    color: colors.danger,
+    fontWeight: "700",
   },
   footer: {
     padding: space.lg,

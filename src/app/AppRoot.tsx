@@ -52,6 +52,7 @@ import { LazyStripeProvider } from "./LazyStripeProvider";
 import { DeferredNavigation } from "./DeferredNavigation";
 import { PostBootBridges } from "./PostBootBridges";
 import { LegalReconsentGate } from "../features/content/LegalReconsentGate";
+import { isIntroOnboardingComplete } from "../features/intro-onboarding";
 import { hydrateHotStorageFallback } from "../lib/storage/mmkvHotStorage";
 import { applyHapticsPreference } from "../lib/haptics";
 import { hydrateHapticsPreference } from "../lib/hapticsPreference";
@@ -90,6 +91,8 @@ export function AppRoot() {
     void bootstrapCallRejoinStore();
     void hydrateOfflineChatQueue();
     void hydrateCompareTrainersStore();
+    // Warm the intro-onboarding flag so RootNavigator decides synchronously.
+    void isIntroOnboardingComplete();
   }, []);
 
   useEffect(() => {

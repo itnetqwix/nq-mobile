@@ -29,25 +29,32 @@ const PROGRESS_W = 168;
 type Props = {
   /** Overrides i18n `splash.preparing`. */
   message?: string;
+  /**
+   * When `false`, the logo is already settled (no entrance replay). Use this for
+   * follow-on boot phases so the splash looks continuous instead of re-animating.
+   */
+  animateIn?: boolean;
 };
 
 /**
  * First-launch / cold-start splash — light brand canvas, logo settle-in,
  * and a single indeterminate progress track (no shimmer dots).
  */
-export function BrandBootScreen({ message }: Props) {
+export function BrandBootScreen({ message, animateIn = true }: Props) {
   const { t } = useTranslation();
   const statusText = message ?? t("splash.preparing", { defaultValue: "Getting things ready" });
   const tagline = t("splash.tagline", { defaultValue: "Live coaching, anywhere" });
 
-  const enter = useSharedValue(0);
+  const enter = useSharedValue(animateIn ? 0 : 1);
   const track = useSharedValue(0);
 
   useEffect(() => {
-    enter.value = withTiming(1, {
-      duration: 520,
-      easing: Easing.out(Easing.cubic),
-    });
+    if (animateIn) {
+      enter.value = withTiming(1, {
+        duration: 520,
+        easing: Easing.out(Easing.cubic),
+      });
+    }
     track.value = withDelay(
       180,
       withRepeat(
@@ -59,7 +66,7 @@ export function BrandBootScreen({ message }: Props) {
         false
       )
     );
-  }, [enter, track]);
+  }, [animateIn, enter, track]);
 
   const stackStyle = useAnimatedStyle(() => ({
     opacity: enter.value,

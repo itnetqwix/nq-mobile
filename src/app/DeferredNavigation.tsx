@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { InteractionManager, View } from "react-native";
-import { NetQwixLoader } from "../components/brand/NetQwixLoader";
+import { InteractionManager } from "react-native";
+import { BrandBootScreen } from "../components/splash";
 import { ThemedNavigationContainer } from "./ThemedNavigationContainer";
 
 /**
@@ -32,16 +32,9 @@ export function DeferredNavigation() {
   }, []);
 
   if (!ready) {
-    return (
-      <View style={{ flex: 1 }}>
-        <NetQwixLoader
-          message="Loading"
-          variant="fullscreen"
-          motion="quick"
-          backdrop="solid"
-        />
-      </View>
-    );
+    // Continue the branded splash (no entrance replay) so the hand-off to
+    // navigation looks seamless instead of flashing a separate spinner.
+    return <BrandBootScreen animateIn={false} />;
   }
 
   return <ThemedNavigationContainer />;

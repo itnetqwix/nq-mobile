@@ -1,6 +1,6 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React, { useEffect, useState } from "react";
-import { NetQwixLoader } from "../components/brand/NetQwixLoader";
+import { BrandBootScreen } from "../components/splash";
 import { AppUnlockGate } from "../features/auth/components/AppUnlockGate";
 import { useAuth } from "../features/auth/context/AuthContext";
 import { OnboardingNavigator } from "./OnboardingNavigator";
@@ -20,6 +20,7 @@ import { NotificationToast } from "../features/notifications/NotificationToast";
 import { OnboardingWalkthrough } from "../features/onboarding/OnboardingWalkthrough";
 import {
   IntroOnboardingScreen,
+  getIntroOnboardingCompleteSync,
   isIntroOnboardingComplete,
   setIntroOnboardingComplete,
 } from "../features/intro-onboarding";
@@ -45,22 +46,19 @@ function MainWithAppUnlock() {
 
 /** Splash → intro (first launch) → login/sign-up. No guest browse. */
 function UnsignedEntryFlow() {
-  const [introDone, setIntroDone] = useState<boolean | null>(null);
+  // Prefer the cache warmed during bootstrap so we usually resolve synchronously.
+  const [introDone, setIntroDone] = useState<boolean | null>(() =>
+    getIntroOnboardingCompleteSync()
+  );
 
   useEffect(() => {
+    if (introDone !== null) return;
     void isIntroOnboardingComplete().then(setIntroDone);
-  }, []);
+  }, [introDone]);
 
   if (introDone === null) {
-    return (
-      <NetQwixLoader
-        message="Loading…"
-        variant="fullscreen"
-        motion="quick"
-        backdrop="solid"
-        showTips={false}
-      />
-    );
+    // Cache miss (rare) — keep the branded splash rather than a separate spinner.
+    return <BrandBootScreen animateIn={false} />;
   }
 
   if (!introDone) {

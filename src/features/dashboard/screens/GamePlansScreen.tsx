@@ -25,7 +25,7 @@ import { AccountType } from "../../../constants/accountType";
 import { queryKeys } from "../../../lib/queryKeys";
 import { useDebouncedValue, SEARCH_LOCAL_DEBOUNCE_MS } from "../../../lib/timing";
 
-const COMPACT_THUMB = 44;
+const PLAN_HERO_HEIGHT = 152;
 type PlanFilter = "all" | "draft" | "published" | "pending";
 
 function formatReportDate(
@@ -110,7 +110,6 @@ export function GamePlansScreen() {
   const { width: windowWidth } = useWindowDimensions();
   const cardWidth = windowWidth - space.md * 2;
   const isTrainer = accountType !== AccountType.TRAINEE;
-  const columnWidth = (cardWidth - space.sm) / 2;
 
   const styles = useStyles();
 
@@ -328,7 +327,7 @@ export function GamePlansScreen() {
                 })}
               </Text>
             ) : (
-              <View style={styles.compactGrid}>
+              <View style={styles.planList}>
                 {filteredPlans.map(({ item, sectionDate }, index) => {
                   const reportData = (item.reportData as { imageUrl?: string; title?: string }[] | undefined)?.[0];
                   const title = reportData?.title ?? String(item.title ?? t("gamePlans.planDefault", { defaultValue: "Game Plan" }));
@@ -337,6 +336,7 @@ export function GamePlansScreen() {
                   const pdfPending = session?.game_plan_pdf_status === "pending";
                   const isDraft = item.publish_status === "draft";
                   const lessonDate = formatLessonDate(session?.start_time ?? item.updatedAt);
+                  const updatedLabel = formatRelativeUpdated(item.updatedAt);
                   const traineeLabel = String(
                     (item.trainee as { fullname?: string; fullName?: string })?.fullname ??
                       (item.trainee as { fullName?: string })?.fullName ?? ""
@@ -354,62 +354,73 @@ export function GamePlansScreen() {
                   const trainerId = String((item.trainer as { _id?: string })?._id ?? item.trainer ?? "");
                   const traineeId = String((item.trainee as { _id?: string })?._id ?? item.trainee ?? "");
                   const canEdit = isTrainer && !!sessionId && !!trainerId && !!traineeId;
+                  const showUpdated =
+                    !isTrainer &&
+                    !isDraft &&
+                    !!updatedLabel &&
+                    (updatedLabel.includes("just now") ||
+                      updatedLabel.includes("m ago") ||
+                      updatedLabel.includes("h ago"));
 
                   return (
                     <Pressable
                       key={`plan-${String(item._id ?? "row")}-${index}`}
                       style={({ pressed }) => [
-                        styles.compactCard,
-                        { width: columnWidth },
-                        pressed && { opacity: 0.92 },
+                        styles.planCard,
+                        { width: cardWidth },
+                        pressed && { opacity: 0.94 },
                       ]}
                       onPress={() => openPlan(item)}
                       accessibilityRole="button"
                       accessibilityLabel={title}
                     >
-                      {uri ? (
-                        <ImageWithSkeleton
-                          uri={uri}
-                          width={COMPACT_THUMB}
-                          height={COMPACT_THUMB}
-                          borderRadius={radii.sm}
-                          resizeMode="cover"
-                        />
-                      ) : (
-                        <View style={[styles.compactThumb, { backgroundColor: km.bg }]}>
-                          <Ionicons name={km.icon} size={20} color={km.color} />
-                        </View>
-                      )}
-                      <View style={styles.compactBody}>
-                        <Text style={styles.planTitle} numberOfLines={2}>
-                          {title}
-                        </Text>
-                        <Text style={styles.metaText} numberOfLines={1}>
-                          {lessonDate ?? sectionDate}
-                        </Text>
-                        {isTrainer && traineeLabel ? (
-                          <Text style={styles.metaText} numberOfLines={1}>
-                            {traineeLabel}
-                          </Text>
-                        ) : null}
-                        {!isTrainer && trainerLabel ? (
-                          <Text style={styles.metaText} numberOfLines={1}>
-                            {trainerLabel}
-                          </Text>
-                        ) : null}
-                        <View style={styles.badgeRow}>
+                      <View style={styles.planHero}>
+                        {uri ? (
+                          <ImageWithSkeleton
+                            uri={uri}
+                            width={cardWidth}
+                            height={PLAN_HERO_HEIGHT}
+                            borderRadius={0}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View style={[styles.planHeroPlaceholder, { backgroundColor: km.bg }]}>
+                            <Ionicons name={km.icon} size={44} color={km.color} />
+                          </View>
+                        )}
+                        <View style={styles.heroBadgeRow}>
                           {isTrainer && isDraft ? (
-                            <Text style={styles.miniBadgeDraft}>Draft</Text>
+                            <View style={styles.badgeDraft}>
+                              <Text style={styles.badgeDraftText}>
+                                {t("gamePlans.badgeDraft", { defaultValue: "Draft" })}
+                              </Text>
+                            </View>
+                          ) : null}
+                          {showUpdated ? (
+                            <View style={styles.badgeUpdated}>
+                              <Text style={styles.badgeUpdatedText}>
+                                {t("gamePlans.badgeUpdated", { defaultValue: "Updated" })}
+                              </Text>
+                            </View>
                           ) : null}
                           {pdfPending ? (
-                            <Text style={styles.miniBadgePending}>PDF…</Text>
+                            <View style={styles.badgePending}>
+                              <Text style={styles.badgePendingText}>
+                                {t("gamePlans.badgeGenerating", { defaultValue: "Generating PDF…" })}
+                              </Text>
+                            </View>
                           ) : (
-                            <Text style={[styles.miniBadgeKind, { color: km.color }]}>{km.label}</Text>
+                            <View style={[styles.badgeKind, { backgroundColor: "rgba(255,255,255,0.92)" }]}>
+                              <Ionicons name={km.icon} size={12} color={km.color} />
+                              <Text style={[styles.badgeKindText, { color: km.color }]}>
+                                {km.label}
+                              </Text>
+                            </View>
                           )}
                         </View>
                         {canEdit ? (
                           <Pressable
-                            style={styles.editBtn}
+                            style={styles.editFab}
                             onPress={(e) => {
                               e.stopPropagation?.();
                               setEditPlan({
@@ -419,10 +430,46 @@ export function GamePlansScreen() {
                                 traineeName: traineeLabel || undefined,
                               });
                             }}
-                            hitSlop={8}
+                            hitSlop={10}
+                            accessibilityRole="button"
+                            accessibilityLabel={t("gamePlans.editPlan", { defaultValue: "Edit game plan" })}
                           >
-                            <Ionicons name="create-outline" size={12} color={c.brandNavy} />
+                            <Ionicons name="create-outline" size={18} color={c.brandNavy} />
                           </Pressable>
+                        ) : null}
+                        <View style={styles.playOverlay} pointerEvents="none">
+                          <View style={styles.playCircle}>
+                            <Ionicons name="play" size={22} color="#fff" />
+                          </View>
+                        </View>
+                      </View>
+                      <View style={styles.planBody}>
+                        <Text style={styles.planTitle} numberOfLines={2}>
+                          {title}
+                        </Text>
+                        <Text style={styles.metaText} numberOfLines={1}>
+                          {lessonDate ?? sectionDate}
+                        </Text>
+                        {isTrainer && traineeLabel ? (
+                          <Text style={styles.metaText} numberOfLines={1}>
+                            {t("gamePlans.withTrainee", {
+                              defaultValue: "With {{name}}",
+                              name: traineeLabel,
+                            })}
+                          </Text>
+                        ) : null}
+                        {!isTrainer && trainerLabel ? (
+                          <Text style={styles.metaText} numberOfLines={1}>
+                            {t("gamePlans.fromCoach", {
+                              defaultValue: "Coach {{name}}",
+                              name: trainerLabel,
+                            })}
+                          </Text>
+                        ) : null}
+                        {!isTrainer && updatedLabel ? (
+                          <Text style={styles.updatedHint} numberOfLines={1}>
+                            {updatedLabel}
+                          </Text>
                         ) : null}
                       </View>
                     </Pressable>
@@ -472,9 +519,9 @@ function useStyles() {
         paddingHorizontal: 2,
       },
       listHeaderText: {
-        ...typography.titleSm,
-        color: palette.textMuted,
-        fontWeight: "600",
+        ...typography.titleMd,
+        color: palette.text,
+        fontWeight: "700",
       },
       searchBar: {
         flexDirection: "row",
@@ -488,7 +535,7 @@ function useStyles() {
       },
       searchInput: {
         flex: 1,
-        ...typography.bodySm,
+        ...typography.bodyMd,
         paddingVertical: 0,
       },
       filterRow: {
@@ -498,13 +545,13 @@ function useStyles() {
         marginBottom: space.sm,
       },
       filterChip: {
-        paddingHorizontal: 10,
-        paddingVertical: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
         borderRadius: radii.pill,
         borderWidth: 1,
       },
       filterChipText: {
-        ...typography.caption,
+        ...typography.bodySm,
         fontWeight: "700",
       },
       emptyFilter: {
@@ -513,75 +560,128 @@ function useStyles() {
         textAlign: "center",
         paddingVertical: space.lg,
       },
-      compactGrid: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        justifyContent: "space-between",
-        rowGap: space.sm,
+      planList: {
+        gap: space.md,
       },
-      compactCard: {
-        flexDirection: "row",
-        gap: space.xs,
-        borderRadius: radii.md,
+      planCard: {
+        borderRadius: radii.lg,
         borderWidth: 1,
         borderColor: palette.border,
         backgroundColor: palette.surfaceElevated,
-        padding: space.xs,
-        minHeight: 88,
+        overflow: "hidden",
       },
-      compactThumb: {
-        width: COMPACT_THUMB,
-        height: COMPACT_THUMB,
-        borderRadius: radii.sm,
+      planHero: {
+        height: PLAN_HERO_HEIGHT,
+        width: "100%",
+        position: "relative",
+        backgroundColor: palette.surfaceMuted,
+      },
+      planHeroPlaceholder: {
+        flex: 1,
+        height: PLAN_HERO_HEIGHT,
         alignItems: "center",
         justifyContent: "center",
       },
-      compactBody: {
-        flex: 1,
-        minWidth: 0,
-        gap: 2,
-        position: "relative",
-        paddingRight: 18,
-      },
-      badgeRow: {
+      heroBadgeRow: {
+        position: "absolute",
+        left: space.sm,
+        bottom: space.sm,
         flexDirection: "row",
         flexWrap: "wrap",
-        gap: 4,
-        marginTop: 2,
+        gap: 6,
+        maxWidth: "70%",
       },
-      miniBadgeDraft: {
-        fontSize: 9,
-        fontWeight: "700",
-        color: "#8a6d00",
+      playOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        alignItems: "center",
+        justifyContent: "center",
+      },
+      playCircle: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: "rgba(0,0,0,0.45)",
+        alignItems: "center",
+        justifyContent: "center",
+        paddingLeft: 3,
+      },
+      editFab: {
+        position: "absolute",
+        top: space.sm,
+        right: space.sm,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "rgba(255,255,255,0.95)",
+        borderWidth: 1,
+        borderColor: palette.borderSubtle,
+      },
+      planBody: {
+        padding: space.md,
+        gap: 4,
+      },
+      badgeDraft: {
         backgroundColor: "#fff8e6",
-        paddingHorizontal: 5,
-        paddingVertical: 1,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
         borderRadius: radii.pill,
       },
-      miniBadgePending: {
-        fontSize: 9,
+      badgeDraftText: {
+        ...typography.caption,
+        fontWeight: "700",
+        color: "#8a6d00",
+      },
+      badgeUpdated: {
+        backgroundColor: palette.brandSubtle,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: radii.pill,
+      },
+      badgeUpdatedText: {
+        ...typography.caption,
         fontWeight: "700",
         color: palette.brandNavy,
       },
-      miniBadgeKind: {
-        fontSize: 9,
+      badgePending: {
+        backgroundColor: palette.surfaceMuted,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: radii.pill,
+      },
+      badgePendingText: {
+        ...typography.caption,
+        fontWeight: "700",
+        color: palette.brandNavy,
+      },
+      badgeKind: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: radii.pill,
+      },
+      badgeKindText: {
+        ...typography.caption,
         fontWeight: "700",
       },
       metaText: {
-        fontSize: 10,
+        ...typography.bodySm,
         color: palette.textMuted,
       },
       planTitle: {
-        ...typography.caption,
+        ...typography.titleSm,
         fontWeight: "700",
         color: palette.text,
-        lineHeight: 14,
+        lineHeight: 22,
       },
-      editBtn: {
-        position: "absolute",
-        right: 0,
-        bottom: 0,
-        padding: 4,
+      updatedHint: {
+        ...typography.caption,
+        color: palette.brandNavy,
+        fontWeight: "600",
+        marginTop: 4,
       },
     })
   );

@@ -38,12 +38,11 @@ export function useInlineClipRecording({ onCaptured }: Args) {
     setBusy(true);
     try {
       const { status: camStatus } = await ImagePicker.requestCameraPermissionsAsync();
-      const { status: micStatus } = await ImagePicker.requestMicrophonePermissionsAsync();
-      if (camStatus !== "granted" || micStatus !== "granted") {
+      if (camStatus !== "granted") {
         haptics.error();
         Alert.alert(
-          "Camera & microphone required",
-          "Please grant camera and microphone access in Settings to record clips with audio.",
+          "Camera access required",
+          "Please grant camera access in Settings to record clips. Microphone access is requested by the camera when you start recording.",
           [{ text: "OK" }]
         );
         return;
@@ -77,6 +76,14 @@ export function useInlineClipRecording({ onCaptured }: Args) {
 
       const fileSizeBytes = await resolveFileSize(asset.uri, asset.fileSize);
       onCaptured({ asset, thumbUri, fileSizeBytes });
+    } catch (err) {
+      haptics.error();
+      Alert.alert(
+        "Couldn't open the camera",
+        err instanceof Error && err.message
+          ? err.message
+          : "Something went wrong starting the recorder. Please try again."
+      );
     } finally {
       setBusy(false);
     }

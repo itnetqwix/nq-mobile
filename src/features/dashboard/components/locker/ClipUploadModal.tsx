@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -170,6 +169,7 @@ export function ClipUploadModal({
   const [subcategoryAccordionOpen, setSubcategoryAccordionOpen] = useState(false);
   const { keyboardOpen, keyboardHeight } = useKeyboardSheetInsets();
   const scrollRef = useRef<ScrollView>(null);
+  const [emailPanelY, setEmailPanelY] = useState(0);
 
   const batchVideos = useMemo(() => {
     if (initialVideos.length > 0) return initialVideos;
@@ -370,10 +370,14 @@ export function ClipUploadModal({
   const scrollEmailIntoView = useCallback(() => {
     requestAnimationFrame(() => {
       setTimeout(() => {
-        scrollRef.current?.scrollToEnd({ animated: true });
+        if (emailPanelY > 0) {
+          scrollRef.current?.scrollTo({ y: Math.max(0, emailPanelY - 16), animated: true });
+        } else {
+          scrollRef.current?.scrollToEnd({ animated: true });
+        }
       }, Platform.OS === "ios" ? 120 : 280);
     });
-  }, []);
+  }, [emailPanelY]);
 
   useEffect(() => {
     if (!keyboardOpen || shareTarget !== SHARE_EMAIL) return;
@@ -848,6 +852,7 @@ export function ClipUploadModal({
           contentContainerStyle={[styles.body, { paddingBottom: scrollBottomPad }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
           showsVerticalScrollIndicator={false}
         >
           {!initialVideo && initialVideos.length === 0 && (
@@ -1121,7 +1126,10 @@ export function ClipUploadModal({
           )}
 
           {shareTarget === SHARE_EMAIL && (
-            <View style={styles.sharePanel}>
+            <View
+              style={styles.sharePanel}
+              onLayout={(e) => setEmailPanelY(e.nativeEvent.layout.y)}
+            >
               <Text style={styles.label}>{t("locker.shareEmailLabel")}</Text>
               <TextInput
                 style={[styles.input, styles.emailInput]}
@@ -1136,21 +1144,29 @@ export function ClipUploadModal({
                 autoComplete="email"
                 autoCapitalize="none"
                 autoCorrect={false}
-                returnKeyType="done"
-                blurOnSubmit
-                onSubmitEditing={Keyboard.dismiss}
+                multiline
+                textAlignVertical="top"
                 onFocus={scrollEmailIntoView}
                 editable={!uploadBusy}
               />
               {parsedEmails.length > 0 ? (
-                <Text style={styles.muted}>
-                  {t("capture.emailsParsed", {
-                    defaultValue: "{{count}} valid email(s)",
-                    count: parsedEmails.length,
-                  })}
-                </Text>
+                <View style={styles.emailChips}>
+                  {parsedEmails.map((email) => (
+                    <View key={email} style={styles.emailChip}>
+                      <Ionicons name="mail-outline" size={12} color={c.brandNavy} />
+                      <Text style={styles.emailChipText} numberOfLines={1}>
+                        {email}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
               ) : null}
-              <Text style={styles.muted}>{t("locker.shareEmailHint")}</Text>
+              <Text style={styles.muted}>
+                {t("capture.shareEmailMultiHint", {
+                  defaultValue:
+                    "Add one or more email addresses, separated by commas, spaces, or new lines.",
+                })}
+              </Text>
             </View>
           )}
 
@@ -1508,7 +1524,33 @@ function useStyles() {
         color: palette.textMuted,
       },
       batchInput: { flex: 1 },
-      emailInput: { paddingVertical: 12 },
+      emailInput: {
+        paddingVertical: 12,
+        minHeight: 88,
+        lineHeight: 22,
+      },
+      emailChips: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: 6,
+        marginTop: 8,
+      },
+      emailChip: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: radii.pill,
+        backgroundColor: palette.brandSubtle,
+        maxWidth: "100%",
+      },
+      emailChipText: {
+        ...typography.caption,
+        color: palette.brandNavy,
+        fontWeight: "700",
+        flexShrink: 1,
+      },
     })
   );
 }

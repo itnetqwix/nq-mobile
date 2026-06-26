@@ -1,5 +1,6 @@
 export {
   clearIntroOnboardingComplete,
+  getIntroOnboardingCompleteSync,
   isIntroOnboardingComplete,
   setIntroOnboardingComplete,
 } from "./introOnboardingStorage";
