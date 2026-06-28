@@ -49,6 +49,46 @@ export async function unblockUserById(userId: string): Promise<void> {
   );
 }
 
+/* ── Friend content sharing ─────────────────────────────────────────────── */
+
+export type FriendContentSettings = {
+  allow_friends_view_my_clips: boolean;
+  allow_friends_upload_to_me: boolean;
+  per_friend_overrides?: {
+    friend_id: string;
+    allow_view_clips?: boolean;
+    allow_upload?: boolean;
+  }[];
+};
+
+export function readFriendContentSettings(
+  user: Record<string, unknown> | null
+): FriendContentSettings {
+  const raw = (user?.friend_content_settings ?? {}) as Partial<FriendContentSettings>;
+  return {
+    allow_friends_view_my_clips: raw.allow_friends_view_my_clips !== false,
+    allow_friends_upload_to_me: raw.allow_friends_upload_to_me !== false,
+    per_friend_overrides: raw.per_friend_overrides ?? [],
+  };
+}
+
+export async function updateFriendContentSettings(
+  patch: Partial<Pick<FriendContentSettings, "allow_friends_view_my_clips" | "allow_friends_upload_to_me">>
+): Promise<FriendContentSettings> {
+  const res = await apiClient.patch(API_ROUTES.user.friendContentSettings, patch);
+  const body = res.data as { data?: FriendContentSettings };
+  return body.data ?? (res.data as FriendContentSettings);
+}
+
+export async function updatePerFriendContentSettings(
+  friendId: string,
+  patch: { allow_view_clips?: boolean; allow_upload?: boolean }
+): Promise<FriendContentSettings> {
+  const res = await apiClient.patch(API_ROUTES.user.perFriendContentSettings(friendId), patch);
+  const body = res.data as { data?: FriendContentSettings };
+  return body.data ?? (res.data as FriendContentSettings);
+}
+
 /* ── Profile visibility ─────────────────────────────────────────────────── */
 
 export type ProfileVisibility = {

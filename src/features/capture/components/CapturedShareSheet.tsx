@@ -22,7 +22,7 @@ const OPTIONS: {
   {
     id: "my-clips",
     icon: "folder-outline",
-    title: "My Clips library",
+    title: "Clips library",
     subtitle: "Upload and save to your locker",
   },
   {

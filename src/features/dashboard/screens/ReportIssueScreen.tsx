@@ -346,7 +346,7 @@ export function ReportIssueScreen() {
             <Pressable onPress={() => setMode("list")} hitSlop={10}>
               <Ionicons name="chevron-back" size={22} color={c.iconPrimary} />
             </Pressable>
-            <Text style={styles.heroTitle}>My Reports</Text>
+            <Text style={styles.heroTitle}>Reports</Text>
           </View>
           <Text style={styles.heroSub}>Track the status of your submitted reports.</Text>
         </View>

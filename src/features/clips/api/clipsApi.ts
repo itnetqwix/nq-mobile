@@ -98,6 +98,19 @@ export async function postMyClipsNested(params?: {
   return Array.isArray(data) ? dedupeNestedClipGroups(data) : [];
 }
 
+/**
+ * Trainer-only: a trainee's full locker (own + shared-in clips) for live
+ * lesson review. Backend gates on the trainer↔trainee session relationship.
+ */
+export async function postSessionTraineeClipsNested(params: {
+  session_id?: string;
+  trainee_id?: string;
+}): Promise<NestedCategoryGroup[]> {
+  const res = await apiClient.post(API_ROUTES.common.sessionTraineeClips, params);
+  const data = extractData<NestedCategoryGroup[]>(res);
+  return Array.isArray(data) ? dedupeNestedClipGroups(data) : [];
+}
+
 export async function postSharedClipsBySharer(): Promise<SharedClipsGroup[]> {
   const res = await apiClient.post(API_ROUTES.common.getSharedClips, {});
   const data = extractData<SharedClipsGroup[]>(res);

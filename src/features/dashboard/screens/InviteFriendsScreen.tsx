@@ -88,7 +88,7 @@ export function InviteFriendsScreen() {
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<TrackerTab>("all");
-  const [composerOpen, setComposerOpen] = useState(true);
+  const [composerOpen, setComposerOpen] = useState(false);
   const [inviteTarget, setInviteTarget] = useState<typeof AccountType.TRAINEE | typeof AccountType.TRAINER>(
     AccountType.TRAINEE
   );
@@ -350,20 +350,9 @@ export function InviteFriendsScreen() {
         />
       </View>
 
-      <View style={[styles.card, { backgroundColor: c.brandSubtle }]}>
-        <Text style={[styles.cardTitle, { color: c.text }]}>
-          {t("points.inviteHowTitle", { defaultValue: "How points work" })}
-        </Text>
-        <Text style={[styles.rewardLine, { color: c.textMuted }]}>
-          {t("points.inviteHowBody", {
-            defaultValue:
-              "Earn 1–5 points per action (lessons, reviews, referrals). Redeem 100 points for $5 wallet credit in the Wallet tab.",
-          })}
-        </Text>
-      </View>
-
+      {/* Invite + share — single streamlined card */}
       <View style={styles.card}>
-        <Text style={[styles.cardTitle, { color: c.text }]}>
+        <Text style={[styles.cardEyebrow, { color: c.textMuted }]}>
           {t("invites.inviteAsTitle", { defaultValue: "Invite them to join as" })}
         </Text>
         <View style={styles.targetRow}>
@@ -383,25 +372,27 @@ export function InviteFriendsScreen() {
             defaultValue: "You earn {{amount}} when they join",
             amount: rewardSummaryPoints(activeRewardPreviewPoints) || "—",
           })}
+          {activeRewardPreviewPoints && activeRewardPreviewPoints.refereeSignupPoints > 0
+            ? ` · ${t("invites.rewardTheyGetPoints", {
+                defaultValue: "They get {{amount}} on signup",
+                amount: `${activeRewardPreviewPoints.refereeSignupPoints} pts`,
+              })}`
+            : ""}
         </Text>
-        {activeRewardPreviewPoints && activeRewardPreviewPoints.refereeSignupPoints > 0 ? (
-          <Text style={[styles.rewardLine, { color: c.textMuted }]}>
-            {t("invites.rewardTheyGetPoints", {
-              defaultValue: "They get {{amount}} on signup",
-              amount: `${activeRewardPreviewPoints.refereeSignupPoints} pts`,
-            })}
-          </Text>
-        ) : null}
-      </View>
 
-      {/* Quick share row */}
-      <View style={styles.card}>
-        <Text style={[styles.cardTitle, { color: c.text }]}>
-          {t("invites.shareLinkTitle", { defaultValue: "Share your link" })}
-        </Text>
-        <Text style={[styles.cardSub, { color: c.textMuted }]} numberOfLines={1}>
-          {referralLink}
-        </Text>
+        <View style={[styles.divider, { backgroundColor: c.borderSubtle }]} />
+
+        <Pressable
+          onPress={handleCopyLink}
+          style={[styles.linkPill, { backgroundColor: c.surfaceMuted, borderColor: c.borderSubtle }]}
+        >
+          <Ionicons name="link-outline" size={16} color={c.brandNavy} />
+          <Text style={[styles.linkPillText, { color: c.text }]} numberOfLines={1}>
+            {referralLink}
+          </Text>
+          <Ionicons name="copy-outline" size={16} color={c.textMuted} />
+        </Pressable>
+
         <View style={styles.shareRow}>
           <ShareAction
             icon="logo-whatsapp"
@@ -415,9 +406,9 @@ export function InviteFriendsScreen() {
             onPress={handleShareSms}
           />
           <ShareAction
-            icon="link-outline"
-            label={t("invites.shareCopyLink", { defaultValue: "Copy link" })}
-            onPress={handleCopyLink}
+            icon="mail-outline"
+            label={t("invites.shareEmailAction", { defaultValue: "Email" })}
+            onPress={() => setComposerOpen(true)}
           />
           <ShareAction
             icon="share-outline"
@@ -425,6 +416,13 @@ export function InviteFriendsScreen() {
             onPress={handleShareNative}
           />
         </View>
+
+        <Text style={[styles.pointsHint, { color: c.textMuted }]}>
+          {t("points.inviteHowBody", {
+            defaultValue:
+              "Earn 1–5 points per action. Redeem 100 points for $5 wallet credit in the Wallet tab.",
+          })}
+        </Text>
       </View>
 
       {/* Email composer */}
@@ -849,7 +847,28 @@ function useInviteStyles() {
         gap: space.sm,
       },
       cardTitle: { ...typography.titleSm, fontWeight: "700" },
+      cardEyebrow: {
+        ...typography.caption,
+        fontWeight: "700",
+        textTransform: "uppercase",
+        letterSpacing: 0.5,
+      },
       cardSub: { ...typography.caption, color: palette.textMuted },
+      divider: {
+        height: StyleSheet.hairlineWidth,
+        marginVertical: space.xs,
+      },
+      linkPill: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        borderWidth: 1,
+        borderRadius: radii.pill,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+      },
+      linkPillText: { ...typography.bodySm, flex: 1, fontWeight: "600" },
+      pointsHint: { ...typography.caption, marginTop: 2, lineHeight: 16 },
       shareRow: {
         flexDirection: "row",
         gap: space.xs,

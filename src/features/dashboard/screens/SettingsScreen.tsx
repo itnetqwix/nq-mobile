@@ -33,7 +33,7 @@ import { AccountType } from "../../../constants/accountType";
 import { WebRoutes } from "../../../constants/webRoutes";
 import type { MenuStackParamList, ShellSurfaceRouteId } from "../../../navigation/types";
 import { openHomeStackScreen, openShellSurface } from "../../../navigation/openShellSurface";
-import { space, typography, useThemeColors } from "../../../theme";
+import { colors, space, typography, useThemeColors } from "../../../theme";
 import { useTheme, type ThemeMode } from "../../../theme/ThemeContext";
 import { areHapticsEnabled, haptics, setHapticsEnabled } from "../../../lib/haptics";
 import { revokeAllAuthSessions } from "../../auth/api/authSessionsApi";
@@ -47,6 +47,7 @@ import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { runSystemStateAction } from "../../system-states/navigation/linkActions";
 import {
   patchUserNotificationSettings,
+  fetchFriends,
   postAccountPrivacy,
   putProfile,
   type BookingReminderCadence,
@@ -56,7 +57,11 @@ import { setReadReceiptsEnabled } from "../../chats/api/chatActionsApi";
 import { requestPushPermissionForReason } from "../../notifications/pushTokens";
 import {
   readProfileVisibility,
+  readFriendContentSettings,
+  updateFriendContentSettings,
+  updatePerFriendContentSettings,
   updateProfileVisibility,
+  type FriendContentSettings,
   type ProfileVisibility,
 } from "../../settings/api/privacyApi";
 import { OnboardingWalkthrough, resetCoachMarks } from "../../onboarding";
@@ -181,6 +186,11 @@ export function SettingsScreen() {
     readProfileVisibility(user as Record<string, unknown> | null)
   );
   const [visibilityBusy, setVisibilityBusy] = useState<keyof ProfileVisibility | null>(null);
+  const [friendContent, setFriendContent] = useState<FriendContentSettings>(() =>
+    readFriendContentSettings(user as Record<string, unknown> | null)
+  );
+  const [friendContentBusy, setFriendContentBusy] = useState<string | null>(null);
+  const [friendsForOverrides, setFriendsForOverrides] = useState<any[]>([]);
   const [settingsSearch, setSettingsSearch] = useState("");
   const debouncedSettingsSearch = useDebouncedValue(settingsSearch, 280);
   const [hapticsOn, setHapticsOn] = useState(areHapticsEnabled());
@@ -194,7 +204,14 @@ export function SettingsScreen() {
     setIsPrivate(Boolean(user?.isPrivate));
     setNotif(readNotificationPrefs(user));
     setVisibility(readProfileVisibility(user as Record<string, unknown> | null));
+    setFriendContent(readFriendContentSettings(user as Record<string, unknown> | null));
   }, [user]);
+
+  useEffect(() => {
+    void fetchFriends()
+      .then(setFriendsForOverrides)
+      .catch(() => setFriendsForOverrides([]));
+  }, []);
 
   /**
    * Tracks transient "Saved ✓" pills next to each toggle so the user
@@ -223,6 +240,48 @@ export function SettingsScreen() {
       );
     } finally {
       setVisibilityBusy(null);
+    }
+  };
+
+  const handleFriendContentToggle = async (
+    key: "allow_friends_view_my_clips" | "allow_friends_upload_to_me",
+    value: boolean
+  ) => {
+    const prev = friendContent;
+    const next = { ...friendContent, [key]: value };
+    setFriendContent(next);
+    setFriendContentBusy(key);
+    try {
+      const result = await updateFriendContentSettings({ [key]: value });
+      setFriendContent(result);
+      patchUser({ friend_content_settings: result } as Record<string, unknown>);
+      saved.ping(`friendContent.${key}`);
+    } catch (e) {
+      setFriendContent(prev);
+      saved.fail(`friendContent.${key}`);
+      Alert.alert(t("settings.privacyAlertTitle"), getApiErrorMessage(e));
+    } finally {
+      setFriendContentBusy(null);
+    }
+  };
+
+  const handlePerFriendContentToggle = async (
+    friendId: string,
+    key: "allow_view_clips" | "allow_upload",
+    value: boolean
+  ) => {
+    const busyKey = `friendContent.${friendId}.${key}`;
+    setFriendContentBusy(busyKey);
+    try {
+      const result = await updatePerFriendContentSettings(friendId, { [key]: value });
+      setFriendContent(result);
+      patchUser({ friend_content_settings: result } as Record<string, unknown>);
+      saved.ping(busyKey);
+    } catch (e) {
+      saved.fail(busyKey);
+      Alert.alert(t("settings.privacyAlertTitle"), getApiErrorMessage(e));
+    } finally {
+      setFriendContentBusy(null);
     }
   };
 
@@ -565,6 +624,18 @@ export function SettingsScreen() {
   }, [searchableRows, debouncedSettingsSearch]);
 
   const suggestionRows = useMemo(() => searchResults.slice(0, 6), [searchResults]);
+
+  const friendOverrideRows = useMemo(() => {
+    const q = debouncedSettingsSearch.trim().toLowerCase();
+    return friendsForOverrides
+      .map((row) => row?.receiverId ?? row?.senderId ?? row)
+      .filter(Boolean)
+      .filter((row) => {
+        if (!q) return true;
+        return `${row.fullname ?? row.fullName ?? ""} ${row.email ?? ""}`.toLowerCase().includes(q);
+      })
+      .slice(0, 8);
+  }, [friendsForOverrides, debouncedSettingsSearch]);
 
   if (!user) {
     return (
@@ -1070,6 +1141,95 @@ export function SettingsScreen() {
         ) : null}
       </Card>
 
+      <SectionHeader label={t("friends.privacy.title", { defaultValue: "Friend content sharing" })} />
+      <Card variant="outlined" padding={0} style={styles.sectionCard}>
+        <ListRow
+          icon="videocam-outline"
+          title={t("friends.privacy.allowViewMyClips", {
+            defaultValue: "Allow friends to view my clips",
+          })}
+          subtitle={t("friends.privacy.allowViewMyClipsHint", {
+            defaultValue: "Trainer clips stay private unless a booked session unlocks them.",
+          })}
+          rightAdornment={
+            friendContentBusy === "allow_friends_view_my_clips" ? (
+              <ActivityIndicator size="small" color={c.brandAccent} />
+            ) : (
+              <Switch
+                value={friendContent.allow_friends_view_my_clips}
+                onValueChange={(v) => void handleFriendContentToggle("allow_friends_view_my_clips", v)}
+                trackColor={{ false: c.neutral200, true: c.brandAccentSubtle }}
+                thumbColor={friendContent.allow_friends_view_my_clips ? c.brandAccent : c.neutral100}
+              />
+            )
+          }
+        />
+        <Divider />
+        <ListRow
+          icon="cloud-upload-outline"
+          title={t("friends.privacy.allowUploadToMe", {
+            defaultValue: "Allow friends to upload clips to my account",
+          })}
+          subtitle={t("friends.privacy.allowUploadToMeHint", {
+            defaultValue: "Uploads land in your locker and count against your storage quota.",
+          })}
+          rightAdornment={
+            friendContentBusy === "allow_friends_upload_to_me" ? (
+              <ActivityIndicator size="small" color={c.brandAccent} />
+            ) : (
+              <Switch
+                value={friendContent.allow_friends_upload_to_me}
+                onValueChange={(v) => void handleFriendContentToggle("allow_friends_upload_to_me", v)}
+                trackColor={{ false: c.neutral200, true: c.brandAccentSubtle }}
+                thumbColor={friendContent.allow_friends_upload_to_me ? c.brandAccent : c.neutral100}
+              />
+            )
+          }
+        />
+        {friendOverrideRows.map((friendRow, index) => {
+          const fid = String(friendRow?._id ?? "");
+          if (!fid) return null;
+          const override = friendContent.per_friend_overrides?.find((row) => row.friend_id === fid);
+          return (
+            <React.Fragment key={fid}>
+              <Divider />
+              <View style={styles.friendOverrideRow}>
+                <View style={styles.friendOverrideHeader}>
+                  <Text style={styles.friendOverrideName}>
+                    {friendRow.fullname ?? friendRow.fullName ?? t("friends.friendDefault")}
+                  </Text>
+                  <Text style={styles.friendOverrideHint}>
+                    {index === 0
+                      ? t("friends.privacy.perFriendOverrides", {
+                          defaultValue: "Per-friend overrides",
+                        })
+                      : ""}
+                  </Text>
+                </View>
+                <View style={styles.friendOverrideControls}>
+                  <Text style={styles.friendOverrideLabel}>{t("friends.privacy.view", { defaultValue: "View" })}</Text>
+                  <Switch
+                    value={override?.allow_view_clips !== false}
+                    disabled={friendContentBusy === `friendContent.${fid}.allow_view_clips`}
+                    onValueChange={(v) => void handlePerFriendContentToggle(fid, "allow_view_clips", v)}
+                    trackColor={{ false: c.neutral200, true: c.brandAccentSubtle }}
+                    thumbColor={override?.allow_view_clips !== false ? c.brandAccent : c.neutral100}
+                  />
+                  <Text style={styles.friendOverrideLabel}>{t("friends.privacy.upload", { defaultValue: "Upload" })}</Text>
+                  <Switch
+                    value={override?.allow_upload !== false}
+                    disabled={friendContentBusy === `friendContent.${fid}.allow_upload`}
+                    onValueChange={(v) => void handlePerFriendContentToggle(fid, "allow_upload", v)}
+                    trackColor={{ false: c.neutral200, true: c.brandAccentSubtle }}
+                    thumbColor={override?.allow_upload !== false ? c.brandAccent : c.neutral100}
+                  />
+                </View>
+              </View>
+            </React.Fragment>
+          );
+        })}
+      </Card>
+
       <SectionHeader
         label={t("settings.notificationsHeader", { defaultValue: "Notifications" })}
       />
@@ -1340,5 +1500,34 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: space.sm,
+  },
+  friendOverrideRow: {
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    gap: space.sm,
+  },
+  friendOverrideHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: space.sm,
+  },
+  friendOverrideName: {
+    ...typography.bodyMd,
+    fontWeight: "700",
+  },
+  friendOverrideHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  friendOverrideControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: space.sm,
+  },
+  friendOverrideLabel: {
+    ...typography.caption,
+    color: colors.textMuted,
   },
 });

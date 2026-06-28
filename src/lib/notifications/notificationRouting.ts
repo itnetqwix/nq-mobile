@@ -59,6 +59,13 @@ export function buildNotificationRoute(item: {
     return { kind: "shell", surfaceId: "gamePlans" };
   }
 
+  if (category === "friend_content" || kind === "session_content_grant") {
+    return { kind: "feature", featureId: "friends" };
+  }
+  if (kind === "friend_clip_upload") {
+    return { kind: "shell", surfaceId: "clips" };
+  }
+
   if (kind === "chat_message" || kind === "chat") {
     const conversationId = String(data.conversationId ?? "");
     const partnerId = String(data.senderId ?? data.receiverId ?? "");

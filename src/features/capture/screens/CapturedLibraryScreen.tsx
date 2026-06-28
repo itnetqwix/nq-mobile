@@ -10,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useAuth } from "../../auth/context/AuthContext";
 import { useGuestMode } from "../../auth/hooks/useGuestMode";
@@ -42,6 +42,8 @@ import { colors, radii, space, typography } from "../../../theme";
 export function CapturedLibraryScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<CaptureStackParamList>>();
+  const route = useRoute<RouteProp<CaptureStackParamList, "CapturedLibrary">>();
+  const uploadForFriend = route.params?.uploadForFriend;
   const { user } = useAuth();
   const isGuest = useGuestMode();
   const { requireAuth } = useRequireAuth();
@@ -240,6 +242,7 @@ export function CapturedLibraryScreen() {
       clips: clipList,
       shareTarget: target,
       showPrepareStep: clipList.length === 1,
+      uploadForFriend,
     });
     setShareSheetVisible(false);
     setShareClip(null);
@@ -252,6 +255,10 @@ export function CapturedLibraryScreen() {
 
   const openUploadForClip = (clip: CapturedClip) => {
     haptics.tap();
+    if (uploadForFriend) {
+      navigateToUpload("my-clips", [clip]);
+      return;
+    }
     setShareClip(clip);
     setShareSheetVisible(true);
   };

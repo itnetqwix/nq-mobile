@@ -7,7 +7,7 @@ import { deleteCapturedClip } from "./capturedClipsStorage";
 export async function resolveVideoSizeBytes(uri: string, known?: number): Promise<number> {
   if (known != null && known > 0) return known;
   try {
-    const info = await FileSystem.getInfoAsync(uri, { size: true });
+    const info = await FileSystem.getInfoAsync(uri, { size: true } as any);
     if (info.exists && "size" in info && typeof info.size === "number" && info.size > 0) {
       return info.size;
     }
@@ -48,6 +48,8 @@ export async function uploadCapturedClipsBatch(params: {
   category_id: string;
   subcategory_id: string;
   shareOptions: ClipConfirmPayload["shareOptions"];
+  targetUserId?: string;
+  keepCapturedClips?: boolean;
   userId: string | null;
   onProgress?: (p: BatchUploadProgress) => void;
 }): Promise<{ uploaded: number; clipIds: string[] }> {
@@ -71,6 +73,7 @@ export async function uploadCapturedClipsBatch(params: {
       category_id: params.category_id,
       subcategory_id: params.subcategory_id,
       shareOptions: params.shareOptions,
+      targetUserId: params.targetUserId,
       onVideoProgress: (percent) => {
         params.onProgress?.({
           index: index + 1,
@@ -92,7 +95,7 @@ export async function uploadCapturedClipsBatch(params: {
     });
 
     if (clipId) clipIds.push(clipId);
-    if (item.captureClipId) {
+    if (item.captureClipId && !params.keepCapturedClips) {
       await deleteCapturedClip(params.userId, item.captureClipId).catch(() => {});
     }
     params.onProgress?.({

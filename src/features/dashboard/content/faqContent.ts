@@ -103,7 +103,7 @@ export const FAQ_SECTIONS: FaqSection[] = [
       {
         id: "l1",
         q: "Where are my clips stored?",
-        a: "Trainees upload clips to My locker; coaches see trainee clips when attached to bookings or via clip picker in-call.",
+        a: "Trainees upload clips to their locker; coaches see trainee clips when attached to bookings or via clip picker in-call.",
       },
       {
         id: "l2",

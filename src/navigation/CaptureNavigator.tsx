@@ -8,13 +8,14 @@ import type { CapturedClip } from "../features/capture/capturedClipsStorage";
 import { nestedStackScreenOptions } from "./stackTransitions";
 
 export type CaptureStackParamList = {
-  CapturedLibrary: undefined;
+  CapturedLibrary: { uploadForFriend?: { id: string; name: string } } | undefined;
   CaptureCamera: undefined;
   CapturedClipUpload: {
     clips: CapturedClip[];
     shareTarget?: CaptureShareTarget;
     showPrepareStep?: boolean;
     friendIds?: string[];
+    uploadForFriend?: { id: string; name: string };
   };
 };
 

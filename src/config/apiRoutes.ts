@@ -70,6 +70,12 @@ export const API_ROUTES = {
     friendRequests: "/user/friend-requests",
     sentFriendRequests: "/user/sent-friend-requests",
     friends: "/user/friends",
+    friendContent: (friendId: string) => `/user/friends/${encodeURIComponent(friendId)}/content` as const,
+    friendClips: (friendId: string) => `/user/friends/${encodeURIComponent(friendId)}/clips` as const,
+    friendGamePlans: (friendId: string) => `/user/friends/${encodeURIComponent(friendId)}/game-plans` as const,
+    friendContentSettings: "/user/friend-content-settings",
+    perFriendContentSettings: (friendId: string) =>
+      `/user/friends/${encodeURIComponent(friendId)}/content-settings` as const,
     removeFriend: "/user/remove-friend",
     blockUser: "/user/block-user",
     unblockUser: "/user/unblock-user",
@@ -278,6 +284,7 @@ export const API_ROUTES = {
   storage: {
     clipsPresign: "/storage/clips/presign",
     clipsConfirm: "/storage/clips/confirm",
+    clipsUploadForFriend: "/storage/clips/upload-for-friend",
   },
   common: {
     extendSessionEndTime: "/common/extend-session-end-time",
@@ -291,6 +298,7 @@ export const API_ROUTES = {
     getSharedClips: "/common/get-shared-clips",
     getLibraryClips: "/common/get-library-clips",
     traineeClips: "/common/trainee-clips",
+    sessionTraineeClips: "/common/session-trainee-clips",
     deleteClip: (id: string) => `/common/delete-clip/${id}` as const,
     deleteSavedSession: (id: string) => `/common/delete-saved-session/${id}` as const,
     updateProfilePicture: "/common/update-profile-picture",

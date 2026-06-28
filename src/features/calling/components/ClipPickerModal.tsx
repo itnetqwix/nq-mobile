@@ -26,6 +26,7 @@ import {
 } from "../../instant-lesson/instantLessonClipsApi";
 import {
   postLibraryClipsNested,
+  postSessionTraineeClipsNested,
   postSharedClipsBySharer,
   type NestedCategoryGroup,
   type SharedClipsGroup,
@@ -42,6 +43,8 @@ type Props = {
   /** Trainer sees shared + locker; trainee shares from locker (+ session). */
   audience?: "trainer" | "trainee";
   traineeId?: string;
+  /** Active session id — unlocks trainer access to the trainee's full locker. */
+  sessionId?: string;
   /** Clips the trainee attached during booking — shown first for live review. */
   bookingClips?: ClipRow[];
   /** Currently broadcast clip ids (for highlight). */
@@ -54,6 +57,7 @@ export function ClipPickerModal({
   onDone,
   audience = "trainer",
   traineeId,
+  sessionId,
   bookingClips = [],
   selectedClipIds = [],
 }: Props) {
@@ -61,11 +65,14 @@ export function ClipPickerModal({
   const isTraineeAudience = audience === "trainee";
   const [loading, setLoading] = useState(false);
   const [lockerClips, setLockerClips] = useState<ClipRow[]>([]);
+  const [traineeClips, setTraineeClips] = useState<ClipRow[]>([]);
   const [sharedClips, setSharedClips] = useState<ClipRow[]>([]);
   const [libraryClips, setLibraryClips] = useState<ClipRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<"session" | "locker" | "shared" | "library">("locker");
+  const [activeTab, setActiveTab] = useState<
+    "session" | "locker" | "trainee" | "shared" | "library"
+  >("locker");
 
   const dedupeClips = useCallback((rows: ClipRow[]): ClipRow[] => {
     const seen = new Set<string>();
@@ -120,16 +127,25 @@ export function ClipPickerModal({
     setLoading(true);
     setError(null);
 
+    const canLoadTrainee = !isTraineeAudience && (!!sessionId || !!traineeId);
+
     (async () => {
-      const [mineResult, sharedResult, libraryResult] = await Promise.allSettled([
-        fetchMyClipsGrouped(),
-        isTraineeAudience
-          ? Promise.resolve([] as SharedClipsGroup[])
-          : postSharedClipsBySharer(),
-        isTraineeAudience
-          ? Promise.resolve([] as NestedCategoryGroup[])
-          : postLibraryClipsNested(),
-      ]);
+      const [mineResult, sharedResult, libraryResult, traineeResult] =
+        await Promise.allSettled([
+          fetchMyClipsGrouped(),
+          isTraineeAudience
+            ? Promise.resolve([] as SharedClipsGroup[])
+            : postSharedClipsBySharer(),
+          isTraineeAudience
+            ? Promise.resolve([] as NestedCategoryGroup[])
+            : postLibraryClipsNested(),
+          canLoadTrainee
+            ? postSessionTraineeClipsNested({
+                session_id: sessionId,
+                trainee_id: traineeId,
+              })
+            : Promise.resolve([] as NestedCategoryGroup[]),
+        ]);
       if (!active) return;
 
       if (mineResult.status === "fulfilled") {
@@ -146,6 +162,11 @@ export function ClipPickerModal({
         setLibraryClips(flattenNestedGroups(libraryResult.value));
       } else {
         setLibraryClips([]);
+      }
+      if (traineeResult.status === "fulfilled") {
+        setTraineeClips(flattenNestedGroups(traineeResult.value));
+      } else {
+        setTraineeClips([]);
       }
 
       if (
@@ -168,11 +189,20 @@ export function ClipPickerModal({
     flattenSharedGroups,
     sessionClips.length,
     isTraineeAudience,
+    sessionId,
+    traineeId,
   ]);
 
   const allClips = useMemo(
-    () => dedupeClips([...sessionClips, ...lockerClips, ...sharedClips, ...libraryClips]),
-    [sessionClips, lockerClips, sharedClips, libraryClips, dedupeClips]
+    () =>
+      dedupeClips([
+        ...sessionClips,
+        ...lockerClips,
+        ...traineeClips,
+        ...sharedClips,
+        ...libraryClips,
+      ]),
+    [sessionClips, lockerClips, traineeClips, sharedClips, libraryClips, dedupeClips]
   );
 
   const toggleClip = useCallback((clip: ClipRow) => {
@@ -213,18 +243,26 @@ export function ClipPickerModal({
     () => ({
       session: sessionClips.length,
       locker: lockerClips.length,
+      trainee: traineeClips.length,
       shared: sharedClips.length,
       library: libraryClips.length,
     }),
-    [sessionClips.length, lockerClips.length, sharedClips.length, libraryClips.length]
+    [
+      sessionClips.length,
+      lockerClips.length,
+      traineeClips.length,
+      sharedClips.length,
+      libraryClips.length,
+    ]
   );
 
   const activeClips = useMemo(() => {
     if (activeTab === "session") return sessionClips;
+    if (activeTab === "trainee") return traineeClips;
     if (activeTab === "shared") return sharedClips;
     if (activeTab === "library") return libraryClips;
     return lockerClips;
-  }, [activeTab, sessionClips, lockerClips, sharedClips, libraryClips]);
+  }, [activeTab, sessionClips, traineeClips, lockerClips, sharedClips, libraryClips]);
 
   const selectionLabel = `${picked.size}/${MAX_CLIPS} selected`;
 
@@ -281,6 +319,16 @@ export function ClipPickerModal({
                   {t("locker.myClips")} ({tabCounts.locker})
                 </Text>
               </Pressable>
+              {!isTraineeAudience && tabCounts.trainee > 0 ? (
+                <Pressable
+                  style={[styles.tabBtn, activeTab === "trainee" && styles.tabBtnActive]}
+                  onPress={() => setActiveTab("trainee")}
+                >
+                  <Text style={[styles.tabLabel, activeTab === "trainee" && styles.tabLabelActive]}>
+                    {t("locker.traineeClipsTab", { defaultValue: "Enthusiast" })} ({tabCounts.trainee})
+                  </Text>
+                </Pressable>
+              ) : null}
               {!isTraineeAudience && tabCounts.shared > 0 ? (
                 <Pressable
                   style={[styles.tabBtn, activeTab === "shared" && styles.tabBtnActive]}

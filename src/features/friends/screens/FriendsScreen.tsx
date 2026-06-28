@@ -42,6 +42,7 @@ import { InviteFriendsScreen } from "../../dashboard/screens/InviteFriendsScreen
 import { useChatRoomChrome } from "../../chats/hooks/useChatRoomChrome";
 import { ChatRoomScreen } from "../../chats/screens/ChatRoomScreen";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
+import { FriendDetailScreen } from "./FriendDetailScreen";
 
 const PRIMARY_TABS = [
   { key: "friends", labelKey: "friends.tabs.friends" },
@@ -99,6 +100,7 @@ function FriendCard({
   onRemove,
   onBlock,
   onReport,
+  onOpen,
 }: {
   friend: any;
   index: number;
@@ -107,6 +109,7 @@ function FriendCard({
   onRemove: (userId: string, name: string) => void;
   onBlock: (userId: string, name: string) => void;
   onReport: (userId: string, name: string) => void;
+  onOpen: (friend: any) => void;
 }) {
   const { t } = useAppTranslation();
   const { isOnline } = useOnlinePresence();
@@ -145,24 +148,26 @@ function FriendCard({
   return (
     <FadeInView index={index}>
       <View style={styles.card}>
-        <View style={styles.avatarWrap}>
-          <Avatar uri={user?.profile_picture} name={name} size={44} />
-          {online ? (
-            <View style={styles.presenceDot}>
-              <PresenceDot online size={10} ring />
-            </View>
-          ) : null}
-        </View>
-        <View style={styles.cardBody}>
-          <Text style={styles.rowName} numberOfLines={1}>
-            {name}
-          </Text>
-          {!!user?.email && (
-            <Text style={styles.rowSub} numberOfLines={1}>
-              {user.email}
+        <Pressable style={styles.cardTapArea} onPress={() => onOpen(friend)}>
+          <View style={styles.avatarWrap}>
+            <Avatar uri={user?.profile_picture} name={name} size={44} />
+            {online ? (
+              <View style={styles.presenceDot}>
+                <PresenceDot online size={10} ring />
+              </View>
+            ) : null}
+          </View>
+          <View style={styles.cardBody}>
+            <Text style={styles.rowName} numberOfLines={1}>
+              {name}
             </Text>
-          )}
-        </View>
+            {!!user?.email && (
+              <Text style={styles.rowSub} numberOfLines={1}>
+                {user.email}
+              </Text>
+            )}
+          </View>
+        </Pressable>
         <View style={styles.cardActions}>
           <Pressable
             style={styles.iconBtn}
@@ -288,6 +293,7 @@ export function FriendsScreen({ initialTab = "friends" }: FriendsScreenProps) {
     conversationId: string;
     partner: { _id: string; fullname?: string; profile_picture?: string };
   } | null>(null);
+  const [activeFriend, setActiveFriend] = useState<any | null>(null);
   useChatRoomChrome(!!activeChat);
   const queryClient = useQueryClient();
 
@@ -489,6 +495,7 @@ export function FriendsScreen({ initialTab = "friends" }: FriendsScreenProps) {
                   onRemove={handleRemoveFriend}
                   onBlock={handleBlockUser}
                   onReport={handleReportUser}
+                  onOpen={setActiveFriend}
                 />
               ) : tabKey === "sent" ? (
                 <SentRequestCard
@@ -553,6 +560,10 @@ export function FriendsScreen({ initialTab = "friends" }: FriendsScreenProps) {
         }}
       />
     );
+  }
+
+  if (activeFriend) {
+    return <FriendDetailScreen friend={activeFriend} onBack={() => setActiveFriend(null)} />;
   }
 
   return (
@@ -637,6 +648,7 @@ const styles = StyleSheet.create({
   presenceDot: { position: "absolute", right: -2, bottom: -2 },
   cardBody: { flex: 1, minWidth: 0 },
   cardActions: { flexDirection: "row", alignItems: "center", gap: 4 },
+  cardTapArea: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: space.md },
   iconBtn: {
     width: 40,
     height: 40,

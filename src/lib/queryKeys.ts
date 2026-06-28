@@ -38,6 +38,9 @@ export const queryKeys = {
     requests: ["friendRequests"] as const,
     sentRequests: ["sentFriendRequests"] as const,
     forClipShare: ["friends", "forClipShare"] as const,
+    content: (friendId: string) => ["friends", "content", friendId] as const,
+    clips: (friendId: string) => ["friends", "clips", friendId] as const,
+    gamePlans: (friendId: string) => ["friends", "gamePlans", friendId] as const,
   },
   chats: {
     all: ["chat"] as const,

@@ -64,7 +64,7 @@ export function describeAiAction(action: AiAction): string {
     case "open-faq":
       return i18n.t("ai.action.faq", { defaultValue: "Open FAQ" });
     case "open-students":
-      return i18n.t("ai.action.students", { defaultValue: "My students" });
+      return i18n.t("ai.action.students", { defaultValue: "Students" });
     case "open-chats":
       return i18n.t("ai.action.chats", { defaultValue: "Open chats" });
     case "open-instant-requests":

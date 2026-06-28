@@ -46,7 +46,7 @@ export const SHELL_SURFACES: readonly ShellSurfaceMeta[] = [
   },
   {
     id: "clipSubmissions",
-    title: "My library submissions",
+    title: "Library submissions",
     subtitle:
       "Track the status of every clip you've submitted to the NetQwix master library.",
     webContext:
@@ -104,7 +104,7 @@ export const SHELL_SURFACES: readonly ShellSurfaceMeta[] = [
   },
   {
     id: "trainerSchedule",
-    title: "My availability",
+    title: "Availability",
     subtitle: "Weekly availability",
     webContext: "Left sidebar → Schedule Inventory (`POST /trainer/update-slots`).",
     allowedRoles: [AccountType.TRAINER],

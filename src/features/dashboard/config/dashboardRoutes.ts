@@ -115,7 +115,7 @@ export const DASHBOARD_ROUTES: readonly DashboardRouteMeta[] = [
   },
   {
     id: "students",
-    title: "My trainees",
+    title: "Trainees",
     subtitle: "Trainees you have had sessions with — not every user on the platform.",
     webPath: "/dashboard/student",
     allowedRoles: [AccountType.TRAINER],

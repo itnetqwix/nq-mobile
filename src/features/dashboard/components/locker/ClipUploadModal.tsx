@@ -118,6 +118,7 @@ type Props = {
   onBack?: () => void;
   /** Open trim/thumbnail prepare step before details. */
   showPrepareStep?: boolean;
+  uploadForFriend?: { id: string; name: string };
 };
 
 export function ClipUploadModal({
@@ -132,6 +133,7 @@ export function ClipUploadModal({
   renderAsScreen = false,
   onBack,
   showPrepareStep = false,
+  uploadForFriend,
 }: Props) {
   const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
@@ -186,22 +188,32 @@ export function ClipUploadModal({
     return "my-clips" as const;
   }, [shareTarget]);
 
-  const headerTitle = t(shareTargetTitleKey(shareTargetKey), {
-    defaultValue:
-      shareTarget === SHARE_FRIENDS
-        ? "Share with friends"
-        : shareTarget === SHARE_EMAIL
-          ? "Share by email"
-          : "Upload to My Clips",
-  });
-  const headerSub = t(shareTargetSubtitleKey(shareTargetKey), {
-    defaultValue:
-      shareTarget === SHARE_FRIENDS
-        ? "Choose sport, subcategory, and friends for your clip(s)."
-        : shareTarget === SHARE_EMAIL
-          ? "Invite new users by email — add multiple addresses separated by commas."
-          : "Add title, sport, and subcategory to save in your locker.",
-  });
+  const headerTitle = uploadForFriend
+    ? t("friends.uploadForFriend.title", {
+        name: uploadForFriend.name,
+        defaultValue: `Upload to ${uploadForFriend.name}`,
+      })
+    : t(shareTargetTitleKey(shareTargetKey), {
+        defaultValue:
+          shareTarget === SHARE_FRIENDS
+            ? "Share with friends"
+            : shareTarget === SHARE_EMAIL
+              ? "Share by email"
+              : "Upload to Videos",
+      });
+  const headerSub = uploadForFriend
+    ? t("friends.uploadForFriend.subtitle", {
+        name: uploadForFriend.name,
+        defaultValue: "This clip will be saved in your friend's locker and count toward their storage.",
+      })
+    : t(shareTargetSubtitleKey(shareTargetKey), {
+        defaultValue:
+          shareTarget === SHARE_FRIENDS
+            ? "Choose sport, subcategory, and friends for your clip(s)."
+            : shareTarget === SHARE_EMAIL
+              ? "Invite new users by email — add multiple addresses separated by commas."
+              : "Add title, sport, and subcategory to save in your locker.",
+      });
 
   const { data: taxonomy, isLoading: catLoading } = useQuery({
     queryKey: queryKeys.clips.taxonomy,
@@ -465,11 +477,19 @@ export function ClipUploadModal({
     !thumbBusy &&
     !uploadBusy &&
     !initializingVideo &&
-    (shareTarget === SHARE_MY_CLIPS ||
+    (!!uploadForFriend ||
+      shareTarget === SHARE_MY_CLIPS ||
       (shareTarget === SHARE_FRIENDS && selectedFriendIds.length > 0) ||
       (shareTarget === SHARE_EMAIL && emailValid));
 
   const submitAction = useMemo(() => {
+    if (uploadForFriend) {
+      return {
+        label: t("friends.uploadForFriend.submit", { name: uploadForFriend.name }),
+        icon: "cloud-upload-outline" as const,
+        hint: t("friends.uploadForFriend.hint"),
+      };
+    }
     if (shareTarget === SHARE_FRIENDS) {
       return {
         label: t("locker.uploadShareFriends"),
@@ -489,7 +509,7 @@ export function ClipUploadModal({
       icon: "cloud-upload-outline" as const,
       hint: t("locker.uploadLead"),
     };
-  }, [shareTarget, t]);
+  }, [shareTarget, t, uploadForFriend]);
 
   const submit = async () => {
     if (!canSubmit) return;
@@ -596,6 +616,8 @@ export function ClipUploadModal({
           category_id: categoryId,
           subcategory_id: subcategoryId,
           shareOptions,
+          targetUserId: uploadForFriend?.id,
+          keepCapturedClips: !!uploadForFriend,
           userId: user?._id != null ? String(user._id) : null,
           onProgress: setBatchProgress,
         });
@@ -617,7 +639,7 @@ export function ClipUploadModal({
         onClose();
       } catch (e) {
         haptics.error();
-        if (isNetworkRequestError(e) && preparedItems?.length) {
+        if (!uploadForFriend && isNetworkRequestError(e) && preparedItems?.length) {
           for (const item of preparedItems) {
             const fileBytes = item.clip.fileSizeBytes ?? 1;
             await enqueueCaptureClipUpload({
@@ -673,7 +695,7 @@ export function ClipUploadModal({
     let fileBytes = videoAsset.fileSize ?? 0;
     if (fileBytes <= 0) {
       try {
-        const info = await FileSystem.getInfoAsync(videoAsset.uri, { size: true });
+        const info = await FileSystem.getInfoAsync(videoAsset.uri, { size: true } as any);
         if (info.exists && "size" in info && typeof info.size === "number") {
           fileBytes = info.size;
         }
@@ -724,6 +746,7 @@ export function ClipUploadModal({
         category_id: categoryId,
         subcategory_id: subcategoryId,
         shareOptions,
+        targetUserId: uploadForFriend?.id,
         onVideoProgress: (percent) => {
           setUploadPhase("video");
           setVideoProgress(percent);
@@ -740,7 +763,7 @@ export function ClipUploadModal({
       }
 
       haptics.success();
-      if (captureClipId) {
+      if (captureClipId && !uploadForFriend) {
         await deleteCapturedClip(
           user?._id != null ? String(user._id) : null,
           captureClipId
@@ -748,7 +771,9 @@ export function ClipUploadModal({
       }
       Alert.alert(
         t("locker.uploadedTitle"),
-        shareTarget === SHARE_FRIENDS
+        uploadForFriend
+          ? t("friends.uploadForFriend.success", { name: uploadForFriend.name })
+          : shareTarget === SHARE_FRIENDS
           ? t("locker.uploadSharedBody")
           : shareTarget === SHARE_EMAIL
             ? t("locker.uploadEmailBody")
@@ -758,16 +783,16 @@ export function ClipUploadModal({
       onUploaded();
       onClose();
     } catch (e) {
-      if (isNetworkRequestError(e) && videoAsset && resolvedThumb) {
+      if (!uploadForFriend && isNetworkRequestError(e) && videoAsset && resolvedThumb) {
         const shareOptions =
           shareTarget === SHARE_FRIENDS
-            ? { type: SHARE_FRIENDS as const, friends: selectedFriendIds }
+            ? { type: SHARE_FRIENDS, friends: selectedFriendIds }
             : shareTarget === SHARE_EMAIL
               ? {
-                  type: SHARE_BACKEND_NEW_USERS as const,
+                  type: SHARE_BACKEND_NEW_USERS,
                   emails: parsedEmails,
                 }
-              : { type: SHARE_MY_CLIPS as const };
+              : { type: SHARE_MY_CLIPS };
         await enqueueCaptureClipUpload({
           videoUri: videoAsset.uri,
           videoMime,
@@ -1062,31 +1087,35 @@ export function ClipUploadModal({
             </Text>
           ) : null}
 
-          <Text style={styles.sectionHeading}>{t("locker.shareTo")}</Text>
-          <View style={styles.shareSegment}>
-            {[
-              { key: SHARE_MY_CLIPS, icon: "folder-outline" as keyof typeof Ionicons.glyphMap, label: t("locker.shareMyClips") },
-              { key: SHARE_FRIENDS, icon: "people-outline" as keyof typeof Ionicons.glyphMap, label: t("locker.shareFriends") },
-              { key: SHARE_EMAIL, icon: "mail-outline" as keyof typeof Ionicons.glyphMap, label: t("locker.shareEmail") },
-            ].map((opt) => {
-              const on = shareTarget === opt.key;
-              return (
-                <Pressable
-                  key={opt.key}
-                  style={[styles.shareSegmentBtn, on && styles.shareSegmentBtnOn]}
-                  onPress={() => setShareTarget(opt.key)}
-                  disabled={uploadBusy}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: on }}
-                >
-                  <Ionicons name={opt.icon} size={18} color={on ? c.brandNavy : c.textMuted} />
-                  <Text style={[styles.shareSegmentLabel, on && styles.shareSegmentLabelOn]} numberOfLines={2}>
-                    {opt.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          {!uploadForFriend && (
+            <>
+              <Text style={styles.sectionHeading}>{t("locker.shareTo")}</Text>
+              <View style={styles.shareSegment}>
+                {[
+                  { key: SHARE_MY_CLIPS, icon: "folder-outline" as keyof typeof Ionicons.glyphMap, label: t("locker.shareMyClips") },
+                  { key: SHARE_FRIENDS, icon: "people-outline" as keyof typeof Ionicons.glyphMap, label: t("locker.shareFriends") },
+                  { key: SHARE_EMAIL, icon: "mail-outline" as keyof typeof Ionicons.glyphMap, label: t("locker.shareEmail") },
+                ].map((opt) => {
+                  const on = shareTarget === opt.key;
+                  return (
+                    <Pressable
+                      key={opt.key}
+                      style={[styles.shareSegmentBtn, on && styles.shareSegmentBtnOn]}
+                      onPress={() => setShareTarget(opt.key)}
+                      disabled={uploadBusy}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: on }}
+                    >
+                      <Ionicons name={opt.icon} size={18} color={on ? c.brandNavy : c.textMuted} />
+                      <Text style={[styles.shareSegmentLabel, on && styles.shareSegmentLabelOn]} numberOfLines={2}>
+                        {opt.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </>
+          )}
 
           {shareTarget === SHARE_FRIENDS && (
             <View style={styles.sharePanel}>

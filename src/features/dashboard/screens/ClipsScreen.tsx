@@ -545,7 +545,7 @@ export function ClipsScreen() {
                 }
                 accessibilityRole="button"
                 accessibilityLabel={t("locker.librarySubmissionsA11y", {
-                  defaultValue: "My library submissions",
+                  defaultValue: "Library submissions",
                 })}
               >
                 <Ionicons name="document-text-outline" size={20} color={c.brandNavy} />

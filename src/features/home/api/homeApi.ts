@@ -708,6 +708,7 @@ export type ClipConfirmPayload = {
   category_id?: string;
   subcategory_id?: string;
   fileSizeBytes: number;
+  target_user_id?: string;
   shareOptions: {
     type: string;
     friends?: string[];
@@ -719,7 +720,10 @@ export type ClipConfirmPayload = {
 export async function postClipConfirm(
   payload: ClipConfirmPayload
 ): Promise<{ clipId: string | null }> {
-  const res = await apiClient.post(API_ROUTES.storage.clipsConfirm, payload);
+  const endpoint = payload.target_user_id
+    ? API_ROUTES.storage.clipsUploadForFriend
+    : API_ROUTES.storage.clipsConfirm;
+  const res = await apiClient.post(endpoint, payload);
   const body = (res.data ?? {}) as {
     success?: number;
     clipId?: string | null;
@@ -742,6 +746,7 @@ export async function uploadLockerClip(params: {
   category_id?: string;
   subcategory_id?: string;
   shareOptions: ClipConfirmPayload["shareOptions"];
+  targetUserId?: string;
   onVideoProgress?: (percent: number) => void;
   onThumbProgress?: (percent: number) => void;
 }): Promise<{ clipId: string | null }> {
@@ -784,6 +789,7 @@ export async function uploadLockerClip(params: {
     category_id: params.category_id,
     subcategory_id: params.subcategory_id,
     fileSizeBytes: params.videoSizeBytes,
+    target_user_id: params.targetUserId,
     shareOptions: params.shareOptions,
   });
 }

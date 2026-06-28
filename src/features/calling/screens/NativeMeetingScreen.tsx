@@ -3659,6 +3659,7 @@ function MeetingSurface({
         traineeId={
           isTrainer ? String(session?.trainee_info?._id ?? "") : undefined
         }
+        sessionId={isTrainer ? String(lessonId ?? "") : undefined}
         selectedClipIds={clipSync.selectedClips
           .map((c) => clipIdOf(c))
           .filter((id): id is string => !!id)}

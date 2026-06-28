@@ -172,7 +172,7 @@ export function ShareClipsPanel() {
 
       <Text style={styles.label}>Friends</Text>
       {friendRows.length === 0 ? (
-        <Text style={styles.pickEmpty}>No friends yet. Add friends from My Community.</Text>
+        <Text style={styles.pickEmpty}>No friends yet. Add friends from the Community.</Text>
       ) : (
         <View style={styles.pickList}>
           {friendRows.map((u) => {

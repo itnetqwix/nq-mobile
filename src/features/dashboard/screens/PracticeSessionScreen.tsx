@@ -30,7 +30,7 @@ export function PracticeSessionScreen() {
           onPress={() => navigation.navigate("ShellSurface", { surfaceId: "clips" })}
         >
           <Ionicons name="videocam-outline" size={20} color={colors.brandTextOn} />
-          <Text style={styles.actionBtnText}>Open My Clips</Text>
+          <Text style={styles.actionBtnText}>Open Clips</Text>
         </Pressable>
         <Pressable
           style={[styles.actionBtn, styles.actionBtnSecondary]}

@@ -93,7 +93,7 @@ export function MyLibrarySubmissionsScreen() {
   const toolbar = (
     <View style={styles.toolbar}>
       <Text style={styles.headline}>
-        {t("librarySubmissions.title", { defaultValue: "My library submissions" })}
+        {t("librarySubmissions.title", { defaultValue: "Library submissions" })}
       </Text>
       <Text style={styles.subline}>
         {t("librarySubmissions.subtitle", {

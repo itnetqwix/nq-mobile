@@ -85,10 +85,10 @@ export function DashboardClipsPreviewSection({ onViewMore }: Props) {
     return (
       <DashboardSection
         embedded
-        title={t("dashboardHome.myClips", { defaultValue: "My clips" })}
-        testID="home-clips-preview"
-      >
-        <View style={styles.grid}>
+      title={t("dashboardHome.myClips", { defaultValue: "Videos" })}
+      testID="home-clips-preview"
+    >
+      <View style={styles.grid}>
           {Array.from({ length: 6 }).map((_, i) => (
             <View key={i} style={styles.cell}>
               <ClipTileSkeleton />
@@ -103,10 +103,10 @@ export function DashboardClipsPreviewSection({ onViewMore }: Props) {
     return (
       <DashboardSection
         embedded
-        title={t("dashboardHome.myClips", { defaultValue: "My clips" })}
-        testID="home-clips-preview"
-      >
-        <Pressable style={styles.empty} onPress={onViewMore}>
+      title={t("dashboardHome.myClips", { defaultValue: "Clips" })}
+      testID="home-clips-preview"
+    >
+      <Pressable style={styles.empty} onPress={onViewMore}>
           <Ionicons name="film-outline" size={28} color={styles.emptyIcon.color} />
           <Text style={styles.emptyText}>
             {t("dashboardHome.clipsEmpty", { defaultValue: "Upload clips to your locker" })}
@@ -125,7 +125,7 @@ export function DashboardClipsPreviewSection({ onViewMore }: Props) {
     <>
     <DashboardSection
       embedded
-      title={t("dashboardHome.myClips", { defaultValue: "My clips" })}
+      title={t("dashboardHome.myClips", { defaultValue: "Clips" })}
       action={
         <Pressable onPress={onViewMore} hitSlop={8}>
           <Text style={styles.link}>
