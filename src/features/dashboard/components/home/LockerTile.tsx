@@ -30,21 +30,22 @@ export function LockerTile({ tile, onPress, variant = "grid" }: Props) {
         backgroundColor: palette.surfaceElevated,
         padding: compact ? space.sm : space.md,
         justifyContent: "space-between",
+        gap: compact ? space.xs : space.sm,
         ...shadows.sm,
         ...(compact
           ? { width: 156, minHeight: 108 }
-          : { width: "48%", minHeight: 112 }),
+          : { width: "48%", minHeight: 124 }),
       },
       row: { flexDirection: "row", alignItems: "center", gap: space.sm },
       iconWrap: {
-        width: compact ? 36 : 40,
-        height: compact ? 36 : 40,
-        borderRadius: compact ? 18 : 20,
+        width: compact ? 36 : 44,
+        height: compact ? 36 : 44,
+        borderRadius: compact ? 18 : 14,
         backgroundColor: accent.bg,
         alignItems: "center",
         justifyContent: "center",
       },
-      textBlock: { flex: 1, minWidth: 0 },
+      textBlock: { flex: compact ? 1 : undefined, minWidth: 0 },
       title: {
         ...(compact ? typography.label : typography.subtitle),
         color: palette.text,
@@ -88,25 +89,30 @@ export function LockerTile({ tile, onPress, variant = "grid" }: Props) {
     >
       <View style={styles.row}>
         <View style={styles.iconWrap}>
-          <Ionicons name={tile.icon} size={compact ? 18 : 20} color={accentFg} />
+          <Ionicons name={tile.icon} size={compact ? 18 : 22} color={accentFg} />
         </View>
+        {compact ? (
+          <View style={styles.textBlock}>
+            <Text style={styles.title} numberOfLines={1}>
+              {tile.title}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+      {!compact ? (
         <View style={styles.textBlock}>
           <Text style={styles.title} numberOfLines={1}>
             {tile.title}
           </Text>
-          {!compact && (
-            <Text style={styles.subtitle} numberOfLines={2}>
-              {tile.subtitle}
-            </Text>
-          )}
+          <Text style={styles.subtitle} numberOfLines={2}>
+            {tile.subtitle}
+          </Text>
         </View>
-        <Ionicons name="chevron-forward" size={16} color={c.textMuted} />
-      </View>
-      {compact ? (
+      ) : (
         <Text style={styles.subtitle} numberOfLines={2}>
           {tile.subtitle}
         </Text>
-      ) : null}
+      )}
       <View style={styles.ctaRow}>
         <Text style={styles.cta}>Open</Text>
         <Ionicons name="arrow-forward" size={12} color={accentFg} />

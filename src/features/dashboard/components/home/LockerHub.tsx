@@ -18,9 +18,9 @@ export function LockerHub({ accountType, onOpenSurface }: Props) {
 
   return (
     <HomeSection
-      title={t("trainerDashboard.lockerTitle", { defaultValue: "Locker" })}
+      title={t("trainerDashboard.lockerTitle", { defaultValue: "Quick Access" })}
       subtitle={t("trainerDashboard.lockerSubtitle", {
-        defaultValue: "Clips, game plans & saved lessons",
+        defaultValue: "Videos & game plans",
       })}
       testID="home-locker-hub"
       bare

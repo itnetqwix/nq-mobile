@@ -1640,14 +1640,14 @@
     "semantic_hash": ""
   },
   "src/features/dashboard/components/home/LockerHub.tsx": {
-    "mtime": 1782298319.201455,
-    "ast_hash": "ad06f40cd5ccf5fd5c52286b9d5891a4",
+    "mtime": 1782711164.6200142,
+    "ast_hash": "9ce567c132377a7053b3b0f812f2e49a",
     "semantic_hash": ""
   },
   "src/features/dashboard/components/home/LockerTile.tsx": {
-    "mtime": 1779045168.1910558,
-    "ast_hash": "2ef07fcc5bbe65071657bec58241eb9f",
-    "semantic_hash": "2ef07fcc5bbe65071657bec58241eb9f"
+    "mtime": 1782711192.7598255,
+    "ast_hash": "3e03420d78f5bacc9d134bc7f593f32e",
+    "semantic_hash": ""
   },
   "src/features/dashboard/components/home/PastBookedTrainersSection.tsx": {
     "mtime": 1781084493.0075624,
@@ -1695,9 +1695,9 @@
     "semantic_hash": "6d8be73647dd1d07655b20d97bee52c9"
   },
   "src/features/dashboard/components/home/lockerConfig.ts": {
-    "mtime": 1778954813.9507046,
-    "ast_hash": "cc3f4f007281caf87dc41a85425f0027",
-    "semantic_hash": "cc3f4f007281caf87dc41a85425f0027"
+    "mtime": 1782711157.8226016,
+    "ast_hash": "134f226281ad37cdcfd402f5b9c8756e",
+    "semantic_hash": ""
   },
   "src/features/dashboard/components/home/types.ts": {
     "mtime": 1778954766.4262066,
@@ -3000,8 +3000,8 @@
     "semantic_hash": ""
   },
   "src/i18n/locales/en.json": {
-    "mtime": 1782652045.0859866,
-    "ast_hash": "396da55c56fc429fb9f154f8356586b8",
+    "mtime": 1782711162.6813984,
+    "ast_hash": "bababe6302bb792b7e0cbf765c6446f4",
     "semantic_hash": ""
   },
   "src/i18n/locales/es.json": {

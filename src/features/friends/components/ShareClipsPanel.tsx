@@ -56,15 +56,30 @@ function flattenClips(
   return out;
 }
 
-export function ShareClipsPanel() {
+type ShareClipsPanelProps = {
+  preselectedFriendId?: string;
+};
+
+export function ShareClipsPanel({ preselectedFriendId }: ShareClipsPanelProps) {
   const c = useThemeColors();
   const styles = useShareClipsStyles();
   const navigation = useNavigation<any>();
   const { user } = useAuth();
   const userId = user?._id != null ? String(user._id) : null;
   const [selected, setSelected] = useState<Record<string, boolean>>({});
-  const [selectedFriends, setSelectedFriends] = useState<Record<string, boolean>>({});
+  const [selectedFriends, setSelectedFriends] = useState<Record<string, boolean>>(() => {
+    if (preselectedFriendId) {
+      return { [preselectedFriendId]: true };
+    }
+    return {};
+  });
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (preselectedFriendId) {
+      setSelectedFriends({ [preselectedFriendId]: true });
+    }
+  }, [preselectedFriendId]);
 
   const {
     data: clips = [] as CapturedClip[],

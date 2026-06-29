@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { FlashList } from "@shopify/flash-list";
 import {
   ActionSheetIOS,
@@ -61,6 +61,7 @@ type Tab = PrimaryTab | SecondaryTab;
 
 type FriendsScreenProps = {
   initialTab?: Tab;
+  preselectedFriendId?: string;
 };
 
 const REPORT_REASON_KEYS = [
@@ -283,12 +284,18 @@ function isSecondaryTab(tab: Tab): tab is SecondaryTab {
   return tab === "share" || tab === "invite";
 }
 
-export function FriendsScreen({ initialTab = "friends" }: FriendsScreenProps) {
+export function FriendsScreen({ initialTab = "friends", preselectedFriendId }: FriendsScreenProps) {
   const { t } = useAppTranslation();
   const resolved = resolveInitialTab(initialTab);
   const [tab, setTab] = useState<Tab>(resolved);
   const [messageBusy, setMessageBusy] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
+
+  useEffect(() => {
+    if (initialTab) {
+      setTab(initialTab);
+    }
+  }, [initialTab]);
   const [activeChat, setActiveChat] = useState<{
     conversationId: string;
     partner: { _id: string; fullname?: string; profile_picture?: string };
@@ -453,7 +460,7 @@ export function FriendsScreen({ initialTab = "friends" }: FriendsScreenProps) {
 
   const renderTabBody = () => {
     if (tab === "share") {
-      return <ShareClipsPanel />;
+      return <ShareClipsPanel preselectedFriendId={preselectedFriendId} />;
     }
     if (tab === "invite") {
       return <InviteFriendsScreen />;

@@ -8,9 +8,11 @@ import {
   Text,
   TextInput,
   View,
+  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigation } from "@react-navigation/native";
 
 import { Banner, Button, KeyboardAwareScrollScreen, Skeleton } from "../../../components/ui";
 import {
@@ -20,7 +22,7 @@ import {
   useThemeColors,
   useThemedStyles,
 } from "../../../theme";
-import { fetchMyReferrals } from "../../home/api/homeApi";
+import { fetchMyReferrals, fetchFriends } from "../../home/api/homeApi";
 import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { useAppTranslation } from "../../../i18n/useAppTranslation";
 import { queryKeys } from "../../../lib/queryKeys";
@@ -34,6 +36,7 @@ import {
   type ReferralRewardPreview,
   type ReferralRewardPreviewPoints,
 } from "../../referral/api/referralApi";
+import { DashboardPersonTile } from "../components/shared/DashboardPersonTile";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -82,16 +85,25 @@ export function InviteFriendsScreen() {
   const c = useThemeColors();
   const styles = useInviteStyles();
   const queryClient = useQueryClient();
+  const navigation = useNavigation<any>();
   const { user } = useAuth();
   const [text, setText] = useState("");
   const [chips, setChips] = useState<string[]>([]);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<TrackerTab>("all");
+  const [activeTab, setActiveTab] = useState<"share" | "email" | "tracker">("share");
   const [composerOpen, setComposerOpen] = useState(false);
   const [inviteTarget, setInviteTarget] = useState<typeof AccountType.TRAINEE | typeof AccountType.TRAINER>(
     AccountType.TRAINEE
   );
+
+  const friendsQuery = useQuery<any[]>({
+    queryKey: queryKeys.friends.list,
+    queryFn: fetchFriends,
+    staleTime: 120_000,
+  });
+  const friends = friendsQuery.data ?? [];
 
   const programQuery = useQuery({
     queryKey: queryKeys.referral.program,
@@ -304,153 +316,214 @@ export function InviteFriendsScreen() {
 
   return (
     <KeyboardAwareScrollScreen style={styles.root} contentContainerStyle={styles.content}>
-      {/* Hero card with perk callout */}
-      <View style={styles.hero}>
-        <View style={[styles.heroIconWrap, { backgroundColor: c.brandSubtle }]}>
-          <Ionicons name="gift-outline" size={32} color={c.brandNavy} />
-        </View>
-        <Text style={[styles.heroTitle, { color: c.text }]}>
-          {t("invites.heroTitle", {
-            defaultValue: "Refer coaches and athletes, earn wallet credits",
-          })}
-        </Text>
-        <Text style={[styles.heroSub, { color: c.textMuted }]}>
-          {t("invites.heroSubtitle", {
-            defaultValue:
-              "Invite anyone to join as a trainee or trainer. When they sign up and complete their first lesson, you earn cash credits in your NetQwix wallet.",
-          })}
-        </Text>
-        {program?.referralCode ? (
-          <Text style={[styles.codePill, { color: c.brandNavy, backgroundColor: c.brandSubtle }]}>
-            {t("invites.yourCode", { defaultValue: "Your code" })}: {program.referralCode}
-          </Text>
-        ) : null}
+      {/* Top Tab Bar for Screen Maneuverability */}
+      <View style={styles.mainTabBar}>
+        {(["share", "email", "tracker"] as const).map((tabKey) => {
+          const active = activeTab === tabKey;
+          let label = "";
+          let iconName: React.ComponentProps<typeof Ionicons>["name"] = "share-social-outline";
+          if (tabKey === "share") {
+            label = t("invites.tabs.share", { defaultValue: "Quick Share" });
+            iconName = "share-social-outline";
+          } else if (tabKey === "email") {
+            label = t("invites.tabs.email", { defaultValue: "Email Invite" });
+            iconName = "mail-outline";
+          } else {
+            label = t("invites.tabs.tracker", { defaultValue: "Tracker" });
+            iconName = "list-outline";
+          }
+          return (
+            <Pressable
+              key={tabKey}
+              onPress={() => {
+                haptics.tap();
+                setActiveTab(tabKey);
+              }}
+              style={[styles.mainTabBtn, active && styles.mainTabBtnActive]}
+            >
+              <Ionicons name={iconName} size={16} color={active ? c.brandNavy : c.textMuted} />
+              <Text style={[styles.mainTabText, active && styles.mainTabTextActive]}>
+                {label}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
-      {/* Stats card */}
-      <View style={styles.statsCard}>
-        <StatBlock
-          icon="paper-plane-outline"
-          label={t("invites.statInvited", { defaultValue: "Invited" })}
-          value={stats.total}
-        />
-        <View style={styles.statDivider} />
-        <StatBlock
-          icon="people-outline"
-          label={t("invites.statJoined", { defaultValue: "Joined" })}
-          value={stats.joined}
-          highlight
-        />
-        <View style={styles.statDivider} />
-        <StatBlock
-          icon="star-outline"
-          label={t("invites.statPoints", { defaultValue: "Points" })}
-          value={stats.pointsBalance}
-          compact
-        />
-      </View>
-
-      {/* Invite + share — single streamlined card */}
-      <View style={styles.card}>
-        <Text style={[styles.cardEyebrow, { color: c.textMuted }]}>
-          {t("invites.inviteAsTitle", { defaultValue: "Invite them to join as" })}
-        </Text>
-        <View style={styles.targetRow}>
-          <TargetChip
-            label={t("invites.targetTrainee", { defaultValue: "Trainee" })}
-            selected={inviteTarget === AccountType.TRAINEE}
-            onPress={() => setInviteTarget(AccountType.TRAINEE)}
-          />
-          <TargetChip
-            label={t("invites.targetTrainer", { defaultValue: "Trainer / coach" })}
-            selected={inviteTarget === AccountType.TRAINER}
-            onPress={() => setInviteTarget(AccountType.TRAINER)}
-          />
-        </View>
-        <Text style={[styles.rewardLine, { color: c.textMuted }]}>
-          {t("invites.rewardYouEarnPoints", {
-            defaultValue: "You earn {{amount}} when they join",
-            amount: rewardSummaryPoints(activeRewardPreviewPoints) || "—",
-          })}
-          {activeRewardPreviewPoints && activeRewardPreviewPoints.refereeSignupPoints > 0
-            ? ` · ${t("invites.rewardTheyGetPoints", {
-                defaultValue: "They get {{amount}} on signup",
-                amount: `${activeRewardPreviewPoints.refereeSignupPoints} pts`,
-              })}`
-            : ""}
-        </Text>
-
-        <View style={[styles.divider, { backgroundColor: c.borderSubtle }]} />
-
-        <Pressable
-          onPress={handleCopyLink}
-          style={[styles.linkPill, { backgroundColor: c.surfaceMuted, borderColor: c.borderSubtle }]}
-        >
-          <Ionicons name="link-outline" size={16} color={c.brandNavy} />
-          <Text style={[styles.linkPillText, { color: c.text }]} numberOfLines={1}>
-            {referralLink}
-          </Text>
-          <Ionicons name="copy-outline" size={16} color={c.textMuted} />
-        </Pressable>
-
-        <View style={styles.shareRow}>
-          <ShareAction
-            icon="logo-whatsapp"
-            label={t("invites.shareWhatsapp", { defaultValue: "WhatsApp" })}
-            onPress={handleShareWhatsApp}
-            tint="#25D366"
-          />
-          <ShareAction
-            icon="chatbox-outline"
-            label={t("invites.shareSms", { defaultValue: "SMS" })}
-            onPress={handleShareSms}
-          />
-          <ShareAction
-            icon="mail-outline"
-            label={t("invites.shareEmailAction", { defaultValue: "Email" })}
-            onPress={() => setComposerOpen(true)}
-          />
-          <ShareAction
-            icon="share-outline"
-            label={t("invites.shareMore", { defaultValue: "More" })}
-            onPress={handleShareNative}
-          />
-        </View>
-
-        <Text style={[styles.pointsHint, { color: c.textMuted }]}>
-          {t("points.inviteHowBody", {
-            defaultValue:
-              "Earn 1–5 points per action. Redeem 100 points for $5 wallet credit in the Wallet tab.",
-          })}
-        </Text>
-      </View>
-
-      {/* Email composer */}
-      <View style={styles.card}>
-        <Pressable
-          onPress={() => setComposerOpen((v) => !v)}
-          style={styles.composerHeader}
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.cardTitle, { color: c.text }]}>
-              {t("invites.title")}
-            </Text>
-            <Text style={[styles.cardSub, { color: c.textMuted }]}>
-              {t("invites.subtitleExpanded", {
-                defaultValue:
-                  "Enter one or more emails. We will send your friend a personal invite to join NetQwix.",
+      {activeTab === "share" && (
+        <View style={{ gap: space.md }}>
+          {/* Hero Card / Promo section */}
+          <View style={styles.hero}>
+            <View style={[styles.heroIconWrap, { backgroundColor: c.brandSubtle }]}>
+              <Ionicons name="gift-outline" size={32} color={c.brandNavy} />
+            </View>
+            <Text style={[styles.heroTitle, { color: c.text }]}>
+              {t("invites.heroTitle", {
+                defaultValue: "Refer coaches and athletes, earn wallet credits",
               })}
             </Text>
+            <Text style={[styles.heroSub, { color: c.textMuted }]}>
+              {t("invites.heroSubtitle", {
+                defaultValue:
+                  "Invite anyone to join as a trainee or trainer. When they sign up and complete their first lesson, you earn cash credits in your NetQwix wallet.",
+              })}
+            </Text>
+            {program?.referralCode ? (
+              <Text style={[styles.codePill, { color: c.brandNavy, backgroundColor: c.brandSubtle }]}>
+                {t("invites.yourCode", { defaultValue: "Your code" })}: {program.referralCode}
+              </Text>
+            ) : null}
           </View>
-          <Ionicons
-            name={composerOpen ? "chevron-up" : "chevron-down"}
-            size={20}
-            color={c.textMuted}
-          />
-        </Pressable>
 
-        {composerOpen ? (
-          <View style={{ gap: space.sm }}>
+          {/* Stats Row */}
+          <View style={styles.statsCard}>
+            <StatBlock
+              icon="paper-plane-outline"
+              label={t("invites.statInvited", { defaultValue: "Invited" })}
+              value={stats.total}
+            />
+            <View style={styles.statDivider} />
+            <StatBlock
+              icon="people-outline"
+              label={t("invites.statJoined", { defaultValue: "Joined" })}
+              value={stats.joined}
+              highlight
+            />
+            <View style={styles.statDivider} />
+            <StatBlock
+              icon="star-outline"
+              label={t("invites.statPoints", { defaultValue: "Points" })}
+              value={stats.pointsBalance}
+              compact
+            />
+          </View>
+
+          {/* Quick share action card */}
+          <View style={styles.card}>
+            <Text style={[styles.cardEyebrow, { color: c.textMuted }]}>
+              {t("invites.inviteAsTitle", { defaultValue: "Invite them to join as" })}
+            </Text>
+            <View style={styles.targetRow}>
+              <TargetChip
+                label={t("invites.targetTrainee", { defaultValue: "Trainee" })}
+                selected={inviteTarget === AccountType.TRAINEE}
+                onPress={() => setInviteTarget(AccountType.TRAINEE)}
+              />
+              <TargetChip
+                label={t("invites.targetTrainer", { defaultValue: "Trainer / coach" })}
+                selected={inviteTarget === AccountType.TRAINER}
+                onPress={() => setInviteTarget(AccountType.TRAINER)}
+              />
+            </View>
+            <Text style={[styles.rewardLine, { color: c.textMuted }]}>
+              {t("invites.rewardYouEarnPoints", {
+                defaultValue: "You earn {{amount}} when they join",
+                amount: rewardSummaryPoints(activeRewardPreviewPoints) || "—",
+              })}
+              {activeRewardPreviewPoints && activeRewardPreviewPoints.refereeSignupPoints > 0
+                ? ` · ${t("invites.rewardTheyGetPoints", {
+                    defaultValue: "They get {{amount}} on signup",
+                    amount: `${activeRewardPreviewPoints.refereeSignupPoints} pts`,
+                  })}`
+                : ""}
+            </Text>
+
+            <View style={[styles.divider, { backgroundColor: c.borderSubtle }]} />
+
+            <Pressable
+              onPress={handleCopyLink}
+              style={[styles.linkPill, { backgroundColor: c.surfaceMuted, borderColor: c.borderSubtle }]}
+            >
+              <Ionicons name="link-outline" size={16} color={c.brandNavy} />
+              <Text style={[styles.linkPillText, { color: c.text }]} numberOfLines={1}>
+                {referralLink}
+              </Text>
+              <Ionicons name="copy-outline" size={16} color={c.textMuted} />
+            </Pressable>
+
+            <View style={styles.shareRow}>
+              <ShareAction
+                icon="logo-whatsapp"
+                label={t("invites.shareWhatsapp", { defaultValue: "WhatsApp" })}
+                onPress={handleShareWhatsApp}
+                tint="#25D366"
+              />
+              <ShareAction
+                icon="chatbox-outline"
+                label={t("invites.shareSms", { defaultValue: "SMS" })}
+                onPress={handleShareSms}
+              />
+              <ShareAction
+                icon="share-outline"
+                label={t("invites.shareMore", { defaultValue: "More" })}
+                onPress={handleShareNative}
+              />
+            </View>
+          </View>
+
+          {/* Existing Friends horizontal strip */}
+          {friends.length > 0 && (
+            <View style={styles.friendsSection}>
+              <View style={styles.friendsSectionHeader}>
+                <Ionicons name="people-outline" size={16} color={c.brandNavy} />
+                <Text style={styles.sectionHeader}>
+                  {t("invites.shareWithExisting", { defaultValue: "Share Clips with Friends" })}
+                </Text>
+              </View>
+              <Text style={styles.sectionSubtitle}>
+                {t("invites.shareWithExistingSub", { defaultValue: "Upload and copy clips directly to their locker." })}
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.friendsScroll}
+              >
+                {friends.map((f) => {
+                  const friendId = String(f._id ?? f.id ?? "");
+                  const name = String(f.fullname ?? f.full_name ?? f.name ?? "Friend");
+                  return (
+                    <DashboardPersonTile
+                      key={friendId}
+                      name={name}
+                      avatar={f.profile_picture ?? f.avatar}
+                      onPress={() => {
+                        haptics.tap();
+                        navigation.navigate("DashboardFeature", {
+                          featureId: "friends",
+                          friendsTab: "share",
+                          preselectedFriendId: friendId,
+                        });
+                      }}
+                      useHomeAvatar
+                    />
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+
+          <Text style={[styles.pointsHint, { color: c.textMuted }]}>
+            {t("points.inviteHowBody", {
+              defaultValue:
+                "Earn 1–5 points per action. Redeem 100 points for $5 wallet credit in the Wallet tab.",
+            })}
+          </Text>
+        </View>
+      )}
+
+      {activeTab === "email" && (
+        <View style={styles.card}>
+          <Text style={[styles.cardTitle, { color: c.text }]}>
+            {t("invites.title")}
+          </Text>
+          <Text style={[styles.cardSub, { color: c.textMuted }]}>
+            {t("invites.subtitleExpanded", {
+              defaultValue:
+                "Enter one or more emails. We will send your friend a personal invite to join NetQwix.",
+            })}
+          </Text>
+
+          <View style={{ gap: space.sm, marginTop: space.sm }}>
             <Text style={styles.label}>{t("invites.emailLabel")}</Text>
             <View style={styles.chipContainer}>
               {chips.map((email) => (
@@ -505,81 +578,82 @@ export function InviteFriendsScreen() {
               size="lg"
             />
           </View>
-        ) : null}
-      </View>
+        </View>
+      )}
 
-      {/* Segmented tracker */}
-      <View style={styles.trackerSection}>
-        <Text style={styles.historyTitle}>{t("invites.pastInvitations")}</Text>
+      {activeTab === "tracker" && (
+        <View style={styles.trackerSection}>
+          <Text style={styles.historyTitle}>{t("invites.pastInvitations")}</Text>
 
-        <View style={styles.trackerSegment}>
-          {(["all", "pending", "joined"] as const).map((tk) => {
-            const active = tab === tk;
-            const count =
-              tk === "all" ? stats.total : tk === "pending" ? stats.pending : stats.joined;
-            return (
-              <Pressable
-                key={tk}
-                onPress={() => setTab(tk)}
-                style={[
-                  styles.trackerSegBtn,
-                  active && { backgroundColor: c.surfaceElevated },
-                ]}
-              >
-                <Text
+          <View style={styles.trackerSegment}>
+            {(["all", "pending", "joined"] as const).map((tk) => {
+              const active = tab === tk;
+              const count =
+                tk === "all" ? stats.total : tk === "pending" ? stats.pending : stats.joined;
+              return (
+                <Pressable
+                  key={tk}
+                  onPress={() => setTab(tk)}
                   style={[
-                    styles.trackerSegText,
-                    { color: active ? c.brandNavy : c.textMuted },
+                    styles.trackerSegBtn,
+                    active && { backgroundColor: c.surfaceElevated },
                   ]}
                 >
-                  {tk === "all"
-                    ? t("invites.trackerAll", { defaultValue: "All" })
-                    : tk === "pending"
-                      ? t("invites.trackerPending", { defaultValue: "Pending" })
-                      : t("invites.trackerJoined", { defaultValue: "Joined" })}
-                  {"  "}
-                  <Text style={styles.trackerSegCount}>{count}</Text>
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        {loadingHistory ? (
-          <View style={{ gap: 8 }}>
-            {[0, 1, 2].map((i) => (
-              <Skeleton key={i} width="100%" height={56} radius={radii.sm} />
-            ))}
+                  <Text
+                    style={[
+                      styles.trackerSegText,
+                      { color: active ? c.brandNavy : c.textMuted },
+                    ]}
+                  >
+                    {tk === "all"
+                      ? t("invites.trackerAll", { defaultValue: "All" })
+                      : tk === "pending"
+                        ? t("invites.trackerPending", { defaultValue: "Pending" })
+                        : t("invites.trackerJoined", { defaultValue: "Joined" })}
+                    {"  "}
+                    <Text style={styles.trackerSegCount}>{count}</Text>
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
-        ) : filteredReferrals.length === 0 ? (
-          <View style={styles.emptyHistory}>
-            <Ionicons name="mail-outline" size={28} color={c.textMuted} />
-            <Text style={styles.emptyHistoryText}>
-              {tab === "joined"
-                ? t("invites.noJoinedYet", {
-                    defaultValue: "Nobody has joined yet — keep sharing!",
-                  })
-                : t("invites.noInvitationsYet")}
+
+          {loadingHistory ? (
+            <View style={{ gap: 8 }}>
+              {[0, 1, 2].map((i) => (
+                <Skeleton key={i} width="100%" height={56} radius={radii.sm} />
+              ))}
+            </View>
+          ) : filteredReferrals.length === 0 ? (
+            <View style={styles.emptyHistory}>
+              <Ionicons name="mail-outline" size={28} color={c.textMuted} />
+              <Text style={styles.emptyHistoryText}>
+                {tab === "joined"
+                  ? t("invites.noJoinedYet", {
+                      defaultValue: "Nobody has joined yet — keep sharing!",
+                    })
+                  : t("invites.noInvitationsYet")}
+              </Text>
+            </View>
+          ) : (
+            filteredReferrals.map((ref, i) => (
+              <ReferralRowView
+                key={ref._id ?? `${ref.email ?? "row"}-${i}`}
+                row={ref}
+                t={t}
+                c={c}
+                styles={styles}
+              />
+            ))
+          )}
+
+          {isRefetching ? (
+            <Text style={{ color: c.textMuted, ...typography.caption, marginTop: 4 }}>
+              {t("invites.refreshing", { defaultValue: "Refreshing..." })}
             </Text>
-          </View>
-        ) : (
-          filteredReferrals.map((ref, i) => (
-            <ReferralRowView
-              key={ref._id ?? `${ref.email ?? "row"}-${i}`}
-              row={ref}
-              t={t}
-              c={c}
-              styles={styles}
-            />
-          ))
-        )}
-
-        {isRefetching ? (
-          <Text style={{ color: c.textMuted, ...typography.caption }}>
-            {t("invites.refreshing", { defaultValue: "Refreshing..." })}
-          </Text>
-        ) : null}
-      </View>
+          ) : null}
+        </View>
+      )}
     </KeyboardAwareScrollScreen>
   );
 }
@@ -801,6 +875,40 @@ function useInviteStyles() {
     StyleSheet.create({
       root: { flex: 1, backgroundColor: palette.background },
       content: { padding: space.md, gap: space.md },
+      mainTabBar: {
+        flexDirection: "row",
+        padding: 4,
+        borderRadius: radii.lg,
+        backgroundColor: palette.surfaceElevated,
+        borderWidth: 1,
+        borderColor: palette.borderSubtle,
+        marginBottom: space.xs,
+      },
+      mainTabBtn: {
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        paddingVertical: 10,
+        borderRadius: radii.md,
+      },
+      mainTabBtnActive: {
+        backgroundColor: palette.background,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 2,
+        elevation: 1.5,
+      },
+      mainTabText: {
+        ...typography.caption,
+        fontWeight: "700",
+        color: palette.textMuted,
+      },
+      mainTabTextActive: {
+        color: palette.brandNavy,
+      },
       hero: {
         backgroundColor: palette.surfaceElevated,
         borderRadius: radii.lg,
@@ -828,7 +936,7 @@ function useInviteStyles() {
         overflow: "hidden",
       },
       targetRow: { flexDirection: "row", gap: space.sm, marginTop: space.sm },
-      rewardLine: { ...typography.caption, marginTop: 6 },
+      rewardLine: { ...typography.caption, marginTop: 6, textAlign: "center" },
       statsCard: {
         flexDirection: "row",
         backgroundColor: palette.surfaceElevated,
@@ -868,10 +976,11 @@ function useInviteStyles() {
         paddingVertical: 10,
       },
       linkPillText: { ...typography.bodySm, flex: 1, fontWeight: "600" },
-      pointsHint: { ...typography.caption, marginTop: 2, lineHeight: 16 },
+      pointsHint: { ...typography.caption, marginTop: 4, lineHeight: 16, textAlign: "center" },
       shareRow: {
         flexDirection: "row",
         gap: space.xs,
+        marginTop: space.xs,
       },
       composerHeader: {
         flexDirection: "row",
@@ -921,6 +1030,34 @@ function useInviteStyles() {
       },
       meta: { ...typography.caption, color: palette.textMuted },
       metaMuted: { ...typography.caption, color: palette.textMuted },
+      friendsSection: {
+        backgroundColor: palette.surfaceElevated,
+        borderRadius: radii.md,
+        borderWidth: 1,
+        borderColor: palette.border,
+        padding: space.md,
+        gap: space.xs,
+      },
+      friendsSectionHeader: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+      },
+      sectionHeader: {
+        ...typography.titleSm,
+        color: palette.text,
+        fontWeight: "700",
+      },
+      sectionSubtitle: {
+        ...typography.caption,
+        color: palette.textMuted,
+        marginBottom: space.xs,
+      },
+      friendsScroll: {
+        gap: space.md,
+        paddingVertical: space.xs,
+        paddingRight: space.sm,
+      },
       trackerSection: {
         backgroundColor: palette.surfaceElevated,
         borderRadius: radii.md,
