@@ -609,6 +609,10 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
   );
 
   const scheduledNotifsRef = useRef<Set<string>>(new Set());
+  const upcomingConfirmedKey = useMemo(() => {
+    return upcomingConfirmed.map((s: any) => `${s._id ?? s.id}-${s.booked_date}`).join(",");
+  }, [upcomingConfirmed]);
+
   useEffect(() => {
     upcomingConfirmed.forEach((s: any) => {
       const sid = String(s._id ?? s.id);
@@ -638,7 +642,7 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
         });
       }
     });
-  }, [upcomingConfirmed, isTrainer, t]);
+  }, [upcomingConfirmedKey, isTrainer]);
 
   const showEmptyDashboard =
     !loadingSessions &&
