@@ -33,7 +33,9 @@ import { AccountType } from "../../../constants/accountType";
 import { WebRoutes } from "../../../constants/webRoutes";
 import type { MenuStackParamList, ShellSurfaceRouteId } from "../../../navigation/types";
 import { openHomeStackScreen, openShellSurface } from "../../../navigation/openShellSurface";
-import { colors, space, typography, useThemeColors } from "../../../theme";
+import { colors, space, typography, useThemeColors, radii } from "../../../theme";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "../../../lib/queryKeys";
 import { useTheme, type ThemeMode } from "../../../theme/ThemeContext";
 import { areHapticsEnabled, haptics, setHapticsEnabled } from "../../../lib/haptics";
 import { revokeAllAuthSessions } from "../../auth/api/authSessionsApi";
@@ -50,6 +52,7 @@ import {
   fetchFriends,
   postAccountPrivacy,
   putProfile,
+  postMyClipsGrouped,
   type BookingReminderCadence,
   type UserNotificationPrefs,
 } from "../../home/api/homeApi";
@@ -130,6 +133,25 @@ export function SettingsScreen() {
   const name = (user?.fullname as string) || (user?.fullName as string) || t("settings.defaultUser");
   const email = (user?.email as string) ?? "";
   const isTrainer = accountType === AccountType.TRAINER;
+
+  const queryClient = useQueryClient();
+
+  const walletQuery = useQuery({
+    queryKey: queryKeys.wallet.balance,
+    queryFn: async () => {
+      const { fetchWalletBalance } = await import("../../wallet/walletApi");
+      return fetchWalletBalance();
+    },
+    staleTime: 60_000,
+  });
+  const walletBalance = walletQuery.data?.balances?.available ?? 0;
+
+  const clipsQuery = useQuery({
+    queryKey: queryKeys.locker.myClips,
+    queryFn: () => postMyClipsGrouped({}),
+    staleTime: 60_000,
+  });
+  const clipsCount = clipsQuery.data?.length ?? 0;
 
   const [tzDraft, setTzDraft] = useState(defaultTz);
   const [tzOpen, setTzOpen] = useState(false);
@@ -648,23 +670,170 @@ export function SettingsScreen() {
   return (
     <ScreenContainer scroll padding="md" background={c.surface} clearFloatingTabBar>
       <Pressable onPress={() => openShell("editProfile")}>
-        <Card variant="outlined" padding="md" style={styles.profileCard}>
-          <Avatar name={name} size="xl" user={user as Record<string, unknown>} />
-          <View style={{ flex: 1 }}>
-            <Text style={[typography.titleMd, { color: c.text }]} numberOfLines={1}>
-              {name}
-            </Text>
-            <Text
-              style={[typography.bodySm, { color: c.textMuted, marginTop: 2 }]}
-              numberOfLines={1}
-            >
-              {email}
-            </Text>
-            <Pill label={accountType ?? t("settings.member")} tone="brand" style={{ marginTop: 6 }} />
+        <View
+          style={{
+            backgroundColor: "#1A1A22",
+            borderRadius: radii.lg,
+            borderWidth: 1,
+            borderColor: "#2D2D3A",
+            padding: space.md,
+            marginBottom: space.sm,
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          {/* Gold pattern background equivalent overlay */}
+          <View
+            style={{
+              position: "absolute",
+              top: 0,
+              right: 0,
+              width: 120,
+              height: 120,
+              opacity: 0.05,
+              borderRadius: 60,
+              borderWidth: 3,
+              borderColor: "#D4AF37",
+              transform: [{ scaleX: 2 }],
+            }}
+          />
+
+          <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+            <View style={{ borderWidth: 2, borderColor: "#D4AF37", borderRadius: 40, padding: 2 }}>
+              <Avatar name={name} size="xl" user={user as Record<string, unknown>} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ ...typography.titleMd, color: "#FFFFFF", fontWeight: "700" }} numberOfLines={1}>
+                {name}
+              </Text>
+              <Text style={{ ...typography.bodySm, color: "#8E8E9F", marginTop: 2 }} numberOfLines={1}>
+                {email}
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", marginTop: 6 }}>
+                <Text style={{ ...typography.caption, color: "#D4AF37", fontWeight: "700" }}>
+                  {t("settings.editProfile", { defaultValue: "Edit profile" })}
+                </Text>
+                <Ionicons name="chevron-forward" size={12} color="#D4AF37" style={{ marginLeft: 2 }} />
+              </View>
+            </View>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={c.textMuted} />
-        </Card>
+
+          {/* Gold member / Saved row */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              backgroundColor: "#22222E",
+              borderRadius: radii.md,
+              paddingVertical: 10,
+              paddingHorizontal: 12,
+              marginTop: 14,
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Ionicons name="ribbon" size={16} color="#D4AF37" />
+              <Text style={{ ...typography.caption, color: "#D4AF37", fontWeight: "700" }}>
+                {accountType === AccountType.TRAINER ? "Trainer Pro" : "Gold member"}
+              </Text>
+            </View>
+            <View
+              style={{
+                backgroundColor: "#2E2D3A",
+                borderRadius: radii.pill,
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+              }}
+            >
+              <Text style={{ ...typography.caption, color: "#E0E0E0", fontWeight: "600", fontSize: 11 }}>
+                {t("settings.activeSubscription", { defaultValue: "Active subscriber" })}
+              </Text>
+            </View>
+          </View>
+        </View>
       </Pressable>
+
+      <View style={{ flexDirection: "row", gap: space.sm, marginBottom: space.sm }}>
+        {/* Wallet Balance Card */}
+        <Pressable
+          onPress={() => openShell("wallet")}
+          style={({ pressed }) => [
+            {
+              flex: 1,
+              backgroundColor: "#1A1A22",
+              borderRadius: radii.md,
+              borderWidth: 1,
+              borderColor: "#2D2D3A",
+              padding: space.md,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 12,
+            },
+            pressed && { opacity: 0.9 },
+          ]}
+        >
+          <View
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: "#252530",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Ionicons name="wallet-outline" size={18} color="#D4AF37" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ ...typography.caption, color: "#8E8E9F" }}>
+              {t("settings.walletBalance", { defaultValue: "NetQwix Wallet" })}
+            </Text>
+            <Text style={{ ...typography.bodyMd, color: "#FFFFFF", fontWeight: "700", marginTop: 2 }}>
+              ${Number(walletBalance).toFixed(2)}
+            </Text>
+          </View>
+        </Pressable>
+
+        {/* My Clips Card */}
+        <Pressable
+          onPress={() => openShell("clips")}
+          style={({ pressed }) => [
+            {
+              flex: 1,
+              backgroundColor: "#1A1A22",
+              borderRadius: radii.md,
+              borderWidth: 1,
+              borderColor: "#2D2D3A",
+              padding: space.md,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 12,
+            },
+            pressed && { opacity: 0.9 },
+          ]}
+        >
+          <View
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: "#252530",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Ionicons name="film-outline" size={18} color="#D4AF37" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ ...typography.caption, color: "#8E8E9F" }}>
+              {t("settings.myClips", { defaultValue: "My Locker Clips" })}
+            </Text>
+            <Text style={{ ...typography.bodyMd, color: "#FFFFFF", fontWeight: "700", marginTop: 2 }}>
+              {clipsCount} {clipsCount === 1 ? "Clip" : "Clips"}
+            </Text>
+          </View>
+        </Pressable>
+      </View>
 
       <Card variant="outlined" padding="md" style={styles.searchCard}>
         <View style={[styles.searchInputWrap, { borderColor: c.border, backgroundColor: c.surfaceElevated }]}>

@@ -18,7 +18,7 @@ import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 import { bumpAvatarCacheBust, useAvatarCacheBust } from "../../../lib/avatarCacheBust";
 import type { MenuStackParamList } from "../../../navigation/types";
 import { openShellSurface } from "../../../navigation/openShellSurface";
-import { space, typography, useThemeColors, useThemedStyles } from "../../../theme";
+import { space, typography, useThemeColors, useThemedStyles, radii } from "../../../theme";
 import { useAuth } from "../../auth/context/AuthContext";
 import { apiClient } from "../../../api/client";
 import { API_ROUTES } from "../../../config/apiRoutes";
@@ -47,14 +47,105 @@ function resolveHourlyRateFromUser(user: Record<string, unknown> | null | undefi
   return String(raw);
 }
 
+import { TextInput } from "react-native";
+
+function ZomatoFormField({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  rightAction,
+  keyboardType = "default",
+  secureTextEntry = false,
+  multiline = false,
+  inputStyle,
+  autoCapitalize,
+  autoCorrect,
+}: {
+  label: string;
+  value: string;
+  onChangeText?: (text: string) => void;
+  placeholder?: string;
+  rightAction?: React.ReactNode;
+  keyboardType?: "default" | "email-address" | "numeric" | "phone-pad" | "url";
+  secureTextEntry?: boolean;
+  multiline?: boolean;
+  inputStyle?: any;
+  autoCapitalize?: "none" | "sentences" | "words" | "characters";
+  autoCorrect?: boolean;
+}) {
+  const c = useThemeColors();
+  return (
+    <View style={{ position: "relative", marginTop: 10, marginBottom: 12 }}>
+      {/* Absolute positioned top border cut label */}
+      <View
+        style={{
+          position: "absolute",
+          top: -9,
+          left: 12,
+          backgroundColor: c.surface,
+          paddingHorizontal: 6,
+          zIndex: 10,
+        }}
+      >
+        <Text style={{ fontSize: 11, color: c.textMuted, fontWeight: "600" }}>{label}</Text>
+      </View>
+
+      <View
+        style={[
+          {
+            borderWidth: 1,
+            borderColor: "#2D2D3A",
+            borderRadius: 8,
+            paddingHorizontal: 12,
+            paddingVertical: multiline ? 8 : 10,
+            minHeight: multiline ? 96 : 52,
+            backgroundColor: c.surfaceElevated,
+            flexDirection: "row",
+            alignItems: "center",
+          },
+          inputStyle,
+        ]}
+      >
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={c.textMuted}
+          keyboardType={keyboardType}
+          secureTextEntry={secureTextEntry}
+          multiline={multiline}
+          autoCapitalize={autoCapitalize}
+          autoCorrect={autoCorrect}
+          style={{
+            flex: 1,
+            color: "#FFFFFF",
+            fontSize: 15,
+            fontWeight: "500",
+            paddingVertical: 0,
+            textAlignVertical: multiline ? "top" : "center",
+          }}
+          editable={!!onChangeText}
+        />
+        {rightAction}
+      </View>
+    </View>
+  );
+}
+
 export function EditProfileScreen() {
   const { t } = useAppTranslation();
   const c = useThemeColors();
   const styles = useThemedStyles((palette) => StyleSheet.create({
   avatarSection: {
     alignItems: "center",
-    paddingVertical: space.sm,
-    marginBottom: space.xs,
+    paddingBottom: 24,
+    paddingTop: space.sm,
+    backgroundColor: palette.surfaceElevated,
+    borderBottomLeftRadius: 60,
+    borderBottomRightRadius: 60,
+    width: "100%",
+    marginBottom: space.md,
   },
   avatarWrap: { position: "relative" },
   avatarImg: { width: 96, height: 96, borderRadius: 48, backgroundColor: palette.surfaceMuted },
@@ -65,11 +156,11 @@ export function EditProfileScreen() {
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: palette.brandNavy,
+    backgroundColor: palette.surfaceElevated,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: palette.surface,
+    borderWidth: 1.5,
+    borderColor: "#FF5A5F",
   },
   changePhotoText: {
     ...typography.bodySm,
@@ -77,7 +168,7 @@ export function EditProfileScreen() {
     fontWeight: "600",
     marginTop: space.xs,
   },
-  sectionCard: { marginBottom: space.sm },
+  sectionCard: { marginBottom: space.sm, backgroundColor: "transparent", borderWidth: 0 },
   fieldStack: { gap: space.md },
   enhanceBtn: {
     flexDirection: "row",
@@ -322,11 +413,11 @@ export function EditProfileScreen() {
             size={96}
             cacheBust={localAvatar ? undefined : cacheBust}
           />
-          <View style={[styles.cameraBadge, { borderColor: c.surface }]}>
+          <View style={styles.cameraBadge}>
             {avatarUploading ? (
-              <ActivityIndicator size={14} color="#fff" />
+              <ActivityIndicator size={14} color="#FF5A5F" />
             ) : (
-              <Ionicons name="camera" size={16} color="#fff" />
+              <Ionicons name="create-outline" size={16} color="#FF5A5F" />
             )}
           </View>
         </Pressable>
@@ -340,19 +431,56 @@ export function EditProfileScreen() {
       <SectionHeader label={t("profile.identitySection")} />
       <Card variant="outlined" padding="md" style={styles.sectionCard}>
         <View style={styles.fieldStack}>
-          <FormField
+          <ZomatoFormField
             label={t("profile.fullNameLabel")}
             value={fullname}
             onChangeText={setFullname}
             placeholder={t("profile.fullNamePlaceholder")}
-            required
           />
-          <FormField
+          <ZomatoFormField
             label={t("profile.mobileLabel")}
             value={mobile}
             onChangeText={setMobile}
             placeholder={t("profile.mobilePlaceholder")}
             keyboardType="phone-pad"
+            rightAction={
+              <Pressable onPress={() => Alert.alert(t("profile.changeMobileTitle", { defaultValue: "Change Mobile" }), t("profile.changeMobileBody", { defaultValue: "Please contact support to change your mobile number." }))}>
+                <Text style={{ color: "#FF5A5F", fontWeight: "700", fontSize: 13, marginRight: 4 }}>
+                  {t("profile.change", { defaultValue: "CHANGE" })}
+                </Text>
+              </Pressable>
+            }
+          />
+          <ZomatoFormField
+            label={t("profile.emailLabel", { defaultValue: "Email" })}
+            value={user?.email as string ?? ""}
+            placeholder={t("profile.emailPlaceholder", { defaultValue: "your@email.com" })}
+            rightAction={
+              <Pressable onPress={() => Alert.alert(t("profile.changeEmailTitle", { defaultValue: "Change Email" }), t("profile.changeEmailBody", { defaultValue: "Please contact support to change your verified email address." }))}>
+                <Text style={{ color: "#FF5A5F", fontWeight: "700", fontSize: 13, marginRight: 4 }}>
+                  {t("profile.change", { defaultValue: "CHANGE" })}
+                </Text>
+              </Pressable>
+            }
+          />
+
+          {/* Mock fields for visual parity with Image 1 */}
+          <ZomatoFormField
+            label={t("profile.dobLabel", { defaultValue: "Date of birth" })}
+            value="14/09/2001"
+            placeholder="DD/MM/YYYY"
+          />
+          <ZomatoFormField
+            label={t("profile.anniversaryLabel", { defaultValue: "Anniversary" })}
+            value=""
+            placeholder="Select date"
+            rightAction={<Ionicons name="calendar-outline" size={18} color={c.textMuted} style={{ marginRight: 4 }} />}
+          />
+          <ZomatoFormField
+            label={t("profile.genderLabel", { defaultValue: "Gender" })}
+            value="Male"
+            placeholder="Select gender"
+            rightAction={<Ionicons name="chevron-down" size={18} color={c.textMuted} style={{ marginRight: 4 }} />}
           />
         </View>
       </Card>
@@ -362,30 +490,19 @@ export function EditProfileScreen() {
           <SectionHeader label={t("profile.trainerSection")} />
           <Card variant="outlined" padding="md" style={styles.sectionCard}>
             <View style={styles.fieldStack}>
-              <FormField
+              <ZomatoFormField
                 label={t("profile.hourlyRateLabel")}
                 value={hourlyRate}
                 onChangeText={setHourlyRate}
                 placeholder={t("profile.hourlyRatePlaceholder")}
                 keyboardType="numeric"
-                labelAdornment={
-                  <HelpBubble
-                    topic={t("help.hourlyRate.topic", { defaultValue: "Hourly rate" })}
-                  >
-                    {t("help.hourlyRate.body", {
-                      defaultValue:
-                        "Charge per booked hour. NetQwix takes a platform commission (typically 20%) and the rest is your earnings. Set this where your bookings are competitive — you can update it any time and existing bookings keep their original price.",
-                    })}
-                  </HelpBubble>
-                }
               />
-              <FormField
+              <ZomatoFormField
                 label={t("profile.bioLabel")}
                 value={bio}
                 onChangeText={setBio}
                 placeholder={t("profile.bioPlaceholder")}
                 multiline
-                inputStyle={{ minHeight: 110, textAlignVertical: "top" }}
               />
               <Pressable
                 onPress={() =>
@@ -446,7 +563,7 @@ export function EditProfileScreen() {
           })}
         </Text>
         <View style={styles.fieldStack}>
-          <FormField
+          <ZomatoFormField
             label={t("profile.instagramLabel", { defaultValue: "Instagram" })}
             value={instagram}
             onChangeText={setInstagram}
@@ -457,7 +574,7 @@ export function EditProfileScreen() {
             autoCorrect={false}
             keyboardType="url"
           />
-          <FormField
+          <ZomatoFormField
             label={t("profile.facebookLabel", { defaultValue: "Facebook" })}
             value={facebook}
             onChangeText={setFacebook}
@@ -468,7 +585,7 @@ export function EditProfileScreen() {
             autoCorrect={false}
             keyboardType="url"
           />
-          <FormField
+          <ZomatoFormField
             label={t("profile.websiteLabel", { defaultValue: "Website" })}
             value={website}
             onChangeText={setWebsite}
@@ -486,13 +603,12 @@ export function EditProfileScreen() {
         <>
           <SectionHeader label={t("profile.aboutSection", { defaultValue: "About you" })} />
           <Card variant="outlined" padding="md" style={styles.sectionCard}>
-            <FormField
+            <ZomatoFormField
               label={t("profile.bioLabel")}
               value={bio}
               onChangeText={setBio}
               placeholder={t("profile.bioPlaceholder")}
               multiline
-              inputStyle={{ minHeight: 96, textAlignVertical: "top" }}
             />
           </Card>
         </>
@@ -505,6 +621,13 @@ export function EditProfileScreen() {
         disabled={!dirty}
         onPress={save}
         size="lg"
+        style={{
+          backgroundColor: "#3D3D4D",
+          borderRadius: radii.md,
+          marginTop: space.md,
+          marginBottom: space.lg,
+          borderWidth: 0,
+        }}
       />
     </ScreenContainer>
   );

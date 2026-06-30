@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState, useRef } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
+import * as Notifications from "expo-notifications";
 import { PendingAuthResumeBridge } from "../../auth/components/PendingAuthResumeBridge";
 import { useAuth } from "../../auth/context/AuthContext";
 import { AccountType } from "../../../constants/accountType";
@@ -29,6 +30,7 @@ import { queryKeys } from "../../../lib/queryKeys";
 import { getS3ImageUrl } from "../../../lib/imageUtils";
 import { resolveShowAsOnline } from "../../../lib/user/resolveShowAsOnline";
 import { TabScreenShell, useHorizontalGutter } from "../../../lib/layout";
+import { useFloatingTabBarBottomInset } from "../../../navigation/useFloatingTabBarBottomInset";
 import { useCmsHome } from "../../content/hooks/useCmsHome";
 import {
   fetchScheduledMeetings,
@@ -605,6 +607,39 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
     () => sessions.filter((s: any) => shouldShowInDashboardUpcoming(s)),
     [sessions, sessionListTick]
   );
+
+  const scheduledNotifsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    upcomingConfirmed.forEach((s: any) => {
+      const sid = String(s._id ?? s.id);
+      if (scheduledNotifsRef.current.has(sid)) return;
+
+      const bookedTime = new Date(s.booked_date).getTime();
+      const diffMs = bookedTime - Date.now();
+      const tenMins = 10 * 60 * 1000;
+
+      if (diffMs > 60_000 && diffMs <= 15 * 60 * 1000) {
+        scheduledNotifsRef.current.add(sid);
+        const partner = getOtherParty(s, isTrainer);
+        const partnerName = partner?.fullname || partner?.fullName || "your coach";
+        const notifyLeadTimeMs = Math.max(1000, diffMs - tenMins);
+
+        void Notifications.scheduleNotificationAsync({
+          content: {
+            title: t("dashboardHome.incomingLessonNotificationTitle", {
+              defaultValue: "Upcoming Lesson",
+            }),
+            body: t("dashboardHome.incomingLessonNotificationBody", {
+              defaultValue: `Your lesson with ${partnerName} starts in a few minutes.`,
+            }),
+            data: { kind: "meeting", lessonId: sid },
+          },
+          trigger: { seconds: Math.floor(notifyLeadTimeMs / 1000) } as any,
+        });
+      }
+    });
+  }, [upcomingConfirmed, isTrainer, t]);
+
   const showEmptyDashboard =
     !loadingSessions &&
     nowSessions.length === 0 &&
@@ -876,7 +911,121 @@ export function DashboardHomeScreen(_props: DashboardHomeProps) {
       <Modal visible={aiOpen} animationType="slide" onRequestClose={() => setAiOpen(false)}>
         <AIAssistantScreen onClose={() => setAiOpen(false)} />
       </Modal>
+      <LockerLiveLessonBanner
+        nowSessions={nowSessions}
+        upcomingConfirmed={upcomingConfirmed}
+        onOpenSession={openSession}
+        isTrainer={isTrainer}
+      />
     </>
+  );
+}
+
+function LockerLiveLessonBanner({
+  nowSessions,
+  upcomingConfirmed,
+  onOpenSession,
+  isTrainer,
+}: {
+  nowSessions: any[];
+  upcomingConfirmed: any[];
+  onOpenSession: (session: any) => void;
+  isTrainer: boolean;
+}) {
+  const { t } = useAppTranslation();
+  const c = useThemeColors();
+  const bottomPad = useFloatingTabBarBottomInset(space.md);
+
+  const activeSession = nowSessions[0];
+  const upcomingSession = upcomingConfirmed.find((s: any) => {
+    const diff = new Date(s.booked_date).getTime() - Date.now();
+    return diff > 0 && diff <= 15 * 60 * 1000;
+  });
+
+  const session = activeSession || upcomingSession;
+  if (!session) return null;
+
+  const partner = getOtherParty(session, isTrainer);
+  const partnerName = partner?.fullname || partner?.fullName || "Expert";
+  const isActive = !!activeSession;
+
+  let timeStr = "";
+  if (!isActive && upcomingSession) {
+    const diffMs = new Date(upcomingSession.booked_date).getTime() - Date.now();
+    const diffMins = Math.max(1, Math.round(diffMs / 60000));
+    timeStr = t("dashboardHome.startsInMins", { defaultValue: `starting in ${diffMins}m`, count: diffMins });
+  } else {
+    timeStr = t("dashboardHome.lessonActiveNow", { defaultValue: "Active Lesson" });
+  }
+
+  return (
+    <Pressable
+      onPress={() => onOpenSession(session)}
+      style={({ pressed }) => [
+        {
+          position: "absolute",
+          bottom: bottomPad + 12,
+          left: space.md,
+          right: space.md,
+          backgroundColor: "#1A1A22",
+          borderWidth: 1,
+          borderColor: "#2D2D3A",
+          borderRadius: radii.lg,
+          paddingHorizontal: space.md,
+          paddingVertical: 12,
+          flexDirection: "row",
+          alignItems: "center",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.25,
+          shadowRadius: 10,
+          elevation: 8,
+          zIndex: 1000,
+        },
+        pressed && { opacity: 0.95, transform: [{ scale: 0.98 }] },
+      ]}
+    >
+      <View
+        style={{
+          width: 38,
+          height: 38,
+          borderRadius: 19,
+          backgroundColor: isActive ? "#E8F5E9" : "#FFF3E0",
+          alignItems: "center",
+          justifyContent: "center",
+          marginRight: 10,
+        }}
+      >
+        <Ionicons
+          name={isActive ? "radio-button-on" : "calendar-outline"}
+          size={20}
+          color={isActive ? "#43A047" : "#FF9800"}
+        />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ ...typography.label, color: "#FFFFFF", fontWeight: "700" }} numberOfLines={1}>
+          {partnerName}
+        </Text>
+        <Text style={{ ...typography.caption, color: "#8E8E9F", marginTop: 2 }}>
+          {isActive ? t("dashboardHome.lessonInProgress", { defaultValue: "Session in progress" }) : t("dashboardHome.scheduledSession", { defaultValue: "Scheduled session" })}
+        </Text>
+      </View>
+
+      <View
+        style={{
+          backgroundColor: isActive ? "#1B5E20" : "#E65100",
+          borderRadius: radii.pill,
+          paddingHorizontal: 12,
+          paddingVertical: 6,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Text style={{ ...typography.caption, color: "#FFFFFF", fontWeight: "800", fontSize: 11 }}>
+          {isActive ? t("dashboardHome.joinNow", { defaultValue: "JOIN NOW" }) : timeStr.toUpperCase()}
+        </Text>
+      </View>
+    </Pressable>
   );
 }
 
