@@ -16,6 +16,7 @@ import {
   registerStripeAccount,
 } from "../stripeConnectApi";
 import { useShellHeaderTitle } from "../../../navigation/useShellHeaderTitle";
+import { getApiErrorMessage } from "../../../lib/http/getApiErrorMessage";
 
 type Props = NativeStackScreenProps<WalletStackParamList, "StripeConnect">;
 
@@ -77,7 +78,7 @@ export function StripeConnectOnboardingScreen(_props: Props) {
   });
 
   const complete = stripeAccountId
-    ? statusQuery.data?.complete ?? kycComplete
+    ? (statusQuery.isError || statusQuery.isLoading ? false : (statusQuery.data?.complete ?? kycComplete))
     : false;
   const statusLoading = Boolean(stripeAccountId) && statusQuery.isLoading;
 
@@ -135,7 +136,7 @@ export function StripeConnectOnboardingScreen(_props: Props) {
       if (!url) throw new Error("Could not open Stripe onboarding.");
       await Linking.openURL(url);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Stripe onboarding failed.";
+      const msg = getApiErrorMessage(e, "Stripe onboarding failed.");
       Alert.alert(t("common.error", { defaultValue: "Error" }), msg);
     } finally {
       setBusy(false);
@@ -151,16 +152,25 @@ export function StripeConnectOnboardingScreen(_props: Props) {
     ? t("wallet.stripeConnectMissingAccount", {
         defaultValue: "We're setting up your payout account. This usually takes a moment.",
       })
-    : statusLoading
-      ? t("common.loading", { defaultValue: "Loading…" })
-      : complete
-        ? t("wallet.stripeConnectComplete", { defaultValue: "You're ready to receive payouts." })
-        : t("wallet.stripeConnectIncomplete", {
-            defaultValue: "Finish bank details in Stripe to unlock payouts.",
-          });
+    : statusQuery.isError
+      ? `Error syncing with Stripe: ${getApiErrorMessage(statusQuery.error)}`
+      : statusLoading
+        ? t("common.loading", { defaultValue: "Loading…" })
+        : complete
+          ? t("wallet.stripeConnectComplete", { defaultValue: "You're ready to receive payouts." })
+          : t("wallet.stripeConnectIncomplete", {
+              defaultValue: "Finish bank details in Stripe to unlock payouts.",
+            });
 
   return (
-    <ScreenContainer scroll dismissKeyboardOnTap padding="lg" background={c.background} contentStyle={styles.scroll}>
+    <ScreenContainer
+      scroll
+      padding="lg"
+      background={c.background}
+      contentStyle={styles.scroll}
+      refreshing={statusQuery.isFetching || busy}
+      onRefresh={refreshStatus}
+    >
       <FadeInView>
         <View style={styles.hero}>
           <Ionicons name="wallet-outline" size={44} color={c.brandAccent} />
@@ -219,11 +229,12 @@ export function StripeConnectOnboardingScreen(_props: Props) {
           loading={busy || statusLoading}
           disabled={busy || statusLoading || !stripeAccountId}
           leftIcon={complete ? "create-outline" : "open-outline"}
-        >
-          {complete
-            ? t("wallet.stripeConnectUpdate", { defaultValue: "Update payout details" })
-            : t("wallet.stripeConnectStart", { defaultValue: "Continue in Stripe" })}
-        </Button>
+          label={
+            complete
+              ? t("wallet.stripeConnectUpdate", { defaultValue: "Update payout details" })
+              : t("wallet.stripeConnectStart", { defaultValue: "Continue in Stripe" })
+          }
+        />
         <Pressable onPress={() => void refreshStatus()} style={{ marginTop: space.md, alignItems: "center" }}>
           <Text style={{ color: c.brandAccent, fontWeight: "600" }}>
             {t("common.refreshStatus", { defaultValue: "Refresh status" })}

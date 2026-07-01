@@ -4,7 +4,7 @@ import type { NativeStackNavigationOptions } from "@react-navigation/native-stac
 /** Unified motion timing — tuned for smooth native-stack on iOS + Android. */
 export const STACK_TRANSITION_MS = 280;
 
-const iosPush = Platform.OS === "ios" ? ("ios" as const) : ("slide_from_right" as const);
+const iosPush = Platform.OS === "ios" ? ("default" as const) : ("slide_from_right" as const);
 
 /** Primary in-app pushes (wallet, capture, onboarding, auth sub-screens). */
 export function nestedStackScreenOptions(
