@@ -58,8 +58,8 @@ export function useSessionPresence({
   mediaPartnerJoined = false,
   lessonActive = true,
 }: Args): SessionPresenceState {
-  const [trainerConnected, setTrainerConnected] = useState<boolean | null>(null);
-  const [traineeConnected, setTraineeConnected] = useState<boolean | null>(null);
+  const [trainerConnected, setTrainerConnected] = useState<boolean | null>(isTrainer ? true : null);
+  const [traineeConnected, setTraineeConnected] = useState<boolean | null>(isTrainer ? null : true);
   const [partnerLeftKind, setPartnerLeftKind] = useState<PartnerRole | null>(null);
   const [presenceMessage, setPresenceMessage] = useState<string | null>(null);
   const [presenceVariant, setPresenceVariant] =
@@ -70,8 +70,8 @@ export function useSessionPresence({
   const staleDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const successDismissRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const trainerConnectedRef = useRef<boolean | null>(null);
-  const traineeConnectedRef = useRef<boolean | null>(null);
+  const trainerConnectedRef = useRef<boolean | null>(isTrainer ? true : null);
+  const traineeConnectedRef = useRef<boolean | null>(isTrainer ? null : true);
   const partnerLeftKindRef = useRef<PartnerRole | null>(null);
   const mediaPartnerJoinedRef = useRef(mediaPartnerJoined);
   const lessonActiveRef = useRef(lessonActive);
@@ -141,10 +141,10 @@ export function useSessionPresence({
     }) => {
       if (!matchesSession(state)) return;
       if (typeof state.trainerConnected === "boolean") {
-        setTrainerConnected(state.trainerConnected);
+        setTrainerConnected(isTrainer ? true : state.trainerConnected);
       }
       if (typeof state.traineeConnected === "boolean") {
-        setTraineeConnected(state.traineeConnected);
+        setTraineeConnected(isTrainer ? state.traineeConnected : true);
       }
       if (
         state.trainerConnected === true &&

@@ -28,43 +28,44 @@ export function LockerTile({ tile, onPress, variant = "grid" }: Props) {
         borderWidth: 1,
         borderColor: palette.border,
         backgroundColor: palette.surfaceElevated,
-        padding: compact ? space.sm : space.md,
+        padding: compact ? space.xs : space.sm,
         justifyContent: "space-between",
-        gap: compact ? space.xs : space.sm,
+        gap: compact ? space.xxs : space.xs,
         ...shadows.sm,
         ...(compact
           ? { width: 156, minHeight: 108 }
-          : { width: "48%", minHeight: 124 }),
+          : { width: "48%", minHeight: 100 }),
       },
       row: { flexDirection: "row", alignItems: "center", gap: space.sm },
       iconWrap: {
-        width: compact ? 36 : 44,
-        height: compact ? 36 : 44,
-        borderRadius: compact ? 18 : 14,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         backgroundColor: accent.bg,
         alignItems: "center",
         justifyContent: "center",
       },
-      textBlock: { flex: compact ? 1 : undefined, minWidth: 0 },
+      textBlock: { flex: 1, minWidth: 0 },
       title: {
-        ...(compact ? typography.label : typography.subtitle),
+        fontSize: 14,
+        lineHeight: 18,
         color: palette.text,
         fontWeight: "700",
       },
       subtitle: {
-        ...typography.caption,
+        fontSize: 11,
+        lineHeight: 14,
         color: palette.textMuted,
-        marginTop: 2,
-        lineHeight: compact ? 14 : 16,
+        marginTop: 1,
       },
       ctaRow: {
         flexDirection: "row",
         alignItems: "center",
         gap: 4,
-        marginTop: compact ? space.xs : space.sm,
+        marginTop: compact ? space.xxs : space.xs,
       },
       cta: {
-        ...typography.caption,
+        fontSize: 11,
         color: accent.fg,
         fontWeight: "700",
       },
@@ -89,7 +90,7 @@ export function LockerTile({ tile, onPress, variant = "grid" }: Props) {
     >
       <View style={styles.row}>
         <View style={styles.iconWrap}>
-          <Ionicons name={tile.icon} size={compact ? 18 : 22} color={accentFg} />
+          <Ionicons name={tile.icon} size={compact ? 16 : 18} color={accentFg} />
         </View>
         {compact ? (
           <View style={styles.textBlock}>
@@ -115,7 +116,7 @@ export function LockerTile({ tile, onPress, variant = "grid" }: Props) {
       )}
       <View style={styles.ctaRow}>
         <Text style={styles.cta}>Open</Text>
-        <Ionicons name="arrow-forward" size={12} color={accentFg} />
+        <Ionicons name="arrow-forward" size={11} color={accentFg} />
       </View>
     </Pressable>
   );

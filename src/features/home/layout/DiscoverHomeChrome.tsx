@@ -244,14 +244,14 @@ function useMetaStyles() {
         flexWrap: "wrap",
         alignItems: "center",
         gap: space.xs,
-        marginTop: space.sm,
+        marginTop: space.xs,
       },
       pill: {
         flexDirection: "row",
         alignItems: "center",
         gap: 5,
-        paddingHorizontal: 10,
-        paddingVertical: 7,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
         borderRadius: radii.pill,
         borderWidth: 1,
         maxWidth: "100%",
@@ -290,27 +290,17 @@ function useChromeStyles() {
   return useThemedStyles((palette) =>
     StyleSheet.create({
       band: {
-        marginBottom: space.sm,
-        paddingBottom: space.sm,
+        marginBottom: space.xs,
+        paddingBottom: space.xs,
       },
       profileCard: {
-        marginHorizontal: space.md,
-        marginBottom: space.md,
-        padding: space.md,
-        borderRadius: radii.xl,
+        marginHorizontal: 0,
+        marginBottom: space.xs,
+        paddingHorizontal: space.md,
+        paddingVertical: space.sm,
         backgroundColor: palette.surfaceElevated,
-        borderWidth: 1,
-        borderColor: palette.borderSubtle,
-        ...Platform.select({
-          ios: {
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.06,
-            shadowRadius: 8,
-          },
-          android: { elevation: 2 },
-          default: {},
-        }),
+        borderBottomWidth: 1,
+        borderBottomColor: palette.borderSubtle,
       },
       topRow: {
         flexDirection: "row",

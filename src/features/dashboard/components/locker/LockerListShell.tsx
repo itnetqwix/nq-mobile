@@ -67,14 +67,14 @@ export function LockerListShell({
       scroll: { flex: 1 },
       content: {
         paddingHorizontal: space.md,
-        paddingTop: space.md,
-        gap: space.md,
+        paddingTop: space.sm,
+        gap: space.sm,
       },
       skeletonWrap: {
         flex: 1,
         paddingHorizontal: space.md,
-        paddingTop: space.md,
-        gap: space.md,
+        paddingTop: space.sm,
+        gap: space.sm,
       },
       errorBox: {
         flex: 1,

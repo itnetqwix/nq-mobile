@@ -100,20 +100,20 @@ function CategorySection({
         borderWidth: 1,
         borderColor: palette.border,
         overflow: "hidden",
-        marginBottom: space.sm,
+        marginBottom: space.xs,
       },
       sectionHead: {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
         paddingHorizontal: space.md,
-        paddingVertical: 12,
+        paddingVertical: 8,
         backgroundColor: palette.surfaceMuted,
       },
       sectionHeadLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
       sectionIcon: {
-        width: 32,
-        height: 32,
+        width: 28,
+        height: 28,
         borderRadius: radii.sm,
         backgroundColor: palette.brandSubtle,
         alignItems: "center",
@@ -144,7 +144,7 @@ function CategorySection({
       <Pressable style={styles.sectionHead} onPress={() => setOpen(!open)}>
         <View style={styles.sectionHeadLeft}>
           <View style={styles.sectionIcon}>
-            <Ionicons name="folder-outline" size={16} color={c.iconPrimary} />
+            <Ionicons name="folder-outline" size={14} color={c.iconPrimary} />
           </View>
           <Text style={styles.sectionTitle} numberOfLines={1}>
             {title}

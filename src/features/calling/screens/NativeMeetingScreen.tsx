@@ -1669,9 +1669,9 @@ function MeetingSurface({
         });
         const id = clip ? clipIdOf(clip) : null;
         if (id && clipSync.isClipPlaying(id)) {
-          clipSync.togglePlay(false, id);
+          clipSync.togglePlay(false, id, { emitSocket: false });
         } else if (clipSync.lockMode && clipSync.isPlaying) {
-          clipSync.togglePlay(false);
+          clipSync.togglePlay(false, null, { emitSocket: false });
         }
       },
     };
@@ -3323,7 +3323,7 @@ function MeetingSurface({
             />
           ) : null}
         </>
-      ) : inClipMode ? (
+      ) : inClipMode && !annotationToolbarOpen ? (
         /* Bottom-docked video strip — both participants always visible above the action bar */
         <DualVideoStrip
           localUser={

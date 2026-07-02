@@ -277,18 +277,7 @@ export function useMeetingScreenshot({
             localUri = await captureViewShot(captureTargetRef);
           }
         } else {
-          const liveReady = isLiveVideoReady?.() ?? false;
-          if (liveReady && captureLiveFrame) {
-            await delay(96);
-            localUri = await captureLiveFrame();
-          }
-          if (!localUri) {
-            localUri = await captureViewShot(captureTargetRef);
-          }
-          if (!localUri && liveReady && captureLiveFrame) {
-            await delay(160);
-            localUri = await captureLiveFrame();
-          }
+          localUri = await captureViewShot(captureTargetRef);
         }
 
         if (!localUri) {
@@ -332,8 +321,6 @@ export function useMeetingScreenshot({
       isTrainer,
       onCaptured,
       applyAnnotationBurnIn,
-      captureLiveFrame,
-      isLiveVideoReady,
       runBackgroundUpload,
       sessionId,
       traineeId,
@@ -342,12 +329,8 @@ export function useMeetingScreenshot({
   );
 
   const captureStageFrame = useCallback(async () => {
-    if (isLiveVideoReady?.() && captureLiveFrame) {
-      const live = await captureLiveFrame();
-      if (live) return live;
-    }
     return captureViewShot(captureTargetRef);
-  }, [captureLiveFrame, captureViewShot, isLiveVideoReady]);
+  }, [captureViewShot]);
 
   const replacePendingUpload = useCallback(
     async (newLocalUri: string) => {

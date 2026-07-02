@@ -388,7 +388,7 @@ export function useClipSync({
         const localProgress = lastLocalProgressRef.current[vid];
         if (
           typeof localProgress === "number" &&
-          Math.abs(progressRaw - localProgress) > 0.3
+          Math.abs(progressRaw - localProgress) > 1.2
         ) {
           setSeekHint({
             videoId: vid,
@@ -829,8 +829,9 @@ export function useClipSync({
   );
 
   const togglePlay = useCallback(
-    (next?: boolean, videoIdOverride?: string | null) => {
+    (next?: boolean, videoIdOverride?: string | null, options?: { emitSocket?: boolean }) => {
       if (!isTrainer) return;
+      const shouldEmit = options?.emitSocket !== false && !!socket;
       const bothLocked = lockMode && selectedClips.length >= 2;
       const vid =
         videoIdOverride ??
@@ -839,7 +840,7 @@ export function useClipSync({
       if (!vid && !bothLocked) return;
       if (bothLocked) {
         const nextState = typeof next === "boolean" ? next : !isPlaying;
-        if (isTrainer && socket) {
+        if (isTrainer && shouldEmit) {
           socket.emit(
             CLIP_EVENTS.ON_VIDEO_PLAY_PAUSE,
             buildPlayPauseEmitPayload({
@@ -859,7 +860,7 @@ export function useClipSync({
       if (!vid) return;
       const current = playingByClipId[vid] ?? false;
       const nextState = typeof next === "boolean" ? next : !current;
-      if (isTrainer && socket) {
+      if (isTrainer && shouldEmit) {
         socket.emit(
           CLIP_EVENTS.ON_VIDEO_PLAY_PAUSE,
           buildPlayPauseEmitPayload({

@@ -135,6 +135,8 @@ function parseIncomingStrokePayload(
           kind: "stroke",
           sourceCanvasSize: canvasSize,
           coordSpace: "normalizedCanvas",
+          paneIndex: obj.paneIndex === 1 ? 1 : obj.paneIndex === 0 ? 0 : undefined,
+          stage: obj.stage === "live" || obj.stage === "clip" ? (obj.stage as "live" | "clip") : undefined,
         };
       }
       const mapped = pts.map((p) => {
@@ -150,6 +152,8 @@ function parseIncomingStrokePayload(
         kind: "stroke",
         sourceCanvasSize: canvasSize,
         coordSpace: "canvasPx",
+        paneIndex: obj.paneIndex === 1 ? 1 : obj.paneIndex === 0 ? 0 : undefined,
+        stage: obj.stage === "live" || obj.stage === "clip" ? (obj.stage as "live" | "clip") : undefined,
       };
     }
     if (obj.kind === "shape" && obj.start && obj.end) {
@@ -211,6 +215,8 @@ function parseIncomingStrokePayload(
         },
         sourceCanvasSize: canvasSize,
         coordSpace: "canvasPx",
+        paneIndex: obj.paneIndex === 1 ? 1 : obj.paneIndex === 0 ? 0 : undefined,
+        stage: obj.stage === "live" || obj.stage === "clip" ? (obj.stage as "live" | "clip") : undefined,
       };
     }
   }
@@ -266,6 +272,8 @@ function serializeStrokeForSocket(stroke: RemoteStroke): string {
     return JSON.stringify({
       kind: "shape",
       coordSpace: "canvasPx",
+      paneIndex: stroke.paneIndex,
+      stage: stroke.stage,
       shape: webShape,
       start: { x: b.x0, y: b.y0 },
       end: { x: b.x1, y: b.y1 },
@@ -290,12 +298,20 @@ function serializeStrokeForSocket(stroke: RemoteStroke): string {
     return JSON.stringify({
       kind: "freehand",
       coordSpace: "normalizedCanvas",
+      paneIndex: stroke.paneIndex,
+      stage: stroke.stage,
       points: stroke.points.map((p) => ({ u: p.x, v: p.y })),
       color: stroke.color,
       width: stroke.width,
     });
   }
-  return JSON.stringify({ stroke });
+  return JSON.stringify({
+    stroke: {
+      ...stroke,
+      paneIndex: stroke.paneIndex,
+      stage: stroke.stage,
+    }
+  });
 }
 
 export function useDrawingSync({
@@ -433,42 +449,46 @@ export function useDrawingSync({
       clearTimeout(pendingTimerRef.current);
       pendingTimerRef.current = null;
     }
-    if (!pending || !isTrainer || !socket) return;
+    if (!pending || !isTrainer) return;
     lastCanvasSizeRef.current = pending.canvasSize;
     pushStrokeToBuffer(pending.stroke, pending.canvasSize);
     lastEmitAtRef.current = Date.now();
-    try {
-      socket.emit(DRAWING_EVENTS.DRAW, {
-        strikes: serializeStrokeForSocket(pending.stroke),
-        canvasSize: pending.canvasSize,
-        userInfo,
-        sessionId,
-        canvasIndex,
-      });
-    } catch {
-      /* emit must not crash annotation UI */
+    if (socket && socket.connected) {
+      try {
+        socket.emit(DRAWING_EVENTS.DRAW, {
+          strikes: serializeStrokeForSocket(pending.stroke),
+          canvasSize: pending.canvasSize,
+          userInfo,
+          sessionId,
+          canvasIndex,
+        });
+      } catch {
+        /* emit must not crash annotation UI */
+      }
     }
   }, [canvasIndex, isTrainer, pushStrokeToBuffer, sessionId, socket, userInfo]);
 
   const emitStroke = useCallback(
     (stroke: RemoteStroke, canvasSize: { width: number; height: number }) => {
-      if (!isTrainer || !socket) return;
+      if (!isTrainer) return;
       const minMs = drawingEmitMinMsRef.current;
       const now = Date.now();
       if (minMs <= 0 || now - lastEmitAtRef.current >= minMs) {
         lastCanvasSizeRef.current = canvasSize;
         pushStrokeToBuffer(stroke, canvasSize);
         lastEmitAtRef.current = now;
-        try {
-          socket.emit(DRAWING_EVENTS.DRAW, {
-            strikes: serializeStrokeForSocket(stroke),
-            canvasSize,
-            userInfo,
-            sessionId,
-            canvasIndex,
-          });
-        } catch {
-          /* emit must not crash annotation UI */
+        if (socket && socket.connected) {
+          try {
+            socket.emit(DRAWING_EVENTS.DRAW, {
+              strikes: serializeStrokeForSocket(stroke),
+              canvasSize,
+              userInfo,
+              sessionId,
+              canvasIndex,
+            });
+          } catch {
+            /* emit must not crash annotation UI */
+          }
         }
         return;
       }
